@@ -5791,10 +5791,10 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
       )}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <StatCard label="Budgeted"   value={fmtD(totalBudgeted)} sub="Planned spend across all categories" />
-        <StatCard label="Committed"  value={fmtD(totalCommitted)} sub="Contracted or deposited vendors" color={totalCommitted > totalBudgeted ? C.danger : C.accent2} />
-        <StatCard label="Spent"      value={fmtD(totalActual)}   sub="Payments recorded in budget rows" color={totalActual > totalBudgeted ? C.danger : C.text} />
-        <StatCard label="Remaining"  value={fmtD(totalBudgeted - totalActual)} sub="Budgeted minus Spent" color={totalBudgeted - totalActual < 0 ? C.danger : C.success} />
+        <StatCard label="Budgeted"    value={fmtD(totalBudgeted)}  sub="Planned spend across all categories" />
+        <StatCard label="Committed"   value={fmtD(totalCommitted)} sub="On contract or deposit" color={totalCommitted > totalBudgeted ? C.danger : C.accent2} />
+        <StatCard label="Still Owed"  value={fmtD(Math.max(0, totalCommitted - totalActual))} sub="Committed not yet paid" color={totalCommitted > totalActual ? C.warn : C.success} />
+        <StatCard label="Unallocated" value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget not yet committed" color={totalCommitted > totalBudgeted ? C.danger : C.success} />
       </div>
 
       {/* Upcoming Payment Alerts */}
