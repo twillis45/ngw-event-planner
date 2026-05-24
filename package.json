@@ -2,7 +2,7 @@
   "name": "ngw-event-boss",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://GITHUB_USERNAME.github.io/REPO_NAME",
+  "homepage": "https://twillis45.github.io/ngw-event-planner",
   "dependencies": {
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

@@ -8,7 +8,7 @@ const DARK = {
   surface:  '#18181c',
   surface2: '#1e1e24',
   border:   '#2a2a32',
-  accent:   '#7c6ef8',
+  accent:   '#4a90d9',
   accent2:  '#14b8a6',
   text:     '#e8e8f0',
   muted:    '#9090a8',
@@ -22,7 +22,7 @@ const LIGHT = {
   surface:  '#ffffff',   // pure white cards
   surface2: '#f1f1f5',   // neutral hover/secondary surface
   border:   '#e2e2ea',   // light neutral gray — NOT purple; lets accent pop
-  accent:   '#6550e8',   // vivid purple — the only purple in the chrome
+  accent:   '#1a6fba',   // steel blue — the primary accent
   accent2:  '#0891b2',   // cyan-600 — blue-leaning teal, clearly distinct from green and amber
   text:     '#111118',   // near-black
   muted:    '#71707e',   // neutral gray — clearly secondary, not competing with accent
@@ -156,7 +156,7 @@ class ErrorBoundary extends Component {
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
           <div style={{ fontSize: 13, color: '#44447a', marginBottom: 20 }}>{this.state.error.message}</div>
           <button onClick={() => this.setState({ error: null })}
-            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#6550e8', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
+            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#1a6fba', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
             Try again
           </button>
         </div>
@@ -2065,7 +2065,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
 
 function VendorBriefView({ brief }) {
   const [copied, setCopied] = useState(false);
-  const LC = { bg: '#f4f4f8', surface: '#ffffff', border: '#e0e0ea', accent: '#7c6ef8', text: '#18181c', muted: '#6b6b80', success: '#16a34a' };
+  const LC = { bg: '#f4f4f8', surface: '#ffffff', border: '#e0e0ea', accent: '#1a6fba', text: '#18181c', muted: '#6b6b80', success: '#16a34a' };
 
   const fmtTime12 = (t) => {
     if (!t) return '';
@@ -6061,7 +6061,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
   const LC = {
     bg: '#f4f4f8', surface: '#ffffff', border: '#e0e0ea',
-    accent: '#7c6ef8', text: '#18181c', muted: '#6b6b80',
+    accent: '#1a6fba', text: '#18181c', muted: '#6b6b80',
     success: '#16a34a', danger: '#dc2626',
   };
 
@@ -8152,7 +8152,7 @@ function RunOfShow({ ros, setRos, vendors }) {
 
 // ─── Calendar View ────────────────────────────────────────────────────────────
 
-function CalendarView({ timeline, vendors, eventDate, ros }) {
+function CalendarView({ timeline, vendors, eventDate, ros, onTabChange }) {
   const C      = useT();
   const s      = makeS(C);
   const rosCLR = ROS_CLR(C);
@@ -8359,8 +8359,13 @@ function CalendarView({ timeline, vendors, eventDate, ros }) {
             <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.border}`, background: C.surface2 + '88', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dayPhase && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: dayPhase.color, marginBottom: 6 }}>
-                    Planning Milestone — {dayPhase.phase}
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: dayPhase.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Planning Milestone — {dayPhase.phase}</span>
+                    {onTabChange && (
+                      <button onClick={() => onTabChange('Timeline')} style={{ fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                        → Planning Tasks
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {dayPhase.tasks.map(t => {
@@ -8438,7 +8443,14 @@ function CalendarView({ timeline, vendors, eventDate, ros }) {
                   </div>
                 );
               })()}
-              <div style={{ padding: '8px 20px 12px', fontSize: 11, color: C.muted }}>Full schedule → Run of Show tab</div>
+              <div style={{ padding: '8px 20px 12px', fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 10 }}>
+                Full day-of schedule
+                {onTabChange && (
+                  <button onClick={() => onTabChange('Run of Show')} style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                    → Run of Show
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div style={{ padding: '24px 20px', fontSize: 13, color: C.muted, fontStyle: 'italic' }}>
@@ -9412,7 +9424,7 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
       {tab === 'Seating'     && <Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} />}
       {tab === 'Vendors'        && <Vendors   vendors={event.vendors}   setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} event={event} ros={event.ros} profile={profile} />}
       {tab === 'Planning Tasks' && <Timeline  timeline={event.timeline} setTimeline={wrap('timeline')} eventDate={event.date} openId={openTaskId} eventType={event.type} />}
-      {tab === 'Calendar'    && <CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} />}
+      {tab === 'Calendar'    && <CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} />}
       {tab === 'Run of Show' && <RunOfShow ros={event.ros}           setRos={wrap('ros')} vendors={event.vendors} />}
       {tab === 'Agenda'      && <AgendaBuilder
         agenda={event.agenda || []}
