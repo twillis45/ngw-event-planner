@@ -1681,21 +1681,21 @@ const SEED_EVENTS = [
       { id: 'g10', name: 'Kenji Yamamoto',        group: 'Friends', rsvp: 'Yes',   meal: 'Standard',    table: 3,    plusOne: '',         plusOneMeal: '—', kids: 0, needs: '',               email: 'kenji.y@gmail.com',       phone: '(615) 555-1110', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' },
     ],
     vendors: [
-      { id: 'v1', name: 'Bluebell Venue',         category: 'Venue',         budgetCategory: 'Venue',         status: 'Confirmed',    cost: 4800, depositAmt: 1000, depositPaid: true,  balancePaid: false, payDueDate: '2026-07-01', arrivalTime: '08:00', contact: 'hello@bluebell.co',     phone: '(615) 555-0101', fax: '(615) 555-0102', contractSigned: true,  website: 'bluebell.co', backup: '', notes: 'Deposit paid ✓',
+      { id: 'v1', name: 'Bluebell Venue',         category: 'Venue',         budgetCategory: 'Venue',         serviceArea: 'Nashville, TN', insuranceStatus: 'Insured & verified', eventsCompleted: 120, onTimeRate: 98, avgResponseHours: 3, plannerRehireCount: 4, successfulEventCount: 118, cancellationCount: 0, incidentCount: 0, yearsActive: 9, status: 'Confirmed',    cost: 4800, depositAmt: 1000, depositPaid: true,  balancePaid: false, payDueDate: '2026-07-01', arrivalTime: '08:00', contact: 'hello@bluebell.co',     phone: '(615) 555-0101', fax: '(615) 555-0102', contractSigned: true,  website: 'bluebell.co', backup: '', notes: 'Deposit paid ✓',
         log: [
           { id: 'vl1', date: '2026-01-10', text: 'Toured venue — loved the garden ceremony space and bridal suite' },
           { id: 'vl2', date: '2026-01-20', text: 'Signed contract. $1,000 deposit paid. Balance $3,800 due Jul 1.' },
           { id: 'vl3', date: '2026-04-15', text: 'Confirmed floor plan and table arrangement. They handle chairs.' },
         ],
       },
-      { id: 'v2', name: 'Fork & Flower Catering', category: 'Catering',      budgetCategory: 'Catering',      status: 'Confirmed',    cost: 6500, depositAmt: 2000, depositPaid: true,  balancePaid: false, payDueDate: '2026-08-15', arrivalTime: '14:00', contact: 'events@ff.com',          phone: '(615) 555-0134', fax: '',          contractSigned: true,  website: 'forkandflower.com', whatsapp: '15550134', venmo: '@ForkFlowerEvents', paymentNote: '', backup: 'City Bites Co — (615) 555-7700', notes: 'Final count due 2 wks prior',
+      { id: 'v2', name: 'Fork & Flower Catering', category: 'Catering',      budgetCategory: 'Catering',      serviceArea: 'Nashville, TN', insuranceStatus: 'Insured', eventsCompleted: 45, onTimeRate: 92, avgResponseHours: 6, plannerRehireCount: 3, successfulEventCount: 42, cancellationCount: 0, incidentCount: 1, yearsActive: 6, status: 'Confirmed',    cost: 6500, depositAmt: 2000, depositPaid: true,  balancePaid: false, payDueDate: '2026-08-15', arrivalTime: '14:00', contact: 'events@ff.com',          phone: '(615) 555-0134', fax: '',          contractSigned: true,  website: 'forkandflower.com', whatsapp: '15550134', venmo: '@ForkFlowerEvents', paymentNote: '', backup: 'City Bites Co — (615) 555-7700', notes: 'Final count due 2 wks prior',
         log: [
           { id: 'vl4', date: '2026-02-01', text: 'Tasting session — selected the salmon + beef duo menu' },
           { id: 'vl5', date: '2026-02-15', text: 'Signed contract. 85 guest minimum. $2,000 deposit paid.' },
           { id: 'vl6', date: '2026-05-10', text: 'Confirmed current count: 8 guests. Need to update when final RSVPs close.' },
         ],
       },
-      { id: 'v3', name: 'Lena Kim Photography',   category: 'Photography',   budgetCategory: 'Photography',   status: 'Confirmed',    cost: 2500, depositAmt: 2500, depositPaid: true,  balancePaid: false, payDueDate: null,         arrivalTime: '12:00', contact: 'lena@lenakimphoto.com', phone: '(615) 555-0188', website: 'lenakimphoto.com', zoomUrl: 'https://zoom.us/j/95512340000', backup: '', notes: 'Paid in full ✓',
+      { id: 'v3', name: 'Lena Kim Photography',   category: 'Photography',   budgetCategory: 'Photography',   serviceArea: 'Nashville, TN', insuranceStatus: 'Insured', eventsCompleted: 60, onTimeRate: 90, avgResponseHours: 8, plannerRehireCount: 2, successfulEventCount: 55, cancellationCount: 1, incidentCount: 0, yearsActive: 7, status: 'Confirmed',    cost: 2500, depositAmt: 2500, depositPaid: true,  balancePaid: false, payDueDate: null,         arrivalTime: '12:00', contact: 'lena@lenakimphoto.com', phone: '(615) 555-0188', website: 'lenakimphoto.com', zoomUrl: 'https://zoom.us/j/95512340000', backup: '', notes: 'Paid in full ✓',
         log: [
           { id: 'vl7', date: '2026-01-25', text: 'Reviewed portfolio. Booked. Paid in full upfront for 5% discount.' },
         ],
@@ -1834,14 +1834,14 @@ const SEED_EVENTS = [
       { id: 'xg12', name: 'Valentina Cruz',           group: 'Friends', rsvp: 'No',    meal: '—',            table: null, plusOne: '',            plusOneMeal: '—', kids: 0, needs: '',                 email: 'v.cruz@design.co',         phone: '(615) 555-3112', address: '', giftReceived: false, thankYouSent: false, partyNotes: 'Declined — prior engagement' },
     ],
     vendors: [
-      { id: 'xv1', name: 'The Grand Magnolia Estate', category: 'Venue',         budgetCategory: 'Venue',           status: 'Confirmed',    cost: 8500, depositAmt: 3000, depositPaid: true,  balancePaid: false, payDueDate: '2026-09-01', arrivalTime: '08:00', contact: 'events@grandmagnolia.com', phone: '(615) 555-4001', website: 'grandmagnolia.com', contractSigned: true, backup: '', notes: 'Upgraded from garden room to grand ballroom — cost increase negotiated late.',
+      { id: 'xv1', name: 'The Grand Magnolia Estate', category: 'Venue',         budgetCategory: 'Venue',           serviceArea: 'Nashville, TN', insuranceStatus: 'Insured & verified', eventsCompleted: 90, onTimeRate: 98, avgResponseHours: 3, plannerRehireCount: 4, successfulEventCount: 89, cancellationCount: 0, incidentCount: 0, yearsActive: 12, status: 'Confirmed',    cost: 8500, depositAmt: 3000, depositPaid: true,  balancePaid: false, payDueDate: '2026-09-01', arrivalTime: '08:00', contact: 'events@grandmagnolia.com', phone: '(615) 555-4001', website: 'grandmagnolia.com', contractSigned: true, backup: '', notes: 'Upgraded from garden room to grand ballroom — cost increase negotiated late.',
         log: [
           { id: 'xvl1', date: '2026-02-10', text: 'Originally booked garden room at $5,500. Bride requested upgrade to grand ballroom.' },
           { id: 'xvl2', date: '2026-03-01', text: 'Upgrade confirmed — grand ballroom $8,500. $3,000 deposit paid. $5,500 balance due Sep 1.' },
           { id: 'xvl3', date: '2026-05-15', text: 'Venue requires minimum 130 guest count for ballroom — we are right at the edge.' },
         ],
       },
-      { id: 'xv2', name: 'Harvest Table Catering',   category: 'Catering',      budgetCategory: 'Catering',        status: 'Confirmed',    cost: 11200, depositAmt: 3500, depositPaid: true, balancePaid: false, payDueDate: '2026-09-15', arrivalTime: '14:00', contact: 'book@harvesttable.com',    phone: '(615) 555-4002', website: 'harvesttable.com',   contractSigned: true, backup: '', notes: 'Count grew from 80 to 130. Per-head jumped from $75 to $86 for halal + vegan accommodations.',
+      { id: 'xv2', name: 'Harvest Table Catering',   category: 'Catering',      budgetCategory: 'Catering',        serviceArea: 'Nashville, TN', insuranceStatus: 'Insured', eventsCompleted: 25, onTimeRate: 82, avgResponseHours: 12, plannerRehireCount: 1, successfulEventCount: 22, cancellationCount: 1, incidentCount: 2, yearsActive: 4, status: 'Confirmed',    cost: 11200, depositAmt: 3500, depositPaid: true, balancePaid: false, payDueDate: '2026-09-15', arrivalTime: '14:00', contact: 'book@harvesttable.com',    phone: '(615) 555-4002', website: 'harvesttable.com',   contractSigned: true, backup: '', notes: 'Count grew from 80 to 130. Per-head jumped from $75 to $86 for halal + vegan accommodations.',
         log: [
           { id: 'xvl4', date: '2026-01-20', text: 'Signed at 80 guests × $75/head = $6,000. Deposit $2,000 paid.' },
           { id: 'xvl5', date: '2026-04-01', text: 'Guest count revised up to 110. Contract amended — new total $8,250.' },
