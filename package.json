@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://twillis45.github.io/ngw-event-planner",
   "dependencies": {
+    "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-scripts": "5.0.1",

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment } from 'react';
 import * as XLSX from 'xlsx';
+import QRCode from 'qrcode';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -561,6 +562,53 @@ const getPhaseActions = (eventType, days, { vendors, timeline, guests }) => {
   return items;
 };
 
+// ─── Unicode-safe base64 (handles ✓, em-dashes, accents, emoji in brief data) ──
+const b64encode = (str) => {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+};
+const b64decode = (b64) => {
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+};
+
+// ─── Branded letterhead / footer for printed & exported client materials ──────
+const brandAccent = (profile) => (profile?.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(profile.brandColor)) ? profile.brandColor : '#1a6fba';
+const brandLetterheadHTML = (profile) => {
+  if (!profile) return '';
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const accent  = brandAccent(profile);
+  const name    = esc(profile.businessName || profile.name || '');
+  const logoImg = profile.logo ? `<img src="${profile.logo}" alt="" style="max-height:56px;max-width:190px;object-fit:contain"/>` : '';
+  if (!name && !logoImg) return '';
+  const contact = [profile.phone, profile.email, profile.website].filter(Boolean).map(esc);
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:3px solid ${accent};padding-bottom:14px;margin-bottom:22px;font-family:-apple-system,system-ui,Arial,sans-serif">
+    <div style="display:flex;align-items:center;gap:14px">${logoImg}
+      <div>${name ? `<div style="font-size:18px;font-weight:800;color:#111;letter-spacing:-0.01em">${name}</div>` : ''}
+        ${profile.city ? `<div style="font-size:12px;color:#777;margin-top:2px">${esc(profile.city)}</div>` : ''}</div></div>
+    ${contact.length ? `<div style="font-size:11px;color:#555;text-align:right;line-height:1.7">${contact.map(c => `<div>${c}</div>`).join('')}</div>` : ''}
+  </div>`;
+};
+const brandPaymentFooterHTML = (profile) => {
+  if (!profile) return '';
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const accent = brandAccent(profile);
+  const parts = [];
+  if (profile.venmo)  parts.push(`Venmo ${esc(profile.venmo)}`);
+  if (profile.zelle)  parts.push(`Zelle ${esc(profile.zelle)}`);
+  if (profile.paypal) parts.push(`PayPal ${esc(profile.paypal)}`);
+  if (profile.acceptsCash)  parts.push('Cash');
+  if (profile.acceptsCheck) parts.push('Check');
+  if (parts.length === 0) return '';
+  return `<div style="margin-top:28px;padding-top:14px;border-top:1px solid #ddd;font-family:-apple-system,system-ui,Arial,sans-serif">
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accent};margin-bottom:5px">Payment Options</div>
+    <div style="font-size:12px;color:#444">${parts.join('  ·  ')}</div>
+  </div>`;
+};
+
 // ─── Field validation helpers ─────────────────────────────────────────────────
 const isEmail   = v => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = v => !v || (() => { const d = v.replace(/\D/g, ''); return d.length >= 10 && d.length <= 15; })();
@@ -583,6 +631,80 @@ const STAGES    = ['Considering', 'Quoted', 'Contracted', 'Deposit Paid', 'Confi
 // Color maps are now functions so they react to the active theme token set.
 // Usage inside components: const stageCLR = STAGE_CLR(C); stageCLR['Confirmed']
 const STAGE_CLR = (C) => ({ Considering: C.muted, Quoted: C.warn, Contracted: C.accent2, 'Deposit Paid': C.accent, Confirmed: C.success });
+
+// ─── Vendor-1: operational reliability (transparent, data-gated — never faked) ──
+const _clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+const _hasField = (v, k) => v && v[k] !== undefined && v[k] !== null && v[k] !== '';
+const VENDOR_TIERS = ['Standard', 'Preferred', 'Elite', 'Certified'];
+const VENDOR_TIER_META = {
+  Standard:  { color: '#9090a8', icon: '○', label: 'Standard'  },
+  Preferred: { color: '#60a5fa', icon: '◆', label: 'Preferred' },
+  Elite:     { color: '#a78bfa', icon: '★', label: 'Elite'     },
+  Certified: { color: '#34d399', icon: '✓', label: 'Certified' },
+};
+
+// Returns { sufficient, score (0–100 or null), reason }. Only scores with a real track record.
+function vendorReliabilityScore(v = {}) {
+  const ec = Number(v.eventsCompleted);
+  const qualitySignals = ['onTimeRate', 'successfulEventCount', 'plannerRehireCount', 'avgResponseHours'].filter(k => _hasField(v, k));
+  if (!_hasField(v, 'eventsCompleted') || !(ec > 0) || qualitySignals.length === 0) {
+    return { sufficient: false, score: null, reason: 'Insufficient data' };
+  }
+  let pts = 0, max = 0;
+  if (_hasField(v, 'onTimeRate'))         { max += 30; pts += _clamp(Number(v.onTimeRate), 0, 100) / 100 * 30; }
+  if (_hasField(v, 'avgResponseHours'))   { max += 20; pts += _clamp((48 - Math.max(0, Number(v.avgResponseHours))) / 46, 0, 1) * 20; }
+  max += 15; pts += _clamp(ec / 100, 0, 1) * 15; // experience (ec>0 guaranteed)
+  if (_hasField(v, 'plannerRehireCount')) { max += 15; pts += _clamp(Number(v.plannerRehireCount) / 5, 0, 1) * 15; }
+  if (_hasField(v, 'successfulEventCount')) { max += 10; pts += _clamp(Number(v.successfulEventCount) / ec, 0, 1) * 10; }
+  let score = (pts / max) * 100;
+  // Penalties scale with how often problems happen per event
+  if (_hasField(v, 'cancellationCount')) score -= _clamp(Number(v.cancellationCount) / ec, 0, 1) * 30;
+  if (_hasField(v, 'incidentCount'))     score -= _clamp(Number(v.incidentCount) / ec, 0, 1) * 30;
+  return { sufficient: true, score: Math.round(_clamp(score, 0, 100)), reason: '' };
+}
+
+// Field-driven badges — never assigned without the underlying data.
+function vendorBadges(v = {}) {
+  const out = [];
+  const ec = Number(v.eventsCompleted);
+  const { sufficient, score } = vendorReliabilityScore(v);
+  if (_hasField(v, 'avgResponseHours') && Number(v.avgResponseHours) <= 4)                         out.push('Fast Responder');
+  if (_hasField(v, 'plannerRehireCount') && Number(v.plannerRehireCount) >= 2)                     out.push('Planner Trusted');
+  if (sufficient && score >= 85)                                                                   out.push('High Reliability');
+  if (_hasField(v, 'eventsCompleted') && ec >= 100)                                                out.push('100+ Events Completed');
+  if (_hasField(v, 'onTimeRate') && Number(v.onTimeRate) >= 95)                                    out.push('Excellent Timeline Adherence');
+  if (_hasField(v, 'cancellationCount') && Number(v.cancellationCount) === 0 && ec >= 5)           out.push('Zero Cancellation Vendor');
+  if (_hasField(v, 'avgResponseHours') && Number(v.avgResponseHours) <= 8 && _hasField(v, 'onTimeRate') && Number(v.onTimeRate) >= 85) out.push('Strong Communication');
+  if (_hasField(v, 'incidentCount') && Number(v.incidentCount) === 0 && _hasField(v, 'successfulEventCount') && Number(v.successfulEventCount) >= 10) out.push('Consistent Delivery');
+  return out;
+}
+
+// Earned tier. Certified is manual-only (cannot be earned/bought in this phase).
+function vendorTier(v = {}) {
+  if (v.certified === true || v.preferredTier === 'Certified') return 'Certified';
+  const { sufficient, score } = vendorReliabilityScore(v);
+  if (!sufficient) return 'Standard';
+  const ec = Number(v.eventsCompleted) || 0;
+  const rehire = Number(v.plannerRehireCount) || 0;
+  if (score >= 90 && rehire >= 3 && ec >= 50) return 'Elite';
+  if (score >= 75 && ec >= 10)                return 'Preferred';
+  return 'Standard';
+}
+
+// Cross-event vendor library: dedup by name+category, keep richest operational record, count repeat use.
+function aggregateVendorLibrary(events = []) {
+  const opFields = ['eventsCompleted', 'onTimeRate', 'avgResponseHours', 'cancellationCount', 'incidentCount', 'plannerRehireCount', 'successfulEventCount'];
+  const countOp = (v) => opFields.filter(f => _hasField(v, f)).length;
+  const map = new Map();
+  (events || []).forEach(ev => (ev.vendors || []).forEach(v => {
+    if (!v || !v.name) return;
+    const key = `${v.name.trim().toLowerCase()}|${(v.category || '').toLowerCase()}`;
+    const cur = map.get(key);
+    if (!cur) map.set(key, { vendor: v, eventsLinked: 1 });
+    else { cur.eventsLinked += 1; if (countOp(v) > countOp(cur.vendor)) cur.vendor = v; }
+  }));
+  return [...map.values()].map(({ vendor, eventsLinked }) => ({ ...vendor, eventsLinked }));
+}
 
 // ─── Communication Checklists ─────────────────────────────────────────────────
 // Vendor: keyed by pipeline stage. Category-specific extras surface at current stage.
@@ -2113,6 +2235,15 @@ const msgTypeStyle = (type, C) => ({
   escalation:       { border: C.danger,  bg: C.danger  + '10',  icon: '🚨', label: 'Escalation'         },
 }[type] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Note' });
 
+// Pending comms needing planner attention: unresolved approval requests (split by who's the blocker)
+function clientPendingComms(client) {
+  const log = (client && client.log) || [];
+  const approvals = log.filter(e => e.type === 'approval_request' && (!e.approvalStatus || e.approvalStatus === 'pending'));
+  const needsSend = approvals.filter(e => !e.requestSentAt); // planner must still send it
+  const awaiting  = approvals.filter(e => e.requestSentAt);  // sent — waiting on client
+  return { approvals, needsSend, awaiting, count: approvals.length };
+}
+
 // ─── CommLogInput — type picker + quick-fill templates + free-text entry ──────
 function CommLogInput({ value, onChange, onAdd }) {
   const C = useT();
@@ -2258,7 +2389,27 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
   const [logSumm,        setLogSumm]        = useState('');
   const [logSummLoad,    setLogSummLoad]    = useState(false);
   const [notesDraftLoad, setNotesDraftLoad] = useState(false);
+  const [showOps,        setShowOps]        = useState(false);
+  const [showPNotes,     setShowPNotes]     = useState(false);
+  const [newPNote,       setNewPNote]       = useState('');
+  const [newRiskFlag,    setNewRiskFlag]    = useState('');
   const stageIdx = STAGES.indexOf(vendor.status);
+
+  // Vendor-1: planner-only note + risk-flag mutators (internal arrays, never exported)
+  const addPlannerNote = () => {
+    if (!newPNote.trim()) return;
+    onChange('plannerNotes', [...(vendor.plannerNotes || []), { id: uid(), note: newPNote.trim(), createdAt: today8601(), visibility: 'internal_only' }]);
+    setNewPNote('');
+  };
+  const addRiskFlag = () => {
+    if (!newRiskFlag.trim()) return;
+    onChange('privateRiskFlags', [...(vendor.privateRiskFlags || []), { id: uid(), flag: newRiskFlag.trim(), createdAt: today8601() }]);
+    setNewRiskFlag('');
+  };
+  const opsNum = (k, val) => onChange(k, val === '' ? '' : Number(val));
+  const rel = vendorReliabilityScore(vendor);
+  const tier = vendorTier(vendor);
+  const badges = vendorBadges(vendor);
   // Auto-expand secondary contact fields if any already have a value
   const hasSecondaryContact = !!(vendor.fax || vendor.whatsapp || vendor.zoomUrl || vendor.meetUrl || vendor.teamsUrl);
   const [showMoreContact, setShowMoreContact] = useState(hasSecondaryContact);
@@ -2770,6 +2921,122 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
             </div>
           </div>
 
+          {/* ── Operational & Reliability (collapsible) ── */}
+          <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowOps(v => !v)} style={{ width: '100%', background: showOps ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Operational & Reliability</span>
+              {rel.sufficient
+                ? <span style={{ fontSize: 11, fontWeight: 700, color: VENDOR_TIER_META[tier].color }}>{VENDOR_TIER_META[tier].icon} {tier} · {rel.score}</span>
+                : <span style={{ fontSize: 11, color: C.muted }}>Insufficient data</span>}
+              <span style={{ fontSize: 10, color: C.muted, transform: showOps ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+            </button>
+            {showOps && (
+              <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Score readout */}
+                <div style={{ padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  {rel.sufficient ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontSize: 24, fontWeight: 800, color: VENDOR_TIER_META[tier].color }}>{rel.score}</span>
+                        <span style={{ fontSize: 12, color: C.muted }}>/ 100 reliability · {VENDOR_TIER_META[tier].icon} {tier}</span>
+                      </div>
+                      {badges.length > 0 && (
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
+                          {badges.map(b => <span key={b} style={{ fontSize: 10, fontWeight: 600, color: C.accent2, background: C.accent2 + '14', border: `1px solid ${C.accent2}33`, borderRadius: 12, padding: '2px 8px' }}>{b}</span>)}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, color: C.muted }}>⚠ Insufficient data — add events completed plus at least one quality metric (on-time rate, response time, rehires, or successful events) to compute a score.</div>
+                  )}
+                </div>
+                {/* Operational metric inputs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    ['eventsCompleted',     'Events completed',   'e.g. 45'],
+                    ['onTimeRate',          'On-time rate (%)',   '0–100'],
+                    ['avgResponseHours',    'Avg response (hrs)', 'e.g. 4'],
+                    ['plannerRehireCount',  'Times you rehired',  'e.g. 3'],
+                    ['successfulEventCount','Successful events',  'e.g. 42'],
+                    ['cancellationCount',   'Cancellations',      'e.g. 0'],
+                    ['incidentCount',       'Incidents',          'e.g. 0'],
+                    ['yearsActive',         'Years active',       'e.g. 8'],
+                  ].map(([k, label, ph]) => (
+                    <div key={k}>
+                      <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
+                      <input style={{ ...s.input, fontSize: 13 }} type="number" min="0" value={vendor[k] ?? ''} placeholder={ph} onChange={e => opsNum(k, e.target.value)} />
+                    </div>
+                  ))}
+                </div>
+                {/* Service profile */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Service area</label>
+                    <input style={{ ...s.input, fontSize: 13 }} value={vendor.serviceArea || ''} placeholder="e.g. Nashville, TN" onChange={e => onChange('serviceArea', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Insurance status</label>
+                    <select style={{ ...s.input, fontSize: 13 }} value={vendor.insuranceStatus || ''} onChange={e => onChange('insuranceStatus', e.target.value)}>
+                      <option value="">— Not set —</option>
+                      {['Insured & verified', 'Insured', 'Not insured', 'Unknown'].map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {/* Manual tier override */}
+                <div>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Tier override <span style={{ fontWeight: 400 }}>(Certified is manual-only)</span></label>
+                  <select style={{ ...s.input, fontSize: 13 }} value={vendor.preferredTier || ''} onChange={e => onChange('preferredTier', e.target.value)}>
+                    <option value="">Auto — earned tier ({tier})</option>
+                    {VENDOR_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Planner-Only Notes (collapsible, internal — never exported) ── */}
+          <div style={{ marginBottom: 16, border: `1px solid ${C.warn}44`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowPNotes(v => !v)} style={{ width: '100%', background: showPNotes ? C.warn + '12' : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.warn, flex: 1 }}>🔒 Planner-Only Notes</span>
+              {((vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length) > 0 && <span style={{ fontSize: 11, color: C.muted }}>{(vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length}</span>}
+              <span style={{ fontSize: 10, color: C.muted, transform: showPNotes ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+            </button>
+            {showPNotes && (
+              <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 11, color: C.warn, fontWeight: 600 }}>Internal only — never shown to the vendor, client, or in any export.</div>
+                {/* Private notes */}
+                <div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={newPNote} placeholder="Private assessment, e.g. 'Great on big events, slow to email'" onChange={e => setNewPNote(e.target.value)} onKeyDown={e => e.key === 'Enter' && addPlannerNote()} />
+                    <button style={s.btn('primary')} onClick={addPlannerNote}>Add</button>
+                  </div>
+                  {(vendor.plannerNotes || []).length === 0
+                    ? <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No private notes yet.</div>
+                    : [...(vendor.plannerNotes || [])].reverse().map(n => (
+                        <div key={n.id} style={{ borderLeft: `2px solid ${C.border}`, paddingLeft: 10, marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, color: C.muted }}>{fmtDate(n.createdAt)}</div>
+                          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{n.note}</div>
+                        </div>
+                      ))}
+                </div>
+                {/* Risk flags */}
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: C.danger, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Private Risk Flags</label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={newRiskFlag} placeholder="e.g. 'Double-booked us once — confirm dates in writing'" onChange={e => setNewRiskFlag(e.target.value)} onKeyDown={e => e.key === 'Enter' && addRiskFlag()} />
+                    <button style={{ ...s.btn(), fontSize: 12 }} onClick={addRiskFlag}>Flag</button>
+                  </div>
+                  {(vendor.privateRiskFlags || []).map(f => (
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.danger + '11', border: `1px solid ${C.danger}33`, borderRadius: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: C.danger, flex: 1 }}>⚠ {f.flag}</span>
+                      <button onClick={() => onChange('privateRiskFlags', (vendor.privateRiskFlags || []).filter(x => x.id !== f.id))} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Notes + Backup vendor */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -2848,7 +3115,11 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
 
 function VendorBriefView({ brief }) {
   const [copied, setCopied] = useState(false);
-  const LC = { bg: '#f4f4f8', surface: '#ffffff', border: '#e0e0ea', accent: '#1a6fba', text: '#18181c', muted: '#6b6b80', success: '#16a34a' };
+  // Brand accent — planner's brandColor drives the whole page, falls back to steel blue
+  const accent = (brief.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brief.brandColor)) ? brief.brandColor : '#1a6fba';
+  const LC = { bg: '#f6f6f9', surface: '#ffffff', border: '#e7e7ef', accent, text: '#18181c', muted: '#6b6b80', success: '#16a34a' };
+  const brandName = brief.plannerBusiness || brief.plannerName || '';
+  const initials  = (brandName || 'P').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   const fmtTime12 = (t) => {
     if (!t) return '';
@@ -2859,7 +3130,8 @@ function VendorBriefView({ brief }) {
   };
 
   const textBrief = [
-    `VENDOR BRIEF — ${brief.eventName || 'Event'}`,
+    brandName ? `${brandName} — Vendor Brief` : 'VENDOR BRIEF',
+    `Event: ${brief.eventName || 'Event'}`,
     brief.eventDate ? fmtDate(brief.eventDate) : '',
     brief.venue     ? `Venue: ${brief.venue}`  : '',
     '',
@@ -2873,58 +3145,73 @@ function VendorBriefView({ brief }) {
     brief.plannerName  ? `Planner: ${brief.plannerName}` : '',
     brief.plannerPhone ? `Phone: ${brief.plannerPhone}` : '',
     brief.plannerEmail ? `Email: ${brief.plannerEmail}` : '',
+    brief.plannerWebsite ? `Web: ${brief.plannerWebsite}` : '',
   ].filter(l => l !== undefined && l !== null).join('\n').trim();
 
   const copyBrief = () => navigator.clipboard?.writeText(textBrief).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
 
+  const cardStyle = { background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)' };
+  const eyebrow   = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 12 };
+
   return (
-    <div style={{ minHeight: '100vh', background: LC.bg, fontFamily: "'Inter', system-ui, sans-serif", color: LC.text, padding: '0 0 60px' }}>
-      {/* Header band */}
-      <div style={{ background: LC.accent, color: '#fff', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', opacity: 0.8 }}>VENDOR BRIEF</div>
-          <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>{brief.eventName || 'Event'}</div>
+    <div style={{ minHeight: '100vh', background: LC.bg, fontFamily: "'Inter', system-ui, sans-serif", color: LC.text, padding: '0 0 64px' }}>
+      {/* ── Brand bar ── */}
+      <div style={{ background: '#fff', borderBottom: `1px solid ${LC.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+          {brief.plannerLogo
+            ? <div style={{ height: 40, maxWidth: 140, display: 'flex', alignItems: 'center', flexShrink: 0 }}><img src={brief.plannerLogo} alt={brandName} style={{ maxHeight: 40, maxWidth: 140, objectFit: 'contain' }} /></div>
+            : <div style={{ width: 36, height: 36, borderRadius: 9, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{initials}</div>}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.1, color: LC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandName || 'Event Planner'}</div>
+            {(brief.plannerCity || brief.plannerName) && brandName !== brief.plannerName && (
+              <div style={{ fontSize: 12, color: LC.muted, marginTop: 1 }}>{[brief.plannerName, brief.plannerCity].filter(Boolean).join(' · ')}</div>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={copyBrief} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>{copied ? '✓ Copied' : '⎘ Copy'}</button>
-          <button onClick={() => window.print()} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>🖨 Print</button>
+          <button onClick={copyBrief} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>{copied ? '✓ Copied' : '⎘ Copy'}</button>
+          <button onClick={() => window.print()} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>🖨 Print</button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px' }}>
-        {/* Event info */}
-        <div style={{ background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 10 }}>Event Details</div>
-          {brief.eventDate && <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>📅 {fmtDate(brief.eventDate)}</div>}
-          {brief.venue     && <div style={{ fontSize: 14, color: LC.muted }}>📍 {brief.venue}</div>}
+      {/* ── Hero band (brand accent) ── */}
+      <div style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accent}d9 100%)`, color: '#fff', padding: '28px 24px 30px' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', opacity: 0.85 }}>VENDOR BRIEF</div>
+          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{brief.eventName || 'Event'}</div>
+          <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap', fontSize: 13, fontWeight: 500, opacity: 0.95 }}>
+            {brief.eventDate && <span>📅 {fmtDate(brief.eventDate)}</span>}
+            {brief.venue     && <span>📍 {brief.venue}</span>}
+          </div>
         </div>
+      </div>
 
-        {/* Vendor identity + arrival */}
-        <div style={{ background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 10 }}>Your Details</div>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 20px' }}>
+        {/* ── Vendor identity + arrival (hero card) ── */}
+        <div style={{ ...cardStyle, borderTop: `3px solid ${accent}` }}>
           {brief.contactName && (
-            <div style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>Hi {brief.contactName},</div>
+            <div style={{ fontSize: 14, color: LC.muted, marginBottom: 8 }}>Hi {brief.contactName},</div>
           )}
-          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>{brief.vendorName}</div>
-          <div style={{ fontSize: 13, color: LC.muted, marginBottom: brief.arrivalTime ? 14 : 0 }}>{brief.category}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 3 }}>{brief.vendorName}</div>
+          <div style={{ fontSize: 13, color: LC.muted, marginBottom: brief.arrivalTime ? 16 : 0 }}>{brief.category}</div>
           {brief.arrivalTime && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: LC.accent + '15', border: `1.5px solid ${LC.accent}44`, borderRadius: 10, padding: '10px 16px' }}>
-              <span style={{ fontSize: 22 }}>🕐</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: accent + '12', border: `1.5px solid ${accent}33`, borderRadius: 12, padding: '14px 18px' }}>
+              <span style={{ fontSize: 26 }}>🕐</span>
               <div>
-                <div style={{ fontSize: 11, color: LC.accent, fontWeight: 700, letterSpacing: '0.06em' }}>ARRIVAL TIME</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: LC.accent }}>{fmtTime12(brief.arrivalTime)}</div>
+                <div style={{ fontSize: 11, color: accent, fontWeight: 700, letterSpacing: '0.08em' }}>YOUR ARRIVAL TIME</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: accent, lineHeight: 1.1, marginTop: 2 }}>{fmtTime12(brief.arrivalTime)}</div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Day-of schedule */}
+        {/* ── Day-of schedule ── */}
         {brief.ros && brief.ros.length > 0 && (
-          <div style={{ background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 12 }}>Your Day-of Schedule</div>
+          <div style={cardStyle}>
+            <div style={eyebrow}>Your Day-of Schedule</div>
             {brief.ros.map((r, i) => (
-              <div key={r.id || i} style={{ display: 'flex', gap: 14, paddingBottom: 14, borderBottom: i < brief.ros.length - 1 ? `1px solid ${LC.border}` : 'none', marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: LC.accent, minWidth: 60, flexShrink: 0 }}>{fmtTime12(r.time)}</div>
+              <div key={r.id || i} style={{ display: 'flex', gap: 14, paddingBottom: i < brief.ros.length - 1 ? 14 : 0, borderBottom: i < brief.ros.length - 1 ? `1px solid ${LC.border}` : 'none', marginBottom: i < brief.ros.length - 1 ? 14 : 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: accent, minWidth: 64, flexShrink: 0 }}>{fmtTime12(r.time)}</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{r.segment}</div>
                   {r.location && <div style={{ fontSize: 12, color: LC.muted }}>{r.location}</div>}
@@ -2935,23 +3222,38 @@ function VendorBriefView({ brief }) {
           </div>
         )}
 
-        {/* Notes */}
+        {/* ── Notes ── */}
         {brief.notes && (
-          <div style={{ background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 8 }}>Notes</div>
+          <div style={cardStyle}>
+            <div style={eyebrow}>Notes</div>
             <div style={{ fontSize: 14, lineHeight: 1.6 }}>{brief.notes}</div>
           </div>
         )}
 
-        {/* Planner contact */}
-        {(brief.plannerName || brief.plannerPhone || brief.plannerEmail) && (
-          <div style={{ background: LC.surface, borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 10 }}>Day-of Contact</div>
-            {brief.plannerName  && <div style={{ fontSize: 15, fontWeight: 700 }}>{brief.plannerName}</div>}
-            {brief.plannerPhone && <a href={`tel:${brief.plannerPhone}`} style={{ display: 'block', fontSize: 14, color: LC.accent, marginTop: 6, textDecoration: 'none' }}>📞 {brief.plannerPhone}</a>}
-            {brief.plannerEmail && <a href={`mailto:${brief.plannerEmail}`} style={{ display: 'block', fontSize: 14, color: LC.accent, marginTop: 4, textDecoration: 'none' }}>✉️ {brief.plannerEmail}</a>}
+        {/* ── Planner contact (branded) ── */}
+        {(brief.plannerName || brief.plannerPhone || brief.plannerEmail || brandName) && (
+          <div style={{ ...cardStyle, marginBottom: 0, background: '#fff' }}>
+            <div style={eyebrow}>Your Day-of Contact</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{initials}</div>
+              <div>
+                {brief.plannerName && <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{brief.plannerName}</div>}
+                {brandName && brandName !== brief.plannerName && <div style={{ fontSize: 13, color: LC.muted }}>{brandName}</div>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {brief.plannerPhone && <a href={`tel:${brief.plannerPhone}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>📞 {brief.plannerPhone}</a>}
+              {brief.plannerEmail && <a href={`mailto:${brief.plannerEmail}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>✉️ {brief.plannerEmail}</a>}
+              {brief.plannerWebsite && <a href={wsHref(brief.plannerWebsite)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>🌐 {brief.plannerWebsite}</a>}
+              {brief.plannerIG && <span style={{ fontSize: 14, color: LC.muted }}>📷 {brief.plannerIG}</span>}
+            </div>
           </div>
         )}
+
+        {/* ── Brand footer ── */}
+        <div style={{ textAlign: 'center', marginTop: 28, fontSize: 12, color: LC.muted }}>
+          {brandName ? `Coordinated by ${brandName}` : 'Coordinated by your event planner'}
+        </div>
       </div>
     </div>
   );
@@ -2977,16 +3279,42 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
     eventName:    event?.name,
     eventDate:    event?.date,
     venue:        event?.venue,
-    plannerName:  profile?.name  || '',
-    plannerPhone: profile?.phone || '',
-    plannerEmail: profile?.email || '',
+    plannerName:     profile?.name  || '',
+    plannerPhone:    profile?.phone || '',
+    plannerEmail:    profile?.email || '',
+    plannerBusiness: profile?.businessName || '',
+    plannerWebsite:  profile?.website   || '',
+    plannerIG:       profile?.instagram || '',
+    plannerCity:     profile?.city      || '',
+    plannerLogo:     profile?.logo      || '',
+    brandColor:      profile?.brandColor || '',
     ros:          vendorRos.map(r => ({ time: r.time, segment: r.segment, location: r.location, notes: r.notes })),
   };
 
-  const token    = btoa(JSON.stringify(brief));
+  const token    = b64encode(JSON.stringify(brief));
   const briefUrl = `${window.location.origin}${window.location.pathname}?vendor=${token}`;
 
   const copyUrl  = () => navigator.clipboard?.writeText(briefUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+
+  // QR code — generated client-side from the brief URL
+  const [qrUrl, setQrUrl]     = useState('');
+  const [qrErr, setQrErr]     = useState(false);
+  const isLongUrl             = briefUrl.length > 1200; // dense QRs get hard to scan when printed small
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(briefUrl, { width: 480, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } })
+      .then(url => { if (!cancelled) { setQrUrl(url); setQrErr(false); } })
+      .catch(() => { if (!cancelled) setQrErr(true); });
+    return () => { cancelled = true; };
+  }, [briefUrl]);
+
+  const downloadQr = () => {
+    if (!qrUrl) return;
+    const a = document.createElement('a');
+    a.href = qrUrl;
+    a.download = `${(vendor.name || 'vendor').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-brief-qr.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
 
   const fmtTime12 = (t) => {
     if (!t) return '';
@@ -3044,6 +3372,27 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
               {copied ? '✓ Link copied to clipboard' : '⎘ Copy Vendor Brief Link'}
             </button>
             <button onClick={() => window.open(briefUrl, '_blank')} style={{ ...s.btn(), width: '100%', fontSize: 12, marginTop: 8 }}>Preview in new tab →</button>
+          </div>
+
+          {/* QR code — for printed materials */}
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>QR code <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— print on call sheets or day-of signage</span></div>
+            {qrErr ? (
+              <div style={{ fontSize: 12, color: C.danger, padding: '10px 12px', background: C.danger + '11', borderRadius: 8 }}>Couldn't generate QR code for this brief.</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ background: '#ffffff', padding: 10, borderRadius: 12, border: `1px solid ${C.border}`, flexShrink: 0 }}>
+                  {qrUrl
+                    ? <img src={qrUrl} alt="Vendor brief QR code" style={{ width: 132, height: 132, display: 'block' }} />
+                    : <div style={{ width: 132, height: 132, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: 11 }}>Generating…</div>}
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, marginBottom: 10 }}>{vendor.name} can scan this to open their brief — no link to type.</div>
+                  <button onClick={downloadQr} disabled={!qrUrl} style={{ ...s.btn(), width: '100%', fontSize: 12, opacity: qrUrl ? 1 : 0.5 }}>⬇ Download PNG</button>
+                  {isLongUrl && <div style={{ fontSize: 10, color: C.warn, marginTop: 8, lineHeight: 1.4 }}>⚠ This brief has a lot of detail, so the QR is dense — print it at least 1.5″ wide for reliable scanning.</div>}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -5164,6 +5513,45 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+
+          {/* ── Updates from your planner — curated CLIENT channel (no raw notes, no internal) ── */}
+          {(() => {
+            const feed = (client.log || []).filter(e => ['update', 'decision', 'approval_request'].includes(e.type)).reverse();
+            if (feed.length === 0) return null;
+            const pendingApprovals = feed.filter(e => e.type === 'approval_request' && (!e.approvalStatus || e.approvalStatus === 'pending')).length;
+            return (
+              <div style={s.card}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={s.cardTitle}>Updates from your planner</div>
+                  {pendingApprovals > 0 && <span style={{ ...s.pill(C.warn), fontSize: 11 }}>{pendingApprovals} awaiting your approval</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {feed.map(e => {
+                    const isApproval = e.type === 'approval_request';
+                    const isDecision = e.type === 'decision';
+                    const clr   = isApproval ? C.warn : isDecision ? C.accent2 : C.accent;
+                    const label = isApproval ? '✋ Approval Needed' : isDecision ? '📌 Decision' : '📋 Update';
+                    const status = isApproval
+                      ? (e.approvalStatus === 'approved' ? { t: '✓ You approved', c: C.success }
+                        : e.approvalStatus === 'declined' ? { t: '✗ You declined',  c: C.danger }
+                        : { t: '⏳ Awaiting your approval', c: C.warn })
+                      : null;
+                    return (
+                      <div key={e.id} style={{ borderLeft: `3px solid ${clr}`, padding: '8px 12px', background: clr + '0d', borderRadius: '0 8px 8px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: clr, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+                          <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(e.date)}</span>
+                          {status && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: status.c }}>{status.t}</span>}
+                        </div>
+                        <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{e.text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {clientEvents.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: C.muted }}>No events linked yet.</div>
           ) : clientEvents.map(ev => {
@@ -5916,6 +6304,33 @@ function ProfileModal({ profile, onClose, onChange }) {
   const metroObj   = METRO_MARKETS.find(m => m.id === profile?.metroMarket) || null;
   const tierInfo   = metroObj ? METRO_TIER_LABEL[metroObj.tier] : null;
 
+  // Logo upload — downscale to ≤400px (PNG, keeps transparency) so it stays small in localStorage
+  const logoInputRef = useRef(null);
+  const [logoErr, setLogoErr] = useState('');
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setLogoErr('Please choose an image file.'); return; }
+    setLogoErr('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 400;
+        let { width, height } = img;
+        if (width > max || height > max) { const sc = max / Math.max(width, height); width = Math.round(width * sc); height = Math.round(height * sc); }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        try { onChange('logo', canvas.toDataURL('image/png')); }
+        catch { setLogoErr('That image is too large to save. Try a smaller file.'); }
+      };
+      img.onerror = () => setLogoErr('Could not read that image.');
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Section header helper
   const SectionHead = ({ label }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
@@ -5971,7 +6386,9 @@ function ProfileModal({ profile, onClose, onChange }) {
 
           {/* ── Identity card ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 4 }}>
-            <div style={mkSphere(C.accent, 56, 20)}>{initials}</div>
+            {profile?.logo
+              ? <div style={{ width: 56, height: 56, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: `1px solid ${C.border}` }}><img src={profile.logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>
+              : <div style={mkSphere(profile?.brandColor || C.accent, 56, 20)}>{initials}</div>}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{profile?.name || 'Your Name'}</div>
               <div style={{ fontSize: 12, color: C.muted }}>{profile?.businessName || 'Event Planner'}</div>
@@ -6009,9 +6426,47 @@ function ProfileModal({ profile, onClose, onChange }) {
             <Field fkey="name"         label="Your Name"      ph="Jane Planner" />
             <Field fkey="businessName" label="Business Name"  ph="Planner Co."  />
           </Row2>
+
+          {/* Logo upload */}
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Business Logo <span style={{ fontWeight: 400 }}>— appears on vendor briefs, client pages & materials</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 10, border: `1px dashed ${C.border}`, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {profile?.logo
+                  ? <img src={profile.logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: 20, color: C.muted }}>🏷</span>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => logoInputRef.current?.click()} style={{ ...s.btn(), fontSize: 12, padding: '6px 12px' }}>{profile?.logo ? 'Replace' : '⬆ Upload Logo'}</button>
+                  {profile?.logo && <button onClick={() => onChange('logo', '')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px' }}>Remove</button>}
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 5 }}>PNG with transparency works best. Auto-resized to 400px.</div>
+                {logoErr && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{logoErr}</div>}
+              </div>
+            </div>
+          </div>
+
           <div style={{ marginTop: 12 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Bio</label>
             <textarea style={{ ...s.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} value={profile?.bio || ''} placeholder="Your planning style, specialties, and what makes you different…" onChange={e => onChange('bio', e.target.value)} />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Brand Color <span style={{ fontWeight: 400 }}>— accents your vendor briefs & shared pages</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <input type="color" value={profile?.brandColor || '#1a6fba'} onChange={e => onChange('brandColor', e.target.value)}
+                style={{ width: 44, height: 36, padding: 2, borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer', flexShrink: 0 }} />
+              <input value={profile?.brandColor || ''} placeholder="#1a6fba" onChange={e => onChange('brandColor', e.target.value)}
+                style={{ ...s.input, width: 120, fontFamily: 'monospace', fontSize: 13 }} />
+              {['#1a6fba', '#14b8a6', '#b45309', '#9333ea', '#db2777', '#0f766e', '#1e293b'].map(c => (
+                <button key={c} onClick={() => onChange('brandColor', c)} title={c}
+                  style={{ width: 24, height: 24, borderRadius: '50%', background: c, border: profile?.brandColor === c ? `2px solid ${C.text}` : `1px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }} />
+              ))}
+              {profile?.brandColor && (
+                <button onClick={() => onChange('brandColor', '')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 8px' }}>Reset</button>
+              )}
+            </div>
           </div>
 
           {/* ── CONTACT & REACH ── */}
@@ -6212,6 +6667,28 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   const taskInboxItems = useMemo(() => [...urgentTasks, ...soonTasks].slice(0, 12), [urgentTasks, soonTasks]);
 
+  // Cross-event payment alerts — vendor balances due (or overdue) across all events
+  const paymentAlerts = useMemo(() => events.flatMap(ev =>
+    (ev.vendors || [])
+      .filter(v => v.payDueDate && !v.balancePaid && (v.cost - v.depositAmt) > 0)
+      .map(v => ({
+        id: v.id, eventId: ev.id, eventName: ev.name, eventType: ev.type,
+        vendorName: v.name, balance: v.cost - v.depositAmt,
+        dueDate: v.payDueDate, daysLeft: daysUntil(v.payDueDate),
+      }))
+      .filter(v => v.daysLeft !== null && v.daysLeft <= 45)
+  ).sort((a, b) => a.daysLeft - b.daysLeft), [events]);
+
+  const overduePayCount = paymentAlerts.filter(p => p.daysLeft < 0).length;
+  const totalDueSoon    = paymentAlerts.reduce((s, p) => s + p.balance, 0);
+
+  // Cross-client comms needing attention — unresolved approval requests
+  const commAlerts = useMemo(() => clients.flatMap(c => {
+    const p = clientPendingComms(c);
+    return p.approvals.map(e => ({ clientId: c.id, clientName: c.name, text: e.text || '', sent: !!e.requestSentAt, date: e.requestSentAt || e.date }));
+  }).sort((a, b) => (a.sent - b.sent)), [clients]); // not-yet-sent (planner's move) first
+  const needsSendCount = commAlerts.filter(a => !a.sent).length;
+
   const pad   = bp === 'mobile' ? '20px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const inner = { maxWidth: 1200, margin: '0 auto' };
   return (
@@ -6355,6 +6832,82 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 </div>
               );
             })()}
+
+            {/* Cross-event payment alerts */}
+            {paymentAlerts.length > 0 && (
+              <div style={{ marginBottom: 32 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
+                    Payments Due ({paymentAlerts.length}{overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''})
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: overduePayCount > 0 ? C.danger : C.warn }}>{fmtD(totalDueSoon)} <span style={{ fontWeight: 400, color: C.muted }}>outstanding</span></div>
+                </div>
+                <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+                  {paymentAlerts.slice(0, 10).map((p, i) => {
+                    const overdue = p.daysLeft < 0;
+                    const urgent  = p.daysLeft >= 0 && p.daysLeft <= 14;
+                    const clr     = overdue ? C.danger : urgent ? C.warn : C.accent2;
+                    const dueLabel = overdue ? `${Math.abs(p.daysLeft)}d overdue` : p.daysLeft === 0 ? 'Due today' : `${p.daysLeft}d`;
+                    return (
+                      <div key={`${p.eventId}-${p.id}`}
+                        onClick={() => onSelectEvent(p.eventId, { tab: 'Vendors', vendorId: p.id })}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: i < Math.min(paymentAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                      >
+                        <div style={mkDot(clr, 8)} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.vendorName} <span style={{ color: C.muted }}>— {fmtD(p.balance)}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
+                            <span style={{ color: evtCLR[p.eventType] || C.muted }}>{p.eventName}</span>
+                            <span> · due {fmtDate(p.dueDate)}</span>
+                          </div>
+                        </div>
+                        <span style={{ ...s.pill(clr), fontSize: 10, flexShrink: 0 }}>{dueLabel}</span>
+                        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Cross-client comms awaiting action (approvals) */}
+            {commAlerts.length > 0 && (
+              <div style={{ marginBottom: 32 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
+                    Action Required ({commAlerts.length})
+                  </div>
+                  {needsSendCount > 0 && <span style={{ ...s.pill(C.danger), fontSize: 11 }}>{needsSendCount} to send</span>}
+                </div>
+                <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+                  {commAlerts.slice(0, 10).map((a, i) => {
+                    const clr = a.sent ? C.warn : C.danger;
+                    return (
+                      <div key={`${a.clientId}-${i}`}
+                        onClick={() => onSelectClient(a.clientId)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: i < Math.min(commAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                      >
+                        <div style={mkDot(clr, 8)} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            ✋ {a.text || 'Approval request'}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{a.clientName}</div>
+                        </div>
+                        <span style={{ ...s.pill(clr), fontSize: 10, flexShrink: 0 }}>{a.sent ? 'Awaiting client' : 'Send to client'}</span>
+                        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right col: Clients */}
@@ -6557,7 +7110,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
 // ─── Client Detail ────────────────────────────────────────────────────────────
 
-function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, onBack, onDelete, onUpdateEventGuests, onLinkEvent }) {
+function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAddEvent, onBack, onDelete, onUpdateEventGuests, onLinkEvent }) {
   const C         = useT();
   const s         = makeS(C);
   const clientCLR = CLIENT_CLR(C);
@@ -6601,6 +7154,18 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
 
   const setApprovalStatus = (entryId, status) => {
     onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, approvalStatus: status } : e));
+  };
+
+  // Approval request → outbound message to the client (opens their email/SMS draft — never auto-sends)
+  const markRequestSent = (entryId) => {
+    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, requestSentAt: today8601() } : e));
+  };
+  const buildApprovalMessage = (entry) => {
+    const planner = profile?.businessName || profile?.name || 'your event planner';
+    const signoff = [profile?.name, profile?.businessName, profile?.phone].filter(Boolean).join('\n');
+    const subject = `Approval needed — ${planner}`;
+    const body = `Hi ${client?.name || 'there'},\n\nQuick approval needed before I move forward:\n\n"${entry.text}"\n\nJust reply to confirm and I'll take it from there. Thank you!\n\n${signoff || planner}`;
+    return { subject, body };
   };
 
   // ── Shared card sections so they can be reordered per breakpoint ─────────────
@@ -6885,17 +7450,38 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
                 )}
               </div>
               <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{entry.text}</div>
-              {isApproval && (!entry.approvalStatus || entry.approvalStatus === 'pending') && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                  <button onClick={() => setApprovalStatus(entry.id, 'approved')}
-                    style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>
-                    ✓ Approve
-                  </button>
-                  <button onClick={() => setApprovalStatus(entry.id, 'declined')}
-                    style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>
-                    ✗ Decline
-                  </button>
-                </div>
+              {isApproval && (!entry.approvalStatus || entry.approvalStatus === 'pending') && (() => {
+                const { subject, body } = buildApprovalMessage(entry);
+                const mailto = client?.email ? `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
+                const sms    = client?.phone ? `sms:${client.phone}?body=${encodeURIComponent(body)}` : null;
+                return (
+                  <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Send the request to the client */}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Request</span>
+                      {mailto && <a href={mailto} onClick={() => markRequestSent(entry.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>✉ Email</a>}
+                      {sms    && <a href={sms}    onClick={() => markRequestSent(entry.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>💬 Text</a>}
+                      <button onClick={() => { navigator.clipboard?.writeText(body).catch(() => {}); markRequestSent(entry.id); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>⎘ Copy</button>
+                      {entry.requestSentAt && <span style={{ fontSize: 10, color: C.success, fontWeight: 600 }}>Sent ✓ {fmtDate(entry.requestSentAt)}</span>}
+                      {!mailto && !sms && !entry.requestSentAt && <span style={{ fontSize: 10, color: C.muted }}>Add client email/phone to send directly</span>}
+                    </div>
+                    {/* Record the client's response */}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Response</span>
+                      <button onClick={() => setApprovalStatus(entry.id, 'approved')}
+                        style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>
+                        ✓ Approve
+                      </button>
+                      <button onClick={() => setApprovalStatus(entry.id, 'declined')}
+                        style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>
+                        ✗ Decline
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+              {isApproval && entry.requestSentAt && entry.approvalStatus && entry.approvalStatus !== 'pending' && (
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>Requested {fmtDate(entry.requestSentAt)}</div>
               )}
             </div>
           );
@@ -7014,7 +7600,7 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
 
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
-function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUpdate, onUpdateVendorLog, onTabChange, setTimeline, eventDate, eventType, onOpenConsult, guestEstimate, intakeSavedAt }) {
+function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUpdate, onUpdateVendorLog, onTabChange, setTimeline, eventDate, eventType, onOpenConsult, guestEstimate, intakeSavedAt, client, onOpenComms }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -7063,10 +7649,19 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
 
   const phaseActions = getPhaseActions(eventType, daysUntil(eventDate), { vendors, timeline, guests });
 
+  // Comms awaiting the planner — approval requests not yet resolved
+  const pendingComms = clientPendingComms(client);
+  const commActions = [
+    ...pendingComms.needsSend.map(e => ({ level: 'critical', label: `Approval not sent yet: "${(e.text || '').slice(0, 50)}${(e.text||'').length > 50 ? '…' : ''}"`, onClick: onOpenComms, hint: 'Client comms' })),
+    ...pendingComms.awaiting.map(e => ({ level: 'warn', label: `Awaiting client approval: "${(e.text || '').slice(0, 50)}${(e.text||'').length > 50 ? '…' : ''}"`, onClick: onOpenComms, hint: 'Client comms' })),
+  ];
+
   const actionItems = [
     ...overdueTasks.map(t => ({ level: 'critical', label: `"${t.task || 'Untitled task'}" is overdue`, tab: 'Planning Tasks', itemId: t.id })),
+    ...commActions.filter(a => a.level === 'critical'),
     ...urgentPayments.map(v => ({ level: 'critical', label: `${v.name} payment due in ${v.daysLeft}d — ${fmtD(v.balance)}`, tab: 'Vendors', itemId: v.id })),
     ...phaseActions.filter(a => a.level === 'critical'),
+    ...commActions.filter(a => a.level === 'warn'),
     ...soonPayments.map(v => ({ level: 'warn', label: `${v.name} payment due in ${v.daysLeft}d — ${fmtD(v.balance)}`, tab: 'Vendors', itemId: v.id })),
     ...(catererDrift ? [{ level: 'warn', label: `Caterer has old headcount (${catererCount}) — now ${confirmedCount} confirmed`, tab: 'Vendors' }] : []),
     ...phaseActions.filter(a => a.level === 'warn'),
@@ -7116,18 +7711,19 @@ Write the summary now:`;
       </div>
       {actionItems.slice(0, isWide ? 8 : 6).map((item, i) => {
         const clr = item.level === 'critical' ? C.danger : item.level === 'warn' ? C.warn : C.accent2;
+        const handler = item.onClick ? item.onClick : (onTabChange && item.tab ? () => onTabChange(item.tab, item.itemId) : undefined);
+        const arrow   = item.hint || (item.tab ? item.tab : null);
         return (
           <div key={i}
-            onClick={onTabChange && item.tab ? () => onTabChange(item.tab, item.itemId) : undefined}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6, cursor: onTabChange ? 'pointer' : 'default', padding: '6px 8px', borderRadius: 6, borderLeft: `3px solid ${clr}44` }}
-            onMouseEnter={onTabChange ? e => { e.currentTarget.style.background = clr + '12'; } : undefined}
-            onMouseLeave={onTabChange ? e => { e.currentTarget.style.background = ''; } : undefined}
+            onClick={handler}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6, cursor: handler ? 'pointer' : 'default', padding: '6px 8px', borderRadius: 6, borderLeft: `3px solid ${clr}44` }}
+            onMouseEnter={handler ? e => { e.currentTarget.style.background = clr + '12'; } : undefined}
+            onMouseLeave={handler ? e => { e.currentTarget.style.background = ''; } : undefined}
           >
             <span style={{ ...mkDot(clr, 7), marginTop: 4 }} />
             <span style={{ fontSize: 13, flex: 1, color: C.text }}>{item.label}</span>
-            {onTabChange && item.tab && <span style={{ fontSize: 11, color: clr, opacity: 0.7, flexShrink: 0 }}>{item.tab} →</span>}
-          </div>
-        );
+            {handler && arrow && <span style={{ fontSize: 11, color: clr, opacity: 0.7, flexShrink: 0 }}>{arrow} →</span>}
+          </div>);
       })}
       {actionItems.length > (isWide ? 8 : 6) && (
         <div style={{ fontSize: 11, color: C.muted, marginTop: 4, paddingLeft: 18 }}>+{actionItems.length - (isWide ? 8 : 6)} more</div>
@@ -9409,14 +10005,30 @@ function VendorScriptsPanel({ profile, event }) {
   );
 }
 
-function Vendors({ vendors, setVendors, budget, openId, event, ros, profile }) {
+function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, allEvents = [] }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
   const bp = useContext(BpCtx);
   const [modalId,      setModalId]      = useState(openId || null);
   const [vendorFilter, setVendorFilter] = useState('all');
-  const [vendorMode,   setVendorMode]   = useState('roster'); // 'roster' | 'prospects' | 'comms'
+  const [vendorMode,   setVendorMode]   = useState('roster'); // 'roster' | 'prospects' | 'comms' | 'proven' | 'scripts'
+
+  // Vendor-1: cross-event "Operationally Proven Vendors" library, ranked by reliability
+  const provenLibrary = useMemo(() => {
+    const lib = aggregateVendorLibrary(allEvents.length ? allEvents : (event ? [event] : []));
+    const inThisEvent = new Set((vendors || []).map(v => `${(v.name||'').trim().toLowerCase()}|${(v.category||'').toLowerCase()}`));
+    return lib
+      .map(v => {
+        const rel = vendorReliabilityScore(v);
+        return { ...v, _rel: rel, _tier: vendorTier(v), _badges: vendorBadges(v),
+          _inEvent: inThisEvent.has(`${(v.name||'').trim().toLowerCase()}|${(v.category||'').toLowerCase()}`),
+          _fit: event?.type && (v.eventTypesSupported || '').toLowerCase().includes((event.type||'').toLowerCase()) };
+      })
+      // sort: sufficient-data first, then score desc, then repeat-use desc
+      .sort((a, b) => (b._rel.sufficient - a._rel.sufficient) || ((b._rel.score || 0) - (a._rel.score || 0)) || (b.eventsLinked - a.eventsLinked));
+  }, [allEvents, event, vendors]);
+  const provenCount = provenLibrary.filter(v => v._rel.sufficient).length;
 
   const total          = vendors.reduce((s, v) => s + (v.cost || 0), 0);
   const committed      = vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
@@ -9481,7 +10093,7 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile }) {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
-                {[['roster', 'Roster'], ['prospects', `Prospects${prospectVendors.length > 0 ? ` (${prospectVendors.length})` : ''}`], ['comms', `Comms${allLogs.length > 0 ? ` (${allLogs.length})` : ''}`], ['scripts', '✉ Outreach Scripts']].map(([id, label]) => (
+                {[['roster', 'Roster'], ['prospects', `Prospects${prospectVendors.length > 0 ? ` (${prospectVendors.length})` : ''}`], ['proven', `★ Proven${provenCount > 0 ? ` (${provenCount})` : ''}`], ['comms', `Comms${allLogs.length > 0 ? ` (${allLogs.length})` : ''}`], ['scripts', '✉ Outreach Scripts']].map(([id, label]) => (
                   <button key={id} onClick={() => setVendorMode(id)} style={{
                     padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                     background: vendorMode === id ? C.accent : 'transparent',
@@ -9545,6 +10157,77 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile }) {
         );
       })()}
 
+      {/* ── Operationally Proven Vendors (cross-event) ── */}
+      {vendorMode === 'proven' && (
+        <div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Operationally Proven Vendors</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Ranked by operational reliability from your real event history — not popularity. Vendors without enough data show “Insufficient data.”</div>
+          </div>
+          {provenLibrary.length === 0 ? (
+            <div style={{ ...s.card, textAlign: 'center', padding: '32px 20px' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendor history yet</div>
+              <div style={{ fontSize: 12, color: C.muted }}>As you add vendors across events and log their operational metrics, your proven vendors surface here.</div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : bp === 'tablet' ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+              {provenLibrary.map((v, i) => {
+                const tm = VENDOR_TIER_META[v._tier];
+                const suff = v._rel.sufficient;
+                const metric = (label, val) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '2px 0' }}>
+                    <span style={{ color: C.muted }}>{label}</span>
+                    <span style={{ color: C.text, fontWeight: 600 }}>{val}</span>
+                  </div>
+                );
+                return (
+                  <div key={`${v.name}-${i}`} style={{ ...s.card, marginBottom: 0, padding: 16, borderColor: suff ? tm.color + '55' : C.border }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{v.category}{v.serviceArea ? ` · ${v.serviceArea}` : ''}</div>
+                      </div>
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: tm.color, background: tm.color + '18', border: `1px solid ${tm.color}44`, borderRadius: 12, padding: '3px 9px' }}>{tm.icon} {v._tier}</span>
+                    </div>
+
+                    {/* Reliability */}
+                    {suff ? (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 22, fontWeight: 800, color: tm.color }}>{v._rel.score}</span>
+                        <span style={{ fontSize: 11, color: C.muted }}>/ 100 reliability</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic', margin: '4px 0 8px' }}>Insufficient data to score</div>
+                    )}
+
+                    {/* Metrics — only show ones with real data */}
+                    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+                      {_hasField(v, 'onTimeRate')      && metric('On-time', `${v.onTimeRate}%`)}
+                      {_hasField(v, 'avgResponseHours')&& metric('Responds in', `${v.avgResponseHours}h`)}
+                      {_hasField(v, 'eventsCompleted') && metric('Events done', v.eventsCompleted)}
+                      {_hasField(v, 'plannerRehireCount') && metric('You rehired', `${v.plannerRehireCount}×`)}
+                      {v.eventsLinked > 1 && metric('In your events', `${v.eventsLinked}`)}
+                      {!_hasField(v, 'onTimeRate') && !_hasField(v, 'avgResponseHours') && !_hasField(v, 'eventsCompleted') && (
+                        <div style={{ fontSize: 11, color: C.muted }}>No operational metrics logged yet.</div>
+                      )}
+                    </div>
+
+                    {/* Badges */}
+                    {v._badges.length > 0 && (
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
+                        {v._badges.map(b => <span key={b} style={{ fontSize: 9, fontWeight: 600, color: C.accent2, background: C.accent2 + '14', border: `1px solid ${C.accent2}33`, borderRadius: 10, padding: '2px 7px' }}>{b}</span>)}
+                      </div>
+                    )}
+
+                    {v._inEvent && <div style={{ fontSize: 10, color: C.success, fontWeight: 600, marginTop: 10 }}>✓ Already on this event</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Prospects view ── */}
       {vendorMode === 'prospects' && (
         <div>
@@ -9580,6 +10263,11 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile }) {
                       {/* Comparison rows */}
                       {[
                         { label: 'Cost',    render: v => <span style={{ fontWeight: 700 }}>{v.cost ? fmtD(v.cost) : '—'}</span> },
+                        { label: 'Tier',    render: v => { const tm = VENDOR_TIER_META[vendorTier(v)]; return <span style={{ fontSize: 11, fontWeight: 700, color: tm.color }}>{tm.icon} {vendorTier(v)}</span>; } },
+                        { label: 'Reliability', render: v => { const r = vendorReliabilityScore(v); return r.sufficient ? <span style={{ fontSize: 12, fontWeight: 700, color: VENDOR_TIER_META[vendorTier(v)].color }}>{r.score}/100</span> : <span style={{ fontSize: 10, color: C.muted }}>Insufficient data</span>; } },
+                        { label: 'On-time',  render: v => _hasField(v, 'onTimeRate') ? <span style={{ fontSize: 11 }}>{v.onTimeRate}%</span> : <span style={{ color: C.muted }}>—</span> },
+                        { label: 'Response', render: v => _hasField(v, 'avgResponseHours') ? <span style={{ fontSize: 11 }}>{v.avgResponseHours}h</span> : <span style={{ color: C.muted }}>—</span> },
+                        { label: 'Events',   render: v => _hasField(v, 'eventsCompleted') ? <span style={{ fontSize: 11 }}>{v.eventsCompleted}</span> : <span style={{ color: C.muted }}>—</span> },
                         { label: 'Contact', render: v => v.contact ? <a href={`mailto:${v.contact}`} style={{ color: C.accent, textDecoration: 'none', fontSize: 11 }}>{v.contact}</a> : <span style={{ color: C.muted }}>—</span> },
                         { label: 'Phone',   render: v => v.phone ? <a href={`tel:${v.phone}`} style={{ color: C.accent2, textDecoration: 'none', fontSize: 11 }}>{v.phone}</a> : <span style={{ color: C.muted }}>—</span> },
                         { label: 'Website', render: v => v.website ? <a href={wsHref(v.website)} target="_blank" rel="noopener noreferrer" style={{ color: C.accent2, textDecoration: 'none', fontSize: 11 }}>↗ Visit</a> : <span style={{ color: C.muted }}>—</span> },
@@ -10094,7 +10782,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros, setRos, vendors }) {
+function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -10147,6 +10835,60 @@ function RunOfShow({ ros, setRos, vendors }) {
   const emergencyContacts = vendors.filter(v => v.phone).sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
   const unconfirmed = sorted.filter(r => r.type === 'vendor' && !r.confirmed).length;
 
+  const fmtTime12 = (t) => {
+    if (!t) return '—';
+    const [h, m] = t.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  // Print / PDF — opens a clean, print-formatted day-of schedule (use browser "Save as PDF")
+  const printROS = () => {
+    const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const all = [...ros].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const typeLabel = { vendor: 'Vendor', event: 'Event', prep: 'Prep', setup: 'Setup', ceremony: 'Ceremony', reception: 'Reception', break: 'Break' };
+    const rows = all.map(r => `
+      <tr>
+        <td class="time">${esc(fmtTime12(r.time))}</td>
+        <td><strong>${esc(r.segment) || '<span class="muted">Untitled</span>'}</strong>${r.notes ? `<div class="notes">${esc(r.notes)}</div>` : ''}</td>
+        <td>${esc(r.location)}</td>
+        <td>${esc(r.owner)}</td>
+        <td class="type">${esc(typeLabel[r.type] || r.type || '')}</td>
+      </tr>`).join('');
+    const contactRows = emergencyContacts.map(v => `
+      <tr><td><strong>${esc(v.name)}</strong> <span class="muted">${esc(v.category)}</span></td><td>${esc(v.arrivalTime ? fmtTime12(v.arrivalTime) : '')}</td><td>${esc(v.phone)}</td></tr>`).join('');
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>${esc(eventName || 'Run of Show')} — Run of Show</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, system-ui, 'Segoe UI', Arial, sans-serif; color: #111; margin: 0; padding: 36px 44px; }
+        h1 { font-size: 22px; margin: 0 0 2px; }
+        .sub { color: #555; font-size: 13px; margin-bottom: 4px; }
+        .meta { color: #888; font-size: 11px; margin-bottom: 24px; }
+        h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #444; margin: 28px 0 8px; border-bottom: 2px solid #111; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; padding: 6px 8px; border-bottom: 1px solid #ccc; }
+        td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        td.time { font-weight: 700; white-space: nowrap; width: 90px; font-variant-numeric: tabular-nums; }
+        td.type { color: #888; font-size: 11px; white-space: nowrap; }
+        .notes { color: #666; font-size: 11px; margin-top: 2px; font-weight: 400; }
+        .muted { color: #aaa; font-weight: 400; }
+        @media print { body { padding: 0; } @page { margin: 0.6in; } }
+      </style></head><body>
+      <h1>${esc(eventName || 'Run of Show')}</h1>
+      <div class="sub">Run of Show${eventVenue ? ' · ' + esc(eventVenue) : ''}${eventDate ? ' · ' + esc(fmtDate(eventDate)) : ''}</div>
+      <div class="meta">${all.length} segment${all.length !== 1 ? 's' : ''} · Generated ${esc(fmtDate(today8601()))}</div>
+      <table>
+        <thead><tr><th>Time</th><th>Segment</th><th>Location</th><th>Owner</th><th>Type</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5" class="muted">No schedule items yet.</td></tr>'}</tbody>
+      </table>
+      ${contactRows ? `<h2>Day-of Contacts</h2><table><thead><tr><th>Vendor</th><th>Arrives</th><th>Phone</th></tr></thead><tbody>${contactRows}</tbody></table>` : ''}
+      <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`);
+    win.document.close();
+    win.focus();
+  };
+
   return (
     <div>
       {modalEntry && (
@@ -10177,6 +10919,7 @@ function RunOfShow({ ros, setRos, vendors }) {
               <option value="prep">Prep</option>
             </select>
             <button style={s.btn('teal')} onClick={syncVendors}>Sync Vendors</button>
+            <button style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">🖨 Print / PDF</button>
             <AIBtn onClick={draftFullROS} loading={rosDraftLoad} label="Draft Full ROS" />
             <button style={s.btn('primary')} onClick={add}>+ Add</button>
           </div>
@@ -11339,7 +12082,7 @@ function exportClientPackage(event, client, sections) {
   XLSX.writeFile(wb, `${safeName}_ClientPackage.xlsx`);
 }
 
-function SendToClientModal({ event, client, onClose }) {
+function SendToClientModal({ event, client, profile, onClose }) {
   const C = useT();
   const s = makeS(C);
   const [sections,  setSections]  = useState({ summary: true, ros: true, vendors: true, guests: true, budget: false });
@@ -11375,12 +12118,14 @@ function SendToClientModal({ event, client, onClose }) {
   const handlePrint = () => {
     const win = window.open('', '_blank');
     if (!win) return;
+    const letterhead = brandLetterheadHTML(profile);
+    const payFooter  = brandPaymentFooterHTML(profile);
     win.document.write(`<!DOCTYPE html><html><head><title>${event.name || 'Event'} — Client Package</title>
-      <style>body{font-family:monospace;white-space:pre-wrap;padding:32px;font-size:13px;line-height:1.6}h1{font-size:16px;margin-bottom:16px}</style>
-      </head><body><pre>${textSummary.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></body></html>`);
+      <style>body{font-family:-apple-system,system-ui,Arial,sans-serif;padding:40px 44px;color:#18181c}pre{white-space:pre-wrap;font-family:'SF Mono',Menlo,monospace;font-size:12.5px;line-height:1.65;margin:0}@media print{body{padding:0}@page{margin:0.6in}}</style>
+      </head><body>${letterhead}<pre>${textSummary.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>${payFooter}
+      <script>window.onload=function(){window.print();}<\/script></body></html>`);
     win.document.close();
     win.focus();
-    win.print();
     setSentMethod('print'); setStep('sent');
   };
 
@@ -12001,7 +12746,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
 
 const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show'];
 
-function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
+function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
@@ -12105,15 +12850,17 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
           onOpenConsult={() => setShowConsult(true)}
           guestEstimate={event.guestEstimate}
           intakeSavedAt={event.intake?.savedAt}
+          client={client}
+          onOpenComms={client ? (onOpenClient || (() => setShowPortal(true))) : undefined}
         />
       )}
       {tab === 'Budget'      && <Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} />}
       {tab === 'Guests'      && <Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} />}
       {tab === 'Seating'     && <Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} />}
-      {tab === 'Vendors'        && <Vendors   vendors={event.vendors}   setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} event={event} ros={event.ros} profile={profile} />}
+      {tab === 'Vendors'        && <Vendors   vendors={event.vendors}   setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} event={event} ros={event.ros} profile={profile} allEvents={allEvents} />}
       {tab === 'Planning Tasks' && <Timeline  timeline={event.timeline} setTimeline={wrap('timeline')} eventDate={event.date} openId={openTaskId} eventType={event.type} />}
       {tab === 'Calendar'    && <CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} />}
-      {tab === 'Run of Show' && <RunOfShow ros={event.ros}           setRos={wrap('ros')} vendors={event.vendors} />}
+      {tab === 'Run of Show' && <RunOfShow ros={event.ros}           setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} />}
       {tab === 'Agenda'      && <AgendaBuilder
         agenda={event.agenda || []}
         setAgenda={wrap('agenda')}
@@ -12128,7 +12875,7 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
   return (
     <div style={s.app}>
       {showConsult && <ConsultScriptModal event={event} setEvent={setEvent} onClose={() => setShowConsult(false)} />}
-      {showSendClient && <SendToClientModal event={event} client={client} onClose={() => setShowSendClient(false)} />}
+      {showSendClient && <SendToClientModal event={event} client={client} profile={profile} onClose={() => setShowSendClient(false)} />}
       {showPortal && client && <ClientPortal client={client} events={[event]} onClose={() => setShowPortal(false)} onUpdateGuests={gs => setEvent(ev => ({ ...ev, guests: typeof gs === 'function' ? gs(ev.guests || []) : gs }))} />}
 
       {/* ── Shared header (event identity strip) ── */}
@@ -12509,7 +13256,9 @@ export default function App() {
   // ── Public Vendor Brief route: ?vendor=TOKEN ──
   if (vendorCode) {
     try {
-      const brief = JSON.parse(atob(vendorCode));
+      let brief;
+      try { brief = JSON.parse(b64decode(vendorCode)); }
+      catch { brief = JSON.parse(atob(vendorCode)); } // fallback for older ASCII-only links
       if (brief && brief.vendorName) return providers(<VendorBriefView brief={brief} />);
     } catch {}
     // Invalid or corrupt token — show friendly error
@@ -12531,7 +13280,9 @@ export default function App() {
         setEvent={setEvent}
         client={activeClient}
         setClient={setClient}
+        allEvents={events}
         onBack={() => { setActiveId(null); setInitialNav(null); }}
+        onOpenClient={activeClient ? () => { setActiveId(null); setInitialNav(null); setActiveClientId(activeClient.id); } : undefined}
         backLabel={activeClient ? `← ${activeClient.name}` : '← Dashboard'}
         initialNav={initialNav}
         profile={profile}
@@ -12567,6 +13318,7 @@ export default function App() {
           client={activeClient}
           events={events}
           setClient={setClient}
+          profile={profile}
           onSelectEvent={setActiveId}
           onAddEvent={() => setShowNew(true)}
           onBack={() => setActiveClientId(null)}
