@@ -1789,18 +1789,18 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                       const doneCount = allItems.filter(it => checklist[it]).length;
                       const allDone   = doneCount === allItems.length;
                       return (
-                        <div key={stage} style={{ marginBottom: 10, opacity: isFuture ? 0.35 : 1 }}>
+                        <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: allDone ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : isPast ? C.muted : C.border, flex: 1 }}>{stage}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
                             <span style={{ fontSize: 10, color: allDone ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {allItems.map(item => {
                               const checked = !!checklist[item];
                               return (
-                                <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: isFuture ? 'default' : 'pointer', fontSize: 12, padding: '2px 0' }}>
-                                  <input type="checkbox" checked={checked} disabled={isFuture}
+                                <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 12, padding: '2px 0' }}>
+                                  <input type="checkbox" checked={checked}
                                     onChange={() => onChange('commsChecklist', { ...checklist, [item]: !checked })}
                                     style={{ accentColor: clr, marginTop: 2, flexShrink: 0, width: 13, height: 13 }}
                                   />
@@ -3970,18 +3970,18 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
                       const doneCount = allItems.filter(it => checklist[it]).length;
                       const allDone   = doneCount === allItems.length;
                       return (
-                        <div key={stage} style={{ marginBottom: 10, opacity: isFuture ? 0.35 : 1 }}>
+                        <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: allDone ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : isPast ? C.muted : C.border, flex: 1 }}>{stage}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
                             <span style={{ fontSize: 10, color: allDone ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {allItems.map(item => {
                               const checked = !!checklist[item];
                               return (
-                                <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: isFuture ? 'default' : 'pointer', fontSize: 12, padding: '2px 0' }}>
-                                  <input type="checkbox" checked={checked} disabled={isFuture}
+                                <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 12, padding: '2px 0' }}>
+                                  <input type="checkbox" checked={checked}
                                     onChange={() => onChange('commsChecklist', { ...checklist, [item]: !checked })}
                                     style={{ accentColor: clr, marginTop: 2, flexShrink: 0, width: 13, height: 13 }}
                                   />
