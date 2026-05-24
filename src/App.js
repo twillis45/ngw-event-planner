@@ -300,8 +300,8 @@ function useBreakpoint() {
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);
-  // tablet-land: 768–1279 covers both tablet orientations; desktop ≥ 1280
-  return w < 640 ? 'mobile' : w < 768 ? 'tablet' : w < 1280 ? 'tablet-land' : 'desktop';
+  // mobile < 640 · tablet 640–1023 (portrait iPad included) · tablet-land 1024–1279 · desktop ≥ 1280
+  return w < 640 ? 'mobile' : w < 1024 ? 'tablet' : w < 1280 ? 'tablet-land' : 'desktop';
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -414,6 +414,95 @@ const WORKFLOW_FOCUS = {
     '1 Month Out':   { focus: 'Details',     tips: ['Follow up on RSVPs', 'Order cake and decorations', 'Confirm all vendors or food orders'] },
     'Week Of':       { focus: 'Final Push',  tips: ['Confirm final headcount', 'Set up photo display and decorations', 'Prepare any slideshow or tribute'] },
   },
+  // ── Corporate subtypes ─────────────────────────────────────────────────────
+  'Holiday Party': {
+    '4 Months Out':  { focus: 'Budget & Approval', tips: ['Get budget approved by Finance or leadership', 'Book venue early — Dec dates sell out fast', 'Determine headcount: employees only, plus-ones, or all-company'] },
+    '2 Months Out':  { focus: 'Coordination',      tips: ['Send save-the-date to all staff', 'Confirm catering headcount and dietary flags', 'Finalize entertainment and AV needs'] },
+    '1 Month Out':   { focus: 'Details',           tips: ['Send formal invitation with RSVP link', 'Confirm all vendors and delivery windows', 'Brief any internal day-of volunteers'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['Final headcount to caterer', 'Prep run-of-show and staff assignments', 'Confirm venue setup and load-in window'] },
+  },
+  Conference: {
+    '12 Months Out': { focus: 'Foundation',        tips: ['Secure venue and negotiate hotel room block', 'Define conference theme and target audience', 'Open call for speakers or presentations'] },
+    '8 Months Out':  { focus: 'Programming',       tips: ['Confirm keynote speakers', 'Finalize agenda and session tracks', 'Open attendee registration'] },
+    '4 Months Out':  { focus: 'Logistics',         tips: ['Confirm AV, production, and streaming setup', 'Finalize sponsor packages and deliverables', 'Send sponsor and exhibitor instructions'] },
+    '1 Month Out':   { focus: 'Execution Prep',    tips: ['Finalize run-of-show and speaker briefings', 'Print badges, signage, and materials', 'Brief all staff and volunteers'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['AV test and full run-through', 'Confirm catering counts and timing', 'Distribute day-of roles and communication plan'] },
+  },
+  'Product Launch': {
+    '3 Months Out':  { focus: 'Strategy',          tips: ['Align on launch goals with Marketing and Product teams', 'Book venue and confirm AV / production scope', 'Define media, press, and guest list strategy'] },
+    '2 Months Out':  { focus: 'Production',        tips: ['Confirm AV, staging, and production design', 'Finalize press kit and assets with Marketing', 'Send invitations to press, partners, and stakeholders'] },
+    '1 Month Out':   { focus: 'Rehearsal',         tips: ['Full run-through with presenters and AV team', 'Confirm all catering and hospitality', 'Finalize demo stations or product displays'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['Final presenter briefing and script review', 'Load in and full AV tech check', 'Confirm embargo timing with PR if applicable'] },
+  },
+  'Team Retreat': {
+    '3 Months Out':  { focus: 'Planning',          tips: ['Get leadership approval on destination, dates, and budget', 'Book accommodations and any team activity vendors', 'Define retreat goals: team building, strategy, or both'] },
+    '1 Month Out':   { focus: 'Coordination',      tips: ['Share detailed itinerary with all attendees', 'Confirm dietary needs with catering or restaurant', 'Arrange transportation or share drive/flight details'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['Confirm all bookings — hotel, meals, activities', 'Send final packing list and schedule to team', 'Brief any external facilitators on goals and format'] },
+  },
+  'Town Hall': {
+    '4 Weeks Out':   { focus: 'Setup',             tips: ['Confirm date with Executive team and book space', 'Set agenda — what leadership is covering and in what order', 'Arrange for hybrid access if remote employees attend'] },
+    '1 Week Out':    { focus: 'Prep',              tips: ['Send company-wide calendar invite and agenda preview', 'Confirm AV and streaming setup', 'Prep slide deck with leadership and comms team'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['AV tech check and Zoom/Teams link test', 'Brief presenters on timing and format', 'Have IT on standby for streaming issues'] },
+  },
+  'Training / Workshop': {
+    '6 Weeks Out':   { focus: 'Setup',             tips: ['Book room or external venue with correct layout (classroom, roundtable, etc.)', 'Confirm facilitator or trainer and their AV needs', 'Set participant list and send invitations'] },
+    '2 Weeks Out':   { focus: 'Logistics',         tips: ['Order printed materials or workbooks', 'Confirm catering for breaks or working lunch', 'Send pre-read or prep assignment to attendees'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['AV test — projector, screen share, materials loaded', 'Set up room: seating layout, notepads, printed materials at seats', 'Brief any internal co-facilitators on agenda timing'] },
+  },
+  'Award Ceremony': {
+    '3 Months Out':  { focus: 'Foundation',        tips: ['Confirm award categories and nomination process', 'Book venue and AV / production', 'Coordinate with leadership on honoree list and approval'] },
+    '1 Month Out':   { focus: 'Details',           tips: ['Finalize winner list (keep confidential)', 'Order trophies, plaques, or award gifts', 'Plan run-of-show: presenters, music cues, acceptance timing'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['Rehearsal with MC and presenters', 'Confirm AV: name slides, music, spotlight cues', 'Seal and deliver winner envelopes to MC'] },
+  },
+  'Client Dinner': {
+    '3 Weeks Out':   { focus: 'Booking',           tips: ['Reserve restaurant or private dining room — confirm private space', 'Build guest list with account team — confirm who\'s bringing who', 'Note dietary restrictions for all attendees'] },
+    '1 Week Out':    { focus: 'Details',           tips: ['Confirm reservation and headcount with venue', 'Arrange transportation if clients are traveling', 'Brief host on conversation topics and relationship context'] },
+    'Week Of':       { focus: 'Go Time',           tips: ['Reconfirm reservation day of', 'Arrive early — greet clients before they arrive if possible', 'Have a plan for the check — pay discreetly in advance if possible'] },
+  },
+  // ── New celebration types ───────────────────────────────────────────────────
+  'Engagement Party': {
+    '3 Months Out':  { focus: 'Planning',    tips: ['Set date (ideally within 2–3 months of engagement)', 'Decide host and venue — home, restaurant, or venue', 'Create guest list — close friends and family first'] },
+    '1 Month Out':   { focus: 'Details',    tips: ['Send invitations (paper or digital)', 'Arrange food and drinks — catered or hosted', 'Plan any toasts, photos, or activities'] },
+    'Week Of':       { focus: 'Final Push', tips: ['Confirm headcount and catering', 'Prep decorations — photos of the couple, flowers', 'Confirm any photographers or videographers'] },
+  },
+  'Vow Renewal': {
+    '6 Months Out':  { focus: 'Vision',     tips: ['Choose intimate or larger celebration format', 'Book venue and officiant', 'Decide whether to write new vows or use original'] },
+    '2 Months Out':  { focus: 'Details',    tips: ['Send invitations', 'Book catering, florals, and any entertainment', 'Plan any photo or memory display'] },
+    'Week Of':       { focus: 'Final Prep', tips: ['Confirm all vendors', 'Prepare any personal touches — vows, music, readings', 'Arrange any surprise elements for partner'] },
+  },
+  'Retirement Party': {
+    '2 Months Out':  { focus: 'Planning',   tips: ['Confirm attendance goals — intimate or company-wide?', 'Book venue or arrange office space', 'Collect memories, photos, or tributes from colleagues'] },
+    '1 Month Out':   { focus: 'Details',    tips: ['Send invitations', 'Arrange catering and cake', 'Plan program: speeches, tributes, photo slideshow'] },
+    'Week Of':       { focus: 'Final Push', tips: ['Confirm headcount and food', 'Prepare any video tribute, memory book, or gift collection', 'Brief speakers and MC on timing'] },
+  },
+  'Sweet 16': {
+    '3 Months Out':  { focus: 'Vision',     tips: ['Set theme, guest list, and budget', 'Book venue — popular venues book 3–6 months out', 'Book entertainment: DJ, photo booth, or performers'] },
+    '2 Months Out':  { focus: 'Planning',   tips: ['Send invitations — formal paper or digital', 'Book caterer or arrange catering', 'Order custom cake and any specialty decor items'] },
+    'Week Of':       { focus: 'Final Prep', tips: ['Confirm headcount and catering', 'Finalize decorations and any surprise elements', 'Confirm DJ set list and any special song requests'] },
+  },
+  Quinceañera: {
+    '12 Months Out': { focus: 'Foundation', tips: ['Book church or ceremony venue and reception venue', 'Select court of honor: chambelanes and damas', 'Set overall budget — family contributions, sponsors, godparents'] },
+    '8 Months Out':  { focus: 'Key Vendors', tips: ['Book photographer and videographer', 'Book DJ or live band', 'Book caterer and cake designer'] },
+    '6 Months Out':  { focus: 'Details',    tips: ['Order gown and court dresses/suits', 'Choose décor theme and color palette', 'Begin choreography rehearsals for court waltz'] },
+    '1 Month Out':   { focus: 'Final Prep', tips: ['Final dress fittings and alterations', 'Confirm all vendors and run-of-show', 'Prepare surprise dance or special moment choreography'] },
+    'Week Of':       { focus: 'Go Time',    tips: ['Deliver decorations and centerpieces', 'Final rehearsal of ceremony and court waltz', 'Confirm vendor arrival times and access'] },
+  },
+  Reunion: {
+    '6 Months Out':  { focus: 'Coordination', tips: ['Set date and confirm venue — parks, halls, or destination venues', 'Create contact list and outreach strategy', 'Designate a planning committee if family or class reunion'] },
+    '3 Months Out':  { focus: 'Planning',     tips: ['Send save-the-dates and collect RSVPs', 'Plan activities: games, slideshow, memory tables', 'Arrange catering or potluck structure'] },
+    'Week Of':       { focus: 'Final Push',   tips: ['Confirm headcount and food order', 'Prepare name tags, photo displays, and memory books', 'Set up any activity stations or games'] },
+  },
+  'Fundraiser / Gala': {
+    '6 Months Out':  { focus: 'Foundation',   tips: ['Define fundraising goal and gala format', 'Secure venue — formal gala spaces book far out', 'Build sponsor and donor outreach strategy'] },
+    '3 Months Out':  { focus: 'Programming',  tips: ['Confirm speakers, auctioneer, or entertainment', 'Set auction items and procurement with team', 'Launch ticket sales and table sponsorships'] },
+    '1 Month Out':   { focus: 'Execution',    tips: ['Finalize run-of-show with MC and presenters', 'Confirm catering count and service style', 'Prepare auction paddles, bid sheets, or mobile bidding setup'] },
+    'Week Of':       { focus: 'Go Time',      tips: ['Final AV test and decor walkthrough', 'Brief all volunteers and staff on their roles', 'Confirm donor/VIP seating and any special acknowledgments'] },
+  },
+  'Networking Event': {
+    '4 Weeks Out':   { focus: 'Setup',        tips: ['Book venue with open-flow layout — mingling, not assigned seating', 'Set ticket price or guest list + invite strategy', 'Arrange light food and drinks — the fuel of good networking'] },
+    '1 Week Out':    { focus: 'Prep',         tips: ['Confirm headcount and catering order', 'Prepare name badges and check-in process', 'Plan any structured activity: speed networking, speaker, icebreaker'] },
+    'Week Of':       { focus: 'Go Time',      tips: ['Confirm venue setup and AV', 'Brief any sponsors or speakers', 'Arrive early — be ready before first guest'] },
+  },
 };
 
 const getWorkflowGuidance = (eventType, days) => {
@@ -461,7 +550,7 @@ const getPhaseActions = (eventType, days, { vendors, timeline, guests }) => {
     if (unseated > 0 && ['2 Months Out','1 Month Out','Week Of'].includes(phase))
       items.push({ level: 'warn', label: `Finalize seating — ${unseated} confirmed guest${unseated > 1 ? 's' : ''} still unassigned`, tab: 'Seating' });
   }
-  if (eventType === 'Corporate') {
+  if (isCorporateType(eventType)) {
     const hasAV = vendors.find(v => v.category === 'AV / Tech' && STAGES.indexOf(v.status) >= 2);
     if (!hasAV && ['3 Months Out','2 Months Out'].includes(phase))
       items.push({ level: 'warn', label: 'AV / Tech vendor not booked — critical for corporate events', tab: 'Vendors' });
@@ -487,8 +576,7 @@ const formatPhone = (raw = '') => {
   return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
 };
 const isPosDollar = v => v === '' || v === undefined || v === null || (!isNaN(Number(v)) && Number(v) >= 0);
-// remClr: color for a budget remaining value — green under, amber at, crimson over
-const remClr    = (rem, C) => rem > 0 ? C.success : rem === 0 ? C.warn : C.danger;
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STAGES    = ['Considering', 'Quoted', 'Contracted', 'Deposit Paid', 'Confirmed'];
@@ -528,13 +616,61 @@ const CLIENT_COMMS = {
 const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.danger, Maybe: C.warn });
 const SPECIAL_NEEDS_OPTIONS = ['Nut allergy', 'Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Kosher', 'Halal', 'Wheelchair access', 'Kids meal'];
 const CATS      = ['Venue', 'Catering', 'Photography', 'Florals', 'Entertainment', 'Invitations', 'AV / Tech', 'Transport', 'Hair & Makeup', 'Decor', 'Cake', 'Favors', 'Printing / Signage', 'Activities', 'Misc', 'Other'];
-const EVT_TYPES = ['Wedding', 'Corporate', 'Board Meeting', 'Birthday', 'Anniversary', 'Baby Shower', 'Bridal Shower', 'Graduation', 'Other'];
+const EVT_CATEGORIES = {
+  'Weddings & Celebrations': [
+    'Wedding', 'Engagement Party', 'Vow Renewal', 'Anniversary',
+    'Bridal Shower', 'Baby Shower', 'Birthday', 'Sweet 16',
+    'Quinceañera', 'Graduation', 'Retirement Party', 'Reunion',
+  ],
+  'Corporate': [
+    'Holiday Party', 'Board Meeting', 'Conference', 'Product Launch',
+    'Team Retreat', 'Town Hall', 'Training / Workshop', 'Award Ceremony',
+    'Client Dinner',
+  ],
+  'Social & Fundraising': [
+    'Fundraiser / Gala', 'Networking Event', 'Other',
+  ],
+};
+const EVT_TYPES  = Object.values(EVT_CATEGORIES).flat();
+const EVT_PARENT = Object.entries(EVT_CATEGORIES).reduce((acc, [cat, types]) => {
+  types.forEach(t => { acc[t] = cat; });
+  return acc;
+}, {});
+const isCorporateType = (t) => EVT_PARENT[t] === 'Corporate' || t === 'Corporate';
+// eslint-disable-next-line no-unused-vars
+const isCelebration   = (t) => EVT_PARENT[t] === 'Weddings & Celebrations';
 const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.warn, event: C.accent });
 const EVT_CLR   = (C) => {
   const isLight = C.surface === '#ffffff';
-  return { Wedding: C.accent, Corporate: C.accent2, 'Board Meeting': '#818cf8', Birthday: C.warn,
-    Anniversary: isLight ? '#be185d' : '#f472b6',  // deep berry on light (not pink), hot-pink on dark
-    'Baby Shower': '#34d399', 'Bridal Shower': '#a78bfa', Graduation: '#fb923c', Other: C.muted };
+  return {
+    // Celebrations
+    Wedding:          C.accent,
+    'Engagement Party': isLight ? '#db2777' : '#f472b6',
+    'Vow Renewal':    isLight ? '#be185d' : '#f472b6',
+    Anniversary:      isLight ? '#be185d' : '#f472b6',
+    'Bridal Shower':  '#a78bfa',
+    'Baby Shower':    '#34d399',
+    Birthday:         C.warn,
+    'Sweet 16':       isLight ? '#f59e0b' : '#fbbf24',
+    'Quinceañera':    isLight ? '#ec4899' : '#f472b6',
+    Graduation:       '#fb923c',
+    'Retirement Party': isLight ? '#0891b2' : '#22d3ee',
+    Reunion:          isLight ? '#0369a1' : '#38bdf8',
+    // Corporate
+    'Holiday Party':  C.accent2,
+    'Board Meeting':  '#818cf8',
+    Conference:       isLight ? '#4f46e5' : '#818cf8',
+    'Product Launch': isLight ? '#7c3aed' : '#a78bfa',
+    'Team Retreat':   isLight ? '#0369a1' : '#38bdf8',
+    'Town Hall':      isLight ? '#0891b2' : '#22d3ee',
+    'Training / Workshop': isLight ? '#0f766e' : '#2dd4bf',
+    'Award Ceremony': isLight ? '#b45309' : '#fbbf24',
+    'Client Dinner':  isLight ? '#166534' : '#34d399',
+    // Social
+    'Fundraiser / Gala': isLight ? '#9d174d' : '#f472b6',
+    'Networking Event':  isLight ? '#1d4ed8' : '#60a5fa',
+    Other:            C.muted,
+  };
 };
 
 const TIMELINE_TEMPLATES = {
@@ -636,6 +772,169 @@ const TIMELINE_TEMPLATES = {
     { week: 'Week Of',      task: 'Set up photo display and decorations',    owner: '' },
     { week: 'Week Of',      task: 'Confirm all vendors',                     owner: '' },
   ],
+  'Holiday Party': [
+    { week: '4 Months Out', task: 'Get budget approved by Finance / leadership',       owner: 'HR / Events Team' },
+    { week: '4 Months Out', task: 'Book venue — December dates fill fast',             owner: 'Events Team' },
+    { week: '3 Months Out', task: 'Finalize guest list — employees, plus-ones, all',  owner: 'HR' },
+    { week: '2 Months Out', task: 'Book catering and entertainment',                   owner: 'Events Team' },
+    { week: '2 Months Out', task: 'Send save-the-date to all staff',                  owner: 'HR / Events Team' },
+    { week: '1 Month Out',  task: 'Send formal invitation with RSVP link',             owner: 'HR' },
+    { week: '2 Weeks Out',  task: 'Confirm final headcount with caterer',              owner: 'Events Team' },
+    { week: 'Week Of',      task: 'Confirm all vendors and run-of-show',               owner: 'Events Team' },
+  ],
+  Conference: [
+    { week: '12 Months Out', task: 'Secure venue and negotiate hotel room block',      owner: 'Events Team' },
+    { week: '12 Months Out', task: 'Define theme, objectives, and target audience',    owner: 'Leadership / Marketing' },
+    { week: '8 Months Out',  task: 'Confirm keynote speakers — send contracts',        owner: 'Events Team' },
+    { week: '8 Months Out',  task: 'Open attendee registration',                       owner: 'Marketing' },
+    { week: '6 Months Out',  task: 'Finalize agenda and session tracks',               owner: 'Events Team' },
+    { week: '4 Months Out',  task: 'Confirm AV, production, and streaming setup',     owner: 'Events Team / IT' },
+    { week: '4 Months Out',  task: 'Send speaker and exhibitor logistics packet',      owner: 'Events Team' },
+    { week: '2 Months Out',  task: 'Finalize catering — headcount tiers and menus',   owner: 'Events Team' },
+    { week: '1 Month Out',   task: 'Print badges, signage, and materials',             owner: 'Events Team' },
+    { week: '1 Month Out',   task: 'Brief all staff and volunteers on roles',          owner: 'Events Team' },
+    { week: 'Week Of',       task: 'Full AV run-through and load-in',                 owner: 'Events Team / AV' },
+    { week: 'Week Of',       task: 'Final headcount to catering',                     owner: 'Events Team' },
+  ],
+  'Product Launch': [
+    { week: '3 Months Out', task: 'Align on launch goals with Marketing and Product', owner: 'Marketing / Product' },
+    { week: '3 Months Out', task: 'Book venue and confirm AV / production scope',     owner: 'Events Team / Marketing' },
+    { week: '2 Months Out', task: 'Finalize press kit and invite list',                owner: 'PR / Marketing' },
+    { week: '2 Months Out', task: 'Send invitations to press, partners, stakeholders', owner: 'PR / Events Team' },
+    { week: '1 Month Out',  task: 'Full run-through with presenters and AV team',     owner: 'Events Team' },
+    { week: '1 Month Out',  task: 'Confirm demo stations and product displays',        owner: 'Product Team' },
+    { week: '2 Weeks Out',  task: 'Final presenter briefing and script lock',          owner: 'Marketing / Events Team' },
+    { week: 'Week Of',      task: 'Load in and full AV tech check',                   owner: 'Events Team / AV' },
+    { week: 'Week Of',      task: 'Confirm catering and hospitality setup',            owner: 'Events Team' },
+  ],
+  'Team Retreat': [
+    { week: '3 Months Out', task: 'Get leadership approval on destination and budget', owner: 'HR / Leadership' },
+    { week: '3 Months Out', task: 'Book accommodations and activity vendors',          owner: 'HR / Events Team' },
+    { week: '2 Months Out', task: 'Share itinerary draft with leadership for approval', owner: 'HR / Events Team' },
+    { week: '1 Month Out',  task: 'Send detailed itinerary to all attendees',          owner: 'HR / Events Team' },
+    { week: '1 Month Out',  task: 'Confirm dietary needs with restaurant / caterer',   owner: 'Events Team' },
+    { week: '2 Weeks Out',  task: 'Arrange transportation or share logistics details', owner: 'Events Team' },
+    { week: 'Week Of',      task: 'Confirm all bookings — hotel, meals, activities',   owner: 'Events Team' },
+    { week: 'Week Of',      task: 'Brief any external facilitators on goals and format', owner: 'HR / Leadership' },
+  ],
+  'Town Hall': [
+    { week: '4 Weeks Out', task: 'Confirm date with Executive team and book space',   owner: 'Executive Office / HR' },
+    { week: '4 Weeks Out', task: 'Set agenda — topics, presenters, and order',        owner: 'Executive Office' },
+    { week: '3 Weeks Out', task: 'Confirm hybrid setup for remote employees',          owner: 'IT' },
+    { week: '2 Weeks Out', task: 'Finalize slide deck with leadership and comms',      owner: 'Comms / Marketing' },
+    { week: '1 Week Out',  task: 'Send company-wide calendar invite and agenda',       owner: 'HR / Comms' },
+    { week: 'Week Of',     task: 'AV tech check and streaming link test',              owner: 'IT / Events Team' },
+    { week: 'Week Of',     task: 'Brief all presenters on timing and format',          owner: 'Executive Office' },
+  ],
+  'Training / Workshop': [
+    { week: '6 Weeks Out', task: 'Book venue or room — confirm correct layout',       owner: 'HR / Events Team' },
+    { week: '6 Weeks Out', task: 'Confirm facilitator and their AV and material needs', owner: 'HR / Events Team' },
+    { week: '6 Weeks Out', task: 'Send invitations and enrollment instructions',       owner: 'HR' },
+    { week: '2 Weeks Out', task: 'Order printed materials, workbooks, or supplies',    owner: 'HR / Events Team' },
+    { week: '2 Weeks Out', task: 'Send pre-read or prep assignment to attendees',      owner: 'HR / Facilitator' },
+    { week: '1 Week Out',  task: 'Confirm catering for breaks or working lunch',       owner: 'Events Team' },
+    { week: 'Week Of',     task: 'AV test — projector, screen share, materials loaded', owner: 'IT / Events Team' },
+    { week: 'Week Of',     task: 'Set up room — seating, notepads, materials at seats', owner: 'Events Team' },
+  ],
+  'Award Ceremony': [
+    { week: '3 Months Out', task: 'Confirm award categories and nomination process',   owner: 'Leadership / HR' },
+    { week: '3 Months Out', task: 'Book venue and AV / production',                    owner: 'Events Team' },
+    { week: '2 Months Out', task: 'Run nomination process and select finalists',        owner: 'Leadership / HR' },
+    { week: '1 Month Out',  task: 'Finalize winner list — keep strictly confidential',  owner: 'Leadership / HR' },
+    { week: '1 Month Out',  task: 'Order trophies, plaques, or award gifts',            owner: 'Events Team' },
+    { week: '2 Weeks Out',  task: 'Plan run-of-show: presenters, music cues, timing',   owner: 'Events Team' },
+    { week: 'Week Of',      task: 'Rehearsal with MC and presenters',                   owner: 'Events Team' },
+    { week: 'Week Of',      task: 'Seal winner envelopes and deliver to MC',            owner: 'Events Team' },
+  ],
+  'Client Dinner': [
+    { week: '3 Weeks Out', task: 'Reserve private dining room or restaurant',          owner: 'Events Team / Sales' },
+    { week: '3 Weeks Out', task: 'Confirm guest list with account team',               owner: 'Sales / Account Team' },
+    { week: '2 Weeks Out', task: 'Collect dietary restrictions for all guests',         owner: 'Events Team' },
+    { week: '1 Week Out',  task: 'Brief host on conversation priorities and context',   owner: 'Sales / Account Team' },
+    { week: '1 Week Out',  task: 'Arrange transportation if clients are traveling',    owner: 'Events Team' },
+    { week: 'Week Of',     task: 'Reconfirm reservation and headcount',                owner: 'Events Team' },
+    { week: 'Week Of',     task: 'Plan for check payment — pre-authorize or pay early', owner: 'Finance / Events Team' },
+  ],
+  'Engagement Party': [
+    { week: '3 Months Out', task: 'Choose date and decide on host and venue',         owner: '' },
+    { week: '2 Months Out', task: 'Create guest list — close family and friends',     owner: '' },
+    { week: '2 Months Out', task: 'Send invitations — paper or digital',              owner: '' },
+    { week: '1 Month Out',  task: 'Arrange catering, drinks, and any entertainment',  owner: '' },
+    { week: 'Week Of',      task: 'Confirm headcount and prepare decorations',         owner: '' },
+  ],
+  'Vow Renewal': [
+    { week: '6 Months Out', task: 'Choose format — intimate dinner or larger event',  owner: 'Both' },
+    { week: '6 Months Out', task: 'Book venue and officiant',                         owner: '' },
+    { week: '4 Months Out', task: 'Book photographer and any other vendors',          owner: '' },
+    { week: '2 Months Out', task: 'Send invitations',                                 owner: '' },
+    { week: '1 Month Out',  task: 'Finalize catering, florals, and music',            owner: '' },
+    { week: 'Week Of',      task: 'Confirm all vendors — prepare new vows if writing', owner: 'Both' },
+  ],
+  'Retirement Party': [
+    { week: '2 Months Out', task: 'Confirm event scope — intimate or company-wide',   owner: '' },
+    { week: '2 Months Out', task: 'Book venue or arrange office space',               owner: '' },
+    { week: '1 Month Out',  task: 'Send invitations — colleagues, family, friends',   owner: '' },
+    { week: '1 Month Out',  task: 'Collect memory submissions from colleagues',       owner: '' },
+    { week: '2 Weeks Out',  task: 'Order cake and arrange catering',                  owner: '' },
+    { week: 'Week Of',      task: 'Prepare memory book, video tribute, or slideshow', owner: '' },
+    { week: 'Week Of',      task: 'Confirm all vendors and brief speakers / MC',      owner: '' },
+  ],
+  'Sweet 16': [
+    { week: '3 Months Out', task: 'Set theme, guest list, and budget',               owner: '' },
+    { week: '3 Months Out', task: 'Book venue and entertainment — DJ, photo booth',   owner: '' },
+    { week: '2 Months Out', task: 'Send invitations — paper or digital',              owner: '' },
+    { week: '2 Months Out', task: 'Book caterer and order custom cake',               owner: '' },
+    { week: '1 Month Out',  task: 'Order specialty décor items',                      owner: '' },
+    { week: '2 Weeks Out',  task: 'Confirm RSVPs and final headcount',                owner: '' },
+    { week: 'Week Of',      task: 'Confirm all vendors and finalize decorations',     owner: '' },
+  ],
+  Quinceañera: [
+    { week: '12 Months Out', task: 'Book ceremony and reception venues',              owner: '' },
+    { week: '12 Months Out', task: 'Select and confirm court of honor',               owner: '' },
+    { week: '12 Months Out', task: 'Establish budget — family, padrinos, sponsors',  owner: 'Family' },
+    { week: '8 Months Out',  task: 'Book photographer and videographer',              owner: '' },
+    { week: '8 Months Out',  task: 'Book DJ or live band',                            owner: '' },
+    { week: '8 Months Out',  task: 'Book caterer and cake designer',                  owner: '' },
+    { week: '6 Months Out',  task: 'Order gown and court dresses and suits',          owner: '' },
+    { week: '6 Months Out',  task: 'Finalize theme and décor vision',                 owner: '' },
+    { week: '4 Months Out',  task: 'Begin court choreography rehearsals',             owner: '' },
+    { week: '2 Months Out',  task: 'Send formal invitations',                         owner: '' },
+    { week: '1 Month Out',   task: 'Final fittings — gown and court attire',          owner: '' },
+    { week: '1 Month Out',   task: 'Confirm all vendors and run-of-show',             owner: '' },
+    { week: 'Week Of',       task: 'Deliver decorations and final rehearsal',          owner: '' },
+  ],
+  Reunion: [
+    { week: '6 Months Out', task: 'Set date and book venue',                         owner: '' },
+    { week: '6 Months Out', task: 'Build or recover contact list',                   owner: '' },
+    { week: '4 Months Out', task: 'Send save-the-dates and open RSVP collection',    owner: '' },
+    { week: '3 Months Out', task: 'Plan activities, games, and memory displays',     owner: '' },
+    { week: '2 Months Out', task: 'Arrange catering or potluck logistics',           owner: '' },
+    { week: '1 Month Out',  task: 'Prepare memory book, photo slideshow, or video',  owner: '' },
+    { week: 'Week Of',      task: 'Confirm headcount and finalize food order',        owner: '' },
+    { week: 'Week Of',      task: 'Set up name tags, photo displays, and activities', owner: '' },
+  ],
+  'Fundraiser / Gala': [
+    { week: '6 Months Out', task: 'Define fundraising goal and gala format',         owner: '' },
+    { week: '6 Months Out', task: 'Secure venue — formal gala spaces book far out',  owner: '' },
+    { week: '5 Months Out', task: 'Launch sponsor and table-captain outreach',       owner: '' },
+    { week: '4 Months Out', task: 'Confirm auctioneer, MC, or entertainment',        owner: '' },
+    { week: '4 Months Out', task: 'Open ticket sales',                               owner: '' },
+    { week: '3 Months Out', task: 'Procure silent auction items with team',          owner: '' },
+    { week: '2 Months Out', task: 'Finalize catering count and service style',       owner: '' },
+    { week: '1 Month Out',  task: 'Finalize run-of-show with MC and presenters',     owner: '' },
+    { week: '1 Month Out',  task: 'Set up mobile bidding or prepare bid sheets',     owner: '' },
+    { week: 'Week Of',      task: 'Final AV test and décor walkthrough',              owner: '' },
+    { week: 'Week Of',      task: 'Brief all volunteers on roles and timeline',       owner: '' },
+  ],
+  'Networking Event': [
+    { week: '4 Weeks Out', task: 'Book venue with open-flow layout',                 owner: '' },
+    { week: '4 Weeks Out', task: 'Set ticket price or guest list strategy',          owner: '' },
+    { week: '3 Weeks Out', task: 'Launch invitations or ticket sales',               owner: '' },
+    { week: '2 Weeks Out', task: 'Arrange light food and drink order',               owner: '' },
+    { week: '1 Week Out',  task: 'Confirm headcount and catering',                   owner: '' },
+    { week: 'Week Of',     task: 'Prepare name badges and check-in process',         owner: '' },
+    { week: 'Week Of',     task: 'Brief any speakers or sponsor reps on format',     owner: '' },
+  ],
 };
 
 // ─── Budget & vendor templates by event type ──────────────────────────────────
@@ -650,6 +949,22 @@ const BUDGET_TEMPLATES = {
   'Bridal Shower':[{ c:'Venue',pct:.20 },{ c:'Catering',pct:.40 },{ c:'Decor',pct:.20 },{ c:'Cake',pct:.10 },{ c:'Activities',pct:.10 }],
   Graduation:     [{ c:'Venue',pct:.25 },{ c:'Catering',pct:.50 },{ c:'Decor',pct:.15 },{ c:'Cake',pct:.10 }],
   Other:          [{ c:'Venue',pct:.35 },{ c:'Catering',pct:.40 },{ c:'Entertainment',pct:.15 },{ c:'Misc',pct:.10 }],
+  'Engagement Party': [{ c:'Venue',pct:.30 },{ c:'Catering',pct:.50 },{ c:'Decor',pct:.12 },{ c:'Florals',pct:.08 }],
+  'Vow Renewal':      [{ c:'Venue',pct:.28 },{ c:'Catering',pct:.35 },{ c:'Photography',pct:.15 },{ c:'Florals',pct:.12 },{ c:'Entertainment',pct:.10 }],
+  'Retirement Party': [{ c:'Venue',pct:.25 },{ c:'Catering',pct:.45 },{ c:'Decor',pct:.15 },{ c:'Cake',pct:.10 },{ c:'Misc',pct:.05 }],
+  'Sweet 16':         [{ c:'Venue',pct:.28 },{ c:'Catering',pct:.30 },{ c:'Entertainment',pct:.20 },{ c:'Decor',pct:.14 },{ c:'Cake',pct:.08 }],
+  Quinceañera:        [{ c:'Venue',pct:.25 },{ c:'Catering',pct:.30 },{ c:'Photography',pct:.10 },{ c:'Florals',pct:.08 },{ c:'Entertainment',pct:.10 },{ c:'Attire',pct:.10 },{ c:'Cake',pct:.04 },{ c:'Misc',pct:.03 }],
+  Reunion:            [{ c:'Venue',pct:.25 },{ c:'Catering',pct:.55 },{ c:'Decor',pct:.12 },{ c:'Activities',pct:.08 }],
+  'Fundraiser / Gala':[{ c:'Venue',pct:.28 },{ c:'Catering',pct:.32 },{ c:'AV / Tech',pct:.12 },{ c:'Decor',pct:.10 },{ c:'Entertainment',pct:.10 },{ c:'Printing / Signage',pct:.08 }],
+  'Networking Event': [{ c:'Venue',pct:.35 },{ c:'Catering',pct:.50 },{ c:'Decor',pct:.10 },{ c:'Printing / Signage',pct:.05 }],
+  'Holiday Party':    [{ c:'Venue',pct:.30 },{ c:'Catering',pct:.35 },{ c:'Entertainment',pct:.15 },{ c:'Decor',pct:.12 },{ c:'AV / Tech',pct:.05 },{ c:'Misc',pct:.03 }],
+  Conference:         [{ c:'Venue',pct:.35 },{ c:'Catering',pct:.22 },{ c:'AV / Tech',pct:.20 },{ c:'Entertainment',pct:.10 },{ c:'Printing / Signage',pct:.08 },{ c:'Misc',pct:.05 }],
+  'Product Launch':   [{ c:'Venue',pct:.22 },{ c:'Catering',pct:.15 },{ c:'AV / Tech',pct:.30 },{ c:'Decor',pct:.12 },{ c:'Printing / Signage',pct:.12 },{ c:'Misc',pct:.09 }],
+  'Team Retreat':     [{ c:'Venue',pct:.42 },{ c:'Catering',pct:.28 },{ c:'Activities',pct:.18 },{ c:'Transport',pct:.07 },{ c:'Misc',pct:.05 }],
+  'Town Hall':        [{ c:'AV / Tech',pct:.40 },{ c:'Catering',pct:.30 },{ c:'Venue',pct:.18 },{ c:'Printing / Signage',pct:.12 }],
+  'Training / Workshop':[{ c:'Venue',pct:.28 },{ c:'Catering',pct:.28 },{ c:'AV / Tech',pct:.22 },{ c:'Printing / Signage',pct:.15 },{ c:'Misc',pct:.07 }],
+  'Award Ceremony':   [{ c:'Venue',pct:.28 },{ c:'Catering',pct:.35 },{ c:'AV / Tech',pct:.15 },{ c:'Decor',pct:.10 },{ c:'Printing / Signage',pct:.12 }],
+  'Client Dinner':    [{ c:'Venue',pct:.40 },{ c:'Catering',pct:.45 },{ c:'Entertainment',pct:.10 },{ c:'Misc',pct:.05 }],
 };
 
 const VENDOR_STUBS = {
@@ -662,10 +977,30 @@ const VENDOR_STUBS = {
   'Bridal Shower':['Venue','Catering'],
   Graduation:     ['Venue','Catering'],
   Other:          ['Venue','Catering'],
+  'Engagement Party': ['Venue','Catering'],
+  'Vow Renewal':      ['Venue','Catering','Photography','Florals'],
+  'Retirement Party': ['Venue','Catering'],
+  'Sweet 16':         ['Venue','Catering','Entertainment'],
+  Quinceañera:        ['Venue','Catering','Photography','Florals','Entertainment'],
+  Reunion:            ['Venue','Catering'],
+  'Fundraiser / Gala':['Venue','Catering','AV / Tech','Entertainment'],
+  'Networking Event': ['Venue','Catering'],
+  'Holiday Party':    ['Venue','Catering','Entertainment','AV / Tech'],
+  Conference:         ['Venue','Catering','AV / Tech'],
+  'Product Launch':   ['Venue','Catering','AV / Tech'],
+  'Team Retreat':     ['Venue','Catering'],
+  'Town Hall':        ['Venue','AV / Tech'],
+  'Training / Workshop': ['Venue','Catering','AV / Tech'],
+  'Award Ceremony':   ['Venue','Catering','AV / Tech'],
+  'Client Dinner':    ['Venue','Catering'],
 };
 
 // Typical guests-per-table by event type
-const TABLE_SIZE = { Wedding: 8, Corporate: 10, 'Board Meeting': 12, Birthday: 8, Anniversary: 8, 'Baby Shower': 6, 'Bridal Shower': 6, Graduation: 8, Other: 8 };
+const TABLE_SIZE = { Wedding: 8, Corporate: 10, 'Board Meeting': 12, Birthday: 8, Anniversary: 8, 'Baby Shower': 6, 'Bridal Shower': 6, Graduation: 8, Other: 8,
+  'Engagement Party': 6, 'Vow Renewal': 6, 'Retirement Party': 8, 'Sweet 16': 8, Quinceañera: 8, Reunion: 10,
+  'Fundraiser / Gala': 8, 'Networking Event': 0, 'Holiday Party': 10, Conference: 10, 'Product Launch': 0,
+  'Team Retreat': 8, 'Town Hall': 0, 'Training / Workshop': 0, 'Award Ceremony': 8, 'Client Dinner': 6,
+};
 
 // Event-planner language for good / better / best budget tiers
 const TIER_META = {
@@ -714,6 +1049,86 @@ const TIER_META = {
     better: { label: 'Elevated',   tag: 'Upgraded experience with added polish' },
     best:   { label: 'Signature',  tag: 'Premium, full-service, fully produced' },
   },
+  'Engagement Party': {
+    good:   { label: 'Intimate',   tag: 'Home or casual venue — warm and personal' },
+    better: { label: 'Hosted',     tag: 'Venue or restaurant with catering and florals' },
+    best:   { label: 'Elevated',   tag: 'Styled venue, full catering, photographer' },
+  },
+  'Vow Renewal': {
+    good:   { label: 'Intimate',   tag: 'Small gathering — heartfelt and personal' },
+    better: { label: 'Curated',    tag: 'Venue with catering, florals, and photography' },
+    best:   { label: 'Celebration', tag: 'Full event with entertainment and luxury touches' },
+  },
+  'Retirement Party': {
+    good:   { label: 'Gathering',  tag: 'Casual, warm, and memorable on a budget' },
+    better: { label: 'Celebration', tag: 'Catered venue with program and tributes' },
+    best:   { label: 'Elevated',   tag: 'Full-service event, entertainment, and lasting keepsakes' },
+  },
+  'Sweet 16': {
+    good:   { label: 'Party',      tag: 'Fun and festive — all the essentials' },
+    better: { label: 'Elevated',   tag: 'Themed venue, catering, DJ, and décor' },
+    best:   { label: 'Premier',    tag: 'Full production — photo booth, live entertainment, custom styling' },
+  },
+  Quinceañera: {
+    good:   { label: 'Traditional', tag: 'Complete ceremony and reception on budget' },
+    better: { label: 'Elevated',    tag: 'Full court, florals, and upgraded catering' },
+    best:   { label: 'Luxury',      tag: 'Designer production — comparable to a luxury wedding' },
+  },
+  Reunion: {
+    good:   { label: 'Gathering',  tag: 'Casual, fun, and budget-friendly' },
+    better: { label: 'Organized',  tag: 'Venue, catered food, activities, and memory display' },
+    best:   { label: 'Memorable',  tag: 'Full program — entertainment, slideshow, and full catering' },
+  },
+  'Fundraiser / Gala': {
+    good:   { label: 'Functional', tag: 'Mission-focused, cost-conscious event that raises money' },
+    better: { label: 'Polished',   tag: 'Formal gala with catering, AV, and live auction' },
+    best:   { label: 'Premier',    tag: 'Full production gala — entertainment, premium catering, live bidding' },
+  },
+  'Networking Event': {
+    good:   { label: 'Casual',     tag: 'Light food and drinks — emphasis on conversation' },
+    better: { label: 'Organized',  tag: 'Venue, catering, and a structured icebreaker or speaker' },
+    best:   { label: 'Branded',    tag: 'Premium experience — hosted bar, entertainment, sponsor presence' },
+  },
+  'Holiday Party': {
+    good:   { label: 'Festive',    tag: 'Team celebrates — catering, venue, core entertainment' },
+    better: { label: 'Executive',  tag: 'Polished venue, catered dinner, DJ or live music' },
+    best:   { label: 'Premium',    tag: 'Full production party — open bar, entertainment, custom experience' },
+  },
+  Conference: {
+    good:   { label: 'Professional', tag: 'Well-run conference — solid content, clean execution' },
+    better: { label: 'Elevated',     tag: 'Production value, premium catering, breakout sessions' },
+    best:   { label: 'Premier',      tag: 'Large-scale produced conference — keynote stage, sponsorships, full AV' },
+  },
+  'Product Launch': {
+    good:   { label: 'Debut',     tag: 'Clean, on-brand, gets the story out' },
+    better: { label: 'Produced',  tag: 'Stage, AV production, press-ready, media event' },
+    best:   { label: 'Flagship',  tag: 'Full-scale launch event — broadcast quality, VIP experience' },
+  },
+  'Team Retreat': {
+    good:   { label: 'Offsite',   tag: 'Change of scene — practical, productive, and team-building' },
+    better: { label: 'Elevated',  tag: 'Destination accommodations, facilitated sessions, team activities' },
+    best:   { label: 'Signature', tag: 'Premium destination retreat — full facilitation, curated experiences' },
+  },
+  'Town Hall': {
+    good:   { label: 'Effective', tag: 'Message delivered clearly, all employees reached' },
+    better: { label: 'Polished',  tag: 'Professional setup with hybrid access and engagement elements' },
+    best:   { label: 'Produced',  tag: 'Full production — broadcast quality, live Q&A, catering' },
+  },
+  'Training / Workshop': {
+    good:   { label: 'Focused',   tag: 'Learning objective met, room set up, materials ready' },
+    better: { label: 'Organized', tag: 'Catered, professional facilitator, printed materials' },
+    best:   { label: 'Premium',   tag: 'Off-site venue, expert facilitator, full catering, printed workbooks' },
+  },
+  'Award Ceremony': {
+    good:   { label: 'Recognition', tag: 'Meaningful ceremony that celebrates your people' },
+    better: { label: 'Polished',    tag: 'Formal venue, catering, production with music cues' },
+    best:   { label: 'Gala',        tag: 'Full production award night — black tie, premium catering, entertainment' },
+  },
+  'Client Dinner': {
+    good:   { label: 'Hosted',    tag: 'Great meal, great conversation, solid impression' },
+    better: { label: 'Executive', tag: 'Private room, curated menu, thoughtful hospitality' },
+    best:   { label: 'Premium',   tag: 'White-glove experience — Michelin-level dining, full evening program' },
+  },
 };
 
 const PER_HEAD = {
@@ -726,6 +1141,22 @@ const PER_HEAD = {
   'Bridal Shower': { good: 35,  better: 55,  best: 90  },
   Graduation:      { good: 35,  better: 55,  best: 90  },
   Other:           { good: 50,  better: 80,  best: 130 },
+  'Engagement Party':  { good: 25,  better: 45,  best: 75  },
+  'Vow Renewal':       { good: 60,  better: 100, best: 160 },
+  'Retirement Party':  { good: 30,  better: 50,  best: 80  },
+  'Sweet 16':          { good: 40,  better: 65,  best: 105 },
+  Quinceañera:         { good: 80,  better: 130, best: 200 },
+  Reunion:             { good: 25,  better: 45,  best: 70  },
+  'Fundraiser / Gala': { good: 75,  better: 120, best: 200 },
+  'Networking Event':  { good: 20,  better: 35,  best: 60  },
+  'Holiday Party':     { good: 55,  better: 85,  best: 140 },
+  Conference:          { good: 65,  better: 100, best: 180 },
+  'Product Launch':    { good: 80,  better: 130, best: 220 },
+  'Team Retreat':      { good: 120, better: 200, best: 350 },
+  'Town Hall':         { good: 20,  better: 40,  best: 70  },
+  'Training / Workshop':{ good: 40, better: 70,  best: 120 },
+  'Award Ceremony':    { good: 60,  better: 95,  best: 160 },
+  'Client Dinner':     { good: 80,  better: 140, best: 250 },
 };
 
 const TIER_WHY = {
@@ -774,9 +1205,77 @@ const TIER_WHY = {
     better: ['Mid-range venue', 'Catered service', 'Florals + décor', 'Photography + entertainment'],
     best:   ['Premium venue', 'Full plated service', 'Designer styling', 'Full production + entertainment'],
   },
+  'Engagement Party': {
+    good:   ['Home or backyard setting', 'DIY food or simple catering', 'Flowers from grocery store', 'Close family + friends only'],
+    better: ['Restaurant private room or event space', 'Catered food and drinks', 'Florals + simple décor', 'Photographer or designated family photographer'],
+    best:   ['Upscale venue or rooftop', 'Full catering + open bar', 'Professional photographer', 'Custom florals and styling'],
+  },
+  'Holiday Party': {
+    good:   ['Office or rented event hall', 'Catered buffet or food stations', 'Basic DJ or playlist', 'Simple décor'],
+    better: ['Dedicated event venue', 'Catered dinner with options', 'Professional DJ', 'Branded décor and photo ops'],
+    best:   ['Upscale venue', 'Full plated dinner + premium open bar', 'Live entertainment or band', 'Custom experience with photo booth'],
+  },
+  Conference: {
+    good:   ['Hotel ballroom or convention space', 'Box lunches or buffet', 'Standard rental AV', 'Printed agendas'],
+    better: ['Dedicated conference center', 'Catered breaks + full lunches', 'Professional AV crew', 'Branded signage + speaker materials'],
+    best:   ['Premier venue with production stage', 'Full catering all day + evening reception', 'Live streaming + broadcast AV', 'Custom app, branded materials, sponsor wall'],
+  },
+  'Product Launch': {
+    good:   ['Rented event space', 'Light catering or cocktail reception', 'Basic AV + screen', 'Press release + invite list'],
+    better: ['Custom-built stage or branded space', 'Hosted cocktail + catering', 'Pro AV + lighting', 'Live demo stations + press kit'],
+    best:   ['Full-scale branded production', 'Gala-style catering', 'Broadcast-quality AV + live streaming', 'VIP media experience + post-event reception'],
+  },
+  'Team Retreat': {
+    good:   ['Local venue or nearby hotel', 'Restaurant meals', 'One planned team activity', 'Self-facilitated agenda'],
+    better: ['Regional destination', 'Included meals + snacks', '2–3 team activities + external facilitator', 'Full itinerary with downtime'],
+    best:   ['Premium destination (resort or destination city)', 'All meals curated', 'Executive coach or external facilitator', 'Full multi-day program with evening events'],
+  },
+  'Fundraiser / Gala': {
+    good:   ['Venue with in-house catering', 'Buffet or seated dinner', 'Silent auction + MC', 'Printed bid sheets'],
+    better: ['Ballroom or formal venue', 'Plated dinner with bar', 'Live auctioneer + entertainment', 'Mobile bidding platform'],
+    best:   ['Premier gala venue', 'Multi-course dinner + premium open bar', 'Celebrity MC or live performer', 'Full AV production + video tributes'],
+  },
+  Quinceañera: {
+    good:   ['Community hall or church venue', 'Buffet catering', 'DJ + basic florals', 'Court of 8–10'],
+    better: ['Event ballroom', 'Plated dinner', 'Live band or premium DJ + full florals', 'Court of 14 + choreography'],
+    best:   ['Luxury venue', 'Multi-course dinner + premium bar', 'Live band + videographer + designer florals', 'Full court production + surprise dance'],
+  },
+  'Vow Renewal':  { good: ['Intimate home or restaurant', 'Dinner or buffet', 'Simple florals', 'Family officiant'], better: ['Boutique venue', 'Catered dinner', 'Florals + photographer', 'DJ or live musician'], best: ['Luxury venue or destination', 'Full catering + bar', 'Designer florals + videographer', 'Band + full guest experience'] },
+  'Retirement Party': { good: ['Office or community space', 'Potluck or catered buffet', 'Slideshow tribute', 'Speeches'], better: ['Restaurant or event venue', 'Catered meal', 'Memory book + video tribute', 'DJ or background music'], best: ['Upscale venue', 'Full catering + bar', 'Professional videographer + custom keepsake', 'Entertainment'] },
+  'Sweet 16': { good: ['Home or community venue', 'Catered food stations', 'DJ + basic décor', 'Birthday cake'], better: ['Rented event space', 'Full catering', 'DJ + photo booth + themed décor', 'Custom cake'], best: ['Upscale venue', 'Full catering + bar (for adults)', 'Live entertainment + photo booth + custom styling', 'Custom 3-tier cake'] },
+  Reunion: { good: ['Park, community hall, or backyard', 'Potluck or simple catering', 'DIY games and activities', 'Name tags'], better: ['Rented venue', 'Catered food', 'Planned activities + photo slideshow', 'Memory table'], best: ['Resort or upscale venue', 'Full catering + bar', 'Photographer + video tribute', 'Full entertainment and activities program'] },
+  'Networking Event': { good: ['Borrowed office space or bar', 'Light snacks + drinks', 'Name badges only', 'Organic networking'], better: ['Dedicated event venue', 'Hosted bar + catered appetizers', 'Structured icebreaker or speaker', 'Printed name badges'], best: ['Premium venue', 'Full hosted bar + heavy appetizers', 'Featured speaker or panel + entertainment', 'Branded materials + sponsor presence'] },
+  'Town Hall': { good: ['Company meeting room or office space', 'No catering needed', 'Laptop + screen share AV', 'Zoom for remote attendees'], better: ['Larger company auditorium or rented space', 'Light catering or snacks', 'Pro AV + professional streaming setup', 'Live Q&A with moderation'], best: ['Conference center or hotel ballroom', 'Full catering for in-person attendees', 'Broadcast-grade AV + production team', 'Live polling, Q&A platform, multi-camera stream'] },
+  'Training / Workshop': { good: ['Conference room', 'No catering or basic snacks', 'Laptop + projector', 'Printed materials'], better: ['External training room or hotel space', 'Catered working lunch + breaks', 'AV with interactive capabilities', 'Bound workbooks or tablets'], best: ['Off-site training center or resort', 'Full catering all day', 'Expert facilitator + pro AV', 'Custom workbooks + digital follow-up'] },
+  'Award Ceremony': { good: ['Company meeting space or restaurant private room', 'Catered dinner or buffet', 'Basic AV', 'Trophies or plaques'], better: ['Event venue or hotel ballroom', 'Plated dinner + bar', 'Professional AV with music cues + MC', 'Custom awards + sponsor wall'], best: ['Gala venue', 'Full plated dinner + premium bar', 'Full production — lighting, video, live band', 'Custom trophies + gift bags + photographer'] },
+  'Client Dinner': { good: ['Quality restaurant', 'Set menu dinner', 'Thoughtful conversation', 'Pick up the check'], better: ['Restaurant with private room', 'Chef\'s tasting menu or à la carte', 'Wine pairing + curated hospitality', 'Pre-dinner drinks or gift'], best: ['Michelin-level or exclusive restaurant', 'Full hosted evening with pre and post drinks', 'Custom experience — chef\'s table, private sommelier', 'Gift + follow-up surprise'] },
 };
 
 const PAY_METHODS = ['Cash', 'Check', 'Credit Card', 'Debit Card', 'Zelle', 'Venmo', 'PayPal', 'Wire', 'Other'];
+
+// ─── Communication log types + quick-fill templates ───────────────────────────
+const LOG_TYPES = [
+  { type: 'Phone Call',  icon: '📞' },
+  { type: 'Email',       icon: '📧' },
+  { type: 'Text / SMS',  icon: '💬' },
+  { type: 'Meeting',     icon: '🤝' },
+  { type: 'Video Call',  icon: '📹' },
+  { type: 'Contract',    icon: '📄' },
+  { type: 'Payment',     icon: '💰' },
+  { type: 'Confirmation',icon: '✅' },
+  { type: 'Note',        icon: '📝' },
+];
+const LOG_TEMPLATES = {
+  'Phone Call':  ['Called — discussed ', 'Left voicemail, awaiting callback.', 'Confirmed details by phone.', 'Called to follow up — no answer.'],
+  'Email':       ['Sent inquiry email.', 'Sent proposal — awaiting response.', 'Followed up by email.', 'Received confirmation email.'],
+  'Text / SMS':  ['Texted to confirm availability.', 'Received text reply — ', 'Sent reminder via text.'],
+  'Meeting':     ['Initial consultation — ', 'Site visit completed — ', 'Final walkthrough — ', 'Contract signing meeting.'],
+  'Video Call':  ['Video call — discussed ', 'Video consultation completed — ', 'Review call — '],
+  'Contract':    ['Contract sent for signature.', 'Signed contract received.', 'Proposal / quote received — $', 'Amendment sent for review.'],
+  'Payment':     ['Deposit paid — $', 'Balance payment sent — $', 'Invoice received — $', 'Partial payment — $'],
+  'Confirmation':['Booking confirmed.', 'All details confirmed in writing.', 'Locked in — no further changes expected.'],
+  'Note':        ['Important: ', 'Action needed — ', 'Reminder: ', 'FYI — '],
+};
 
 // Build a deep-link URL for digital payment methods so planners can tap and pay.
 // Returns null when no link can be constructed (cash, check, wire, etc.).
@@ -1124,7 +1623,7 @@ const SEED_EVENTS = [
     id: 'ev-corp',
     rsvpCode: 'tc7np4',
     name: 'TechCorp Holiday Party',
-    type: 'Corporate',
+    type: 'Holiday Party',
     date: '2026-12-18',
     venue: 'Skyline Event Center',
     catererCount: 5,
@@ -1179,6 +1678,124 @@ const SEED_EVENTS = [
       { id: 'cr8',  time: '20:30', segment: 'Awards ceremony',                location: 'Main Hall',    type: 'event',  owner: 'Events Team',   confirmed: true,  vendorName: '',                     notes: '5 awards, slides queued on projector' },
       { id: 'cr9',  time: '21:00', segment: 'DJ set begins',                  location: 'Main Hall',    type: 'vendor', owner: 'DJ',            confirmed: false, vendorName: 'DJ Night Moves',       notes: 'Dance floor opens' },
       { id: 'cr10', time: '23:00', segment: 'Last song — event wraps',        location: 'Main Hall',    type: 'event',  owner: 'Events Team',   confirmed: true,  vendorName: '',                     notes: 'Bar closes at 22:45' },
+    ],
+  },
+  {
+    id: 'ev-chaos',
+    rsvpCode: 'rx9ot7',
+    name: 'Rivera & Okafor Wedding',
+    type: 'Wedding',
+    date: '2026-10-25',
+    venue: 'The Grand Magnolia Estate',
+    catererCount: 8,
+    budget: [
+      { id: 'xb1', category: 'Venue',           budgeted: 6000,  actual: 3000,  notes: 'Upgraded to grand ballroom — $2,500 over budget' },
+      { id: 'xb2', category: 'Catering',        budgeted: 8000,  actual: 5500,  notes: 'Guest count grew from 80 to 130 — wildly over budget' },
+      { id: 'xb3', category: 'Photography',     budgeted: 2500,  actual: 4200,  notes: 'Added video package — already spent 68% over budget' },
+      { id: 'xb4', category: 'Florals',         budgeted: 2000,  actual: 2400,  notes: 'Arch, 14 centerpieces, bridal party — over by $1,800' },
+      { id: 'xb5', category: 'Entertainment',   budgeted: 1500,  actual: 2800,  notes: 'Upgraded to live band — nearly double budget' },
+      { id: 'xb6', category: 'Hair & Makeup',   budgeted: 1200,  actual: 800,   notes: 'Bridal party added — close to committed' },
+      { id: 'xb7', category: 'Cake & Desserts', budgeted: 800,   actual: 300,   notes: 'Custom 5-tier — balance due' },
+    ],
+    guests: [
+      { id: 'xg1',  name: 'Camila & Rafa Rivera',    group: 'Family',  rsvp: 'Yes',   meal: 'Standard',    table: 1,    plusOne: '',            plusOneMeal: '—', kids: 2, needs: '2 kids meals',    email: 'camila.r@gmail.com',       phone: '(615) 555-3101', address: '', giftReceived: false, thankYouSent: false, partyNotes: "Groom's parents — very involved" },
+      { id: 'xg2',  name: 'Dr. Ada Okafor',           group: 'Family',  rsvp: 'Yes',   meal: 'Vegetarian',  table: 1,    plusOne: 'Dr. Emeka Okafor', plusOneMeal: 'Standard', kids: 0, needs: '',            email: 'ada.okafor@hospital.org',  phone: '(615) 555-3102', address: '', giftReceived: false, thankYouSent: false, partyNotes: "Bride's mother — wants to approve all florals" },
+      { id: 'xg3',  name: 'Tomás Rivera',             group: 'Family',  rsvp: 'Yes',   meal: 'Standard',    table: 2,    plusOne: 'Lucia Rivera', plusOneMeal: 'Standard', kids: 0, needs: '',            email: 'tomas.r@family.net',       phone: '(615) 555-3103', address: '', giftReceived: false, thankYouSent: false, partyNotes: "Groom's brother — best man" },
+      { id: 'xg4',  name: 'Simone Abara',             group: 'Friends', rsvp: 'Yes',   meal: 'Vegan',       table: 2,    plusOne: '',            plusOneMeal: '—', kids: 0, needs: 'Nut allergy',      email: 'simone.a@outlook.com',     phone: '(615) 555-3104', address: '', giftReceived: false, thankYouSent: false, partyNotes: 'Maid of honor' },
+      { id: 'xg5',  name: 'Jordan & Casey Bell',      group: 'Friends', rsvp: 'Yes',   meal: 'Standard',    table: 3,    plusOne: '',            plusOneMeal: '—', kids: 0, needs: '',                 email: 'jbell@work.com',           phone: '(615) 555-3105', address: '', giftReceived: true,  thankYouSent: false, partyNotes: '' },
+      { id: 'xg6',  name: 'Fatima Diallo',            group: 'Family',  rsvp: 'Yes',   meal: 'Halal',       table: 3,    plusOne: 'Omar Diallo', plusOneMeal: 'Halal', kids: 0, needs: 'Halal only',    email: 'fdiallo@gmail.com',        phone: '(615) 555-3106', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' },
+      { id: 'xg7',  name: 'Marcus Chen',              group: 'Work',    rsvp: 'Maybe', meal: '—',            table: null, plusOne: '',            plusOneMeal: '—', kids: 0, needs: '',                 email: 'mchen@corp.io',            phone: '(615) 555-3107', address: '', giftReceived: false, thankYouSent: false, partyNotes: 'Waiting on travel approval' },
+      { id: 'xg8',  name: 'Priscilla & Wade Young',   group: 'Family',  rsvp: 'Yes',   meal: 'Standard',    table: 4,    plusOne: '',            plusOneMeal: '—', kids: 1, needs: '1 high chair',    email: 'priscilla.y@email.com',    phone: '(615) 555-3108', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' },
+      { id: 'xg9',  name: 'Dev Patel',                group: 'Friends', rsvp: 'Yes',   meal: 'Vegetarian',  table: 4,    plusOne: 'Anjali Patel', plusOneMeal: 'Vegetarian', kids: 0, needs: '',       email: 'dev.p@studio.co',          phone: '(615) 555-3109', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' },
+      { id: 'xg10', name: 'Nkechi Williams',          group: 'Friends', rsvp: 'Yes',   meal: 'Gluten-Free', table: 5,    plusOne: '',            plusOneMeal: '—', kids: 0, needs: 'Celiac — strict', email: 'nkechi.w@gmail.com',       phone: '(615) 555-3110', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' },
+      { id: 'xg11', name: 'Bayo & Funke Okafor',      group: 'Family',  rsvp: 'Yes',   meal: 'Standard',    table: 5,    plusOne: '',            plusOneMeal: '—', kids: 3, needs: '3 kids meals',    email: 'bayo.okafor@email.com',    phone: '(615) 555-3111', address: '', giftReceived: false, thankYouSent: false, partyNotes: "Bride's uncle — flying in from Houston" },
+      { id: 'xg12', name: 'Valentina Cruz',           group: 'Friends', rsvp: 'No',    meal: '—',            table: null, plusOne: '',            plusOneMeal: '—', kids: 0, needs: '',                 email: 'v.cruz@design.co',         phone: '(615) 555-3112', address: '', giftReceived: false, thankYouSent: false, partyNotes: 'Declined — prior engagement' },
+    ],
+    vendors: [
+      { id: 'xv1', name: 'The Grand Magnolia Estate', category: 'Venue',         budgetCategory: 'Venue',           status: 'Confirmed',    cost: 8500, depositAmt: 3000, depositPaid: true,  balancePaid: false, payDueDate: '2026-09-01', arrivalTime: '08:00', contact: 'events@grandmagnolia.com', phone: '(615) 555-4001', website: 'grandmagnolia.com', contractSigned: true, backup: '', notes: 'Upgraded from garden room to grand ballroom — cost increase negotiated late.',
+        log: [
+          { id: 'xvl1', date: '2026-02-10', text: 'Originally booked garden room at $5,500. Bride requested upgrade to grand ballroom.' },
+          { id: 'xvl2', date: '2026-03-01', text: 'Upgrade confirmed — grand ballroom $8,500. $3,000 deposit paid. $5,500 balance due Sep 1.' },
+          { id: 'xvl3', date: '2026-05-15', text: 'Venue requires minimum 130 guest count for ballroom — we are right at the edge.' },
+        ],
+      },
+      { id: 'xv2', name: 'Harvest Table Catering',   category: 'Catering',      budgetCategory: 'Catering',        status: 'Confirmed',    cost: 11200, depositAmt: 3500, depositPaid: true, balancePaid: false, payDueDate: '2026-09-15', arrivalTime: '14:00', contact: 'book@harvesttable.com',    phone: '(615) 555-4002', website: 'harvesttable.com',   contractSigned: true, backup: '', notes: 'Count grew from 80 to 130. Per-head jumped from $75 to $86 for halal + vegan accommodations.',
+        log: [
+          { id: 'xvl4', date: '2026-01-20', text: 'Signed at 80 guests × $75/head = $6,000. Deposit $2,000 paid.' },
+          { id: 'xvl5', date: '2026-04-01', text: 'Guest count revised up to 110. Contract amended — new total $8,250.' },
+          { id: 'xvl6', date: '2026-05-30', text: 'Count revised again to 130. Halal + vegan upgrades required. Final contract $11,200. Additional deposit $1,500 paid.' },
+          { id: 'xvl7', date: '2026-06-15', text: 'Balance $7,700 due Sep 15. Planner flagged this as critical — 40% over category budget.' },
+        ],
+      },
+      { id: 'xv3', name: 'Clarity Films & Photo',    category: 'Photography',   budgetCategory: 'Photography',     status: 'Confirmed',    cost: 4200, depositAmt: 4200, depositPaid: true,  balancePaid: true,  payDueDate: null,         arrivalTime: '11:00', contact: 'hello@clarityfilms.co',    phone: '(615) 555-4003', website: 'clarityfilms.co',    contractSigned: true, backup: '', notes: 'Paid in full. Original scope was photo only at $2,500. Videography package added by client.',
+        log: [
+          { id: 'xvl8',  date: '2026-02-01', text: 'Booked for photography only — $2,500. Paid in full for 5% discount.' },
+          { id: 'xvl9',  date: '2026-04-10', text: 'Clients requested to add cinematic video package — $1,700 add-on. Paid in full same day.' },
+          { id: 'xvl10', date: '2026-06-01', text: 'Total $4,200 paid. 68% over original photography budget.' },
+        ],
+      },
+      { id: 'xv4', name: 'Wild Bloom Florals',       category: 'Florals',       budgetCategory: 'Florals',         status: 'Deposit Paid', cost: 3800, depositAmt: 1200, depositPaid: true,  balancePaid: false, payDueDate: '2026-09-01', arrivalTime: '10:00', contact: 'studio@wildbloom.co',      phone: '(615) 555-4004', website: '',             contractSigned: true, backup: '', notes: 'Arch, 14 centerpieces, 6 bridesmaids bouquets, flower crown. Scope crept far beyond original.',
+        log: [
+          { id: 'xvl11', date: '2026-03-15', text: 'Original scope: arch + 8 centerpieces = $1,600. Signed and paid deposit $600.' },
+          { id: 'xvl12', date: '2026-05-01', text: 'Bride added 6 more centerpieces + 6 bouquets + flower crown. New total $3,800. Deposit revised — paid $1,200 total.' },
+          { id: 'xvl13', date: '2026-06-10', text: 'Balance $2,600 due Sep 1. Category is $1,800 over budget.' },
+        ],
+      },
+      { id: 'xv5', name: 'The Meridian Band',        category: 'Entertainment', budgetCategory: 'Entertainment',   status: 'Contracted',   cost: 2800, depositAmt: 800,  depositPaid: true,  balancePaid: false, payDueDate: '2026-08-15', arrivalTime: '15:30', contact: 'book@meridianband.com',     phone: '(615) 555-4005', website: 'meridianband.com',   contractSigned: true, backup: '', notes: 'Upgraded from DJ ($1,200) to live 5-piece band ($2,800) at client request. Balance due Aug 15.',
+        log: [
+          { id: 'xvl14', date: '2026-01-15', text: 'Originally selected Sound Wave DJ at $1,200 quote.' },
+          { id: 'xvl15', date: '2026-04-20', text: 'Clients visited Meridian Band showcase and insisted on booking. $2,800 — $1,600 over entertainment budget.' },
+          { id: 'xvl16', date: '2026-04-25', text: 'Contracted Meridian Band. $800 deposit paid. Balance $2,000 due Aug 15.' },
+        ],
+      },
+      { id: 'xv6', name: 'Glow Beauty Collective',  category: 'Hair & Makeup', budgetCategory: 'Hair & Makeup',   status: 'Confirmed',    cost: 800,  depositAmt: 800,  depositPaid: true,  balancePaid: true,  payDueDate: null,         arrivalTime: '09:00', contact: 'hello@glowbeauty.co',      phone: '(615) 555-4006', website: '',             contractSigned: true, backup: '', notes: 'Bride only paid in full. 4 additional bridal party members want full glam — not yet contracted.',
+        log: [
+          { id: 'xvl17', date: '2026-03-01', text: 'Booked for bride only — $800 paid in full.' },
+          { id: 'xvl18', date: '2026-05-15', text: 'Bridal party now wants 4 additional hair + makeup slots — ~$600 more. Not yet contracted but expected.' },
+        ],
+      },
+      { id: 'xv7', name: 'Sugar & Flour Cakery',    category: 'Cake & Desserts', budgetCategory: 'Cake & Desserts', status: 'Deposit Paid', cost: 900, depositAmt: 300, depositPaid: true, balancePaid: false, payDueDate: '2026-10-01', arrivalTime: '13:00', contact: 'orders@sugarflour.com',    phone: '(615) 555-4007', website: '',             contractSigned: true, backup: '', notes: '5-tier custom cake, 130 servings. Balance $600 due Oct 1.',
+        log: [
+          { id: 'xvl19', date: '2026-04-05', text: 'Tasting done. 5-tier custom fondant cake, 130 servings, $900 total. $300 deposit paid.' },
+          { id: 'xvl20', date: '2026-06-20', text: 'Balance $600 due Oct 1. Slight bump from original $800 estimate due to extra tier.' },
+        ],
+      },
+    ],
+    timeline: [
+      { id: 'xt1',  week: '12 Months Out', task: 'Set budget and guest count (80 guests, $22k)', done: true,  owner: 'Both' },
+      { id: 'xt2',  week: '12 Months Out', task: 'Book venue — garden room',                     done: true,  owner: 'Planner' },
+      { id: 'xt3',  week: '10 Months Out', task: 'Book photographer',                            done: true,  owner: 'Both' },
+      { id: 'xt4',  week: '10 Months Out', task: 'Book catering — 80-guest count',               done: true,  owner: 'Both' },
+      { id: 'xt5',  week: '8 Months Out',  task: 'Book entertainment — DJ',                      done: true,  owner: 'Planner' },
+      { id: 'xt6',  week: '8 Months Out',  task: 'Book florals — original scope',                done: true,  owner: 'Both' },
+      { id: 'xt7',  week: '6 Months Out',  task: 'Upgrade venue to grand ballroom (scope creep)',done: true,  owner: 'Both' },
+      { id: 'xt8',  week: '6 Months Out',  task: 'Upgrade entertainment to live band',           done: true,  owner: 'Both' },
+      { id: 'xt9',  week: '6 Months Out',  task: 'Add videography package',                      done: true,  owner: 'Both' },
+      { id: 'xt10', week: '5 Months Out',  task: 'Revise guest count to 130 — update catering',  done: true,  owner: 'Planner' },
+      { id: 'xt11', week: '5 Months Out',  task: 'Expand florals — 14 centerpieces + bouquets', done: true,  owner: 'Both' },
+      { id: 'xt12', week: '4 Months Out',  task: 'Budget review with clients — present overages', done: false, owner: 'Planner' },
+      { id: 'xt13', week: '4 Months Out',  task: 'Negotiate vendor payment plans where possible', done: false, owner: 'Planner' },
+      { id: 'xt14', week: '3 Months Out',  task: 'Send formal invitations',                      done: false, owner: 'Planner' },
+      { id: 'xt15', week: '2 Months Out',  task: 'Confirm final guest count with caterer',        done: false, owner: 'Both' },
+      { id: 'xt16', week: '1 Month Out',   task: 'Final venue walkthrough',                       done: false, owner: 'Both' },
+      { id: 'xt17', week: '2 Weeks Out',   task: 'Finalize seating for 130',                     done: false, owner: 'Planner' },
+      { id: 'xt18', week: 'Week Of',       task: 'Confirm all vendors — check balance due status', done: false, owner: 'Planner' },
+    ],
+    ros: [
+      { id: 'xr1',  time: '08:00', segment: 'Estate opens — venue setup begins',     location: 'Grand Ballroom',  type: 'vendor', owner: 'Venue Staff',          confirmed: true,  vendorName: 'The Grand Magnolia Estate', notes: 'Tables, linens, lighting — 130 capacity setup' },
+      { id: 'xr2',  time: '09:00', segment: 'Wild Bloom Florals — setup',            location: 'Grand Ballroom',  type: 'vendor', owner: 'Wild Bloom Florals',   confirmed: true,  vendorName: 'Wild Bloom Florals',        notes: 'Arch, 14 centerpieces, entrance arrangements' },
+      { id: 'xr3',  time: '09:00', segment: 'Hair & makeup — bridal suite',          location: 'Bridal Suite',    type: 'prep',   owner: 'Bridal Party',         confirmed: true,  vendorName: 'Glow Beauty Collective',    notes: 'Bride + 4 bridal party members — allow 3 hrs' },
+      { id: 'xr4',  time: '11:00', segment: 'Clarity Films arrives — getting ready', location: 'Bridal Suite',    type: 'vendor', owner: 'Clarity Films',        confirmed: true,  vendorName: 'Clarity Films & Photo',     notes: 'B-roll of getting ready, detail shots, ring shot' },
+      { id: 'xr5',  time: '14:00', segment: 'Catering crew arrives',                 location: 'Kitchen',         type: 'vendor', owner: 'Catering Lead',        confirmed: true,  vendorName: 'Harvest Table Catering',    notes: 'Setup for 130 — halal + vegan flagged at tables 3, 5' },
+      { id: 'xr6',  time: '15:30', segment: 'Band soundcheck',                       location: 'Grand Ballroom',  type: 'vendor', owner: 'Meridian Band',        confirmed: false, vendorName: 'The Meridian Band',         notes: 'Must wrap by 16:45 before guests arrive' },
+      { id: 'xr7',  time: '16:00', segment: 'Ceremony begins',                       location: 'Garden Terrace',  type: 'event',  owner: 'Officiant',            confirmed: true,  vendorName: '',                          notes: 'Guests seated by 15:45. Processional music cued.' },
+      { id: 'xr8',  time: '16:45', segment: 'Cocktail hour',                         location: 'Verandah',        type: 'event',  owner: 'Both',                 confirmed: true,  vendorName: '',                          notes: 'Bar opens, passed apps, photo ops with Clarity Films' },
+      { id: 'xr9',  time: '17:30', segment: 'Cake delivery — Sugar & Flour',         location: 'Grand Ballroom',  type: 'vendor', owner: 'Bakery',               confirmed: false, vendorName: 'Sugar & Flour Cakery',      notes: '5-tier cake — coordinate placement with venue' },
+      { id: 'xr10', time: '18:00', segment: 'Reception — grand entrance & first dance', location: 'Grand Ballroom', type: 'event', owner: 'DJ/Band',             confirmed: true,  vendorName: 'The Meridian Band',         notes: "Cue: 'At Last' — Etta James" },
+      { id: 'xr11', time: '18:30', segment: 'Dinner service begins',                 location: 'Grand Ballroom',  type: 'event',  owner: 'Catering Lead',        confirmed: true,  vendorName: 'Harvest Table Catering',    notes: 'Halal table 6, Vegan/GF table 5, kids meals tables 1 & 5' },
+      { id: 'xr12', time: '20:00', segment: 'Toasts & speeches',                     location: 'Grand Ballroom',  type: 'event',  owner: 'Best Man',             confirmed: true,  vendorName: '',                          notes: 'Best man + maid of honor — 5 min each max' },
+      { id: 'xr13', time: '20:30', segment: 'Cake cutting',                          location: 'Grand Ballroom',  type: 'event',  owner: 'Both',                 confirmed: true,  vendorName: '',                          notes: 'Photo right after' },
+      { id: 'xr14', time: '22:30', segment: 'Last dance — sparkler send-off',        location: 'Main Entrance',   type: 'event',  owner: 'Band',                 confirmed: false, vendorName: 'The Meridian Band',         notes: 'Weather backup: ribbon wands. Coordinate with venue security.' },
     ],
   },
   {
@@ -1303,6 +1920,33 @@ const SEED_CLIENTS = [
     eventIds: ['ev-wedding'],
   },
   {
+    id: 'cl-chaos',
+    name: 'Rivera & Okafor',
+    email: 'isabella.rivera@gmail.com',
+    phone: '(615) 555-0450',
+    referral: 'Word of Mouth',
+    status: 'Active',
+    plannerFee: 5200,
+    feeSchedule: [
+      { id: 'xp1', label: 'Booking retainer',    amount: 1800, due: '2026-01-15', paid: true,  paymentMethod: 'Zelle' },
+      { id: 'xp2', label: 'Midpoint payment',    amount: 1700, due: '2026-06-01', paid: false, paymentMethod: '' },
+      { id: 'xp3', label: 'Final payment',        amount: 1700, due: '2026-09-15', paid: false, paymentMethod: '' },
+    ],
+    style: 'Lush garden romance meets bold tropical. Deep coral, ivory, greenery. Client vision has expanded significantly beyond original scope.',
+    notes: 'Budget has grown from $22k to $32k+ committed. Clients enthusiastic but have not fully processed the overage. Budget review meeting is critical and overdue. Groom\'s parents (Camila & Rafa) are co-funding but amount TBD. Bride\'s mother (Dr. Ada Okafor) must approve all floral arrangements before final payment.',
+    log: [
+      { id: 'xcl1', date: '2026-01-10', text: 'Initial consultation. Budget $22k. Guest count 80. Classic garden wedding vision.' },
+      { id: 'xcl2', date: '2026-01-15', text: 'Contract signed. $1,800 retainer paid.' },
+      { id: 'xcl3', date: '2026-03-01', text: 'Clients requested venue upgrade to grand ballroom — +$3,000 over category budget. Approved by both clients.' },
+      { id: 'xcl4', date: '2026-04-20', text: 'Isabella saw The Meridian Band at a friend\'s wedding. Insisted on booking — $2,800 vs $1,200 DJ quote. Committed.' },
+      { id: 'xcl5', date: '2026-04-10', text: 'Added videography package to photography — $1,700 extra. Client paid in full same day.' },
+      { id: 'xcl6', date: '2026-05-30', text: 'Guest count revised to 130. Catering renegotiated — new total $11,200. Budget is now critically over on 4 of 7 categories.' },
+      { id: 'xcl7', date: '2026-06-10', text: 'Total committed now $32,200 vs $22,000 budget — $10,200 overcommitted. Budget review meeting requested but not yet scheduled.' },
+      { id: 'xcl8', date: '2026-06-20', text: 'Midpoint payment of $1,700 now overdue. Sent follow-up — clients say they are waiting on contribution from groom\'s parents.' },
+    ],
+    eventIds: ['ev-chaos'],
+  },
+  {
     id: 'cl-2',
     name: 'TechCorp Inc.',
     email: 'events@techcorp.com',
@@ -1358,7 +2002,7 @@ function StatCard({ label, value, sub, color, onClick }) {
   const hoverColor = color || C.accent;
   return (
     <div onClick={onClick}
-      style={{ ...s.card, flex: 1, minWidth: bp === 'mobile' ? 0 : 140, flexBasis: bp === 'mobile' ? 'calc(50% - 8px)' : 'auto', marginBottom: 0, cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box' }}
+      style={{ ...s.card, flex: 1, minWidth: (bp === 'mobile' || bp === 'tablet') ? 0 : 140, flexBasis: (bp === 'mobile' || bp === 'tablet') ? 'calc(50% - 8px)' : 'auto', marginBottom: 0, cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box' }}
       onMouseEnter={onClick ? (e => { e.currentTarget.style.borderColor = hoverColor; e.currentTarget.style.boxShadow = `0 0 0 1.5px ${hoverColor}${isLight ? `, 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06)` : ''}`; }) : undefined}
       onMouseLeave={onClick ? (e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = cardShadow; }) : undefined}
     >
@@ -1443,6 +2087,96 @@ function VoiceButton({ onResult, style }) {
         transition: 'all 0.15s', ...style }}>
       {active ? '⏹' : '🎤'}
     </button>
+  );
+}
+
+// ─── Operational communication — message types for client + internal channels ──
+const CLIENT_MSG_TYPES = [
+  { type: 'note',             icon: '📝', label: 'Note'              },
+  { type: 'update',           icon: '📋', label: 'Operational Update' },
+  { type: 'decision',         icon: '📌', label: 'Decision'           },
+  { type: 'approval_request', icon: '✋', label: 'Approval Request'   },
+];
+const INTERNAL_MSG_TYPES = [
+  { type: 'note',       icon: '📝', label: 'Note'              },
+  { type: 'concern',    icon: '⚠️',  label: 'Concern'           },
+  { type: 'escalation', icon: '🚨', label: 'Escalation'        },
+  { type: 'decision',   icon: '📌', label: 'Internal Decision'  },
+];
+// Returns border color, background tint, icon and label for a msg type
+const msgTypeStyle = (type, C) => ({
+  note:             { border: C.border,  bg: 'transparent',     icon: '📝', label: 'Note'              },
+  update:           { border: C.accent,  bg: C.accent  + '10',  icon: '📋', label: 'Operational Update' },
+  decision:         { border: C.accent2, bg: C.accent2 + '10',  icon: '📌', label: 'Decision'           },
+  approval_request: { border: C.warn,    bg: C.warn    + '10',  icon: '✋', label: 'Approval Request'   },
+  concern:          { border: C.warn,    bg: C.warn    + '10',  icon: '⚠️',  label: 'Concern'            },
+  escalation:       { border: C.danger,  bg: C.danger  + '10',  icon: '🚨', label: 'Escalation'         },
+}[type] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Note' });
+
+// ─── CommLogInput — type picker + quick-fill templates + free-text entry ──────
+function CommLogInput({ value, onChange, onAdd }) {
+  const C = useT();
+  const s = makeS(C);
+  const [logType, setLogType] = useState('');
+
+  const templates = logType ? (LOG_TEMPLATES[logType] || []) : [];
+  const prefix    = logType ? `${LOG_TYPES.find(t => t.type === logType)?.icon || ''} ${logType} — ` : '';
+
+  const applyTemplate = (tpl) => {
+    onChange(prefix + tpl);
+  };
+
+  const handleAdd = () => {
+    if (!value.trim()) return;
+    onAdd();
+    setLogType('');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Row 1: type dropdown + text input + add */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <select
+          style={{ ...s.input, width: 'auto', minWidth: 140, fontSize: 12, flexShrink: 0 }}
+          value={logType}
+          onChange={e => {
+            const t = e.target.value;
+            setLogType(t);
+            // If the input is empty or only had a prior prefix, reset so user can pick a template
+            if (!value.trim() || LOG_TYPES.some(lt => value.startsWith(`${lt.icon} ${lt.type} — `))) {
+              onChange('');
+            }
+          }}
+        >
+          <option value="">Type…</option>
+          {LOG_TYPES.map(({ type, icon }) => (
+            <option key={type} value={type}>{icon} {type}</option>
+          ))}
+        </select>
+        <input
+          style={{ ...s.input, flex: 1 }}
+          value={value}
+          placeholder={logType ? `Add detail…` : 'Log a call, email, meeting, decision…'}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+        />
+        <button style={s.btn('primary')} onClick={handleAdd}>Add</button>
+      </div>
+      {/* Row 2: quick-fill template chips — only when a type is selected */}
+      {templates.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {templates.map((tpl, i) => (
+            <button key={i} onClick={() => applyTemplate(tpl)}
+              style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.12s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; e.currentTarget.style.background = C.accent + '12'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; e.currentTarget.style.background = 'transparent'; }}
+            >
+              {tpl.length > 36 ? tpl.slice(0, 34) + '…' : tpl}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1988,8 +2722,15 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                   })()}
                 </div>
               ) : vendor.cost > 0 ? (
-                <div style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>
-                  Paid in full ✓{vendor.balanceMethod ? ` · ${vendor.balanceMethod}` : ''}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>
+                    ✓ Paid in full{vendor.balanceMethod ? ` · ${vendor.balanceMethod}` : ''}
+                  </div>
+                  <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px', color: C.muted }}
+                    onClick={() => onChange('balancePaid', false)}
+                    title="Unmark as paid">
+                    Unmark
+                  </button>
                 </div>
               ) : null}
 
@@ -2069,15 +2810,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                     ) : <AIBtn onClick={genLogSumm} loading={logSummLoad} label="Summarize log" />}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <input
-                    style={{ ...s.input, flex: 1 }}
-                    value={newLog}
-                    placeholder="Add a note — call summary, email recap, decision..."
-                    onChange={e => setNewLog(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addLog()}
-                  />
-                  <button style={s.btn('primary')} onClick={addLog}>Add</button>
+                <div style={{ marginBottom: 12 }}>
+                  <CommLogInput value={newLog} onChange={setNewLog} onAdd={addLog} />
                 </div>
                 {(vendor.log || []).length === 0 ? (
                   <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No notes yet — log calls, emails, and decisions here.</div>
@@ -2680,6 +3414,11 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
   const aiKey      = useAIKey();
   const [confirmDel, setConfirmDel] = useState(false);
   const [taskNotesLoad, setTaskNotesLoad] = useState(false);
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
   const genTaskNotes = async () => {
     if (!aiKey) return;
     setTaskNotesLoad(true);
@@ -2706,11 +3445,11 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Planning Phase</label>
             <select style={s.input} value={task.week} onChange={e => onChange('week', e.target.value)}>
-              {[...Object.keys(PHASE_OFFSET), 'Custom'].map(p => <option key={p} value={p}>{p}</option>)}
+              {[...Object.keys(PHASE_OFFSET), 'Custom'].map(p => {
+                const pd = eventDate ? phaseDate(p, eventDate) : null;
+                return <option key={p} value={p}>{pd ? `${pd} — ${p}` : p}</option>;
+              })}
             </select>
-            {task.week in PHASE_OFFSET && eventDate && (
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Target date: {phaseDate(task.week, eventDate)}</div>
-            )}
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Owner / Responsible</label>
@@ -2769,7 +3508,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
 
   const previewActual   = Number(localActual)   || 0;
   const previewBudgeted = Number(localBudgeted) || 0;
-  const rem = previewBudgeted - previewActual;
+  const balDue = committed - previewActual;
 
   const handlePhoto = (e) => {
     const file = e.target.files?.[0];
@@ -2790,12 +3529,14 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
           </div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Remaining</div>
-              <div style={{ ...s.statNum(remClr(rem, C)), fontSize: 26 }}>{fmtD(rem)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Balance Due</div>
+              <div style={{ ...s.statNum(committed === 0 ? C.muted : balDue <= 0 ? C.success : C.warn), fontSize: 26 }}>
+                {committed === 0 ? '—' : balDue <= 0 ? 'Paid' : fmtD(balDue)}
+              </div>
             </div>
             {committed > 0 && (
               <div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Vendor Committed</div>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Committed</div>
                 <div style={{ ...s.statNum(committed > row.budgeted ? C.danger : C.accent2), fontSize: 26 }}>{fmtD(committed)}</div>
               </div>
             )}
@@ -2820,7 +3561,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Actual Spent</label>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Spent</label>
               <input style={{ ...s.input, borderColor: previewActual > previewBudgeted && previewBudgeted > 0 ? C.danger + '88' : undefined }} type="number" value={localActual}
                 onChange={e => setLocalActual(e.target.value)}
                 onBlur={e => { const v = Number(e.target.value) || 0; setLocalActual(String(v)); onChange('actual', v); }}
@@ -3002,19 +3743,40 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
   );
 }
 
-function NewEventModal({ onClose, onCreate }) {
+function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
-  const [form,        setForm]       = useState({ name: '', type: 'Wedding', date: '', venue: '', guestCount: '', totalBudget: '' });
-  const [useTimeline, setUseTimeline] = useState(true);
-  const [useBudget,   setUseBudget]   = useState(true);
-  const [useVendors,  setUseVendors]  = useState(true);
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
+  const [form,             setForm]            = useState({ name: '', type: 'Wedding', date: '', venue: '', guestCount: '', totalBudget: '' });
+  const [useTimeline,      setUseTimeline]     = useState(true);
+  const [useBudget,        setUseBudget]       = useState(true);
+  const [useVendors,       setUseVendors]      = useState(true);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [activeCat,        setActiveCat]       = useState('Weddings & Celebrations');
   const tmpl       = TIMELINE_TEMPLATES[form.type];
   const budgetTmpl = BUDGET_TEMPLATES[form.type] || BUDGET_TEMPLATES.Other;
   const vendorCats = VENDOR_STUBS[form.type]     || VENDOR_STUBS.Other;
+
+  const [kitExpanded,      setKitExpanded]     = useState({ timeline: false, budget: false, vendors: false });
+  const [timelineChecked,  setTimelineChecked] = useState(() => tmpl ? tmpl.map(() => true) : []);
+  const [budgetChecked,    setBudgetChecked]   = useState(() => budgetTmpl.map(() => true));
+  const [budgetAmounts,    setBudgetAmounts]   = useState({});
+  const [vendorChecked,    setVendorChecked]   = useState(() => vendorCats.map(() => true));
+
+  // Reset item-level state whenever event type changes
+  useEffect(() => {
+    const newTmpl    = TIMELINE_TEMPLATES[form.type];
+    const newBudget  = BUDGET_TEMPLATES[form.type]  || BUDGET_TEMPLATES.Other;
+    const newVendors = VENDOR_STUBS[form.type]       || VENDOR_STUBS.Other;
+    setTimelineChecked(newTmpl ? newTmpl.map(() => true) : []);
+    setBudgetChecked(newBudget.map(() => true));
+    setBudgetAmounts({});
+    setVendorChecked(newVendors.map(() => true));
+    setKitExpanded({ timeline: false, budget: false, vendors: false });
+  }, [form.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleKit = (key) => setKitExpanded(p => ({ ...p, [key]: !p[key] }));
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const budgetAmt  = Number(form.totalBudget) || 0;
   const guestCt    = Number(form.guestCount)  || 0;
   const tableCount = guestCt ? Math.max(1, Math.ceil(guestCt / (TABLE_SIZE[form.type] || 8))) : 5;
@@ -3024,18 +3786,27 @@ function NewEventModal({ onClose, onCreate }) {
     if (!form.name.trim()) return;
 
     const timeline = useTimeline && tmpl
-      ? tmpl.map(t => ({ ...t, id: uid(), done: false }))
+      ? tmpl.filter((_, i) => timelineChecked[i] !== false).map(t => ({ ...t, id: uid(), done: false }))
       : [];
 
     const budget = useBudget && budgetAmt > 0
-      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, budgeted: Math.round(budgetAmt * item.pct), actual: 0, notes: '' }))
+      ? budgetTmpl
+          .filter((_, i) => budgetChecked[i] !== false)
+          .map(item => ({
+            id: uid(), category: item.c, actual: 0, notes: '',
+            budgeted: budgetAmounts[item.c] !== undefined
+              ? Number(budgetAmounts[item.c])
+              : Math.round(budgetAmt * item.pct),
+          }))
       : [];
 
     const vendors = useVendors
-      ? vendorCats.map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '', notes: '', log: [] }))
+      ? vendorCats
+          .filter((_, i) => vendorChecked[i] !== false)
+          .map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '', notes: '', log: [] }))
       : [];
 
-    onCreate({ id: uid(), rsvpCode: uid(), name: form.name, type: form.type, date: form.date, venue: form.venue, tables: tableCount, catererCount: 0, budget, guests: [], vendors, timeline, ros: [] });
+    onCreate({ id: uid(), rsvpCode: uid(), name: form.name, type: form.type, date: form.date, venue: form.venue, tables: tableCount, catererCount: 0, budget, guests: [], vendors, timeline, ros: [] }, selectedClientId || null);
     onClose();
   };
 
@@ -3065,24 +3836,86 @@ function NewEventModal({ onClose, onCreate }) {
         {/* Scrollable body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
 
-          {/* Type first — drives everything else */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Event Type</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-              {EVT_TYPES.map(t => (
-                <button key={t} onClick={() => upd('type', t)}
-                  style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${form.type === t ? (evtCLR[t] || C.accent) : C.border}`, background: form.type === t ? (evtCLR[t] || C.accent) + '22' : 'transparent', color: form.type === t ? (evtCLR[t] || C.accent) : C.muted, fontSize: 11, fontWeight: form.type === t ? 700 : 400, cursor: 'pointer', transition: 'all 0.12s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {t}
-                </button>
-              ))}
+          {/* ── Event Type — category tabs + subtype grid ── */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 8 }}>Event Type</label>
+
+            {/* Category tab row */}
+            {(() => {
+              const CAT_META = {
+                'Weddings & Celebrations': { icon: '🎊', color: C.accent },
+                'Corporate':               { icon: '🏢', color: C.accent2 },
+                'Social & Fundraising':    { icon: '🤝', color: C.success },
+              };
+              return (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                  {Object.keys(EVT_CATEGORIES).map(cat => {
+                    const meta   = CAT_META[cat];
+                    const active = activeCat === cat;
+                    return (
+                      <button key={cat} onClick={() => setActiveCat(cat)}
+                        style={{
+                          flex: 1, padding: '8px 6px', borderRadius: 10, cursor: 'pointer',
+                          border: `1.5px solid ${active ? meta.color : C.border}`,
+                          background: active ? meta.color + '18' : C.bg,
+                          transition: 'all 0.15s',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                        }}>
+                        <span style={{ fontSize: 18 }}>{meta.icon}</span>
+                        <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? meta.color : C.muted, lineHeight: 1.2, textAlign: 'center' }}>
+                          {cat === 'Weddings & Celebrations' ? 'Celebrations' : cat === 'Social & Fundraising' ? 'Social' : cat}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Subtype pills for active category */}
+            <div style={{
+              padding: '10px 12px', borderRadius: 10,
+              border: `1px solid ${C.border}`, background: C.bg,
+              display: 'flex', flexWrap: 'wrap', gap: 6,
+            }}>
+              {(EVT_CATEGORIES[activeCat] || []).map(t => {
+                const clr     = evtCLR[t] || C.accent;
+                const selected = form.type === t;
+                return (
+                  <button key={t} onClick={() => upd('type', t)}
+                    style={{
+                      padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+                      border: `1.5px solid ${selected ? clr : C.border}`,
+                      background: selected ? clr + '20' : 'transparent',
+                      color: selected ? clr : C.muted,
+                      fontSize: 12, fontWeight: selected ? 700 : 400,
+                      transition: 'all 0.12s', whiteSpace: 'nowrap',
+                    }}>
+                    {t}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* If selected type is in a different category, show a note */}
+            {EVT_PARENT[form.type] && EVT_PARENT[form.type] !== activeCat && (
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>
+                Selected: <span style={{ color: evtCLR[form.type] || C.accent, fontWeight: 600 }}>{form.type}</span>
+              </div>
+            )}
           </div>
 
           {/* Core details */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Event Name</label>
-              <input style={s.input} value={form.name} placeholder={form.type === 'Wedding' ? "e.g. Sarah & Todd's Wedding" : form.type === 'Birthday' ? "e.g. Maria's 40th" : form.type === 'Corporate' ? 'e.g. TechCorp Holiday Party' : 'Event name'} autoFocus onChange={e => upd('name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+              <input style={s.input} value={form.name} placeholder={
+                form.type === 'Wedding' ? "e.g. Sarah & Todd's Wedding" :
+                form.type === 'Birthday' || form.type === 'Sweet 16' ? "e.g. Maria's 40th" :
+                isCorporateType(form.type) ? `e.g. ${form.type} — Company Name` :
+                form.type === 'Quinceañera' ? "e.g. Isabella's Quinceañera" :
+                'Event name'
+              } autoFocus onChange={e => upd('name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -3091,7 +3924,7 @@ function NewEventModal({ onClose, onCreate }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Venue</label>
-                <input style={s.input} value={form.venue} placeholder="Venue name" onChange={e => upd('venue', e.target.value)} />
+                <input style={s.input} value={form.venue} placeholder="Venue name" onChange={e => upd('venue', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -3109,8 +3942,11 @@ function NewEventModal({ onClose, onCreate }) {
 
             {/* Budget estimator — shows when guest count is set */}
             {guestCt > 0 && (() => {
-              const ph = PER_HEAD[form.type] || PER_HEAD.Other;
-              const tierMeta = TIER_META[form.type] || TIER_META.Other;
+              const ph         = PER_HEAD[form.type] || PER_HEAD.Other;
+              const mFactor    = getMetroFactor(profile);
+              const mkt        = profile?.metroMarket ? METRO_MARKETS.find(m => m.id === profile.metroMarket) : null;
+              const mktTier    = mkt ? METRO_TIER_LABEL[mkt.tier] : null;
+              const tierMeta   = TIER_META[form.type] || TIER_META.Other;
               const tiers = [
                 { key: 'good',   label: tierMeta.good.label,   color: C.success },
                 { key: 'better', label: tierMeta.better.label, color: C.accent2 },
@@ -3118,23 +3954,26 @@ function NewEventModal({ onClose, onCreate }) {
               ];
               return (
                 <div>
-                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Budget Estimator — {guestCt} guests</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Budget Estimator — {guestCt} guests</div>
+                    {mkt && <span style={{ fontSize: 10, fontWeight: 700, color: mktTier?.color || C.muted, background: (mktTier?.color || C.muted) + '15', border: `1px solid ${(mktTier?.color || C.muted) + '40'}`, borderRadius: 10, padding: '1px 7px' }}>{mktTier?.icon} {mkt.label}{mFactor !== 1.0 ? ` · ${mFactor > 1 ? '+' : ''}${Math.round((mFactor - 1) * 100)}%` : ''}</span>}
+                  </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {tiers.map(({ key, label, color }) => {
-                      const total = ph[key] * guestCt;
+                      const total = Math.round(ph[key] * mFactor * guestCt / 100) * 100;
                       const active = Number(form.totalBudget) === total;
                       return (
                         <button key={key} onClick={() => upd('totalBudget', String(total))}
                           style={{ flex: 1, padding: '8px 6px', borderRadius: 8, border: `1px solid ${active ? color : C.border}`, background: active ? color + '1a' : 'transparent', cursor: 'pointer', textAlign: 'center', transition: 'all 0.12s' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: active ? color : C.muted }}>{label}</div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: active ? color : C.text, marginTop: 2 }}>{fmtD(total)}</div>
-                          <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{fmtD(ph[key])}/head</div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{fmtD(Math.round(ph[key] * mFactor))}/head</div>
                         </button>
                       );
                     })}
                   </div>
                   {TIER_WHY[form.type] && form.totalBudget && PER_HEAD[form.type] && (() => {
-                    const selectedKey = ['good','better','best'].find(k => Number(form.totalBudget) === ph[k] * guestCt);
+                    const selectedKey = ['good','better','best'].find(k => Number(form.totalBudget) === Math.round(ph[k] * mFactor * guestCt / 100) * 100);
                     if (!selectedKey) return null;
                     return (
                       <div style={{ marginTop: 8, padding: '8px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
@@ -3152,32 +3991,149 @@ function NewEventModal({ onClose, onCreate }) {
             })()}
           </div>
 
-          {/* Template options */}
+          {/* Starter Kit */}
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Starter Kit</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {tmpl && (
-              <TemplateRow
-                checked={useTimeline} onChange={setUseTimeline}
-                title={`Pre-fill ${form.type} timeline`}
-                sub={`${tmpl.length} tasks auto-dated from event date`}
-                color={typeColor}
-              />
-            )}
-            <TemplateRow
-              checked={useBudget} onChange={setUseBudget}
-              title={budgetAmt > 0 ? `Budget: ${budgetTmpl.map(i => i.c).slice(0,3).join(', ')}…` : 'Pre-fill budget categories'}
-              sub={budgetAmt > 0
-                ? budgetTmpl.map(i => `${i.c} $${Math.round(budgetAmt * i.pct).toLocaleString()}`).join(' · ')
-                : `${budgetTmpl.length} line items — enter a budget total above to see amounts`}
-              color={C.success}
-            />
-            <TemplateRow
-              checked={useVendors} onChange={setUseVendors}
-              title="Add vendor slots"
-              sub={`${vendorCats.length} empty vendor records: ${vendorCats.join(', ')}`}
-              color={C.accent2}
-            />
+
+            {/* ── Timeline ── */}
+            {tmpl && (() => {
+              const enabledCt = timelineChecked.filter(Boolean).length;
+              return (
+                <div style={{ border: `1px solid ${useTimeline ? typeColor : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+                  {/* Header row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
+                    onClick={() => useTimeline && toggleKit('timeline')}>
+                    <input type="checkbox" checked={useTimeline} onChange={e => { setUseTimeline(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, timeline: false })); }}
+                      style={{ accentColor: typeColor, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
+                      onClick={e => e.stopPropagation()} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{form.type} Timeline</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{enabledCt} of {tmpl.length} tasks · auto-dated from event date</div>
+                    </div>
+                    {useTimeline && (
+                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.timeline ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+                    )}
+                  </div>
+                  {/* Expanded items */}
+                  {useTimeline && kitExpanded.timeline && (
+                    <div style={{ borderTop: `1px solid ${C.border}`, maxHeight: 220, overflowY: 'auto' }}>
+                      {tmpl.map((task, i) => (
+                        <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 12px', borderBottom: i < tmpl.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer', background: timelineChecked[i] ? 'transparent' : C.bg + '88' }}>
+                          <input type="checkbox" checked={!!timelineChecked[i]} style={{ accentColor: typeColor, cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
+                            onChange={e => setTimelineChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: timelineChecked[i] ? C.text : C.muted, lineHeight: 1.3 }}>{task.task}</div>
+                            <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{task.week}{task.owner ? ` · ${task.owner}` : ''}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Budget ── */}
+            {(() => {
+              const enabledCt = budgetChecked.filter(Boolean).length;
+              const totalAllocated = budgetTmpl.reduce((sum, item, i) => {
+                if (!budgetChecked[i]) return sum;
+                const amt = budgetAmounts[item.c] !== undefined ? Number(budgetAmounts[item.c]) : Math.round(budgetAmt * item.pct);
+                return sum + amt;
+              }, 0);
+              return (
+                <div style={{ border: `1px solid ${useBudget ? C.success : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
+                    onClick={() => useBudget && toggleKit('budget')}>
+                    <input type="checkbox" checked={useBudget} onChange={e => { setUseBudget(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, budget: false })); }}
+                      style={{ accentColor: C.success, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
+                      onClick={e => e.stopPropagation()} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>Budget Categories</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        {enabledCt} of {budgetTmpl.length} categories
+                        {budgetAmt > 0 && totalAllocated > 0 ? ` · ${fmtD(totalAllocated)} allocated` : ' · enter a budget total to see amounts'}
+                      </div>
+                    </div>
+                    {useBudget && (
+                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.budget ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+                    )}
+                  </div>
+                  {useBudget && kitExpanded.budget && (
+                    <div style={{ borderTop: `1px solid ${C.border}`, maxHeight: 240, overflowY: 'auto' }}>
+                      {budgetTmpl.map((item, i) => {
+                        const defaultAmt = Math.round(budgetAmt * item.pct);
+                        const amt = budgetAmounts[item.c] !== undefined ? budgetAmounts[item.c] : (budgetAmt > 0 ? defaultAmt : '');
+                        return (
+                          <div key={item.c} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: i < budgetTmpl.length - 1 ? `1px solid ${C.border}` : 'none', background: budgetChecked[i] ? 'transparent' : C.bg + '88' }}>
+                            <input type="checkbox" checked={!!budgetChecked[i]} style={{ accentColor: C.success, cursor: 'pointer', flexShrink: 0 }}
+                              onChange={e => setBudgetChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
+                            <span style={{ fontSize: 12, flex: 1, color: budgetChecked[i] ? C.text : C.muted }}>{item.c}</span>
+                            <span style={{ fontSize: 10, color: C.muted, width: 32, textAlign: 'right' }}>{Math.round(item.pct * 100)}%</span>
+                            <input
+                              type="number" min="0"
+                              value={amt}
+                              placeholder={budgetAmt > 0 ? String(defaultAmt) : '—'}
+                              disabled={!budgetChecked[i]}
+                              onChange={e => setBudgetAmounts(m => ({ ...m, [item.c]: e.target.value }))}
+                              style={{ ...s.input, width: 80, fontSize: 12, padding: '3px 6px', textAlign: 'right', opacity: budgetChecked[i] ? 1 : 0.4 }}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Vendor Slots ── */}
+            {(() => {
+              const enabledCt = vendorChecked.filter(Boolean).length;
+              return (
+                <div style={{ border: `1px solid ${useVendors ? C.accent2 : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
+                    onClick={() => useVendors && toggleKit('vendors')}>
+                    <input type="checkbox" checked={useVendors} onChange={e => { setUseVendors(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, vendors: false })); }}
+                      style={{ accentColor: C.accent2, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
+                      onClick={e => e.stopPropagation()} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>Vendor Slots</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{enabledCt} empty vendor records to fill in later</div>
+                    </div>
+                    {useVendors && (
+                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.vendors ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+                    )}
+                  </div>
+                  {useVendors && kitExpanded.vendors && (
+                    <div style={{ borderTop: `1px solid ${C.border}`, display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 12px' }}>
+                      {vendorCats.map((cat, i) => (
+                        <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 16, border: `1px solid ${vendorChecked[i] ? C.accent2 : C.border}`, background: vendorChecked[i] ? C.accent2 + '15' : 'transparent', cursor: 'pointer', fontSize: 11, color: vendorChecked[i] ? C.accent2 : C.muted, transition: 'all 0.12s' }}>
+                          <input type="checkbox" checked={!!vendorChecked[i]} style={{ accentColor: C.accent2, cursor: 'pointer' }}
+                            onChange={e => setVendorChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
+                          {cat}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Client link */}
+          {clients.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 6 }}>
+                Link to Client <span style={{ fontWeight: 400 }}>(optional)</span>
+              </label>
+              <select style={s.input} value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
+                <option value="">No client — standalone event</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -3376,7 +4332,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     const mk = (week, task, notes = '') => tasks.push({ id: uid(), week, task, done: false, owner: '', notes });
 
     const isWedding    = event.type === 'Wedding';
-    const isCorporate  = event.type === 'Corporate';
+    const isCorporate  = isCorporateType(event.type);
     const isBoard      = event.type === 'Board Meeting';
     const guestN       = parseInt(answers['count'] || '0', 10);
     const cateringAns  = answers['catering'] || answers['style'] || '';
@@ -3856,7 +4812,7 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
   const removeInstallment = (id) =>
     onChange('feeSchedule', (client.feeSchedule || []).filter(f => f.id !== id));
 
-  const panelW = bp === 'mobile' ? '100vw' : bp === 'tablet' ? '100vw' : 480;
+  const panelW = bp === 'mobile' || bp === 'tablet' ? '100vw' : 480;
 
   // ── Reusable section divider ──────────────────────────────────────────────────
   const Divider = ({ label }) => (
@@ -4074,10 +5030,8 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
             </button>
             {showLog && (
               <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <input style={{ ...s.input, flex: 1 }} value={newLog} placeholder="Log a call, email, or meeting note…"
-                    onChange={e => setNewLog(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLog()} />
-                  <button style={s.btn('primary')} onClick={addLog}>Add</button>
+                <div style={{ marginBottom: 12 }}>
+                  <CommLogInput value={newLog} onChange={setNewLog} onAdd={addLog} />
                 </div>
                 {(client.log || []).length === 0 ? (
                   <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries yet.</div>
@@ -4114,10 +5068,81 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
 
 // ─── Client Portal ────────────────────────────────────────────────────────────
 
-function ClientPortal({ client, events, onClose }) {
+function ClientPortal({ client, events, onClose, onUpdateGuests }) {
   const C = useT();
   const s = makeS(C);
+  const [newGuestName, setNewGuestName] = useState('');
+  const [importMsg,    setImportMsg]    = useState(null); // { evId, text, ok }
+  const importRef = useRef(null);
+  const [importEvId,   setImportEvId]   = useState(null); // which event the pending import targets
+  const [msHover,      setMsHover]      = useState(null); // { phase, evType } — hovered milestone
+  const [msMouse,      setMsMouse]      = useState({ x: 0, y: 0 });
   const clientEvents = events.filter(e => (client.eventIds || []).includes(e.id));
+
+  const handlePortalImport = (e, evId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb   = XLSX.read(ev.target.result, { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!rows.length) { setImportMsg({ evId, text: 'No rows found in file.', ok: false }); return; }
+
+        const col = (row, ...keys) => {
+          const found = Object.keys(row).find(k => keys.some(key => k.toLowerCase().replace(/[\s_-]/g,'') === key.toLowerCase().replace(/[\s_-]/g,'')));
+          return found ? String(row[found]).trim() : '';
+        };
+        const normRsvp = (r) => {
+          const v = r.toLowerCase();
+          if (v === 'yes' || v === 'y' || v === 'confirmed' || v === 'attending') return 'Yes';
+          if (v === 'no'  || v === 'n' || v === 'declined'  || v === 'not attending') return 'No';
+          if (v === 'maybe' || v === 'm' || v === 'possibly') return 'Maybe';
+          return r || '';
+        };
+
+        let added = 0, updated = 0;
+        onUpdateGuests(evId, gs => {
+          let next = [...gs];
+          rows.forEach(row => {
+            const name = col(row, 'name', 'fullname', 'guestname', 'guest');
+            if (!name) return;
+            const rsvp  = col(row, 'rsvp', 'response', 'attending', 'status');
+            const email = col(row, 'email', 'emailaddress');
+            const phone = col(row, 'phone', 'phonenumber', 'mobile', 'cell');
+            const group = col(row, 'group', 'party', 'side');
+            const meal  = col(row, 'meal', 'mealchoice', 'entree', 'food');
+            const needs = col(row, 'needs', 'dietary', 'restrictions', 'allergies');
+            const existing = next.find(g => g.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              next = next.map(g => g.id === existing.id ? {
+                ...g,
+                ...(rsvp  && { rsvp: normRsvp(rsvp) }),
+                ...(email && { email }),
+                ...(phone && { phone }),
+                ...(group && { group }),
+                ...(meal  && { meal }),
+                ...(needs && { needs }),
+              } : g);
+              updated++;
+            } else {
+              next.push({ id: uid(), name, group: group || 'Friends', rsvp: normRsvp(rsvp), meal: meal || '—', needs: needs || '', email: email || '', phone: phone || '', address: '', table: null, plusOne: '', plusOneMeal: '—', kids: 0, giftReceived: false, thankYouSent: false, partyNotes: '' });
+              added++;
+            }
+          });
+          return next;
+        });
+        setImportMsg({ evId, text: `Imported: ${added} added, ${updated} updated.`, ok: true });
+        setTimeout(() => setImportMsg(null), 5000);
+      } catch (err) {
+        setImportMsg({ evId, text: `Import failed: ${err.message}`, ok: false });
+      }
+      e.target.value = '';
+      setImportEvId(null);
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   return (
     <>
@@ -4210,29 +5235,125 @@ function ClientPortal({ client, events, onClose }) {
                   return (
                     <div style={s.card}>
                       <div style={s.cardTitle}>Planning Milestones</div>
-                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>Key dates in your planning timeline — when each phase should be complete.</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>Key dates in your planning timeline — hover any milestone for action tips.</div>
                       {phases.map(({ phase, date, dLeft, focus }) => {
                         const isPast    = dLeft <= 0;
                         const isUrgent  = dLeft > 0 && dLeft <= 30;
                         const dotClr    = isPast ? C.success : isUrgent ? C.warn : C.accent;
+                        const isHov     = msHover?.phase === phase && msHover?.evId === ev.id;
+                        const guideEntry = (WORKFLOW_FOCUS[ev.type] || WORKFLOW_FOCUS.Birthday || {})[phase];
+                        const firstTip   = guideEntry?.tips?.[0] || null;
                         return (
-                          <div key={phase} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: `1px solid ${C.border}` }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotClr, flexShrink: 0, marginTop: 4 }} />
+                          <div
+                            key={phase}
+                            onMouseEnter={e => { setMsHover({ phase, evId: ev.id, evType: ev.type }); setMsMouse({ x: e.clientX, y: e.clientY }); }}
+                            onMouseMove={e  => setMsMouse({ x: e.clientX, y: e.clientY })}
+                            onMouseLeave={() => setMsHover(null)}
+                            style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'default', borderRadius: 6, padding: '8px 10px', marginBottom: 4, background: isHov ? C.accent + '11' : 'transparent', transition: 'background 0.15s' }}
+                          >
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotClr, flexShrink: 0, marginTop: 5 }} />
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{focus}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                                  {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
                                 <span style={{ fontSize: 11, color: isPast ? C.success : isUrgent ? C.warn : C.muted, fontWeight: 600 }}>
                                   {isPast ? `✓ ${Math.abs(dLeft)}d ago` : dLeft === 0 ? 'Today' : `${dLeft}d away`}
                                 </span>
                               </div>
-                              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{phase} · {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                              <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{phase} · {focus}</div>
+                              {firstTip && <div style={{ fontSize: 11, color: isPast ? C.success : isUrgent ? C.warn : C.muted, marginTop: 3, opacity: 0.8 }}>→ {firstTip}</div>}
                             </div>
                           </div>
                         );
                       })}
+                      {/* Cursor-following milestone tooltip */}
+                      {msHover?.evId === ev.id && (() => {
+                        const guide   = WORKFLOW_FOCUS[msHover.evType] || WORKFLOW_FOCUS.Birthday || {};
+                        const entry   = guide[msHover.phase] || Object.values(guide)[0];
+                        if (!entry) return null;
+                        const TIP_W = 270; const TIP_H = 130;
+                        const flipX = msMouse.x + TIP_W + 20 > window.innerWidth;
+                        const flipY = msMouse.y + TIP_H + 20 > window.innerHeight;
+                        return (
+                          <div style={{ position: 'fixed', top: flipY ? msMouse.y - TIP_H - 8 : msMouse.y + 16, left: flipX ? msMouse.x - TIP_W - 8 : msMouse.x + 12, zIndex: 9999, width: TIP_W, background: C.surface, border: `1px solid ${C.accent}44`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.28)', pointerEvents: 'none' }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.07em', marginBottom: 5, textTransform: 'uppercase' }}>{msHover.phase}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 7 }}>{entry.focus}</div>
+                            <ul style={{ margin: 0, padding: '0 0 0 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {(entry.tips || []).map((tip, i) => (
+                                <li key={i} style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{tip}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
+
+                {/* Guest List — client can view, add, import, and remove guests */}
+                {onUpdateGuests && (
+                  <div style={s.card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <div style={s.cardTitle}>Guest List</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: C.muted }}>{(ev.guests || []).length} total · {(ev.guests || []).filter(g => g.rsvp === 'Yes').length} confirmed</span>
+                        <button style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }} onClick={() => { setImportEvId(ev.id); setTimeout(() => importRef.current?.click(), 0); }}>⬆ Import</button>
+                        <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => handlePortalImport(e, importEvId)} />
+                      </div>
+                    </div>
+                    {importMsg && importMsg.evId === ev.id && (
+                      <div style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.ok ? C.success + '22' : C.danger + '22', color: importMsg.ok ? C.success : C.danger, border: `1px solid ${importMsg.ok ? C.success : C.danger}44` }}>
+                        {importMsg.text}
+                      </div>
+                    )}
+                    {/* Add guest row */}
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                      <input
+                        style={{ ...s.input, flex: 1, fontSize: 13 }}
+                        placeholder="Guest name…"
+                        value={newGuestName}
+                        onChange={e => setNewGuestName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && newGuestName.trim()) {
+                            onUpdateGuests(ev.id, gs => [...gs, { id: uid(), name: newGuestName.trim(), group: 'Friends', rsvp: '', meal: '—', needs: '', email: '', phone: '', address: '', table: null, plusOne: '', plusOneMeal: '—', kids: 0, giftReceived: false, thankYouSent: false, partyNotes: '' }]);
+                            setNewGuestName('');
+                          }
+                        }}
+                      />
+                      <button style={s.btn('primary')} onClick={() => {
+                        if (!newGuestName.trim()) return;
+                        onUpdateGuests(ev.id, gs => [...gs, { id: uid(), name: newGuestName.trim(), group: 'Friends', rsvp: '', meal: '—', needs: '', email: '', phone: '', address: '', table: null, plusOne: '', plusOneMeal: '—', kids: 0, giftReceived: false, thankYouSent: false, partyNotes: '' }]);
+                        setNewGuestName('');
+                      }}>+ Add</button>
+                    </div>
+                    {/* Guest rows */}
+                    {(ev.guests || []).length === 0 ? (
+                      <div style={{ fontSize: 13, color: C.muted, textAlign: 'center', padding: '16px 0' }}>No guests added yet.</div>
+                    ) : (
+                      <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                        {[...(ev.guests || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(g => {
+                          const rsvpClr = g.rsvp === 'Yes' ? C.success : g.rsvp === 'No' ? C.danger : g.rsvp === 'Maybe' ? C.warn : C.muted;
+                          return (
+                            <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${C.border}` }}>
+                              <div style={{ flex: 1, fontSize: 13 }}>{g.name}</div>
+                              {g.rsvp && <span style={{ fontSize: 11, color: rsvpClr, fontWeight: 600 }}>{g.rsvp}</span>}
+                              {!g.rsvp && <span style={{ fontSize: 11, color: C.muted }}>Pending</span>}
+                              <button
+                                onClick={() => onUpdateGuests(ev.id, gs => gs.filter(x => x.id !== g.id))}
+                                style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
+                                title="Remove guest"
+                              >✕</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Downloads */}
+                <DownloadsCard event={ev} client={client} />
 
                 {/* Planning fee schedule */}
                 {(client.feeSchedule || []).length > 0 && (
@@ -4326,15 +5447,89 @@ function ClientCard({ client, events, onClick }) {
 
 // ─── New Client Modal ─────────────────────────────────────────────────────────
 
-function NewClientModal({ onClose, onCreate }) {
+// ─── Fee structure market data ────────────────────────────────────────────────
+// Based on industry research: Wedding Wire, The Knot Pro, ILEA, PCMA benchmarks
+const FEE_STRUCTURES = [
+  { id: 'flat',       label: 'Flat Fee',      sub: 'Fixed price for defined scope',         icon: '💵' },
+  { id: 'percentage', label: '% of Budget',   sub: '10–20% of total event budget',          icon: '📊' },
+  { id: 'hourly',     label: 'Hourly Rate',   sub: 'Billed per hour of planning time',      icon: '⏱' },
+  { id: 'day_rate',   label: 'Day Rate',      sub: 'Per event or consultation day',         icon: '📅' },
+  { id: 'none',       label: 'No External Fee', sub: 'Internal/employee-managed',           icon: '🏢' },
+];
+
+// Suggested fee ranges by event type — sourced from industry averages
+// Full-service / coordinator / day-of tiers
+const FEE_RANGES = {
+  Wedding:           { low: 2500, high: 8500, note: 'Full-service avg $4,500 · Day-of $800–$2,500 · 10–20% of budget common' },
+  'Engagement Party':{ low: 400,  high: 1500, note: 'Often bundled with wedding package' },
+  'Vow Renewal':     { low: 1200, high: 4500, note: 'Similar scope to intimate wedding' },
+  Anniversary:       { low: 800,  high: 3500, note: 'Scale with guest count and formality' },
+  'Bridal Shower':   { low: 300,  high: 1200, note: 'Often bundled with wedding or hourly' },
+  'Baby Shower':     { low: 300,  high: 1000, note: 'Typically hourly or flat small-event fee' },
+  Birthday:          { low: 400,  high: 2000, note: 'Milestone birthdays (40th, 50th+) on high end' },
+  'Sweet 16':        { low: 800,  high: 3000, note: 'Production-heavy events approach wedding range' },
+  Quinceañera:       { low: 1500, high: 5500, note: 'Complex logistics — often wedding-comparable' },
+  Graduation:        { low: 300,  high: 1200, note: 'Typically flat fee for small events' },
+  'Retirement Party':{ low: 400,  high: 1500, note: 'Scale with guest count and venue complexity' },
+  Reunion:           { low: 500,  high: 2000, note: 'Flat fee most common — varies by size' },
+  'Fundraiser / Gala':{ low: 2000, high: 8000, note: '10–15% of event budget common for large galas' },
+  'Networking Event':{ low: 400,  high: 2000, note: 'Day rate or flat fee typical' },
+  Other:             { low: 500,  high: 3000, note: 'Varies by scope — flat fee recommended' },
+};
+
+// Default fee schedule splits by structure type
+const defaultFeeSchedule = (total, structure) => {
+  if (!total || structure === 'none') return [];
+  if (structure === 'hourly' || structure === 'day_rate') return [
+    { id: uid(), label: 'Retainer / deposit', amount: Math.round(total * 0.5), due: '', paid: false, paymentMethod: '' },
+    { id: uid(), label: 'Final payment',       amount: Math.round(total * 0.5), due: '', paid: false, paymentMethod: '' },
+  ];
+  // flat / percentage — 3-part for larger amounts, 2-part for small
+  if (total >= 2000) return [
+    { id: uid(), label: 'Booking retainer (33%)', amount: Math.round(total * 0.33), due: '', paid: false, paymentMethod: '' },
+    { id: uid(), label: 'Midpoint payment (33%)', amount: Math.round(total * 0.33), due: '', paid: false, paymentMethod: '' },
+    { id: uid(), label: 'Final payment (34%)',     amount: total - Math.round(total * 0.33) * 2, due: '', paid: false, paymentMethod: '' },
+  ];
+  return [
+    { id: uid(), label: 'Retainer (50%)', amount: Math.round(total * 0.5), due: '', paid: false, paymentMethod: '' },
+    { id: uid(), label: 'Final payment (50%)', amount: total - Math.round(total * 0.5), due: '', paid: false, paymentMethod: '' },
+  ];
+};
+
+function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const C = useT();
   const s = makeS(C);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '' });
-  const [referralChoice, setReferralChoice] = useState('');
-  const [touched, setTouch] = useState({});
+  const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
+  const [referralChoice,   setReferralChoice]   = useState('');
+  const [touched,          setTouch]            = useState({});
+  const [selectedEventId,  setSelectedEventId]  = useState('');
   const set   = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const touch = (k)    => setTouch(t => ({ ...t, [k]: true }));
   const isOtherReferral = referralChoice === 'Other';
+
+  const linkedEvent  = events.find(ev => ev.id === selectedEventId) || null;
+  const linkedType   = linkedEvent?.type || null;
+  const isInternal   = linkedType ? isCorporateType(linkedType) : false;
+  const feeRange     = linkedType ? (FEE_RANGES[linkedType] || null) : null;
+  const evtBudget    = linkedEvent ? (linkedEvent.budget || []).reduce((s, r) => s + (r.budgeted || 0), 0) : 0;
+  const metroFactor  = getMetroFactor(profile);
+  const adjLow       = feeRange ? Math.round(feeRange.low  * metroFactor) : 0;
+  const adjHigh      = feeRange ? Math.round(feeRange.high * metroFactor) : 0;
+  const metroMkt     = profile?.metroMarket ? METRO_MARKETS.find(m => m.id === profile.metroMarket) : null;
+  const metroTier    = metroMkt ? METRO_TIER_LABEL[metroMkt.tier] : null;
+
+  // Auto-switch to 'none' for internal corporate events, back to 'flat' otherwise
+  useEffect(() => {
+    set('feeStructure', isInternal ? 'none' : 'flat');
+    if (isInternal) set('plannerFee', '');
+  }, [isInternal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const feeAmt = Number(form.plannerFee) || 0;
+
+  // For % of budget structure: compute fee from event budget
+  const computedPctFee = form.feeStructure === 'percentage' && evtBudget > 0
+    ? Math.round(evtBudget * 0.15)
+    : 0;
 
   const errEmail = touched.email && !isEmail(form.email)  ? 'Enter a valid email address' : null;
   const errPhone = touched.phone && !isPhone(form.phone)  ? 'Enter a valid phone number (10–15 digits)' : null;
@@ -4342,6 +5537,14 @@ function NewClientModal({ onClose, onCreate }) {
 
   const submit = () => {
     if (!canSubmit) return;
+    const finalFee = form.feeStructure === 'none' ? 0
+      : form.feeStructure === 'percentage' && computedPctFee ? computedPctFee
+      : feeAmt;
+    const initLogLines = ['Client created.'];
+    if (form.contactPref)   initLogLines.push(`Preferred contact: ${form.contactPref}.`);
+    if (form.guestEstimate) initLogLines.push(`Est. guest count: ${form.guestEstimate}.`);
+    if (form.venueStatus)   initLogLines.push(`Venue status: ${form.venueStatus}.`);
+    if (form.initNotes)     initLogLines.push(form.initNotes.trim());
     onCreate({
       id: 'cl-' + uid(),
       name: form.name.trim(),
@@ -4349,13 +5552,17 @@ function NewClientModal({ onClose, onCreate }) {
       phone: form.phone,
       referral: form.referral,
       status: form.status,
-      plannerFee: Number(form.plannerFee) || 0,
-      feeSchedule: [],
-      style: '',
+      contactPref: form.contactPref,
+      guestEstimate: form.guestEstimate,
+      venueStatus: form.venueStatus,
+      plannerFee: finalFee,
+      feeStructure: form.feeStructure,
+      feeSchedule: defaultFeeSchedule(finalFee, form.feeStructure),
+      style: form.styleNotes.trim(),
       notes: '',
-      log: [{ id: uid(), date: today8601(), text: 'Client created.' }],
-      eventIds: [],
-    });
+      log: [{ id: uid(), date: today8601(), text: initLogLines.join(' ') }],
+      eventIds: selectedEventId ? [selectedEventId] : [],
+    }, selectedEventId || null);
     onClose();
   };
 
@@ -4375,41 +5582,78 @@ function NewClientModal({ onClose, onCreate }) {
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Body — scrollable */}
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: 'calc(90vh - 130px)' }}>
 
-          {/* Name */}
+          {/* ── Link to Event first — drives fee logic ── */}
+          {events.length > 0 && (
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>
+                Link to Event <span style={{ fontWeight: 400 }}>(optional — drives fee suggestions)</span>
+              </label>
+              <select style={s.input} value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
+                <option value="">No event — add later</option>
+                {events.map(ev => (
+                  <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` · ${ev.type}` : ''}</option>
+                ))}
+              </select>
+              {/* Linked event summary card */}
+              {linkedEvent && (
+                <div style={{ marginTop: 8, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}`, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Type</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: EVT_CLR(C)[linkedType] || C.text, marginTop: 2 }}>{linkedType}</div>
+                  </div>
+                  {linkedEvent.date && (
+                    <div>
+                      <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Date</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginTop: 2 }}>{fmtDate(linkedEvent.date)}</div>
+                    </div>
+                  )}
+                  {evtBudget > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Event Budget</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.success, marginTop: 2 }}>{fmtD(evtBudget)}</div>
+                    </div>
+                  )}
+                  {linkedEvent.guests && (
+                    <div>
+                      <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Guests</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginTop: 2 }}>{linkedEvent.guests.length}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Client Name ── */}
           <div>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Client / Couple Name *</label>
-            <input style={s.input} value={form.name} placeholder="Sarah & Todd Chen"
-              onChange={e => set('name', e.target.value)} />
+            <input style={s.input} value={form.name}
+              placeholder={isInternal ? 'e.g. Acme Corp — Events Team' : 'e.g. Sarah & Todd Chen'}
+              autoFocus onChange={e => set('name', e.target.value)} />
           </div>
 
-          {/* Email + Phone row */}
+          {/* ── Email + Phone ── */}
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Email</label>
-              <input
-                style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }}
+              <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }}
                 type="email" value={form.email} placeholder="client@email.com"
-                onChange={e => set('email', e.target.value)}
-                onBlur={() => touch('email')}
-              />
+                onChange={e => set('email', e.target.value)} onBlur={() => touch('email')} />
               {errEmail && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Phone</label>
-              <input
-                style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }}
+              <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }}
                 type="tel" value={form.phone} placeholder="(555) 555-0100"
-                onChange={e => set('phone', formatPhone(e.target.value))}
-                onBlur={() => touch('phone')}
-              />
+                onChange={e => set('phone', formatPhone(e.target.value))} onBlur={() => touch('phone')} />
               {errPhone && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
             </div>
           </div>
 
-          {/* Source + Status row */}
+          {/* ── Source + Status ── */}
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>How They Found You</label>
@@ -4436,14 +5680,155 @@ function NewClientModal({ onClose, onCreate }) {
             </div>
           </div>
 
-          {/* Planner Fee */}
-          <div>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Planner Fee <span style={{ color: C.muted, fontWeight: 400 }}>(can add later)</span></label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, color: C.muted }}>$</span>
-              <input style={{ ...s.input, maxWidth: 160 }} type="number" value={form.plannerFee} placeholder="0"
-                onChange={e => set('plannerFee', e.target.value)} />
+          {/* ── Intake details ── */}
+          <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Quick Intake</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Row: contact pref + guest estimate */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Preferred Contact</label>
+                  <select style={s.input} value={form.contactPref} onChange={e => set('contactPref', e.target.value)}>
+                    <option value="">— Not asked —</option>
+                    {['Email', 'Text / SMS', 'Phone Call', 'WhatsApp', 'Any'].map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Est. Guest Count</label>
+                  <input style={s.input} type="number" placeholder="e.g. 150" value={form.guestEstimate} onChange={e => set('guestEstimate', e.target.value)} />
+                </div>
+              </div>
+              {/* Venue status */}
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 6 }}>Venue Status</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['No venue yet', 'In talks with venue', 'Venue booked'].map(opt => {
+                    const active = form.venueStatus === opt;
+                    return (
+                      <button key={opt} type="button" onClick={() => set('venueStatus', active ? '' : opt)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '18' : 'transparent', color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>
+                        {opt === 'No venue yet' ? '🔍 ' : opt === 'In talks with venue' ? '💬 ' : '✅ '}{opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Style/Vision */}
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Style / Vision <span style={{ fontWeight: 400 }}>(keywords)</span></label>
+                <input style={s.input} placeholder={isInternal ? 'e.g. Modern, branded, all-hands…' : 'e.g. Garden-romantic, boho, black-tie…'} value={form.styleNotes} onChange={e => set('styleNotes', e.target.value)} />
+              </div>
+              {/* Initial notes */}
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>First Impression / Notes</label>
+                <textarea style={{ ...s.input, minHeight: 56, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} placeholder="Quick notes from first call or inquiry…" value={form.initNotes} onChange={e => set('initNotes', e.target.value)} />
+              </div>
             </div>
+          </div>
+
+          {/* ── Planner Fee section ── */}
+          <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Planner Fee</label>
+              {feeRange && !isInternal && (
+                <span style={{ fontSize: 10, color: C.muted }}>
+                  {metroMkt ? <>{metroTier?.icon} {metroMkt.label}: </> : 'Industry range: '}
+                  <span style={{ color: C.accent2, fontWeight: 600 }}>{fmtD(adjLow)}–{fmtD(adjHigh)}</span>
+                  {metroMkt && metroFactor !== 1.0 && (
+                    <span style={{ color: C.muted, marginLeft: 3 }}>({metroFactor > 1 ? '+' : ''}{Math.round((metroFactor - 1) * 100)}% vs. national avg)</span>
+                  )}
+                </span>
+              )}
+            </div>
+
+            {/* Internal corporate banner */}
+            {isInternal ? (
+              <div style={{ padding: '12px 14px', background: C.accent2 + '12', border: `1px solid ${C.accent2}44`, borderRadius: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: C.accent2, marginBottom: 4 }}>🏢 Internal Employee-Managed Event</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                  {linkedType} events are typically planned by an employee or internal team — no external planner fee applies.
+                </div>
+                <button
+                  style={{ ...s.btn('ghost'), fontSize: 11, marginTop: 10, padding: '4px 10px' }}
+                  onClick={() => set('feeStructure', 'flat')}>
+                  Add external fee anyway →
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Fee structure picker */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {FEE_STRUCTURES.filter(f => f.id !== 'none').map(({ id, label, icon }) => {
+                    const active = form.feeStructure === id;
+                    return (
+                      <button key={id} onClick={() => set('feeStructure', id)}
+                        style={{
+                          padding: '5px 11px', borderRadius: 20, fontSize: 11, cursor: 'pointer',
+                          border: `1.5px solid ${active ? C.accent : C.border}`,
+                          background: active ? C.accent + '18' : 'transparent',
+                          color: active ? C.accent : C.muted,
+                          fontWeight: active ? 700 : 400, transition: 'all 0.12s',
+                        }}>
+                        {icon} {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Fee input */}
+                {form.feeStructure === 'percentage' ? (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ flex: 1, display: 'flex', gap: 6 }}>
+                        {[10, 12, 15, 18, 20].map(pct => {
+                          const amt = Math.round(evtBudget * (pct / 100));
+                          const active = form.plannerFee === String(amt) || (!form.plannerFee && pct === 15);
+                          return (
+                            <button key={pct} onClick={() => set('plannerFee', evtBudget ? String(amt) : '')}
+                              style={{ flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 10, cursor: 'pointer', textAlign: 'center',
+                                border: `1.5px solid ${active ? C.accent : C.border}`,
+                                background: active ? C.accent + '18' : 'transparent',
+                                color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>
+                              <div style={{ fontWeight: 700 }}>{pct}%</div>
+                              {evtBudget > 0 && <div style={{ marginTop: 1 }}>{fmtD(amt)}</div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {!evtBudget && <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>Link an event with a budget to see dollar amounts</div>}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, color: C.muted }}>$</span>
+                    <input style={{ ...s.input, maxWidth: 160 }} type="number" value={form.plannerFee} placeholder="0"
+                      onChange={e => set('plannerFee', e.target.value)} />
+                    {feeRange && form.plannerFee && (
+                      <span style={{ fontSize: 11, color: feeAmt < adjLow ? C.warn : feeAmt > adjHigh ? C.accent2 : C.success }}>
+                        {feeAmt < adjLow ? '↓ below market' : feeAmt > adjHigh ? '↑ above market' : '✓ market rate'}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Fee range note */}
+                {feeRange && (
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{feeRange.note}</div>
+                )}
+
+                {/* Fee schedule preview */}
+                {feeAmt > 0 && form.feeStructure !== 'hourly' && form.feeStructure !== 'day_rate' && (
+                  <div style={{ marginTop: 10, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Auto-generated payment schedule</div>
+                    {defaultFeeSchedule(feeAmt, form.feeStructure).map((p, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.text, marginBottom: 3 }}>
+                        <span>{p.label}</span>
+                        <span style={{ fontWeight: 600 }}>{fmtD(p.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -4459,40 +5844,85 @@ function NewClientModal({ onClose, onCreate }) {
   );
 }
 
+// ─── Metro Market cost-index data ─────────────────────────────────────────────
+const METRO_MARKETS = [
+  // Tier 1 — Premium (1.4–1.65×)
+  { id: 'nyc',   label: 'New York / New Jersey',    region: 'Northeast',    tier: 1, factor: 1.65 },
+  { id: 'sf',    label: 'San Francisco / Bay Area',  region: 'West Coast',   tier: 1, factor: 1.60 },
+  { id: 'la',    label: 'Los Angeles',               region: 'West Coast',   tier: 1, factor: 1.50 },
+  { id: 'bos',   label: 'Boston',                    region: 'Northeast',    tier: 1, factor: 1.45 },
+  { id: 'dc',    label: 'Washington DC / NoVA',      region: 'Mid-Atlantic', tier: 1, factor: 1.45 },
+  { id: 'sea',   label: 'Seattle',                   region: 'West Coast',   tier: 1, factor: 1.40 },
+  // Tier 2 — Above Average (1.10–1.35×)
+  { id: 'chi',   label: 'Chicago',                   region: 'Midwest',      tier: 2, factor: 1.35 },
+  { id: 'mia',   label: 'Miami / Fort Lauderdale',   region: 'Southeast',    tier: 2, factor: 1.30 },
+  { id: 'sd',    label: 'San Diego',                 region: 'West Coast',   tier: 2, factor: 1.25 },
+  { id: 'den',   label: 'Denver',                    region: 'Mountain',     tier: 2, factor: 1.20 },
+  { id: 'aus',   label: 'Austin',                    region: 'South',        tier: 2, factor: 1.20 },
+  { id: 'dal',   label: 'Dallas / Fort Worth',       region: 'South',        tier: 2, factor: 1.15 },
+  { id: 'atl',   label: 'Atlanta',                   region: 'Southeast',    tier: 2, factor: 1.15 },
+  { id: 'phi',   label: 'Philadelphia',              region: 'Mid-Atlantic', tier: 2, factor: 1.15 },
+  { id: 'por',   label: 'Portland',                  region: 'West Coast',   tier: 2, factor: 1.15 },
+  { id: 'nas',   label: 'Nashville',                 region: 'South',        tier: 2, factor: 1.15 },
+  { id: 'min',   label: 'Minneapolis',               region: 'Midwest',      tier: 2, factor: 1.10 },
+  { id: 'phx',   label: 'Phoenix',                   region: 'Mountain',     tier: 2, factor: 1.10 },
+  // Tier 3 — Market Rate (0.88–1.05×)
+  { id: 'hou',   label: 'Houston',                   region: 'South',        tier: 3, factor: 1.05 },
+  { id: 'tam',   label: 'Tampa / Orlando',           region: 'Southeast',    tier: 3, factor: 1.00 },
+  { id: 'cha',   label: 'Charlotte',                 region: 'Southeast',    tier: 3, factor: 1.00 },
+  { id: 'slc',   label: 'Salt Lake City',            region: 'Mountain',     tier: 3, factor: 0.95 },
+  { id: 'col',   label: 'Columbus',                  region: 'Midwest',      tier: 3, factor: 0.95 },
+  { id: 'pit',   label: 'Pittsburgh',                region: 'Northeast',    tier: 3, factor: 0.90 },
+  { id: 'ind',   label: 'Indianapolis',              region: 'Midwest',      tier: 3, factor: 0.90 },
+  { id: 'kc',    label: 'Kansas City',               region: 'Midwest',      tier: 3, factor: 0.90 },
+  { id: 'stl',   label: 'St. Louis',                 region: 'Midwest',      tier: 3, factor: 0.88 },
+  // Tier 4 — Value / Small Market (0.75–0.82×)
+  { id: 'rural', label: 'Rural / Small Market',      region: 'Other',        tier: 4, factor: 0.80 },
+  { id: 'other', label: 'Other / International',     region: 'Other',        tier: 4, factor: 1.00 },
+];
+
+const METRO_TIER_LABEL = {
+  1: { icon: '💎', label: 'Premium Market',       color: '#a78bfa' },
+  2: { icon: '📈', label: 'Above-Average Market', color: '#60a5fa' },
+  3: { icon: '✓',  label: 'Market Rate',          color: '#34d399' },
+  4: { icon: '💡', label: 'Value Market',          color: '#fbbf24' },
+};
+
+// Helper: look up the metro factor from a profile
+const getMetroFactor = (profile) => {
+  if (!profile?.metroMarket) return 1.0;
+  return METRO_MARKETS.find(m => m.id === profile.metroMarket)?.factor || 1.0;
+};
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 function ProfileModal({ profile, onClose, onChange }) {
   const C = useT();
   const s = makeS(C);
-  const [copied, setCopied] = useState(false);
+  const [copied,       setCopied]       = useState(false);
+  const [showPay,      setShowPay]      = useState(!!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote));
+  const [showAI,       setShowAI]       = useState(false);
+  const [specCat,      setSpecCat]      = useState(Object.keys(EVT_CATEGORIES)[0]);
 
-  // Payment section state
-  const hasPayData = !!(profile?.venmo || profile?.zelle || profile?.paypal ||
-    profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote);
-  const [showPay, setShowPay] = useState(hasPayData);
+  const hasPayData = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote);
 
-  // Inline validators — return null if empty or valid, error string otherwise
   const validateVenmo  = v => !v || /^@[\w.]{1,30}$/.test(v.trim())             ? null : 'Use @handle format (letters, numbers, . _)';
   const validateZelle  = v => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) || (() => { const d = v.replace(/\D/g,''); return d.length >= 10 && d.length <= 15; })() ? null : 'Enter a valid email or 10-digit phone';
   const validatePaypal = v => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? null : 'Enter a valid email address';
+  const payErrors = { venmo: validateVenmo(profile?.venmo), zelle: validateZelle(profile?.zelle), paypal: validatePaypal(profile?.paypal) };
 
-  const payErrors = {
-    venmo:  validateVenmo(profile?.venmo),
-    zelle:  validateZelle(profile?.zelle),
-    paypal: validatePaypal(profile?.paypal),
-  };
-
-  const FIELDS = [
-    ['name',         'Your Name',       'text',  'Jane Planner'],
-    ['businessName', 'Business Name',   'text',  'Planner Co.'],
-    ['email',        'Email',           'email', 'you@planner.com'],
-    ['phone',        'Phone',           'tel',   '(555) 555-0100'],
-    ['city',         'City / Region',   'text',  'Nashville, TN'],
-    ['website',      'Website',         'text',  'yoursite.com'],
-    ['instagram',    'Instagram',       'text',  '@yourhandle'],
-  ];
-  const initials = (profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const initials   = (profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
   const hasContact = profile?.phone || profile?.email || profile?.website;
+  const metroObj   = METRO_MARKETS.find(m => m.id === profile?.metroMarket) || null;
+  const tierInfo   = metroObj ? METRO_TIER_LABEL[metroObj.tier] : null;
+
+  // Section header helper
+  const SectionHead = ({ label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+    </div>
+  );
 
   const copyContact = () => {
     const lines = [];
@@ -4505,183 +5935,226 @@ function ProfileModal({ profile, onClose, onChange }) {
     const text = lines.join('\n');
     const finish = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(finish).catch(() => {
-        const el = document.createElement('textarea');
-        el.value = text; document.body.appendChild(el); el.select();
-        try { document.execCommand('copy'); finish(); } catch {}
-        document.body.removeChild(el);
-      });
-    } else {
-      const el = document.createElement('textarea');
-      el.value = text; document.body.appendChild(el); el.select();
-      try { document.execCommand('copy'); finish(); } catch {}
-      document.body.removeChild(el);
-    }
+      navigator.clipboard.writeText(text).then(finish).catch(() => { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); try { document.execCommand('copy'); finish(); } catch {} document.body.removeChild(el); });
+    } else { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); try { document.execCommand('copy'); finish(); } catch {} document.body.removeChild(el); }
+  };
+
+  // 2-column field pair helper
+  const Row2 = ({ children }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{children}</div>
+  );
+  const Field = ({ fkey, label, type = 'text', ph }) => {
+    const err = fkey === 'email' ? (!profile?.[fkey] || isEmail(profile?.[fkey]) ? null : 'Invalid email')
+              : fkey === 'phone' ? (!profile?.[fkey] || isPhone(profile?.[fkey]) ? null : 'Invalid phone')
+              : null;
+    return (
+      <div>
+        <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
+        <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} value={profile?.[fkey] || ''} placeholder={ph} onChange={e => onChange(fkey, e.target.value)} />
+        {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 2 }}>{err}</div>}
+      </div>
+    );
   };
 
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(380px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Planner Profile</div>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(420px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+
+        {/* ── Header ── */}
+        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Planner Profile</div>
           <button onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {/* Avatar + name */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <div style={mkSphere(C.accent, 60, 22)}>{initials}</div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 32px' }}>
+
+          {/* ── Identity card ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 4 }}>
+            <div style={mkSphere(C.accent, 56, 20)}>{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{profile?.name || 'Your Name'}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{profile?.name || 'Your Name'}</div>
               <div style={{ fontSize: 12, color: C.muted }}>{profile?.businessName || 'Event Planner'}</div>
-              {profile?.city && <div style={{ fontSize: 11, color: C.muted }}>{profile.city}</div>}
+              {(profile?.city || metroObj) && (
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                  {profile?.city || ''}
+                  {metroObj && <span style={{ color: tierInfo?.color || C.accent, marginLeft: profile?.city ? ' · ' : '' }}>{tierInfo?.icon} {metroObj.label}</span>}
+                </div>
+              )}
             </div>
+            {hasContact && (
+              <button onClick={copyContact} title="Copy contact card" style={{ ...s.btn(copied ? 'success' : 'ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                {copied ? '✓' : '⎘'}
+              </button>
+            )}
           </div>
 
-          {/* Communication quick links */}
+          {/* Quick contact links */}
           {hasContact && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 20 }}>
-              {profile?.phone && (
-                <>
-                  <a href={`tel:${profile.phone}`} title="Call" style={{ display: 'flex', color: C.accent }}><svg width={15} height={15} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg></a>
-                  <a href={`sms:${profile.phone}`} title="Text" style={{ display: 'flex', color: C.accent2 }}><IconSMS size={15} /></a>
-                  <a href={`facetime:${profile.phone}`} title="FaceTime" style={{ display: 'flex' }}><IconFaceTime size={15} /></a>
-                </>
-              )}
-              {profile?.email && <a href={`mailto:${profile.email}`} title="Email" style={{ display: 'flex', color: C.accent }}><IconEmail size={15} /></a>}
-              {profile?.website && <a href={wsHref(profile.website)} target="_blank" rel="noopener noreferrer" title="Website" style={{ display: 'flex', color: C.muted }}><IconGlobe size={15} /></a>}
-              <button onClick={copyContact} title="Copy contact info" style={{ ...s.btn(copied ? 'success' : 'ghost'), fontSize: 11, padding: '3px 10px', marginLeft: 'auto' }}>
-                {copied ? '✓ Copied' : '⎘ Copy'}
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 2 }}>
+              {profile?.phone && <>
+                <a href={`tel:${profile.phone}`} title="Call" style={{ display: 'flex', color: C.accent }}><svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg></a>
+                <a href={`sms:${profile.phone}`} title="Text" style={{ display: 'flex', color: C.accent2 }}><IconSMS size={14} /></a>
+                <a href={`facetime:${profile.phone}`} title="FaceTime" style={{ display: 'flex', color: C.muted }}><IconFaceTime size={14} /></a>
+              </>}
+              {profile?.email   && <a href={`mailto:${profile.email}`} title="Email" style={{ display: 'flex', color: C.accent }}><IconEmail size={14} /></a>}
+              {profile?.website && <a href={wsHref(profile.website)} target="_blank" rel="noopener noreferrer" title="Website" style={{ display: 'flex', color: C.muted }}><IconGlobe size={14} /></a>}
+              {profile?.instagram && <span style={{ fontSize: 11, color: C.muted }}>{profile.instagram}</span>}
             </div>
           )}
 
-          {/* Fields */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {FIELDS.map(([key, label, type, ph]) => {
-              const err = key === 'email' ? (!isEmail(profile?.[key]) ? 'Enter a valid email address' : null)
-                        : key === 'phone' ? (!isPhone(profile?.[key]) ? 'Enter a valid phone number' : null)
-                        : null;
-              return (
-                <div key={key}>
-                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
-                  <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} value={profile?.[key] || ''} placeholder={ph} onChange={e => onChange(key, e.target.value)} />
-                  {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{err}</div>}
-                </div>
-              );
-            })}
+          {/* ── IDENTITY ── */}
+          <SectionHead label="Identity" />
+          <Row2>
+            <Field fkey="name"         label="Your Name"      ph="Jane Planner" />
+            <Field fkey="businessName" label="Business Name"  ph="Planner Co."  />
+          </Row2>
+          <div style={{ marginTop: 12 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Bio</label>
+            <textarea style={{ ...s.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} value={profile?.bio || ''} placeholder="Your planning style, specialties, and what makes you different…" onChange={e => onChange('bio', e.target.value)} />
+          </div>
+
+          {/* ── CONTACT & REACH ── */}
+          <SectionHead label="Contact & Reach" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Row2>
+              <Field fkey="email"     label="Email"     type="email" ph="you@planner.com"  />
+              <Field fkey="phone"     label="Phone"     type="tel"   ph="(555) 555-0100"   />
+            </Row2>
+            <Row2>
+              <Field fkey="website"   label="Website"              ph="yoursite.com"  />
+              <Field fkey="instagram" label="Instagram"            ph="@yourhandle"   />
+            </Row2>
+          </div>
+
+          {/* ── SERVICE AREA ── */}
+          <SectionHead label="Service Area & Market" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Field fkey="city" label="City / Region" ph="Nashville, TN" />
             <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Bio</label>
-              <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={profile?.bio || ''} placeholder="Brief description of your planning style and specialties…" onChange={e => onChange('bio', e.target.value)} />
-            </div>
-
-            {/* ── Claude AI Key ── */}
-            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: profile?.anthropicKey ? `1px solid ${C.border}` : 'none' }}>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>Claude AI</span>
-                {profile?.anthropicKey
-                  ? <span style={{ ...makeS(C).pill(C.success), fontSize: 10 }}>✓ Active</span>
-                  : <span style={{ fontSize: 11, color: C.muted }}>Unlocks AI drafting features</span>}
-              </div>
-              <div style={{ padding: '0 14px 14px', paddingTop: 12 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Anthropic API Key</label>
-                <input
-                  style={makeS(C).input}
-                  type="password"
-                  value={profile?.anthropicKey || ''}
-                  placeholder="sk-ant-…"
-                  onChange={e => onChange('anthropicKey', e.target.value)}
-                />
-                <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Key stored locally. Never sent anywhere except api.anthropic.com.</div>
-              </div>
-            </div>
-
-            {/* ── How Clients Pay ── collapsible structured section */}
-            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-              <button
-                onClick={() => setShowPay(v => !v)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Primary Metro Market</label>
+              <select
+                value={profile?.metroMarket || ''}
+                onChange={e => onChange('metroMarket', e.target.value)}
+                style={{ ...s.input, cursor: 'pointer' }}
               >
-                <span style={{ fontSize: 12, fontWeight: 600 }}>How Clients Pay</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {hasPayData && !showPay && (
-                    <span style={{ ...s.pill(C.accent), fontSize: 10 }}>saved</span>
-                  )}
-                  <span style={{ color: C.muted, fontSize: 12 }}>{showPay ? '▾' : '▸'}</span>
-                </span>
-              </button>
-              {showPay && (
-                <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 0 }}>
-                  {/* Venmo */}
-                  <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Venmo</label>
-                    <input
-                      style={{ ...s.input, borderColor: payErrors.venmo ? C.danger : undefined }}
-                      value={profile?.venmo || ''} placeholder="@YourVenmo"
-                      onChange={e => onChange('venmo', e.target.value)}
-                    />
-                    {payErrors.venmo && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{payErrors.venmo}</div>}
-                  </div>
-                  {/* Zelle */}
-                  <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Zelle</label>
-                    <input
-                      style={{ ...s.input, borderColor: payErrors.zelle ? C.danger : undefined }}
-                      value={profile?.zelle || ''} placeholder="Phone or email registered with Zelle"
-                      onChange={e => onChange('zelle', e.target.value)}
-                    />
-                    {payErrors.zelle && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{payErrors.zelle}</div>}
-                  </div>
-                  {/* PayPal */}
-                  <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>PayPal</label>
-                    <input
-                      style={{ ...s.input, borderColor: payErrors.paypal ? C.danger : undefined }}
-                      value={profile?.paypal || ''} placeholder="PayPal email address"
-                      onChange={e => onChange('paypal', e.target.value)}
-                    />
-                    {payErrors.paypal && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{payErrors.paypal}</div>}
-                  </div>
-                  {/* Cash / Check toggles */}
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    {[['acceptsCash','Cash'],['acceptsCheck','Check / Money Order']].map(([key, label]) => (
-                      <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: C.text }}>
-                        <input type="checkbox" checked={!!(profile?.[key])} onChange={e => onChange(key, e.target.checked)} style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }} />
-                        {label}
-                      </label>
+                <option value="">— Not set —</option>
+                {[1,2,3,4].map(tier => (
+                  <optgroup key={tier} label={`${METRO_TIER_LABEL[tier].icon} Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
+                    {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
-                  </div>
-                  {/* Other / notes */}
-                  <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Other / Notes</label>
-                    <input
-                      style={s.input}
-                      value={profile?.paymentNote || ''} placeholder="e.g. Wire transfer, Apple Pay…"
-                      onChange={e => onChange('paymentNote', e.target.value)}
-                    />
+                  </optgroup>
+                ))}
+              </select>
+              {metroObj && tierInfo && (
+                <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: tierInfo.color + '18', border: `1px solid ${tierInfo.color}44`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>{tierInfo.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: tierInfo.color }}>{tierInfo.label} · {metroObj.factor.toFixed(2)}× cost index</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
+                      Budget estimates will reflect {metroObj.label} typical rates
+                      {metroObj.factor !== 1.0 && ` (${metroObj.factor > 1 ? '+' : ''}${Math.round((metroObj.factor - 1) * 100)}% vs. national avg)`}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-
-            <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 6 }}>Event Specialties</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {EVT_TYPES.map(t => {
-                  const active = (profile?.specialties || '').split(',').map(s => s.trim()).includes(t);
-                  return (
-                    <button key={t} onClick={() => {
-                      const current = (profile?.specialties || '').split(',').map(s => s.trim()).filter(Boolean);
-                      const next = active ? current.filter(s => s !== t) : [...current, t];
-                      onChange('specialties', next.join(', '));
-                    }} style={{ ...s.btn(active ? 'primary' : 'default'), fontSize: 11, padding: '4px 10px' }}>
-                      {t}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
+
+          {/* ── EVENT SPECIALTIES ── */}
+          <SectionHead label="Event Specialties" />
+          {/* Category tabs */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+            {Object.keys(EVT_CATEGORIES).map(cat => {
+              const catTypes    = EVT_CATEGORIES[cat] || [];
+              const selectedInCat = catTypes.filter(t => (profile?.specialties || '').split(',').map(x => x.trim()).includes(t)).length;
+              return (
+                <button key={cat} onClick={() => setSpecCat(cat)} style={{ ...s.btn(specCat === cat ? 'primary' : 'ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  {cat === 'Weddings & Celebrations' ? '🎊' : cat === 'Corporate' ? '🏢' : '🤝'}
+                  {cat === 'Weddings & Celebrations' ? 'Celebrations' : cat === 'Corporate' ? 'Corporate' : 'Social'}
+                  {selectedInCat > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{selectedInCat}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {/* Compact checkbox grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            {(EVT_CATEGORIES[specCat] || []).map(t => {
+              const active = (profile?.specialties || '').split(',').map(x => x.trim()).includes(t);
+              return (
+                <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', background: active ? C.accent + '14' : 'transparent', color: active ? C.accent : C.text, fontSize: 12, transition: 'background 0.12s', userSelect: 'none' }}>
+                  <input type="checkbox" checked={active} onChange={() => {
+                    const current = (profile?.specialties || '').split(',').map(x => x.trim()).filter(Boolean);
+                    const next = active ? current.filter(x => x !== t) : [...current, t];
+                    onChange('specialties', next.join(', '));
+                  }} style={{ accentColor: C.accent, width: 13, height: 13, cursor: 'pointer', flexShrink: 0 }} />
+                  {t}
+                </label>
+              );
+            })}
+          </div>
+          {(profile?.specialties || '').split(',').filter(Boolean).length > 0 && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+              <span>{(profile?.specialties || '').split(',').filter(Boolean).length} specialties selected</span>
+              <button onClick={() => onChange('specialties', '')} style={{ background: 'none', border: 'none', color: C.danger, cursor: 'pointer', fontSize: 11, padding: 0 }}>clear all</button>
+            </div>
+          )}
+
+          {/* ── HOW CLIENTS PAY ── collapsible */}
+          <SectionHead label="How Clients Pay" />
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowPay(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+              <span style={{ fontSize: 12, fontWeight: 500 }}>Payment methods you accept</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {hasPayData && !showPay && <span style={{ ...s.pill(C.success), fontSize: 10 }}>saved</span>}
+                <span style={{ color: C.muted, fontSize: 12 }}>{showPay ? '▾' : '▸'}</span>
+              </span>
+            </button>
+            {showPay && (
+              <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+                {[['venmo','Venmo','@YourVenmo',payErrors.venmo],['zelle','Zelle','Phone or email registered with Zelle',payErrors.zelle],['paypal','PayPal','PayPal email address',payErrors.paypal]].map(([key, label, ph, err]) => (
+                  <div key={key}>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
+                    <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} value={profile?.[key] || ''} placeholder={ph} onChange={e => onChange(key, e.target.value)} />
+                    {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 2 }}>{err}</div>}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 16 }}>
+                  {[['acceptsCash','Cash'],['acceptsCheck','Check / Money Order']].map(([key, label]) => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: C.text }}>
+                      <input type="checkbox" checked={!!(profile?.[key])} onChange={e => onChange(key, e.target.checked)} style={{ accentColor: C.accent, width: 14, height: 14, cursor: 'pointer' }} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Other / Notes</label>
+                  <input style={s.input} value={profile?.paymentNote || ''} placeholder="e.g. Wire transfer, Apple Pay…" onChange={e => onChange('paymentNote', e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── CLAUDE AI ── collapsible */}
+          <SectionHead label="Integrations" />
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowAI(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+              <span style={{ fontSize: 12, fontWeight: 500 }}>Claude AI — drafting &amp; suggestions</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {profile?.anthropicKey ? <span style={{ ...s.pill(C.success), fontSize: 10 }}>✓ Active</span> : <span style={{ fontSize: 11, color: C.muted }}>not set</span>}
+                <span style={{ color: C.muted, fontSize: 12 }}>{showAI ? '▾' : '▸'}</span>
+              </span>
+            </button>
+            {showAI && (
+              <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Anthropic API Key</label>
+                <input style={s.input} type="password" value={profile?.anthropicKey || ''} placeholder="sk-ant-…" onChange={e => onChange('anthropicKey', e.target.value)} />
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Stored locally. Never sent anywhere except api.anthropic.com.</div>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </>
@@ -4739,7 +6212,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   const taskInboxItems = useMemo(() => [...urgentTasks, ...soonTasks].slice(0, 12), [urgentTasks, soonTasks]);
 
-  const pad   = bp === 'mobile' ? '20px 14px' : '28px 36px';
+  const pad   = bp === 'mobile' ? '20px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const inner = { maxWidth: 1200, margin: '0 auto' };
   return (
     <div style={s.app}>
@@ -4764,7 +6237,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : bp === 'tablet' ? 'repeat(3,1fr)' : 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
               <StatCard label="Total Clients"    value={clients.length}          sub={`${clients.filter(c => c.status === 'Active').length} active`}                                              onClick={() => setDashView('clients')} />
               <StatCard label="Active Events"    value={events.length}           sub="across all clients"   color={C.accent}                                                                                onClick={() => setDashView('events')} />
               <StatCard label="Contracted"       value={fmtD(totalContracted)}   sub={`${clients.length} client${clients.length !== 1 ? 's' : ''}`} color={C.accent2}                                     onClick={() => scrollTo(clientsRef)} />
@@ -4787,7 +6260,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         <MasterCalendarView events={events} onSelectEvent={onSelectEvent} />
       )}
 
-      {dashView === 'dashboard' && <div style={{ padding: bp === 'mobile' ? '14px' : '28px 36px' }}>
+      {dashView === 'dashboard' && <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
         <div style={inner}>
 
         {/* ── Main 2-col on desktop: left = events, right = clients ── */}
@@ -4955,7 +6428,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* ── Clients list page ── */}
       {dashView === 'clients' && (
-        <div style={{ padding: bp === 'mobile' ? '14px' : '28px 36px' }}>
+        <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
           <div style={inner}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Overview</button>
@@ -5015,7 +6488,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* ── Events list page ── */}
       {dashView === 'events' && (
-        <div style={{ padding: bp === 'mobile' ? '14px' : '28px 36px' }}>
+        <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
           <div style={inner}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Overview</button>
@@ -5033,7 +6506,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed').length;
                   const done  = (ev.timeline || []).filter(t => t.done).length;
                   const total = (ev.timeline || []).length;
-                  const remaining = (ev.budget || []).reduce((s, r) => s + r.budgeted, 0) - (ev.budget || []).reduce((s, r) => s + r.actual, 0);
+                  const evCommitted = (ev.vendors || []).filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+                  const evSpent     = (ev.budget  || []).reduce((s, r) => s + r.actual, 0);
+                  const balanceDue  = Math.max(0, evCommitted - evSpent);
                   return (
                     <div key={ev.id} onClick={() => onSelectEvent(ev.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: i < enrichedEvents.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
@@ -5061,8 +6536,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: remaining < 0 ? C.danger : remaining === 0 ? C.warn : C.success }}>{remaining < 0 ? `${fmtD(Math.abs(remaining))} over` : remaining === 0 ? 'At budget' : `${fmtD(remaining)} left`}</div>
-                        <div style={{ fontSize: 11, color: C.muted }}>budget</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : C.warn }}>
+                          {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted }}>balance due</div>
                       </div>
                       <span style={{ color: C.muted, fontSize: 16 }}>›</span>
                     </div>
@@ -5080,16 +6557,24 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
 // ─── Client Detail ────────────────────────────────────────────────────────────
 
-function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, onBack, onDelete }) {
+function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, onBack, onDelete, onUpdateEventGuests, onLinkEvent }) {
   const C         = useT();
   const s         = makeS(C);
   const clientCLR = CLIENT_CLR(C);
   const evtCLR    = EVT_CLR(C);
   const bp        = useContext(BpCtx);
   const isWide    = bp === 'desktop' || bp === 'tablet-land';
-  const [showModal,  setShowModal]  = useState(false);
-  const [showPortal, setShowPortal] = useState(false);
-  const [newLog,     setNewLog]     = useState('');
+  const [showModal,       setShowModal]       = useState(false);
+  const [showPortal,      setShowPortal]      = useState(false);
+  const [newLog,          setNewLog]          = useState('');
+  const [newLogType,      setNewLogType]      = useState('note');
+  const [newInternalLog,  setNewInternalLog]  = useState('');
+  const [newInternalType, setNewInternalType] = useState('note');
+  const [commTab,         setCommTab]         = useState('client');
+  const [logSearch,       setLogSearch]       = useState('');
+  const [showLinkEvent,   setShowLinkEvent]   = useState(false);
+  const [linkEventId,     setLinkEventId]     = useState('');
+  const [showDownloads,   setShowDownloads]   = useState(false);
 
   const clientEvents = events.filter(e => (client.eventIds || []).includes(e.id));
   const collected    = (client.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
@@ -5100,8 +6585,22 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
 
   const addLog = () => {
     if (!newLog.trim()) return;
-    onChange('log', [...(client.log || []), { id: uid(), date: today8601(), text: newLog.trim() }]);
+    const entry = { id: uid(), date: today8601(), text: newLog.trim(), type: newLogType, channel: 'client' };
+    if (newLogType === 'approval_request') entry.approvalStatus = 'pending';
+    onChange('log', [...(client.log || []), entry]);
     setNewLog('');
+    setNewLogType('note');
+  };
+
+  const addInternalLog = () => {
+    if (!newInternalLog.trim()) return;
+    onChange('internalLog', [...(client.internalLog || []), { id: uid(), date: today8601(), text: newInternalLog.trim(), type: newInternalType, channel: 'internal' }]);
+    setNewInternalLog('');
+    setNewInternalType('note');
+  };
+
+  const setApprovalStatus = (entryId, status) => {
+    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, approvalStatus: status } : e));
   };
 
   // ── Shared card sections so they can be reordered per breakpoint ─────────────
@@ -5135,7 +6634,7 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{f.label}</div>
                 {f.due && <div style={{ fontSize: 11, color: urgent ? C.danger : C.muted }}>Due {fmtDate(f.due)}{urgent ? ' — URGENT' : ''}</div>}
                 {f.paid && f.paymentMethod && <div style={{ fontSize: 11, color: C.success }}>Paid via {f.paymentMethod}</div>}
-                {partial && <div style={{ fontSize: 11, color: C.warn }}>{fmtD(f.paidAmount)} received · {fmtD(f.amount - f.paidAmount)} remaining</div>}
+                {partial && <div style={{ fontSize: 11, color: C.warn }}>{fmtD(f.paidAmount)} received · {fmtD(f.amount - f.paidAmount)} balance due</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{fmtD(f.amount)}</span>
@@ -5202,12 +6701,38 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
     </div>
   ) : null;
 
+  // Events not yet linked to this client
+  const unlinkableEvents = events.filter(ev => !(client.eventIds || []).includes(ev.id));
+
   const eventsSection = (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showLinkEvent ? 8 : 14 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Events ({clientEvents.length})</h3>
-        <button style={s.btn()} onClick={onAddEvent}>+ Add Event</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {onLinkEvent && unlinkableEvents.length > 0 && (
+            <button style={{ ...s.btn(), fontSize: 11, padding: '5px 10px' }} onClick={() => { setShowLinkEvent(v => !v); setLinkEventId(''); }}>
+              ⊕ Link Existing
+            </button>
+          )}
+          <button style={s.btn()} onClick={onAddEvent}>+ New Event</button>
+        </div>
       </div>
+      {showLinkEvent && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center', padding: '10px 14px', background: C.bg, borderRadius: 10, border: `1px solid ${C.border}` }}>
+          <select style={{ ...s.input, flex: 1, fontSize: 12 }} value={linkEventId} onChange={e => setLinkEventId(e.target.value)}>
+            <option value="">Select an event to link…</option>
+            {unlinkableEvents.map(ev => (
+              <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` (${ev.type})` : ''}</option>
+            ))}
+          </select>
+          <button style={{ ...s.btn('primary'), fontSize: 12, padding: '6px 14px' }}
+            disabled={!linkEventId}
+            onClick={() => { if (linkEventId) { onLinkEvent(linkEventId); setShowLinkEvent(false); setLinkEventId(''); } }}>
+            Link
+          </button>
+          <button style={{ ...s.btn(), fontSize: 12, padding: '6px 10px' }} onClick={() => { setShowLinkEvent(false); setLinkEventId(''); }}>Cancel</button>
+        </div>
+      )}
       {clientEvents.length === 0 ? (
         <div style={{ ...s.card, textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>No events yet</div>
@@ -5252,30 +6777,138 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
     </div>
   );
 
-  const logCard = (
-    <div style={s.card}>
-      <div style={s.cardTitle}>Communication Log</div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <input style={{ ...s.input, flex: 1 }} value={newLog} placeholder="Log a call, email, or meeting note…"
-          onChange={e => setNewLog(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLog()} />
-        <button style={s.btn('primary')} onClick={addLog}>Add</button>
-      </div>
-      {(client.log || []).length === 0 ? (
-        <div style={{ fontSize: 12, color: C.muted }}>No entries yet.</div>
-      ) : [...(client.log || [])].reverse().map(entry => (
-        <div key={entry.id} style={{ borderLeft: `2px solid ${C.border}`, paddingLeft: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>{fmtDate(entry.date)}</div>
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{entry.text}</div>
+  const logCard = (() => {
+    const isClient    = commTab === 'client';
+    const activeLog   = isClient ? (client.log || []) : (client.internalLog || []);
+    const msgTypes    = isClient ? CLIENT_MSG_TYPES : INTERNAL_MSG_TYPES;
+    const activeType  = isClient ? newLogType : newInternalType;
+    const setType     = isClient ? setNewLogType : setNewInternalType;
+    const activeInput = isClient ? newLog : newInternalLog;
+    const setInput    = isClient ? setNewLog : setNewInternalLog;
+    const handleAdd   = isClient ? addLog : addInternalLog;
+    const internalCount = (client.internalLog || []).length;
+
+    const q = logSearch.trim().toLowerCase();
+    const sorted = [...activeLog].reverse();
+    const filtered = sorted.filter(e =>
+      !q || e.text.toLowerCase().includes(q) || fmtDate(e.date).toLowerCase().includes(q)
+    );
+
+    return (
+      <div style={s.card}>
+        {/* ── Channel tabs ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 14, borderBottom: `1px solid ${C.border}`, paddingBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: 14, flexShrink: 0 }}>Channel</div>
+          <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+            {[['client', '💬 Client', null], ['internal', '🔒 Internal', internalCount || null]].map(([key, label, badge]) => {
+              const active = commTab === key;
+              return (
+                <button key={key} onClick={() => { setCommTab(key); setLogSearch(''); }}
+                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: active ? 700 : 500, border: `1.5px solid ${active ? (key === 'internal' ? C.warn : C.accent) : C.border}`, background: active ? (key === 'internal' ? C.warn + '14' : C.accent + '14') : 'transparent', color: active ? (key === 'internal' ? C.warn : C.accent) : C.muted, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.12s' }}>
+                  {label}
+                  {badge && <span style={{ background: key === 'internal' ? C.warn : C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {activeLog.length > 2 && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: C.muted, pointerEvents: 'none' }}>🔍</span>
+              <input style={{ ...s.input, padding: '4px 8px 4px 24px', fontSize: 11, width: 140 }} placeholder="Search…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
+            </div>
+          )}
         </div>
-      ))}
-    </div>
-  );
+
+        {/* ── Internal channel notice ── */}
+        {!isClient && (
+          <div style={{ padding: '8px 12px', background: C.warn + '10', border: `1px solid ${C.warn}30`, borderRadius: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: C.warn, fontWeight: 600 }}>🔒 Planner-only — never visible to client</div>
+          </div>
+        )}
+
+        {/* ── Message type selector ── */}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+          {msgTypes.map(({ type, icon, label }) => {
+            const ts = msgTypeStyle(type, C);
+            const active = activeType === type;
+            return (
+              <button key={type} onClick={() => setType(type)}
+                style={{ padding: '3px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? ts.border : C.border}`, background: active ? ts.bg : 'transparent', color: active ? ts.border : C.muted, fontWeight: active ? 700 : 400, transition: 'all 0.1s', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {icon} {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Input ── */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <input
+            style={{ ...s.input, flex: 1, fontSize: 13 }}
+            value={activeInput}
+            placeholder={
+              activeType === 'approval_request' ? 'Describe what needs approval…'
+              : activeType === 'decision' ? 'Record the decision…'
+              : activeType === 'update' ? 'Operational update…'
+              : activeType === 'concern' ? 'Describe the concern…'
+              : activeType === 'escalation' ? 'Describe the escalation…'
+              : isClient ? 'Log a call, email, meeting, decision…'
+              : 'Internal planner note…'
+            }
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          />
+          <button style={s.btn('primary')} onClick={handleAdd}>Add</button>
+        </div>
+
+        {/* ── Entries ── */}
+        {activeLog.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
+            {isClient ? 'No client communication yet.' : 'No internal notes yet.'}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries match "{logSearch}".</div>
+        ) : filtered.map(entry => {
+          const ts = msgTypeStyle(entry.type, C);
+          const isApproval = entry.type === 'approval_request';
+          const statusColor = entry.approvalStatus === 'approved' ? C.success : entry.approvalStatus === 'declined' ? C.danger : C.warn;
+          return (
+            <div key={entry.id} style={{ borderLeft: `3px solid ${ts.border}`, paddingLeft: 12, marginBottom: 14, background: ts.bg, borderRadius: '0 6px 6px 0', padding: '8px 10px 8px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: ts.border || C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {ts.icon} {ts.label}
+                </span>
+                <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(entry.date)}</span>
+                {isApproval && entry.approvalStatus && (
+                  <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {entry.approvalStatus === 'pending' ? '⏳ Pending' : entry.approvalStatus === 'approved' ? '✓ Approved' : '✗ Declined'}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{entry.text}</div>
+              {isApproval && (!entry.approvalStatus || entry.approvalStatus === 'pending') && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  <button onClick={() => setApprovalStatus(entry.id, 'approved')}
+                    style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>
+                    ✓ Approve
+                  </button>
+                  <button onClick={() => setApprovalStatus(entry.id, 'declined')}
+                    style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>
+                    ✗ Decline
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  })();
 
   const bodyPad  = bp === 'mobile' ? '16px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const maxW     = 1200;
 
   return (
-    <div style={s.app}>
+    <div style={s.app} onClick={() => showDownloads && setShowDownloads(false)}>
       {/* Header */}
       <div style={{ ...s.header, padding: bp === 'mobile' ? '16px 14px 0' : '28px 32px 0', paddingBottom: isWide ? 20 : 14 }}>
         <div style={{ maxWidth: maxW, margin: '0 auto' }}>
@@ -5284,10 +6917,36 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
             <span style={{ color: C.border, fontSize: 18 }}>|</span>
             <div style={{ fontSize: bp === 'mobile' ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
             <span style={s.pill(clr)}>{client.status}</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
               {isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
               <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
               {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
+              <button style={{ ...s.btn('ghost'), display: 'flex', alignItems: 'center', gap: 5 }}
+                onClick={() => setShowDownloads(v => !v)}>⬇ Downloads</button>
+              {showDownloads && (
+                <div style={{
+                  position: 'absolute', top: '110%', right: 0, zIndex: 200,
+                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 16,
+                  minWidth: 320,
+                }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>Downloads</div>
+                  {clientEvents.length === 0 ? (
+                    <div style={{ fontSize: 12, color: C.muted }}>Link an event to enable downloads.</div>
+                  ) : clientEvents.map(ev => (
+                    <div key={ev.id} style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{ev.name}</div>
+                      <DownloadsCard event={ev} client={client} compact />
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Template (no event)</div>
+                    <DownloadsCard event={{ name: client.name, guests: [] }} client={client} compact />
+                  </div>
+                  <button onClick={() => setShowDownloads(false)}
+                    style={{ marginTop: 10, width: '100%', ...s.btn('ghost'), fontSize: 11 }}>Close</button>
+                </div>
+              )}
             </div>
           </div>
           {/* Clickable contact line */}
@@ -5347,7 +7006,7 @@ function ClientDetail({ client, events, setClient, onSelectEvent, onAddEvent, on
         <ClientModal client={client} onClose={() => setShowModal(false)} onChange={onChange} onDelete={() => { setShowModal(false); onDelete(); }} />
       )}
       {showPortal && (
-        <ClientPortal client={client} events={events} onClose={() => setShowPortal(false)} />
+        <ClientPortal client={client} events={events} onClose={() => setShowPortal(false)} onUpdateGuests={onUpdateEventGuests} />
       )}
     </div>
   );
@@ -5362,8 +7021,8 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const totalBudgeted   = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual     = budget.reduce((s, r) => s + r.actual, 0);
-  const remaining       = totalBudgeted - totalActual;
   const vendorTotal     = vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+  const balanceDue      = Math.max(0, vendorTotal - totalActual);
   const confirmed       = guests.filter(g => g.rsvp === 'Yes');
   const vendorConf      = vendors.filter(v => v.status === 'Confirmed').length;
   const done            = timeline.filter(t => t.done).length;
@@ -5516,7 +7175,7 @@ Write the summary now:`;
   const statCards = (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isWide ? 3 : 2}, 1fr)`, gap: 12, marginBottom: 16 }}>
       <StatCard label="Budgeted"           value={fmtD(totalBudgeted)} sub={`${fmtD(totalActual)} spent · ${fmtD(vendorTotal)} committed`}                      onClick={onTabChange ? () => onTabChange('Budget')         : undefined} />
-      <StatCard label="Remaining"         value={fmtD(remaining)}     sub={`Budgeted minus Spent · ${Math.round((totalActual / (totalBudgeted || 1)) * 100)}% used`} color={remaining < 0 ? C.danger : C.success} onClick={onTabChange ? () => onTabChange('Budget')   : undefined} />
+      <StatCard label="Balance Due"        value={fmtD(balanceDue)}    sub={`Committed not yet paid · ${Math.round((totalActual / (totalBudgeted || 1)) * 100)}% spent`} color={balanceDue > 0 ? C.warn : C.success} onClick={onTabChange ? () => onTabChange('Budget') : undefined} />
       <StatCard label="Attending"         value={confirmed.length}    sub={guestEstimate ? `est. ${guestEstimate} · ${guests.length} invited` : `of ${guests.length} invited`} color={C.accent}  onClick={onTabChange ? () => onTabChange('Guests')   : undefined} />
       <StatCard label="Vendors Confirmed" value={`${vendorConf}/${vendors.length}`} sub={`${fmtD(vendorTotal)} committed`} color={C.accent2}                       onClick={onTabChange ? () => onTabChange('Vendors')        : undefined} />
       <StatCard label="Tasks Complete"    value={`${done}/${timeline.length}`} sub={`${Math.round((done / (timeline.length || 1)) * 100)}% done`}                  onClick={onTabChange ? () => onTabChange('Planning Tasks') : undefined} />
@@ -5699,9 +7358,140 @@ Write the summary now:`;
   );
 }
 
+// ─── Budget Health Bar ────────────────────────────────────────────────────────
+
+function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
+  const C = useT();
+  const [hovered,  setHovered]  = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  const spentPct      = Math.min(100, (totalActual    / totalBudgeted) * 100);
+  const committedPct  = Math.min(100, (totalCommitted / totalBudgeted) * 100);
+  const balanceDue    = Math.max(0, totalCommitted - totalActual);
+  const uncontracted  = Math.max(0, totalBudgeted  - totalCommitted);
+  const isOverBudget  = totalCommitted > totalBudgeted;
+  const isOverSpent   = totalActual    > totalBudgeted;
+
+  const healthLabel = isOverSpent       ? { text: 'Over Budget',      color: C.danger  }
+                    : isOverBudget      ? { text: 'Overcommitted',    color: C.danger  }
+                    : spentPct > 90     ? { text: 'Nearly Spent',     color: C.warn    }
+                    : committedPct > 90 ? { text: 'Fully Committed',  color: C.accent2 }
+                    : spentPct > 0      ? { text: 'On Track',         color: C.success }
+                    : totalCommitted > 0? { text: 'In Progress',      color: C.accent2 }
+                    :                    { text: 'Not Started',       color: C.muted   };
+
+  const rows = [
+    { label: 'Total Budget',   value: fmtD(totalBudgeted),  color: C.text,    pct: 100 },
+    { label: 'Spent',          value: fmtD(totalActual),    color: C.success, pct: spentPct,     bar: true, barColor: isOverSpent ? C.danger : C.success },
+    { label: 'Committed',      value: fmtD(totalCommitted), color: C.accent2, pct: committedPct, bar: true, barColor: C.accent2 },
+    { label: 'Balance Due',    value: fmtD(balanceDue),     color: balanceDue > 0 ? C.warn : C.success },
+    { label: 'Uncontracted',   value: fmtD(uncontracted),   color: C.muted },
+  ];
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* ── Bar ── */}
+      <div
+        role="button"
+        aria-label="Budget health — hover for breakdown"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onMouseMove={e => setMousePos({ x: e.clientX, y: e.clientY })}
+        style={{
+          height: 12, borderRadius: 8, background: C.border, display: 'flex',
+          marginBottom: 8, cursor: 'default', overflow: 'hidden',
+          transition: 'box-shadow 0.15s',
+          boxShadow: hovered ? `0 0 0 2px ${C.accent}55` : 'none',
+        }}>
+        {spentPct > 0 && (
+          <div style={{ width: `${spentPct}%`, background: isOverSpent ? C.danger : C.success, transition: 'width 0.4s', flexShrink: 0 }} />
+        )}
+        {committedPct > spentPct && (
+          <div style={{
+            width: `${committedPct - spentPct}%`, flexShrink: 0,
+            background: `repeating-linear-gradient(45deg, ${C.accent2}66, ${C.accent2}66 3px, ${C.accent2}22 3px, ${C.accent2}22 6px)`,
+          }} />
+        )}
+      </div>
+
+      {/* ── Tooltip ── follows cursor via fixed positioning */}
+      {hovered && (() => {
+        const TIP_W = 268;
+        const TIP_H = 220; // approx
+        const flipX = mousePos.x + TIP_W + 18 > window.innerWidth;
+        const flipY = mousePos.y + TIP_H + 16 > window.innerHeight;
+        return (
+        <div style={{
+          position: 'fixed',
+          top:  flipY ? mousePos.y - TIP_H - 8  : mousePos.y + 16,
+          left: flipX ? mousePos.x - TIP_W - 8  : mousePos.x + 12,
+          zIndex: 9999,
+          background: C.surface, border: `1px solid ${C.border}`,
+          borderRadius: 12, padding: '14px 16px', minWidth: TIP_W,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          pointerEvents: 'none',
+        }}>
+          {/* Health badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: healthLabel.color, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: healthLabel.color }}>{healthLabel.text}</span>
+          </div>
+
+          {/* Breakdown rows */}
+          {rows.map(({ label, value, color, pct, bar, barColor }) => (
+            <div key={label} style={{ marginBottom: bar ? 10 : 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: bar ? 4 : 0 }}>
+                <span style={{ fontSize: 12, color: C.muted }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color }}>{value}</span>
+              </div>
+              {bar && (
+                <div style={{ height: 4, borderRadius: 3, background: C.border, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.3s' }} />
+                </div>
+              )}
+              {bar && (
+                <div style={{ fontSize: 10, color: C.muted, textAlign: 'right', marginTop: 1 }}>{Math.round(pct)}% of budget</div>
+              )}
+            </div>
+          ))}
+
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 14, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 10, color: C.success, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 4, borderRadius: 2, background: C.success, display: 'inline-block' }} /> Spent
+            </span>
+            <span style={{ fontSize: 10, color: C.accent2, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 4, borderRadius: 2, background: C.accent2, display: 'inline-block', opacity: 0.5 }} /> Committed
+            </span>
+            <span style={{ fontSize: 10, color: C.muted, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 4, borderRadius: 2, background: C.border, display: 'inline-block' }} /> Uncontracted
+            </span>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── Status row ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700, color: healthLabel.color }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: healthLabel.color, display: 'inline-block' }} />
+          {healthLabel.text}
+        </span>
+        <span style={{ color: C.success, fontWeight: 500 }}>{fmtD(totalActual)} spent</span>
+        {totalCommitted > 0 && <span style={{ color: C.accent2, fontWeight: 500 }}>{fmtD(totalCommitted)} committed</span>}
+        {balanceDue > 0 && <span style={{ color: C.warn, fontWeight: 500 }}>{fmtD(balanceDue)} balance due</span>}
+        {uncontracted > 0 && !isOverBudget && <span style={{ color: C.muted }}>{fmtD(uncontracted)} uncontracted</span>}
+        <span style={{ color: C.muted, marginLeft: 'auto' }}>
+          {Math.round(spentPct)}% spent{committedPct > 0 ? ` · ${Math.round(committedPct)}% committed` : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount }) {
+function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -5746,11 +7536,14 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   const modalRow = budget.find(r => r.id === modalId);
 
   const [est, setEst] = useState({ guests: confirmedCount > 0 ? String(confirmedCount) : '', eventType: eventType || 'Wedding' });
+  const metroFactor  = getMetroFactor(profile);
+  const metroMkt     = profile?.metroMarket ? METRO_MARKETS.find(m => m.id === profile.metroMarket) : null;
+  const metroTierLbl = metroMkt ? METRO_TIER_LABEL[metroMkt.tier] : null;
   const tiers = est.guests && Number(est.guests) > 0 && PER_HEAD[est.eventType]
     ? (['good', 'better', 'best']).map(t => ({
         tier: t,
-        total: Math.round(Number(est.guests) * PER_HEAD[est.eventType][t] / 100) * 100,
-        perHead: PER_HEAD[est.eventType][t],
+        total: Math.round(Number(est.guests) * PER_HEAD[est.eventType][t] * metroFactor / 100) * 100,
+        perHead: Math.round(PER_HEAD[est.eventType][t] * metroFactor),
       }))
     : null;
 
@@ -5793,8 +7586,8 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <StatCard label="Budgeted"    value={fmtD(totalBudgeted)}  sub="Planned spend across all categories" />
         <StatCard label="Committed"   value={fmtD(totalCommitted)} sub="On contract or deposit" color={totalCommitted > totalBudgeted ? C.danger : C.accent2} />
-        <StatCard label="Still Owed"  value={fmtD(Math.max(0, totalCommitted - totalActual))} sub="Committed not yet paid" color={totalCommitted > totalActual ? C.warn : C.success} />
-        <StatCard label="Unallocated" value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget not yet committed" color={totalCommitted > totalBudgeted ? C.danger : C.success} />
+        <StatCard label="Balance Due"   value={fmtD(Math.max(0, totalCommitted - totalActual))} sub="Committed not yet paid" color={totalCommitted > totalActual ? C.warn : C.success} />
+        <StatCard label="Uncontracted"  value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget not yet committed" color={totalCommitted > totalBudgeted ? C.danger : C.success} />
       </div>
 
       {/* Upcoming Payment Alerts */}
@@ -5839,7 +7632,14 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
       {/* Budget Estimator — collapses when line items already exist */}
       <div style={{ ...s.card, marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowEstimator(v => !v)}>
-          <div style={s.cardTitle}>Budget Estimator</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={s.cardTitle}>Budget Estimator</div>
+            {metroMkt && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: metroTierLbl?.color || C.muted, background: (metroTierLbl?.color || C.muted) + '15', border: `1px solid ${(metroTierLbl?.color || C.muted) + '40'}`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
+                {metroTierLbl?.icon} {metroMkt.label} {metroFactor !== 1.0 ? `· ${metroFactor > 1 ? '+' : ''}${Math.round((metroFactor - 1) * 100)}%` : ''}
+              </span>
+            )}
+          </div>
           <span style={{ fontSize: 11, color: C.muted }}>{showEstimator ? '▾ collapse' : '▸ expand'}</span>
         </div>
         {showEstimator && (
@@ -5901,12 +7701,38 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
       </div>
 
       <div style={s.card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={s.cardTitle}>Line Items {bp !== 'mobile' && <span style={{ fontSize: 11, color: C.muted, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— click a row to edit</span>}</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <AIBtn onClick={suggestBudget} loading={budgetAILoad} label="Suggest budget split" />
-            <button style={s.btn('primary')} onClick={add}>+ Add Row</button>
+        {/* ── Budget health header ── */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div>
+              <div style={s.cardTitle}>Budget</div>
+              {totalBudgeted > 0 && (
+                <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: C.text, lineHeight: 1.1, marginTop: 2 }}>
+                  {fmtD(totalBudgeted)}
+                  <span style={{ fontSize: 13, fontWeight: 400, color: C.muted, marginLeft: 8, letterSpacing: 0 }}>total budget</span>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+              <AIBtn onClick={suggestBudget} loading={budgetAILoad} label="Suggest budget split" />
+              <button style={s.btn('primary')} onClick={add}>+ Add Row</button>
+            </div>
           </div>
+
+          {totalBudgeted > 0 && (
+            <BudgetHealthBar
+              totalBudgeted={totalBudgeted}
+              totalActual={totalActual}
+              totalCommitted={totalCommitted}
+            />
+          )}
+
+          {totalBudgeted === 0 && budget.length > 0 && (
+            <div style={{ fontSize: 12, color: C.muted }}>Add budgeted amounts to each category to see health.</div>
+          )}
+          {bp !== 'mobile' && budget.length > 0 && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Click any row to edit</div>
+          )}
         </div>
 
         {budget.length === 0 && (
@@ -5917,32 +7743,51 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
           </div>
         )}
 
-        {bp === 'mobile' ? (
+        {(bp === 'mobile' || bp === 'tablet') ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {budget.map(r => {
-              const committed = getCommitted(r.category);
-              const rem       = r.budgeted - r.actual;
-              const pct       = r.budgeted > 0 ? (r.actual / r.budgeted) * 100 : 0;
+              const committed    = getCommitted(r.category);
+              const uncontracted = r.budgeted - committed;
+              const balDue       = committed - r.actual;
+              const spendPct     = r.budgeted > 0 ? (r.actual    / r.budgeted) * 100 : 0;
+              const sharePct     = totalBudgeted > 0 ? Math.round((r.budgeted / totalBudgeted) * 100) : 0;
               return (
                 <div key={r.id} onClick={() => setModalId(r.id)}
                   style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{r.category}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: remClr(rem, C) }}>{fmtD(rem)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{r.category}</span>
+                      {sharePct > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{sharePct}%</span>}
+                    </div>
+                    {committed > 0
+                      ? <span style={{ fontSize: 12, fontWeight: 700, color: balDue <= 0 ? C.success : C.warn }}>
+                          {balDue <= 0 ? 'Paid' : `${fmtD(balDue)} due`}
+                        </span>
+                      : <span style={{ fontSize: 12, color: C.muted }}>Uncontracted</span>}
                   </div>
-                  <ProgressBar pct={pct} />  {/* gradient via ProgressBar default */}
+                  {/* Share-of-total bar behind spend bar */}
+                  {totalBudgeted > 0 && (
+                    <div style={{ position: 'relative', height: 6, borderRadius: 4, background: C.border, marginBottom: 4, overflow: 'visible' }}>
+                      {/* Category share of total — ghost track */}
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${sharePct}%`, background: C.accent + '28', borderRadius: 4 }} />
+                      {/* Spend within this category */}
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(spendPct * sharePct / 100, sharePct)}%`, background: C.success, borderRadius: 4, transition: 'width 0.3s' }} />
+                    </div>
+                  )}
+                  <ProgressBar pct={spendPct} />
                   <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
-                    <span>{fmtD(r.actual)} / {fmtD(r.budgeted)}</span>
+                    <span>Spent: {fmtD(r.actual)} / {fmtD(r.budgeted)}</span>
                     {committed > 0 && <span style={{ color: C.accent2 }}>Committed: {fmtD(committed)}</span>}
+                    {r.budgeted > 0 && <span style={{ color: uncontracted < 0 ? C.danger : C.muted }}>Uncontracted: {fmtD(uncontracted)}</span>}
                     {r.notes && <span>{r.notes}</span>}
                   </div>
                 </div>
               );
             })}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', fontWeight: 700, fontSize: 13, borderTop: `1px solid ${C.border}` }}>
-              <span>Total remaining</span>
-              <span style={{ color: remClr(totalBudgeted - totalActual, C) }}>{fmtD(totalBudgeted - totalActual)}</span>
+              <span>Balance Due</span>
+              <span style={{ color: totalCommitted - totalActual <= 0 ? C.success : C.warn }}>{totalCommitted - totalActual <= 0 ? 'Paid' : fmtD(totalCommitted - totalActual)}</span>
             </div>
           </div>
         ) : (
@@ -5950,40 +7795,58 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
             <thead>
               <tr>
                 {[
-                  { h: 'Category',  tip: null },
-                  { h: 'Budgeted',  tip: 'Your planned spend for this category' },
-                  { h: 'Committed', tip: 'Total cost of vendors you\'ve contracted or deposited (from Vendor tab)' },
-                  { h: 'Spent',     tip: 'Actual payments recorded in this budget row' },
-                  { h: 'Remaining', tip: 'Budgeted minus Spent — does not subtract Committed' },
+                  { h: 'Category',      tip: null },
+                  { h: 'Budgeted',      tip: 'Your planned spend for this category' },
+                  { h: 'Committed',     tip: 'Total cost of vendors you\'ve contracted or deposited (from Vendor tab)' },
+                  { h: 'Uncontracted',  tip: 'Budgeted minus Committed — budget not yet tied to a vendor' },
+                  { h: 'Spent',         tip: 'Actual payments recorded in this budget row' },
+                  { h: 'Balance Due',   tip: 'Committed minus Spent — what you still owe contracted vendors in this category' },
                   { h: 'Notes',     tip: null },
                   { h: '',          tip: null },
                 ].map(({ h, tip }) => (
                   <th key={h} style={s.th} title={tip || undefined}>
-                    {h}{tip ? <span style={{ marginLeft: 3, color: C.muted, fontSize: 10, cursor: 'help' }}>ⓘ</span> : null}
+                    {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {budget.map(r => {
-                const committed = getCommitted(r.category);
-                const rem       = r.budgeted - r.actual;
+                const committed    = getCommitted(r.category);
+                const uncontracted = r.budgeted - committed;
+                const balDue       = committed - r.actual;
+                const sharePct     = totalBudgeted > 0 ? (r.budgeted / totalBudgeted) * 100 : 0;
                 return (
                   <tr key={r.id} onClick={() => setModalId(r.id)} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                     onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                    <td style={{ ...s.td, fontWeight: 500 }}>{r.category}</td>
+                    <td style={{ ...s.td, fontWeight: 500, minWidth: 160 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{r.category}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ flex: 1, height: 4, borderRadius: 3, background: C.border, overflow: 'hidden', maxWidth: 100 }}>
+                          <div style={{ height: '100%', width: `${sharePct}%`, background: C.accent + '99', borderRadius: 3, transition: 'width 0.3s' }} />
+                        </div>
+                        <span style={{ fontSize: 10, color: C.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {sharePct > 0 ? `${Math.round(sharePct)}%` : '—'}
+                        </span>
+                      </div>
+                    </td>
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums' }}>{fmtD(r.budgeted)}</td>
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', color: committed > r.budgeted ? C.danger : C.accent2, fontWeight: committed > 0 ? 600 : 400 }}>
                       {committed > 0 ? fmtD(committed) : <span style={{ color: C.muted }}>—</span>}
                     </td>
+                    <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', color: uncontracted < 0 ? C.danger : uncontracted === 0 ? C.warn : C.muted }}>
+                      {r.budgeted === 0 ? <span style={{ color: C.muted }}>—</span> : uncontracted < 0
+                        ? <span style={{ color: C.danger }}>−{fmtD(Math.abs(uncontracted))} over</span>
+                        : fmtD(uncontracted)}
+                    </td>
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums' }}>{fmtD(r.actual)}</td>
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                      {rem < 0
-                        ? <span style={{ color: C.danger }}>+{fmtD(Math.abs(rem))} over</span>
-                        : rem === 0
-                          ? <span style={{ color: C.warn }}>$0 — at budget</span>
-                          : <span style={{ color: C.success }}>{fmtD(rem)}</span>}
+                      {committed === 0
+                        ? <span style={{ color: C.muted }}>—</span>
+                        : balDue <= 0
+                          ? <span style={{ color: C.success }}>Paid</span>
+                          : <span style={{ color: C.warn }}>{fmtD(balDue)}</span>}
                     </td>
                     <td style={{ ...s.td, color: C.muted, fontSize: 12, maxWidth: 180 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -6000,8 +7863,9 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                 <td style={{ ...s.td, fontWeight: 700 }}>Total</td>
                 <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalBudgeted)}</td>
                 <td style={{ ...s.td, fontWeight: 700, color: C.accent2 }}>{fmtD(totalCommitted)}</td>
+                <td style={{ ...s.td, fontWeight: 700, color: totalBudgeted - totalCommitted < 0 ? C.danger : C.muted }}>{fmtD(Math.max(0, totalBudgeted - totalCommitted))}</td>
                 <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalActual)}</td>
-                <td style={{ ...s.td, fontWeight: 700, color: remClr(totalBudgeted - totalActual, C) }}>{fmtD(totalBudgeted - totalActual)}</td>
+                <td style={{ ...s.td, fontWeight: 700, color: totalCommitted - totalActual <= 0 ? C.success : C.warn }}>{totalCommitted - totalActual <= 0 ? 'Paid' : fmtD(totalCommitted - totalActual)}</td>
                 <td /><td />
               </tr>
             </tbody>
@@ -6085,13 +7949,14 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                               </span>}
                             </div>
                           </div>
-                          {setClient && !f.paid && (
-                            <button style={{ ...s.btn('success'), fontSize: 11, padding: '4px 10px' }}
-                              onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, paid: true } : x) }))}>
-                              Mark Paid
+                          {setClient && (
+                            <button
+                              style={{ ...s.btn(f.paid ? 'success' : 'default'), fontSize: 11, padding: '4px 10px' }}
+                              title={f.paid ? 'Click to mark unpaid' : 'Mark as paid'}
+                              onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, paid: !x.paid } : x) }))}>
+                              {f.paid ? '✓ Paid' : 'Mark Paid'}
                             </button>
                           )}
-                          {f.paid && <span style={{ fontSize: 12, color: C.success, fontWeight: 600 }}>✓ Paid</span>}
                           {setClient && (
                             <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 8px', color: C.danger }}
                               onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.filter(x => x.id !== f.id) }))}>✕</button>
@@ -6343,9 +8208,78 @@ function Guests({ guests, setGuests, event = {} }) {
   const [copied,     setCopied]   = useState(false);
   const [showRsvp,   setShowRsvp] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
-  const [gFilter,    setGFilter]  = useState('all');   // all | Yes | No | Maybe
-  const [gSort,      setGSort]    = useState('name');  // name | group | rsvp | table | meal
+  const [gFilter,    setGFilter]  = useState('all');
+  const [gSort,      setGSort]    = useState('name');
   const [gSearch,    setGSearch]  = useState('');
+  const [importMsg,  setImportMsg] = useState(null); // { added, updated, text }
+  const importRef = useRef(null);
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb   = XLSX.read(ev.target.result, { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!rows.length) { setImportMsg({ text: 'No rows found in file.' }); return; }
+
+        // Flexible column matching — case-insensitive, common variations
+        const col = (row, ...keys) => {
+          const found = Object.keys(row).find(k => keys.some(key => k.toLowerCase().replace(/[\s_-]/g,'') === key.toLowerCase().replace(/[\s_-]/g,'')));
+          return found ? String(row[found]).trim() : '';
+        };
+
+        let added = 0, updated = 0;
+        setGuests(gs => {
+          let next = [...gs];
+          rows.forEach(row => {
+            const name = col(row, 'name', 'fullname', 'guestname', 'guest');
+            if (!name) return;
+            const rsvp  = col(row, 'rsvp', 'response', 'attending', 'status');
+            const email = col(row, 'email', 'emailaddress');
+            const phone = col(row, 'phone', 'phonenumber', 'mobile', 'cell');
+            const group = col(row, 'group', 'party', 'side', 'table group');
+            const meal  = col(row, 'meal', 'mealchoice', 'entree', 'food');
+            const needs = col(row, 'needs', 'dietary', 'restrictions', 'allergies');
+
+            const normRsvp = (r) => {
+              const v = r.toLowerCase();
+              if (v === 'yes' || v === 'y' || v === 'confirmed' || v === 'attending') return 'Yes';
+              if (v === 'no'  || v === 'n' || v === 'declined'  || v === 'not attending') return 'No';
+              if (v === 'maybe' || v === 'm' || v === 'possibly') return 'Maybe';
+              return r || '';
+            };
+
+            const existing = next.find(g => g.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              next = next.map(g => g.id === existing.id ? {
+                ...g,
+                ...(rsvp  && { rsvp: normRsvp(rsvp) }),
+                ...(email  && { email }),
+                ...(phone  && { phone }),
+                ...(group  && { group }),
+                ...(meal   && { meal }),
+                ...(needs  && { needs }),
+              } : g);
+              updated++;
+            } else {
+              next.push({ id: uid(), name, group: group || 'Friends', rsvp: normRsvp(rsvp), meal: meal || '—', needs: needs || '', email: email || '', phone: phone || '', address: '', table: null, plusOne: '', plusOneMeal: '—', kids: 0, giftReceived: false, thankYouSent: false, partyNotes: '' });
+              added++;
+            }
+          });
+          return next;
+        });
+        setImportMsg({ added, updated, text: `Imported: ${added} added, ${updated} updated.` });
+        setTimeout(() => setImportMsg(null), 5000);
+      } catch (err) {
+        setImportMsg({ text: `Import failed: ${err.message}` });
+      }
+      e.target.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   // Merge any queued RSVPs submitted via the public RSVP link.
   // setGuests is stable (from useState), so omitting it is safe.
@@ -6541,9 +8475,16 @@ function Guests({ guests, setGuests, event = {} }) {
           <div style={s.cardTitle}>Guest List ({visibleGuests.length}{visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button style={s.btn()} onClick={() => setShowInvite(true)}>✉ Send Invitations</button>
+            <button style={s.btn()} onClick={() => importRef.current?.click()}>⬆ Import</button>
+            <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleImport} />
             <button style={s.btn('primary')} onClick={add}>+ Add Guest</button>
           </div>
         </div>
+        {importMsg && (
+          <div style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
+            {importMsg.text}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           <input style={{ ...s.input, flex: 1, minWidth: 130, maxWidth: 220 }} value={gSearch} onChange={e => setGSearch(e.target.value)} placeholder="Search name, group, meal…" />
           {['all', 'Yes', 'No', 'Maybe'].map(f => (
@@ -6560,7 +8501,7 @@ function Guests({ guests, setGuests, event = {} }) {
             <option value="meal">Sort: Meal</option>
           </select>
         </div>
-        {bp === 'mobile' ? (
+        {(bp === 'mobile' || bp === 'tablet') ? (
           <div>
             {visibleGuests.map(g => (
               <div key={g.id} onClick={() => setModalId(g.id)}
@@ -6718,6 +8659,147 @@ function Guests({ guests, setGuests, event = {} }) {
           </div>
         );
       })()}
+
+      {/* ── Vendor Impact Summaries ── */}
+      {(() => {
+        if (confirmed.length === 0) return null;
+
+        // F&B data
+        const mealBreakdown = Object.entries(mealCounts).sort((a, b) => b[1] - a[1]);
+        const totalKids     = confirmed.reduce((sum, g) => sum + (g.kids || 0), 0);
+        const allNeeds      = confirmed.flatMap(g => (g.needs || '').split(',').map(n => n.trim()).filter(Boolean));
+        const needsCounts   = allNeeds.reduce((acc, n) => { acc[n] = (acc[n] || 0) + 1; return acc; }, {});
+        const totalPlusOnes = confirmed.filter(g => g.plusOne).length;
+        const fbHeadcount   = confirmed.length + totalPlusOnes;
+
+        // Venue / logistics data
+        const accessible   = confirmed.filter(g => (g.needs || '').toLowerCase().includes('wheelchair')).length;
+        const maybeCount   = guests.filter(g => g.rsvp === 'Maybe').length;
+        const noResponse   = guests.filter(g => !g.rsvp).length;
+        const tablesUsed   = [...new Set(confirmed.map(g => g.table).filter(Boolean))].length;
+
+        const copyText = (text) => navigator.clipboard?.writeText(text).catch(() => {});
+
+        const fbText = [
+          `F&B Summary — ${event.name || 'Event'}`,
+          `Confirmed headcount: ${fbHeadcount} (${confirmed.length} primary + ${totalPlusOnes} plus-one${totalPlusOnes !== 1 ? 's' : ''})`,
+          totalKids > 0 ? `Children: ${totalKids} (require kids meals)` : null,
+          mealBreakdown.length > 0 ? `Meal selections: ${mealBreakdown.map(([m, c]) => `${m} ×${c}`).join(', ')}` : null,
+          Object.keys(needsCounts).length > 0 ? `Dietary/special needs: ${Object.entries(needsCounts).map(([n, c]) => `${n}${c > 1 ? ` ×${c}` : ''}`).join(', ')}` : null,
+        ].filter(Boolean).join('\n');
+
+        const venueText = [
+          `Venue/Logistics Summary — ${event.name || 'Event'}`,
+          `Confirmed attendance: ${fbHeadcount}`,
+          tablesUsed > 0 ? `Tables assigned: ${tablesUsed}` : null,
+          accessible > 0 ? `Accessibility needs: ${accessible} guest${accessible > 1 ? 's' : ''} require wheelchair access` : null,
+          maybeCount > 0 ? `Undecided (Maybe): ${maybeCount}` : null,
+          noResponse > 0 ? `No response yet: ${noResponse}` : null,
+        ].filter(Boolean).join('\n');
+
+        return (
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vendor Impact Summaries</div>
+              <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>Copy and send manually — planner-reviewed before sharing</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+
+              {/* F&B Summary */}
+              <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.accent2 }}>🍽 Food & Beverage</div>
+                  <button onClick={() => copyText(fbText)}
+                    style={{ ...makeS(C).btn('ghost'), fontSize: 10, padding: '3px 8px' }}>Copy</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <span style={{ color: C.muted }}>Confirmed headcount</span>
+                    <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
+                  </div>
+                  {totalPlusOnes > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Plus-ones</span>
+                      <span style={{ fontWeight: 600, color: C.text }}>{totalPlusOnes}</span>
+                    </div>
+                  )}
+                  {totalKids > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Kids meals needed</span>
+                      <span style={{ fontWeight: 600, color: C.warn }}>{totalKids}</span>
+                    </div>
+                  )}
+                  {mealBreakdown.length > 0 && (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Meal selections</div>
+                      {mealBreakdown.map(([meal, count]) => (
+                        <div key={meal} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
+                          <span style={{ color: C.text }}>{meal}</span>
+                          <span style={{ fontWeight: 700, color: C.accent }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {Object.keys(needsCounts).length > 0 && (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Dietary / Special Needs</div>
+                      {Object.entries(needsCounts).map(([need, count]) => (
+                        <div key={need} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
+                          <span style={{ color: C.text }}>{need}</span>
+                          {count > 1 && <span style={{ fontWeight: 700, color: C.warn }}>×{count}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {Object.keys(needsCounts).length === 0 && mealBreakdown.length === 0 && (
+                    <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>No meal selections or dietary needs recorded.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Venue / Logistics Summary */}
+              <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>🏛 Venue & Logistics</div>
+                  <button onClick={() => copyText(venueText)}
+                    style={{ ...makeS(C).btn('ghost'), fontSize: 10, padding: '3px 8px' }}>Copy</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <span style={{ color: C.muted }}>Confirmed attendance</span>
+                    <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
+                  </div>
+                  {tablesUsed > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Tables assigned</span>
+                      <span style={{ fontWeight: 600, color: C.text }}>{tablesUsed}</span>
+                    </div>
+                  )}
+                  {accessible > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Wheelchair access needed</span>
+                      <span style={{ fontWeight: 700, color: C.warn }}>{accessible}</span>
+                    </div>
+                  )}
+                  {maybeCount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Still undecided</span>
+                      <span style={{ fontWeight: 600, color: C.muted }}>{maybeCount}</span>
+                    </div>
+                  )}
+                  {noResponse > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>No response yet</span>
+                      <span style={{ fontWeight: 600, color: C.danger }}>{noResponse}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -6758,7 +8840,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
   };
   const mealShort     = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' };
   const selectedGuest = selected ? guests.find(g => g.id === selected) : null;
-  const isMobile      = bp === 'mobile';
+  const isMobile = bp === 'mobile' || bp === 'tablet';
 
   return (
     <div>
@@ -6905,11 +8987,11 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
 // ─── Vendor Outreach Script Templates ────────────────────────────────────────
 // eventTypes that prioritize each vendor type (first match wins for sort)
 const SCRIPT_PRIORITY = {
-  Photographer:    ['Wedding', 'Bridal Shower', 'Anniversary', 'Graduation', 'Birthday'],
-  Caterer:         ['Wedding', 'Corporate', 'Board Meeting', 'Birthday', 'Anniversary', 'Graduation'],
-  Florist:         ['Wedding', 'Bridal Shower', 'Anniversary', 'Baby Shower'],
-  Venue:           ['Wedding', 'Corporate', 'Board Meeting', 'Birthday', 'Anniversary', 'Graduation'],
-  'DJ / Band':     ['Wedding', 'Birthday', 'Anniversary', 'Corporate'],
+  Photographer:    ['Wedding', 'Bridal Shower', 'Anniversary', 'Graduation', 'Birthday', 'Engagement Party', 'Vow Renewal', 'Quinceañera', 'Sweet 16', 'Retirement Party'],
+  Caterer:         ['Wedding', 'Corporate', 'Board Meeting', 'Birthday', 'Anniversary', 'Graduation', 'Holiday Party', 'Conference', 'Product Launch', 'Team Retreat', 'Town Hall', 'Training / Workshop', 'Award Ceremony', 'Client Dinner', 'Engagement Party', 'Vow Renewal', 'Retirement Party', 'Sweet 16', 'Quinceañera', 'Reunion', 'Fundraiser / Gala', 'Networking Event'],
+  Florist:         ['Wedding', 'Bridal Shower', 'Anniversary', 'Baby Shower', 'Engagement Party', 'Vow Renewal', 'Quinceañera', 'Fundraiser / Gala'],
+  Venue:           ['Wedding', 'Corporate', 'Board Meeting', 'Birthday', 'Anniversary', 'Graduation', 'Holiday Party', 'Conference', 'Fundraiser / Gala', 'Networking Event', 'Team Retreat'],
+  'DJ / Band':     ['Wedding', 'Birthday', 'Anniversary', 'Corporate', 'Holiday Party', 'Sweet 16', 'Quinceañera', 'Fundraiser / Gala'],
   Officiant:       ['Wedding', 'Anniversary'],
   'Hair & Makeup': ['Wedding', 'Bridal Shower', 'Anniversary'],
   Transportation:  ['Wedding', 'Corporate', 'Board Meeting', 'Graduation'],
@@ -7700,7 +9782,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId }) {
         {t.done ? '✓' : ''}
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? C.muted : overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: bp === 'mobile' ? 'normal' : 'nowrap' }}>
+        <div style={{ fontSize: 13, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? C.muted : overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: (bp === 'mobile' || bp === 'tablet') ? 'normal' : 'nowrap' }}>
           {t.task || <em style={{ color: C.muted }}>Untitled task</em>}
         </div>
         {t.owner && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{t.owner}</div>}
@@ -7836,9 +9918,18 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                             </div>
                             {/* Label + focus + date */}
                             <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{abbr}</div>
-                              {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
-                              {pDate && <div style={{ fontSize: 8, color: C.border, whiteSpace: 'nowrap', marginTop: 1 }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>}
+                              {pDate ? (
+                                <>
+                                  <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>
+                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
+                                  <div style={{ fontSize: 7, color: C.border, whiteSpace: 'nowrap', marginTop: 1 }}>{abbr}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{abbr}</div>
+                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
+                                </>
+                              )}
                               <div style={{ fontSize: 8, color: allD ? C.success : pOver ? C.danger : C.border, marginTop: 1 }}>{pDone}/{tasks.length}</div>
                             </div>
                           </button>
@@ -7900,17 +9991,26 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                 <div style={{ flex: 1 }}>
                   {selectedPhase === '__overdue__' ? (
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.danger }}>⚠ Overdue Tasks</div>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.accent }}>{selectedPhase}</div>
-                        {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{PHASE_FOCUS[selectedPhase]}</div>}
-                      </div>
-                      {phaseDate(selectedPhase, eventDate) && (
-                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Target: {phaseDate(selectedPhase, eventDate)}</div>
-                      )}
-                    </>
-                  )}
+                  ) : (() => {
+                    const pD = phaseDate(selectedPhase, eventDate);
+                    return pD ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{pD}</div>
+                          {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, color: C.muted }}>— {PHASE_FOCUS[selectedPhase]}</div>}
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>{selectedPhase}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.accent }}>{selectedPhase}</div>
+                          {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{PHASE_FOCUS[selectedPhase]}</div>}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Set an event date to see target dates</div>
+                      </>
+                    );
+                  })()}
                 </div>
                 {selectedPhase !== '__overdue__' && (
                   <button style={{ ...s.btn('primary'), fontSize: 11, padding: '5px 12px' }} onClick={() => add(selectedPhase)}>+ Task</button>
@@ -8082,7 +10182,7 @@ function RunOfShow({ ros, setRos, vendors }) {
           </div>
         </div>
 
-        {bp === 'mobile' ? (
+        {(bp === 'mobile' || bp === 'tablet') ? (
           <div>
             {sorted.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: 'center', padding: '20px 0' }}>No schedule yet — tap "+ Add" to start</div>}
             {sorted.map((entry, i) => {
@@ -8896,6 +10996,516 @@ function MasterCalendarView({ events, onSelectEvent }) {
   );
 }
 
+// ─── Send to Client ───────────────────────────────────────────────────────────
+
+const CLIENT_PKG_SECTIONS = [
+  { id: 'summary',  label: 'Event Summary',  icon: '📋' },
+  { id: 'ros',      label: 'Run of Show',    icon: '🕐' },
+  { id: 'vendors',  label: 'Vendor List',    icon: '🤝' },
+  { id: 'guests',   label: 'Guest List',     icon: '👥' },
+  { id: 'budget',   label: 'Budget Summary', icon: '💰' },
+];
+
+function buildClientText(event, client, sections) {
+  const lines = [];
+  const guests  = event.guests  || [];
+  const vendors = event.vendors || [];
+  const budget  = event.budget  || [];
+  const ros     = event.ros     || [];
+
+  const eventDate = event.date ? new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+
+  if (sections.summary) {
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`${event.name || 'Your Event'}`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    if (event.type)  lines.push(`Type:   ${event.type}`);
+    if (eventDate)   lines.push(`Date:   ${eventDate}`);
+    if (event.venue) lines.push(`Venue:  ${event.venue}`);
+    if (client?.name)  lines.push(`Client: ${client.name}`);
+    const confirmed = guests.filter(g => g.rsvp === 'Yes').length;
+    const invited   = guests.length;
+    if (invited > 0) lines.push(`Guests: ${confirmed} confirmed / ${invited} invited`);
+    lines.push('');
+  }
+
+  if (sections.ros && ros.length > 0) {
+    lines.push(`RUN OF SHOW`);
+    lines.push(`─────────────────────────────────`);
+    [...ros].sort((a, b) => (a.time || '').localeCompare(b.time || '')).forEach(r => {
+      const time = r.time || '';
+      const seg  = r.segment || '';
+      const loc  = r.location ? `  [${r.location}]` : '';
+      lines.push(`${time.padEnd(8)}${seg}${loc}`);
+      if (r.notes) lines.push(`        ↳ ${r.notes}`);
+    });
+    lines.push('');
+  }
+
+  if (sections.vendors && vendors.length > 0) {
+    const contracted = vendors.filter(v => ['Contracted', 'Deposit Paid', 'Confirmed'].includes(v.status));
+    lines.push(`CONFIRMED VENDORS (${contracted.length})`);
+    lines.push(`─────────────────────────────────`);
+    contracted.forEach(v => {
+      lines.push(`${(v.name || '').padEnd(28)} ${v.category || ''}`);
+      if (v.phone)   lines.push(`  Phone:   ${v.phone}`);
+      if (v.contact) lines.push(`  Email:   ${v.contact}`);
+    });
+    lines.push('');
+  }
+
+  if (sections.guests && guests.length > 0) {
+    lines.push(`GUEST LIST (${guests.length})`);
+    lines.push(`─────────────────────────────────`);
+    const byGroup = guests.reduce((acc, g) => {
+      const grp = g.group || 'Other';
+      acc[grp] = acc[grp] || [];
+      acc[grp].push(g);
+      return acc;
+    }, {});
+    Object.entries(byGroup).forEach(([grp, gs]) => {
+      lines.push(`${grp}:`);
+      gs.forEach(g => {
+        const rsvp  = g.rsvp ? ` [${g.rsvp}]` : '';
+        const plus  = g.plusOne ? ` +${g.plusOne}` : '';
+        const kids  = g.kids > 0 ? ` + ${g.kids} child${g.kids > 1 ? 'ren' : ''}` : '';
+        lines.push(`  ${g.name}${plus}${kids}${rsvp}`);
+      });
+    });
+    lines.push('');
+  }
+
+  if (sections.budget && budget.length > 0) {
+    const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
+    const totalSpent    = budget.reduce((s, r) => s + (r.actual   || 0), 0);
+    lines.push(`BUDGET SUMMARY`);
+    lines.push(`─────────────────────────────────`);
+    budget.forEach(r => {
+      if (!r.budgeted && !r.actual) return;
+      lines.push(`${(r.category || '').padEnd(22)} Budgeted: $${(r.budgeted || 0).toLocaleString()}  Spent: $${(r.actual || 0).toLocaleString()}`);
+    });
+    lines.push(`─────────────────────────────────`);
+    lines.push(`TOTAL                  Budgeted: $${totalBudgeted.toLocaleString()}  Spent: $${totalSpent.toLocaleString()}`);
+    lines.push('');
+  }
+
+  lines.push(`─────────────────────────────────`);
+  lines.push(`Prepared by ${event._plannerName || 'your event planner'}`);
+  lines.push(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }));
+
+  return lines.join('\n');
+}
+
+// ─── Client Downloads ─────────────────────────────────────────────────────────
+
+function downloadGuestTemplate(eventName) {
+  const wb = XLSX.utils.book_new();
+  const headers = ['Name', 'Group', 'Email', 'Phone', 'RSVP', 'Meal', 'Plus One', 'Plus One Meal', 'Kids', 'Needs', 'Table', 'Address', 'Notes'];
+  const example = ['Sarah & James Chen', 'Family', 'sarah@email.com', '(615) 555-1234', 'Yes', 'Standard', 'Jen Park', 'Vegetarian', '0', '', '1', '', ''];
+  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 12 }, { wch: 26 }, { wch: 16 }, { wch: 10 },
+    { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 5  }, { wch: 22 },
+    { wch: 7  }, { wch: 28 }, { wch: 32 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Guest List');
+  const safeName = (eventName || 'Event').replace(/[^a-z0-9]/gi, '_');
+  XLSX.writeFile(wb, `${safeName}_GuestList_Template.xlsx`);
+}
+
+function downloadCurrentGuestList(event) {
+  const guests = event.guests || [];
+  const wb = XLSX.utils.book_new();
+  const rows = guests.length
+    ? guests.map(g => ({
+        'Name':           g.name          || '',
+        'Group':          g.group         || '',
+        'Email':          g.email         || '',
+        'Phone':          g.phone         || '',
+        'RSVP':           g.rsvp          || '',
+        'Meal':           g.meal          || '',
+        'Plus One':       g.plusOne       || '',
+        'Plus One Meal':  g.plusOneMeal   || '',
+        'Kids':           g.kids          || 0,
+        'Needs':          g.needs         || '',
+        'Table':          g.table         || '',
+        'Address':        g.address       || '',
+        'Notes':          g.partyNotes    || '',
+      }))
+    : [{ 'Name': '(no guests yet — add guests or import a spreadsheet)' }];
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 12 }, { wch: 26 }, { wch: 16 }, { wch: 10 },
+    { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 5  }, { wch: 22 },
+    { wch: 7  }, { wch: 28 }, { wch: 32 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Guest List');
+  const safeName = (event.name || 'Event').replace(/[^a-z0-9]/gi, '_');
+  XLSX.writeFile(wb, `${safeName}_GuestList.xlsx`);
+}
+
+function downloadEventSummary(event, client) {
+  exportClientPackage(event, client, { summary: true, ros: true, vendors: true, guests: true, budget: false });
+}
+
+function DownloadsCard({ event, client, compact = false }) {
+  const C = useT();
+  const s = makeS(C);
+
+  const downloads = [
+    {
+      id: 'template',
+      icon: '📋',
+      label: 'Guest List Template',
+      sub: 'Blank spreadsheet — fill in and re-import',
+      action: () => downloadGuestTemplate(event?.name),
+    },
+    {
+      id: 'guestlist',
+      icon: '👥',
+      label: 'Current Guest List',
+      sub: `${(event?.guests || []).length} guests · XLSX`,
+      action: () => downloadCurrentGuestList(event),
+    },
+    {
+      id: 'summary',
+      icon: '📄',
+      label: 'Event Summary',
+      sub: 'Vendors, run of show, guest overview',
+      action: () => downloadEventSummary(event, client),
+    },
+  ];
+
+  if (compact) {
+    return (
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {downloads.map(d => (
+          <button key={d.id} onClick={d.action}
+            style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+            {d.icon} {d.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={s.card}>
+      <div style={s.cardTitle}>⬇ Downloads</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {downloads.map(d => (
+          <button key={d.id} onClick={d.action}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
+              background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
+              cursor: 'pointer', textAlign: 'left', width: '100%',
+              transition: 'border-color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+            onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>{d.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{d.label}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{d.sub}</div>
+            </div>
+            <span style={{ fontSize: 14, color: C.muted }}>⬇</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function exportClientPackage(event, client, sections) {
+  const wb = XLSX.utils.book_new();
+  const guests  = event.guests  || [];
+  const vendors = event.vendors || [];
+  const budget  = event.budget  || [];
+  const ros     = event.ros     || [];
+
+  const eventDate = event.date ? new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const confirmed = guests.filter(g => g.rsvp === 'Yes').length;
+
+  // ── Summary sheet ──────────────────────────────────────────────────────────
+  if (sections.summary) {
+    const rows = [
+      [`${event.name || 'Your Event'} — Event Summary`],
+      ['Prepared', new Date().toLocaleDateString()],
+      [],
+      ['EVENT DETAILS'],
+      ['Event Name', event.name  || ''],
+      ['Type',       event.type  || ''],
+      ['Date',       eventDate],
+      ['Venue',      event.venue || ''],
+      [],
+    ];
+    if (client?.name)  rows.push(['CLIENT']);
+    if (client?.name)  rows.push(['Name',  client.name  || '']);
+    if (client?.email) rows.push(['Email', client.email || '']);
+    if (client?.phone) rows.push(['Phone', client.phone || '']);
+    rows.push([]);
+    rows.push(['GUEST COUNTS']);
+    rows.push(['Total Invited', guests.length]);
+    rows.push(['Confirmed',     confirmed]);
+    rows.push(['Declined',      guests.filter(g => g.rsvp === 'No').length]);
+    rows.push(['Awaiting',      guests.filter(g => !g.rsvp || g.rsvp === 'Maybe' || g.rsvp === '').length]);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 20 }, { wch: 36 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  }
+
+  // ── Run of Show ────────────────────────────────────────────────────────────
+  if (sections.ros && ros.length > 0) {
+    const sorted = [...ros].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const ws = XLSX.utils.json_to_sheet(sorted.map(r => ({
+      'Time':      r.time      || '',
+      'Segment':   r.segment   || '',
+      'Location':  r.location  || '',
+      'Owner':     r.owner     || '',
+      'Confirmed': r.confirmed ? 'Yes' : '',
+      'Notes':     r.notes     || '',
+    })));
+    ws['!cols'] = [{ wch: 8 }, { wch: 34 }, { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 44 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Run of Show');
+  }
+
+  // ── Vendors (contracted only, no payment internals) ─────────────────────────
+  if (sections.vendors) {
+    const contracted = vendors.filter(v => ['Contracted', 'Deposit Paid', 'Confirmed'].includes(v.status));
+    const ws = XLSX.utils.json_to_sheet(
+      contracted.length
+        ? contracted.map(v => ({
+            'Vendor':    v.name     || '',
+            'Category':  v.category || '',
+            'Status':    v.status   || '',
+            'Phone':     v.phone    || '',
+            'Email':     v.contact  || '',
+            'Website':   v.website  || '',
+            'Arrival':   v.arrivalTime || '',
+            'Notes':     v.notes    || '',
+          }))
+        : [{ 'Vendor': '(no confirmed vendors yet)' }]
+    );
+    ws['!cols'] = [{ wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 26 }, { wch: 12 }, { wch: 42 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Vendors');
+  }
+
+  // ── Guest list ─────────────────────────────────────────────────────────────
+  if (sections.guests) {
+    const ws = XLSX.utils.json_to_sheet(
+      guests.length
+        ? guests.map(g => ({
+            'Name':       g.name    || '',
+            'Group':      g.group   || '',
+            'RSVP':       g.rsvp    || '',
+            'Meal':       g.meal    || '',
+            'Table':      g.table   || '',
+            'Plus One':   g.plusOne || '',
+            'Kids':       g.kids    || 0,
+            'Needs':      g.needs   || '',
+            'Email':      g.email   || '',
+            'Phone':      g.phone   || '',
+          }))
+        : [{ 'Name': '(no guests yet)' }]
+    );
+    ws['!cols'] = [{ wch: 24 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 7 }, { wch: 20 }, { wch: 5 }, { wch: 24 }, { wch: 26 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Guest List');
+  }
+
+  // ── Budget summary ─────────────────────────────────────────────────────────
+  if (sections.budget && budget.length > 0) {
+    const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
+    const totalSpent    = budget.reduce((s, r) => s + (r.actual   || 0), 0);
+    const getPkgComm    = (cat) => vendors.filter(v => (v.budgetCategory || v.category) === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+    const totalComm     = budget.reduce((s, r) => s + getPkgComm(r.category), 0);
+    const rows = budget.map(r => {
+      const comm = getPkgComm(r.category);
+      return {
+        'Category':    r.category || '',
+        'Budgeted':    r.budgeted || 0,
+        'Committed':   comm,
+        'Uncontracted': Math.max(0, (r.budgeted || 0) - comm),
+        'Spent':       r.actual   || 0,
+        'Balance Due': Math.max(0, comm - (r.actual || 0)),
+      };
+    });
+    rows.push({ 'Category': 'TOTAL', 'Budgeted': totalBudgeted, 'Committed': totalComm, 'Uncontracted': Math.max(0, totalBudgeted - totalComm), 'Spent': totalSpent, 'Balance Due': Math.max(0, totalComm - totalSpent) });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 20 }, { wch: 11 }, { wch: 11 }, { wch: 13 }, { wch: 11 }, { wch: 11 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Budget');
+  }
+
+  const safeName = (event.name || 'Event').replace(/[^a-z0-9]/gi, '_');
+  XLSX.writeFile(wb, `${safeName}_ClientPackage.xlsx`);
+}
+
+function SendToClientModal({ event, client, onClose }) {
+  const C = useT();
+  const s = makeS(C);
+  const [sections,  setSections]  = useState({ summary: true, ros: true, vendors: true, guests: true, budget: false });
+  const [copied,    setCopied]    = useState(false);
+  const [step,      setStep]      = useState('compose'); // 'compose' | 'sent'
+  const [sentMethod, setSentMethod] = useState('');
+
+  const toggle = (id) => setSections(prev => ({ ...prev, [id]: !prev[id] }));
+  const anyOn  = Object.values(sections).some(Boolean);
+
+  const textSummary = buildClientText(event, client, sections);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(textSummary).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  const handleEmail = () => {
+    const subject = encodeURIComponent(`Your Event Summary — ${event.name || 'Upcoming Event'}`);
+    const body    = encodeURIComponent(textSummary);
+    const to      = client?.email ? encodeURIComponent(client.email) : '';
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`, '_self');
+    setSentMethod('email'); setStep('sent');
+  };
+
+  const handleDownload = () => {
+    exportClientPackage(event, client, sections);
+    setSentMethod('download'); setStep('sent');
+  };
+
+  const handlePrint = () => {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>${event.name || 'Event'} — Client Package</title>
+      <style>body{font-family:monospace;white-space:pre-wrap;padding:32px;font-size:13px;line-height:1.6}h1{font-size:16px;margin-bottom:16px}</style>
+      </head><body><pre>${textSummary.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></body></html>`);
+    win.document.close();
+    win.focus();
+    win.print();
+    setSentMethod('print'); setStep('sent');
+  };
+
+  const deliveryBtns = [
+    {
+      id: 'download', label: '📄 Download XLSX', sub: 'Multi-tab spreadsheet', variant: 'primary',
+      action: handleDownload,
+    },
+    {
+      id: 'email',    label: '✉️ Email to Client', sub: client?.email ? client.email : 'No email on file', variant: 'ghost',
+      action: handleEmail, disabled: !client?.email,
+    },
+    {
+      id: 'copy',    label: copied ? '✅ Copied!' : '📋 Copy Text', sub: 'Paste into any message', variant: 'ghost',
+      action: handleCopy,
+    },
+    {
+      id: 'print',   label: '🖨 Print / PDF', sub: 'Open print dialog', variant: 'ghost',
+      action: handlePrint,
+    },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: C.surface, borderRadius: 16, width: '100%', maxWidth: 540, boxShadow: '0 24px 64px rgba(0,0,0,0.28)', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>📦 Send to Client</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{event.name || 'Event'}{client?.name ? ` · ${client.name}` : ''}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
+
+        {step === 'compose' ? (
+          <div style={{ padding: '20px 24px 24px' }}>
+            {/* Section toggles */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>What to include</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+              {CLIENT_PKG_SECTIONS.map(({ id, label, icon }) => {
+                const on = sections[id];
+                return (
+                  <button key={id} onClick={() => toggle(id)}
+                    style={{
+                      padding: '7px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer', fontWeight: 500,
+                      border: `1.5px solid ${on ? C.accent : C.border}`,
+                      background: on ? C.accent + '18' : 'transparent',
+                      color: on ? C.accent : C.muted,
+                      transition: 'all 0.15s',
+                    }}>
+                    {icon} {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Delivery methods */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>How to deliver</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {deliveryBtns.map(({ id, label, sub, action, disabled }) => (
+                <button key={id} onClick={action} disabled={disabled || !anyOn}
+                  style={{
+                    padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${C.border}`,
+                    background: C.surfaceAlt || (C.surface === '#ffffff' ? '#f5f5f7' : '#1c1c1e'),
+                    cursor: disabled || !anyOn ? 'not-allowed' : 'pointer',
+                    opacity: disabled || !anyOn ? 0.45 : 1,
+                    textAlign: 'left', transition: 'border-color 0.15s',
+                  }}
+                  onMouseEnter={e => { if (!disabled && anyOn) e.currentTarget.style.borderColor = C.accent; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text }}>{label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
+                </button>
+              ))}
+            </div>
+
+            {!anyOn && (
+              <div style={{ fontSize: 12, color: C.warn, marginTop: 14, textAlign: 'center' }}>Select at least one section to deliver</div>
+            )}
+
+            {/* Guest list template download — always available */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>For Your Client to Fill In</div>
+              <button
+                onClick={() => downloadGuestTemplate(event?.name)}
+                style={{
+                  width: '100%', padding: '11px 14px', borderRadius: 10,
+                  border: `1.5px solid ${C.border}`, background: C.bg,
+                  cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
+                  transition: 'border-color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent2; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                <span style={{ fontSize: 22 }}>📋</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text }}>Guest List Template</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Blank spreadsheet your client fills in — Name, RSVP, Meal, Table, Dietary Needs</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Sent confirmation */
+          <div style={{ padding: '36px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>
+              {sentMethod === 'download' ? '📄' : sentMethod === 'email' ? '✉️' : sentMethod === 'print' ? '🖨' : '📋'}
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 6 }}>
+              {sentMethod === 'download' ? 'Package downloaded!' : sentMethod === 'email' ? 'Email client opened' : sentMethod === 'print' ? 'Print dialog opened' : 'Copied to clipboard!'}
+            </div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>
+              {sentMethod === 'download' ? `${event.name || 'Event'}_ClientPackage.xlsx` : sentMethod === 'email' ? 'Your email client should have opened with the summary pre-filled.' : sentMethod === 'print' ? 'Print or save as PDF from the dialog.' : 'Paste it into any message or document.'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setStep('compose')} style={s.btn('ghost')}>Send another way</button>
+              <button onClick={onClose} style={s.btn('primary')}>Done</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Google Sheets Export ─────────────────────────────────────────────────────
 
 function exportEventToSheets(event, client) {
@@ -8939,8 +11549,9 @@ function exportEventToSheets(event, client) {
     [],
     ['BUDGET'],
     ['Total Budgeted',    totalBudget],
+    ['Total Committed',   vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0)],
     ['Total Spent',       totalSpent],
-    ['Remaining',         totalBudget - totalSpent],
+    ['Balance Due',       Math.max(0, vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0) - totalSpent)],
     [],
     ['PLANNING'],
     ['Tasks Complete',    `${tasksDone} / ${timeline.length}`],
@@ -9023,17 +11634,23 @@ function exportEventToSheets(event, client) {
   XLSX.utils.book_append_sheet(wb, wsVendors, 'Vendors');
 
   // ── Budget ────────────────────────────────────────────────────────────────
+  const getExpCommitted = (cat) => vendors.filter(v => (v.budgetCategory || v.category) === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
   const budgetRows = budget.length
-    ? budget.map(r => ({
-        'Category':  r.category || '',
-        'Budgeted':  r.budgeted || 0,
-        'Spent':     r.actual   || 0,
-        'Remaining': (r.budgeted || 0) - (r.actual || 0),
-        'Notes':     r.notes    || '',
-      }))
+    ? budget.map(r => {
+        const comm = getExpCommitted(r.category);
+        return {
+          'Category':    r.category || '',
+          'Budgeted':    r.budgeted || 0,
+          'Committed':   comm,
+          'Uncontracted': Math.max(0, (r.budgeted || 0) - comm),
+          'Spent':       r.actual   || 0,
+          'Balance Due': Math.max(0, comm - (r.actual || 0)),
+          'Notes':       r.notes    || '',
+        };
+      })
     : [{ 'Category': '(no budget items yet)' }];
   const wsBudget = XLSX.utils.json_to_sheet(budgetRows);
-  wsBudget['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 32 }];
+  wsBudget['!cols'] = [{ wch: 18 }, { wch: 11 }, { wch: 11 }, { wch: 13 }, { wch: 11 }, { wch: 11 }, { wch: 32 }];
   XLSX.utils.book_append_sheet(wb, wsBudget, 'Budget');
 
   // ── Run of Show ───────────────────────────────────────────────────────────
@@ -9384,17 +12001,21 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
 
 const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show'];
 
-function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, initialNav, profile, onDelete, onDuplicate }) {
+function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
-  const [tab,          setTab]         = useState(initialNav?.tab || 'Overview');
-  const [showConsult,  setShowConsult] = useState(false);
-  const [exporting,    setExporting]   = useState(false);
-  const [openVendorId, setOpenVendorId] = useState(initialNav?.vendorId || null);
-  const [openTaskId,   setOpenTaskId]   = useState(initialNav?.taskId || null);
-  const [confirmEvtDel, setConfirmEvtDel] = useState(false);
+  const [tab,             setTab]            = useState(initialNav?.tab || 'Overview');
+  const [showConsult,     setShowConsult]    = useState(false);
+  const [exporting,       setExporting]      = useState(false);
+  const [showSendClient,  setShowSendClient] = useState(false);
+  const [showPortal,      setShowPortal]     = useState(false);
+  const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
+  const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
+  const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const [clientPickVal,   setClientPickVal]  = useState('');
 
   const handleTabChange = (newTab, itemId) => {
     setOpenVendorId(newTab === 'Vendors'        ? (itemId || null) : null);
@@ -9466,8 +12087,8 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
     transition: 'all 0.15s', whiteSpace: 'nowrap',
   });
 
-  const hPad = isMobile ? '14px 14px 0' : '24px 28px 0';
-  const bPad = isMobile ? '14px 14px'   : '24px 28px';
+  const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
+  const bPad = isMobile ? '14px 14px'   : bp === 'tablet' ? '18px 20px'   : '24px 28px';
 
   const tabContent = (
     <ErrorBoundary>
@@ -9486,7 +12107,7 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
           intakeSavedAt={event.intake?.savedAt}
         />
       )}
-      {tab === 'Budget'      && <Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} />}
+      {tab === 'Budget'      && <Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} />}
       {tab === 'Guests'      && <Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} />}
       {tab === 'Seating'     && <Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} />}
       {tab === 'Vendors'        && <Vendors   vendors={event.vendors}   setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} event={event} ros={event.ros} profile={profile} />}
@@ -9507,6 +12128,8 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
   return (
     <div style={s.app}>
       {showConsult && <ConsultScriptModal event={event} setEvent={setEvent} onClose={() => setShowConsult(false)} />}
+      {showSendClient && <SendToClientModal event={event} client={client} onClose={() => setShowSendClient(false)} />}
+      {showPortal && client && <ClientPortal client={client} events={[event]} onClose={() => setShowPortal(false)} onUpdateGuests={gs => setEvent(ev => ({ ...ev, guests: typeof gs === 'function' ? gs(ev.guests || []) : gs }))} />}
 
       {/* ── Shared header (event identity strip) ── */}
       <div style={{ padding: hPad, borderBottom: `1px solid ${C.border}` }}>
@@ -9564,6 +12187,22 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
             >
               {exporting ? '⏳ Exporting…' : '📊 Export'}
             </button>
+            {client && (
+              <button
+                onClick={() => setShowPortal(true)}
+                style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px' }}
+                title="Preview what your client sees"
+              >
+                👁 Client View
+              </button>
+            )}
+            <button
+              onClick={() => setShowSendClient(true)}
+              style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}
+              title="Package and send event details to client"
+            >
+              📦 Send to Client
+            </button>
             <button
               onClick={onDuplicate}
               style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }}
@@ -9578,7 +12217,7 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
             style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: 12, color: C.muted, padding: '3px 7px', outline: 'none', minWidth: 0, width: Math.max(80, (event.venue || '').length * 7 + 20), transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif" }}
             value={event.venue || ''}
             placeholder="Venue"
-            onChange={e => setEvent(ev => ({ ...ev, venue: e.target.value }))}
+            onChange={e => setEvent(ev => ({ ...ev, venue: e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()) }))}
             onFocus={e => { e.target.style.borderColor = C.border; }}
             onBlur={e => { e.target.style.borderColor = 'transparent'; }}
           />
@@ -9600,6 +12239,44 @@ function EventPlanner({ event, setEvent, client, setClient, onBack, backLabel, i
           >
             {EVT_TYPES.map(t => <option key={t}>{t}</option>)}
           </select>
+
+          {/* Client link widget */}
+          {client ? (
+            <>
+              <span style={{ color: C.border }}>·</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent }}>
+                👤 {client.name}
+                {onUnlinkClient && (
+                  <button onClick={() => onUnlinkClient(client.id)} title="Unlink client" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
+                )}
+              </span>
+            </>
+          ) : onLinkClient && clients.length > 0 ? (
+            <>
+              <span style={{ color: C.border }}>·</span>
+              {showClientPicker ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <select autoFocus style={{ ...s.input, fontSize: 12, padding: '3px 8px', height: 'auto', width: 'auto', minWidth: 140 }}
+                    value={clientPickVal}
+                    onChange={e => setClientPickVal(e.target.value)}
+                  >
+                    <option value="">Pick a client…</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button style={{ ...s.btn('primary'), fontSize: 11, padding: '3px 10px' }}
+                    onClick={() => { if (clientPickVal) { onLinkClient(clientPickVal); setShowClientPicker(false); setClientPickVal(''); } }}
+                  >Link</button>
+                  <button style={{ ...s.btn(), fontSize: 11, padding: '3px 8px' }} onClick={() => { setShowClientPicker(false); setClientPickVal(''); }}>✕</button>
+                </span>
+              ) : (
+                <button onClick={() => setShowClientPicker(true)}
+                  style={{ background: 'none', border: `1px dashed ${C.border}`, borderRadius: 6, fontSize: 11, color: C.muted, cursor: 'pointer', padding: '3px 9px', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}
+                >+ Link Client</button>
+              )}
+            </>
+          ) : null}
         </div>
 
         {/* Horizontal tabs — mobile + tablet portrait only */}
@@ -9754,15 +12431,35 @@ export default function App() {
 
   const setEvent  = (fn) => setEvents(evts => evts.map(e => e.id === activeId          ? (typeof fn === 'function' ? fn(e) : fn) : e));
   const setClient = (fn) => setClients(cs  => cs.map(c  => c.id === activeClient?.id   ? (typeof fn === 'function' ? fn(c) : fn) : c));
+  // Update guests for any event (used by ClientPortal so the client can manage the guest list)
+  const updateEventGuests = (evId, fn) => setEvents(evts => evts.map(e => e.id === evId ? { ...e, guests: typeof fn === 'function' ? fn(e.guests || []) : fn } : e));
 
-  const createEvent = (ev) => {
+  const createEvent = (ev, explicitClientId) => {
     setEvents(evts => [...evts, ev]);
-    if (activeClientId) {
-      setClients(cs => cs.map(c => c.id === activeClientId ? { ...c, eventIds: [...(c.eventIds || []), ev.id] } : c));
+    const linkId = explicitClientId || activeClientId;
+    if (linkId) {
+      setClients(cs => cs.map(c => c.id === linkId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), ev.id])] } : c));
+      if (!activeClientId) setActiveClientId(linkId);
     }
     setActiveId(ev.id);
   };
-  const createClient = (cl) => { setClients(cs => [...cs, cl]); setActiveClientId(cl.id); };
+  const createClient = (cl, linkedEventId) => {
+    setClients(cs => [...cs, cl]);
+    setActiveClientId(cl.id);
+    // Nothing extra needed — cl.eventIds already has [linkedEventId] if chosen
+  };
+  const linkClientToEvent = (clientId) => {
+    // Add active event to this client's eventIds; set as active client for back-nav
+    setClients(cs => cs.map(c => c.id === clientId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), activeId])] } : c));
+    setActiveClientId(clientId);
+  };
+  const unlinkClientFromEvent = (clientId) => {
+    setClients(cs => cs.map(c => c.id === clientId ? { ...c, eventIds: (c.eventIds || []).filter(id => id !== activeId) } : c));
+    setActiveClientId(null);
+  };
+  const linkEventToClient = (evId) => {
+    setClients(cs => cs.map(c => c.id === activeClientId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), evId])] } : c));
+  };
   const deleteClient = ()     => { setClients(cs => cs.filter(c => c.id !== activeClientId)); setActiveClientId(null); };
   const deleteEvent  = ()     => {
     const evId = activeId;
@@ -9839,6 +12536,9 @@ export default function App() {
         initialNav={initialNav}
         profile={profile}
         onDelete={deleteEvent}
+        clients={clients}
+        onLinkClient={linkClientToEvent}
+        onUnlinkClient={unlinkClientFromEvent}
         onDuplicate={() => {
           const cloned = {
             ...activeEvent,
@@ -9871,8 +12571,10 @@ export default function App() {
           onAddEvent={() => setShowNew(true)}
           onBack={() => setActiveClientId(null)}
           onDelete={deleteClient}
+          onUpdateEventGuests={updateEventGuests}
+          onLinkEvent={linkEventToClient}
         />
-        {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} />}
+        {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} clients={clients} />}
       </>
     );
   }
@@ -9889,8 +12591,8 @@ export default function App() {
         onNew={() => setShowNew(true)}
         onNewClient={() => setShowNewClient(true)}
       />
-      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  />}
-      {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} />}
+      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  clients={clients} profile={profile} />}
+      {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} />}
     </>
   );
