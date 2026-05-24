@@ -5732,7 +5732,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual    = budget.reduce((s, r) => s + r.actual, 0);
 
-  const getCommitted   = (cat) => (vendors || []).filter(v => v.budgetCategory === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+  const getCommitted   = (cat) => (vendors || []).filter(v => (v.budgetCategory || v.category) === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
   // Sum per-row committed (keeps total row consistent with what each category row shows)
   const totalCommitted = budget.reduce((s, r) => s + getCommitted(r.category), 0);
 
