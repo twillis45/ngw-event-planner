@@ -667,6 +667,55 @@ const VENDOR_STUBS = {
 // Typical guests-per-table by event type
 const TABLE_SIZE = { Wedding: 8, Corporate: 10, 'Board Meeting': 12, Birthday: 8, Anniversary: 8, 'Baby Shower': 6, 'Bridal Shower': 6, Graduation: 8, Other: 8 };
 
+// Event-planner language for good / better / best budget tiers
+const TIER_META = {
+  Wedding: {
+    good:   { label: 'Classic',   tag: 'Complete and elegant — every essential covered' },
+    better: { label: 'Elevated',  tag: 'Refined details, upgraded vendors, full florals' },
+    best:   { label: 'Luxury',    tag: 'Full production, top-tier vendors, no compromises' },
+  },
+  Corporate: {
+    good:   { label: 'Standard',  tag: 'Professional, functional, client-appropriate' },
+    better: { label: 'Executive', tag: 'Polished experience, branded and guest-ready' },
+    best:   { label: 'Premier',   tag: 'White-glove, fully produced, stakeholder-level' },
+  },
+  'Board Meeting': {
+    good:   { label: 'Efficient', tag: 'Functional setup — all essentials, no excess' },
+    better: { label: 'Executive', tag: 'Professional environment with catered service' },
+    best:   { label: 'Premier',   tag: 'Production-grade, fully facilitated, off-site' },
+  },
+  Birthday: {
+    good:   { label: 'Essentials', tag: 'Warm, memorable celebration on a smart budget' },
+    better: { label: 'Elevated',   tag: 'Styled, catered, and guest-ready' },
+    best:   { label: 'Premium',    tag: 'Full-service party with entertainment and décor' },
+  },
+  Anniversary: {
+    good:   { label: 'Classic',   tag: 'Intimate and heartfelt — beautifully done' },
+    better: { label: 'Elevated',  tag: 'Curated dinner experience with personal touches' },
+    best:   { label: 'Signature', tag: 'Luxury celebration — destination-worthy feel' },
+  },
+  'Baby Shower': {
+    good:   { label: 'Sweet',    tag: 'Charming and personal — all the essentials' },
+    better: { label: 'Styled',   tag: 'Florals, catering, and a cohesive aesthetic' },
+    best:   { label: 'Luxury',   tag: 'Full styling, catered brunch, memorable details' },
+  },
+  'Bridal Shower': {
+    good:   { label: 'Classic',  tag: 'Elegant and personal — tasteful and complete' },
+    better: { label: 'Elevated', tag: 'Styled venue, catered menu, curated details' },
+    best:   { label: 'Luxury',   tag: 'Full production — florals, catering, entertainment' },
+  },
+  Graduation: {
+    good:   { label: 'Celebration', tag: 'Festive, fun, and within budget' },
+    better: { label: 'Elevated',    tag: 'Styled party with catered food and décor' },
+    best:   { label: 'Premium',     tag: 'Full-service event — live entertainment, full bar' },
+  },
+  Other: {
+    good:   { label: 'Essentials', tag: 'Covers every must-have, managed spend' },
+    better: { label: 'Elevated',   tag: 'Upgraded experience with added polish' },
+    best:   { label: 'Signature',  tag: 'Premium, full-service, fully produced' },
+  },
+};
+
 const PER_HEAD = {
   Wedding:         { good: 85,  better: 140, best: 220 },
   Corporate:       { good: 60,  better: 90,  best: 150 },
@@ -3061,10 +3110,11 @@ function NewEventModal({ onClose, onCreate }) {
             {/* Budget estimator — shows when guest count is set */}
             {guestCt > 0 && (() => {
               const ph = PER_HEAD[form.type] || PER_HEAD.Other;
+              const tierMeta = TIER_META[form.type] || TIER_META.Other;
               const tiers = [
-                { key: 'good',   label: 'Essential', color: C.muted },
-                { key: 'better', label: 'Premium',   color: C.accent2 },
-                { key: 'best',   label: 'Luxury',    color: C.accent },
+                { key: 'good',   label: tierMeta.good.label,   color: C.success },
+                { key: 'better', label: tierMeta.better.label, color: C.accent2 },
+                { key: 'best',   label: tierMeta.best.label,   color: C.accent },
               ];
               return (
                 <div>
@@ -5809,8 +5859,9 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
             {tiers && (
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {tiers.map(({ tier, total, perHead }) => {
-                  const clr = tier === 'good' ? C.success : tier === 'better' ? C.accent2 : C.accent;
-                  const why = (TIER_WHY[est.eventType] || TIER_WHY.Other)[tier] || [];
+                  const clr  = tier === 'good' ? C.success : tier === 'better' ? C.accent2 : C.accent;
+                  const why  = (TIER_WHY[est.eventType] || TIER_WHY.Other)[tier] || [];
+                  const meta = (TIER_META[est.eventType] || TIER_META.Other)[tier];
                   return (
                     <div key={tier} style={{ ...s.card, flex: 1, minWidth: 180, marginBottom: 0, borderColor: clr + '55', background: pendingTier === tier ? clr + '18' : clr + '08', cursor: 'pointer' }}
                       onClick={e => {
@@ -5829,9 +5880,10 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                         }
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: clr, marginBottom: 4 }}>{tier}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: clr, marginBottom: 2 }}>{meta.label}</div>
                       <div style={{ ...s.statNum(clr), fontSize: 22 }}>{fmtD(total)}</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{fmtD(perHead)} / person</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 6, fontStyle: 'italic', lineHeight: 1.4 }}>{meta.tag}</div>
                       {why.length > 0 && (
                         <ul style={{ margin: '10px 0 4px', padding: '0 0 0 14px', listStyle: 'disc' }}>
                           {why.map((w, i) => <li key={i} style={{ fontSize: 11, color: C.muted, marginBottom: 2, lineHeight: 1.4 }}>{w}</li>)}
