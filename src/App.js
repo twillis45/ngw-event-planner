@@ -5465,8 +5465,8 @@ Write the summary now:`;
 
   const statCards = (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isWide ? 3 : 2}, 1fr)`, gap: 12, marginBottom: 16 }}>
-      <StatCard label="Total Budget"      value={fmtD(totalBudgeted)} sub={`${fmtD(totalActual)} spent`}                                                          onClick={onTabChange ? () => onTabChange('Budget')         : undefined} />
-      <StatCard label="Remaining"         value={fmtD(remaining)}     sub={`${Math.round((totalActual / (totalBudgeted || 1)) * 100)}% used`} color={remaining < 0 ? C.danger : C.success} onClick={onTabChange ? () => onTabChange('Budget')   : undefined} />
+      <StatCard label="Budgeted"           value={fmtD(totalBudgeted)} sub={`${fmtD(totalActual)} spent · ${fmtD(vendorTotal)} committed`}                      onClick={onTabChange ? () => onTabChange('Budget')         : undefined} />
+      <StatCard label="Remaining"         value={fmtD(remaining)}     sub={`Budgeted minus Spent · ${Math.round((totalActual / (totalBudgeted || 1)) * 100)}% used`} color={remaining < 0 ? C.danger : C.success} onClick={onTabChange ? () => onTabChange('Budget')   : undefined} />
       <StatCard label="Attending"         value={confirmed.length}    sub={guestEstimate ? `est. ${guestEstimate} · ${guests.length} invited` : `of ${guests.length} invited`} color={C.accent}  onClick={onTabChange ? () => onTabChange('Guests')   : undefined} />
       <StatCard label="Vendors Confirmed" value={`${vendorConf}/${vendors.length}`} sub={`${fmtD(vendorTotal)} committed`} color={C.accent2}                       onClick={onTabChange ? () => onTabChange('Vendors')        : undefined} />
       <StatCard label="Tasks Complete"    value={`${done}/${timeline.length}`} sub={`${Math.round((done / (timeline.length || 1)) * 100)}% done`}                  onClick={onTabChange ? () => onTabChange('Planning Tasks') : undefined} />
@@ -5679,11 +5679,12 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   // Estimator auto-collapses once line items exist — open on first visit
   const [showEstimator, setShowEstimator] = useState(budget.length === 0);
 
-  const totalBudgeted = budget.reduce((s, r) => s + r.budgeted, 0);
-  const totalActual   = budget.reduce((s, r) => s + r.actual, 0);
-  const vendorTotal   = (vendors || []).filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+  const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
+  const totalActual    = budget.reduce((s, r) => s + r.actual, 0);
 
-  const getCommitted = (cat) => (vendors || []).filter(v => v.budgetCategory === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+  const getCommitted   = (cat) => (vendors || []).filter(v => v.budgetCategory === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
+  // Sum per-row committed (keeps total row consistent with what each category row shows)
+  const totalCommitted = budget.reduce((s, r) => s + getCommitted(r.category), 0);
 
   const add = () => {
     const nr = { id: uid(), category: 'New Item', budgeted: 0, actual: 0, notes: '' };
@@ -5740,10 +5741,10 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
       )}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <StatCard label="Total Budget"     value={fmtD(totalBudgeted)} />
-        <StatCard label="Spent"            value={fmtD(totalActual)}   color={totalActual > totalBudgeted ? C.danger : C.text} />
-        <StatCard label="Remaining"        value={fmtD(totalBudgeted - totalActual)} color={totalBudgeted - totalActual < 0 ? C.danger : C.success} />
-        <StatCard label="Vendor Committed" value={fmtD(vendorTotal)}   sub="from vendor directory" color={vendorTotal > totalBudgeted ? C.danger : C.accent2} />
+        <StatCard label="Budgeted"   value={fmtD(totalBudgeted)} sub="Planned spend across all categories" />
+        <StatCard label="Committed"  value={fmtD(totalCommitted)} sub="Contracted or deposited vendors" color={totalCommitted > totalBudgeted ? C.danger : C.accent2} />
+        <StatCard label="Spent"      value={fmtD(totalActual)}   sub="Payments recorded in budget rows" color={totalActual > totalBudgeted ? C.danger : C.text} />
+        <StatCard label="Remaining"  value={fmtD(totalBudgeted - totalActual)} sub="Budgeted minus Spent" color={totalBudgeted - totalActual < 0 ? C.danger : C.success} />
       </div>
 
       {/* Upcoming Payment Alerts */}
@@ -5895,7 +5896,21 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         ) : (
           <table style={s.table}>
             <thead>
-              <tr>{['Category', 'Budgeted', 'Committed', 'Spent', 'Remaining', 'Notes', ''].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+              <tr>
+                {[
+                  { h: 'Category',  tip: null },
+                  { h: 'Budgeted',  tip: 'Your planned spend for this category' },
+                  { h: 'Committed', tip: 'Total cost of vendors you\'ve contracted or deposited (from Vendor tab)' },
+                  { h: 'Spent',     tip: 'Actual payments recorded in this budget row' },
+                  { h: 'Remaining', tip: 'Budgeted minus Spent — does not subtract Committed' },
+                  { h: 'Notes',     tip: null },
+                  { h: '',          tip: null },
+                ].map(({ h, tip }) => (
+                  <th key={h} style={s.th} title={tip || undefined}>
+                    {h}{tip ? <span style={{ marginLeft: 3, color: C.muted, fontSize: 10, cursor: 'help' }}>ⓘ</span> : null}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {budget.map(r => {
@@ -5929,10 +5944,10 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                   </tr>
                 );
               })}
-              <tr>
+              <tr style={{ borderTop: `2px solid ${C.border}` }}>
                 <td style={{ ...s.td, fontWeight: 700 }}>Total</td>
                 <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalBudgeted)}</td>
-                <td style={{ ...s.td, fontWeight: 700, color: C.accent2 }}>{fmtD(vendorTotal)}</td>
+                <td style={{ ...s.td, fontWeight: 700, color: C.accent2 }}>{fmtD(totalCommitted)}</td>
                 <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalActual)}</td>
                 <td style={{ ...s.td, fontWeight: 700, color: remClr(totalBudgeted - totalActual, C) }}>{fmtD(totalBudgeted - totalActual)}</td>
                 <td /><td />
