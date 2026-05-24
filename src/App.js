@@ -1597,7 +1597,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
-            <input style={{ ...s.input, fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px' }} value={vendor.name} onChange={e => onChange('name', e.target.value.replace(/\b\w/g, c => c.toUpperCase()))} />
+            <input style={{ ...s.input, fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px' }} value={vendor.name} onChange={e => onChange('name', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
             <button onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           <select style={{ ...s.input, fontSize: 12 }} value={vendor.category} onChange={e => {
