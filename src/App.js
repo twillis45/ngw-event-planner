@@ -8377,7 +8377,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange }) {
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: dayPhase.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>Planning Milestone — {dayPhase.phase}</span>
                     {onTabChange && (
-                      <button onClick={() => onTabChange('Timeline')} style={{ fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                      <button onClick={() => onTabChange('Planning Tasks')} style={{ fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
                         → Planning Tasks
                       </button>
                     )}
