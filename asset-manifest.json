@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/ngw-event-planner/static/js/main.992725be.js",
+    "index.html": "/ngw-event-planner/index.html",
+    "main.992725be.js.map": "/ngw-event-planner/static/js/main.992725be.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.992725be.js"
+  ]
+}
