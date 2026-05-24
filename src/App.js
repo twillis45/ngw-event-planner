@@ -685,7 +685,7 @@ const TIER_META = {
     best:   { label: 'Premier',   tag: 'Production-grade, fully facilitated, off-site' },
   },
   Birthday: {
-    good:   { label: 'Essentials', tag: 'Warm, memorable celebration on a smart budget' },
+    good:   { label: 'Curated', tag: 'Warm, memorable celebration on a smart budget' },
     better: { label: 'Elevated',   tag: 'Styled, catered, and guest-ready' },
     best:   { label: 'Premium',    tag: 'Full-service party with entertainment and décor' },
   },
@@ -710,7 +710,7 @@ const TIER_META = {
     best:   { label: 'Premium',     tag: 'Full-service event — live entertainment, full bar' },
   },
   Other: {
-    good:   { label: 'Essentials', tag: 'Covers every must-have, managed spend' },
+    good:   { label: 'Curated', tag: 'Covers every must-have, managed spend' },
     better: { label: 'Elevated',   tag: 'Upgraded experience with added polish' },
     best:   { label: 'Signature',  tag: 'Premium, full-service, fully produced' },
   },
