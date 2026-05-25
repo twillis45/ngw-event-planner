@@ -6946,7 +6946,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
             {enrichedEvents.length > 0 && (
-              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start', marginBottom: 32 }}>
+              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 470px', gap: 24, alignItems: 'start', marginBottom: 32 }}>
                 <div ref={eventsRef}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                   Upcoming Events ({enrichedEvents.length})
@@ -6982,7 +6982,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   })}
                 </div>
                 </div>{/* /events column */}
-                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} sidebar />}
+                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
               </div>
             )}
 
