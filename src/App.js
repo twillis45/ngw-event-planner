@@ -628,6 +628,19 @@ const isPosDollar = v => v === '' || v === undefined || v === null || (!isNaN(Nu
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STAGES    = ['Considering', 'Quoted', 'Contracted', 'Deposit Paid', 'Confirmed'];
+
+// ─── Canonical vendor money model (single source of truth) ─────────────────────
+// A vendor is "committed" once Contracted or further along the stage ladder.
+// PAID  = deposit (only if actually paid) + balance (only if marked paid).
+// BALANCE DUE = cost − paid, floored at 0. Counting the deposit only when
+// depositPaid is true is what keeps the math honest: an unpaid deposit still
+// means you owe the full cost. Every "balance due / owed to vendors" figure in
+// the app should route through these so the numbers always reconcile.
+const vendorIsCommitted = (v) => STAGES.indexOf(v.status) >= 2;
+const vendorPaid        = (v) => v.balancePaid ? (v.cost || 0) : (v.depositPaid ? (v.depositAmt || 0) : 0);
+const vendorBalance     = (v) => Math.max(0, (v.cost || 0) - vendorPaid(v));
+// Committed contract value = total cost of vendors that are Contracted+.
+const vendorCommittedCost = (v) => vendorIsCommitted(v) ? (v.cost || 0) : 0;
 // Color maps are now functions so they react to the active theme token set.
 // Usage inside components: const stageCLR = STAGE_CLR(C); stageCLR['Confirmed']
 const STAGE_CLR = (C) => ({ Considering: C.muted, Quoted: C.warn, Contracted: C.accent2, 'Deposit Paid': C.accent, Confirmed: C.success });
@@ -2151,7 +2164,7 @@ function StatCard({ label, value, sub, color, onClick }) {
 }
 
 // Fixed-height KPI cell that lists rows internally (desktop "inbox" KPIs:
-// Task Inbox, Payments Due, Action Required). Header + scrollable body.
+// Task Inbox, Due Soon, Action Required). Header + scrollable body.
 function KpiInboxPanel({ label, headerRight, hasItems, empty, children }) {
   const C = useT();
   const s = makeS(C);
@@ -4070,7 +4083,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 10 }}>Vendors in this category</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {categoryVendors.map(v => {
-                  const bal = v.balancePaid ? 0 : v.cost - v.depositAmt;
+                  const bal = vendorBalance(v);
                   return (
                     <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -6927,12 +6940,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [showPaymentsMobile, setShowPaymentsMobile] = useState(false);
   const [showActionMobile,   setShowActionMobile]   = useState(false);
 
-  // Total event value = sum of every event's budgeted total (what clients are spending overall).
-  const totalEventValue  = useMemo(() => events.reduce((s, ev) => s + (ev.budget || []).reduce((b, r) => b + (r.budgeted || 0), 0), 0), [events]);
-  // Vendor outstanding = balance still owed to committed (Contracted+) vendors across all events.
-  const vendorOutstanding = useMemo(() => events.reduce((s, ev) => s + (ev.vendors || [])
-    .filter(v => STAGES.indexOf(v.status) >= 2 && !v.balancePaid)
-    .reduce((b, v) => b + Math.max(0, (v.cost || 0) - (v.depositAmt || 0)), 0), 0), [events]);
+  // Contracted value = total cost of all Contracted+ vendors across every event
+  // (what's actually under contract, not the planning budget).
+  const contractedValue = useMemo(() => events.reduce((s, ev) => s + (ev.vendors || [])
+    .reduce((b, v) => b + vendorCommittedCost(v), 0), 0), [events]);
+  // Balance due = of that contracted value, what's still owed to vendors.
+  const balanceDueTotal = useMemo(() => events.reduce((s, ev) => s + (ev.vendors || [])
+    .filter(vendorIsCommitted)
+    .reduce((b, v) => b + vendorBalance(v), 0), 0), [events]);
 
   const enrichedEvents = useMemo(() => events
     .map(e => ({ ...e, client: clients.find(c => (c.eventIds || []).includes(e.id)) }))
@@ -6970,13 +6985,15 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   const taskInboxItems = useMemo(() => [...urgentTasks, ...soonTasks].slice(0, 12), [urgentTasks, soonTasks]);
 
-  // Cross-event payment alerts — vendor balances due (or overdue) across all events
+  // "Due Soon" = the slice of Balance Due whose payment date falls within 45 days.
+  // Same committed-vendor + vendorBalance basis as Balance Due, so it's always a
+  // true subset of balanceDueTotal (never a number that conflicts with it).
   const paymentAlerts = useMemo(() => events.flatMap(ev =>
     (ev.vendors || [])
-      .filter(v => v.payDueDate && !v.balancePaid && (v.cost - v.depositAmt) > 0)
+      .filter(v => vendorIsCommitted(v) && v.payDueDate && vendorBalance(v) > 0)
       .map(v => ({
         id: v.id, eventId: ev.id, eventName: ev.name, eventType: ev.type,
-        vendorName: v.name, balance: v.cost - v.depositAmt,
+        vendorName: v.name, balance: vendorBalance(v),
         dueDate: v.payDueDate, daysLeft: daysUntil(v.payDueDate),
       }))
       .filter(v => v.daysLeft !== null && v.daysLeft <= 45)
@@ -7091,8 +7108,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(auto-fit, minmax(190px, 1fr))' : 'repeat(2, 1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
-              <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
-              <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
+              <StatCard label="Contracted Value" value={fmtD(contractedValue)} sub="committed to vendors"  color={C.accent2}                                                onClick={() => setDashView('events')} />
+              <StatCard label="Balance Due"      value={fmtD(balanceDueTotal)} sub="owed to vendors"      color={balanceDueTotal > 0 ? C.warn : C.muted}               onClick={() => setDashView('events')} />
 
               {/* Task Inbox */}
               {isWide ? (
@@ -7105,16 +7122,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={showTasksMobile ? 'tap to hide' : (urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track')} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => setShowTasksMobile(v => !v)} />
               )}
 
-              {/* Payments Due */}
+              {/* Due Soon — near-term slice of Balance Due (next 45 days) */}
               {paymentAlerts.length > 0 && (isWide ? (
                 <KpiInboxPanel
-                  label={`Payments Due (${paymentAlerts.length}${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''})`}
+                  label={`Due Soon (${paymentAlerts.length}${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''})`}
                   headerRight={<span style={{ fontSize: 11, fontWeight: 700, color: overduePayCount > 0 ? C.danger : C.warn, flexShrink: 0 }}>{fmtD(totalDueSoon)}</span>}
                   hasItems empty="">
                   {paymentRows()}
                 </KpiInboxPanel>
               ) : (
-                <StatCard label="Payments Due" value={paymentAlerts.length} sub={showPaymentsMobile ? 'tap to hide' : `${fmtD(totalDueSoon)} due${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''}`} color={overduePayCount > 0 ? C.danger : C.warn} onClick={() => setShowPaymentsMobile(v => !v)} />
+                <StatCard label="Due Soon" value={fmtD(totalDueSoon)} sub={showPaymentsMobile ? 'tap to hide' : `next 45 days${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''}`} color={overduePayCount > 0 ? C.danger : C.warn} onClick={() => setShowPaymentsMobile(v => !v)} />
               ))}
 
               {/* Action Required */}
@@ -7316,9 +7333,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed').length;
                   const done  = (ev.timeline || []).filter(t => t.done).length;
                   const total = (ev.timeline || []).length;
-                  const evCommitted = (ev.vendors || []).filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
-                  const evSpent     = (ev.budget  || []).reduce((s, r) => s + r.actual, 0);
-                  const balanceDue  = Math.max(0, evCommitted - evSpent);
+                  const evCommitted = (ev.vendors || []).reduce((s, v) => s + vendorCommittedCost(v), 0);
+                  const balanceDue  = (ev.vendors || []).filter(vendorIsCommitted).reduce((s, v) => s + vendorBalance(v), 0);
                   return (
                     <div key={ev.id} onClick={() => onSelectEvent(ev.id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: i < enrichedEvents.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
@@ -7885,8 +7901,8 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const totalBudgeted   = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual     = budget.reduce((s, r) => s + r.actual, 0);
-  const vendorTotal     = vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
-  const balanceDue      = Math.max(0, vendorTotal - totalActual);
+  const vendorTotal     = vendors.reduce((s, v) => s + vendorCommittedCost(v), 0);
+  const balanceDue      = vendors.filter(vendorIsCommitted).reduce((s, v) => s + vendorBalance(v), 0);
   const confirmed       = guests.filter(g => g.rsvp === 'Yes');
   const vendorConf      = vendors.filter(v => v.status === 'Confirmed').length;
   const done            = timeline.filter(t => t.done).length;
@@ -7899,8 +7915,8 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
   };
 
   const paymentsDue = vendors
-    .filter(v => v.payDueDate && !v.balancePaid && (v.cost - v.depositAmt) > 0)
-    .map(v => ({ ...v, daysLeft: daysUntil(v.payDueDate), balance: v.cost - v.depositAmt }))
+    .filter(v => vendorIsCommitted(v) && v.payDueDate && vendorBalance(v) > 0)
+    .map(v => ({ ...v, daysLeft: daysUntil(v.payDueDate), balance: vendorBalance(v) }))
     .filter(v => v.daysLeft !== null && v.daysLeft <= 60)
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
@@ -8423,7 +8439,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
 
   // Cash flow: group upcoming vendor balance payments by month
   const cashFlow = (vendors || [])
-    .filter(v => v.payDueDate && !v.balancePaid && (v.cost - v.depositAmt) > 0)
+    .filter(v => vendorIsCommitted(v) && v.payDueDate && vendorBalance(v) > 0)
     .sort((a, b) => a.payDueDate.localeCompare(b.payDueDate))
     .reduce((acc, v) => {
       const mon = v.payDueDate.slice(0, 7);
@@ -8435,11 +8451,11 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   // Upcoming payment alerts: vendors with balance due within 30 days
   const today = new Date(); today.setHours(0,0,0,0);
   const upcomingPayments = (vendors || [])
-    .filter(v => v.payDueDate && !v.balancePaid && (v.cost - (v.depositAmt || 0)) > 0)
+    .filter(v => vendorIsCommitted(v) && v.payDueDate && vendorBalance(v) > 0)
     .map(v => {
       const due = new Date(v.payDueDate + 'T00:00:00');
       const days = Math.round((due - today) / 86400000);
-      return { ...v, daysUntilDue: days, balanceAmt: (v.cost || 0) - (v.depositAmt || 0) };
+      return { ...v, daysUntilDue: days, balanceAmt: vendorBalance(v) };
     })
     .filter(v => v.daysUntilDue <= 30)
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
@@ -8752,7 +8768,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         <div style={s.card}>
           <div style={s.cardTitle}>Payment Schedule — Cash Out by Month</div>
           {Object.entries(cashFlow).map(([mon, vs]) => {
-            const monthTotal = vs.reduce((s, v) => s + (v.cost - v.depositAmt), 0);
+            const monthTotal = vs.reduce((s, v) => s + vendorBalance(v), 0);
             const d = daysUntil(mon + '-01');
             return (
               <div key={mon} style={{ marginBottom: 16 }}>
@@ -8767,7 +8783,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                       <span style={{ fontSize: 12, color: C.muted }}>{v.name} — due {fmtDate(v.payDueDate)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {days !== null && days <= 30 && <span style={s.pill(days <= 14 ? C.danger : C.warn)}>{days}d</span>}
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>{fmtD(v.cost - v.depositAmt)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{fmtD(vendorBalance(v))}</span>
                       </div>
                     </div>
                   );
@@ -10756,7 +10772,7 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
         {bp === 'mobile' ? (
           <div>
             {filteredVendors.map(v => {
-              const balance = v.balancePaid ? 0 : v.cost - v.depositAmt;
+              const balance = vendorBalance(v);
               const days    = daysUntil(v.payDueDate);
               const urgent  = days !== null && days <= 14;
               const warn    = days !== null && days > 14 && days <= 30;
@@ -10807,7 +10823,7 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
             </thead>
             <tbody>
               {filteredVendors.map(v => {
-                const balance = v.balancePaid ? 0 : v.cost - v.depositAmt;
+                const balance = vendorBalance(v);
                 const days    = daysUntil(v.payDueDate);
                 const urgent  = days !== null && days <= 14;
                 const warn    = days !== null && days > 14 && days <= 30;
@@ -11706,7 +11722,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange }) {
                 </div>
               )}
               {dayPayments.map(v => {
-                const bal = v.balancePaid ? 0 : v.cost - v.depositAmt;
+                const bal = vendorBalance(v);
                 return (
                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: C.warn + '15', borderRadius: 6, border: `1px solid ${C.warn}33` }}>
                     <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
@@ -12086,7 +12102,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
               })}
               {selPayments.map((item, i) => {
                 const v = item.vendor;
-                const bal = v ? v.cost - (v.depositPaid ? v.depositAmt : 0) : 0;
+                const bal = v ? vendorBalance(v) : 0;
                 return (
                   <div key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: C.warn + '15', borderRadius: 6, border: `1px solid ${C.warn}33`, cursor: 'pointer' }}>
                     <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
@@ -12773,8 +12789,8 @@ function exportEventToSheets(event, client) {
         'Status':          v.status        || '',
         'Contract Signed': v.contractSigned ? 'Yes' : 'No',
         'Total Cost':      v.cost          || 0,
-        'Deposit Paid':    v.depositAmt    || 0,
-        'Balance Due':     (v.cost || 0) - (v.depositAmt || 0),
+        'Deposit Paid':    v.depositPaid ? (v.depositAmt || 0) : 0,
+        'Balance Due':     vendorBalance(v),
         'Payment Due':     v.payDueDate    || '',
         'Balance Paid':    v.balancePaid   ? 'Yes' : 'No',
         'Phone':           v.phone         || '',
@@ -13565,7 +13581,7 @@ export default function App() {
     events.forEach(ev => {
       (ev.vendors || []).forEach(v => {
         if (!v.payDueDate || v.balancePaid) return;
-        const balance = (v.cost || 0) - (v.depositAmt || 0);
+        const balance = vendorBalance(v);
         if (balance <= 0) return;
         const due = new Date(v.payDueDate + 'T00:00:00');
         const diffDays = Math.round((due - today) / 86400000);
