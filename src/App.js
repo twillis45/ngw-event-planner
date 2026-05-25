@@ -13719,14 +13719,12 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           ) : null}
         </div>
 
-        {/* Mobile + tablet portrait: full-width section switcher (opens the drawer) */}
+        {/* Mobile + tablet portrait: current-section label (the header ☰ opens the drawer) */}
         {!isSidebarNav && (
-          <button onClick={() => setEvtDrawerOpen(true)} title="Switch section"
-            style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', marginTop: 4, marginBottom: 12, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer' }}>
-            <span style={{ color, display: 'flex' }}><Icon name={TAB_ICONS[tab] || 'home'} size={16} /></span>
-            <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
-            <span style={{ color: C.muted, display: 'flex' }}><Icon name="menu" size={16} /></span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, marginBottom: 12, fontSize: 14, fontWeight: 700, color, minWidth: 0 }}>
+            <Icon name={TAB_ICONS[tab] || 'home'} size={16} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
+          </div>
         )}
       </div>
 
