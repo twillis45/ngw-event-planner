@@ -29,7 +29,10 @@ services:
       # ── Non-secret config ──
       - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)
         value: 3.12.7
-      - key: ALLOWED_ORIGINS
-        value: https://twillis45.github.io,http://localhost:3000
+      - key: ALLOWED_ORIGINS        # comma-separated production origins; add your
+        value: https://twillis45.github.io,http://localhost:3000  # custom domain here, or set to * to allow any
+      # Optional: override the default localhost/LAN-IP allow regex.
+      # - key: ALLOWED_ORIGIN_REGEX
+      #   value: https?://(localhost|192\.168(?:\.\d{1,3}){2})(?::\d+)?
       - key: APP_BASE_URL
         value: https://twillis45.github.io/ngw-event-planner

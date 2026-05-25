@@ -13,10 +13,22 @@ COMMUNICATION_EMAIL_FROM = os.environ.get("COMMUNICATION_EMAIL_FROM", "events@ex
 APP_BASE_URL             = os.environ.get("APP_BASE_URL", "https://twillis45.github.io/ngw-event-planner")
 
 # CORS — the frontends allowed to call this API.
+#   ALLOWED_ORIGINS: comma-separated exact origins (your production domains).
+#                    Set it to "*" to allow any origin (safe here — the real
+#                    boundary is the Supabase JWT + per-event ownership, and the
+#                    CLIENT read channel is public by design).
+#   ALLOWED_ORIGIN_REGEX: also allow origins matching this regex. Defaults to
+#                    localhost + private LAN IPs (any port) so device/LAN testing
+#                    and local dev work without listing every address.
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS",
     "https://twillis45.github.io,http://localhost:3000",
 ).split(",") if o.strip()]
+
+ALLOWED_ORIGIN_REGEX = os.environ.get(
+    "ALLOWED_ORIGIN_REGEX",
+    r"https?://(localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2})(?::\d+)?",
+)
 
 # ── Supabase Auth ──────────────────────────────────────────────────────────────
 # Planner-gated routes verify a Supabase access token against the project's
