@@ -53,6 +53,7 @@ export const commApi = {
   listMessages:   (eventId, channelType, limit=100) => req('GET', `${base(eventId)}/channels/${channelType}/messages?limit=${limit}`),
   createMessage:  (eventId, channelType, msg)     => req('POST', `${base(eventId)}/channels/${channelType}/messages`, msg),
   updateMessage:  (eventId, messageId, patch)     => req('PATCH', `${base(eventId)}/messages/${messageId}`, patch),
+  deleteMessage:  (eventId, messageId)            => req('DELETE', `${base(eventId)}/messages/${messageId}`),
   pinMessage:     (eventId, messageId, opts={})   => req('POST', `${base(eventId)}/messages/${messageId}/pin`, opts),
   unpinMessage:   (eventId, messageId)            => req('DELETE', `${base(eventId)}/messages/${messageId}/pin`),
   markRead:       (eventId, channelType, readerKey) => req('POST', `${base(eventId)}/channels/${channelType}/read`, { reader_key: readerKey }),

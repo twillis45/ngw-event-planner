@@ -13860,6 +13860,17 @@ function EventCommunication({ event, setEvent, client, profile }) {
     finally { setBusy(false); }
   };
 
+  const removeMsg = async (m) => {
+    if (busy || writeBlocked) return;
+    if (!window.confirm('Delete this message? This removes it from the ledger.')) return;
+    setBusy(true); setError('');
+    try {
+      if (live) { await commApi.deleteMessage(eventId, m.id); await refresh(channel); }
+      else setLocal(list => list.filter(x => x.id !== m.id));
+    } catch (e) { setError('Could not delete the message. ' + (e?.message || '')); }
+    finally { setBusy(false); }
+  };
+
   const markChannelRead = async () => {
     try {
       if (live) await commApi.markRead(eventId, channel, 'planner');
@@ -14057,6 +14068,12 @@ function EventCommunication({ event, setEvent, client, profile }) {
                           </button>
                         )
                       )}
+                      <button onClick={() => removeMsg(m)} title="Delete message" disabled={busy}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = C.danger + '66'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}>
+                        <Icon name="trash" size={11} /> Delete
+                      </button>
                     </div>
                   )}
 

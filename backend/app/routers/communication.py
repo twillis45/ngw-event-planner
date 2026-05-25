@@ -231,6 +231,31 @@ async def update_message(
         return dict(row)
 
 
+# ── 5b. DELETE /messages/{message_id} (soft delete) ─────────────────────────────
+@router.delete("/messages/{message_id}")
+async def delete_message(
+    event_id: str, message_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    principal = await require_planner(authorization, x_planner_token)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
+        cur = await conn.fetchrow(
+            "select id from event_messages where id=$1 and event_id=$2 and deleted_at is null",
+            message_id, event_id)
+        if not cur:
+            raise HTTPException(404, "message not found")
+        # Soft delete (recoverable) + drop any pinned-decision reference.
+        await conn.execute(
+            "update event_messages set deleted_at=now(), pinned=false, pinned_at=null, pinned_by=null where id=$1 and event_id=$2",
+            message_id, event_id)
+        await conn.execute(
+            "delete from pinned_decisions where message_id=$1 and event_id=$2", message_id, event_id)
+        return {"ok": True, "deleted": True}
+
+
 # ── 6. POST /messages/{message_id}/pin ──────────────────────────────────────────
 @router.post("/messages/{message_id}/pin")
 async def pin_message(
