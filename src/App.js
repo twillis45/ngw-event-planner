@@ -7682,6 +7682,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const [newInternalType, setNewInternalType] = useState('note');
   const [commTab,         setCommTab]         = useState('client');
   const [logSearch,       setLogSearch]       = useState('');
+  const [decisionsOpen,   setDecisionsOpen]   = useState(false); // pinned decisions collapsed by default
   const [showLinkEvent,   setShowLinkEvent]   = useState(false);
   const [linkEventId,     setLinkEventId]     = useState('');
   const [showDownloads,   setShowDownloads]   = useState(false);
@@ -7991,6 +7992,31 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           />
           <button style={s.btn('primary')} onClick={handleAdd}>Add</button>
         </div>
+
+        {/* ── Pinned decisions — collapsed by default ── */}
+        {(() => {
+          const decisions = activeLog.filter(e => e.type === 'decision');
+          if (decisions.length === 0) return null;
+          return (
+            <div style={{ marginBottom: 14, border: `1px solid ${C.accent2}44`, background: C.accent2 + '0c', borderRadius: 10, overflow: 'hidden' }}>
+              <button onClick={() => setDecisionsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer' }}>
+                <span style={{ display: 'flex', color: C.accent2 }}><Icon name="check2" size={14} /></span>
+                <span style={{ flex: 1, textAlign: 'left', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent2 }}>Decisions ({decisions.length})</span>
+                <span style={{ color: C.muted, display: 'flex', transform: decisionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={15} /></span>
+              </button>
+              {decisionsOpen && (
+                <div style={{ padding: '0 12px 10px' }}>
+                  {[...decisions].reverse().map(d => (
+                    <div key={d.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderTop: `1px solid ${C.accent2}22`, fontSize: 12.5, color: C.text }}>
+                      <span style={{ fontSize: 10.5, color: C.muted, flexShrink: 0, minWidth: 52 }}>{fmtDate(d.date)}</span>
+                      <span style={{ flex: 1 }}>{d.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Entries ── */}
         {activeLog.length === 0 ? (
