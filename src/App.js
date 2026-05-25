@@ -6723,13 +6723,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
 
   const todayStr = today8601();
   const [selDay, setSelDay] = useState(todayStr); // drives the week shown on the right
-  const [addDay, setAddDay] = useState(null);     // ds currently showing the quick-add composer
-  const [draft, setDraft] = useState('');
-  const [draftKind, setDraftKind] = useState('note');
-  const submitAdd = (ds) => {
-    if (draft.trim() && onAddCalNote) onAddCalNote(ds, draft, draftKind);
-    setDraft(''); setAddDay(null);
-  };
+  const [addDay, setAddDay] = useState(null);     // ds whose add-modal is open (null = closed)
   const viewMonth = new Date(getToday().getFullYear(), getToday().getMonth() + monthOffset, 1);
   const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -6806,7 +6800,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
                   <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  {dayItems.length === 0 && addDay !== ds && (
+                  {dayItems.length === 0 && (
                     <div style={{ fontSize: 12, color: C.border }}>—</div>
                   )}
                   {dayItems.map((it, j) => (
@@ -6828,32 +6822,10 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
                       )}
                     </div>
                   ))}
-                  {addDay === ds ? (
-                    <div style={{ marginTop: 6 }}>
-                      <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-                        {['note', 'task', 'event'].map(k => (
-                          <button key={k} onClick={() => setDraftKind(k)}
-                            style={{ fontSize: 10, fontWeight: 700, textTransform: 'capitalize', padding: '2px 8px', borderRadius: 999, cursor: 'pointer',
-                              border: `1px solid ${draftKind === k ? (NOTE_KIND_COLOR[k]) : C.border}`,
-                              background: draftKind === k ? (NOTE_KIND_COLOR[k] + '22') : 'transparent',
-                              color: draftKind === k ? (NOTE_KIND_COLOR[k] === C.muted ? C.text : NOTE_KIND_COLOR[k]) : C.muted }}>{k}</button>
-                        ))}
-                      </div>
-                      <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') submitAdd(ds); if (e.key === 'Escape') { setDraft(''); setAddDay(null); } }}
-                        placeholder={`Add a ${draftKind}…`}
-                        style={{ ...s.input, fontSize: 12.5, padding: '5px 8px', width: '100%', boxSizing: 'border-box' }} />
-                      <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
-                        <button onClick={() => submitAdd(ds)} style={{ ...s.btn('primary'), fontSize: 11, padding: '3px 12px' }}>Add</button>
-                        <button onClick={() => { setDraft(''); setAddDay(null); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button data-addbtn onClick={() => { setSelDay(ds); setAddDay(ds); setDraft(''); }}
-                      style={{ marginTop: 3, fontSize: 11, fontWeight: 600, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 0', opacity: 0.45, transition: 'opacity .12s' }}>
-                      + add
-                    </button>
-                  )}
+                  <button data-addbtn onClick={() => { setSelDay(ds); setAddDay(ds); }}
+                    style={{ marginTop: 3, fontSize: 11, fontWeight: 600, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 0', opacity: 0.45, transition: 'opacity .12s' }}>
+                    + add
+                  </button>
                 </div>
               </div>
             ))}
@@ -6861,7 +6833,65 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
         </div>
 
       </div>
+      {addDay && (
+        <DayAddModal date={addDay} onClose={() => setAddDay(null)}
+          onAdd={(date, text, kind) => { if (onAddCalNote) onAddCalNote(date, text, kind); }} />
+      )}
     </div>
+  );
+}
+
+// Quick-add modal for pinning a note / task / event to a specific calendar day.
+// The "type of addition" lives here (not when simply selecting a day).
+function DayAddModal({ date, onClose, onAdd }) {
+  const C = useT();
+  const s = makeS(C);
+  const [kind, setKind] = useState('note');
+  const [text, setText] = useState('');
+  const KIND_COLOR = { note: C.muted, task: C.accent, event: C.accent2 };
+  const KIND_HINT  = { note: 'Reminder, idea, or note for this day', task: 'A to-do you can check off', event: 'Something happening on this day' };
+  const dayLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const submit = () => { if (text.trim()) { onAdd(date, text, kind); onClose(); } };
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 70 }} />
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
+        style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 'min(400px, 92vw)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, zIndex: 80, padding: 22, boxShadow: '0 18px 60px rgba(0,0,0,0.45)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Add to calendar</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginTop: 2 }}>{dayLabel}</div>
+          </div>
+          <button onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 16, padding: '4px 10px', flexShrink: 0 }}>✕</button>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 7 }}>Type</div>
+          <div style={{ display: 'flex', gap: 7 }}>
+            {['note', 'task', 'event'].map(k => (
+              <button key={k} onClick={() => setKind(k)}
+                style={{ flex: 1, fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize', padding: '8px 0', borderRadius: 9, cursor: 'pointer',
+                  border: `1.5px solid ${kind === k ? KIND_COLOR[k] : C.border}`,
+                  background: kind === k ? KIND_COLOR[k] + '22' : 'transparent',
+                  color: kind === k ? (KIND_COLOR[k] === C.muted ? C.text : KIND_COLOR[k]) : C.muted }}>{k}</button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{KIND_HINT[kind]}</div>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 7 }}>Details</div>
+          <input autoFocus value={text} onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+            placeholder={`Add a ${kind}…`} style={{ ...s.input }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button onClick={onClose} style={{ ...s.btn('ghost') }}>Cancel</button>
+          <button onClick={submit} disabled={!text.trim()} style={{ ...s.btn('primary'), opacity: text.trim() ? 1 : 0.5 }}>Add {kind}</button>
+        </div>
+      </div>
+    </>
   );
 }
 
