@@ -1,0 +1,28 @@
+# Render Blueprint for the NGW Events API (FastAPI comms backend).
+# Deploy: Render Dashboard → New → Blueprint → pick this repo.
+# Render will prompt you to fill the secret env vars (sync:false) — never commit secrets.
+services:
+  - type: web
+    name: ngw-events-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # ── Secrets — you enter these in the Render dashboard (never in git) ──
+      - key: DATABASE_URL            # Supabase → Settings → Database → Connection string (pooler)
+        sync: false
+      - key: RESEND_API_KEY          # Resend → API Keys
+        sync: false
+      - key: COMMUNICATION_EMAIL_FROM # e.g. events@yourdomain.com (verified in Resend)
+        sync: false
+      - key: PLANNER_DEV_TOKEN       # any long random string; also set in the frontend env
+        sync: false
+      # ── Non-secret config ──
+      - key: ALLOWED_ORIGINS
+        value: https://twillis45.github.io,http://localhost:3000
+      - key: APP_BASE_URL
+        value: https://twillis45.github.io/ngw-event-planner

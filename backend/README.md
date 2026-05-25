@@ -27,9 +27,16 @@ curl localhost:8000/health
 Supabase → SQL Editor → run `migrations/0001_communication.sql`.
 
 ## Deploy to Render
+**Fastest — Blueprint:** Render → New → **Blueprint** → pick this repo. It reads
+`render.yaml` (repo root) and provisions the service, then prompts you to fill the
+secret env vars (`DATABASE_URL`, `RESEND_API_KEY`, `COMMUNICATION_EMAIL_FROM`,
+`PLANNER_DEV_TOKEN`).
+
+**Manual alternative:**
 - New **Web Service**, root dir `backend/`
 - Build: `pip install -r requirements.txt`
 - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Health check path: `/health`
 - Set env vars from `.env.example` in the Render dashboard.
 
 ## Frontend wiring
