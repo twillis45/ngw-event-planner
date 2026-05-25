@@ -2367,10 +2367,24 @@ const msgTypeStyle = (type, C) => ({
   escalation:       { border: C.danger,  bg: C.danger  + '10',  icon: '🚨', label: 'Escalation'         },
 }[type] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Note' });
 
-// Pending comms needing planner attention: unresolved approval requests (split by who's the blocker)
-function clientPendingComms(client) {
-  const log = (client && client.log) || [];
-  const approvals = log.filter(e => e.type === 'approval_request' && (!e.approvalStatus || e.approvalStatus === 'pending'));
+// Pending comms needing planner attention: unresolved approval requests (split by
+// who's the blocker). Comms are now event-scoped (event.commClient), so this merges
+// the new per-event CLIENT channel with any legacy client.log entries (seed data),
+// normalizing both into one shape: { id, text, requestSentAt, date, eventId, eventName }.
+function clientPendingComms(client, events = []) {
+  const isPending = (s) => !s || s === 'pending';
+  // Legacy client-scoped log (older shape: type / approvalStatus)
+  const legacy = ((client && client.log) || [])
+    .filter(e => e.type === 'approval_request' && isPending(e.approvalStatus))
+    .map(e => ({ id: e.id, text: e.text || '', requestSentAt: e.requestSentAt || null, date: e.date, eventId: null, eventName: null }));
+  // New event-scoped CLIENT channel (EventCommunication shape: message_type / approval_status)
+  const linked = new Set((client && client.eventIds) || []);
+  const fromEvents = (events || [])
+    .filter(ev => linked.has(ev.id))
+    .flatMap(ev => (ev.commClient || [])
+      .filter(m => m.message_type === 'approval_request' && isPending(m.approval_status))
+      .map(m => ({ id: m.id, text: m.body || m.approval_context || '', requestSentAt: m.requestSentAt || null, date: m.created_at, eventId: ev.id, eventName: ev.name })));
+  const approvals = [...legacy, ...fromEvents];
   const needsSend = approvals.filter(e => !e.requestSentAt); // planner must still send it
   const awaiting  = approvals.filter(e => e.requestSentAt);  // sent — waiting on client
   return { approvals, needsSend, awaiting, count: approvals.length };
@@ -5706,7 +5720,21 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
 
           {/* ── Updates from your planner — curated CLIENT channel (no raw notes, no internal) ── */}
           {(() => {
-            const feed = (client.log || []).filter(e => ['update', 'decision', 'approval_request'].includes(e.type)).reverse();
+            // Legacy client-scoped log + new per-event CLIENT channel, normalized to one shape.
+            const legacyFeed = (client.log || [])
+              .filter(e => ['update', 'decision', 'approval_request'].includes(e.type))
+              .map(e => ({ id: e.id, type: e.type, date: e.date, text: e.text, approvalStatus: e.approvalStatus }));
+            const linkedEventIds = new Set(client.eventIds || []);
+            const eventFeed = (events || [])
+              .filter(ev => linkedEventIds.has(ev.id))
+              .flatMap(ev => (ev.commClient || []).map(m => ({
+                id: m.id,
+                type: m.pinned ? 'decision' : (m.message_type === 'approval_request' ? 'approval_request' : 'update'),
+                date: String(m.created_at || '').slice(0, 10),
+                text: m.body || m.approval_context || '',
+                approvalStatus: m.approval_status === 'rejected' ? 'declined' : m.approval_status,
+              })));
+            const feed = [...legacyFeed, ...eventFeed].sort((a, b) => String(b.date).localeCompare(String(a.date)));
             if (feed.length === 0) return null;
             const pendingApprovals = feed.filter(e => e.type === 'approval_request' && (!e.approvalStatus || e.approvalStatus === 'pending')).length;
             return (
@@ -7116,9 +7144,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   // Cross-client comms needing attention — unresolved approval requests
   const commAlerts = useMemo(() => clients.flatMap(c => {
-    const p = clientPendingComms(c);
-    return p.approvals.map(e => ({ clientId: c.id, clientName: c.name, text: e.text || '', sent: !!e.requestSentAt, date: e.requestSentAt || e.date }));
-  }).sort((a, b) => (a.sent - b.sent)), [clients]); // not-yet-sent (planner's move) first
+    const p = clientPendingComms(c, events);
+    return p.approvals.map(e => ({ clientId: c.id, clientName: c.name, eventId: e.eventId || null, eventName: e.eventName || null, text: e.text || '', sent: !!e.requestSentAt, date: e.requestSentAt || e.date }));
+  }).sort((a, b) => (a.sent - b.sent)), [clients, events]); // not-yet-sent (planner's move) first
   const needsSendCount = commAlerts.filter(a => !a.sent).length;
 
   // ── Shared row renderers — reused by both the desktop KPI panels and the
@@ -7178,7 +7206,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     const clr = a.sent ? C.warn : C.danger;
     return (
       <div key={`${a.clientId}-${i}`}
-        onClick={() => onSelectClient(a.clientId)}
+        onClick={() => a.eventId ? onSelectEvent(a.eventId, { tab: 'Communication' }) : onSelectClient(a.clientId)}
         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: i < Math.min(commAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
         onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
         onMouseLeave={e => { e.currentTarget.style.background = ''; }}
@@ -7186,7 +7214,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         <div style={mkDot(clr, 7)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✋ {a.text || 'Approval request'}</div>
-          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.clientName}</div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.eventName ? `${a.clientName} · ${a.eventName}` : a.clientName}</div>
         </div>
         <span style={{ ...s.pill(clr), fontSize: 9, flexShrink: 0 }}>{a.sent ? 'Awaiting client' : 'Send to client'}</span>
         <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
@@ -7678,13 +7706,6 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const [showModal,       setShowModal]       = useState(false);
   const [showIntake,      setShowIntake]      = useState(false);
   const [showPortal,      setShowPortal]      = useState(false);
-  const [newLog,          setNewLog]          = useState('');
-  const [newLogType,      setNewLogType]      = useState('note');
-  const [newInternalLog,  setNewInternalLog]  = useState('');
-  const [newInternalType, setNewInternalType] = useState('note');
-  const [commTab,         setCommTab]         = useState('client');
-  const [logSearch,       setLogSearch]       = useState('');
-  const [decisionsOpen,   setDecisionsOpen]   = useState(false); // pinned decisions collapsed by default
   const [showLinkEvent,   setShowLinkEvent]   = useState(false);
   const [linkEventId,     setLinkEventId]     = useState('');
   const [showDownloads,   setShowDownloads]   = useState(false);
@@ -7698,43 +7719,6 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
 
   // Auto-open the discovery intake when arriving fresh from "Create & Start Intake".
   useEffect(() => { if (autoIntake) { setShowIntake(true); onIntakeOpened && onIntakeOpened(); } }, [autoIntake]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const addLog = () => {
-    if (!newLog.trim()) return;
-    const entry = { id: uid(), date: today8601(), text: newLog.trim(), type: newLogType, channel: 'client' };
-    if (newLogType === 'approval_request') entry.approvalStatus = 'pending';
-    onChange('log', [...(client.log || []), entry]);
-    setNewLog('');
-    setNewLogType('note');
-  };
-
-  const addInternalLog = () => {
-    if (!newInternalLog.trim()) return;
-    onChange('internalLog', [...(client.internalLog || []), { id: uid(), date: today8601(), text: newInternalLog.trim(), type: newInternalType, channel: 'internal' }]);
-    setNewInternalLog('');
-    setNewInternalType('note');
-  };
-
-  const setApprovalStatus = (entryId, status) => {
-    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, approvalStatus: status } : e));
-  };
-
-  // Read confirmation on a client-channel message (planner confirms the client saw it).
-  const toggleCommRead = (entryId) => {
-    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, readAt: e.readAt ? null : today8601() } : e));
-  };
-
-  // Approval request → outbound message to the client (opens their email/SMS draft — never auto-sends)
-  const markRequestSent = (entryId) => {
-    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, requestSentAt: today8601() } : e));
-  };
-  const buildApprovalMessage = (entry) => {
-    const planner = profile?.businessName || profile?.name || 'your event planner';
-    const signoff = [profile?.name, profile?.businessName, profile?.phone].filter(Boolean).join('\n');
-    const subject = `Approval needed — ${planner}`;
-    const body = `Hi ${client?.name || 'there'},\n\nQuick approval needed before I move forward:\n\n"${entry.text}"\n\nJust reply to confirm and I'll take it from there. Thank you!\n\n${signoff || planner}`;
-    return { subject, body };
-  };
 
   // ── Shared card sections so they can be reordered per breakpoint ─────────────
   const feeCard = (
@@ -7910,190 +7894,45 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     </div>
   );
 
-  const logCard = (() => {
-    const isClient    = commTab === 'client';
-    const activeLog   = isClient ? (client.log || []) : (client.internalLog || []);
-    const msgTypes    = isClient ? CLIENT_MSG_TYPES : INTERNAL_MSG_TYPES;
-    const activeType  = isClient ? newLogType : newInternalType;
-    const setType     = isClient ? setNewLogType : setNewInternalType;
-    const activeInput = isClient ? newLog : newInternalLog;
-    const setInput    = isClient ? setNewLog : setNewInternalLog;
-    const handleAdd   = isClient ? addLog : addInternalLog;
-    const internalCount = (client.internalLog || []).length;
-    const clientUnread  = (client.log || []).filter(e => !e.readAt).length; // not yet confirmed read
-
-    const q = logSearch.trim().toLowerCase();
-    const sorted = [...activeLog].reverse();
-    const filtered = sorted.filter(e =>
-      !q || e.text.toLowerCase().includes(q) || fmtDate(e.date).toLowerCase().includes(q)
-    );
-
+  const commsRollup = (() => {
+    const pc = clientPendingComms(client, events);
     return (
-      <div style={{ ...s.card, ...(isClient ? {} : { borderColor: C.warn + '66', boxShadow: `inset 0 0 0 1px ${C.warn}22` }) }}>
-        {/* ── Channel segmented control ── */}
-        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.border}`, marginBottom: 12 }}>
-          {[['client', 'message', 'Client', clientUnread || null, C.accent, 'unread'], ['internal', 'lock', 'Internal', internalCount || null, C.warn, 'count']].map(([key, icon, label, badge, clr, kind]) => {
-            const active = commTab === key;
-            return (
-              <button key={key} onClick={() => { setCommTab(key); setLogSearch(''); }}
-                title={badge && kind === 'unread' ? `${badge} message${badge === 1 ? '' : 's'} not yet confirmed read` : undefined}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 700 : 500, background: active ? clr + '1a' : 'transparent', color: active ? clr : C.muted, borderBottom: active ? `2px solid ${clr}` : '2px solid transparent', transition: 'all 0.12s' }}>
-                <Icon name={icon} size={15} /> {label}
-                {badge && <span style={{ background: clr, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
-              </button>
-            );
-          })}
+      <div style={s.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
+          <div style={s.cardTitle}>Communication</div>
+          {pc.count > 0 && <span style={{ ...s.pill(C.warn), fontSize: 11 }}>{pc.count} pending approval{pc.count > 1 ? 's' : ''}</span>}
         </div>
-        {activeLog.length > 2 && (
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: C.muted, pointerEvents: 'none' }}><Icon name="search" size={13} /></span>
-            <input style={{ ...s.input, padding: '6px 10px 6px 30px', fontSize: 12, width: '100%' }} placeholder="Search messages…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
-          </div>
-        )}
-
-        {/* ── Internal channel notice ── */}
-        {!isClient && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: C.warn + '12', border: `1px solid ${C.warn}40`, borderRadius: 8, marginBottom: 12 }}>
-            <span style={{ display: 'flex', color: C.warn }}><Icon name="lock" size={13} /></span>
-            <div style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>Planner-only — never visible to the client</div>
-          </div>
-        )}
-
-        {/* ── Message type selector ── */}
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
-          {msgTypes.map(({ type, icon, label }) => {
-            const ts = msgTypeStyle(type, C);
-            const active = activeType === type;
-            return (
-              <button key={type} onClick={() => setType(type)}
-                style={{ padding: '3px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? ts.border : C.border}`, background: active ? ts.bg : 'transparent', color: active ? ts.border : C.muted, fontWeight: active ? 700 : 400, transition: 'all 0.1s', display: 'flex', alignItems: 'center', gap: 4 }}>
-                {icon} {label}
-              </button>
-            );
-          })}
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: clientEvents.length ? 14 : 0, lineHeight: 1.55 }}>
+          Communication lives on each event. Open an event's <strong style={{ color: C.text }}>Communication</strong> tab to message the client, log decisions, and request approvals.
         </div>
-
-        {/* ── Input ── */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <input
-            style={{ ...s.input, flex: 1, fontSize: 13 }}
-            value={activeInput}
-            placeholder={
-              activeType === 'approval_request' ? 'Describe what needs approval…'
-              : activeType === 'decision' ? 'Record the decision…'
-              : activeType === 'update' ? 'Operational update…'
-              : activeType === 'concern' ? 'Describe the concern…'
-              : activeType === 'escalation' ? 'Describe the escalation…'
-              : isClient ? 'Log a call, email, meeting, decision…'
-              : 'Internal planner note…'
-            }
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          />
-          <button style={s.btn('primary')} onClick={handleAdd}>Add</button>
-        </div>
-
-        {/* ── Pinned decisions — collapsed by default ── */}
-        {(() => {
-          const decisions = activeLog.filter(e => e.type === 'decision');
-          if (decisions.length === 0) return null;
-          return (
-            <div style={{ marginBottom: 14, border: `1px solid ${C.accent2}44`, background: C.accent2 + '0c', borderRadius: 10, overflow: 'hidden' }}>
-              <button onClick={() => setDecisionsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer' }}>
-                <span style={{ display: 'flex', color: C.accent2 }}><Icon name="check2" size={14} /></span>
-                <span style={{ flex: 1, textAlign: 'left', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent2 }}>Decisions ({decisions.length})</span>
-                <span style={{ color: C.muted, display: 'flex', transform: decisionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={15} /></span>
-              </button>
-              {decisionsOpen && (
-                <div style={{ padding: '0 12px 10px' }}>
-                  {[...decisions].reverse().map(d => (
-                    <div key={d.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderTop: `1px solid ${C.accent2}22`, fontSize: 12.5, color: C.text }}>
-                      <span style={{ fontSize: 10.5, color: C.muted, flexShrink: 0, minWidth: 52 }}>{fmtDate(d.date)}</span>
-                      <span style={{ flex: 1 }}>{d.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── Entries ── */}
-        {activeLog.length === 0 ? (
-          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
-            {isClient ? 'No client communication yet.' : 'No internal notes yet.'}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries match "{logSearch}".</div>
-        ) : filtered.map(entry => {
-          const ts = msgTypeStyle(entry.type, C);
-          const isApproval = entry.type === 'approval_request';
-          const statusColor = entry.approvalStatus === 'approved' ? C.success : entry.approvalStatus === 'declined' ? C.danger : C.warn;
-          return (
-            <div key={entry.id} style={{ borderLeft: `3px solid ${ts.border}`, paddingLeft: 12, marginBottom: 14, background: ts.bg, borderRadius: '0 6px 6px 0', padding: '8px 10px 8px 12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: ts.border || C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {ts.icon} {ts.label}
-                </span>
-                <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(entry.date)}</span>
-                {isApproval && entry.approvalStatus && (
-                  <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {entry.approvalStatus === 'pending' ? '⏳ Pending' : entry.approvalStatus === 'approved' ? '✓ Approved' : '✗ Declined'}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{entry.text}</div>
-              {isClient && (
-                <div style={{ marginTop: 7, display: 'flex', justifyContent: 'flex-end' }}>
-                  {entry.readAt ? (
-                    <button onClick={() => toggleCommRead(entry.id)} title="Mark unread"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.success, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      <Icon name="check2" size={13} /> Read · {fmtDate(entry.readAt)}
-                    </button>
-                  ) : (
-                    <button onClick={() => toggleCommRead(entry.id)} title="Confirm the client read this"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
-                      <Icon name="check2" size={12} /> Mark read
-                    </button>
-                  )}
-                </div>
-              )}
-              {isApproval && (!entry.approvalStatus || entry.approvalStatus === 'pending') && (() => {
-                const { subject, body } = buildApprovalMessage(entry);
-                const mailto = client?.email ? `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
-                const sms    = client?.phone ? `sms:${client.phone}?body=${encodeURIComponent(body)}` : null;
-                return (
-                  <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {/* Send the request to the client */}
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Request</span>
-                      {mailto && <a href={mailto} onClick={() => markRequestSent(entry.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>✉ Email</a>}
-                      {sms    && <a href={sms}    onClick={() => markRequestSent(entry.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>💬 Text</a>}
-                      <button onClick={() => { navigator.clipboard?.writeText(body).catch(() => {}); markRequestSent(entry.id); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>⎘ Copy</button>
-                      {entry.requestSentAt && <span style={{ fontSize: 10, color: C.success, fontWeight: 600 }}>Sent ✓ {fmtDate(entry.requestSentAt)}</span>}
-                      {!mailto && !sms && !entry.requestSentAt && <span style={{ fontSize: 10, color: C.muted }}>Add client email/phone to send directly</span>}
-                    </div>
-                    {/* Record the client's response */}
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Response</span>
-                      <button onClick={() => setApprovalStatus(entry.id, 'approved')}
-                        style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>
-                        ✓ Approve
-                      </button>
-                      <button onClick={() => setApprovalStatus(entry.id, 'declined')}
-                        style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>
-                        ✗ Decline
-                      </button>
+        {clientEvents.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No events yet — add one to start a communication ledger.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {clientEvents.map(ev => {
+              const cc   = ev.commClient || [];
+              const pend = cc.filter(m => m.message_type === 'approval_request' && (!m.approval_status || m.approval_status === 'pending')).length;
+              const last = [...cc].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+              const evClr = evtCLR[ev.type] || C.muted;
+              return (
+                <div key={ev.id} onClick={() => onSelectEvent(ev.id, { tab: 'Communication' })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, borderLeft: `3px solid ${evClr}`, cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
+                  <span style={{ display: 'flex', color: C.muted }}><Icon name="message" size={16} /></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
+                    <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cc.length ? `${cc.length} message${cc.length > 1 ? 's' : ''}${last ? ` · last ${fmtDate(String(last.created_at).slice(0, 10))}` : ''}` : 'No messages yet'}
                     </div>
                   </div>
-                );
-              })()}
-              {isApproval && entry.requestSentAt && entry.approvalStatus && entry.approvalStatus !== 'pending' && (
-                <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>Requested {fmtDate(entry.requestSentAt)}</div>
-              )}
-            </div>
-          );
-        })}
+                  {pend > 0 && <span style={{ ...s.pill(C.warn), fontSize: 9, flexShrink: 0 }}>{pend} approval{pend > 1 ? 's' : ''}</span>}
+                  <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   })();
@@ -8174,7 +8013,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
 
           {/* ── At-a-glance status strip: what needs attention for this client ── */}
           {(() => {
-            const pc = clientPendingComms(client);
+            const pc = clientPendingComms(client, events);
             const nextEvt = [...clientEvents].filter(e => e.date).sort((a, b) => a.date.localeCompare(b.date))[0];
             const chips = [];
             if (pc.needsSend.length) chips.push({ t: `✋ ${pc.needsSend.length} approval${pc.needsSend.length > 1 ? 's' : ''} to send`, c: C.danger });
@@ -8198,7 +8037,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               {/* Left — primary activity */}
               <div>
                 {eventsSection}
-                {logCard}
+                {commsRollup}
               </div>
               {/* Right — fee + meta */}
               <div>
@@ -8211,7 +8050,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             <div>
               {eventsSection}
               {feeCard}
-              {logCard}
+              {commsRollup}
               {notesCard}
             </div>
           )}
@@ -8233,7 +8072,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
 
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
-function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUpdate, onUpdateVendorLog, onTabChange, setTimeline, eventDate, eventType, onOpenConsult, guestEstimate, intakeSavedAt, client, onOpenComms }) {
+function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUpdate, onUpdateVendorLog, onTabChange, setTimeline, eventDate, eventType, onOpenConsult, guestEstimate, intakeSavedAt, client, eventComms, onOpenComms }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -8286,8 +8125,19 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
 
   const phaseActions = getPhaseActions(eventType, daysUntil(eventDate), { vendors, timeline, guests });
 
-  // Comms awaiting the planner — approval requests not yet resolved
-  const pendingComms = clientPendingComms(client);
+  // Comms awaiting the planner — unresolved approval requests in THIS event's CLIENT
+  // channel (new event-scoped comms) plus any legacy client.log approvals.
+  const pendingComms = (() => {
+    const isPending = (st) => !st || st === 'pending';
+    const fromEvent = (eventComms || [])
+      .filter(m => m.message_type === 'approval_request' && isPending(m.approval_status))
+      .map(m => ({ id: m.id, text: m.body || m.approval_context || '', requestSentAt: m.requestSentAt || null }));
+    const legacy = ((client && client.log) || [])
+      .filter(e => e.type === 'approval_request' && isPending(e.approvalStatus))
+      .map(e => ({ id: e.id, text: e.text || '', requestSentAt: e.requestSentAt || null }));
+    const approvals = [...fromEvent, ...legacy];
+    return { approvals, needsSend: approvals.filter(e => !e.requestSentAt), awaiting: approvals.filter(e => e.requestSentAt), count: approvals.length };
+  })();
   const commActions = [
     ...pendingComms.needsSend.map(e => ({ level: 'critical', label: `Approval not sent yet: "${(e.text || '').slice(0, 50)}${(e.text||'').length > 50 ? '…' : ''}"`, onClick: onOpenComms, hint: 'Client comms' })),
     ...pendingComms.awaiting.map(e => ({ level: 'warn', label: `Awaiting client approval: "${(e.text || '').slice(0, 50)}${(e.text||'').length > 50 ? '…' : ''}"`, onClick: onOpenComms, hint: 'Client comms' })),
@@ -14078,7 +13928,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           guestEstimate={event.guestEstimate}
           intakeSavedAt={event.intake?.savedAt}
           client={client}
-          onOpenComms={client ? (onOpenClient || (() => setShowPortal(true))) : undefined}
+          eventComms={event.commClient}
+          onOpenComms={() => handleTabChange('Communication')}
         />
       )}
       {tab === 'Budget'      && <Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} />}
@@ -14616,7 +14467,7 @@ export default function App() {
           events={events}
           setClient={setClient}
           profile={profile}
-          onSelectEvent={setActiveId}
+          onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
           onAddEvent={() => setShowNew(true)}
           onBack={() => setActiveClientId(null)}
           onDelete={deleteClient}
