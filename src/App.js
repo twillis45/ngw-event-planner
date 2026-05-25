@@ -8180,6 +8180,8 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
   const s  = makeS(C);
   const bp = useContext(BpCtx);
   const isWide = bp === 'desktop' || bp === 'tablet-land';
+  const isMobile = bp === 'mobile';
+  const [priorityOpen, setPriorityOpen] = useState(!isMobile); // mobile: collapsed by default
   const totalBudgeted   = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual     = budget.reduce((s, r) => s + r.actual, 0);
   const vendorTotal     = vendors.reduce((s, v) => s + vendorCommittedCost(v), 0);
@@ -8278,13 +8280,15 @@ Write the summary now:`;
 
   const priorityCard = actionItems.length > 0 && (
     <div style={{ ...s.card, borderColor: actionItems[0].level === 'critical' ? C.danger + '88' : C.warn + '77', background: actionItems[0].level === 'critical' ? C.danger + '08' : C.warn + '08', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <button onClick={() => setPriorityOpen(o => !o)} aria-expanded={priorityOpen}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: priorityOpen ? 12 : 0, width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
         <span style={mkDot(actionItems[0].level === 'critical' ? C.danger : C.warn, 8)} />
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: actionItems[0].level === 'critical' ? C.danger : C.warn }}>
+        <div style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: actionItems[0].level === 'critical' ? C.danger : C.warn }}>
           Priority Actions · {actionItems.length} item{actionItems.length > 1 ? 's' : ''}
         </div>
-      </div>
-      {actionItems.slice(0, isWide ? 8 : 6).map((item, i) => {
+        <span style={{ color: actionItems[0].level === 'critical' ? C.danger : C.warn, display: 'flex', transform: priorityOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
+      </button>
+      {priorityOpen && actionItems.slice(0, isWide ? 8 : 6).map((item, i) => {
         const clr = item.level === 'critical' ? C.danger : item.level === 'warn' ? C.warn : C.accent2;
         const handler = item.onClick ? item.onClick : (onTabChange && item.tab ? () => onTabChange(item.tab, item.itemId) : undefined);
         const arrow   = item.hint || (item.tab ? item.tab : null);
@@ -8300,7 +8304,7 @@ Write the summary now:`;
             {handler && arrow && <span style={{ fontSize: 11, color: clr, opacity: 0.7, flexShrink: 0 }}>{arrow} →</span>}
           </div>);
       })}
-      {actionItems.length > (isWide ? 8 : 6) && (
+      {priorityOpen && actionItems.length > (isWide ? 8 : 6) && (
         <div style={{ fontSize: 11, color: C.muted, marginTop: 4, paddingLeft: 18 }}>+{actionItems.length - (isWide ? 8 : 6)} more</div>
       )}
     </div>
