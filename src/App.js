@@ -6915,10 +6915,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(3,1fr)' : 'repeat(2,1fr)', gap: 14, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
-              {isWide && <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />}
+              <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
             </div>
           )}
 
