@@ -79,6 +79,30 @@ async def _channel(conn, event_id: str, channel_type: str):
     return row
 
 
+async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
+    """Enforce per-event ownership for an authenticated planner.
+
+    Claim-on-first-touch: the first signed-in planner to take a gated action on an
+    event becomes its owner (this also back-fills events created before Auth). Any
+    other signed-in planner is denied. The shared dev-token path is single-planner
+    by definition, so it skips ownership entirely.
+    """
+    if not principal or principal.get("via") == "dev_token":
+        return
+    uid = principal.get("id")
+    if not uid:
+        raise HTTPException(status_code=403, detail="Planner identity required")
+    row = await conn.fetchrow("select owner_id from event_owners where event_id=$1", event_id)
+    if row is None:
+        await conn.execute(
+            """insert into event_owners (event_id, owner_id, owner_email)
+               values ($1, $2, $3) on conflict (event_id) do nothing""",
+            event_id, uid, principal.get("email"))
+        row = await conn.fetchrow("select owner_id from event_owners where event_id=$1", event_id)
+    if row and row["owner_id"] != uid:
+        raise HTTPException(status_code=403, detail="You don't have access to this event.")
+
+
 # ── 1. GET /channels (idempotently ensures both exist) ──────────────────────────
 @router.get("/channels")
 async def list_channels(event_id: str):
@@ -110,10 +134,13 @@ async def list_messages(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
+    principal = None
     if channel_type == "INTERNAL_TEAM":
-        await require_planner(authorization, x_planner_token)  # internal never exposed to client/public
+        principal = await require_planner(authorization, x_planner_token)  # internal never exposed to client/public
     pool = await get_pool()
     async with pool.acquire() as conn:
+        if principal:
+            await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
         rows = await conn.fetch(
             """select * from event_messages
@@ -132,12 +159,10 @@ async def create_message(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
-    # INTERNAL_TEAM is planner-only (write + read).
-    if channel_type == "INTERNAL_TEAM":
-        await require_planner(authorization, x_planner_token)
-    # Any non-client author is treated as a privileged write → require planner gate.
-    if payload.author_role != "client":
-        await require_planner(authorization, x_planner_token)
+    # INTERNAL_TEAM is planner-only; any non-client author is a privileged write.
+    principal = None
+    if channel_type == "INTERNAL_TEAM" or payload.author_role != "client":
+        principal = await require_planner(authorization, x_planner_token)
 
     if payload.message_type not in MESSAGE_TYPES:
         raise HTTPException(400, "invalid message_type")
@@ -151,6 +176,8 @@ async def create_message(
 
     pool = await get_pool()
     async with pool.acquire() as conn:
+        if principal:
+            await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
         row = await conn.fetchrow(
             """insert into event_messages
@@ -177,9 +204,10 @@ async def update_message(
     authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    await require_planner(authorization, x_planner_token)
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
         cur = await conn.fetchrow(
             "select * from event_messages where id=$1 and event_id=$2 and deleted_at is null",
             message_id, event_id)
@@ -210,9 +238,10 @@ async def pin_message(
     authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    await require_planner(authorization, x_planner_token)
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
         msg = await conn.fetchrow(
             "select * from event_messages where id=$1 and event_id=$2 and deleted_at is null",
             message_id, event_id)
@@ -237,9 +266,10 @@ async def unpin_message(
     authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    await require_planner(authorization, x_planner_token)
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
         await conn.execute(
             "update event_messages set pinned=false, pinned_at=null, pinned_by=null where id=$1 and event_id=$2",
             message_id, event_id)
@@ -256,10 +286,13 @@ async def mark_read(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
+    principal = None
     if channel_type == "INTERNAL_TEAM":
-        await require_planner(authorization, x_planner_token)
+        principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        if principal:
+            await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
         await conn.execute(
             """insert into channel_read_state (event_id, channel_id, reader_key, last_read_at, unread_count)

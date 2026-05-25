@@ -613,3 +613,58 @@ function orderTabs(ss) {
     'Client Updates','Internal Notes','F&B Summary','Venue & Logistics','Dashboard Metrics','Settings'];
   order.forEach(function (name, i){ var sh = ss.getSheetByName(name); if (sh) ss.setActiveSheet(sh), ss.moveActiveSheet(i + 1); });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Automations (opt-in). Run installAutomations() once and authorize. It wires:
+//   • onEditStampPaid  — stamps Payments → Paid Date the moment Status becomes "Paid"
+//   • emailDailyWarnings — emails you the Command Center warnings every morning
+// Run removeAutomations() to turn them off. Safe to re-run (idempotent).
+// ═══════════════════════════════════════════════════════════════════════════════
+function installAutomations() {
+  var ss = SpreadsheetApp.getActive();
+  removeAutomations(); // stay idempotent
+  ScriptApp.newTrigger('onEditStampPaid').forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger('emailDailyWarnings').timeBased().atHour(7).everyDays(1).create();
+  toast(ss, 'Automations on: Paid-date stamp + daily warnings email (7am).');
+}
+
+function removeAutomations() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    var h = t.getHandlerFunction();
+    if (h === 'onEditStampPaid' || h === 'emailDailyWarnings') ScriptApp.deleteTrigger(t);
+  });
+}
+
+// Payments tab: Status (col 5) → "Paid" stamps Paid Date (col 7) with today.
+function onEditStampPaid(e) {
+  try {
+    if (!e || !e.range) return;
+    var sh = e.range.getSheet();
+    if (sh.getName() !== 'Payments') return;
+    if (e.range.getColumn() !== 5 || e.range.getRow() < 2) return; // Status col, skip header
+    var val = String(e.value != null ? e.value : e.range.getValue() || '').trim().toLowerCase();
+    if (val !== 'paid') return;
+    var paidCell = sh.getRange(e.range.getRow(), 7); // Paid Date
+    if (!paidCell.getValue()) paidCell.setValue(new Date());
+  } catch (err) { /* never break the sheet on edit */ }
+}
+
+// Emails the active user the live Command Center operational warnings.
+function emailDailyWarnings() {
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var cc = ss.getSheetByName('Command Center');
+    if (!cc) return;
+    var warnings = String(cc.getRange(16, 2).getDisplayValue() || '').trim(); // merged warnings panel
+    if (!warnings) return;
+    var settings  = ss.getSheetByName('Settings');
+    var eventName = String((settings ? settings.getRange('B2') : cc.getRange('A1')).getDisplayValue() || 'Your event');
+    var to = Session.getActiveUser().getEmail();
+    if (!to) return;
+    var clear = warnings.indexOf('All clear') !== -1;
+    var subject = (clear ? '✓ ' : '⚠ ') + 'NGW daily brief — ' + eventName;
+    var body = eventName + '\n\nOperational status as of ' + new Date().toLocaleString() + ':\n\n' +
+               warnings + '\n\nOpen the Command Center tab for the full cockpit.';
+    MailApp.sendEmail(to, subject, body);
+  } catch (err) { /* fail-soft — never throw from a time trigger */ }
+}

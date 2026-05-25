@@ -4,7 +4,9 @@
   "private": true,
   "homepage": "https://twillis45.github.io/ngw-event-planner",
   "dependencies": {
+    "@sentry/react": "^8.55.2",
     "@supabase/supabase-js": "^2.106.1",
+    "papaparse": "^5.5.3",
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

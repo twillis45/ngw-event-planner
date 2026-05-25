@@ -75,7 +75,11 @@ Data flows **one direction**: entry tabs → computed tabs → Command Center. Y
 
 ## 6. Automation opportunities (Apps Script)
 - `buildWorkbook()` (shipped) — generates/refreshes the whole system.
-- Optional next: `onEdit` to stamp Paid Date when status→Paid; a daily time-trigger to email the planner the Command Center warnings; a "Push to caterer" that emails the F&B Summary.
+- **`installAutomations()` (shipped, opt-in)** — run once + authorize to enable:
+  - `onEditStampPaid` — stamps **Payments → Paid Date** the instant a row's Status becomes "Paid".
+  - `emailDailyWarnings` — emails you the Command Center operational warnings every morning (7am), to the sheet owner; "✓ All clear" subject when nothing fires.
+  - Turn off with `removeAutomations()`. Both are idempotent and fail-soft (a trigger error never breaks the sheet).
+- Possible next: a "Push to caterer" that emails the F&B Summary.
 
 ## 7. Dashboard layout
 Command Center = title + countdown banner, then a **2-column grid** of metric groups (RSVP & Guests / Budget & Payments / Vendors / Tasks & Timeline), then a single **Operational Warnings** panel. No charts, no noise — labels + right-aligned values + one alert block.
