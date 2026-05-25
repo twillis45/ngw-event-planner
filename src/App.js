@@ -6943,10 +6943,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
         <div>
 
-          {/* Mobile/tablet: calendar on top, full width */}
-          {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
-
-          {/* Desktop: events (left) + calendar (right). Mobile: events only. */}
+          {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
             {enrichedEvents.length > 0 && (
               <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start', marginBottom: 32 }}>
@@ -6997,6 +6994,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} sidebar />}
               </div>
             )}
+
+            {/* Mobile/tablet: calendar below events */}
+            {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
 
             {/* Cross-event task inbox — left col below events */}
             {(() => {
