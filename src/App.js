@@ -6684,6 +6684,117 @@ function ProfileModal({ profile, onClose, onChange }) {
   );
 }
 
+// ─── Dashboard week-at-a-glance: mini month + line-by-line week agenda ─────────
+function DashWeekView({ events, onSelectEvent }) {
+  const C = useT();
+  const s = makeS(C);
+  const bp = useContext(BpCtx);
+  const evtCLR = EVT_CLR(C);
+  const isWide = bp === 'desktop' || bp === 'tablet-land';
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  // Aggregate calendar items by date string across all events
+  const items = {};
+  const add = (ds, it) => { if (ds) { (items[ds] = items[ds] || []).push(it); } };
+  events.forEach(ev => {
+    const color = evtCLR[ev.type] || C.muted;
+    if (ev.date) add(ev.date, { kind: 'event', label: ev.name, color, eventId: ev.id });
+    const groups = {};
+    (ev.timeline || []).forEach(t => {
+      if (!(t.week in PHASE_OFFSET) || !ev.date) return;
+      const d = new Date(ev.date + 'T00:00:00'); d.setDate(d.getDate() + PHASE_OFFSET[t.week]);
+      const ds = d.toISOString().slice(0, 10);
+      (groups[ds] = groups[ds] || { week: t.week, tasks: [] }).tasks.push(t);
+    });
+    Object.entries(groups).forEach(([ds, g]) => {
+      const open = g.tasks.filter(t => !t.done).length;
+      if (open > 0) add(ds, { kind: 'task', label: `${ev.name}: ${g.week}`, color: C.accent, eventId: ev.id });
+    });
+    (ev.vendors || []).forEach(v => {
+      if (v.payDueDate && !v.balancePaid && v.name) add(v.payDueDate, { kind: 'payment', label: `Pay ${v.name}`, color: C.warn, eventId: ev.id });
+    });
+  });
+
+  const base = getToday();
+  const todayStr = today8601();
+  const viewMonth = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  // Week agenda: today → +6 days
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base); d.setDate(d.getDate() + i);
+    const ds = d.toISOString().slice(0, 10);
+    return { d, ds, isToday: ds === todayStr, dayItems: items[ds] || [] };
+  });
+
+  return (
+    <div style={{ ...s.card, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isWide ? '236px 1fr' : '1fr', gap: 22 }}>
+
+        {/* ── Mini month ── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <button onClick={() => setMonthOffset(o => o - 1)} style={{ ...s.btn('ghost'), fontSize: 13, padding: '2px 8px' }}>‹</button>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{monthLabel}</div>
+            <button onClick={() => setMonthOffset(o => o + 1)} style={{ ...s.btn('ghost'), fontSize: 13, padding: '2px 8px' }}>›</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <div key={i} style={{ fontSize: 9, fontWeight: 700, color: C.muted, textAlign: 'center', padding: '2px 0' }}>{d}</div>
+            ))}
+            {Array.from({ length: firstWeekday }, (_, i) => <div key={`e${i}`} />)}
+            {Array.from({ length: daysInMonth }, (_, i) => {
+              const dayNum = i + 1;
+              const ds = new Date(year, month, dayNum).toISOString().slice(0, 10);
+              const dayItems = items[ds] || [];
+              const isToday = ds === todayStr;
+              const dot = dayItems.some(x => x.kind === 'payment') ? C.warn : dayItems.some(x => x.kind === 'event') ? (dayItems.find(x => x.kind === 'event').color) : dayItems.length ? C.accent : null;
+              return (
+                <div key={dayNum} style={{ aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 7, background: isToday ? C.accent : 'transparent', position: 'relative' }}>
+                  <span style={{ fontSize: 11, fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : C.text }}>{dayNum}</span>
+                  {dot && <span style={{ width: 4, height: 4, borderRadius: '50%', background: isToday ? '#fff' : dot, marginTop: 1 }} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Line-by-line week agenda ── */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 8 }}>This Week</div>
+          <div>
+            {week.map(({ d, isToday, dayItems }, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start' }}>
+                <div style={{ width: 54, flexShrink: 0, textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase' }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+                  {dayItems.length === 0 ? (
+                    <div style={{ fontSize: 12, color: C.border }}>—</div>
+                  ) : dayItems.map((it, j) => (
+                    <div key={j} onClick={() => onSelectEvent && onSelectEvent(it.eventId)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: C.text, cursor: 'pointer', padding: '2px 0' }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 0.7}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 1}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile }) {
   const C      = useT();
   const s      = makeS(C);
@@ -6811,6 +6922,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
         {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
         <div>
+
+          {/* Week-at-a-glance: mini month + line-by-line week agenda */}
+          {events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
 
           {/* Upcoming Events */}
           <div>
