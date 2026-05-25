@@ -2,11 +2,17 @@ import { useState, useEffect, useRef, createContext, useContext, useMemo, Compon
 import * as XLSX from 'xlsx';
 import QRCode from 'qrcode';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner } from './lib/commApi';
-import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
 import ImportHistoryDrawer from './components/ImportHistoryDrawer';
+import AuthGate           from './components/AuthGate';
+import { AuthCtx }        from './contexts/AuthContext';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import { saveEvent, saveClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
+
+// ─── App version ─────────────────────────────────────────────────────────────
+const APP_VERSION = '1.5.0';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -159,13 +165,20 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 40, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif", color: '#b91c1c' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
-          <div style={{ fontSize: 13, color: '#44447a', marginBottom: 20 }}>{this.state.error.message}</div>
-          <button onClick={() => this.setState({ error: null })}
-            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#1a6fba', color: '#fff', cursor: 'pointer', fontSize: 13 }}>
-            Try again
-          </button>
+        <div style={{ padding: 40, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif", background: '#0f0f11', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#e8e8f0', marginBottom: 8 }}>A component failed to render</div>
+          <div style={{ fontSize: 12, color: '#6b6b80', marginBottom: 6, maxWidth: 340 }}>Your data is safe — this is a display error, not a data loss event.</div>
+          <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'monospace', marginBottom: 24, maxWidth: 380, wordBreak: 'break-word' }}>{this.state.error.message}</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => this.setState({ error: null })}
+              style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #2a2a32', background: 'transparent', color: '#e8e8f0', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+              Try again
+            </button>
+            <button onClick={() => window.location.reload()}
+              style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#4a90d9', color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+              Reload page
+            </button>
+          </div>
         </div>
       );
     }
@@ -176,6 +189,8 @@ class ErrorBoundary extends Component {
 // ─── Theme + breakpoint context ───────────────────────────────────────────────
 const ThemeCtx = createContext({ C: DARK, theme: 'dark', setTheme: () => {} });
 const useT = () => useContext(ThemeCtx).C;
+// syncState: 'idle' | 'saving' | 'saved' | 'offline' | 'sync_failed' | 'reconnecting' | 'pending'
+const SaveCtx  = createContext({ savedAt: null, online: true, syncState: 'idle', pendingCount: 0 });
 
 // ─── Toast notification ───────────────────────────────────────────────────────
 // Usage inside any component: const showToast = useToast(); showToast('Done!');
@@ -328,6 +343,7 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'message':     return <svg {...p}><path d="M21 11.5a8 8 0 0 1-11.6 7.1L3 21l2.4-6.4A8 8 0 1 1 21 11.5Z"/></svg>;
     case 'mapPin':      return <svg {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
     case 'phone':       return <svg {...p}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>;
+    case 'pin':         return <svg {...p}><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7Z"/><circle cx="12" cy="9" r="2.5"/></svg>;
     case 'link':        return <svg {...p}><path d="M9 15l6-6"/><path d="M11 6.5 13 4.5a4 4 0 0 1 5.7 5.7l-2 2"/><path d="M13 17.5 11 19.5a4 4 0 0 1-5.7-5.7l2-2"/></svg>;
     case 'sparkle':     return <svg {...p}><path d="M12 3l1.8 4.9L18.7 9.6l-4.9 1.8L12 16.3l-1.8-4.9L5.3 9.6l4.9-1.8L12 3Z"/></svg>;
     case 'check2':      return <svg {...p}><path d="M5 12l4.5 4.5L19 7"/></svg>;
@@ -366,10 +382,7 @@ function ThemeToggle() {
 const BpCtx = createContext('desktop');
 
 // Auth context — when Supabase is configured, the planner app is gated behind a
-// signed-in session. When it's NOT configured (e.g. the public demo), `configured`
-// is false and the app runs open on local storage. Consumers read `session` to
-// decide whether planner writes are allowed.
-const AuthCtx = createContext({ configured: false, ready: true, session: null, user: null, signOut: () => {} });
+// AuthCtx is defined in src/contexts/AuthContext.jsx and provided by AuthGate.
 
 function useBreakpoint() {
   const [w, setW] = useState(() => window.innerWidth);
@@ -3215,7 +3228,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
           {/* ── Planner-Only Notes (collapsible, internal — never exported) ── */}
           <div style={{ marginBottom: 16, border: `1px solid ${C.warn}44`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowPNotes(v => !v)} style={{ width: '100%', background: showPNotes ? C.warn + '12' : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.warn, flex: 1 }}>🔒 Planner-Only Notes</span>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.warn, flex: 1 }}>Planner-Only Notes</span>
               {((vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length) > 0 && <span style={{ fontSize: 11, color: C.muted }}>{(vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length}</span>}
               <span style={{ fontSize: 10, color: C.muted, transform: showPNotes ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </button>
@@ -5248,7 +5261,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
                   </div>
                 ) : (
                   <button style={s.btn('teal')} onClick={generateChecklist} title="Generate phase-based planning tasks from intake answers">
-                    📋 Generate Checklist
+                    Generate Checklist
                   </button>
                 )}
                 <AIBtn onClick={genProposal} loading={proposalLoad} label="Draft Proposal" />
@@ -5338,10 +5351,13 @@ function EventsDashboard({ events, onSelect, onNew }) {
       </div>
       <div style={{ padding: '28px 36px' }}>
         {events.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>🎉</div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No events yet</div>
-            <button style={s.btn('primary')} onClick={onNew}>+ New Event</button>
+          <div style={{ maxWidth: 440, margin: '0 auto', padding: '60px 0' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>Events</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: '-0.02em', marginBottom: 8 }}>Build your event roster</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 20 }}>
+              Each event becomes an operational command center — vendor roster, guest list, run-of-show, and budget tracked in one place.
+            </div>
+            <button style={{ ...s.btn('primary'), padding: '10px 22px', fontSize: 13 }} onClick={onNew}>New Event</button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
@@ -5769,7 +5785,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                     const isApproval = e.type === 'approval_request';
                     const isDecision = e.type === 'decision';
                     const clr   = isApproval ? C.warn : isDecision ? C.accent2 : C.accent;
-                    const label = isApproval ? '✋ Approval Needed' : isDecision ? '📌 Decision' : '📋 Update';
+                    const label = isApproval ? 'Approval Needed' : isDecision ? 'Decision' : 'Update';
                     const status = isApproval
                       ? (e.approvalStatus === 'approved' ? { t: '✓ You approved', c: C.success }
                         : e.approvalStatus === 'declined' ? { t: '✗ You declined',  c: C.danger }
@@ -6632,7 +6648,7 @@ function ProfileModal({ profile, onClose, onChange }) {
 
         {/* ── Header ── */}
         <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Planner Profile</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Studio Settings</div>
           <button onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
         </div>
 
@@ -6656,13 +6672,16 @@ function ProfileModal({ profile, onClose, onChange }) {
               : <div style={mkSphere(profile?.brandColor || C.accent, 56, 20)}>{initials}</div>}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>{profile?.name || 'Your Name'}</div>
-              <div style={{ fontSize: 12, color: C.muted }}>{profile?.businessName || 'Event Planner'}</div>
-              {(profile?.city || metroObj) && (
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                  {profile?.city || ''}
-                  {metroObj && <span style={{ color: tierInfo?.color || C.accent, marginLeft: profile?.city ? ' · ' : '' }}>{tierInfo?.icon} {metroObj.label}</span>}
-                </div>
-              )}
+              <div style={{ fontSize: 12, color: C.muted }}>{profile?.businessName || 'Studio Name'}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
+                {profile?.role || 'Owner'}
+                {(profile?.city || metroObj) && (
+                  <span>
+                    {' · '}{profile?.city || ''}
+                    {metroObj && <span style={{ color: tierInfo?.color || C.accent }}>{tierInfo?.icon} {metroObj.label}</span>}
+                  </span>
+                )}
+              </div>
             </div>
             {hasContact && (
               <button onClick={copyContact} title="Copy contact card" style={{ ...s.btn(copied ? 'success' : 'ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
@@ -6685,11 +6704,22 @@ function ProfileModal({ profile, onClose, onChange }) {
             </div>
           )}
 
-          {/* ── IDENTITY ── */}
-          <SectionHead label="Identity" />
+          {/* ── STUDIO IDENTITY ── */}
+          <SectionHead label="Studio" />
+          <Row2>
+            <Field fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Your Role</label>
+              <select value={profile?.role || 'Owner'} onChange={e => onChange('role', e.target.value)} style={{ ...s.input, cursor: 'pointer' }}>
+                {['Owner', 'Lead Planner', 'Assistant Planner', 'Coordinator'].map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          </Row2>
+
+          {/* ── PLANNER IDENTITY ── */}
+          <SectionHead label="Planner" />
           <Row2>
             <Field fkey="name"         label="Your Name"      ph="Jane Planner" />
-            <Field fkey="businessName" label="Business Name"  ph="Planner Co."  />
           </Row2>
 
           {/* Logo upload */}
@@ -6699,7 +6729,7 @@ function ProfileModal({ profile, onClose, onChange }) {
               <div style={{ width: 56, height: 56, borderRadius: 10, border: `1px dashed ${C.border}`, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {profile?.logo
                   ? <img src={profile.logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                  : <span style={{ fontSize: 20, color: C.muted }}>🏷</span>}
+                  : <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>Logo</span>}
               </div>
               <div style={{ flex: 1 }}>
                 <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
@@ -6791,7 +6821,6 @@ function ProfileModal({ profile, onClose, onChange }) {
               const selectedInCat = catTypes.filter(t => (profile?.specialties || '').split(',').map(x => x.trim()).includes(t)).length;
               return (
                 <button key={cat} onClick={() => setSpecCat(cat)} style={{ ...s.btn(specCat === cat ? 'primary' : 'ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {cat === 'Weddings & Celebrations' ? '🎊' : cat === 'Corporate' ? '🏢' : '🤝'}
                   {cat === 'Weddings & Celebrations' ? 'Celebrations' : cat === 'Corporate' ? 'Corporate' : 'Social'}
                   {selectedInCat > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{selectedInCat}</span>}
                 </button>
@@ -6862,7 +6891,7 @@ function ProfileModal({ profile, onClose, onChange }) {
             <button onClick={() => setShowAI(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
               <span style={{ fontSize: 12, fontWeight: 500 }}>Claude AI — drafting &amp; suggestions</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {profile?.anthropicKey ? <span style={{ ...s.pill(C.success), fontSize: 10 }}>✓ Active</span> : <span style={{ fontSize: 11, color: C.muted }}>not set</span>}
+                {profile?.anthropicKey ? <span style={{ ...s.pill(C.success), fontSize: 10 }}>Active</span> : <span style={{ fontSize: 11, color: C.muted }}>not set</span>}
                 <span style={{ color: C.muted, fontSize: 12 }}>{showAI ? '▾' : '▸'}</span>
               </span>
             </button>
@@ -6873,6 +6902,94 @@ function ProfileModal({ profile, onClose, onChange }) {
                 <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Stored locally. Never sent anywhere except api.anthropic.com.</div>
               </div>
             )}
+          </div>
+
+          {/* ── TEAM & PERMISSIONS ── stub */}
+          <SectionHead label="Team & Permissions" />
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>Team collaboration</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                  Invite assistants, co-planners, and coordinators to collaborate across events.
+                </div>
+              </div>
+              <div style={{ padding: '3px 9px', borderRadius: 6, background: C.surface2, border: `1px solid ${C.border}`, fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                Studio plan
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>
+              Team access, role-based permissions, and invite management coming soon.
+            </div>
+          </div>
+
+          {/* ── PLAN & BILLING ── stub */}
+          <SectionHead label="Plan & Billing" />
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>NGW Event Boss</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Essentials</div>
+              </div>
+              <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Current plan
+              </div>
+            </div>
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                ['Studio', 'Team collaboration, advanced comms, reporting'],
+                ['Agency', 'Multi-studio orchestration, infrastructure-grade ops'],
+              ].map(([plan, desc]) => (
+                <div key={plan} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{plan}</span>
+                    <span style={{ fontSize: 11, color: C.muted }}> — {desc}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>Coming soon</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── NOTIFICATION PREFERENCES ── */}
+          <SectionHead label="Notifications" />
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+            {[
+              { key: 'notifEventDay',    label: 'Event day alerts',        desc: 'Overdue tasks and vendor arrivals on event day' },
+              { key: 'notifPaymentDue',  label: 'Payment reminders',       desc: 'Vendor balance due within 7 days' },
+              { key: 'notifTimeline',    label: 'Timeline milestones',      desc: 'Planning phase deadlines and upcoming checkpoints' },
+            ].map(({ key, label, desc }, i, arr) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  <input type="checkbox" checked={!!(profile?.[key] ?? (key === 'notifEventDay'))} onChange={e => onChange(key, e.target.checked)} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                  <div style={{ width: 36, height: 20, borderRadius: 10, background: (profile?.[key] ?? (key === 'notifEventDay')) ? C.accent : C.border, transition: 'background 0.2s', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 2, left: (profile?.[key] ?? (key === 'notifEventDay')) ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                  </div>
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {/* ── CONNECTED SERVICES ── stub */}
+          <SectionHead label="Connected Services" />
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+            {[
+              { label: 'Google Calendar', desc: 'Sync event dates and timeline milestones' },
+              { label: 'Outlook / Office 365', desc: 'Bi-directional calendar sync for enterprise planners' },
+              { label: 'Calendar export (.ics)', desc: 'Generate a portable calendar file for any client' },
+            ].map(({ label, desc }, i, arr) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: C.muted, flexShrink: 0, padding: '3px 10px', borderRadius: 6, border: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Coming soon</div>
+              </div>
+            ))}
           </div>
 
         </div>
@@ -7096,6 +7213,114 @@ function DayAddModal({ date, onClose, onAdd }) {
   );
 }
 
+// ─── Event Readiness Panel ───────────────────────────────────────────────────
+// Shows operational status for events in the next 60 days. Grounded data only —
+// no fake scores, no invented metrics. Everything here is derived from real event state.
+function EventReadinessPanel({ events, onSelectEvent }) {
+  const C = useT();
+  const bp = useContext(BpCtx);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const upcoming = useMemo(() => events
+    .filter(ev => {
+      if (!ev.date || ev.archived) return false;
+      const d = new Date(ev.date + 'T00:00:00');
+      const diff = Math.round((d - today) / 86400000);
+      return diff >= -1 && diff <= 60;
+    })
+    .map(ev => {
+      const overdueTaskCount = (ev.timeline || []).filter(t => !t.done && isTaskOverdue(t, ev.date)).length;
+      const vendors = ev.vendors || [];
+      const unconfirmedCount = vendors.filter(v => ['Contracted'].includes(v.status)).length;
+      const overduePayCount = vendors.filter(v => {
+        if (!v.payDueDate || v.balancePaid) return false;
+        const bal = vendorBalance(v);
+        if (bal <= 0) return false;
+        return new Date(v.payDueDate + 'T00:00:00') <= today;
+      }).length;
+      const guests = ev.guests || [];
+      const confirmedGuests = guests.filter(g => g.rsvp === 'Yes').length;
+      const days = daysUntil(ev.date);
+      const critical = overdueTaskCount > 0 || overduePayCount > 0;
+      const caution = unconfirmedCount > 0 || (guests.length > 0 && confirmedGuests / guests.length < 0.5 && days !== null && days <= 14);
+      const statusColor = critical ? C.danger : caution ? C.warn : C.success;
+      const statusLabel = critical ? 'Needs attention' : caution ? 'Review needed' : 'On track';
+      return { ev, days, overdueTaskCount, unconfirmedCount, overduePayCount, confirmedGuests, totalGuests: guests.length, statusColor, statusLabel, critical, caution };
+    })
+  , [events]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (upcoming.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 10 }}>
+        Event Readiness — Next 60 Days
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : `repeat(${Math.min(upcoming.length, 3)}, 1fr)`, gap: 10 }}>
+        {upcoming.map(({ ev, days, overdueTaskCount, unconfirmedCount, overduePayCount, confirmedGuests, totalGuests, statusColor, statusLabel }) => (
+          <div key={ev.id} onClick={() => onSelectEvent(ev.id)} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', borderLeft: `3px solid ${statusColor}` }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.surface; }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>{ev.name}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: statusColor, flexShrink: 0 }}>{statusLabel}</div>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+              {days !== null ? (days === 0 ? 'Today' : days > 0 ? `${days}d away` : `${Math.abs(days)}d ago`) : 'Date TBD'}
+              {ev.venue ? ` · ${ev.venue}` : ''}
+            </div>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              {overdueTaskCount > 0 && <span style={{ fontSize: 11, color: C.danger }}>{overdueTaskCount} overdue task{overdueTaskCount !== 1 ? 's' : ''}</span>}
+              {overduePayCount > 0  && <span style={{ fontSize: 11, color: C.danger }}>{overduePayCount} overdue payment{overduePayCount !== 1 ? 's' : ''}</span>}
+              {unconfirmedCount > 0 && <span style={{ fontSize: 11, color: C.warn }}>{unconfirmedCount} vendor{unconfirmedCount !== 1 ? 's' : ''} unconfirmed</span>}
+              {totalGuests > 0 && <span style={{ fontSize: 11, color: C.muted }}>{confirmedGuests}/{totalGuests} RSVP</span>}
+              {overdueTaskCount === 0 && overduePayCount === 0 && unconfirmedCount === 0 && totalGuests === 0 && (
+                <span style={{ fontSize: 11, color: C.success }}>All clear</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Setup progress banner ────────────────────────────────────────────────────
+// Shown when the studio profile is incomplete. Surfaces the 3 most impactful
+// setup steps and routes the planner to Studio Settings to complete them.
+function SetupBanner({ profile, onOpenProfile }) {
+  const C = useT();
+  const s = makeS(C);
+  const steps = [
+    { label: 'Studio name',   done: !!(profile?.businessName || '').trim() },
+    { label: 'Your name',     done: !!(profile?.name || '').trim() },
+    { label: 'Contact info',  done: !!(profile?.email || profile?.phone) },
+  ];
+  const doneCt  = steps.filter(x => x.done).length;
+  const allDone = doneCt === steps.length;
+  if (allDone) return null;
+
+  return (
+    <div style={{ padding: '10px 16px', background: C.surface2, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+          Complete your studio setup — {doneCt}/{steps.length}
+        </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          {steps.map(st => (
+            <span key={st.label} style={{ fontSize: 11, color: st.done ? C.success : C.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontWeight: 700 }}>{st.done ? '✓' : '·'}</span> {st.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <button onClick={onOpenProfile} style={{ ...s.btn(), fontSize: 12, padding: '6px 14px', flexShrink: 0 }}>
+        Open Settings
+      </button>
+    </div>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote }) {
   const C      = useT();
   const s      = makeS(C);
@@ -7296,9 +7521,22 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     </>
   );
   const navFooter = (collapsed) => (
-    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexDirection: collapsed ? 'column' : 'row', justifyContent: collapsed ? 'center' : 'space-between' }}>
-      <ThemeToggle />
-      {onProfile && <button onClick={() => { onProfile(); setDrawerOpen(false); }} title="Profile" style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer' }}>{initials}</button>}
+    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+      {!collapsed && (profile?.businessName || profile?.name) && (
+        <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+          {profile.businessName && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.businessName}</div>
+          )}
+          {profile.name && (
+            <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.name}{profile.role ? ` · ${profile.role}` : ''}</div>
+          )}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: collapsed ? 'column' : 'row', justifyContent: collapsed ? 'center' : 'space-between' }}>
+        <ThemeToggle />
+        {onProfile && <button onClick={() => { onProfile(); setDrawerOpen(false); }} title="Studio Settings" aria-label="Studio Settings" style={{ ...mkSphere(profile?.brandColor || C.accent, 34, 13), border: 'none', cursor: 'pointer' }}>{initials}</button>}
+      </div>
+      {!collapsed && <div style={{ fontSize: 10, color: C.border, marginTop: 10, letterSpacing: '0.04em' }}>NGW Event Boss v{APP_VERSION}</div>}
     </div>
   );
 
@@ -7330,12 +7568,15 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <button onClick={() => setDrawerOpen(true)} title="Menu" aria-label="Menu"
             style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="menu" size={20} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>NGW Event Boss</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>{profile?.businessName || 'NGW Event Boss'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
           </div>
-          {onProfile && <button onClick={onProfile} title="Profile" style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer', flexShrink: 0 }}>{initials}</button>}
+          {onProfile && <button onClick={onProfile} title="Studio Settings" aria-label="Studio Settings" style={{ ...mkSphere(profile?.brandColor || C.accent, 34, 13), border: 'none', cursor: 'pointer', flexShrink: 0 }}>{initials}</button>}
         </div>
       )}
+
+      {/* Setup progress banner — only on the dashboard view, only when incomplete */}
+      {dashView === 'dashboard' && <SetupBanner profile={profile} onOpenProfile={onProfile} />}
 
       <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
         <div style={inner}>
@@ -7398,6 +7639,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           )}
           {dashView === 'dashboard' && !isWide && showActionMobile && commAlerts.length > 0 && (
             <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>{commRows()}</div>
+          )}
+
+          {dashView === 'dashboard' && events.length > 0 && (
+            <EventReadinessPanel events={events} onSelectEvent={onSelectEvent} />
           )}
 
           {dashView === 'dashboard' && (
@@ -7484,16 +7729,31 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>{/* /dashboard body */}
 
         {clients.length === 0 && events.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>🎉</div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Start planning</div>
-            <p style={{ color: C.muted, fontSize: 13, marginBottom: 4 }}>Add your first client or event to get started.</p>
-            <p style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>
-              <strong style={{ color: C.accent }}>Tip:</strong> Create a Client first — it connects the RSVP page, thank-you tracker, and planner fee collection to every event automatically.
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button style={s.btn('primary')} onClick={onNewClient}>+ New Client</button>
-              <button style={s.btn()} onClick={onNew}>+ New Event</button>
+          <div style={{ maxWidth: 480, margin: '0 auto', padding: bp === 'mobile' ? '40px 0 32px' : '60px 0 40px' }}>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
+                NGW Event Boss
+              </div>
+              <div style={{ fontSize: bp === 'mobile' ? 20 : 24, fontWeight: 800, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 10 }}>
+                Your operational command center
+              </div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>
+                Built for professional event planners who need execution infrastructure — not another planning app. Manage vendors, guests, budget, and timelines from one place.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
+              <button style={{ ...s.btn('primary'), padding: '10px 22px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+              <button style={{ ...s.btn(), padding: '10px 22px', fontSize: 13 }} onClick={onNew}>New Event</button>
+            </div>
+
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Start with a client
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7 }}>
+                Creating a client first connects the RSVP page, thank-you tracker, and fee collection to every event automatically. It takes 30 seconds.
+              </div>
             </div>
           </div>
         )}
@@ -7510,7 +7770,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={onNewClient}>+ New Client</button>
             </div>
             {filteredClients.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: C.muted, fontSize: 13 }}>No clients yet — add your first client to get started.</div>
+              <div style={{ padding: '28px 24px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+                  Clients connect your RSVP page, thank-you tracker, and fee collection to every event. Create one now to get started.
+                </div>
+                <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+              </div>
             ) : (
               <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
                 {filteredClients.map((c, i) => {
@@ -7569,7 +7836,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={onNew}>+ New Event</button>
             </div>
             {enrichedEvents.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: C.muted, fontSize: 13 }}>No events yet — add your first event to get started.</div>
+              <div style={{ padding: '32px 0' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events in your roster yet</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 16, maxWidth: 380 }}>Create your first event to begin building your command center — vendor roster, guest list, timeline, and budget in one place.</div>
+                <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNew}>New Event</button>
+              </div>
             ) : (
               <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
                 {enrichedEvents.map((ev, i) => {
@@ -7886,9 +8158,11 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         </div>
       )}
       {clientEvents.length === 0 ? (
-        <div style={{ ...s.card, textAlign: 'center', padding: '32px 24px' }}>
-          <div style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>No events yet</div>
-          <button style={s.btn('primary')} onClick={onAddEvent}>+ Add First Event</button>
+        <div style={{ ...s.card, padding: '24px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events linked yet</div>
+          <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 14 }}>Link an event to connect this client's RSVP page, vendor roster, and fee tracking to a live event.</div>
+          <button style={{ ...s.btn('primary'), padding: '8px 16px', fontSize: 12 }} onClick={onAddEvent}>Link Event</button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -7941,7 +8215,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           Communication lives on each event. Open an event's <strong style={{ color: C.text }}>Communication</strong> tab to message the client, log decisions, and request approvals.
         </div>
         {clientEvents.length === 0 ? (
-          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No events yet — add one to start a communication ledger.</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Link an event to this client to begin the communication ledger.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {clientEvents.map(ev => {
@@ -8072,7 +8346,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 <a href={`tel:${client.phone}`} style={{ color: C.accent2, textDecoration: 'none' }}
                   onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                   onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
-                  📞 {client.phone}
+                  {client.phone}
                 </a>
               )}
               {client.referral && <><span>·</span><span>Via {client.referral}</span></>}
@@ -8902,10 +9176,13 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         </div>
 
         {budget.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6 }}>No budget categories yet</div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add categories like Venue, Catering, and Florals to track your spending.</div>
-            <button style={s.btn('primary')} onClick={add}>+ Add First Category</button>
+          <div style={{ padding: '28px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Budget</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Track event spending</div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+              Add categories like Venue, Catering, and Florals. Track budgeted vs. actual spend, monitor what's contracted, and see what's still owed at a glance.
+            </div>
+            <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={add}>Add first category</button>
           </div>
         )}
 
@@ -9399,7 +9676,7 @@ function Guests({ guests, setGuests, event = {} }) {
     try { const v = localStorage.getItem('ngw_guest_import_batches'); return v ? JSON.parse(v) : []; } catch { return []; }
   });
   useEffect(() => {
-    try { localStorage.setItem('ngw_guest_import_batches', JSON.stringify(importBatches)); } catch {}
+    try { localStorage.setItem('ngw_guest_import_batches', JSON.stringify(importBatches.slice(-10))); } catch {}
   }, [importBatches]); // eslint-disable-line react-hooks/exhaustive-deps
   // Bridge: csvParsers canonical fields → app's internal guest shape
   const canonicalToGuest = (r) => ({
@@ -9764,12 +10041,15 @@ function Guests({ guests, setGuests, event = {} }) {
           </select>
         )}
         {guests.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6 }}>No guests yet</div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add guests manually or import a CSV from The Knot, Zola, or Paperless Post.</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button style={s.btn('primary')} onClick={add}>+ Add First Guest</button>
-              <button style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
+          <div style={{ padding: '28px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Guest List</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Build your guest list</div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+              Track RSVPs, meal selections, dietary needs, and seating. Import from The Knot, Zola, or Paperless Post — or add manually.
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={add}>Add first guest</button>
+              <button style={{ ...s.btn(), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
                 <Icon name="import" size={14} /> Import CSV
               </button>
             </div>
@@ -10602,8 +10882,8 @@ function VendorScriptsPanel({ profile, event }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <button onClick={() => setMode('email')} style={{ ...s.btn(mode === 'email' ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 12px' }}>✉ Email</button>
-          <button onClick={() => setMode('phone')} style={{ ...s.btn(mode === 'phone' ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 12px' }}>📞 Phone</button>
+          <button onClick={() => setMode('email')} style={{ ...s.btn(mode === 'email' ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 12px' }}>Email</button>
+          <button onClick={() => setMode('phone')} style={{ ...s.btn(mode === 'phone' ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 12px' }}>Phone</button>
         </div>
       </div>
       {!profile?.name && (
@@ -10698,7 +10978,7 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
     try { const v = localStorage.getItem('ngw_vendor_import_batches'); return v ? JSON.parse(v) : []; } catch { return []; }
   });
   useEffect(() => {
-    try { localStorage.setItem('ngw_vendor_import_batches', JSON.stringify(vendorImportBatches)); } catch {}
+    try { localStorage.setItem('ngw_vendor_import_batches', JSON.stringify(vendorImportBatches.slice(-10))); } catch {}
   }, [vendorImportBatches]); // eslint-disable-line react-hooks/exhaustive-deps
   const [vendorImportMsg, setVendorImportMsg] = useState(null);
 
@@ -11265,10 +11545,13 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
         )}
 
         {vendors.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendors yet</div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add your venue, photographer, caterer, and more.<br />Track pipeline, payments, and contact info in one place.</div>
-            <button style={s.btn('primary')} onClick={add}>+ Add First Vendor</button>
+          <div style={{ padding: '28px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Vendor Pipeline</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Build your vendor roster</div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+              Track venue, photography, catering, florals, and every contracted service. Manage pipeline status, payment schedules, and day-of arrival from one view.
+            </div>
+            <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={add}>Add first vendor</button>
           </div>
         )}
 
@@ -11490,10 +11773,13 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
       </div>
 
       {timeline.length === 0 ? (
-        <div style={{ ...s.card, textAlign: 'center', padding: '32px 20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No tasks yet</div>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Build your planning checklist by adding tasks to each phase.</div>
-          <button style={s.btn('primary')} onClick={() => add('12 Months Out')}>+ Add First Task</button>
+        <div style={{ ...s.card, padding: '28px 24px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Planning Tasks</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Build your planning checklist</div>
+          <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+            Organize tasks by phase — 12 months out through day-of. Track ownership, deadlines, and completion across every stage of the event.
+          </div>
+          <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={() => add('12 Months Out')}>Add first task</button>
         </div>
       ) : (
         <>
@@ -11843,7 +12129,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
             <div style={{ padding: '4px 16px 20px' }}>
               {[
                 { label: 'Sync Vendors', action: () => { syncVendors(); setRosActionsOpen(false); } },
-                { label: '🖨 Print / PDF', action: () => { printROS(); setRosActionsOpen(false); } },
+                { label: 'Print / PDF', action: () => { printROS(); setRosActionsOpen(false); } },
                 ...(aiKey ? [{ label: rosDraftLoad ? 'Drafting…' : 'Draft Full ROS (AI)', action: () => { draftFullROS(); setRosActionsOpen(false); }, disabled: rosDraftLoad }] : []),
               ].map(({ label, action, disabled }) => (
                 <button key={label} onClick={action} disabled={disabled}
@@ -11895,7 +12181,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
                 <option value="prep">Prep</option>
               </select>
               <button style={s.btn('teal')} onClick={syncVendors}>Sync Vendors</button>
-              <button style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">🖨 Print / PDF</button>
+              <button style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">Print / PDF</button>
               <AIBtn onClick={draftFullROS} loading={rosDraftLoad} label="Draft Full ROS" />
               <button style={s.btn('primary')} onClick={add}>+ Add</button>
             </div>
@@ -11925,7 +12211,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                         <span style={s.pill(typeColor)}>{entry.type}</span>
-                        {entry.location && <span style={{ fontSize: 11, color: C.muted }}>📍 {entry.location}</span>}
+                        {entry.location && <span style={{ fontSize: 11, color: C.muted }}>{entry.location}</span>}
                         {entry.owner    && <span style={{ fontSize: 11, color: C.muted }}>{entry.owner}</span>}
                         {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: 11, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
                         {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: 11, color: C.warn }}>⚠ Unconfirmed</span>}
@@ -11968,7 +12254,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
                     <div style={{ width: 3, minHeight: 36, borderRadius: 99, background: typeColor, marginTop: 4 }} />
                     <div>
                       <input style={s.input} value={entry.segment} placeholder="Segment description" onChange={e => upd(entry.id, 'segment', e.target.value)} />
-                      <input style={{ ...s.input, fontSize: 11, marginTop: 4, color: C.muted, padding: '4px 10px' }} value={entry.location || ''} placeholder="📍 Location" onChange={e => upd(entry.id, 'location', e.target.value)} />
+                      <input style={{ ...s.input, fontSize: 11, marginTop: 4, color: C.muted, padding: '4px 10px' }} value={entry.location || ''} placeholder="Location" onChange={e => upd(entry.id, 'location', e.target.value)} />
                     </div>
                     <select style={{ ...s.input, padding: '6px 8px', color: typeColor }} value={entry.type} onChange={e => upd(entry.id, 'type', e.target.value)}>
                       <option value="event">Event</option>
@@ -13103,7 +13389,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
     win.document.write(`<!DOCTYPE html><html><head><title>${event.name || 'Event'} — Client Package</title>
       <style>body{font-family:-apple-system,system-ui,Arial,sans-serif;padding:40px 44px;color:#18181c}pre{white-space:pre-wrap;font-family:'SF Mono',Menlo,monospace;font-size:12.5px;line-height:1.65;margin:0}@media print{body{padding:0}@page{margin:0.6in}}</style>
       </head><body>${letterhead}<pre>${textSummary.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>${payFooter}
-      <script>window.onload=function(){window.print();}<\/script></body></html>`);
+      <script>window.onload=function(){window.print();}</script></body></html>`);
     win.document.close();
     win.focus();
     setSentMethod('print'); setStep('sent');
@@ -13900,7 +14186,6 @@ function EventCommunication({ event, setEvent, client, profile }) {
   const filtered = sorted.filter(m => !q || display(m).toLowerCase().includes(q));
   const decisions = sorted.filter(m => m.pinned);
   const clientUnread = !live ? (event.commClient || []).filter(m => !m.readAt).length : 0;
-  const internalCount = live ? (msgs.INTERNAL_TEAM || []).length : (event.commInternal || []).length;
   const fmtWhen = (iso) => fmtDate(String(iso || '').slice(0, 10));
 
   const COMPOSE = isClient ? CLIENT_COMPOSE : INTERNAL_COMPOSE;
@@ -14175,6 +14460,14 @@ const computeDayAlerts = (event) => {
   if (overdueCount)
     alerts.push({ id: 'overdue-tasks', sev: 'warning', text: `${overdueCount} overdue planning task${overdueCount > 1 ? 's' : ''}`, navTo: 'Planning Tasks' });
 
+  // Guests with allergies + catering confirmed — on event day, confirm with caterer
+  if (event.date === td) {
+    const allergyGuests = (event.guests || []).filter(g => g.rsvp === 'Yes' && g.needs && /allerg/i.test(g.needs));
+    const hasCaterer = (event.vendors || []).some(v => /cater|f&b|food|beverage/i.test(v.category) && ['Confirmed','Contracted','Deposit Paid'].includes(v.status));
+    if (allergyGuests.length && hasCaterer)
+      alerts.push({ id: 'dietary', sev: 'critical', text: `${allergyGuests.length} guest${allergyGuests.length > 1 ? 's' : ''} with allergies — confirm with caterer`, navTo: 'Guests' });
+  }
+
   return alerts;
 };
 
@@ -14226,9 +14519,9 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
       {visible.map(a => (
         <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px' : '8px 28px', background: a.sev === 'critical' ? C.danger + '0e' : C.warn + '0d', borderBottom: `1px solid ${a.sev === 'critical' ? C.danger : C.warn}30` }}>
           <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.warn, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
-          <span style={{ flex: 1, fontSize: 12, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
-          {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
-          <button onClick={() => onDismiss(a.id)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ flex: 1, fontSize: 13, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
+          {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 32, fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
+          <button onClick={() => onDismiss(a.id)} style={{ width: 32, height: 32, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Icon name="x" size={13} />
           </button>
         </div>
@@ -14306,9 +14599,10 @@ function VendorArrivalView({ vendors, setVendors, event }) {
                   );
                 })}
               </div>
-              {(v.phone || v.notes) && (
+              {(v.phone || v.notes || v.name) && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center', flexWrap: 'wrap', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
                   {v.phone && <a href={`tel:${v.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 600 }}><Icon name="phone" size={13} /> {v.phone}</a>}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + (v.serviceArea ? ', ' + v.serviceArea : ''))}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 600 }}><Icon name="pin" size={13} /> Directions</a>
                   {v.notes && <span style={{ fontSize: 11, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.notes}</span>}
                 </div>
               )}
@@ -14387,6 +14681,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
+  const { savedAt, online, syncState, pendingCount } = useContext(SaveCtx);
   const [tab,             setTab]            = useState(initialNav?.tab || 'Overview');
   const [showConsult,     setShowConsult]    = useState(!!initialNav?.openConsult);
   const [exporting,       setExporting]      = useState(false);
@@ -14440,9 +14735,12 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   };
 
   // Board Meeting gets an extra Agenda tab
-  const plannerTabs = event.type === 'Board Meeting'
-    ? ['Overview', 'Agenda', 'Budget', 'Guests', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show', 'Communication']
-    : PLANNER_TABS;
+  const plannerTabs = useMemo(
+    () => event.type === 'Board Meeting'
+      ? ['Overview', 'Agenda', 'Budget', 'Guests', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show', 'Communication']
+      : PLANNER_TABS,
+    [event.type]
+  );
 
   // Keyboard shortcut: Cmd/Ctrl+1–8 to switch tabs
   useEffect(() => {
@@ -14460,24 +14758,6 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
   const isMobile     = bp === 'mobile';
   const isSidebarNav = bp === 'tablet-land' || bp === 'desktop';
-
-  // Event-color-aware tab styles — highlight uses event type color instead of global accent
-  const evtSideTab = (active) => ({
-    display: 'block', width: '100%', padding: '10px 16px', cursor: 'pointer',
-    fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 8, textAlign: 'left',
-    background: active ? color + '1a' : 'transparent',
-    color: active ? color : C.muted,
-    borderLeft: active ? `3px solid ${color}` : '3px solid transparent',
-    transition: 'all 0.15s', whiteSpace: 'nowrap',
-  });
-  const evtTab = (active) => ({
-    padding: '10px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 500,
-    borderRadius: '8px 8px 0 0', border: 'none',
-    background: active ? C.surface : 'transparent',
-    color: active ? color : C.muted,
-    borderTop: active ? `2px solid ${color}` : '2px solid transparent',
-    transition: 'all 0.15s', whiteSpace: 'nowrap',
-  });
 
   // Shared event-nav tab button (icon + label + badge) — used by the desktop
   // collapsible sidebar and the mobile drawer.
@@ -14587,6 +14867,29 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <Icon name="zap" size={11} /> Day Mode
             </span>
+          )}
+          {syncState === 'offline' && (
+            <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● Offline</span>
+          )}
+          {syncState === 'saving' && (
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>● Saving…</span>
+          )}
+          {syncState === 'reconnecting' && (
+            <span style={{ fontSize: 10, color: C.accent2, fontWeight: 600 }}>● Reconnecting…</span>
+          )}
+          {syncState === 'sync_failed' && (
+            <span style={{ fontSize: 10, color: C.danger, fontWeight: 600 }}>● Sync failed</span>
+          )}
+          {(syncState === 'pending' || (syncState !== 'sync_failed' && pendingCount > 0)) && (
+            <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● {pendingCount} pending</span>
+          )}
+          {(syncState === 'saved' || syncState === 'idle') && savedAt && online && (
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>
+              ● Saved {(() => { const s = Math.round((Date.now() - savedAt) / 1000); return s < 10 ? 'just now' : s < 60 ? `${s}s ago` : `${Math.round(s/60)}m ago`; })()}
+            </span>
+          )}
+          {(syncState === 'saved' || syncState === 'idle') && savedAt && !online && (
+            <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● Offline</span>
           )}
           {isSidebarNav && canArchive && (
             <button
@@ -14888,138 +15191,93 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
 const THEMES = { dark: DARK, light: LIGHT };
 
-// ─── Auth gate (Supabase) ───────────────────────────────────────────────────────
-// Passwordless magic-link sign-in. The planner enters their own email; Supabase
-// emails a one-time link. No passwords are stored or handled here.
-function LoginScreen() {
-  const C = useT();
-  const s = makeS(C);
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
-  const [err, setErr] = useState('');
+// AuthGate, LoginScreen, and ThemeFallbackSplash live in src/components/AuthGate.jsx
 
-  const redirect = () => window.location.origin + window.location.pathname;
-  // Show Google only once you've enabled the provider in Supabase (set
-  // REACT_APP_ENABLE_GOOGLE_AUTH=true) so there's never a dead button.
-  const googleEnabled = process.env.REACT_APP_ENABLE_GOOGLE_AUTH === 'true';
+// ─── Cloud migration modal ────────────────────────────────────────────────────
+// Offered once when a signed-in user has local data but no prior cloud sync.
+// NEVER auto-migrates or auto-deletes local data — explicit user action only.
+function MigrationModal({ events: localEvents, clients: localClients, onDone, themeC }) {
+  const [phase,  setPhase]  = useState('prompt'); // prompt | migrating | done | error
+  const [result, setResult] = useState(null);
+  const C = themeC;
 
-  const submit = async (e) => {
-    e?.preventDefault?.();
-    const addr = email.trim();
-    if (!addr || status === 'sending') return;
-    setStatus('sending'); setErr('');
+  const run = async () => {
+    setPhase('migrating');
     try {
-      // Invite-only: never auto-create accounts. Unknown emails are rejected so a
-      // sign-in link only ever goes to a planner an admin has already added.
-      const { error } = await supabase.auth.signInWithOtp({
-        email: addr,
-        options: { emailRedirectTo: redirect(), shouldCreateUser: false },
-      });
-      if (error) throw error;
-      setStatus('sent');
-    } catch (e2) {
-      const msg = (e2?.message || '').toLowerCase();
-      const notAllowed = msg.includes('signups not allowed') || msg.includes('not found') || msg.includes('not allowed') || e2?.status === 422;
-      setStatus('error');
-      setErr(notAllowed
-        ? "That email isn't on the access list. Ask your admin to add you in Supabase."
-        : (e2?.message || 'Could not send the sign-in link.'));
+      const [evR, clR] = await Promise.all([
+        migrateEventsToCloud(localEvents),
+        migrateClientsToCloud(localClients),
+      ]);
+      setResult({ evR, clR });
+      setPhase(evR.failed + clR.failed > 0 ? 'error' : 'done');
+    } catch {
+      setPhase('error');
     }
   };
 
-  const google = async () => {
-    setErr('');
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect() } });
-      if (error) throw error;
-    } catch (e2) {
-      setStatus('error'); setErr(e2?.message || 'Could not start Google sign-in.');
-    }
-  };
+  const overlay = { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 };
+  const box = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 24px', maxWidth: 420, width: '100%' };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: C.bg }}>
-      <div style={{ ...s.card, maxWidth: 380, width: '100%', padding: 28 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: C.accent, textTransform: 'uppercase', marginBottom: 8 }}>NGW Event Boss</div>
-        {status === 'sent' ? (
+    <div style={overlay}>
+      <div style={box}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', color: C.accent, textTransform: 'uppercase', marginBottom: 10 }}>Cloud sync</div>
+
+        {phase === 'prompt' && (
           <>
-            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>Check your email</div>
-            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
-              We sent a sign-in link to <strong style={{ color: C.text }}>{email.trim()}</strong>. Open it on this device to continue.
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>Save your data to the cloud?</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 20 }}>
+              You have <strong style={{ color: C.text }}>{localEvents.length} event{localEvents.length !== 1 ? 's' : ''}</strong> and <strong style={{ color: C.text }}>{localClients.length} client{localClients.length !== 1 ? 's' : ''}</strong> saved locally. Import them to your account so they're available on any device.
+              <br /><br />
+              Your local data will <em>not</em> be deleted — it stays as a backup.
             </div>
-            <button style={{ ...s.btn('ghost'), marginTop: 18, fontSize: 12 }} onClick={() => setStatus('idle')}>Use a different email</button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>Planner sign-in</div>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.55 }}>Enter the email your admin added — we'll send a one-time sign-in link. No password needed.</div>
-            {googleEnabled && (
-              <>
-                <button type="button" onClick={google}
-                  style={{ ...s.btn(), width: '100%', padding: '11px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
-                  <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.02-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
-                  Continue with Google
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 14px', color: C.muted, fontSize: 11 }}>
-                  <span style={{ flex: 1, height: 1, background: C.border }} /> or <span style={{ flex: 1, height: 1, background: C.border }} />
-                </div>
-              </>
-            )}
-            <form onSubmit={submit}>
-              <input
-                type="email" autoFocus required value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@studio.com"
-                style={{ ...s.input, width: '100%', fontSize: 14, marginBottom: 12 }}
-              />
-              <button type="submit" disabled={status === 'sending' || !email.trim()}
-                style={{ ...s.btn('primary'), width: '100%', padding: '11px', fontSize: 14, opacity: status === 'sending' ? 0.6 : 1 }}>
-                {status === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={run} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Import to cloud
               </button>
-            </form>
-            {status === 'error' && <div style={{ fontSize: 12, color: C.danger, marginTop: 12 }}>{err}</div>}
+              <button onClick={onDone} style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Not now
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === 'migrating' && (
+          <div style={{ textAlign: 'center', padding: '20px 0', color: C.muted, fontSize: 13 }}>
+            Uploading your data…
+          </div>
+        )}
+
+        {phase === 'done' && (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>All done</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+              {result?.evR.migrated} event{result?.evR.migrated !== 1 ? 's' : ''} and {result?.clR.migrated} client{result?.clR.migrated !== 1 ? 's' : ''} saved to your account.
+            </div>
+            <button onClick={onDone} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Continue
+            </button>
+          </>
+        )}
+
+        {phase === 'error' && (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>Partial import</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+              {(result?.evR.migrated || 0) + (result?.clR.migrated || 0)} items uploaded,
+              {' '}{(result?.evR.failed || 0) + (result?.clR.failed || 0)} failed. Your local data is intact — try again later.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={run} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Retry
+              </button>
+              <button onClick={onDone} style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Dismiss
+              </button>
+            </div>
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function AuthGate({ children }) {
-  const configured = isSupabaseConfigured();
-  const [session, setSession] = useState(null);
-  const [ready, setReady] = useState(!configured);
-
-  useEffect(() => {
-    if (!configured || !supabase) { setReady(true); return; }
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) { setSession(data?.session || null); setReady(true); }
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => { if (mounted) setSession(sess); });
-    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
-  }, [configured]);
-
-  const value = {
-    configured, ready, session, user: session?.user || null,
-    signOut: () => supabase?.auth?.signOut(),
-  };
-
-  if (configured && !ready) {
-    return <ThemeFallbackSplash />;
-  }
-  if (configured && !session) {
-    return <LoginScreen />;
-  }
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
-}
-
-// Minimal centered splash while the session resolves (themed).
-function ThemeFallbackSplash() {
-  const C = useT();
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, color: C.muted, fontSize: 13 }}>
-      Loading…
     </div>
   );
 }
@@ -15053,7 +15311,7 @@ export default function App() {
     } catch { return SEED_CLIENTS; }
   });
   const [profile,        setProfile]        = useState(() => {
-    try { const d = localStorage.getItem('ngw-profile'); return d ? JSON.parse(d) : { name: '', businessName: '', email: '', phone: '', city: '', website: '', bio: '' }; } catch { return { name: '', businessName: '', email: '', phone: '', city: '', website: '', bio: '' }; }
+    try { const d = localStorage.getItem('ngw-profile'); return d ? JSON.parse(d) : { name: '', businessName: '', role: 'Owner', email: '', phone: '', city: '', website: '', bio: '', notifEventDay: true, notifPaymentDue: true, notifTimeline: true }; } catch { return { name: '', businessName: '', role: 'Owner', email: '', phone: '', city: '', website: '', bio: '', notifEventDay: true, notifPaymentDue: true, notifTimeline: true }; }
   });
   const [calNotes, setCalNotes] = useState(() => {
     try { const d = localStorage.getItem('ngw-cal-notes'); return d ? JSON.parse(d) : []; } catch { return []; }
@@ -15072,17 +15330,96 @@ export default function App() {
   const showToast = (msg, variant = 'success') => setToast({ msg, variant });
   const toastCtxVal = { showToast };
 
-  useEffect(() => { try { localStorage.setItem('ngw-events', JSON.stringify(events)); } catch {} }, [events]);
+  const [savedAt,          setSavedAt]          = useState(null);
+  const [online,           setOnline]           = useState(() => navigator.onLine !== false);
+  const [sessionResumedAt] = useState(() => {
+    try { const v = localStorage.getItem('ngw-last-saved'); return v ? parseInt(v, 10) : null; } catch { return null; }
+  });
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const [syncState,        setSyncState]        = useState('idle');
+  const [pendingCount,     setPendingCount]     = useState(() => getPendingCount());
+  const [showMigration,    setShowMigration]    = useState(false);
+
+  // Online/offline indicator + reconnect flush
+  useEffect(() => {
+    const on = () => {
+      setOnline(true);
+      setSyncState('reconnecting');
+      flushPendingEvents().then(({ flushed, failed }) => {
+        setPendingCount(failed);
+        setSyncState(failed > 0 ? 'pending' : 'saved');
+        if (flushed > 0 && failed === 0) showToast(`${flushed} change${flushed > 1 ? 's' : ''} synced to cloud`, 'success');
+      }).catch(() => setSyncState('sync_failed'));
+    };
+    const off = () => { setOnline(false); setSyncState('offline'); };
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect first sign-in with local data → offer migration
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => {
+      if (!sess?.user) return;
+      const lastSync = localStorage.getItem('ngw-cache-last-sync');
+      if (lastSync) return; // already migrated or synced before
+      try {
+        const localEvts = JSON.parse(localStorage.getItem('ngw-events') || '[]');
+        if (localEvts.length > 0) setShowMigration(true);
+      } catch {}
+    });
+    return () => sub?.subscription?.unsubscribe?.();
+  }, []);
+
+  // Debounced save: events — writes localStorage first, then syncs to Supabase
+  useEffect(() => {
+    const t = setTimeout(() => {
+      // 1. Local write (offline-safe, always runs)
+      try {
+        localStorage.setItem('ngw-events', JSON.stringify(events));
+        localStorage.setItem('ngw-last-saved', String(Date.now()));
+        setSavedAt(Date.now());
+      } catch (e) {
+        if (e && e.name === 'QuotaExceededError') {
+          // Prune import snapshots (largest items) and retry
+          try { localStorage.removeItem('ngw_guest_import_batches'); } catch {}
+          try { localStorage.removeItem('ngw_vendor_import_batches'); } catch {}
+          try { localStorage.setItem('ngw-events', JSON.stringify(events)); setSavedAt(Date.now()); } catch {}
+          showToast('Storage full — import history cleared automatically to free space', 'warning');
+        }
+      }
+      // 2. Cloud sync (when Supabase configured + online; enqueues on failure)
+      if (isSupabaseConfigured() && navigator.onLine !== false) {
+        setSyncState('saving');
+        Promise.all(events.map(ev => saveEvent(ev)))
+          .then(() => { setSyncState('saved'); setPendingCount(0); })
+          .catch(() => { setSyncState('sync_failed'); setPendingCount(getPendingCount()); });
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
-  useEffect(() => { try { localStorage.setItem('ngw-clients', JSON.stringify(clients)); } catch {} }, [clients]);
+
+  // Debounced save: clients
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try { localStorage.setItem('ngw-clients', JSON.stringify(clients)); } catch {}
+      if (isSupabaseConfigured() && navigator.onLine !== false) {
+        clients.forEach(c => saveClient(c).catch(() => {}));
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [clients]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { try { localStorage.setItem('ngw-cal-notes', JSON.stringify(calNotes)); } catch {} }, [calNotes]);
 
   // ── Budget / deposit push notifications ────────────────────────────────────
-  // Fires once on mount. Collects all unpaid vendor balances that are overdue
-  // or due within 7 days across every event, requests Notification permission,
-  // then fires one browser notification per alert (capped at 5 to avoid floods).
+  // Respects profile.notifPaymentDue toggle. Fires once on mount.
   useEffect(() => {
     if (!('Notification' in window)) return;
+    if (profile?.notifPaymentDue === false) return;
     const today = new Date(); today.setHours(0,0,0,0);
     const alerts = [];
     events.forEach(ev => {
@@ -15180,16 +15517,69 @@ export default function App() {
     setActiveId(null);
   };
 
+  const saveCtxVal = { savedAt, online, syncState, pendingCount };
+
+  // ── First-success choreography ────────────────────────────────────────────
+  // Calm operational milestone toasts. Each fires once, gated by localStorage.
+  // Refs track previous count so initial load doesn't trigger false positives.
+  const prevEventCount  = useRef(events.length);
+  const prevClientCount = useRef(clients.length);
+  useEffect(() => {
+    if (prevEventCount.current === 0 && events.length === 1) {
+      const flag = 'ngw-first-event-toast';
+      if (!localStorage.getItem(flag)) {
+        showToast('First event created. Add vendors and guests to build your command center.', 'success');
+        try { localStorage.setItem(flag, '1'); } catch {}
+      }
+    }
+    prevEventCount.current = events.length;
+  }, [events.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (prevClientCount.current === 0 && clients.length === 1) {
+      const flag = 'ngw-first-client-toast';
+      if (!localStorage.getItem(flag)) {
+        showToast('First client added. Link an event to connect their portal, RSVP, and fee tracking.', 'success');
+        try { localStorage.setItem(flag, '1'); } catch {}
+      }
+    }
+    prevClientCount.current = clients.length;
+  }, [clients.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const providers = (children) => (
     <ThemeCtx.Provider value={themeCtxVal}>
       <ToastCtx.Provider value={toastCtxVal}>
         <AICtx.Provider value={profile?.anthropicKey || ''}>
           <BpCtx.Provider value={bp}>
-            <div style={{ color: themeC.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
-              <GlobalStyles />
-              {children}
-              <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />
-            </div>
+            <SaveCtx.Provider value={saveCtxVal}>
+              <div style={{ color: themeC.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
+                <GlobalStyles />
+                {/* Offline strip — fixed top, only when offline */}
+                {!online && (
+                  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#92400e', color: '#fef3c7', fontSize: 12, fontWeight: 600, padding: '6px 16px', textAlign: 'center', letterSpacing: '0.02em' }}>
+                    Working offline — all changes are saved locally
+                  </div>
+                )}
+                {/* Session recovery banner */}
+                {sessionResumedAt && !recoveryDismissed && (
+                  <div style={{ background: themeC.surface2, borderBottom: `1px solid ${themeC.border}`, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 12, color: themeC.muted }}>
+                      Session resumed · last saved {new Date(sessionResumedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
+                    </span>
+                    <button onClick={() => setRecoveryDismissed(true)} style={{ fontSize: 11, color: themeC.muted, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontFamily: 'inherit' }}>Dismiss</button>
+                  </div>
+                )}
+                {children}
+                {showMigration && (
+                  <MigrationModal
+                    events={events}
+                    clients={clients}
+                    themeC={themeC}
+                    onDone={() => setShowMigration(false)}
+                  />
+                )}
+                <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />
+              </div>
+            </SaveCtx.Provider>
           </BpCtx.Provider>
         </AICtx.Provider>
       </ToastCtx.Provider>
