@@ -2150,6 +2150,24 @@ function StatCard({ label, value, sub, color, onClick }) {
   );
 }
 
+// Fixed-height KPI cell that lists rows internally (desktop "inbox" KPIs:
+// Task Inbox, Payments Due, Action Required). Header + scrollable body.
+function KpiInboxPanel({ label, headerRight, hasItems, empty, children }) {
+  const C = useT();
+  const s = makeS(C);
+  return (
+    <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 150 }}>
+      <div style={{ padding: '13px 16px 10px', borderBottom: hasItems ? `1px solid ${C.border}` : 'none', flexShrink: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+        {headerRight}
+      </div>
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {hasItems ? children : <div style={{ padding: '16px', fontSize: 13, color: C.muted }}>{empty}</div>}
+      </div>
+    </div>
+  );
+}
+
 function budgetBarColor(pct, C) {
   if (pct > 100)  return C.danger;  // over budget — crimson
   if (pct >= 90)  return C.warn;    // at/nearly budget — amber (theme-aware)
@@ -6904,7 +6922,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [search, setSearch] = useState('');
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
-  const [showTasksMobile, setShowTasksMobile] = useState(false); // slim screens: tap KPI to reveal task rows inline
+  // Slim screens: tap a KPI to reveal its rows inline below the KPI row.
+  const [showTasksMobile,    setShowTasksMobile]    = useState(false);
+  const [showPaymentsMobile, setShowPaymentsMobile] = useState(false);
+  const [showActionMobile,   setShowActionMobile]   = useState(false);
 
   // Total event value = sum of every event's budgeted total (what clients are spending overall).
   const totalEventValue  = useMemo(() => events.reduce((s, ev) => s + (ev.budget || []).reduce((b, r) => b + (r.budgeted || 0), 0), 0), [events]);
@@ -6971,6 +6992,79 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   }).sort((a, b) => (a.sent - b.sent)), [clients]); // not-yet-sent (planner's move) first
   const needsSendCount = commAlerts.filter(a => !a.sent).length;
 
+  // ── Shared row renderers — reused by both the desktop KPI panels and the
+  //    slim-screen inline expansions so the markup stays in one place. ──
+  const taskRows = () => taskInboxItems.map((t, i) => {
+    const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
+    const clr = evtCLR[t.eventType] || C.muted;
+    return (
+      <div key={`${t.eventId}-${t.id}`}
+        onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: i < taskInboxItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+      >
+        <div style={mkDot(overdue ? C.danger : C.warn, 7)} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.task || 'Untitled task'}</div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: clr }}>{t.eventName}</span>
+            {t.week !== 'Custom' && <span> · {t.week}</span>}
+            {t.owner && <span> · {t.owner}</span>}
+          </div>
+        </div>
+        {overdue && <span style={{ ...s.pill(C.danger), fontSize: 9, flexShrink: 0 }}>Overdue</span>}
+        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+      </div>
+    );
+  });
+
+  const paymentRows = () => paymentAlerts.slice(0, 10).map((p, i) => {
+    const overdue = p.daysLeft < 0;
+    const urgent  = p.daysLeft >= 0 && p.daysLeft <= 14;
+    const clr     = overdue ? C.danger : urgent ? C.warn : C.accent2;
+    const dueLabel = overdue ? `${Math.abs(p.daysLeft)}d overdue` : p.daysLeft === 0 ? 'Due today' : `${p.daysLeft}d`;
+    return (
+      <div key={`${p.eventId}-${p.id}`}
+        onClick={() => onSelectEvent(p.eventId, { tab: 'Vendors', vendorId: p.id })}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: i < Math.min(paymentAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+      >
+        <div style={mkDot(clr, 7)} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.vendorName} <span style={{ color: C.muted }}>— {fmtD(p.balance)}</span></div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ color: evtCLR[p.eventType] || C.muted }}>{p.eventName}</span>
+            <span> · due {fmtDate(p.dueDate)}</span>
+          </div>
+        </div>
+        <span style={{ ...s.pill(clr), fontSize: 9, flexShrink: 0 }}>{dueLabel}</span>
+        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+      </div>
+    );
+  });
+
+  const commRows = () => commAlerts.slice(0, 10).map((a, i) => {
+    const clr = a.sent ? C.warn : C.danger;
+    return (
+      <div key={`${a.clientId}-${i}`}
+        onClick={() => onSelectClient(a.clientId)}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: i < Math.min(commAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+      >
+        <div style={mkDot(clr, 7)} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✋ {a.text || 'Approval request'}</div>
+          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.clientName}</div>
+        </div>
+        <span style={{ ...s.pill(clr), fontSize: 9, flexShrink: 0 }}>{a.sent ? 'Awaiting client' : 'Send to client'}</span>
+        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+      </div>
+    );
+  });
+
   const pad   = bp === 'mobile' ? '20px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const inner = { maxWidth: 1200, margin: '0 auto' };
   return (
@@ -6996,81 +7090,56 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(auto-fit, minmax(190px, 1fr))' : 'repeat(2, 1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
+
+              {/* Task Inbox */}
               {isWide ? (
-                <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 150 }}>
-                  <div style={{ padding: '13px 16px 10px', borderBottom: taskInboxItems.length ? `1px solid ${C.border}` : 'none', flexShrink: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
-                      Task Inbox{taskInboxItems.length ? ` (${taskInboxItems.length}${urgentTasks.length ? ` · ${urgentTasks.length} overdue` : ''})` : ''}
-                    </div>
-                  </div>
-                  <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {taskInboxItems.length === 0 ? (
-                      <div style={{ padding: '16px', fontSize: 13, color: C.muted }}>All caught up — no open tasks.</div>
-                    ) : taskInboxItems.map((t, i) => {
-                      const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
-                      const clr = evtCLR[t.eventType] || C.muted;
-                      return (
-                        <div key={`${t.eventId}-${t.id}`}
-                          onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < taskInboxItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                        >
-                          <div style={mkDot(overdue ? C.danger : C.warn, 7)} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12.5, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {t.task || 'Untitled task'}
-                            </div>
-                            <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              <span style={{ color: clr }}>{t.eventName}</span>
-                              {t.week !== 'Custom' && <span> · {t.week}</span>}
-                            </div>
-                          </div>
-                          {overdue && <span style={{ ...s.pill(C.danger), fontSize: 9, flexShrink: 0 }}>Overdue</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <KpiInboxPanel
+                  label={`Task Inbox${taskInboxItems.length ? ` (${taskInboxItems.length}${urgentTasks.length ? ` · ${urgentTasks.length} overdue` : ''})` : ''}`}
+                  hasItems={taskInboxItems.length > 0} empty="All caught up — no open tasks.">
+                  {taskRows()}
+                </KpiInboxPanel>
               ) : (
                 <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={showTasksMobile ? 'tap to hide' : (urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track')} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => setShowTasksMobile(v => !v)} />
               )}
+
+              {/* Payments Due */}
+              {paymentAlerts.length > 0 && (isWide ? (
+                <KpiInboxPanel
+                  label={`Payments Due (${paymentAlerts.length}${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''})`}
+                  headerRight={<span style={{ fontSize: 11, fontWeight: 700, color: overduePayCount > 0 ? C.danger : C.warn, flexShrink: 0 }}>{fmtD(totalDueSoon)}</span>}
+                  hasItems empty="">
+                  {paymentRows()}
+                </KpiInboxPanel>
+              ) : (
+                <StatCard label="Payments Due" value={paymentAlerts.length} sub={showPaymentsMobile ? 'tap to hide' : `${fmtD(totalDueSoon)} due${overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''}`} color={overduePayCount > 0 ? C.danger : C.warn} onClick={() => setShowPaymentsMobile(v => !v)} />
+              ))}
+
+              {/* Action Required */}
+              {commAlerts.length > 0 && (isWide ? (
+                <KpiInboxPanel
+                  label={`Action Required (${commAlerts.length})`}
+                  headerRight={needsSendCount > 0 ? <span style={{ ...s.pill(C.danger), fontSize: 9, flexShrink: 0 }}>{needsSendCount} to send</span> : null}
+                  hasItems empty="">
+                  {commRows()}
+                </KpiInboxPanel>
+              ) : (
+                <StatCard label="Action Required" value={commAlerts.length} sub={showActionMobile ? 'tap to hide' : (needsSendCount > 0 ? `${needsSendCount} to send` : 'awaiting client')} color={needsSendCount > 0 ? C.danger : C.warn} onClick={() => setShowActionMobile(v => !v)} />
+              ))}
             </div>
           )}
 
-          {/* Slim screens: tapping the Task Inbox KPI reveals the task rows here, inline. */}
+          {/* Slim screens: tapping a KPI reveals its rows here, inline. */}
           {dashView === 'dashboard' && !isWide && showTasksMobile && taskInboxItems.length > 0 && (
-            <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>
-              {taskInboxItems.map((t, i) => {
-                const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
-                const clr = evtCLR[t.eventType] || C.muted;
-                return (
-                  <div key={`${t.eventId}-${t.id}`}
-                    onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: i < taskInboxItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                  >
-                    <div style={mkDot(overdue ? C.danger : C.warn, 8)} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {t.task || 'Untitled task'}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ color: clr }}>{t.eventName}</span>
-                        {t.week !== 'Custom' && <span> · {t.week}</span>}
-                        {t.owner && <span> · {t.owner}</span>}
-                      </div>
-                    </div>
-                    {overdue && <span style={{ ...s.pill(C.danger), fontSize: 10, flexShrink: 0 }}>Overdue</span>}
-                    <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
-                  </div>
-                );
-              })}
-            </div>
+            <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>{taskRows()}</div>
+          )}
+          {dashView === 'dashboard' && !isWide && showPaymentsMobile && paymentAlerts.length > 0 && (
+            <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>{paymentRows()}</div>
+          )}
+          {dashView === 'dashboard' && !isWide && showActionMobile && commAlerts.length > 0 && (
+            <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>{commRows()}</div>
           )}
 
           {dashView === 'dashboard' && (
@@ -7139,82 +7208,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
             {/* Mobile/tablet: calendar below events */}
             {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} calNotes={calNotes} onAddCalNote={onAddCalNote} onToggleCalNote={onToggleCalNote} onDeleteCalNote={onDeleteCalNote} />}
-
-            {/* Cross-event payment alerts */}
-            {paymentAlerts.length > 0 && (
-              <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
-                    Payments Due ({paymentAlerts.length}{overduePayCount > 0 ? ` · ${overduePayCount} overdue` : ''})
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: overduePayCount > 0 ? C.danger : C.warn }}>{fmtD(totalDueSoon)} <span style={{ fontWeight: 400, color: C.muted }}>outstanding</span></div>
-                </div>
-                <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                  {paymentAlerts.slice(0, 10).map((p, i) => {
-                    const overdue = p.daysLeft < 0;
-                    const urgent  = p.daysLeft >= 0 && p.daysLeft <= 14;
-                    const clr     = overdue ? C.danger : urgent ? C.warn : C.accent2;
-                    const dueLabel = overdue ? `${Math.abs(p.daysLeft)}d overdue` : p.daysLeft === 0 ? 'Due today' : `${p.daysLeft}d`;
-                    return (
-                      <div key={`${p.eventId}-${p.id}`}
-                        onClick={() => onSelectEvent(p.eventId, { tab: 'Vendors', vendorId: p.id })}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: i < Math.min(paymentAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                      >
-                        <div style={mkDot(clr, 8)} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {p.vendorName} <span style={{ color: C.muted }}>— {fmtD(p.balance)}</span>
-                          </div>
-                          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
-                            <span style={{ color: evtCLR[p.eventType] || C.muted }}>{p.eventName}</span>
-                            <span> · due {fmtDate(p.dueDate)}</span>
-                          </div>
-                        </div>
-                        <span style={{ ...s.pill(clr), fontSize: 10, flexShrink: 0 }}>{dueLabel}</span>
-                        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Cross-client comms awaiting action (approvals) */}
-            {commAlerts.length > 0 && (
-              <div style={{ marginBottom: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
-                    Action Required ({commAlerts.length})
-                  </div>
-                  {needsSendCount > 0 && <span style={{ ...s.pill(C.danger), fontSize: 11 }}>{needsSendCount} to send</span>}
-                </div>
-                <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                  {commAlerts.slice(0, 10).map((a, i) => {
-                    const clr = a.sent ? C.warn : C.danger;
-                    return (
-                      <div key={`${a.clientId}-${i}`}
-                        onClick={() => onSelectClient(a.clientId)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: i < Math.min(commAlerts.length, 10) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                      >
-                        <div style={mkDot(clr, 8)} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            ✋ {a.text || 'Approval request'}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{a.clientName}</div>
-                        </div>
-                        <span style={{ ...s.pill(clr), fontSize: 10, flexShrink: 0 }}>{a.sent ? 'Awaiting client' : 'Send to client'}</span>
-                        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
         </div>{/* /dashboard body */}
