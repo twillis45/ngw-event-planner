@@ -6939,6 +6939,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [showTasksMobile,    setShowTasksMobile]    = useState(false);
   const [showPaymentsMobile, setShowPaymentsMobile] = useState(false);
   const [showActionMobile,   setShowActionMobile]   = useState(false);
+  const [addMenuOpen,        setAddMenuOpen]        = useState(false); // mobile: consolidated "+ New" menu
 
   // Contracted value = total cost of all Contracted+ vendors across every event
   // (what's actually under contract, not the planning budget).
@@ -7084,14 +7085,22 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   const pad   = bp === 'mobile' ? '20px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const inner = { maxWidth: 1200, margin: '0 auto' };
+
+  // Page label per top-level view, so every screen identifies itself.
+  const pageMeta = dashView === 'calendar'
+    ? { title: 'Calendar',   sub: 'All events, milestones & payments by date.' }
+    : dashView === 'events'
+    ? { title: 'All Events', sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} in your book.` }
+    : { title: 'Overview',   sub: 'Your events and what needs attention.' };
   return (
     <div style={s.app}>
       <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
         <div style={inner}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h1 style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.03em' }}>NGW Event Boss</h1>
-              <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Your events and what needs attention.</p>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 3 }}>NGW Event Boss</div>
+              <h1 style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{pageMeta.title}</h1>
+              <p style={{ color: C.muted, fontSize: 13, margin: '4px 0 0' }}>{pageMeta.sub}</p>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', borderBottom: `1px solid ${C.border}` }}>
@@ -7099,8 +7108,26 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   <button key={id} onClick={() => setDashView(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 14px', fontSize: 13, fontWeight: dashView === id ? 700 : 400, color: dashView === id ? C.text : C.muted, borderBottom: dashView === id ? `2px solid ${C.accent}` : '2px solid transparent', marginBottom: -1 }}>{label}</button>
                 ))}
               </div>
-              <button style={{ ...s.btn(), fontSize: 13, padding: '7px 14px' }} onClick={onNewClient}>+ Client</button>
-              <button style={{ ...s.btn('primary'), fontSize: 13, padding: '7px 14px' }} onClick={onNew}>+ Event</button>
+              {bp === 'mobile' ? (
+                // Mobile: collapse the two add actions into one "+ New" menu to declutter.
+                <div style={{ position: 'relative' }}>
+                  <button style={{ ...s.btn('primary'), fontSize: 13, padding: '7px 14px' }} onClick={() => setAddMenuOpen(o => !o)}>+ New ▾</button>
+                  {addMenuOpen && (
+                    <>
+                      <div onClick={() => setAddMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
+                      <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 31, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, minWidth: 160, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.4)' }}>
+                        <button onClick={() => { setAddMenuOpen(false); onNew(); }}       style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.text, fontSize: 13, padding: '10px 14px', cursor: 'pointer' }}>+ New Event</button>
+                        <button onClick={() => { setAddMenuOpen(false); onNewClient(); }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: C.text, fontSize: 13, padding: '10px 14px', cursor: 'pointer' }}>+ New Client</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <button style={{ ...s.btn(), fontSize: 13, padding: '7px 14px' }} onClick={onNewClient}>+ Client</button>
+                  <button style={{ ...s.btn('primary'), fontSize: 13, padding: '7px 14px' }} onClick={onNew}>+ Event</button>
+                </>
+              )}
               <ThemeToggle />
               {onProfile && <button onClick={onProfile} style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer' }}>{(profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}</button>}
             </div>
@@ -7319,7 +7346,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={inner}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Overview</button>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>All Events ({enrichedEvents.length})</h2>
               <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={onNew}>+ New Event</button>
             </div>
             {enrichedEvents.length === 0 ? (
