@@ -8688,6 +8688,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   };
   // Estimator auto-collapses once line items exist — open on first visit
   const [showEstimator, setShowEstimator] = useState(budget.length === 0);
+  const [catsOpen, setCatsOpen] = useState(bp !== 'mobile'); // mobile: collapse the category breakdown
 
   const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual    = budget.reduce((s, r) => s + r.actual, 0);
@@ -8913,7 +8914,13 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
           </div>
         )}
 
-        {(bp === 'mobile' || bp === 'tablet') ? (
+        {budget.length > 0 && bp === 'mobile' && (
+          <button onClick={() => setCatsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '2px 0 10px', cursor: 'pointer' }}>
+            <div style={{ ...s.cardTitle, margin: 0, flex: 1, textAlign: 'left' }}>By Category ({budget.length})</div>
+            <span style={{ color: C.muted, display: 'flex', transform: catsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
+          </button>
+        )}
+        {(bp !== 'mobile' || catsOpen) && ((bp === 'mobile' || bp === 'tablet') ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {budget.map(r => {
               const committed    = getCommitted(r.category);
@@ -9040,7 +9047,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
               </tr>
             </tbody>
           </table>
-        )}
+        ))}
       </div>
 
       {/* Cash flow */}
@@ -9376,6 +9383,8 @@ function Guests({ guests, setGuests, event = {} }) {
   const bp = useContext(BpCtx);
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
+  const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
+  const [nonRespOpen, setNonRespOpen] = useState(bp !== 'mobile'); // mobile: collapse non-responder panel
   const [showRsvp,   setShowRsvp] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [gFilter,    setGFilter]  = useState('all');
@@ -9599,8 +9608,11 @@ function Guests({ guests, setGuests, event = {} }) {
 
       {needsFlag.length > 0 && (
         <div style={{ ...s.card, borderColor: C.warn + '55' }}>
-          <div style={s.cardTitle}>Special Needs — {needsFlag.length} guest{needsFlag.length !== 1 ? 's' : ''} confirmed</div>
-          {needsFlag.map(g => (
+          <button onClick={() => setNeedsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: bp === 'mobile' ? 'pointer' : 'default', marginBottom: needsOpen ? 14 : 0 }}>
+            <div style={{ ...s.cardTitle, margin: 0, flex: 1, textAlign: 'left' }}>Special Needs — {needsFlag.length} guest{needsFlag.length !== 1 ? 's' : ''} confirmed</div>
+            {bp === 'mobile' && <span style={{ color: C.muted, display: 'flex', transform: needsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
+          </button>
+          {(bp !== 'mobile' || needsOpen) && needsFlag.map(g => (
             <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontSize: 13 }}>{g.name}</span>
               <span style={{ fontSize: 12, color: C.warn }}>{g.needs}</span>
@@ -9616,10 +9628,12 @@ function Guests({ guests, setGuests, event = {} }) {
         if (!nonResponders.length || daysLeft === null || daysLeft > 90) return null;
         return (
           <div style={{ ...s.card, borderColor: C.warn + '66', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 16 }}>⏰</span>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
-            </div>
+            <button onClick={() => setNonRespOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: bp === 'mobile' ? 'pointer' : 'default', marginBottom: nonRespOpen ? 10 : 0 }}>
+              <span style={{ display: 'flex', color: C.warn }}><Icon name="calendar" size={15} /></span>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.warn, flex: 1, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
+              {bp === 'mobile' && <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
+            </button>
+            {(bp !== 'mobile' || nonRespOpen) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {nonResponders.map(g => {
                 const emailLink = g.email ? `mailto:${g.email}?subject=${encodeURIComponent('RSVP Reminder')}&body=${encodeURIComponent(`Hi ${g.name.split(' ')[0]},\n\nJust a friendly reminder to RSVP for ${event?.name || 'our event'}!\n\nWe'd love to know if you'll be joining us.`)}` : null;
@@ -9636,6 +9650,7 @@ function Guests({ guests, setGuests, event = {} }) {
                 );
               })}
             </div>
+            )}
           </div>
         );
       })()}
@@ -10707,19 +10722,19 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
       {(() => {
         return (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', borderRadius: 8, overflow: 'auto', border: `1px solid ${C.border}`, maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                 {[['roster', 'Roster'], ['prospects', `Prospects${prospectVendors.length > 0 ? ` (${prospectVendors.length})` : ''}`], ['proven', `★ Proven${provenCount > 0 ? ` (${provenCount})` : ''}`], ['comms', `Comms${allLogs.length > 0 ? ` (${allLogs.length})` : ''}`], ['scripts', '✉ Outreach Scripts']].map(([id, label]) => (
                   <button key={id} onClick={() => setVendorMode(id)} style={{
-                    padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                    padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
                     background: vendorMode === id ? C.accent : 'transparent',
                     color: vendorMode === id ? C.bg : C.muted,
                     transition: 'all 0.15s',
                   }}>{label}</button>
                 ))}
               </div>
-              {vendorMode === 'roster'    && <button style={s.btn('primary')} onClick={add}>+ Add Vendor</button>}
-              {vendorMode === 'prospects' && <button style={s.btn()} onClick={() => { add(); setVendorMode('roster'); }}>+ Add Prospect</button>}
+              {vendorMode === 'roster'    && <button style={{ ...s.btn('primary'), flexShrink: 0 }} onClick={add}>+ Add Vendor</button>}
+              {vendorMode === 'prospects' && <button style={{ ...s.btn(), flexShrink: 0 }} onClick={() => { add(); setVendorMode('roster'); }}>+ Add Prospect</button>}
             </div>
 
             {/* ── Comms timeline view ── */}
