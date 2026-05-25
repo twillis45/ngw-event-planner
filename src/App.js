@@ -6715,62 +6715,80 @@ function DashWeekView({ events, onSelectEvent }) {
     });
   });
 
-  const base = getToday();
   const todayStr = today8601();
-  const viewMonth = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
+  const [selDay, setSelDay] = useState(todayStr); // drives the week shown on the right
+  const viewMonth = new Date(getToday().getFullYear(), getToday().getMonth() + monthOffset, 1);
   const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = viewMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-  // Week agenda: today → +6 days
+  // Selected week = Sun→Sat containing selDay (aligns with the calendar rows)
+  const sel = new Date(selDay + 'T00:00:00');
+  const weekStart = new Date(sel); weekStart.setDate(sel.getDate() - sel.getDay());
+  const weekStartStr = weekStart.toISOString().slice(0, 10);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
   const week = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base); d.setDate(d.getDate() + i);
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
     const ds = d.toISOString().slice(0, 10);
     return { d, ds, isToday: ds === todayStr, dayItems: items[ds] || [] };
   });
+  const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-US', { month: weekStart.getMonth() === weekEnd.getMonth() ? undefined : 'short', day: 'numeric' })}`;
 
   return (
     <div style={{ ...s.card, marginBottom: 32 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: isWide ? '236px 1fr' : '1fr', gap: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isWide ? '190px 1fr' : '1fr', gap: 22, alignItems: 'start' }}>
 
-        {/* ── Mini month ── */}
+        {/* ── Compact mini month — tap a day to change the week ── */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <button onClick={() => setMonthOffset(o => o - 1)} style={{ ...s.btn('ghost'), fontSize: 13, padding: '2px 8px' }}>‹</button>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{monthLabel}</div>
-            <button onClick={() => setMonthOffset(o => o + 1)} style={{ ...s.btn('ghost'), fontSize: 13, padding: '2px 8px' }}>›</button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <button onClick={() => setMonthOffset(o => o - 1)} style={{ ...s.btn('ghost'), fontSize: 12, padding: '1px 7px' }}>‹</button>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{monthLabel}</div>
+            <button onClick={() => setMonthOffset(o => o + 1)} style={{ ...s.btn('ghost'), fontSize: 12, padding: '1px 7px' }}>›</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} style={{ fontSize: 9, fontWeight: 700, color: C.muted, textAlign: 'center', padding: '2px 0' }}>{d}</div>
+              <div key={i} style={{ fontSize: 8, fontWeight: 700, color: C.muted, textAlign: 'center', paddingBottom: 2 }}>{d}</div>
             ))}
             {Array.from({ length: firstWeekday }, (_, i) => <div key={`e${i}`} />)}
             {Array.from({ length: daysInMonth }, (_, i) => {
               const dayNum = i + 1;
-              const ds = new Date(year, month, dayNum).toISOString().slice(0, 10);
+              const dObj = new Date(year, month, dayNum);
+              const ds = dObj.toISOString().slice(0, 10);
               const dayItems = items[ds] || [];
               const isToday = ds === todayStr;
-              const dot = dayItems.some(x => x.kind === 'payment') ? C.warn : dayItems.some(x => x.kind === 'event') ? (dayItems.find(x => x.kind === 'event').color) : dayItems.length ? C.accent : null;
+              const isSel = ds === selDay;
+              // is this day inside the selected week?
+              const inWeek = ds >= weekStartStr && ds <= weekEnd.toISOString().slice(0, 10);
+              const dot = dayItems.some(x => x.kind === 'payment') ? C.warn : dayItems.some(x => x.kind === 'event') ? dayItems.find(x => x.kind === 'event').color : dayItems.length ? C.accent : null;
               return (
-                <div key={dayNum} style={{ aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 7, background: isToday ? C.accent : 'transparent', position: 'relative' }}>
-                  <span style={{ fontSize: 11, fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : C.text }}>{dayNum}</span>
-                  {dot && <span style={{ width: 4, height: 4, borderRadius: '50%', background: isToday ? '#fff' : dot, marginTop: 1 }} />}
-                </div>
+                <button key={dayNum} onClick={() => setSelDay(ds)}
+                  style={{ height: 24, border: 'none', cursor: 'pointer', borderRadius: 5, position: 'relative',
+                    background: isSel ? C.accent : inWeek ? C.accent + '1f' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 10.5, fontWeight: isToday || isSel ? 800 : 500, color: isSel ? '#fff' : isToday ? C.accent : C.text }}>{dayNum}</span>
+                  {dot && <span style={{ position: 'absolute', bottom: 2, width: 3, height: 3, borderRadius: '50%', background: isSel ? '#fff' : dot }} />}
+                </button>
               );
             })}
           </div>
+          <div style={{ fontSize: 9, color: C.muted, marginTop: 6, textAlign: 'center' }}>Tap a day to view its week</div>
         </div>
 
-        {/* ── Line-by-line week agenda ── */}
+        {/* ── Line-by-line week agenda (driven by selected day) ── */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 8 }}>This Week</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>
+              {weekStartStr === new Date(getToday().getFullYear(), getToday().getMonth(), getToday().getDate() - getToday().getDay()).toISOString().slice(0, 10) ? 'This Week' : 'Week'}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted }}>{weekLabel}</div>
+          </div>
           <div>
-            {week.map(({ d, isToday, dayItems }, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start' }}>
-                <div style={{ width: 54, flexShrink: 0, textAlign: 'center' }}>
+            {week.map(({ d, ds, isToday, dayItems }, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '7px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start', background: ds === selDay ? C.accent + '0c' : 'transparent', borderRadius: 6 }}>
+                <div style={{ width: 50, flexShrink: 0, textAlign: 'center', paddingLeft: ds === selDay ? 4 : 0 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase' }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                   {dayItems.length === 0 ? (
