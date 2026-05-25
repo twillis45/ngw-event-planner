@@ -7581,6 +7581,27 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
       {/* Body — desktop: 2-col fixed; mobile/tablet: stacked */}
       <div style={{ padding: bodyPad }}>
         <div style={{ maxWidth: maxW, margin: '0 auto' }}>
+
+          {/* ── At-a-glance status strip: what needs attention for this client ── */}
+          {(() => {
+            const pc = clientPendingComms(client);
+            const nextEvt = [...clientEvents].filter(e => e.date).sort((a, b) => a.date.localeCompare(b.date))[0];
+            const chips = [];
+            if (pc.needsSend.length) chips.push({ t: `✋ ${pc.needsSend.length} approval${pc.needsSend.length > 1 ? 's' : ''} to send`, c: C.danger });
+            if (pc.awaiting.length)  chips.push({ t: `⏳ ${pc.awaiting.length} awaiting client`, c: C.warn });
+            if (outstanding > 0)     chips.push({ t: `${fmtD(outstanding)} outstanding`, c: C.warn });
+            else if ((client.plannerFee || 0) > 0) chips.push({ t: '✓ Paid in full', c: C.success });
+            if (nextEvt) chips.push({ t: `Next: ${nextEvt.name} · ${fmtDate(nextEvt.date)}`, c: C.accent });
+            if (chips.length === 0) return null;
+            return (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+                {chips.map((ch, i) => (
+                  <span key={i} style={{ fontSize: 12, fontWeight: 600, color: ch.c, background: ch.c + '14', border: `1px solid ${ch.c}33`, borderRadius: 20, padding: '5px 12px' }}>{ch.t}</span>
+                ))}
+              </div>
+            );
+          })()}
+
           {isWide ? (
             /* ── Desktop / tablet-land: fixed 2-col ── */
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 28, alignItems: 'start' }}>
