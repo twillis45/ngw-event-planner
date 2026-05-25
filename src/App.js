@@ -7358,12 +7358,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
             {enrichedEvents.length > 0 && (
-              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start', marginBottom: 32 }}>
-                <div ref={eventsRef}>
+              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'stretch', marginBottom: 32 }}>
+                <div ref={eventsRef} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                   Upcoming Events ({enrichedEvents.length})
                 </div>
-                <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
+                <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
                   {enrichedEvents.map((ev, i) => {
                     const days  = daysUntil(ev.date);
                     const color = evtCLR[ev.type] || C.muted;
@@ -7392,6 +7392,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       </div>
                     );
                   })}
+                  <button onClick={onNew}
+                    style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', padding: '12px', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, color: C.accent, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
+                    <Icon name="plus" size={15} /> New Event
+                  </button>
                 </div>
                 </div>{/* /events column */}
                 {isWide && (
