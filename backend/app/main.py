@@ -34,22 +34,6 @@ app.add_middleware(CORSMiddleware, **_cors)
 async def health():
     return {"ok": True, "service": "ngw-events-api"}
 
-# TEMP diagnostic — reports ONLY booleans (no secrets) so we can confirm which env
-# vars the running backend actually loaded. Remove after auth setup is confirmed.
-@app.get("/auth-config")
-async def auth_config():
-    from .config import SUPABASE_URL, SUPABASE_ANON_KEY, PLANNER_DEV_TOKEN
-    ref = ""
-    if SUPABASE_URL:
-        ref = SUPABASE_URL.replace("https://", "").replace("http://", "").split(".")[0][:6] + "…"
-    return {
-        "supabase_configured": bool(SUPABASE_URL and SUPABASE_ANON_KEY),
-        "supabase_url_set": bool(SUPABASE_URL),
-        "supabase_anon_set": bool(SUPABASE_ANON_KEY),
-        "supabase_url_ref_hint": ref,   # first chars of the project ref only
-        "dev_token_set": bool(PLANNER_DEV_TOKEN),
-    }
-
 @app.on_event("shutdown")
 async def _shutdown():
     await close_pool()
