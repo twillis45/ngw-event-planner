@@ -292,6 +292,7 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'menu':        return <svg {...p}><path d="M3 6h18M3 12h18M3 18h18"/></svg>;
     case 'chevronLeft': return <svg {...p}><path d="m15 6-6 6 6 6"/></svg>;
     case 'chevronRight':return <svg {...p}><path d="m9 6 6 6-6 6"/></svg>;
+    case 'chevronDown': return <svg {...p}><path d="m6 9 6 6 6-6"/></svg>;
     case 'arrowLeft':   return <svg {...p}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>;
     case 'x':           return <svg {...p}><path d="M6 6l12 12M18 6 6 18"/></svg>;
     case 'eye':         return <svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
@@ -13447,6 +13448,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
   const [evtDrawerOpen,   setEvtDrawerOpen]  = useState(false); // mobile: slide-in tab drawer
+  const [evtSectionsOpen, setEvtSectionsOpen] = useState(false); // mobile: collapsible inline section list
   const [evtNavCollapsed, setEvtNavCollapsed] = useState(() => { try { return localStorage.getItem('ngw-evt-sidebar') === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem('ngw-evt-sidebar', evtNavCollapsed ? '1' : '0'); } catch {} }, [evtNavCollapsed]);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -13528,7 +13530,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     const active = tab === t;
     const badge = tabBadge[t];
     return (
-      <button key={t} onClick={() => { handleTabChange(t); setEvtDrawerOpen(false); }} title={t}
+      <button key={t} onClick={() => { handleTabChange(t); setEvtDrawerOpen(false); setEvtSectionsOpen(false); }} title={t}
         style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11, justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', padding: collapsed ? '11px 0' : '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: active ? 700 : 500, background: active ? color + '1f' : 'transparent', color: active ? color : C.text, textAlign: 'left', borderLeft: active && !collapsed ? `3px solid ${color}` : '3px solid transparent', transition: 'background 0.12s' }}>
         <span style={{ width: 22, display: 'flex', justifyContent: 'center', flexShrink: 0, color: active ? color : C.muted }}><Icon name={TAB_ICONS[t] || 'home'} size={18} /></span>
         {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t}</span>}
@@ -13719,11 +13721,20 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           ) : null}
         </div>
 
-        {/* Mobile + tablet portrait: current-section label (the header ☰ opens the drawer) */}
+        {/* Mobile + tablet portrait: collapsible inline section list */}
         {!isSidebarNav && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, marginBottom: 12, fontSize: 14, fontWeight: 700, color, minWidth: 0 }}>
-            <Icon name={TAB_ICONS[tab] || 'home'} size={16} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
+          <div style={{ marginTop: 2, marginBottom: 12 }}>
+            <button onClick={() => setEvtSectionsOpen(o => !o)} aria-expanded={evtSectionsOpen} title="Switch section"
+              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '9px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer' }}>
+              <span style={{ color, display: 'flex' }}><Icon name={TAB_ICONS[tab] || 'home'} size={16} /></span>
+              <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
+              <span style={{ color: C.muted, display: 'flex', transform: evtSectionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
+            </button>
+            {evtSectionsOpen && (
+              <div style={{ marginTop: 8, border: `1px solid ${C.border}`, borderRadius: 10, padding: 6, background: C.surface }}>
+                {plannerTabs.map(t => renderEvtNavItem(t, false))}
+              </div>
+            )}
           </div>
         )}
       </div>
