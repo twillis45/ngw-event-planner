@@ -7202,7 +7202,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   })}
                 </div>
                 </div>{/* /events column */}
-                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} calNotes={calNotes} onAddCalNote={onAddCalNote} onToggleCalNote={onToggleCalNote} onDeleteCalNote={onDeleteCalNote} />}
+                {isWide && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
+                      Calendar
+                    </div>
+                    <DashWeekView events={events} onSelectEvent={onSelectEvent} calNotes={calNotes} onAddCalNote={onAddCalNote} onToggleCalNote={onToggleCalNote} onDeleteCalNote={onDeleteCalNote} />
+                  </div>
+                )}
               </div>
             )}
 
