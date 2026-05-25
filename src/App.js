@@ -6914,11 +6914,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : bp === 'tablet' ? 'repeat(3,1fr)' : 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
               <StatCard label="Active Events"    value={events.length}           sub="across all clients"   color={C.accent}                                                                                onClick={() => setDashView('events')} />
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
-              <StatCard label="Total Clients"    value={clients.length}          sub={`${clients.filter(c => c.status === 'Active').length} active`}                                              onClick={() => setDashView('clients')} />
             </div>
           )}
 
