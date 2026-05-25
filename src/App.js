@@ -13531,6 +13531,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     );
   };
 
+  const doExport = () => {
+    setExporting(true);
+    setTimeout(() => {
+      try { exportEventToSheets(event, client); } catch (err) { console.error('Export failed', err); }
+      setExporting(false);
+    }, 60);
+  };
+  const canArchive = days !== null && days < -7;
+  const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: 'transparent', color: C.text, textAlign: 'left' };
+
   const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
   const bPad = isMobile ? '14px 14px'   : bp === 'tablet' ? '18px 20px'   : '24px 28px';
 
@@ -13593,7 +13603,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               {days > 0 ? `${days}d away` : days === 0 ? 'Today!' : `${Math.abs(days)}d ago`}
             </span>
           )}
-          {days !== null && days < -7 && (
+          {isSidebarNav && canArchive && (
             <button
               onClick={() => setEvent(e => ({ ...e, archived: !e.archived }))}
               style={{ ...s.btn('ghost'), fontSize: 10, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
@@ -13602,61 +13612,39 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <Icon name="archive" size={12} /> {event.archived ? 'Unarchive' : 'Archive'}
             </button>
           )}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <ThemeToggle />
-            {confirmEvtDel ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: C.muted }}>Delete event?</span>
-                <button style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px' }} onClick={onDelete}>Yes, delete</button>
-                <button style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }} onClick={() => setConfirmEvtDel(false)}>Cancel</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmEvtDel(true)}
-                style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
-                title="Delete this event"
-              >
-                <Icon name="trash" size={13} /> Delete
+          {isSidebarNav ? (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <ThemeToggle />
+              {confirmEvtDel ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: C.muted }}>Delete event?</span>
+                  <button style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px' }} onClick={onDelete}>Yes, delete</button>
+                  <button style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }} onClick={() => setConfirmEvtDel(false)}>Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmEvtDel(true)} style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Delete this event">
+                  <Icon name="trash" size={13} /> Delete
+                </button>
+              )}
+              <button onClick={doExport} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5, opacity: exporting ? 0.6 : 1 }} title="Export to Google Sheets (.xlsx)" disabled={exporting}>
+                <Icon name="download" size={13} /> {exporting ? 'Exporting…' : 'Export'}
               </button>
-            )}
-            <button
-              onClick={() => {
-                setExporting(true);
-                setTimeout(() => {
-                  try { exportEventToSheets(event, client); } catch (err) { console.error('Export failed', err); }
-                  setExporting(false);
-                }, 60);
-              }}
-              style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5, opacity: exporting ? 0.6 : 1 }}
-              title="Export to Google Sheets (.xlsx)"
-              disabled={exporting}
-            >
-              <Icon name="download" size={13} /> {exporting ? 'Exporting…' : 'Export'}
-            </button>
-            {client && (
-              <button
-                onClick={() => setShowPortal(true)}
-                style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
-                title="Preview what your client sees"
-              >
-                <Icon name="eye" size={13} /> Client View
+              {client && (
+                <button onClick={() => setShowPortal(true)} style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Preview what your client sees">
+                  <Icon name="eye" size={13} /> Client View
+                </button>
+              )}
+              <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }} title="Package and send event details to client">
+                <Icon name="send" size={13} /> Send to Client
               </button>
-            )}
-            <button
-              onClick={() => setShowSendClient(true)}
-              style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}
-              title="Package and send event details to client"
-            >
-              <Icon name="send" size={13} /> Send to Client
-            </button>
-            <button
-              onClick={onDuplicate}
-              style={{ ...s.btn(), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
-              title="Duplicate this event"
-            >
-              <Icon name="copy" size={13} /> Duplicate
-            </button>
-          </div>
+              <button onClick={onDuplicate} style={{ ...s.btn(), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Duplicate this event">
+                <Icon name="copy" size={13} /> Duplicate
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setEvtDrawerOpen(true)} title="Menu" aria-label="Menu"
+              style={{ marginLeft: 'auto', width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="menu" size={20} /></button>
+          )}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginBottom: isSidebarNav ? 0 : 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
@@ -13725,18 +13713,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           ) : null}
         </div>
 
-        {/* Mobile + tablet portrait: menu button + current tab (drawer holds the tabs) */}
+        {/* Mobile + tablet portrait: full-width section switcher (opens the drawer) */}
         {!isSidebarNav && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, marginTop: 4 }}>
-            <button onClick={() => setEvtDrawerOpen(true)} title="Sections"
-              style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, padding: '8px 12px' }}>
-              <Icon name="menu" size={17} /> Menu
-            </button>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 700, color, minWidth: 0 }}>
-              <Icon name={TAB_ICONS[tab] || 'home'} size={16} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
-            </span>
-          </div>
+          <button onClick={() => setEvtDrawerOpen(true)} title="Switch section"
+            style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', marginTop: 4, marginBottom: 12, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer' }}>
+            <span style={{ color, display: 'flex' }}><Icon name={TAB_ICONS[tab] || 'home'} size={16} /></span>
+            <span style={{ flex: 1, textAlign: 'left', fontSize: 14, fontWeight: 700, color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
+            <span style={{ color: C.muted, display: 'flex' }}><Icon name="menu" size={16} /></span>
+          </button>
         )}
       </div>
 
@@ -13790,6 +13774,40 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <button onClick={() => setEvtDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {plannerTabs.map(t => renderEvtNavItem(t, false))}
+
+            {/* Actions — consolidated here so the mobile header stays clean */}
+            <div style={{ height: 1, background: C.border, margin: '14px 4px 10px' }} />
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Actions</div>
+            {[
+              { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtDrawerOpen(false); } },
+              client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtDrawerOpen(false); } },
+              { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtDrawerOpen(false); } },
+              { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtDrawerOpen(false); } },
+              canArchive && { icon: 'archive', label: event.archived ? 'Unarchive' : 'Archive', onClick: () => { setEvent(e => ({ ...e, archived: !e.archived })); setEvtDrawerOpen(false); } },
+            ].filter(Boolean).map(a => (
+              <button key={a.label} onClick={a.onClick} style={drawerActRow}>
+                <span style={{ width: 22, display: 'flex', justifyContent: 'center', color: C.muted, flexShrink: 0 }}><Icon name={a.icon} size={18} /></span>
+                <span>{a.label}</span>
+              </button>
+            ))}
+            {confirmEvtDel ? (
+              <div style={{ padding: '6px 8px 0' }}>
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 7 }}>Delete this event?</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={{ ...s.btn('danger'), flex: 1 }} onClick={onDelete}>Delete</button>
+                  <button style={{ ...s.btn(), flex: 1 }} onClick={() => setConfirmEvtDel(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmEvtDel(true)} style={{ ...drawerActRow, color: C.danger }}>
+                <span style={{ width: 22, display: 'flex', justifyContent: 'center', flexShrink: 0 }}><Icon name="trash" size={18} /></span>
+                <span>Delete Event</span>
+              </button>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 12, color: C.muted }}>Theme</span>
+              <ThemeToggle />
+            </div>
           </div>
         </>
       )}
