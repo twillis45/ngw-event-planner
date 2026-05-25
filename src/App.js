@@ -7361,7 +7361,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
             {enrichedEvents.length > 0 && (
-              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: isWide ? 'minmax(0, 7fr) minmax(0, 3fr)' : '1fr', gap: 24, alignItems: 'start', marginBottom: 32 }}>
+              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: isWide ? 'minmax(0, 3fr) minmax(0, 2fr)' : '1fr', gap: 24, alignItems: 'start', marginBottom: 32 }}>
                 <div ref={eventsRef} style={{ minWidth: 0, order: isWide ? 2 : 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                   Upcoming Events ({enrichedEvents.length})
