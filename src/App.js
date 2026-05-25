@@ -6022,7 +6022,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const errPhone = touched.phone && !isPhone(form.phone)  ? 'Enter a valid phone number (10–15 digits)' : null;
   const canSubmit = form.name.trim() && !errEmail && !errPhone;
 
-  const submit = () => {
+  const submit = (openIntake = false) => {
     if (!canSubmit) return;
     const finalFee = form.feeStructure === 'none' ? 0
       : form.feeStructure === 'percentage' && computedPctFee ? computedPctFee
@@ -6049,7 +6049,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
       notes: '',
       log: [{ id: uid(), date: today8601(), text: initLogLines.join(' ') }],
       eventIds: selectedEventId ? [selectedEventId] : [],
-    }, selectedEventId || null);
+    }, selectedEventId || null, openIntake);
     onClose();
   };
 
@@ -6320,11 +6320,20 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10 }}>
-          <button style={{ ...s.btn(), flex: 1 }} onClick={onClose}>Cancel</button>
-          <button style={{ ...s.btn('primary'), flex: 2 }} onClick={submit} disabled={!canSubmit}>
-            Create Client →
-          </button>
+        <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button style={{ ...s.btn(), flex: 1, minWidth: 90 }} onClick={onClose}>Cancel</button>
+          {selectedEventId ? (
+            <>
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110 }} onClick={() => submit(false)} disabled={!canSubmit}>Create Client</button>
+              <button style={{ ...s.btn('primary'), flex: '1 1 100%' }} onClick={() => submit(true)} disabled={!canSubmit} title="Create the client and open the linked event's intake questionnaire">
+                Create & Start Event Intake →
+              </button>
+            </>
+          ) : (
+            <button style={{ ...s.btn('primary'), flex: 2 }} onClick={() => submit(false)} disabled={!canSubmit}>
+              Create Client →
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -13208,7 +13217,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
   const [tab,             setTab]            = useState(initialNav?.tab || 'Overview');
-  const [showConsult,     setShowConsult]    = useState(false);
+  const [showConsult,     setShowConsult]    = useState(!!initialNav?.openConsult);
   const [exporting,       setExporting]      = useState(false);
   const [showSendClient,  setShowSendClient] = useState(false);
   const [showPortal,      setShowPortal]     = useState(false);
@@ -13655,10 +13664,26 @@ export default function App() {
     }
     setActiveId(ev.id);
   };
-  const createClient = (cl, linkedEventId) => {
+  const createClient = (cl, linkedEventId, openIntake) => {
     setClients(cs => [...cs, cl]);
-    setActiveClientId(cl.id);
-    // Nothing extra needed — cl.eventIds already has [linkedEventId] if chosen
+    // Seed the linked event's intake from the client's quick-intake so the
+    // questionnaire starts pre-filled (guest count flows straight through).
+    if (linkedEventId) {
+      const gc = cl.guestEstimate ? parseInt(cl.guestEstimate, 10) : null;
+      setEvents(evts => evts.map(ev => {
+        if (ev.id !== linkedEventId) return ev;
+        const draft = { ...(ev.intake?.draft || {}) };
+        if (gc && !draft.count) draft.count = String(gc);
+        return { ...ev, guestEstimate: ev.guestEstimate || (gc ? String(gc) : ''), intake: { ...(ev.intake || {}), draft } };
+      }));
+    }
+    // Open the linked event's intake questionnaire, or land on the client.
+    if (openIntake && linkedEventId) {
+      setInitialNav({ openConsult: true });
+      setActiveId(linkedEventId);
+    } else {
+      setActiveClientId(cl.id);
+    }
   };
   const linkClientToEvent = (clientId) => {
     // Add active event to this client's eventIds; set as active client for back-nav
