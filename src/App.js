@@ -6878,18 +6878,18 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
 
   return (
     <div style={{ ...s.card, marginBottom: 32 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: isWide ? '190px 1fr' : '1fr', gap: 22, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isWide ? '196px 1fr' : '1fr', gap: isWide ? 0 : 22, alignItems: 'stretch' }}>
 
         {/* ── Compact mini month — tap a day to change the week ── */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <button onClick={() => setMonthOffset(o => o - 1)} style={{ ...s.btn('ghost'), fontSize: 12, padding: '1px 7px' }}>‹</button>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{monthLabel}</div>
-            <button onClick={() => setMonthOffset(o => o + 1)} style={{ ...s.btn('ghost'), fontSize: 12, padding: '1px 7px' }}>›</button>
+        <div style={{ paddingRight: isWide ? 18 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <button onClick={() => setMonthOffset(o => o - 1)} title="Previous month" style={{ width: 24, height: 24, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="chevronLeft" size={13} /></button>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, letterSpacing: '-0.01em' }}>{monthLabel}</div>
+            <button onClick={() => setMonthOffset(o => o + 1)} title="Next month" style={{ width: 24, height: 24, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="chevronRight" size={13} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} style={{ fontSize: 8, fontWeight: 700, color: C.muted, textAlign: 'center', paddingBottom: 2 }}>{d}</div>
+              <div key={i} style={{ fontSize: 9.5, fontWeight: 700, color: C.muted, textAlign: 'center', paddingBottom: 4, opacity: 0.7 }}>{d}</div>
             ))}
             {Array.from({ length: firstWeekday }, (_, i) => <div key={`e${i}`} />)}
             {Array.from({ length: daysInMonth }, (_, i) => {
@@ -6904,22 +6904,23 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
               const dot = dayItems.some(x => x.kind === 'payment') ? C.warn : dayItems.some(x => x.kind === 'event') ? dayItems.find(x => x.kind === 'event').color : dayItems.length ? C.accent : null;
               return (
                 <button key={dayNum} onClick={() => setSelDay(ds)}
-                  style={{ height: 24, border: 'none', cursor: 'pointer', borderRadius: 5, position: 'relative',
-                    background: isSel ? C.accent : inWeek ? C.accent + '1f' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 10.5, fontWeight: isToday || isSel ? 800 : 500, color: isSel ? '#fff' : isToday ? C.accent : C.text }}>{dayNum}</span>
-                  {dot && <span style={{ position: 'absolute', bottom: 2, width: 3, height: 3, borderRadius: '50%', background: isSel ? '#fff' : dot }} />}
+                  style={{ height: 27, border: 'none', cursor: 'pointer', borderRadius: 7, position: 'relative',
+                    background: isSel ? C.accent : inWeek ? C.accent + '1a' : 'transparent',
+                    boxShadow: isToday && !isSel ? `inset 0 0 0 1.5px ${C.accent}` : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.12s' }}>
+                  <span style={{ fontSize: 11, fontWeight: isToday || isSel ? 800 : 500, color: isSel ? '#fff' : isToday ? C.accent : C.text }}>{dayNum}</span>
+                  {dot && <span style={{ position: 'absolute', bottom: 3, width: 3.5, height: 3.5, borderRadius: '50%', background: isSel ? '#fff' : dot }} />}
                 </button>
               );
             })}
           </div>
-          <div style={{ fontSize: 9, color: C.muted, marginTop: 6, textAlign: 'center' }}>Tap a day to view its week · use “+ add” to pin a note, task or event</div>
+          <div style={{ fontSize: 9.5, color: C.muted, marginTop: 9, textAlign: 'center', opacity: 0.8 }}>Tap a day · “+ add” to pin</div>
         </div>
 
         {/* ── Line-by-line week agenda (driven by selected day) ── */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>
+        <div style={{ borderLeft: isWide ? `1px solid ${C.border}` : 'none', paddingLeft: isWide ? 18 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.09em', color: C.accent }}>
               {weekStartStr === new Date(getToday().getFullYear(), getToday().getMonth(), getToday().getDate() - getToday().getDay()).toISOString().slice(0, 10) ? 'This Week' : 'Week'}
             </div>
             <div style={{ fontSize: 12, color: C.muted }}>{weekLabel}</div>
@@ -6929,9 +6930,11 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
               <div key={i} style={{ display: 'flex', gap: 12, padding: '7px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start', background: ds === selDay ? C.accent + '0c' : 'transparent', borderRadius: 6 }}
                 onMouseEnter={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a) a.style.opacity = 1; }}
                 onMouseLeave={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a && addDay !== ds) a.style.opacity = 0.45; }}>
-                <div style={{ width: 50, flexShrink: 0, textAlign: 'center', paddingLeft: ds === selDay ? 4 : 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase' }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
+                <div style={{ width: 46, flexShrink: 0, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: isToday ? C.accent : 'transparent' }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: isToday ? '#fff' : C.text, lineHeight: 1 }}>{d.getDate()}</span>
+                  </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                   {dayItems.length === 0 && (
