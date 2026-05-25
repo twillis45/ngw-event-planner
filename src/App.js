@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment } from 'react';
 import * as XLSX from 'xlsx';
 import QRCode from 'qrcode';
+import { commApi, isCommApiConfigured } from './lib/commApi';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -13549,10 +13550,391 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
   );
 }
 
+// ─── Event Communication (event-scoped ledger) ─────────────────────────────────
+// Two channels per event: CLIENT (client-facing) and INTERNAL_TEAM (planner-only).
+// When REACT_APP_API_BASE_URL is set, this talks to the live FastAPI backend keyed
+// by event.id. Otherwise it falls back to event-local storage (event.commClient /
+// event.commInternal) so the demo stays fully functional with no backend/secrets.
+const COMM_CHANNELS = [
+  { key: 'CLIENT',        local: 'commClient',   icon: 'message', label: 'Client',   clr: 'accent' },
+  { key: 'INTERNAL_TEAM', local: 'commInternal', icon: 'lock',    label: 'Internal', clr: 'warn'   },
+];
+const commTypeStyle = (mt, C) => ({
+  standard:             { border: C.border,  bg: 'transparent',   icon: '📝', label: 'Message'            },
+  operational_update:   { border: C.accent,  bg: C.accent  + '10', icon: '📋', label: 'Operational Update' },
+  approval_request:     { border: C.warn,    bg: C.warn    + '10', icon: '✋', label: 'Approval Request'   },
+  guest_impact_summary: { border: C.accent2, bg: C.accent2 + '10', icon: '👥', label: 'Guest Impact'       },
+}[mt] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Message' });
+
+const CLIENT_COMPOSE = [
+  { ui: 'standard',           mt: 'standard',           icon: '📝', label: 'Message' },
+  { ui: 'operational_update', mt: 'operational_update', icon: '📋', label: 'Update'  },
+  { ui: 'approval_request',   mt: 'approval_request',   icon: '✋', label: 'Approval' },
+];
+const INTERNAL_COMPOSE = [
+  { ui: 'standard',           mt: 'standard',           icon: '📝', label: 'Note'   },
+  { ui: 'operational_update', mt: 'operational_update', icon: '📋', label: 'Update' },
+];
+
+function EventCommunication({ event, setEvent, client, profile }) {
+  const C   = useT();
+  const s   = makeS(C);
+  const bp  = useContext(BpCtx);
+  const live     = isCommApiConfigured();
+  const hasToken = Boolean(process.env.REACT_APP_PLANNER_TOKEN);
+  const eventId  = event.id;
+  const plannerName = profile?.businessName || profile?.name || 'Planner';
+
+  const [channel,       setChannel]       = useState('CLIENT');
+  const [msgs,          setMsgs]          = useState({ CLIENT: [], INTERNAL_TEAM: [] });
+  const [loading,       setLoading]       = useState(live);
+  const [error,         setError]         = useState('');
+  const [busy,          setBusy]          = useState(false);
+  const [text,          setText]          = useState('');
+  const [composeType,   setComposeType]   = useState('standard');
+  const [search,        setSearch]        = useState('');
+  const [decisionsOpen, setDecisionsOpen] = useState(false);
+
+  const isClient = channel === 'CLIENT';
+  // Internal channel & all planner writes need the dev token when running live.
+  const writeBlocked = live && !hasToken;
+  const internalLocked = live && !hasToken;
+
+  // ── Data layer: live API or event-local storage, normalized to one shape ──────
+  const localKey  = isClient ? 'commClient' : 'commInternal';
+  const localList = useMemo(() => event[localKey] || [], [event, localKey]);
+  const setLocal  = (updater) =>
+    setEvent(e => ({ ...e, [localKey]: typeof updater === 'function' ? updater(e[localKey] || []) : updater }));
+
+  const refresh = async (ch = channel) => {
+    if (!live) return;
+    if (ch === 'INTERNAL_TEAM' && !hasToken) { setLoading(false); return; }
+    setLoading(true); setError('');
+    try {
+      const rows = await commApi.listMessages(eventId, ch, 200);
+      setMsgs(m => ({ ...m, [ch]: rows }));
+    } catch (e) {
+      setError('Could not reach the communication service. ' + (e?.message || ''));
+    } finally { setLoading(false); }
+  };
+
+  // On mount: ensure both channels exist, then load the active one.
+  useEffect(() => {
+    let cancelled = false;
+    if (!live) { setLoading(false); return; }
+    (async () => {
+      try { await commApi.listChannels(eventId); } catch { /* ensure is best-effort */ }
+      if (!cancelled) refresh(channel);
+    })();
+    return () => { cancelled = true; };
+  }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload when switching channel (live mode).
+  useEffect(() => { if (live) refresh(channel); }, [channel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeMsgs = live ? (msgs[channel] || []) : localList;
+
+  // ── Mutations ────────────────────────────────────────────────────────────────
+  const add = async () => {
+    const t = text.trim();
+    if (!t || busy || writeBlocked) return;
+    const cfg = (isClient ? CLIENT_COMPOSE : INTERNAL_COMPOSE).find(c => c.ui === composeType) || CLIENT_COMPOSE[0];
+    const isApproval = cfg.mt === 'approval_request';
+    setBusy(true); setError('');
+    try {
+      if (live) {
+        await commApi.createMessage(eventId, channel, {
+          message_type: cfg.mt, author_role: 'planner', author_name: plannerName,
+          body: isApproval ? null : t,
+          approval_context: isApproval ? t : null,
+        });
+        await refresh(channel);
+      } else {
+        const row = {
+          id: uid(), message_type: cfg.mt, author_role: 'planner', author_name: plannerName,
+          body: isApproval ? null : t, approval_context: isApproval ? t : null,
+          approval_status: isApproval ? 'pending' : null, pinned: false,
+          created_at: new Date().toISOString(), requestSentAt: null, readAt: null,
+        };
+        setLocal(list => [...list, row]);
+      }
+      setText(''); setComposeType('standard');
+    } catch (e) {
+      setError('Could not save the message. ' + (e?.message || ''));
+    } finally { setBusy(false); }
+  };
+
+  const resolveApproval = async (id, status) => { // status: 'approved' | 'rejected'
+    if (busy || writeBlocked) return;
+    setBusy(true); setError('');
+    try {
+      if (live) { await commApi.updateMessage(eventId, id, { approval_status: status }); await refresh(channel); }
+      else setLocal(list => list.map(m => m.id === id ? { ...m, approval_status: status } : m));
+    } catch (e) { setError('Could not update the approval. ' + (e?.message || '')); }
+    finally { setBusy(false); }
+  };
+
+  const togglePin = async (m) => {
+    if (busy || writeBlocked) return;
+    setBusy(true); setError('');
+    try {
+      if (live) {
+        if (m.pinned) await commApi.unpinMessage(eventId, m.id);
+        else await commApi.pinMessage(eventId, m.id, { pinned_by: plannerName, label: 'Decision' });
+        await refresh(channel);
+      } else setLocal(list => list.map(x => x.id === m.id ? { ...x, pinned: !x.pinned } : x));
+    } catch (e) { setError('Could not pin the decision. ' + (e?.message || '')); }
+    finally { setBusy(false); }
+  };
+
+  const markChannelRead = async () => {
+    try {
+      if (live) await commApi.markRead(eventId, channel, 'planner');
+      else setLocal(list => list.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
+    } catch { /* non-critical */ }
+  };
+  const toggleLocalRead = (id) => // local mode only — per-message read confirmation
+    setLocal(list => list.map(m => m.id === id ? { ...m, readAt: m.readAt ? null : new Date().toISOString() } : m));
+  const markLocalSent = (id) =>
+    setLocal(list => list.map(m => m.id === id ? { ...m, requestSentAt: new Date().toISOString() } : m));
+
+  const buildApprovalMessage = (m) => {
+    const ctx = m.approval_context || m.body || '';
+    const signoff = [profile?.name, profile?.businessName, profile?.phone].filter(Boolean).join('\n');
+    const subject = `Approval needed — ${plannerName}`;
+    const body = `Hi ${client?.name || 'there'},\n\nQuick approval needed before I move forward:\n\n"${ctx}"\n\nJust reply to confirm and I'll take it from there. Thank you!\n\n${signoff || plannerName}`;
+    return { subject, body };
+  };
+
+  // ── Derived ──────────────────────────────────────────────────────────────────
+  const q = search.trim().toLowerCase();
+  const display = (m) => m.body || m.approval_context || '';
+  const sorted = [...activeMsgs].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const filtered = sorted.filter(m => !q || display(m).toLowerCase().includes(q));
+  const decisions = sorted.filter(m => m.pinned);
+  const clientUnread = !live ? (event.commClient || []).filter(m => !m.readAt).length : 0;
+  const internalCount = live ? (msgs.INTERNAL_TEAM || []).length : (event.commInternal || []).length;
+  const fmtWhen = (iso) => fmtDate(String(iso || '').slice(0, 10));
+
+  const COMPOSE = isClient ? CLIENT_COMPOSE : INTERNAL_COMPOSE;
+  const maxW = 760;
+
+  return (
+    <div style={{ maxWidth: maxW }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: bp === 'mobile' ? 17 : 19, fontWeight: 700, letterSpacing: '-0.02em' }}>Communication</h2>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+            Per-event ledger — client-facing and planner-only channels.
+            {live ? <span style={{ color: C.success, marginLeft: 6 }}>● Live</span>
+                  : <span style={{ color: C.muted, marginLeft: 6 }}>● Local (this device)</span>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...s.card }}>
+        {/* Channel segmented control */}
+        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.border}`, marginBottom: 12 }}>
+          {COMM_CHANNELS.map(ch => {
+            const active = channel === ch.key;
+            const clr = ch.clr === 'warn' ? C.warn : C.accent;
+            const badge = ch.key === 'CLIENT' ? (clientUnread || null) : (internalCount || null);
+            return (
+              <button key={ch.key} onClick={() => { setChannel(ch.key); setSearch(''); setComposeType('standard'); }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 700 : 500, background: active ? clr + '1a' : 'transparent', color: active ? clr : C.muted, borderBottom: active ? `2px solid ${clr}` : '2px solid transparent', transition: 'all 0.12s' }}>
+                <Icon name={ch.icon} size={15} /> {ch.label}
+                {badge && <span style={{ background: clr, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Internal-channel notice */}
+        {!isClient && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: C.warn + '12', border: `1px solid ${C.warn}40`, borderRadius: 8, marginBottom: 12 }}>
+            <span style={{ display: 'flex', color: C.warn }}><Icon name="lock" size={13} /></span>
+            <div style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>Planner-only — never visible to the client</div>
+          </div>
+        )}
+
+        {/* Live-but-no-token gate */}
+        {writeBlocked && (
+          <div style={{ padding: '10px 12px', background: C.bg, border: `1px dashed ${C.border}`, borderRadius: 8, marginBottom: 12, fontSize: 11.5, color: C.muted }}>
+            Connected to the live service in read-only mode. Planner posting and the internal channel need a planner token
+            (<code style={{ color: C.text }}>REACT_APP_PLANNER_TOKEN</code> in <code style={{ color: C.text }}>.env.local</code>) until Supabase Auth replaces the dev gate.
+          </div>
+        )}
+
+        {internalLocked && !isClient ? (
+          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 0' }}>
+            Internal channel is locked without a planner token.
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            {activeMsgs.length > 2 && (
+              <div style={{ position: 'relative', marginBottom: 12 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: C.muted, pointerEvents: 'none' }}><Icon name="search" size={13} /></span>
+                <input style={{ ...s.input, padding: '6px 10px 6px 30px', fontSize: 12, width: '100%' }} placeholder="Search messages…" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+            )}
+
+            {/* Composer */}
+            {!writeBlocked && (
+              <>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
+                  {COMPOSE.map(c => {
+                    const ts = commTypeStyle(c.mt, C);
+                    const active = composeType === c.ui;
+                    return (
+                      <button key={c.ui} onClick={() => setComposeType(c.ui)}
+                        style={{ padding: '3px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? ts.border : C.border}`, background: active ? ts.bg : 'transparent', color: active ? ts.border : C.muted, fontWeight: active ? 700 : 400, transition: 'all 0.1s', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {c.icon} {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={text}
+                    placeholder={
+                      composeType === 'approval_request' ? 'Describe what needs approval…'
+                      : composeType === 'operational_update' ? 'Operational update…'
+                      : isClient ? 'Log a call, email, meeting…' : 'Internal planner note…'
+                    }
+                    onChange={e => setText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && add()} />
+                  <button style={s.btn('primary')} onClick={add} disabled={busy}>{busy ? '…' : 'Add'}</button>
+                </div>
+              </>
+            )}
+
+            {error && (
+              <div style={{ padding: '8px 12px', background: C.danger + '12', border: `1px solid ${C.danger}40`, borderRadius: 8, marginBottom: 12, fontSize: 11.5, color: C.danger, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span>{error}</span>
+                {live && <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '2px 8px' }} onClick={() => refresh(channel)}>Retry</button>}
+              </div>
+            )}
+
+            {/* Decisions (pinned) */}
+            {decisions.length > 0 && (
+              <div style={{ marginBottom: 14, border: `1px solid ${C.accent2}44`, background: C.accent2 + '0c', borderRadius: 10, overflow: 'hidden' }}>
+                <button onClick={() => setDecisionsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer' }}>
+                  <span style={{ display: 'flex', color: C.accent2 }}><Icon name="check2" size={14} /></span>
+                  <span style={{ flex: 1, textAlign: 'left', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent2 }}>Decisions ({decisions.length})</span>
+                  <span style={{ color: C.muted, display: 'flex', transform: decisionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={15} /></span>
+                </button>
+                {decisionsOpen && (
+                  <div style={{ padding: '0 12px 10px' }}>
+                    {decisions.map(d => (
+                      <div key={d.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderTop: `1px solid ${C.accent2}22`, fontSize: 12.5, color: C.text }}>
+                        <span style={{ fontSize: 10.5, color: C.muted, flexShrink: 0, minWidth: 52 }}>{fmtWhen(d.created_at)}</span>
+                        <span style={{ flex: 1 }}>{display(d)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Feed */}
+            {loading ? (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 0' }}>Loading…</div>
+            ) : activeMsgs.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
+                {isClient ? 'No client communication yet.' : 'No internal notes yet.'}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries match "{search}".</div>
+            ) : filtered.map(m => {
+              const ts = commTypeStyle(m.message_type, C);
+              const isApproval = m.message_type === 'approval_request';
+              const st = m.approval_status;
+              const statusColor = st === 'approved' ? C.success : (st === 'rejected' || st === 'declined') ? C.danger : C.warn;
+              return (
+                <div key={m.id} style={{ borderLeft: `3px solid ${m.pinned ? C.accent2 : ts.border}`, background: ts.bg, borderRadius: '0 6px 6px 0', padding: '8px 10px 8px 12px', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: ts.border || C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{ts.icon} {ts.label}</span>
+                    {m.pinned && <span style={{ fontSize: 9, fontWeight: 700, color: C.accent2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📌 Decision</span>}
+                    <span style={{ fontSize: 11, color: C.muted }}>{fmtWhen(m.created_at)}</span>
+                    {isApproval && st && (
+                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {st === 'pending' ? '⏳ Pending' : st === 'approved' ? '✓ Approved' : '✗ Declined'}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{display(m)}</div>
+
+                  {/* Row actions: pin/read */}
+                  {!writeBlocked && (
+                    <div style={{ marginTop: 7, display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+                      <button onClick={() => togglePin(m)} title={m.pinned ? 'Unpin decision' : 'Pin as decision'}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: m.pinned ? C.accent2 : C.muted, background: 'none', border: m.pinned ? 'none' : `1px solid ${C.border}`, borderRadius: 12, padding: m.pinned ? 0 : '2px 9px', cursor: 'pointer' }}>
+                        📌 {m.pinned ? 'Pinned' : 'Pin decision'}
+                      </button>
+                      {isClient && !live && (
+                        m.readAt ? (
+                          <button onClick={() => toggleLocalRead(m.id)} title="Mark unread"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.success, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                            <Icon name="check2" size={13} /> Read · {fmtWhen(m.readAt)}
+                          </button>
+                        ) : (
+                          <button onClick={() => toggleLocalRead(m.id)} title="Confirm the client read this"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
+                            <Icon name="check2" size={12} /> Mark read
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  {/* Approval send + response */}
+                  {isApproval && (!st || st === 'pending') && !writeBlocked && (() => {
+                    const { subject, body } = buildApprovalMessage(m);
+                    const mailto = client?.email ? `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
+                    const sms    = client?.phone ? `sms:${client.phone}?body=${encodeURIComponent(body)}` : null;
+                    return (
+                      <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Request</span>
+                          {mailto && <a href={mailto} onClick={() => !live && markLocalSent(m.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>✉ Email</a>}
+                          {sms    && <a href={sms}    onClick={() => !live && markLocalSent(m.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>💬 Text</a>}
+                          <button onClick={() => { navigator.clipboard?.writeText(body).catch(() => {}); if (!live) markLocalSent(m.id); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>⎘ Copy</button>
+                          {!live && m.requestSentAt && <span style={{ fontSize: 10, color: C.success, fontWeight: 600 }}>Sent ✓ {fmtWhen(m.requestSentAt)}</span>}
+                          {!mailto && !sms && <span style={{ fontSize: 10, color: C.muted }}>Add client email/phone to send directly</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Response</span>
+                          <button onClick={() => resolveApproval(m.id, 'approved')} disabled={busy}
+                            style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>✓ Approve</button>
+                          <button onClick={() => resolveApproval(m.id, 'rejected')} disabled={busy}
+                            style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>✗ Decline</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+
+            {/* Channel-level read (live mode) */}
+            {live && isClient && !writeBlocked && activeMsgs.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                <button onClick={markChannelRead} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Icon name="check2" size={13} /> Mark channel read
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Event Planner ────────────────────────────────────────────────────────────
 
-const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show'];
-const TAB_ICONS = { 'Overview': 'home', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file' };
+const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show', 'Communication'];
+const TAB_ICONS = { 'Overview': 'home', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file', 'Communication': 'message' };
 
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
   const C      = useT();
@@ -13606,7 +13988,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
   // Board Meeting gets an extra Agenda tab
   const plannerTabs = event.type === 'Board Meeting'
-    ? ['Overview', 'Agenda', 'Budget', 'Guests', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show']
+    ? ['Overview', 'Agenda', 'Budget', 'Guests', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show', 'Communication']
     : PLANNER_TABS;
 
   // Keyboard shortcut: Cmd/Ctrl+1–8 to switch tabs
@@ -13714,6 +14096,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         eventName={event.name}
         eventDate={event.date}
       />}
+      {tab === 'Communication' && <EventCommunication event={event} setEvent={setEvent} client={client} profile={profile} />}
     </ErrorBoundary>
   );
 
