@@ -6692,8 +6692,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [search, setSearch] = useState('');
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
-  const clientsRef = useRef(null);
-  const scrollTo = (ref) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const totalContracted  = useMemo(() => clients.reduce((s, c) => s + (c.plannerFee || 0), 0), [clients]);
   const totalCollected   = useMemo(() => clients.reduce((s, c) => s + (c.feeSchedule || []).reduce((sum, f) => sum + (f.paid ? f.amount : (f.paidAmount || 0)), 0), 0), [clients]);
@@ -6766,7 +6764,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h1 style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.03em' }}>NGW Event Boss</h1>
-              <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>All clients and upcoming events at a glance.</p>
+              <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>Your events and what needs attention.</p>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', borderBottom: `1px solid ${C.border}` }}>
@@ -6783,10 +6781,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : bp === 'tablet' ? 'repeat(3,1fr)' : 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
-              <StatCard label="Total Clients"    value={clients.length}          sub={`${clients.filter(c => c.status === 'Active').length} active`}                                              onClick={() => setDashView('clients')} />
               <StatCard label="Active Events"    value={events.length}           sub="across all clients"   color={C.accent}                                                                                onClick={() => setDashView('events')} />
-              <StatCard label="Contracted"       value={fmtD(totalContracted)}   sub={`${clients.length} client${clients.length !== 1 ? 's' : ''}`} color={C.accent2}                                     onClick={() => scrollTo(clientsRef)} />
               <StatCard label="Outstanding"      value={fmtD(totalOutstanding)}  sub="remaining to collect" color={totalOutstanding > 0 ? C.warn : C.muted}                                               onClick={() => setDashView('clients')} />
+              <StatCard label="Contracted"       value={fmtD(totalContracted)}   sub="total booked"         color={C.accent2}                                                                               onClick={() => setDashView('clients')} />
+              <StatCard label="Total Clients"    value={clients.length}          sub={`${clients.filter(c => c.status === 'Active').length} active`}                                              onClick={() => setDashView('clients')} />
             </div>
           )}
 
@@ -6808,10 +6806,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {dashView === 'dashboard' && <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
         <div style={inner}>
 
-        {/* ── Main 2-col on desktop: left = events, right = clients ── */}
-        <div style={{ display: (bp === 'desktop' || bp === 'tablet-land') && (enrichedEvents.length > 0 || filteredClients.length > 0) ? 'grid' : 'block', gridTemplateColumns: '1fr 340px', gap: 28, alignItems: 'start', marginBottom: taskInboxItems.length > 0 ? 0 : 0 }}>
+        {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
+        <div>
 
-          {/* Left col: Upcoming Events */}
+          {/* Upcoming Events */}
           <div>
             {enrichedEvents.length > 0 && (
               <div style={{ marginBottom: 32 }} ref={eventsRef}>
@@ -6978,57 +6976,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             )}
           </div>
 
-          {/* Right col: Clients */}
-          <div>
-            {filteredClients.length > 0 && (
-              <div ref={clientsRef}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
-                  Clients ({filteredClients.length})
-                </div>
-                <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
-                  {filteredClients.map((c, i) => {
-                    const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
-                    const collected    = (c.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
-                    const initials     = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                    const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0];
-                    const clrDot       = (nextEvt ? evtCLR[nextEvt.type] : null) || CLIENT_CLR(C)[c.status] || C.muted;
-                    return (
-                      <div key={c.id} onClick={() => onSelectClient(c.id)}
-                        style={{ padding: '14px 18px', borderBottom: i < filteredClients.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                          <div style={mkSphere(clrDot, 32, 11)}>{initials}</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontWeight: 700, fontSize: 14 }}>{c.name}</span>
-                              <span style={s.pill(clrDot)}>{c.status}</span>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: 12, textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontWeight: 600, color: collected > 0 ? C.success : C.muted }}>{fmtD(collected)}</div>
-                            <div style={{ color: C.muted, fontSize: 11 }}>/ {fmtD(c.plannerFee || 0)}</div>
-                          </div>
-                          <span style={{ color: C.muted, fontSize: 16, flexShrink: 0 }}>›</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: C.muted, display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 44 }}>
-                          {clientEvents.slice(0, 2).map(e => (
-                            <span key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
-                              {e.name}{e.date ? ` · ${fmtDate(e.date)}` : ''}
-                            </span>
-                          ))}
-                          {clientEvents.length === 0 && <span>No events yet</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>{/* /2-col grid */}
+        </div>{/* /dashboard body */}
 
         {clients.length === 0 && events.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
