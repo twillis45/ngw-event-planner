@@ -13569,6 +13569,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   };
   const canArchive = days !== null && days < -7;
   const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: 'transparent', color: C.text, textAlign: 'left' };
+  // Mobile bottom-nav: the top operational sections that exist for this event.
+  const bottomNavItems = [
+    { id: 'Overview',       icon: 'home',  label: 'Overview' },
+    { id: 'Planning Tasks', icon: 'check', label: 'Tasks' },
+    { id: 'Vendors',        icon: 'store', label: 'Vendors' },
+    { id: 'Guests',         icon: 'users', label: 'Guests' },
+  ].filter(it => plannerTabs.includes(it.id));
+  const bottomMoreActive = !bottomNavItems.some(it => it.id === tab);
 
   const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
   const bPad = isMobile ? '14px 14px'   : bp === 'tablet' ? '18px 20px'   : '24px 28px';
@@ -13779,7 +13787,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         </div>
       ) : (
         /* ── Stacked layout for mobile + tablet portrait ── */
-        <div style={{ padding: bPad }}>
+        <div style={{ padding: bPad, paddingBottom: 'calc(74px + env(safe-area-inset-bottom))' }}>
           {tabContent}
         </div>
       )}
@@ -13830,6 +13838,27 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </div>
           </div>
         </>
+      )}
+
+      {/* Mobile/tablet: thumb-zone bottom navigation */}
+      {!isSidebarNav && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40, display: 'flex', borderTop: `1px solid ${C.border}`, background: C.bg, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {bottomNavItems.map(it => {
+            const active = tab === it.id;
+            return (
+              <button key={it.id} onClick={() => handleTabChange(it.id)} title={it.id}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 9px', background: 'none', border: 'none', cursor: 'pointer', color: active ? color : C.muted }}>
+                <Icon name={it.icon} size={21} />
+                <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500 }}>{it.label}</span>
+              </button>
+            );
+          })}
+          <button onClick={() => setEvtDrawerOpen(true)} title="More"
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 9px', background: 'none', border: 'none', cursor: 'pointer', color: bottomMoreActive ? color : C.muted }}>
+            <Icon name="menu" size={21} />
+            <span style={{ fontSize: 10.5, fontWeight: bottomMoreActive ? 700 : 500 }}>More</span>
+          </button>
+        </div>
       )}
     </div>
   );
