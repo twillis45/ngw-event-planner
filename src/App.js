@@ -308,6 +308,7 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'chevronLeft': return <svg {...p}><path d="m15 6-6 6 6 6"/></svg>;
     case 'chevronRight':return <svg {...p}><path d="m9 6 6 6-6 6"/></svg>;
     case 'chevronDown': return <svg {...p}><path d="m6 9 6 6 6-6"/></svg>;
+    case 'ellipsis':    return <svg {...p}><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>;
     case 'arrowLeft':   return <svg {...p}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>;
     case 'x':           return <svg {...p}><path d="M6 6l12 12M18 6 6 18"/></svg>;
     case 'eye':         return <svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
@@ -13469,7 +13470,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
   const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
-  const [evtDrawerOpen,   setEvtDrawerOpen]  = useState(false); // mobile: slide-in tab drawer
+  const [evtDrawerOpen,   setEvtDrawerOpen]  = useState(false); // mobile: slide-in section drawer
+  const [evtActionsOpen,  setEvtActionsOpen] = useState(false); // mobile: actions sheet (header button)
   const [evtNavCollapsed, setEvtNavCollapsed] = useState(() => { try { return localStorage.getItem('ngw-evt-sidebar') === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem('ngw-evt-sidebar', evtNavCollapsed ? '1' : '0'); } catch {} }, [evtNavCollapsed]);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -13679,8 +13681,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           ) : (
-            <button onClick={() => setEvtDrawerOpen(true)} title="Menu" aria-label="Menu"
-              style={{ marginLeft: 'auto', width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="menu" size={20} /></button>
+            <button onClick={() => setEvtActionsOpen(true)} title="Actions" aria-label="Actions"
+              style={{ marginLeft: 'auto', width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="ellipsis" size={20} /></button>
           )}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginBottom: isSidebarNav ? 0 : 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -13792,7 +13794,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         </div>
       )}
 
-      {/* Mobile/tablet: slide-in section drawer */}
+      {/* Mobile/tablet: slide-in section drawer (sections only — actions live in the header sheet) */}
       {!isSidebarNav && evtDrawerOpen && (
         <>
           <div onClick={() => setEvtDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
@@ -13802,16 +13804,23 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <button onClick={() => setEvtDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {plannerTabs.map(t => renderEvtNavItem(t, false))}
+          </div>
+        </>
+      )}
 
-            {/* Actions — consolidated here so the mobile header stays clean */}
-            <div style={{ height: 1, background: C.border, margin: '14px 4px 10px' }} />
+      {/* Mobile/tablet: actions sheet (opened by the header button) */}
+      {!isSidebarNav && evtActionsOpen && (
+        <>
+          <div onClick={() => setEvtActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 61, padding: '8px 14px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)', maxHeight: '88vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Actions</div>
             {[
-              { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtDrawerOpen(false); } },
-              client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtDrawerOpen(false); } },
-              { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtDrawerOpen(false); } },
-              { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtDrawerOpen(false); } },
-              canArchive && { icon: 'archive', label: event.archived ? 'Unarchive' : 'Archive', onClick: () => { setEvent(e => ({ ...e, archived: !e.archived })); setEvtDrawerOpen(false); } },
+              { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
+              client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
+              { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
+              { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
+              canArchive && { icon: 'archive', label: event.archived ? 'Unarchive' : 'Archive', onClick: () => { setEvent(e => ({ ...e, archived: !e.archived })); setEvtActionsOpen(false); } },
             ].filter(Boolean).map(a => (
               <button key={a.label} onClick={a.onClick} style={drawerActRow}>
                 <span style={{ width: 22, display: 'flex', justifyContent: 'center', color: C.muted, flexShrink: 0 }}><Icon name={a.icon} size={18} /></span>
@@ -13832,7 +13841,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 <span>Delete Event</span>
               </button>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
               <span style={{ fontSize: 12, color: C.muted }}>Theme</span>
               <ThemeToggle />
             </div>
