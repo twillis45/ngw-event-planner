@@ -6823,6 +6823,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [search, setSearch] = useState('');
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
+  const taskInboxRef = useRef(null);
 
   // Total event value = sum of every event's budgeted total (what clients are spending overall).
   const totalEventValue  = useMemo(() => events.reduce((s, ev) => s + (ev.budget || []).reduce((b, r) => b + (r.budgeted || 0), 0), 0), [events]);
@@ -6914,11 +6915,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : isWide ? 'repeat(4,1fr)' : 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
-              <StatCard label="Active Events"    value={events.length}           sub="across all clients"   color={C.accent}                                                                                onClick={() => setDashView('events')} />
+            <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(3,1fr)' : 'repeat(2,1fr)', gap: 14, marginBottom: 20 }}>
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
-              {isWide && <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} />}
+              {isWide && <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />}
             </div>
           )}
 
@@ -6961,28 +6961,19 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     const tasksTot  = (ev.timeline || []).length;
                     return (
                       <div key={ev.id} onClick={() => onSelectEvent(ev.id)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < enrichedEvents.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 16px', borderBottom: i < enrichedEvents.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
                         onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                         onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                       >
-                        <div style={mkDot(color, 10)} />
+                        <div style={mkDot(color, 9)} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                            <span style={{ fontWeight: 700, fontSize: 14 }}>{ev.name}</span>
-                            <span style={s.pill(color)}>{ev.type}</span>
-                            {days !== null && <span style={{ ...s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : C.muted), fontSize: 10 }}>{days > 0 ? `${days}d` : days === 0 ? 'Today' : `${Math.abs(days)}d ago`}</span>}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</span>
+                            <span style={{ ...s.pill(color), flexShrink: 0 }}>{ev.type}</span>
+                            {days !== null && <span style={{ ...s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : C.muted), fontSize: 10, flexShrink: 0 }}>{days > 0 ? `${days}d` : days === 0 ? 'Today' : `${Math.abs(days)}d ago`}</span>}
                           </div>
-                          <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {ev.client && <span>{ev.client.name}</span>}
-                            {ev.venue && <span>· {ev.venue}</span>}
-                            {ev.date && <span>· {fmtDate(ev.date)}</span>}
-                          </div>
-                          <div style={{ display: 'flex', gap: 14, marginTop: 5, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
-                            <span>{conf} confirmed guests</span>
-                            <span>·</span>
-                            <span>{vConf}/{(ev.vendors || []).length} vendors</span>
-                            <span>·</span>
-                            <span style={{ color: tasksDone === tasksTot && tasksTot > 0 ? C.success : C.muted }}>{tasksDone}/{tasksTot} tasks</span>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {[ev.client?.name, ev.date && fmtDate(ev.date), `${conf} conf`, `${vConf}/${(ev.vendors || []).length} vend`, `${tasksDone}/${tasksTot} tasks`].filter(Boolean).join(' · ')}
                           </div>
                         </div>
                         <span style={{ color: C.muted, fontSize: 16, flexShrink: 0 }}>›</span>
@@ -7003,7 +6994,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const allItems = taskInboxItems;
               if (allItems.length === 0) return null;
               return (
-                <div style={{ marginBottom: 32 }}>
+                <div style={{ marginBottom: 32, scrollMarginTop: 16 }} ref={taskInboxRef}>
                   <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                     Task Inbox ({allItems.length}{urgentTasks.length > 0 ? ` · ${urgentTasks.length} overdue` : ''})
                   </div>
