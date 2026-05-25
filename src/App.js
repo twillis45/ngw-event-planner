@@ -270,6 +270,21 @@ function Toast({ msg, variant = 'success', onDone }) {
 // ─── Theme toggle button ───────────────────────────────────────────────────────
 // Self-contained — reads ThemeCtx directly, no props needed.
 // Cycles dark ↔ light; extend THEMES map to add more options.
+// Mobile = slide-up bottom sheet (full width, rounded top); larger = centered
+// dialog. Spread over a modal container's positioning so flows feel native on
+// phones. Pass the desktop max width.
+function sheetShell(isMobile, maxWidth = 480, maxHeight = '90vh') {
+  return isMobile
+    ? { position: 'fixed', left: 0, right: 0, bottom: 0, top: 'auto', transform: 'none', width: '100%', maxWidth: '100%', maxHeight: '94vh', borderRadius: '20px 20px 0 0' }
+    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: `min(${maxWidth}px, calc(100vw - 24px))`, maxWidth: `${maxWidth}px`, maxHeight, borderRadius: 16 };
+}
+// Small drag-handle shown atop mobile bottom sheets.
+function SheetGrip({ isMobile }) {
+  const C = useT();
+  if (!isMobile) return null;
+  return <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 2px', flexShrink: 0 }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>;
+}
+
 // ─── Icon set — lightweight inline stroke SVGs (Lucide-style, currentColor) ─────
 // One component, named glyphs. Replaces emoji across the app's chrome for a
 // consistent, professional look. Inherits color via currentColor.
@@ -4264,6 +4279,7 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
+  const isMobile = useContext(BpCtx) === 'mobile';
   const [form,             setForm]            = useState({ name: '', type: 'Wedding', date: '', venue: '', guestCount: '', totalBudget: '' });
   const [useTimeline,      setUseTimeline]     = useState(true);
   const [useBudget,        setUseBudget]       = useState(true);
@@ -4340,7 +4356,8 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 50, width: 460, maxWidth: '94vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 460), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+        <SheetGrip isMobile={isMobile} />
 
         {/* Header */}
         <div style={{ padding: '24px 28px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -4690,6 +4707,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
+  const isMobile = useContext(BpCtx) === 'mobile';
   const aiKey  = useAIKey();
   const [sectionIdx,  setSectionIdx]  = useState(0);
   const [answers,     setAnswers]     = useState(() => event.intake?.draft || event.intake?.answers || {});
@@ -5029,7 +5047,8 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 60 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 70, width: 560, maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 560), background: C.surface, border: `1px solid ${C.border}`, zIndex: 70, display: 'flex', flexDirection: 'column' }}>
+        <SheetGrip isMobile={isMobile} />
 
         {/* Header */}
         <div style={{ padding: '20px 24px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -6055,6 +6074,7 @@ const defaultFeeSchedule = (total, structure) => {
 function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const C = useT();
   const s = makeS(C);
+  const isMobile = useContext(BpCtx) === 'mobile';
   const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
   const [referralChoice,   setReferralChoice]   = useState('');
   const [touched,          setTouch]            = useState({});
@@ -6125,7 +6145,8 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(460px, calc(100vw - 24px))', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 50, overflow: 'hidden' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 460), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, overflow: 'hidden' }}>
+        <SheetGrip isMobile={isMobile} />
 
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}` }}>
@@ -6958,6 +6979,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
 function DayAddModal({ date, onClose, onAdd }) {
   const C = useT();
   const s = makeS(C);
+  const isMobile = useContext(BpCtx) === 'mobile';
   const [kind, setKind] = useState('note');
   const [text, setText] = useState('');
   const KIND_COLOR = { note: C.muted, task: C.accent, event: C.accent2 };
@@ -6968,7 +6990,7 @@ function DayAddModal({ date, onClose, onAdd }) {
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 70 }} />
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
-        style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 'min(400px, 92vw)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, zIndex: 80, padding: 22, boxShadow: '0 18px 60px rgba(0,0,0,0.45)' }}>
+        style={{ ...sheetShell(isMobile, 400), background: C.surface, border: `1px solid ${C.border}`, zIndex: 80, padding: 22, boxShadow: '0 18px 60px rgba(0,0,0,0.45)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Add to calendar</div>
@@ -7559,6 +7581,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 function ClientIntakeModal({ client, onClose, onChange }) {
   const C = useT();
   const s = makeS(C);
+  const isMobile = useContext(BpCtx) === 'mobile';
   const [answers, setAnswers] = useState(() => client.intake?.answers || client.intake?.draft || {});
   const checklist = client.commsChecklist || {};
   const setAns = (id, val) => {
@@ -7577,7 +7600,8 @@ function ClientIntakeModal({ client, onClose, onChange }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 50 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(560px, calc(100vw - 24px))', maxHeight: '90vh', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 60, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); }} style={{ ...sheetShell(isMobile, 560), background: C.surface, border: `1px solid ${C.border}`, zIndex: 60, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <SheetGrip isMobile={isMobile} />
         <div style={{ padding: '18px 22px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Discovery Intake</div>
