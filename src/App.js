@@ -6996,10 +6996,48 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20, alignItems: 'start' }}>
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
-              <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              {isWide ? (
+                <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 240 }}>
+                  <div style={{ padding: '13px 16px 10px', borderBottom: taskInboxItems.length ? `1px solid ${C.border}` : 'none', flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
+                      Task Inbox{taskInboxItems.length ? ` (${taskInboxItems.length}${urgentTasks.length ? ` · ${urgentTasks.length} overdue` : ''})` : ''}
+                    </div>
+                  </div>
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {taskInboxItems.length === 0 ? (
+                      <div style={{ padding: '16px', fontSize: 13, color: C.muted }}>All caught up — no open tasks.</div>
+                    ) : taskInboxItems.map((t, i) => {
+                      const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
+                      const clr = evtCLR[t.eventType] || C.muted;
+                      return (
+                        <div key={`${t.eventId}-${t.id}`}
+                          onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: i < taskInboxItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                        >
+                          <div style={mkDot(overdue ? C.danger : C.warn, 7)} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {t.task || 'Untitled task'}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: clr }}>{t.eventName}</span>
+                              {t.week !== 'Custom' && <span> · {t.week}</span>}
+                            </div>
+                          </div>
+                          {overdue && <span style={{ ...s.pill(C.danger), fontSize: 9, flexShrink: 0 }}>Overdue</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              )}
             </div>
           )}
 
@@ -7024,8 +7062,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
         <div>
 
-          {/* Cross-event task inbox — pinned to the top of the dashboard */}
-          {(() => {
+          {/* Cross-event task inbox — pinned to the top (desktop shows it in the KPI row instead) */}
+          {!isWide && (() => {
             const allItems = taskInboxItems;
             if (allItems.length === 0) return null;
             return (
