@@ -7917,6 +7917,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     const setInput    = isClient ? setNewLog : setNewInternalLog;
     const handleAdd   = isClient ? addLog : addInternalLog;
     const internalCount = (client.internalLog || []).length;
+    const clientUnread  = (client.log || []).filter(e => !e.readAt).length; // not yet confirmed read
 
     const q = logSearch.trim().toLowerCase();
     const sorted = [...activeLog].reverse();
@@ -7930,13 +7931,14 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, rowGap: 8, marginBottom: 14, borderBottom: `1px solid ${C.border}`, paddingBottom: 10, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>Channel</div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {[['client', '💬 Client', null], ['internal', '🔒 Internal', internalCount || null]].map(([key, label, badge]) => {
+            {[['client', '💬 Client', clientUnread || null, 'unread'], ['internal', '🔒 Internal', internalCount || null, 'count']].map(([key, label, badge, kind]) => {
               const active = commTab === key;
               return (
                 <button key={key} onClick={() => { setCommTab(key); setLogSearch(''); }}
+                  title={badge && kind === 'unread' ? `${badge} message${badge === 1 ? '' : 's'} not yet confirmed read` : undefined}
                   style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: active ? 700 : 500, border: `1.5px solid ${active ? (key === 'internal' ? C.warn : C.accent) : C.border}`, background: active ? (key === 'internal' ? C.warn + '14' : C.accent + '14') : 'transparent', color: active ? (key === 'internal' ? C.warn : C.accent) : C.muted, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.12s' }}>
                   {label}
-                  {badge && <span style={{ background: key === 'internal' ? C.warn : C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
+                  {badge && <span style={{ background: kind === 'unread' ? C.accent : (key === 'internal' ? C.warn : C.accent), color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
                 </button>
               );
             })}
