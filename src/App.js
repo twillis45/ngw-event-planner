@@ -9091,8 +9091,12 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                 </div>
                 {vs.map(v => {
                   const days = daysUntil(v.payDueDate);
+                  const catRow = budget.find(b => b.category === (v.budgetCategory || v.category));
                   return (
-                    <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 12, marginBottom: 5 }}>
+                    <div key={v.id} onClick={catRow ? () => setModalId(catRow.id) : undefined}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px 4px 12px', marginBottom: 3, borderRadius: 6, cursor: catRow ? 'pointer' : 'default' }}
+                      onMouseEnter={catRow ? (e => { e.currentTarget.style.background = C.surface2; }) : undefined}
+                      onMouseLeave={catRow ? (e => { e.currentTarget.style.background = ''; }) : undefined}>
                       <span style={{ fontSize: 12, color: C.muted }}>{v.name} — due {fmtDate(v.payDueDate)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {days !== null && days <= 30 && <span style={s.pill(days <= 14 ? C.danger : C.warn)}>{days}d</span>}
