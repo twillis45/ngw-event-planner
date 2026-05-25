@@ -301,6 +301,12 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'search':      return <svg {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>;
     case 'trash':       return <svg {...p}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6"/></svg>;
     case 'archive':     return <svg {...p}><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>;
+    case 'message':     return <svg {...p}><path d="M21 11.5a8 8 0 0 1-11.6 7.1L3 21l2.4-6.4A8 8 0 1 1 21 11.5Z"/></svg>;
+    case 'mapPin':      return <svg {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+    case 'phone':       return <svg {...p}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>;
+    case 'link':        return <svg {...p}><path d="M9 15l6-6"/><path d="M11 6.5 13 4.5a4 4 0 0 1 5.7 5.7l-2 2"/><path d="M13 17.5 11 19.5a4 4 0 0 1-5.7-5.7l2-2"/></svg>;
+    case 'sparkle':     return <svg {...p}><path d="M12 3l1.8 4.9L18.7 9.6l-4.9 1.8L12 16.3l-1.8-4.9L5.3 9.6l4.9-1.8L12 3Z"/></svg>;
+    case 'check2':      return <svg {...p}><path d="M5 12l4.5 4.5L19 7"/></svg>;
     default:            return null;
   }
 }
@@ -3265,7 +3271,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
           ) : (
             <button style={s.btn('danger')} onClick={() => setConfirmDel(true)}>Delete</button>
           )}
-          <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={() => setShowBrief(true)}>🔗 Share Brief</button>
+          <button style={{ ...s.btn('primary'), marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowBrief(true)}><Icon name="link" size={14} /> Share Brief</button>
         </div>
       </div>
     </>
@@ -6254,8 +6260,8 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                   {['No venue yet', 'In talks with venue', 'Venue booked'].map(opt => {
                     const active = form.venueStatus === opt;
                     return (
-                      <button key={opt} type="button" onClick={() => set('venueStatus', active ? '' : opt)} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '18' : 'transparent', color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>
-                        {opt === 'No venue yet' ? '🔍 ' : opt === 'In talks with venue' ? '💬 ' : '✅ '}{opt}
+                      <button key={opt} type="button" onClick={() => set('venueStatus', active ? '' : opt)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '18' : 'transparent', color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>
+                        <Icon name={opt === 'No venue yet' ? 'search' : opt === 'In talks with venue' ? 'message' : 'check2'} size={12} />{opt}
                       </button>
                     );
                   })}
@@ -8028,7 +8034,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
               {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
               <button style={{ ...s.btn('ghost'), display: 'flex', alignItems: 'center', gap: 5 }}
-                onClick={() => setShowDownloads(v => !v)}>⬇ Downloads</button>
+                onClick={() => setShowDownloads(v => !v)}><Icon name="download" size={14} /> Downloads</button>
               {showDownloads && (
                 <div style={{
                   position: 'absolute', top: '110%', right: 0, zIndex: 200,
@@ -12614,7 +12620,7 @@ function DownloadsCard({ event, client, compact = false }) {
 
   return (
     <div style={s.card}>
-      <div style={s.cardTitle}>⬇ Downloads</div>
+      <div style={{ ...s.cardTitle, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="download" size={14} /> Downloads</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {downloads.map(d => (
           <button key={d.id} onClick={d.action}
@@ -12835,7 +12841,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>📦 Send to Client</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="send" size={16} /> Send to Client</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{event.name || 'Event'}{client?.name ? ` · ${client.name}` : ''}</div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted, lineHeight: 1, padding: 4 }}>✕</button>
@@ -13679,9 +13685,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <>
               <span style={{ color: C.border }}>·</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent }}>
-                👤 {client.name}
+                <Icon name="users" size={13} /> {client.name}
                 {onUnlinkClient && (
-                  <button onClick={() => onUnlinkClient(client.id)} title="Unlink client" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, padding: '0 2px', lineHeight: 1 }}>✕</button>
+                  <button onClick={() => onUnlinkClient(client.id)} title="Unlink client" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: '0 2px', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}><Icon name="x" size={12} /></button>
                 )}
               </span>
             </>
