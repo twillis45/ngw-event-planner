@@ -18,7 +18,16 @@ ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
     "https://twillis45.github.io,http://localhost:3000",
 ).split(",") if o.strip()]
 
-# TODO(auth): replace this dev gate with real Supabase Auth JWT verification.
-# Until then, INTERNAL_TEAM + write routes require this shared dev token via the
-# X-Planner-Token header. This is NOT production security — it's a temporary guard.
+# ── Supabase Auth ──────────────────────────────────────────────────────────────
+# Planner-gated routes verify a Supabase access token against the project's
+# GoTrue /auth/v1/user endpoint (see app/auth.py). Both values are non-secret:
+#   SUPABASE_URL       → Supabase → Settings → API → Project URL
+#   SUPABASE_ANON_KEY  → Supabase → Settings → API → anon / publishable key
+# (The anon key is safe server-side; it's only used as the GoTrue `apikey` header.)
+SUPABASE_URL      = os.environ.get("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
+
+# Legacy transition gate. Used ONLY as a fallback (shared X-Planner-Token header)
+# while planners migrate to Supabase sign-in. Remove once everyone uses Supabase
+# Auth. This is NOT production security on its own.
 PLANNER_DEV_TOKEN = os.environ.get("PLANNER_DEV_TOKEN")

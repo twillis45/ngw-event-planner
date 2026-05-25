@@ -19,7 +19,12 @@ services:
         sync: false
       - key: COMMUNICATION_EMAIL_FROM # e.g. events@yourdomain.com (verified in Resend)
         sync: false
-      - key: PLANNER_DEV_TOKEN       # any long random string; also set in the frontend env
+      - key: PLANNER_DEV_TOKEN       # legacy fallback gate; optional once Supabase Auth is on
+        sync: false
+      # ── Supabase Auth (planner sign-in) — non-secret project values ──
+      - key: SUPABASE_URL            # Supabase → Settings → API → Project URL
+        sync: false
+      - key: SUPABASE_ANON_KEY       # Supabase → Settings → API → anon / publishable key
         sync: false
       # ── Non-secret config ──
       - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)

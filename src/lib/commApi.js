@@ -5,10 +5,31 @@
 //
 // The planner token is a TEMPORARY dev gate (matches backend PLANNER_DEV_TOKEN)
 // until Supabase Auth is wired. It is sent as X-Planner-Token.
+import { supabase, isSupabaseConfigured } from './supabaseClient';
+
 const BASE  = process.env.REACT_APP_API_BASE_URL;
-const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // dev-only
+const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
 
 export const isCommApiConfigured = () => Boolean(BASE);
+
+// Whether planner-gated writes can be authenticated at all (Supabase sign-in or
+// the legacy shared token). UI uses this to decide read-only vs. writable.
+export const canAuthenticatePlanner = () => isSupabaseConfigured() || Boolean(TOKEN);
+
+// Build auth headers per request: prefer the signed-in Supabase session, fall
+// back to the shared dev token during the auth rollout.
+async function authHeaders() {
+  const headers = {};
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch { /* fall through to token */ }
+  }
+  if (TOKEN) headers['X-Planner-Token'] = TOKEN;
+  return headers;
+}
 
 const req = async (method, path, body) => {
   if (!BASE) throw new Error('Comm API not configured');
@@ -16,7 +37,7 @@ const req = async (method, path, body) => {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(TOKEN ? { 'X-Planner-Token': TOKEN } : {}),
+      ...(await authHeaders()),
     },
     body: body ? JSON.stringify(body) : undefined,
   });

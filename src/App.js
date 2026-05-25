@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment } from 'react';
 import * as XLSX from 'xlsx';
 import QRCode from 'qrcode';
-import { commApi, isCommApiConfigured } from './lib/commApi';
+import { commApi, isCommApiConfigured, canAuthenticatePlanner } from './lib/commApi';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -354,6 +355,13 @@ function ThemeToggle() {
 }
 
 const BpCtx = createContext('desktop');
+
+// Auth context — when Supabase is configured, the planner app is gated behind a
+// signed-in session. When it's NOT configured (e.g. the public demo), `configured`
+// is false and the app runs open on local storage. Consumers read `session` to
+// decide whether planner writes are allowed.
+const AuthCtx = createContext({ configured: false, ready: true, session: null, user: null, signOut: () => {} });
+
 function useBreakpoint() {
   const [w, setW] = useState(() => window.innerWidth);
   useEffect(() => {
@@ -6519,6 +6527,7 @@ const getMetroFactor = (profile) => {
 function ProfileModal({ profile, onClose, onChange }) {
   const C = useT();
   const s = makeS(C);
+  const auth = useContext(AuthCtx);
   const [copied,       setCopied]       = useState(false);
   const [showPay,      setShowPay]      = useState(!!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote));
   const [showAI,       setShowAI]       = useState(false);
@@ -6615,6 +6624,17 @@ function ProfileModal({ profile, onClose, onChange }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 32px' }}>
+
+          {/* ── Account (Supabase Auth) ── */}
+          {auth?.configured && auth?.session && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signed in</div>
+                <div style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{auth.user?.email || 'Planner'}</div>
+              </div>
+              <button onClick={() => { auth.signOut(); onClose(); }} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>Sign out</button>
+            </div>
+          )}
 
           {/* ── Identity card ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, marginBottom: 4 }}>
@@ -13430,8 +13450,12 @@ function EventCommunication({ event, setEvent, client, profile }) {
   const C   = useT();
   const s   = makeS(C);
   const bp  = useContext(BpCtx);
+  const auth = useContext(AuthCtx);
   const live     = isCommApiConfigured();
-  const hasToken = Boolean(process.env.REACT_APP_PLANNER_TOKEN);
+  // Planner can write when authenticated: a Supabase session (preferred) or, while
+  // Supabase Auth isn't configured, the legacy shared token. `canAuthenticatePlanner`
+  // is true when either path exists; `authed` reflects the *current* signed-in state.
+  const authed   = auth?.configured ? Boolean(auth.session) : canAuthenticatePlanner();
   const eventId  = event.id;
   const plannerName = profile?.businessName || profile?.name || 'Planner';
 
@@ -13446,9 +13470,9 @@ function EventCommunication({ event, setEvent, client, profile }) {
   const [decisionsOpen, setDecisionsOpen] = useState(false);
 
   const isClient = channel === 'CLIENT';
-  // Internal channel & all planner writes need the dev token when running live.
-  const writeBlocked = live && !hasToken;
-  const internalLocked = live && !hasToken;
+  // Internal channel & all planner writes need an authenticated planner when live.
+  const writeBlocked = live && !authed;
+  const internalLocked = live && !authed;
 
   // ── Data layer: live API or event-local storage, normalized to one shape ──────
   const localKey  = isClient ? 'commClient' : 'commInternal';
@@ -13458,7 +13482,7 @@ function EventCommunication({ event, setEvent, client, profile }) {
 
   const refresh = async (ch = channel) => {
     if (!live) return;
-    if (ch === 'INTERNAL_TEAM' && !hasToken) { setLoading(false); return; }
+    if (ch === 'INTERNAL_TEAM' && !authed) { setLoading(false); return; }
     setLoading(true); setError('');
     try {
       const rows = await commApi.listMessages(eventId, ch, 200);
@@ -13607,17 +13631,18 @@ function EventCommunication({ event, setEvent, client, profile }) {
           </div>
         )}
 
-        {/* Live-but-no-token gate */}
+        {/* Live-but-not-authenticated gate */}
         {writeBlocked && (
           <div style={{ padding: '10px 12px', background: C.bg, border: `1px dashed ${C.border}`, borderRadius: 8, marginBottom: 12, fontSize: 11.5, color: C.muted }}>
-            Connected to the live service in read-only mode. Planner posting and the internal channel need a planner token
-            (<code style={{ color: C.text }}>REACT_APP_PLANNER_TOKEN</code> in <code style={{ color: C.text }}>.env.local</code>) until Supabase Auth replaces the dev gate.
+            Connected to the live service in read-only mode. {auth?.configured
+              ? 'Sign in as the planner to post and open the internal channel.'
+              : 'Configure Supabase Auth (or set a planner token for local dev) to enable posting and the internal channel.'}
           </div>
         )}
 
         {internalLocked && !isClient ? (
           <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 0' }}>
-            Internal channel is locked without a planner token.
+            Internal channel is locked until you sign in as the planner.
           </div>
         ) : (
           <>
@@ -14208,6 +14233,106 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
 const THEMES = { dark: DARK, light: LIGHT };
 
+// ─── Auth gate (Supabase) ───────────────────────────────────────────────────────
+// Passwordless magic-link sign-in. The planner enters their own email; Supabase
+// emails a one-time link. No passwords are stored or handled here.
+function LoginScreen() {
+  const C = useT();
+  const s = makeS(C);
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [err, setErr] = useState('');
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    const addr = email.trim();
+    if (!addr || status === 'sending') return;
+    setStatus('sending'); setErr('');
+    try {
+      const redirect = window.location.origin + window.location.pathname;
+      const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirect } });
+      if (error) throw error;
+      setStatus('sent');
+    } catch (e2) {
+      setStatus('error'); setErr(e2?.message || 'Could not send the sign-in link.');
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: C.bg }}>
+      <div style={{ ...s.card, maxWidth: 380, width: '100%', padding: 28 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: C.accent, textTransform: 'uppercase', marginBottom: 8 }}>NGW Event Boss</div>
+        {status === 'sent' ? (
+          <>
+            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>Check your email</div>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
+              We sent a sign-in link to <strong style={{ color: C.text }}>{email.trim()}</strong>. Open it on this device to continue.
+            </div>
+            <button style={{ ...s.btn('ghost'), marginTop: 18, fontSize: 12 }} onClick={() => setStatus('idle')}>Use a different email</button>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>Planner sign-in</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.55 }}>Enter your email and we'll send you a one-time sign-in link — no password needed.</div>
+            <form onSubmit={submit}>
+              <input
+                type="email" autoFocus required value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@studio.com"
+                style={{ ...s.input, width: '100%', fontSize: 14, marginBottom: 12 }}
+              />
+              <button type="submit" disabled={status === 'sending' || !email.trim()}
+                style={{ ...s.btn('primary'), width: '100%', padding: '11px', fontSize: 14, opacity: status === 'sending' ? 0.6 : 1 }}>
+                {status === 'sending' ? 'Sending…' : 'Email me a sign-in link'}
+              </button>
+            </form>
+            {status === 'error' && <div style={{ fontSize: 12, color: C.danger, marginTop: 12 }}>{err}</div>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AuthGate({ children }) {
+  const configured = isSupabaseConfigured();
+  const [session, setSession] = useState(null);
+  const [ready, setReady] = useState(!configured);
+
+  useEffect(() => {
+    if (!configured || !supabase) { setReady(true); return; }
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) { setSession(data?.session || null); setReady(true); }
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => { if (mounted) setSession(sess); });
+    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
+  }, [configured]);
+
+  const value = {
+    configured, ready, session, user: session?.user || null,
+    signOut: () => supabase?.auth?.signOut(),
+  };
+
+  if (configured && !ready) {
+    return <ThemeFallbackSplash />;
+  }
+  if (configured && !session) {
+    return <LoginScreen />;
+  }
+  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+}
+
+// Minimal centered splash while the session resolves (themed).
+function ThemeFallbackSplash() {
+  const C = useT();
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, color: C.muted, fontSize: 13 }}>
+      Loading…
+    </div>
+  );
+}
+
 export default function App() {
   const bp = useBreakpoint();
   const [themeName, setThemeName] = useState('dark');
@@ -14380,6 +14505,11 @@ export default function App() {
     </ThemeCtx.Provider>
   );
 
+  // Planner routes are gated behind Supabase Auth (when configured). Public
+  // routes (RSVP, vendor brief) use `providers` directly so clients/vendors
+  // never hit a login wall.
+  const gated = (children) => providers(<AuthGate>{children}</AuthGate>);
+
   // ── Public RSVP route: ?rsvp=CODE opens the guest form directly ──
   const urlParams  = new URLSearchParams(window.location.search);
   const rsvpCode   = urlParams.get('rsvp');
@@ -14422,7 +14552,7 @@ export default function App() {
   }
 
   if (activeEvent) {
-    return providers(
+    return gated(
       <EventPlanner
         event={activeEvent}
         setEvent={setEvent}
@@ -14460,7 +14590,7 @@ export default function App() {
   }
 
   if (activeClient) {
-    return providers(
+    return gated(
       <>
         <ClientDetail
           client={activeClient}
@@ -14481,7 +14611,7 @@ export default function App() {
     );
   }
 
-  return providers(
+  return gated(
     <>
       <MainDashboard
         clients={clients}

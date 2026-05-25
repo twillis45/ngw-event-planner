@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__Claude_Preview__preview_console_logs",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Preview__preview_list",
+      "mcp__plugin_notion_notion__notion-fetch",
+      "mcp__plugin_notion_notion__notion-search",
+      "mcp__plugin_figma_figma__get_screenshot",
+      "mcp__plugin_figma_figma__get_metadata",
+      "mcp__plugin_figma_figma__get_design_context",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Figma__get_screenshot",
+      "mcp__claude_ai_Figma__get_metadata",
+      "mcp__78e32e0a-d575-473f-be2c-8f764cdf04fd__notion-fetch",
+      "mcp__78e32e0a-d575-473f-be2c-8f764cdf04fd__notion-search",
+      "mcp__mcp-registry__search_mcp_registry",
+      "mcp__ccd_session_mgmt__search_session_transcripts"
+    ]
+  }
+}

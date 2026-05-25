@@ -10,7 +10,8 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from ..db import get_pool
-from ..config import PLANNER_DEV_TOKEN, APP_BASE_URL
+from ..config import APP_BASE_URL
+from ..auth import require_planner
 from ..emailer import send_approval_email
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
@@ -24,13 +25,9 @@ AUTHOR_ROLES  = {"planner", "client", "system"}
 APPROVAL_TRANSITIONS = {"approved", "rejected", "expired"}
 
 
-# ── Permission guard (TEMPORARY dev gate — replace with Supabase Auth JWT) ──────
-def require_planner(x_planner_token: Optional[str]) -> None:
-    # TODO(auth): verify a real Supabase Auth JWT + event ownership instead of a shared token.
-    if not PLANNER_DEV_TOKEN or x_planner_token != PLANNER_DEV_TOKEN:
-        raise HTTPException(status_code=403, detail="Planner authorization required")
-
-
+# Planner authorization is provided by app.auth.require_planner — it prefers a
+# valid Supabase access token (Authorization: Bearer) and falls back to the legacy
+# X-Planner-Token during the auth rollout. See app/auth.py.
 def assert_channel_type(channel_type: str) -> None:
     if channel_type not in CHANNELS:
         raise HTTPException(status_code=400, detail="channel_type must be CLIENT or INTERNAL_TEAM")
@@ -109,11 +106,12 @@ async def ensure_channels(event_id: str):
 async def list_messages(
     event_id: str, channel_type: str,
     limit: int = Query(100, le=500),
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
     if channel_type == "INTERNAL_TEAM":
-        require_planner(x_planner_token)  # internal never exposed to client/public
+        await require_planner(authorization, x_planner_token)  # internal never exposed to client/public
     pool = await get_pool()
     async with pool.acquire() as conn:
         ch = await _channel(conn, event_id, channel_type)
@@ -130,15 +128,16 @@ async def list_messages(
 @router.post("/channels/{channel_type}/messages")
 async def create_message(
     event_id: str, channel_type: str, payload: MessageCreate,
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
     # INTERNAL_TEAM is planner-only (write + read).
     if channel_type == "INTERNAL_TEAM":
-        require_planner(x_planner_token)
+        await require_planner(authorization, x_planner_token)
     # Any non-client author is treated as a privileged write → require planner gate.
     if payload.author_role != "client":
-        require_planner(x_planner_token)
+        await require_planner(authorization, x_planner_token)
 
     if payload.message_type not in MESSAGE_TYPES:
         raise HTTPException(400, "invalid message_type")
@@ -175,9 +174,10 @@ async def create_message(
 @router.patch("/messages/{message_id}")
 async def update_message(
     event_id: str, message_id: str, payload: MessagePatch,
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    require_planner(x_planner_token)
+    await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
         cur = await conn.fetchrow(
@@ -207,9 +207,10 @@ async def update_message(
 @router.post("/messages/{message_id}/pin")
 async def pin_message(
     event_id: str, message_id: str, payload: PinReq,
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    require_planner(x_planner_token)
+    await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
         msg = await conn.fetchrow(
@@ -233,9 +234,10 @@ async def pin_message(
 @router.delete("/messages/{message_id}/pin")
 async def unpin_message(
     event_id: str, message_id: str,
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
-    require_planner(x_planner_token)
+    await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
@@ -250,11 +252,12 @@ async def unpin_message(
 @router.post("/channels/{channel_type}/read")
 async def mark_read(
     event_id: str, channel_type: str, payload: ReadMark,
+    authorization: Optional[str] = Header(default=None),
     x_planner_token: Optional[str] = Header(default=None),
 ):
     assert_channel_type(channel_type)
     if channel_type == "INTERNAL_TEAM":
-        require_planner(x_planner_token)
+        await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
         ch = await _channel(conn, event_id, channel_type)
