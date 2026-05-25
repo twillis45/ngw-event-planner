@@ -7707,6 +7707,11 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, approvalStatus: status } : e));
   };
 
+  // Read confirmation on a client-channel message (planner confirms the client saw it).
+  const toggleCommRead = (entryId) => {
+    onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, readAt: e.readAt ? null : today8601() } : e));
+  };
+
   // Approval request → outbound message to the client (opens their email/SMS draft — never auto-sends)
   const markRequestSent = (entryId) => {
     onChange('log', (client.log || []).map(e => e.id === entryId ? { ...e, requestSentAt: today8601() } : e));
@@ -8001,6 +8006,21 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 )}
               </div>
               <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{entry.text}</div>
+              {isClient && (
+                <div style={{ marginTop: 7, display: 'flex', justifyContent: 'flex-end' }}>
+                  {entry.readAt ? (
+                    <button onClick={() => toggleCommRead(entry.id)} title="Mark unread"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.success, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <Icon name="check2" size={13} /> Read · {fmtDate(entry.readAt)}
+                    </button>
+                  ) : (
+                    <button onClick={() => toggleCommRead(entry.id)} title="Confirm the client read this"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
+                      <Icon name="check2" size={12} /> Mark read
+                    </button>
+                  )}
+                </div>
+              )}
               {isApproval && (!entry.approvalStatus || entry.approvalStatus === 'pending') && (() => {
                 const { subject, body } = buildApprovalMessage(entry);
                 const mailto = client?.email ? `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
