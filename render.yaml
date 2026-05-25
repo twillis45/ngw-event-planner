@@ -22,6 +22,8 @@ services:
       - key: PLANNER_DEV_TOKEN       # any long random string; also set in the frontend env
         sync: false
       # ── Non-secret config ──
+      - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)
+        value: 3.12.7
       - key: ALLOWED_ORIGINS
         value: https://twillis45.github.io,http://localhost:3000
       - key: APP_BASE_URL
