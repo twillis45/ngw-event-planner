@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/ngw-event-planner/static/css/main.b2e69296.css",
-    "main.js": "/ngw-event-planner/static/js/main.36484d3a.js",
+    "main.js": "/ngw-event-planner/static/js/main.92d044d3.js",
     "index.html": "/ngw-event-planner/index.html",
     "main.b2e69296.css.map": "/ngw-event-planner/static/css/main.b2e69296.css.map",
-    "main.36484d3a.js.map": "/ngw-event-planner/static/js/main.36484d3a.js.map"
+    "main.92d044d3.js.map": "/ngw-event-planner/static/js/main.92d044d3.js.map"
   },
   "entrypoints": [
     "static/css/main.b2e69296.css",
-    "static/js/main.36484d3a.js"
+    "static/js/main.92d044d3.js"
   ]
 }
