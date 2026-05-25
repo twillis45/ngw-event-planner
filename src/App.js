@@ -797,6 +797,33 @@ const CLIENT_COMMS = {
   Active:     ['Planning timeline shared with client', 'Vendor roster overview provided', 'Check-in cadence established', 'Client knows best way to reach you'],
   Complete:   ['Final invoice sent and paid in full', 'Thank you note sent', 'Review or testimonial requested', 'Referral mentioned or incentive shared'],
 };
+
+// ─── Prospective-client discovery intake ──────────────────────────────────────
+// Event-type-agnostic qualifying questions loaded for a new/inquiry client,
+// before an event exists. Answers save to client.intake; key ones also seed the
+// client record (guest estimate, referral, style) for continuity.
+const CLIENT_INTAKE_QUESTIONS = [
+  { id: 'inquiry', title: 'The Inquiry', items: [
+    { id: 'eventType',  q: 'What are you planning?',          type: 'text',   hint: 'e.g. Wedding, milestone birthday, corporate gala' },
+    { id: 'targetDate', q: 'Target date or season',          type: 'text',   hint: 'Exact date, month, or “Fall 2026”' },
+    { id: 'guestCount', q: 'Estimated guest count',          type: 'number', hint: 'A rough range is fine' },
+    { id: 'location',   q: 'Location / venue ideas',          type: 'text',   hint: 'City, neighborhood, or a venue they love' },
+  ]},
+  { id: 'budget', title: 'Budget & Timeline', items: [
+    { id: 'budgetRange',      q: 'Overall budget range',        type: 'radio', opts: ['Under $10k', '$10–25k', '$25–50k', '$50–100k', '$100k+', 'Not sure yet'] },
+    { id: 'decisionTimeline', q: 'When do you need to book?',   type: 'radio', opts: ['ASAP', 'This month', '1–3 months', 'Just exploring'] },
+    { id: 'decisionMakers',   q: 'Who else helps decide?',      type: 'text',  hint: 'Partner, parents, committee…' },
+  ]},
+  { id: 'vision', title: 'Vision & Priorities', items: [
+    { id: 'priorities', q: 'Top priorities / must-haves',     type: 'textarea' },
+    { id: 'style',      q: 'Style or vibe in a few words',     type: 'text' },
+    { id: 'concerns',   q: 'Biggest worry or challenge',       type: 'textarea' },
+  ]},
+  { id: 'source', title: 'Source & Notes', items: [
+    { id: 'referral', q: 'How did they hear about you?',       type: 'text', hint: 'Referral, Instagram, venue, search…' },
+    { id: 'notes',    q: 'Anything else to note?',             type: 'textarea' },
+  ]},
+];
 const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.danger, Maybe: C.warn });
 const SPECIAL_NEEDS_OPTIONS = ['Nut allergy', 'Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Kosher', 'Halal', 'Wheelchair access', 'Kids meal'];
 const CATS      = ['Venue', 'Catering', 'Photography', 'Florals', 'Entertainment', 'Invitations', 'AV / Tech', 'Transport', 'Hair & Makeup', 'Decor', 'Cake', 'Favors', 'Printing / Signage', 'Activities', 'Misc', 'Other'];
@@ -6365,9 +6392,12 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               </button>
             </>
           ) : (
-            <button style={{ ...s.btn('primary'), flex: 2 }} onClick={() => submit(false)} disabled={!canSubmit}>
-              Create Client →
-            </button>
+            <>
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110 }} onClick={() => submit(false)} disabled={!canSubmit}>Create Client</button>
+              <button style={{ ...s.btn('primary'), flex: '1 1 100%' }} onClick={() => submit(true)} disabled={!canSubmit} title="Create the prospect and open the discovery questionnaire + inquiry checklist">
+                Create & Start Intake →
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -7517,7 +7547,85 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
 // ─── Client Detail ────────────────────────────────────────────────────────────
 
-function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAddEvent, onBack, onDelete, onUpdateEventGuests, onLinkEvent }) {
+// Discovery intake for a prospective client — loads qualifying questions + the
+// Inquiry checklist. Saves continuously to the client (no event required).
+function ClientIntakeModal({ client, onClose, onChange }) {
+  const C = useT();
+  const s = makeS(C);
+  const [answers, setAnswers] = useState(() => client.intake?.answers || client.intake?.draft || {});
+  const checklist = client.commsChecklist || {};
+  const setAns = (id, val) => {
+    setAnswers(a => {
+      const next = { ...a, [id]: val };
+      onChange('intake', { ...(client.intake || {}), answers: next, savedAt: today8601() });
+      if (id === 'guestCount' && val) onChange('guestEstimate', val);
+      if (id === 'referral'  && val) onChange('referral', val);
+      if (id === 'style'     && val) onChange('style', val);
+      return next;
+    });
+  };
+  const toggleCheck = (item) => onChange('commsChecklist', { ...checklist, [item]: !checklist[item] });
+  const inquiryItems = CLIENT_COMMS.Inquiry || [];
+  const doneCount = inquiryItems.filter(i => checklist[i]).length;
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 50 }} />
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); }} style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(560px, calc(100vw - 24px))', maxHeight: '90vh', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 60, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '18px 22px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Discovery Intake</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text, marginTop: 2 }}>{client.name || 'New Prospect'}</div>
+          </div>
+          <button onClick={onClose} title="Close" style={{ ...s.btn('ghost'), padding: '5px 9px', display: 'flex', alignItems: 'center' }}><Icon name="x" size={15} /></button>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '18px 22px', flex: 1 }}>
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ ...s.cardTitle, marginBottom: 10 }}>Inquiry Checklist ({doneCount}/{inquiryItems.length})</div>
+            {inquiryItems.map(item => {
+              const checked = !!checklist[item];
+              return (
+                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', cursor: 'pointer', fontSize: 13, color: checked ? C.muted : C.text }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleCheck(item)} style={{ width: 15, height: 15, accentColor: C.accent, cursor: 'pointer', flexShrink: 0 }} />
+                  <span style={{ textDecoration: checked ? 'line-through' : 'none' }}>{item}</span>
+                </label>
+              );
+            })}
+          </div>
+          {CLIENT_INTAKE_QUESTIONS.map(section => (
+            <div key={section.id} style={{ marginBottom: 20 }}>
+              <div style={{ ...s.cardTitle, marginBottom: 10 }}>{section.title}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {section.items.map(item => (
+                  <div key={item.id}>
+                    <label style={{ fontSize: 12, color: C.text, fontWeight: 600, display: 'block', marginBottom: 5 }}>{item.q}</label>
+                    {item.type === 'radio' ? (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {item.opts.map(opt => {
+                          const active = answers[item.id] === opt;
+                          return <button key={opt} type="button" onClick={() => setAns(item.id, active ? '' : opt)} style={{ padding: '5px 12px', borderRadius: 16, fontSize: 12, cursor: 'pointer', border: `1.5px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '18' : 'transparent', color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>{opt}</button>;
+                        })}
+                      </div>
+                    ) : item.type === 'textarea' ? (
+                      <textarea style={{ ...s.input, minHeight: 54, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={answers[item.id] || ''} placeholder={item.hint || ''} onChange={e => setAns(item.id, e.target.value)} />
+                    ) : (
+                      <input style={s.input} type={item.type === 'number' ? 'number' : 'text'} value={answers[item.id] || ''} placeholder={item.hint || ''} onChange={e => setAns(item.id, e.target.value)} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: C.muted }}>Saved automatically</span>
+          <button style={{ ...s.btn('primary') }} onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAddEvent, onBack, onDelete, onUpdateEventGuests, onLinkEvent, autoIntake, onIntakeOpened }) {
   const C         = useT();
   const s         = makeS(C);
   const clientCLR = CLIENT_CLR(C);
@@ -7525,6 +7633,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const bp        = useContext(BpCtx);
   const isWide    = bp === 'desktop' || bp === 'tablet-land';
   const [showModal,       setShowModal]       = useState(false);
+  const [showIntake,      setShowIntake]      = useState(false);
   const [showPortal,      setShowPortal]      = useState(false);
   const [newLog,          setNewLog]          = useState('');
   const [newLogType,      setNewLogType]      = useState('note');
@@ -7542,6 +7651,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const clr          = clientCLR[client.status] || C.muted;
 
   const onChange = (key, val) => setClient(c => ({ ...c, [key]: val }));
+
+  // Auto-open the discovery intake when arriving fresh from "Create & Start Intake".
+  useEffect(() => { if (autoIntake) { setShowIntake(true); onIntakeOpened && onIntakeOpened(); } }, [autoIntake]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addLog = () => {
     if (!newLog.trim()) return;
@@ -7911,6 +8023,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             <div style={{ fontSize: bp === 'mobile' ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
             <span style={s.pill(clr)}>{client.status}</span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
+              <button style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)} title="Discovery questions & inquiry checklist"><Icon name="clipboard" size={14} /> Intake</button>
               {isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
               <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
               {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
@@ -8016,6 +8129,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         </div>
       </div>
 
+      {showIntake && (
+        <ClientIntakeModal client={client} onClose={() => setShowIntake(false)} onChange={onChange} />
+      )}
       {showModal && (
         <ClientModal client={client} onClose={() => setShowModal(false)} onChange={onChange} onDelete={() => { setShowModal(false); onDelete(); }} />
       )}
@@ -13723,6 +13839,7 @@ export default function App() {
   const toggleCalNote = (id) => setCalNotes(ns => ns.map(n => n.id === id ? { ...n, done: !n.done } : n));
   const deleteCalNote = (id) => setCalNotes(ns => ns.filter(n => n.id !== id));
   const [activeClientId, setActiveClientId] = useState(null);
+  const [clientAutoIntake, setClientAutoIntake] = useState(false); // auto-open discovery intake for a new prospect
   const [activeId,       setActiveId]       = useState(null);
   const [initialNav,     setInitialNav]     = useState(null);
   const [showNew,        setShowNew]        = useState(false);
@@ -13809,11 +13926,13 @@ export default function App() {
         return { ...ev, guestEstimate: ev.guestEstimate || (gc ? String(gc) : ''), intake: { ...(ev.intake || {}), draft } };
       }));
     }
-    // Open the linked event's intake questionnaire, or land on the client.
+    // Open the linked event's intake, or land on the client (and, for a pure
+    // prospect, auto-open the discovery intake).
     if (openIntake && linkedEventId) {
       setInitialNav({ openConsult: true });
       setActiveId(linkedEventId);
     } else {
+      if (openIntake) setClientAutoIntake(true);
       setActiveClientId(cl.id);
     }
   };
@@ -13947,6 +14066,8 @@ export default function App() {
           onDelete={deleteClient}
           onUpdateEventGuests={updateEventGuests}
           onLinkEvent={linkEventToClient}
+          autoIntake={clientAutoIntake}
+          onIntakeOpened={() => setClientAutoIntake(false)}
         />
         {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} clients={clients} />}
       </>
