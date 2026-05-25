@@ -6685,12 +6685,13 @@ function ProfileModal({ profile, onClose, onChange }) {
 }
 
 // ─── Dashboard week-at-a-glance: mini month + line-by-line week agenda ─────────
-function DashWeekView({ events, onSelectEvent }) {
+function DashWeekView({ events, onSelectEvent, sidebar = false }) {
   const C = useT();
   const s = makeS(C);
   const bp = useContext(BpCtx);
   const evtCLR = EVT_CLR(C);
-  const isWide = bp === 'desktop' || bp === 'tablet-land';
+  // Horizontal (month | week) only when wide AND not in a narrow sidebar column.
+  const isWide = (bp === 'desktop' || bp === 'tablet-land') && !sidebar;
   const [monthOffset, setMonthOffset] = useState(0);
 
   // Aggregate calendar items by date string across all events
@@ -6818,6 +6819,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
   const bp = useContext(BpCtx);
+  const isWide = bp === 'desktop' || bp === 'tablet-land';
   const [search, setSearch] = useState('');
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
@@ -6941,13 +6943,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
         <div>
 
-          {/* Week-at-a-glance: mini month + line-by-line week agenda */}
-          {events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
+          {/* Mobile/tablet: calendar on top, full width */}
+          {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
 
-          {/* Upcoming Events */}
+          {/* Desktop: events (left) + calendar (right). Mobile: events only. */}
           <div>
             {enrichedEvents.length > 0 && (
-              <div style={{ marginBottom: 32 }} ref={eventsRef}>
+              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start', marginBottom: 32 }}>
+                <div ref={eventsRef}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                   Upcoming Events ({enrichedEvents.length})
                 </div>
@@ -6990,6 +6993,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     );
                   })}
                 </div>
+                </div>{/* /events column */}
+                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} sidebar />}
               </div>
             )}
 
