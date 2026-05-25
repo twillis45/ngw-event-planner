@@ -64,6 +64,14 @@ drop trigger if exists clients_updated_at on public.clients;
 create trigger clients_updated_at before update on public.clients
   for each row execute procedure public.set_updated_at();
 
+-- ─── Enable RLS immediately (deny-by-default until 002 adds studio policies) ──
+-- Enabling RLS here (not just in 002) means the tables are never exposed to the
+-- anon/authenticated keys in the window between running 001 and 002.
+alter table public.studios        enable row level security;
+alter table public.studio_members enable row level security;
+alter table public.events         enable row level security;
+alter table public.clients        enable row level security;
+
 -- ─── Indexes (studio_id is the hot path) ──────────────────────────────────────
 create index if not exists events_studio_id_idx   on public.events(studio_id);
 create index if not exists clients_studio_id_idx   on public.clients(studio_id);
