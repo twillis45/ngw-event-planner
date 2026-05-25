@@ -6693,9 +6693,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
 
-  const totalContracted  = useMemo(() => clients.reduce((s, c) => s + (c.plannerFee || 0), 0), [clients]);
-  const totalCollected   = useMemo(() => clients.reduce((s, c) => s + (c.feeSchedule || []).reduce((sum, f) => sum + (f.paid ? f.amount : (f.paidAmount || 0)), 0), 0), [clients]);
-  const totalOutstanding = totalContracted - totalCollected;
+  // Total event value = sum of every event's budgeted total (what clients are spending overall).
+  const totalEventValue  = useMemo(() => events.reduce((s, ev) => s + (ev.budget || []).reduce((b, r) => b + (r.budgeted || 0), 0), 0), [events]);
+  // Vendor outstanding = balance still owed to committed (Contracted+) vendors across all events.
+  const vendorOutstanding = useMemo(() => events.reduce((s, ev) => s + (ev.vendors || [])
+    .filter(v => STAGES.indexOf(v.status) >= 2 && !v.balancePaid)
+    .reduce((b, v) => b + Math.max(0, (v.cost || 0) - (v.depositAmt || 0)), 0), 0), [events]);
 
   const enrichedEvents = useMemo(() => events
     .map(e => ({ ...e, client: clients.find(c => (c.eventIds || []).includes(e.id)) }))
@@ -6782,8 +6785,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? 'repeat(2,1fr)' : bp === 'tablet' ? 'repeat(3,1fr)' : 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
               <StatCard label="Active Events"    value={events.length}           sub="across all clients"   color={C.accent}                                                                                onClick={() => setDashView('events')} />
-              <StatCard label="Outstanding"      value={fmtD(totalOutstanding)}  sub="remaining to collect" color={totalOutstanding > 0 ? C.warn : C.muted}                                               onClick={() => setDashView('clients')} />
-              <StatCard label="Contracted"       value={fmtD(totalContracted)}   sub="total booked"         color={C.accent2}                                                                               onClick={() => setDashView('clients')} />
+              <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
+              <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
               <StatCard label="Total Clients"    value={clients.length}          sub={`${clients.filter(c => c.status === 'Active').length} active`}                                              onClick={() => setDashView('clients')} />
             </div>
           )}
