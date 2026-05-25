@@ -3,6 +3,10 @@ import * as XLSX from 'xlsx';
 import QRCode from 'qrcode';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner } from './lib/commApi';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import ImportWizard       from './components/ImportWizard';
+import VendorImportWizard from './components/VendorImportWizard';
+import ExportMenu         from './components/ExportMenu';
+import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -327,6 +331,9 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'link':        return <svg {...p}><path d="M9 15l6-6"/><path d="M11 6.5 13 4.5a4 4 0 0 1 5.7 5.7l-2 2"/><path d="M13 17.5 11 19.5a4 4 0 0 1-5.7-5.7l2-2"/></svg>;
     case 'sparkle':     return <svg {...p}><path d="M12 3l1.8 4.9L18.7 9.6l-4.9 1.8L12 16.3l-1.8-4.9L5.3 9.6l4.9-1.8L12 3Z"/></svg>;
     case 'check2':      return <svg {...p}><path d="M5 12l4.5 4.5L19 7"/></svg>;
+    case 'history':     return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>;
+    case 'import':      return <svg {...p}><path d="M12 3v12M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>;
+    case 'edit':        return <svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>;
     default:            return null;
   }
 }
@@ -4234,6 +4241,8 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
 function ROSModal({ entry, onClose, onChange, onDelete }) {
   const C          = useT();
   const s          = makeS(C);
+  const bp         = useContext(BpCtx);
+  const isMobile   = bp === 'mobile';
   const rosCLR     = ROS_CLR(C);
   const showToast  = useToast();
   const typeClr    = rosCLR[entry.type] || C.muted;
@@ -4241,8 +4250,9 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(420px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 420, '94vh'), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+        <SheetGrip isMobile={isMobile} />
+        <div style={{ padding: isMobile ? '12px 20px 14px' : '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 4, borderRadius: 99, background: typeClr, alignSelf: 'stretch', flexShrink: 0 }} />
             <input style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1 }} value={entry.segment} placeholder="Segment name" onChange={e => onChange('segment', e.target.value)} />
@@ -7728,7 +7738,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const [showPortal,      setShowPortal]      = useState(false);
   const [showLinkEvent,   setShowLinkEvent]   = useState(false);
   const [linkEventId,     setLinkEventId]     = useState('');
-  const [showDownloads,   setShowDownloads]   = useState(false);
+  const [showDownloads,      setShowDownloads]      = useState(false);
+  const [clientActionsOpen,  setClientActionsOpen]  = useState(false);
+  const isMobile = bp === 'mobile';
 
   const clientEvents = events.filter(e => (client.eventIds || []).includes(e.id));
   const collected    = (client.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
@@ -7961,47 +7973,86 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const maxW     = 1200;
 
   return (
-    <div style={s.app} onClick={() => showDownloads && setShowDownloads(false)}>
+    <div style={s.app} onClick={() => { if (showDownloads) setShowDownloads(false); }}>
+      {/* Mobile: client action sheet */}
+      {isMobile && clientActionsOpen && (
+        <>
+          <div onClick={() => setClientActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Client Actions</div>
+            {[
+              { icon: 'clipboard', label: 'Intake',        onClick: () => { setShowIntake(true);  setClientActionsOpen(false); } },
+              { icon: 'eye',       label: 'Client Portal', onClick: () => { setShowPortal(true);  setClientActionsOpen(false); } },
+              { icon: 'edit',      label: 'Edit Client',   onClick: () => { setShowModal(true);   setClientActionsOpen(false); } },
+              { icon: 'download',  label: 'Downloads',     onClick: () => { setShowDownloads(true); setClientActionsOpen(false); } },
+            ].map(a => (
+              <button key={a.label} onClick={a.onClick}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text, fontFamily: 'inherit', minHeight: 48, borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ color: C.muted, display: 'flex', width: 20, justifyContent: 'center' }}><Icon name={a.icon} size={18} /></span>
+                {a.label}
+              </button>
+            ))}
+            <button onClick={() => setClientActionsOpen(false)}
+              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
       {/* Header */}
-      <div style={{ ...s.header, padding: bp === 'mobile' ? '16px 14px 0' : '28px 32px 0', paddingBottom: isWide ? 20 : 14 }}>
+      <div style={{ ...s.header, padding: isMobile ? '16px 14px 0' : '28px 32px 0', paddingBottom: isWide ? 20 : 14 }}>
         <div style={{ maxWidth: maxW, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <button onClick={onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Clients</button>
             <span style={{ color: C.border, fontSize: 18 }}>|</span>
-            <div style={{ fontSize: bp === 'mobile' ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
+            <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
             <span style={s.pill(clr)}>{client.status}</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
-              <button style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)} title="Discovery questions & inquiry checklist"><Icon name="clipboard" size={14} /> Intake</button>
-              {isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
-              <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
-              {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
-              <button style={{ ...s.btn('ghost'), display: 'flex', alignItems: 'center', gap: 5 }}
-                onClick={() => setShowDownloads(v => !v)}><Icon name="download" size={14} /> Downloads</button>
-              {showDownloads && (
-                <div style={{
-                  position: 'absolute', top: '110%', right: 0, zIndex: 200,
-                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 16,
-                  minWidth: 320,
-                }} onClick={e => e.stopPropagation()}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>Downloads</div>
-                  {clientEvents.length === 0 ? (
-                    <div style={{ fontSize: 12, color: C.muted }}>Link an event to enable downloads.</div>
-                  ) : clientEvents.map(ev => (
-                    <div key={ev.id} style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{ev.name}</div>
-                      <DownloadsCard event={ev} client={client} compact />
+            {isMobile ? (
+              /* Mobile: primary CTA + overflow */
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <button onClick={() => setClientActionsOpen(true)} style={{ ...s.btn(), padding: '8px 12px', display: 'flex', alignItems: 'center' }} aria-label="Client actions">
+                  <Icon name="ellipsis" size={16} />
+                </button>
+                <button style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)}>
+                  <Icon name="clipboard" size={14} /> Intake
+                </button>
+              </div>
+            ) : (
+              /* Desktop/tablet: full row */
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
+                <button style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)} title="Discovery questions & inquiry checklist"><Icon name="clipboard" size={14} /> Intake</button>
+                {isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
+                <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
+                {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
+                <button style={{ ...s.btn('ghost'), display: 'flex', alignItems: 'center', gap: 5 }}
+                  onClick={e => { e.stopPropagation(); setShowDownloads(v => !v); }}><Icon name="download" size={14} /> Downloads</button>
+                {showDownloads && (
+                  <div style={{
+                    position: 'absolute', top: '110%', right: 0, zIndex: 200,
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 16,
+                    minWidth: 320,
+                  }} onClick={e => e.stopPropagation()}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>Downloads</div>
+                    {clientEvents.length === 0 ? (
+                      <div style={{ fontSize: 12, color: C.muted }}>Link an event to enable downloads.</div>
+                    ) : clientEvents.map(ev => (
+                      <div key={ev.id} style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{ev.name}</div>
+                        <DownloadsCard event={ev} client={client} compact />
+                      </div>
+                    ))}
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Template (no event)</div>
+                      <DownloadsCard event={{ name: client.name, guests: [] }} client={client} compact />
                     </div>
-                  ))}
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Template (no event)</div>
-                    <DownloadsCard event={{ name: client.name, guests: [] }} client={client} compact />
+                    <button onClick={() => setShowDownloads(false)}
+                      style={{ marginTop: 10, width: '100%', ...s.btn('ghost'), fontSize: 11 }}>Close</button>
                   </div>
-                  <button onClick={() => setShowDownloads(false)}
-                    style={{ marginTop: 10, width: '100%', ...s.btn('ghost'), fontSize: 11 }}>Close</button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
           {/* Clickable contact line */}
           {(client.email || client.phone || client.referral) && (
@@ -8871,7 +8922,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
               const sharePct     = totalBudgeted > 0 ? Math.round((r.budgeted / totalBudgeted) * 100) : 0;
               return (
                 <div key={r.id} onClick={() => setModalId(r.id)}
-                  style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer' }}
+                  style={{ ...s.card, padding: '12px 14px', marginBottom: 0, cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -9337,75 +9388,65 @@ function Guests({ guests, setGuests, event = {} }) {
   const [gFilter,    setGFilter]  = useState('all');
   const [gSort,      setGSort]    = useState('name');
   const [gSearch,    setGSearch]  = useState('');
-  const [importMsg,  setImportMsg] = useState(null); // { added, updated, text }
-  const importRef = useRef(null);
+  const [importMsg,     setImportMsg]     = useState(null); // { added, updated, text }
+  const [showImport,       setShowImport]       = useState(false);
+  const [showGuestHistory, setShowGuestHistory] = useState(false);
+  const [guestActionsOpen, setGuestActionsOpen] = useState(false);
+  const [importBatches, setImportBatches] = useState(() => {
+    try { const v = localStorage.getItem('ngw_guest_import_batches'); return v ? JSON.parse(v) : []; } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('ngw_guest_import_batches', JSON.stringify(importBatches)); } catch {}
+  }, [importBatches]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Bridge: csvParsers canonical fields → app's internal guest shape
+  const canonicalToGuest = (r) => ({
+    id:           r.id || uid(),
+    name:         r.name         || '',
+    group:        r.group        || 'Friends',
+    rsvp:         r.rsvp_status  || '',
+    meal:         r.meal_preference && r.meal_preference !== '—' ? r.meal_preference : '—',
+    table:        r.table_number ? parseInt(r.table_number, 10) || null : null,
+    plusOne:      r.plus_one_name || '',
+    plusOneMeal:  '—',
+    kids:         0,
+    needs:        r.dietary_restrictions || '',
+    email:        r.email  || '',
+    phone:        r.phone  || '',
+    address:      '',
+    giftReceived: false,
+    thankYouSent: false,
+    partyNotes:   r.notes || '',
+    import_batch_id: r.import_batch_id,
+  });
 
-  const handleImport = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const wb   = XLSX.read(ev.target.result, { type: 'array' });
-        const ws   = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (!rows.length) { setImportMsg({ text: 'No rows found in file.' }); return; }
-
-        // Flexible column matching — case-insensitive, common variations
-        const col = (row, ...keys) => {
-          const found = Object.keys(row).find(k => keys.some(key => k.toLowerCase().replace(/[\s_-]/g,'') === key.toLowerCase().replace(/[\s_-]/g,'')));
-          return found ? String(row[found]).trim() : '';
-        };
-
-        let added = 0, updated = 0;
-        setGuests(gs => {
-          let next = [...gs];
-          rows.forEach(row => {
-            const name = col(row, 'name', 'fullname', 'guestname', 'guest');
-            if (!name) return;
-            const rsvp  = col(row, 'rsvp', 'response', 'attending', 'status');
-            const email = col(row, 'email', 'emailaddress');
-            const phone = col(row, 'phone', 'phonenumber', 'mobile', 'cell');
-            const group = col(row, 'group', 'party', 'side', 'table group');
-            const meal  = col(row, 'meal', 'mealchoice', 'entree', 'food');
-            const needs = col(row, 'needs', 'dietary', 'restrictions', 'allergies');
-
-            const normRsvp = (r) => {
-              const v = r.toLowerCase();
-              if (v === 'yes' || v === 'y' || v === 'confirmed' || v === 'attending') return 'Yes';
-              if (v === 'no'  || v === 'n' || v === 'declined'  || v === 'not attending') return 'No';
-              if (v === 'maybe' || v === 'm' || v === 'possibly') return 'Maybe';
-              return r || '';
-            };
-
-            const existing = next.find(g => g.name.toLowerCase() === name.toLowerCase());
-            if (existing) {
-              next = next.map(g => g.id === existing.id ? {
-                ...g,
-                ...(rsvp  && { rsvp: normRsvp(rsvp) }),
-                ...(email  && { email }),
-                ...(phone  && { phone }),
-                ...(group  && { group }),
-                ...(meal   && { meal }),
-                ...(needs  && { needs }),
-              } : g);
-              updated++;
-            } else {
-              next.push({ id: uid(), name, group: group || 'Friends', rsvp: normRsvp(rsvp), meal: meal || '—', needs: needs || '', email: email || '', phone: phone || '', address: '', table: null, plusOne: '', plusOneMeal: '—', kids: 0, giftReceived: false, thankYouSent: false, partyNotes: '' });
-              added++;
-            }
-          });
-          return next;
-        });
-        setImportMsg({ added, updated, text: `Imported: ${added} added, ${updated} updated.` });
-        setTimeout(() => setImportMsg(null), 5000);
-      } catch (err) {
-        setImportMsg({ text: `Import failed: ${err.message}` });
-      }
-      e.target.value = '';
-    };
-    reader.readAsArrayBuffer(file);
+  const handleCSVImport = (newList, batchId, auditMeta = {}) => {
+    const converted = newList.map(canonicalToGuest);
+    setImportBatches(prev => [...prev, {
+      id: batchId, ts: Date.now(), snapshot: guests,
+      platform: auditMeta.platform || 'ngw',
+      mergeMode: auditMeta.mergeMode || '',
+      inserted: auditMeta.inserted || 0,
+      updated: auditMeta.updated || 0,
+      removed: auditMeta.removed || 0,
+      skipped: auditMeta.skipped || 0,
+      warnCount: auditMeta.warnCount || 0,
+    }]);
+    setGuests(converted);
+    // Wizard advances to step 3 (done) itself; we show a message once it closes
+    setImportMsg({ text: `Imported ${converted.length} guests.` });
+    setTimeout(() => setImportMsg(null), 5000);
   };
+
+  const handleUndo = () => {
+    const last = importBatches[importBatches.length - 1];
+    if (!last) return;
+    setGuests(last.snapshot);
+    setImportBatches(prev => prev.slice(0, -1));
+    setImportMsg({ text: 'Import undone.' });
+    setTimeout(() => setImportMsg(null), 3000);
+  };
+
+
 
   // Merge any queued RSVPs submitted via the public RSVP link.
   // setGuests is stable (from useState), so omitting it is safe.
@@ -9520,6 +9561,48 @@ function Guests({ guests, setGuests, event = {} }) {
       {showInvite && (
         <InviteComposer event={event} guests={guests} onClose={() => setShowInvite(false)} />
       )}
+      {showImport && (
+        <ImportWizard
+          existingGuests={guests.map(g => ({ ...g, rsvp_status: g.rsvp, meal_preference: g.meal, table_number: g.table ? String(g.table) : '' }))}
+          onImport={handleCSVImport}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+      {showGuestHistory && (
+        <ImportHistoryDrawer
+          batches={importBatches}
+          onUndo={() => { handleUndo(); setShowGuestHistory(false); }}
+          onClose={() => setShowGuestHistory(false)}
+          title="Guest Import History"
+          C={C}
+        />
+      )}
+      {/* Mobile: guest action sheet */}
+      {guestActionsOpen && (
+        <>
+          <div onClick={() => setGuestActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Guest Actions</div>
+            {[
+              { icon: 'import',  label: 'Import CSV',      onClick: () => { setShowImport(true);        setGuestActionsOpen(false); } },
+              { icon: 'history', label: `Import History${importBatches.length > 0 ? ` (${importBatches.length})` : ''}`, onClick: () => { setShowGuestHistory(true); setGuestActionsOpen(false); } },
+              { icon: 'send',    label: 'Send Invitations', onClick: () => { setShowInvite(true);        setGuestActionsOpen(false); } },
+              importBatches.length > 0 && { icon: 'arrowLeft', label: 'Undo Last Import', onClick: () => { handleUndo(); setGuestActionsOpen(false); } },
+            ].filter(Boolean).map(a => (
+              <button key={a.label} onClick={a.onClick}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text, fontFamily: 'inherit', minHeight: 48, borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ color: C.muted, display: 'flex', width: 20, justifyContent: 'center' }}><Icon name={a.icon} size={18} /></span>
+                {a.label}
+              </button>
+            ))}
+            <button onClick={() => setGuestActionsOpen(false)}
+              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <StatCard label="Total Invited"  value={guests.length} />
@@ -9611,55 +9694,111 @@ function Guests({ guests, setGuests, event = {} }) {
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={s.cardTitle}>Guest List ({visibleGuests.length}{visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={s.btn()} onClick={() => setShowInvite(true)}>✉ Send Invitations</button>
-            <button style={s.btn()} onClick={() => importRef.current?.click()}>⬆ Import</button>
-            <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleImport} />
-            <button style={s.btn('primary')} onClick={add}>+ Add Guest</button>
-          </div>
+          {bp === 'mobile' ? (
+            /* Mobile: primary CTA + overflow */
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setGuestActionsOpen(true)}
+                style={{ ...s.btn(), padding: '9px 12px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 6 }}
+                aria-label="Guest actions"
+              >
+                <Icon name="ellipsis" size={16} />
+              </button>
+              <button style={{ ...s.btn('primary'), padding: '9px 16px', minHeight: 38 }} onClick={add}>+ Guest</button>
+            </div>
+          ) : (
+            /* Desktop/tablet: full toolbar */
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button style={s.btn()} onClick={() => setShowInvite(true)}>✉ Send Invitations</button>
+              <button style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
+                <Icon name="import" size={14} /> Import CSV
+              </button>
+              <button
+                onClick={() => setShowGuestHistory(true)}
+                style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}
+                title="Import history"
+              >
+                <Icon name="history" size={14} />
+                {importBatches.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
+              </button>
+              {importBatches.length > 0 && (
+                <button style={{ ...s.btn(), color: C.warn }} onClick={handleUndo} title="Undo last import">↩</button>
+              )}
+              <button style={s.btn('primary')} onClick={add}>+ Guest</button>
+            </div>
+          )}
         </div>
         {importMsg && (
           <div style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
             {importMsg.text}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input style={{ ...s.input, flex: 1, minWidth: 130, maxWidth: 220 }} value={gSearch} onChange={e => setGSearch(e.target.value)} placeholder="Search name, group, meal…" />
+        <div style={{ display: 'flex', gap: 8, marginBottom: bp === 'mobile' ? 8 : 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input style={{ ...s.input, flex: 1, minWidth: 130, maxWidth: bp === 'mobile' ? 'none' : 220 }} value={gSearch} onChange={e => setGSearch(e.target.value)} placeholder="Search name, group, meal…" />
           {['all', 'Yes', 'No', 'Maybe'].map(f => (
             <button key={f} onClick={() => setGFilter(f)}
               style={{ ...s.btn(gFilter === f ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 10px' }}>
               {f === 'all' ? 'All' : f === 'Yes' ? 'Confirmed' : f === 'No' ? 'Declined' : 'Awaiting'}
             </button>
           ))}
-          <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }} value={gSort} onChange={e => setGSort(e.target.value)}>
+          {bp !== 'mobile' && (
+            <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }} value={gSort} onChange={e => setGSort(e.target.value)}>
+              <option value="name">Sort: Name</option>
+              <option value="group">Sort: Group</option>
+              <option value="rsvp">Sort: RSVP</option>
+              <option value="table">Sort: Table</option>
+              <option value="meal">Sort: Meal</option>
+            </select>
+          )}
+        </div>
+        {bp === 'mobile' && (
+          <select style={{ ...s.input, fontSize: 12, padding: '6px 10px', marginBottom: 10 }} value={gSort} onChange={e => setGSort(e.target.value)}>
             <option value="name">Sort: Name</option>
             <option value="group">Sort: Group</option>
             <option value="rsvp">Sort: RSVP</option>
             <option value="table">Sort: Table</option>
             <option value="meal">Sort: Meal</option>
           </select>
-        </div>
-        {(bp === 'mobile' || bp === 'tablet') ? (
+        )}
+        {guests.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6 }}>No guests yet</div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add guests manually or import a CSV from The Knot, Zola, or Paperless Post.</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button style={s.btn('primary')} onClick={add}>+ Add First Guest</button>
+              <button style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
+                <Icon name="import" size={14} /> Import CSV
+              </button>
+            </div>
+          </div>
+        )}
+        {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet') ? (
           <div>
             {visibleGuests.map(g => (
               <div key={g.id} onClick={() => setModalId(g.id)}
-                style={{ padding: '12px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+                style={{ padding: '14px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 52 }}
+                onTouchStart={e => { e.currentTarget.style.background = C.surface2; }}
+                onTouchEnd={e => { e.currentTarget.style.background = ''; }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                 onMouseLeave={e => { e.currentTarget.style.background = ''; }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>
+                  <div style={{ fontWeight: 600, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {g.group && <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>}
                     {g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
                     {g.table && <span style={{ fontSize: 11, color: C.muted }}>Table {g.table}</span>}
                     {g.needs && <span style={{ fontSize: 11, color: C.warn }}>⚠ {g.needs}</span>}
                     {g.plusOne && <span style={{ fontSize: 11, color: C.muted }}>+{g.plusOne}</span>}
                   </div>
                 </div>
-                <div style={{ flexShrink: 0, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...s.pill(rsvpCLR[g.rsvp] || C.muted), cursor: 'pointer' }} title="Click to change RSVP" onClick={e => { e.stopPropagation(); const cycle = { 'Yes': 'No', 'No': 'Maybe', 'Maybe': '', '': 'Yes', undefined: 'Yes' }; setGuests(gs => gs.map(x => x.id === g.id ? { ...x, rsvp: cycle[g.rsvp] ?? 'Yes' } : x)); }}>{g.rsvp}</span>
-                  <span style={{ color: C.muted, fontSize: 16 }}>›</span>
+                <div style={{ flexShrink: 0, marginLeft: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{ ...s.pill(rsvpCLR[g.rsvp] || C.muted), cursor: 'pointer', padding: '4px 11px', fontSize: 11, minHeight: 26, display: 'inline-flex', alignItems: 'center' }}
+                    title="Tap to cycle RSVP"
+                    onClick={e => { e.stopPropagation(); const cycle = { 'Yes': 'No', 'No': 'Maybe', 'Maybe': '', '': 'Yes', undefined: 'Yes' }; setGuests(gs => gs.map(x => x.id === g.id ? { ...x, rsvp: cycle[g.rsvp] ?? 'Yes' } : x)); }}
+                  >{g.rsvp || '—'}</span>
+                  <Icon name="chevronRight" size={16} style={{ color: C.border, flexShrink: 0 }} />
                 </div>
               </div>
             ))}
@@ -9688,7 +9827,7 @@ function Guests({ guests, setGuests, event = {} }) {
               ))}
             </tbody>
           </table>
-        )}
+        ))}
         {confirmed.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
@@ -10551,6 +10690,39 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
+  const [showVendorImport,    setShowVendorImport]    = useState(false);
+  const [vendorImportBatches, setVendorImportBatches] = useState(() => {
+    try { const v = localStorage.getItem('ngw_vendor_import_batches'); return v ? JSON.parse(v) : []; } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('ngw_vendor_import_batches', JSON.stringify(vendorImportBatches)); } catch {}
+  }, [vendorImportBatches]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [vendorImportMsg, setVendorImportMsg] = useState(null);
+
+  const handleVendorImport = (newList, batchId, auditMeta = {}) => {
+    setVendorImportBatches(prev => [...prev, {
+      id: batchId, ts: Date.now(), snapshot: vendors,
+      mergeMode: auditMeta.mergeMode || '',
+      inserted: auditMeta.inserted || 0,
+      updated: auditMeta.updated || 0,
+      removed: auditMeta.removed || 0,
+      skipped: auditMeta.skipped || 0,
+    }]);
+    setVendors(newList);
+    setVendorImportMsg({ text: `Imported ${newList.length} vendors.` });
+    setTimeout(() => setVendorImportMsg(null), 5000);
+  };
+
+  const handleVendorUndo = () => {
+    const last = vendorImportBatches[vendorImportBatches.length - 1];
+    if (!last) return;
+    setVendors(last.snapshot);
+    setVendorImportBatches(prev => prev.slice(0, -1));
+    setVendorImportMsg({ text: 'Vendor import undone.' });
+    setTimeout(() => setVendorImportMsg(null), 3000);
+  };
+  const [showVendorHistory, setShowVendorHistory] = useState(false);
+  const [vendorActionsOpen, setVendorActionsOpen] = useState(false);
   const bp = useContext(BpCtx);
   const [modalId,      setModalId]      = useState(openId || null);
   const [vendorFilter, setVendorFilter] = useState('all');
@@ -10664,6 +10836,47 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
           profile={profile}
         />
       )}
+      {showVendorImport && (
+        <VendorImportWizard
+          existingVendors={vendors}
+          onImport={handleVendorImport}
+          onClose={() => setShowVendorImport(false)}
+        />
+      )}
+      {showVendorHistory && (
+        <ImportHistoryDrawer
+          batches={vendorImportBatches}
+          onUndo={() => { handleVendorUndo(); setShowVendorHistory(false); }}
+          onClose={() => setShowVendorHistory(false)}
+          title="Vendor Import History"
+          C={C}
+        />
+      )}
+      {/* Mobile: vendor action sheet */}
+      {vendorActionsOpen && (
+        <>
+          <div onClick={() => setVendorActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Vendor Actions</div>
+            {[
+              { icon: 'import',  label: 'Import CSV',       onClick: () => { setShowVendorImport(true);   setVendorActionsOpen(false); } },
+              { icon: 'history', label: `Import History${vendorImportBatches.length > 0 ? ` (${vendorImportBatches.length})` : ''}`, onClick: () => { setShowVendorHistory(true); setVendorActionsOpen(false); } },
+              vendorImportBatches.length > 0 && { icon: 'arrowLeft', label: 'Undo Last Import', onClick: () => { handleVendorUndo(); setVendorActionsOpen(false); } },
+            ].filter(Boolean).map(a => (
+              <button key={a.label} onClick={a.onClick}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text, fontFamily: 'inherit', minHeight: 48, borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ color: C.muted, display: 'flex', width: 20, justifyContent: 'center' }}><Icon name={a.icon} size={18} /></span>
+                {a.label}
+              </button>
+            ))}
+            <button onClick={() => setVendorActionsOpen(false)}
+              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
       <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         <StatCard label="Total Vendors" value={vendors.length} />
         <StatCard label="Confirmed"     value={confirmedCount}   color={C.success} />
@@ -10686,7 +10899,40 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
                   }}>{label}</button>
                 ))}
               </div>
-              {vendorMode === 'roster'    && <button style={{ ...s.btn('primary'), flexShrink: 0 }} onClick={add}>+ Add Vendor</button>}
+              {vendorMode === 'roster' && (
+                bp === 'mobile' ? (
+                  /* Mobile: primary CTA + overflow */
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setVendorActionsOpen(true)}
+                      style={{ ...s.btn(), padding: '9px 12px', minHeight: 38, display: 'flex', alignItems: 'center', gap: 6 }}
+                      aria-label="Vendor actions"
+                    >
+                      <Icon name="ellipsis" size={16} />
+                    </button>
+                    <button style={{ ...s.btn('primary'), padding: '9px 16px', minHeight: 38 }} onClick={add}>+ Add Vendor</button>
+                  </div>
+                ) : (
+                  /* Desktop/tablet: full toolbar */
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <button style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowVendorImport(true)}>
+                      <Icon name="import" size={14} /> Import CSV
+                    </button>
+                    <button
+                      onClick={() => setShowVendorHistory(true)}
+                      style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}
+                      title="Import history"
+                    >
+                      <Icon name="history" size={14} />
+                      {vendorImportBatches.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{vendorImportBatches.length}</span>}
+                    </button>
+                    {vendorImportBatches.length > 0 && (
+                      <button style={{ ...s.btn(), color: C.warn }} onClick={handleVendorUndo} title="Undo last vendor import">↩</button>
+                    )}
+                    <button style={{ ...s.btn('primary'), flexShrink: 0 }} onClick={add}>+ Add Vendor</button>
+                  </div>
+                )
+              )}
               {vendorMode === 'prospects' && <button style={{ ...s.btn(), flexShrink: 0 }} onClick={() => { add(); setVendorMode('roster'); }}>+ Add Prospect</button>}
             </div>
 
@@ -11000,6 +11246,12 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
           <div style={s.cardTitle}>Vendor Directory</div>
         </div>
 
+        {vendorImportMsg && (
+          <div style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: C.success + '22', color: C.success, border: `1px solid ${C.success}44` }}>
+            {vendorImportMsg.text}
+          </div>
+        )}
+
         {vendors.length > 0 && (
           <div style={{ display: 'flex', gap: 4, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
             {[['all','All'], ['pending','Pending'], ['active','Active'], ['confirmed','Confirmed']].map(([id, label]) => (
@@ -11140,7 +11392,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId }) {
   const overdue = isOverdue(t);
   return (
     <div onClick={() => setModalId(t.id)}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: (bp === 'mobile' || bp === 'tablet') ? '14px 4px' : '10px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer' }}
       onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
       onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
       <button onClick={e => { e.stopPropagation(); toggle(t.id); }}
@@ -11288,7 +11540,6 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                                 <>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>
                                   {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
-                                  <div style={{ fontSize: 7, color: C.border, whiteSpace: 'nowrap', marginTop: 1 }}>{abbr}</div>
                                 </>
                               ) : (
                                 <>
@@ -11341,8 +11592,8 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                       }}>{phase} {pDone}/{tasks.length}</button>
                     );
                   })}
-                  <div style={{ marginLeft: 'auto' }}>
-                    <input style={{ ...s.input, fontSize: 11, padding: '4px 10px', width: 140 }} value={tlSearch} onChange={e => setTlSearch(e.target.value)} placeholder="Search…" />
+                  <div style={{ marginLeft: 'auto', flex: bp === 'mobile' ? 1 : 'none' }}>
+                    <input style={{ ...s.input, fontSize: 11, padding: '4px 10px', width: bp === 'mobile' ? '100%' : 140 }} value={tlSearch} onChange={e => setTlSearch(e.target.value)} placeholder="Search…" />
                   </div>
                 </div>
               </div>
@@ -11471,6 +11722,8 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
   const modalEntry = ros.find(r => r.id === modalId);
   const [rosFilter, setRosFilter] = useState('all');
   const [rosDraftLoad, setRosDraftLoad] = useState(false);
+  const [rosActionsOpen, setRosActionsOpen] = useState(false);
+  const isMobileRos = bp === 'mobile' || bp === 'tablet';
 
   const draftFullROS = async () => {
     if (!aiKey) return;
@@ -11578,6 +11831,32 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
         />
       )}
 
+      {/* ROS mobile action sheet */}
+      {rosActionsOpen && (
+        <>
+          <div onClick={() => setRosActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 97 }} />
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 98, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <SheetGrip isMobile />
+            <div style={{ padding: '4px 16px 20px' }}>
+              {[
+                { label: 'Sync Vendors', action: () => { syncVendors(); setRosActionsOpen(false); } },
+                { label: '🖨 Print / PDF', action: () => { printROS(); setRosActionsOpen(false); } },
+                ...(aiKey ? [{ label: rosDraftLoad ? 'Drafting…' : 'Draft Full ROS (AI)', action: () => { draftFullROS(); setRosActionsOpen(false); }, disabled: rosDraftLoad }] : []),
+              ].map(({ label, action, disabled }) => (
+                <button key={label} onClick={action} disabled={disabled}
+                  style={{ ...s.btn(), width: '100%', justifyContent: 'flex-start', display: 'flex', padding: '13px 16px', fontSize: 14, marginBottom: 6, opacity: disabled ? 0.6 : 1 }}>
+                  {label}
+                </button>
+              ))}
+              <button onClick={() => setRosActionsOpen(false)}
+                style={{ ...s.btn(), width: '100%', padding: '13px 16px', fontSize: 14, marginTop: 4, color: C.muted }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <StatCard label="Total Segments"  value={ros.length} />
         <StatCard label="Vendor Arrivals" value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
@@ -11588,19 +11867,36 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={s.cardTitle}>Day-of Schedule</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
-              value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
-              <option value="all">All types</option>
-              <option value="vendor">Vendors</option>
-              <option value="event">Event</option>
-              <option value="prep">Prep</option>
-            </select>
-            <button style={s.btn('teal')} onClick={syncVendors}>Sync Vendors</button>
-            <button style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">🖨 Print / PDF</button>
-            <AIBtn onClick={draftFullROS} loading={rosDraftLoad} label="Draft Full ROS" />
-            <button style={s.btn('primary')} onClick={add}>+ Add</button>
-          </div>
+          {isMobileRos ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
+                value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
+                <option value="all">All</option>
+                <option value="vendor">Vendors</option>
+                <option value="event">Event</option>
+                <option value="prep">Prep</option>
+              </select>
+              <button style={s.btn('primary')} onClick={add}>+ Add</button>
+              <button onClick={() => setRosActionsOpen(true)}
+                style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="ellipsis" size={16} />
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
+                value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
+                <option value="all">All types</option>
+                <option value="vendor">Vendors</option>
+                <option value="event">Event</option>
+                <option value="prep">Prep</option>
+              </select>
+              <button style={s.btn('teal')} onClick={syncVendors}>Sync Vendors</button>
+              <button style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">🖨 Print / PDF</button>
+              <AIBtn onClick={draftFullROS} loading={rosDraftLoad} label="Draft Full ROS" />
+              <button style={s.btn('primary')} onClick={add}>+ Add</button>
+            </div>
+          )}
         </div>
 
         {(bp === 'mobile' || bp === 'tablet') ? (
@@ -11614,7 +11910,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
               return (
                 <div key={entry.id}>
                   <div onClick={() => setModalId(entry.id)}
-                    style={{ display: 'flex', gap: 10, padding: '12px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer', alignItems: 'flex-start' }}
+                    style={{ display: 'flex', gap: 10, padding: bp === 'mobile' ? '14px 4px' : '12px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer', alignItems: 'flex-start' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                     onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                   >
@@ -11622,7 +11918,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                         <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{entry.segment || <em style={{ color: C.muted, fontWeight: 400 }}>Untitled segment</em>}</div>
-                        <span style={{ fontFamily: 'monospace', fontSize: 13, color: C.muted, flexShrink: 0 }}>{entry.time || '—'}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: C.muted, flexShrink: 0 }}>{fmtTime12(entry.time)}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                         <span style={s.pill(typeColor)}>{entry.type}</span>
@@ -11741,9 +12037,11 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
 // ─── Calendar View ────────────────────────────────────────────────────────────
 
 function CalendarView({ timeline, vendors, eventDate, ros, onTabChange }) {
-  const C      = useT();
-  const s      = makeS(C);
-  const rosCLR = ROS_CLR(C);
+  const C        = useT();
+  const s        = makeS(C);
+  const bp       = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const rosCLR   = ROS_CLR(C);
   const eventMonth = eventDate ? new Date(eventDate + 'T00:00:00') : null;
   const [viewDate,    setViewDate]    = useState(() => new Date(getToday().getFullYear(), getToday().getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(() => eventDate || today8601());
@@ -12075,6 +12373,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange }) {
 function MasterCalendarView({ events, onSelectEvent }) {
   const C      = useT();
   const s      = makeS(C);
+  const bp     = useContext(BpCtx);
   const evtCLR = EVT_CLR(C);
   const rosCLR = ROS_CLR(C);
   const [viewDate,    setViewDate]    = useState(() => new Date(getToday().getFullYear(), getToday().getMonth(), 1));
@@ -12200,9 +12499,9 @@ function MasterCalendarView({ events, onSelectEvent }) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {calView === 'month' && criticalCount > 0 && <span style={s.pill(C.danger)}>{criticalCount} overdue</span>}
-          {calView === 'month' && paymentCount  > 0 && <span style={s.pill(C.warn)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
-          {calView === 'month' && eventDays     > 0 && <span style={s.pill(C.accent)}>{eventDays} event{eventDays > 1 ? 's' : ''} this month</span>}
+          {bp !== 'mobile' && calView === 'month' && criticalCount > 0 && <span style={s.pill(C.danger)}>{criticalCount} overdue</span>}
+          {bp !== 'mobile' && calView === 'month' && paymentCount  > 0 && <span style={s.pill(C.warn)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
+          {bp !== 'mobile' && calView === 'month' && eventDays     > 0 && <span style={s.pill(C.accent)}>{eventDays} event{eventDays > 1 ? 's' : ''} this month</span>}
           <button style={{ ...s.btn('ghost'), fontSize: 11, color: C.muted }} onClick={goToToday}>Today</button>
           {/* View toggle */}
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
@@ -13612,7 +13911,7 @@ function EventCommunication({ event, setEvent, client, profile }) {
           {COMM_CHANNELS.map(ch => {
             const active = channel === ch.key;
             const clr = ch.clr === 'warn' ? C.warn : C.accent;
-            const badge = ch.key === 'CLIENT' ? (clientUnread || null) : (internalCount || null);
+            const badge = ch.key === 'CLIENT' ? (clientUnread || null) : null;
             return (
               <button key={ch.key} onClick={() => { setChannel(ch.key); setSearch(''); setComposeType('standard'); }}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 700 : 500, background: active ? clr + '1a' : 'transparent', color: active ? clr : C.muted, borderBottom: active ? `2px solid ${clr}` : '2px solid transparent', transition: 'all 0.12s' }}>
@@ -13669,7 +13968,7 @@ function EventCommunication({ event, setEvent, client, profile }) {
                     );
                   })}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', flexDirection: bp === 'mobile' ? 'column' : 'row', gap: 8, marginBottom: 16 }}>
                   <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={text}
                     placeholder={
                       composeType === 'approval_request' ? 'Describe what needs approval…'
@@ -13677,8 +13976,8 @@ function EventCommunication({ event, setEvent, client, profile }) {
                       : isClient ? 'Log a call, email, meeting…' : 'Internal planner note…'
                     }
                     onChange={e => setText(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && add()} />
-                  <button style={s.btn('primary')} onClick={add} disabled={busy}>{busy ? '…' : 'Add'}</button>
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && add()} />
+                  <button style={{ ...s.btn('primary'), alignSelf: bp === 'mobile' ? 'flex-end' : 'auto' }} onClick={add} disabled={busy}>{busy ? '…' : 'Add'}</button>
                 </div>
               </>
             )}
@@ -13729,7 +14028,6 @@ function EventCommunication({ event, setEvent, client, profile }) {
                 <div key={m.id} style={{ borderLeft: `3px solid ${m.pinned ? C.accent2 : ts.border}`, background: ts.bg, borderRadius: '0 6px 6px 0', padding: '8px 10px 8px 12px', marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: ts.border || C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{ts.icon} {ts.label}</span>
-                    {m.pinned && <span style={{ fontSize: 9, fontWeight: 700, color: C.accent2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>📌 Decision</span>}
                     <span style={{ fontSize: 11, color: C.muted }}>{fmtWhen(m.created_at)}</span>
                     {isApproval && st && (
                       <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -13743,8 +14041,8 @@ function EventCommunication({ event, setEvent, client, profile }) {
                   {!writeBlocked && (
                     <div style={{ marginTop: 7, display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
                       <button onClick={() => togglePin(m)} title={m.pinned ? 'Unpin decision' : 'Pin as decision'}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: m.pinned ? C.accent2 : C.muted, background: 'none', border: m.pinned ? 'none' : `1px solid ${C.border}`, borderRadius: 12, padding: m.pinned ? 0 : '2px 9px', cursor: 'pointer' }}>
-                        📌 {m.pinned ? 'Pinned' : 'Pin decision'}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: m.pinned ? C.accent2 : C.muted, background: 'none', border: `1px solid ${m.pinned ? C.accent2 + '66' : C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
+                        <Icon name="check2" size={11} /> {m.pinned ? 'Decision' : 'Pin as decision'}
                       </button>
                       {isClient && !live && (
                         m.readAt ? (
@@ -13824,8 +14122,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
   const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
-  const [evtDrawerOpen,   setEvtDrawerOpen]  = useState(false); // mobile: slide-in section drawer
-  const [evtActionsOpen,  setEvtActionsOpen] = useState(false); // mobile: actions sheet (header button)
+  const [evtDrawerOpen,      setEvtDrawerOpen]      = useState(false);
+  const [evtActionsOpen,     setEvtActionsOpen]     = useState(false);
+  const [desktopEvtOverflow, setDesktopEvtOverflow] = useState(false);
   const [evtNavCollapsed, setEvtNavCollapsed] = useState(() => { try { return localStorage.getItem('ngw-evt-sidebar') === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem('ngw-evt-sidebar', evtNavCollapsed ? '1' : '0'); } catch {} }, [evtNavCollapsed]);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -13977,7 +14276,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   );
 
   return (
-    <div style={s.app}>
+    <div style={s.app} onClick={() => { if (desktopEvtOverflow) setDesktopEvtOverflow(false); }}>
       {showConsult && <ConsultScriptModal event={event} setEvent={setEvent} onClose={() => setShowConsult(false)} />}
       {showSendClient && <SendToClientModal event={event} client={client} profile={profile} onClose={() => setShowSendClient(false)} />}
       {showPortal && client && <ClientPortal client={client} events={[event]} onClose={() => setShowPortal(false)} onUpdateGuests={gs => setEvent(ev => ({ ...ev, guests: typeof gs === 'function' ? gs(ev.guests || []) : gs }))} />}
@@ -14008,42 +14307,88 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </button>
           )}
           {isSidebarNav ? (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <ThemeToggle />
-              {confirmEvtDel ? (
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: C.muted }}>Delete event?</span>
-                  <button style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px' }} onClick={onDelete}>Yes, delete</button>
-                  <button style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }} onClick={() => setConfirmEvtDel(false)}>Cancel</button>
-                </div>
-              ) : (
-                <button onClick={() => setConfirmEvtDel(true)} style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Delete this event">
-                  <Icon name="trash" size={13} /> Delete
-                </button>
-              )}
-              <button onClick={doExport} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5, opacity: exporting ? 0.6 : 1 }} title="Export to Google Sheets (.xlsx)" disabled={exporting}>
-                <Icon name="download" size={13} /> {exporting ? 'Exporting…' : 'Export'}
-              </button>
+            /* Desktop/tablet-land: 3 visible + overflow ··· */
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <ExportMenu
+                guests={event.guests}
+                vendors={event.vendors}
+                budget={event.budget}
+                timeline={event.timeline}
+                eventName={event.name}
+              />
               {client && (
-                <button onClick={() => setShowPortal(true)} style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Preview what your client sees">
+                <button onClick={() => setShowPortal(true)} style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <Icon name="eye" size={13} /> Client View
                 </button>
               )}
-              <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }} title="Package and send event details to client">
+              <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Icon name="send" size={13} /> Send to Client
               </button>
-              <button onClick={onDuplicate} style={{ ...s.btn(), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }} title="Duplicate this event">
-                <Icon name="copy" size={13} /> Duplicate
-              </button>
+              {/* Overflow: secondary + destructive actions */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={e => { e.stopPropagation(); setDesktopEvtOverflow(o => !o); }}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="More actions"
+                  aria-label="More actions"
+                >
+                  <Icon name="ellipsis" size={16} />
+                </button>
+                {desktopEvtOverflow && (() => {
+                  const row = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.text, fontFamily: 'inherit', textAlign: 'left', whiteSpace: 'nowrap' };
+                  return (
+                    <div onClick={e => e.stopPropagation()} style={{
+                      position: 'absolute', top: '110%', right: 0, zIndex: 200,
+                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.20)', padding: '4px 0', minWidth: 186,
+                    }}>
+                      <button onClick={() => { doExport(); setDesktopEvtOverflow(false); }} style={{ ...row, opacity: exporting ? 0.6 : 1 }} disabled={exporting}>
+                        <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="download" size={15} /></span>
+                        {exporting ? 'Exporting…' : 'Export XLSX'}
+                      </button>
+                      <button onClick={() => { onDuplicate(); setDesktopEvtOverflow(false); }} style={row}>
+                        <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="copy" size={15} /></span>
+                        Duplicate
+                      </button>
+                      {canArchive && (
+                        <button onClick={() => { setEvent(e => ({ ...e, archived: !e.archived })); setDesktopEvtOverflow(false); }} style={row}>
+                          <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="archive" size={15} /></span>
+                          {event.archived ? 'Unarchive' : 'Archive'}
+                        </button>
+                      )}
+                      <div style={{ margin: '4px 0', borderTop: `1px solid ${C.border}` }} />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px' }}>
+                        <span style={{ fontSize: 12, color: C.muted }}>Theme</span>
+                        <ThemeToggle />
+                      </div>
+                      <div style={{ margin: '4px 0', borderTop: `1px solid ${C.border}` }} />
+                      {confirmEvtDel ? (
+                        <div style={{ padding: '6px 14px' }}>
+                          <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Delete this event?</div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button style={{ ...s.btn('danger'), fontSize: 11, flex: 1 }} onClick={onDelete}>Delete</button>
+                            <button style={{ ...s.btn(), fontSize: 11, flex: 1 }} onClick={() => setConfirmEvtDel(false)}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmEvtDel(true)} style={{ ...row, color: C.danger }}>
+                          <span style={{ width: 18, display: 'flex', justifyContent: 'center' }}><Icon name="trash" size={15} /></span>
+                          Delete Event
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           ) : (
             <button onClick={() => setEvtActionsOpen(true)} title="Actions" aria-label="Actions"
               style={{ marginLeft: 'auto', width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="ellipsis" size={20} /></button>
           )}
         </div>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: isSidebarNav ? 0 : 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: isMobile ? 11 : 12, color: C.muted, marginBottom: isSidebarNav ? 0 : 14, display: 'flex', gap: isMobile ? 4 : 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
-            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: 12, color: C.muted, padding: '3px 7px', outline: 'none', minWidth: 0, width: Math.max(80, (event.venue || '').length * 7 + 20), transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif" }}
+            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: isMobile ? 11 : 12, color: C.muted, padding: '3px 7px', outline: 'none', minWidth: 60, width: isMobile ? undefined : Math.min(160, Math.max(80, (event.venue || '').length * 7 + 20)), flex: isMobile ? '0 1 auto' : undefined, maxWidth: isMobile ? '42%' : 'none', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif" }}
             value={event.venue || ''}
             placeholder="Venue"
             onChange={e => setEvent(ev => ({ ...ev, venue: e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()) }))}
@@ -14053,7 +14398,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <span style={{ color: C.border }}>·</span>
           <input
             type="date"
-            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: 12, color: C.muted, padding: '3px 7px', outline: 'none', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer' }}
+            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: isMobile ? 11 : 12, color: C.muted, padding: '3px 7px', outline: 'none', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer', flex: isMobile ? '0 1 auto' : undefined }}
             value={event.date || ''}
             onChange={e => setEvent(ev => ({ ...ev, date: e.target.value }))}
             onClick={e => { try { e.target.showPicker(); } catch {} }}
@@ -14062,7 +14407,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           />
           <span style={{ color: C.border }}>·</span>
           <select
-            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: 12, color: C.muted, padding: '3px 7px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif" }}
+            style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: isMobile ? 11 : 12, color: C.muted, padding: '3px 7px', outline: 'none', cursor: 'pointer', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif", flex: isMobile ? '0 1 auto' : undefined }}
             value={event.type || 'Other'}
             onChange={e => setEvent(ev => ({ ...ev, type: e.target.value }))}
           >
@@ -14073,7 +14418,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           {client ? (
             <>
               <span style={{ color: C.border }}>·</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: isMobile ? 11 : 12, color: C.accent }}>
                 <Icon name="users" size={13} /> {client.name}
                 {onUnlinkClient && (
                   <button onClick={() => onUnlinkClient(client.id)} title="Unlink client" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: '0 2px', lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}><Icon name="x" size={12} /></button>
@@ -14212,15 +14557,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             const active = tab === it.id;
             return (
               <button key={it.id} onClick={() => handleTabChange(it.id)} title={it.id}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 9px', background: 'none', border: 'none', cursor: 'pointer', color: active ? color : C.muted }}>
-                <Icon name={it.icon} size={21} />
-                <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500 }}>{it.label}</span>
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 0 11px', background: 'none', border: 'none', cursor: 'pointer', color: active ? color : C.muted, minHeight: 52, position: 'relative' }}>
+                {active && <span style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: '0 0 3px 3px', background: color }} />}
+                <Icon name={it.icon} size={22} />
+                <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500, letterSpacing: active ? '0.02em' : 0 }}>{it.label}</span>
               </button>
             );
           })}
           <button onClick={() => setEvtDrawerOpen(true)} title="More"
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 9px', background: 'none', border: 'none', cursor: 'pointer', color: bottomMoreActive ? color : C.muted }}>
-            <Icon name="menu" size={21} />
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 0 11px', background: 'none', border: 'none', cursor: 'pointer', color: bottomMoreActive ? color : C.muted, minHeight: 52 }}>
+            <Icon name="menu" size={22} />
             <span style={{ fontSize: 10.5, fontWeight: bottomMoreActive ? 700 : 500 }}>More</span>
           </button>
         </div>
@@ -14243,18 +14589,32 @@ function LoginScreen() {
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [err, setErr] = useState('');
 
+  const redirect = () => window.location.origin + window.location.pathname;
+  // Show Google only once you've enabled the provider in Supabase (set
+  // REACT_APP_ENABLE_GOOGLE_AUTH=true) so there's never a dead button.
+  const googleEnabled = process.env.REACT_APP_ENABLE_GOOGLE_AUTH === 'true';
+
   const submit = async (e) => {
     e?.preventDefault?.();
     const addr = email.trim();
     if (!addr || status === 'sending') return;
     setStatus('sending'); setErr('');
     try {
-      const redirect = window.location.origin + window.location.pathname;
-      const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirect } });
+      const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirect() } });
       if (error) throw error;
       setStatus('sent');
     } catch (e2) {
       setStatus('error'); setErr(e2?.message || 'Could not send the sign-in link.');
+    }
+  };
+
+  const google = async () => {
+    setErr('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirect() } });
+      if (error) throw error;
+    } catch (e2) {
+      setStatus('error'); setErr(e2?.message || 'Could not start Google sign-in.');
     }
   };
 
@@ -14274,6 +14634,18 @@ function LoginScreen() {
           <>
             <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>Planner sign-in</div>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.55 }}>Enter your email and we'll send you a one-time sign-in link — no password needed.</div>
+            {googleEnabled && (
+              <>
+                <button type="button" onClick={google}
+                  style={{ ...s.btn(), width: '100%', padding: '11px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 14 }}>
+                  <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.02-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.02 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+                  Continue with Google
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '0 0 14px', color: C.muted, fontSize: 11 }}>
+                  <span style={{ flex: 1, height: 1, background: C.border }} /> or <span style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+              </>
+            )}
             <form onSubmit={submit}>
               <input
                 type="email" autoFocus required value={email}
