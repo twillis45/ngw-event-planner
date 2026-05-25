@@ -1,0 +1,14 @@
+/* Kill the default UA body margin (the white frame around the app) and make the
+   page base dark so iOS overscroll / rubber-band doesn't flash white.
+   Body background is also synced to the active theme from App.js. */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0f0f11; /* DARK theme bg — default; App.js overrides per theme */
+}
+#root {
+  min-height: 100vh;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}

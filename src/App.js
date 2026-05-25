@@ -706,6 +706,20 @@ function aggregateVendorLibrary(events = []) {
   return [...map.values()].map(({ vendor, eventsLinked }) => ({ ...vendor, eventsLinked }));
 }
 
+// ─── Vendor discovery tags (optional, planner-entered, never inferred) ─────────
+// Identity tags are DISCOVERY CONTEXT only — they never affect reliability ranking.
+const VENDOR_SPECIALTY_TAGS = ['Luxury Weddings', 'Editorial Photography', 'Outdoor Events', 'Destination Weddings', 'High Guest Count', 'Intimate / Micro Events', 'Natural Hair Expertise', 'Kosher Catering', 'Halal Catering', 'Vegan Catering', 'Corporate / Brand Events'];
+const VENDOR_CULTURAL_TAGS  = ['Multicultural Ceremonies', 'South Asian Weddings', 'Nigerian Weddings', 'Hindu Ceremonies', 'Muslim Ceremonies', 'Jewish Ceremonies', 'Persian Weddings', 'Korean Weddings', 'Chinese Weddings', 'Quinceañera', 'Latino / Hispanic Events', 'West African Events'];
+const VENDOR_LANGUAGE_TAGS  = ['Spanish', 'French', 'Mandarin', 'Cantonese', 'Hindi', 'Urdu', 'Arabic', 'Korean', 'Portuguese', 'Tagalog', 'ASL'];
+const VENDOR_IDENTITY_TAGS  = ['Black-owned', 'Latina/o-owned', 'AAPI-owned', 'Woman-owned', 'LGBTQ-friendly', 'Veteran-owned', 'Indigenous-owned', 'Immigrant-owned', 'Disability-owned'];
+// Group config — `tone` resolves to a theme token inside components.
+const VENDOR_TAG_GROUPS = [
+  { key: 'specialtyTags',          label: 'Specialties',         filterLabel: 'Specialty',           options: VENDOR_SPECIALTY_TAGS, tone: 'accent2' },
+  { key: 'culturalExperienceTags', label: 'Cultural Experience', filterLabel: 'Cultural Experience', options: VENDOR_CULTURAL_TAGS,  tone: 'accent'  },
+  { key: 'languageTags',           label: 'Languages',           filterLabel: 'Bilingual / Language', options: VENDOR_LANGUAGE_TAGS,  tone: 'accent'  },
+  { key: 'identityTags',           label: 'Identity (optional)', filterLabel: 'Identity',            options: VENDOR_IDENTITY_TAGS,  tone: 'muted'   },
+];
+
 // ─── Communication Checklists ─────────────────────────────────────────────────
 // Vendor: keyed by pipeline stage. Category-specific extras surface at current stage.
 const VENDOR_COMMS = {
@@ -2393,6 +2407,20 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
   const [showPNotes,     setShowPNotes]     = useState(false);
   const [newPNote,       setNewPNote]       = useState('');
   const [newRiskFlag,    setNewRiskFlag]    = useState('');
+  const [showTags,       setShowTags]       = useState(false);
+  const [customTag,      setCustomTag]      = useState({}); // { [groupKey]: draft }
+  const toggleTag = (field, val) => {
+    const cur = vendor[field] || [];
+    onChange(field, cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val]);
+  };
+  const addCustomTag = (field) => {
+    const v = (customTag[field] || '').trim();
+    if (!v) return;
+    const cur = vendor[field] || [];
+    if (!cur.includes(v)) onChange(field, [...cur, v]);
+    setCustomTag(c => ({ ...c, [field]: '' }));
+  };
+  const tagCount = VENDOR_TAG_GROUPS.reduce((n, g) => n + (vendor[g.key] || []).length, 0);
   const stageIdx = STAGES.indexOf(vendor.status);
 
   // Vendor-1: planner-only note + risk-flag mutators (internal arrays, never exported)
@@ -2990,6 +3018,46 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                     {VENDOR_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Specialties & Tags (collapsible) — discovery context ── */}
+          <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowTags(v => !v)} style={{ width: '100%', background: showTags ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Specialties & Tags</span>
+              {tagCount > 0 && <span style={{ fontSize: 11, color: C.muted }}>{tagCount}</span>}
+              <span style={{ fontSize: 10, color: C.muted, transform: showTags ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+            </button>
+            {showTags && (
+              <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ fontSize: 11, color: C.muted }}>Optional, vendor-described. Specialties &amp; cultural experience are high-value for matching. Identity tags are discovery context only — never ranked above reliability.</div>
+                {VENDOR_TAG_GROUPS.map(g => {
+                  const tone = C[g.tone] || C.muted;
+                  const selected = vendor[g.key] || [];
+                  return (
+                    <div key={g.key}>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: g.key === 'identityTags' ? C.muted : tone, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>{g.label}</label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {[...new Set([...g.options, ...selected])].map(opt => {
+                          const on = selected.includes(opt);
+                          return (
+                            <button key={opt} type="button" onClick={() => toggleTag(g.key, opt)}
+                              style={{ padding: '5px 11px', borderRadius: 16, fontSize: 11, cursor: 'pointer', minHeight: 30, border: `1.5px solid ${on ? tone : C.border}`, background: on ? tone + '1a' : 'transparent', color: on ? tone : C.muted, fontWeight: on ? 700 : 400 }}>
+                              {on ? '✓ ' : ''}{opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 7 }}>
+                        <input style={{ ...s.input, flex: 1, fontSize: 12 }} value={customTag[g.key] || ''} placeholder={`Add custom ${g.filterLabel.toLowerCase()}…`}
+                          onChange={e => setCustomTag(c => ({ ...c, [g.key]: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && addCustomTag(g.key)} />
+                        <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px' }} onClick={() => addCustomTag(g.key)}>Add</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -7362,9 +7430,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     return (
       <div style={s.card}>
         {/* ── Channel tabs ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 14, borderBottom: `1px solid ${C.border}`, paddingBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: 14, flexShrink: 0 }}>Channel</div>
-          <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, rowGap: 8, marginBottom: 14, borderBottom: `1px solid ${C.border}`, paddingBottom: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>Channel</div>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             {[['client', '💬 Client', null], ['internal', '🔒 Internal', internalCount || null]].map(([key, label, badge]) => {
               const active = commTab === key;
               return (
@@ -7377,9 +7445,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             })}
           </div>
           {activeLog.length > 2 && (
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ position: 'relative', flex: '1 1 130px', minWidth: 130 }}>
               <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: C.muted, pointerEvents: 'none' }}>🔍</span>
-              <input style={{ ...s.input, padding: '4px 8px 4px 24px', fontSize: 11, width: 140 }} placeholder="Search…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
+              <input style={{ ...s.input, padding: '4px 8px 4px 24px', fontSize: 11, width: '100%' }} placeholder="Search…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
             </div>
           )}
         </div>
@@ -10030,6 +10098,25 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
   }, [allEvents, event, vendors]);
   const provenCount = provenLibrary.filter(v => v._rel.sufficient).length;
 
+  // Discovery filters (filter only — never reorder; reliability sort is preserved)
+  const [showFilters, setShowFilters] = useState(false);
+  const [pf, setPf] = useState({ category: '', area: '', tier: '', specialtyTags: [], culturalExperienceTags: [], languageTags: [], identityTags: [] });
+  const togglePf = (key, val) => setPf(p => ({ ...p, [key]: p[key].includes(val) ? p[key].filter(x => x !== val) : [...p[key], val] }));
+  const clearPf  = () => setPf({ category: '', area: '', tier: '', specialtyTags: [], culturalExperienceTags: [], languageTags: [], identityTags: [] });
+  const pfActive = (pf.category ? 1 : 0) + (pf.area ? 1 : 0) + (pf.tier ? 1 : 0) + VENDOR_TAG_GROUPS.reduce((n, g) => n + pf[g.key].length, 0);
+  // Only offer filter values that actually exist in the library
+  const availCategories = [...new Set(provenLibrary.map(v => v.category).filter(Boolean))].sort();
+  const availTagValues  = (key) => [...new Set(provenLibrary.flatMap(v => v[key] || []))].sort();
+  const filteredProven  = provenLibrary.filter(v => {
+    if (pf.category && v.category !== pf.category) return false;
+    if (pf.tier && v._tier !== pf.tier) return false;
+    if (pf.area && !(v.serviceArea || '').toLowerCase().includes(pf.area.toLowerCase())) return false;
+    for (const g of VENDOR_TAG_GROUPS) {
+      if (pf[g.key].length && !pf[g.key].every(t => (v[g.key] || []).includes(t))) return false;
+    }
+    return true;
+  });
+
   const total          = vendors.reduce((s, v) => s + (v.cost || 0), 0);
   const committed      = vendors.filter(v => STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
   const confirmedCount = vendors.filter(v => v.status === 'Confirmed').length;
@@ -10061,6 +10148,29 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
   };
   const del = (id) => { setVendors(v => v.filter(r => r.id !== id)); setModalId(null); };
   const upd = (id, key, val) => setVendors(v => v.map(r => r.id === id ? { ...r, [key]: val } : r));
+
+  // Click-through from a Proven (cross-event library) card → open its detail in THIS event.
+  // If the vendor is already on the event, open it; otherwise pull a copy in, then open.
+  const openProvenVendor = (lib) => {
+    const key = `${(lib.name || '').trim().toLowerCase()}|${(lib.category || '').toLowerCase()}`;
+    const existing = vendors.find(v => `${(v.name || '').trim().toLowerCase()}|${(v.category || '').toLowerCase()}` === key);
+    if (existing) { setModalId(existing.id); return; }
+    // Pull the proven vendor into this event (carry profile/operational/tags; reset event-specific + internal fields)
+    const nv = {
+      id: uid(), name: lib.name || 'Vendor', category: lib.category || 'Other', budgetCategory: lib.category || 'Other',
+      status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '',
+      contact: lib.contact || '', phone: lib.phone || '', website: lib.website || '', backup: '', notes: '', log: [],
+      serviceArea: lib.serviceArea, insuranceStatus: lib.insuranceStatus, yearsActive: lib.yearsActive,
+      eventsCompleted: lib.eventsCompleted, onTimeRate: lib.onTimeRate, avgResponseHours: lib.avgResponseHours,
+      plannerRehireCount: lib.plannerRehireCount, successfulEventCount: lib.successfulEventCount,
+      cancellationCount: lib.cancellationCount, incidentCount: lib.incidentCount, preferredTier: lib.preferredTier,
+      specialtyTags: lib.specialtyTags || [], culturalExperienceTags: lib.culturalExperienceTags || [],
+      languageTags: lib.languageTags || [], identityTags: lib.identityTags || [],
+      // NOTE: planner-private notes/risk flags are intentionally NOT copied across events.
+    };
+    setVendors(v => [...v, nv]);
+    setModalId(nv.id);
+  };
   const allLogs = useMemo(() =>
     vendors.flatMap(v => (v.log || []).map(e => ({ ...e, vendorId: v.id, vendorName: v.name, vendorCategory: v.category })))
            .sort((a, b) => b.date.localeCompare(a.date)),
@@ -10160,18 +10270,83 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
       {/* ── Operationally Proven Vendors (cross-event) ── */}
       {vendorMode === 'proven' && (
         <div>
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Operationally Proven Vendors</div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Ranked by operational reliability from your real event history — not popularity. Vendors without enough data show “Insufficient data.”</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Operationally Proven Vendors</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Ranked by operational reliability from your real event history — not popularity. Filters narrow the list; they never change the ranking.</div>
+            </div>
+            {provenLibrary.length > 0 && (
+              <button onClick={() => setShowFilters(v => !v)} style={{ ...s.btn(pfActive > 0 ? 'primary' : 'ghost'), fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>
+                ⚙ Filters{pfActive > 0 ? ` (${pfActive})` : ''}
+              </button>
+            )}
           </div>
+
+          {/* Discovery filter panel — collapsible */}
+          {provenLibrary.length > 0 && showFilters && (
+            <div style={{ ...s.card, marginBottom: 14, padding: 16 }}>
+              {(() => {
+                const chip = (active, label, onClick, tone) => (
+                  <button key={label} onClick={onClick} style={{ padding: '5px 11px', borderRadius: 16, fontSize: 11, cursor: 'pointer', minHeight: 30, border: `1.5px solid ${active ? tone : C.border}`, background: active ? tone + '1a' : 'transparent', color: active ? tone : C.muted, fontWeight: active ? 700 : 400 }}>{active ? '✓ ' : ''}{label}</button>
+                );
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {/* Category + tier + area */}
+                    <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Category</label>
+                        <select style={{ ...s.input, fontSize: 13 }} value={pf.category} onChange={e => setPf(p => ({ ...p, category: e.target.value }))}>
+                          <option value="">All categories</option>
+                          {availCategories.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Service area</label>
+                        <input style={{ ...s.input, fontSize: 13 }} value={pf.area} placeholder="e.g. Nashville" onChange={e => setPf(p => ({ ...p, area: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Tier</label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {VENDOR_TIERS.map(t => chip(pf.tier === t, `${VENDOR_TIER_META[t].icon} ${t}`, () => setPf(p => ({ ...p, tier: p.tier === t ? '' : t })), VENDOR_TIER_META[t].color))}
+                      </div>
+                    </div>
+                    {/* Tag groups — only values present in the library */}
+                    {VENDOR_TAG_GROUPS.map(g => {
+                      const vals = availTagValues(g.key);
+                      if (vals.length === 0) return null;
+                      const tone = g.key === 'identityTags' ? C.muted : (C[g.tone] || C.muted);
+                      return (
+                        <div key={g.key}>
+                          <label style={{ fontSize: 10, fontWeight: 700, color: tone, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>{g.filterLabel}</label>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {vals.map(val => chip(pf[g.key].includes(val), val, () => togglePf(g.key, val), tone))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {pfActive > 0 && (
+                      <div><button onClick={clearPf} style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 12px' }}>Clear all filters</button></div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {provenLibrary.length === 0 ? (
             <div style={{ ...s.card, textAlign: 'center', padding: '32px 20px' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendor history yet</div>
               <div style={{ fontSize: 12, color: C.muted }}>As you add vendors across events and log their operational metrics, your proven vendors surface here.</div>
             </div>
+          ) : filteredProven.length === 0 ? (
+            <div style={{ ...s.card, textAlign: 'center', padding: '28px 20px' }}>
+              <div style={{ fontSize: 13, color: C.muted }}>No vendors match these filters.</div>
+              <button onClick={clearPf} style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 12px', marginTop: 10 }}>Clear filters</button>
+            </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : bp === 'tablet' ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-              {provenLibrary.map((v, i) => {
+              {filteredProven.map((v, i) => {
                 const tm = VENDOR_TIER_META[v._tier];
                 const suff = v._rel.sufficient;
                 const metric = (label, val) => (
@@ -10181,7 +10356,10 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
                   </div>
                 );
                 return (
-                  <div key={`${v.name}-${i}`} style={{ ...s.card, marginBottom: 0, padding: 16, borderColor: suff ? tm.color + '55' : C.border }}>
+                  <div key={`${v.name}-${i}`} onClick={() => openProvenVendor(v)} title={v._inEvent ? 'Open vendor details' : 'Add to this event & open'}
+                    style={{ ...s.card, marginBottom: 0, padding: 16, borderColor: suff ? tm.color + '55' : C.border, cursor: 'pointer', transition: 'border-color 0.15s, box-shadow 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = tm.color; e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,${C.surface === '#ffffff' ? '0.08' : '0.22'})`; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = suff ? tm.color + '55' : C.border; e.currentTarget.style.boxShadow = 'none'; }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.name}</div>
@@ -10219,7 +10397,33 @@ function Vendors({ vendors, setVendors, budget, openId, event, ros, profile, all
                       </div>
                     )}
 
-                    {v._inEvent && <div style={{ fontSize: 10, color: C.success, fontWeight: 600, marginTop: 10 }}>✓ Already on this event</div>}
+                    {/* Specialty + cultural experience — operational discovery context */}
+                    {((v.specialtyTags || []).length > 0 || (v.culturalExperienceTags || []).length > 0 || (v.languageTags || []).length > 0) && (
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
+                        {[...(v.specialtyTags || []), ...(v.culturalExperienceTags || [])].map(t => (
+                          <span key={t} style={{ fontSize: 10, color: C.accent, background: C.accent + '12', border: `1px solid ${C.accent}30`, borderRadius: 10, padding: '2px 8px' }}>{t}</span>
+                        ))}
+                        {(v.languageTags || []).map(t => (
+                          <span key={t} style={{ fontSize: 10, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 10, padding: '2px 8px' }}>🗣 {t}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Identity — intentionally subtle / secondary, never dominant */}
+                    {(v.identityTags || []).length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {(v.identityTags || []).map(t => (
+                          <span key={t} style={{ fontSize: 10, color: C.muted, opacity: 0.85 }}>{t}{(v.identityTags || []).indexOf(t) < (v.identityTags || []).length - 1 ? ' ·' : ''}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                      {v._inEvent
+                        ? <span style={{ fontSize: 10, color: C.success, fontWeight: 600 }}>✓ On this event</span>
+                        : <span style={{ fontSize: 10, color: C.muted }}>{v.eventsLinked > 1 ? `In ${v.eventsLinked} of your events` : 'From your vendor history'}</span>}
+                      <span style={{ fontSize: 11, fontWeight: 600, color: tm.color }}>{v._inEvent ? 'View details →' : '+ Add to this event →'}</span>
+                    </div>
                   </div>
                 );
               })}
@@ -12903,7 +13107,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               {event.archived ? '↩ Unarchive' : '📦 Archive'}
             </button>
           )}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <ThemeToggle />
             {confirmEvtDel ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -13093,6 +13297,8 @@ export default function App() {
   const [themeName, setThemeName] = useState('dark');
   const themeC = THEMES[themeName] || DARK;
   const themeCtxVal = { C: themeC, theme: themeName, setTheme: setThemeName };
+  // Keep the page base (body) matching the theme so edges/overscroll never flash white.
+  useEffect(() => { document.body.style.background = themeC.bg; }, [themeC.bg]);
 
   const [events,         setEvents]         = useState(() => {
     try {
