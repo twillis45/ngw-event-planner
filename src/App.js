@@ -8414,7 +8414,10 @@ Write the summary now:`;
       {budget.map(r => {
         const pct = r.budgeted > 0 ? (r.actual / r.budgeted) * 100 : 0;
         return (
-          <div key={r.id} style={{ marginBottom: 14 }}>
+          <div key={r.id} onClick={onTabChange ? () => onTabChange('Budget') : undefined}
+            style={{ marginBottom: 10, padding: '4px 6px', borderRadius: 6, cursor: onTabChange ? 'pointer' : 'default' }}
+            onMouseEnter={onTabChange ? (e => { e.currentTarget.style.background = C.surface2; }) : undefined}
+            onMouseLeave={onTabChange ? (e => { e.currentTarget.style.background = ''; }) : undefined}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
               <span style={{ fontSize: 13 }}>{r.category}</span>
               <span style={{ fontSize: 12, color: C.muted }}>{fmtD(r.actual)} / {fmtD(r.budgeted)}</span>
@@ -8436,7 +8439,10 @@ Write the summary now:`;
     <div style={{ ...s.card, marginBottom: 0 }}>
       <div style={s.cardTitle}>Meal Counts — {confirmed.length} attending{totalKids > 0 ? ` + ${totalKids} kids` : ''}</div>
       {Object.entries(mealCounts).map(([meal, count]) => (
-        <div key={meal} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div key={meal} onClick={onTabChange ? () => onTabChange('Guests') : undefined}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '4px 6px', borderRadius: 6, cursor: onTabChange ? 'pointer' : 'default' }}
+          onMouseEnter={onTabChange ? (e => { e.currentTarget.style.background = C.surface2; }) : undefined}
+          onMouseLeave={onTabChange ? (e => { e.currentTarget.style.background = ''; }) : undefined}>
           <span style={{ fontSize: 13 }}>{meal}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ProgressBar pct={(count / (confirmed.length || 1)) * 100} color={C.accent2} />
@@ -9633,7 +9639,10 @@ function Guests({ guests, setGuests, event = {} }) {
             {bp === 'mobile' && <span style={{ color: C.muted, display: 'flex', transform: needsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
           </button>
           {(bp !== 'mobile' || needsOpen) && needsFlag.map(g => (
-            <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div key={g.id} onClick={() => setModalId(g.id)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, padding: '5px 6px', borderRadius: 6, cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+              onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
               <span style={{ fontSize: 13 }}>{g.name}</span>
               <span style={{ fontSize: 12, color: C.warn }}>{g.needs}</span>
             </div>
@@ -9659,9 +9668,12 @@ function Guests({ guests, setGuests, event = {} }) {
                 const emailLink = g.email ? `mailto:${g.email}?subject=${encodeURIComponent('RSVP Reminder')}&body=${encodeURIComponent(`Hi ${g.name.split(' ')[0]},\n\nJust a friendly reminder to RSVP for ${event?.name || 'our event'}!\n\nWe'd love to know if you'll be joining us.`)}` : null;
                 const smsLink   = g.phone  ? `sms:${g.phone}?body=${encodeURIComponent(`Hi ${g.name.split(' ')[0]}! Just checking in — did you get a chance to RSVP for ${event?.name || 'our event'}?`)}` : null;
                 return (
-                  <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  <div key={g.id} onClick={() => setModalId(g.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
                     <div style={{ flex: 1, fontSize: 13 }}>{g.name} <span style={{ color: C.muted, fontSize: 11 }}>{g.rsvp === 'Maybe' ? '· Maybe' : '· No response'}</span></div>
-                    <div style={{ display: 'flex', gap: 5 }}>
+                    <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
                       {emailLink && <a href={emailLink} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }}>Email</a>}
                       {smsLink   && <a href={smsLink}   style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }}>Text</a>}
                       {!emailLink && !smsLink && <span style={{ fontSize: 10, color: C.muted }}>No contact</span>}
