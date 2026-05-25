@@ -6948,7 +6948,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [showTasksMobile,    setShowTasksMobile]    = useState(false);
   const [showPaymentsMobile, setShowPaymentsMobile] = useState(false);
   const [showActionMobile,   setShowActionMobile]   = useState(false);
-  const [addMenuOpen,        setAddMenuOpen]        = useState(false); // mobile: consolidated "+ New" menu
+  const [drawerOpen,       setDrawerOpen]       = useState(false); // mobile: slide-in nav drawer
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => { try { return localStorage.getItem('ngw-sidebar') === '1'; } catch { return false; } }); // desktop: collapsible sidebar
+  useEffect(() => { try { localStorage.setItem('ngw-sidebar', sidebarCollapsed ? '1' : '0'); } catch {} }, [sidebarCollapsed]);
 
   // Contracted value = total cost of all Contracted+ vendors across every event
   // (what's actually under contract, not the planning budget).
@@ -7097,50 +7099,92 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   // Page label per top-level view, so every screen identifies itself.
   const pageMeta = dashView === 'calendar'
-    ? { title: 'Calendar',   sub: 'All events, milestones & payments by date.' }
+    ? { title: 'Calendar',    sub: 'All events, milestones & payments by date.' }
     : dashView === 'events'
-    ? { title: 'All Events', sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} in your book.` }
-    : { title: 'Overview',   sub: 'Your events and what needs attention.' };
+    ? { title: 'All Events',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} in your book.` }
+    : dashView === 'clients'
+    ? { title: 'All Clients', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
+    : { title: 'Overview',    sub: 'Your events and what needs attention.' };
+
+  // ── Primary navigation model (shared by desktop sidebar + mobile drawer) ──
+  const navItems = [
+    { id: 'dashboard', label: 'Overview',   icon: '🏠' },
+    { id: 'calendar',  label: 'Calendar',   icon: '🗓️' },
+    { id: 'events',    label: 'All Events', icon: '📋' },
+    { id: 'clients',   label: 'Clients',    icon: '👥' },
+  ];
+  const initials = (profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const goView = (id) => { setDashView(id); setDrawerOpen(false); };
+
+  const navLinks = (collapsed) => navItems.map(it => {
+    const active = dashView === it.id;
+    return (
+      <button key={it.id} onClick={() => goView(it.id)} title={it.label}
+        style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11, justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', padding: collapsed ? '11px 0' : '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: active ? 700 : 500, background: active ? C.accent + '22' : 'transparent', color: active ? C.accent : C.text, textAlign: 'left', transition: 'background 0.12s' }}>
+        <span style={{ fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0 }}>{it.icon}</span>
+        {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>}
+      </button>
+    );
+  });
+  const navActions = (collapsed) => (
+    <>
+      <button onClick={() => { onNew(); setDrawerOpen(false); }} title="New Event"
+        style={{ ...s.btn('primary'), width: '100%', justifyContent: 'center', fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px' }}>{collapsed ? '＋' : '+ New Event'}</button>
+      <button onClick={() => { onNewClient(); setDrawerOpen(false); }} title="New Client"
+        style={{ ...s.btn(), width: '100%', justifyContent: 'center', fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px', marginTop: 8 }}>{collapsed ? '👤' : '+ New Client'}</button>
+    </>
+  );
+  const navFooter = (collapsed) => (
+    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexDirection: collapsed ? 'column' : 'row', justifyContent: collapsed ? 'center' : 'space-between' }}>
+      <ThemeToggle />
+      {onProfile && <button onClick={() => { onProfile(); setDrawerOpen(false); }} title="Profile" style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer' }}>{initials}</button>}
+    </div>
+  );
+
   return (
     <div style={s.app}>
+    <div style={{ display: isWide ? 'flex' : 'block', alignItems: 'stretch', minHeight: '100vh' }}>
+
+      {/* ── Desktop: collapsible left sidebar ── */}
+      {isWide && (
+        <div style={{ width: sidebarCollapsed ? 66 : 218, flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.bg, padding: '18px 12px', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', transition: 'width 0.16s ease', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: 8, marginBottom: 18, minHeight: 30 }}>
+            {!sidebarCollapsed && <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em' }}>NGW Event Boss</div>}
+            <button onClick={() => setSidebarCollapsed(c => !c)} title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'} aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+              style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, fontSize: 13 }}>{sidebarCollapsed ? '»' : '«'}</button>
+          </div>
+          {navLinks(sidebarCollapsed)}
+          <div style={{ height: 1, background: C.border, margin: '14px 4px' }} />
+          {navActions(sidebarCollapsed)}
+          {navFooter(sidebarCollapsed)}
+        </div>
+      )}
+
+      {/* ── Main column ── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+
+      {/* Mobile/tablet: top bar with hamburger */}
+      {!isWide && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: C.bg, zIndex: 25 }}>
+          <button onClick={() => setDrawerOpen(true)} title="Menu" aria-label="Menu"
+            style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>☰</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>NGW Event Boss</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
+          </div>
+          {onProfile && <button onClick={onProfile} title="Profile" style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer', flexShrink: 0 }}>{initials}</button>}
+        </div>
+      )}
+
       <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
         <div style={inner}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 3 }}>NGW Event Boss</div>
-              <h1 style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{pageMeta.title}</h1>
+          {/* Desktop shows the page title here (brand lives in the sidebar) */}
+          {isWide && (
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{pageMeta.title}</h1>
               <p style={{ color: C.muted, fontSize: 13, margin: '4px 0 0' }}>{pageMeta.sub}</p>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', borderBottom: `1px solid ${C.border}` }}>
-                {[['dashboard','Overview'],['calendar','Calendar']].map(([id, label]) => (
-                  <button key={id} onClick={() => setDashView(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '7px 14px', fontSize: 13, fontWeight: dashView === id ? 700 : 400, color: dashView === id ? C.text : C.muted, borderBottom: dashView === id ? `2px solid ${C.accent}` : '2px solid transparent', marginBottom: -1 }}>{label}</button>
-                ))}
-              </div>
-              {bp === 'mobile' ? (
-                // Mobile: collapse the two add actions into one "+ New" menu to declutter.
-                <div style={{ position: 'relative' }}>
-                  <button style={{ ...s.btn('primary'), fontSize: 13, padding: '7px 14px' }} onClick={() => setAddMenuOpen(o => !o)}>+ New ▾</button>
-                  {addMenuOpen && (
-                    <>
-                      <div onClick={() => setAddMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 30 }} />
-                      <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 31, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, minWidth: 160, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.4)' }}>
-                        <button onClick={() => { setAddMenuOpen(false); onNew(); }}       style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.text, fontSize: 13, padding: '10px 14px', cursor: 'pointer' }}>+ New Event</button>
-                        <button onClick={() => { setAddMenuOpen(false); onNewClient(); }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: C.text, fontSize: 13, padding: '10px 14px', cursor: 'pointer' }}>+ New Client</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <button style={{ ...s.btn(), fontSize: 13, padding: '7px 14px' }} onClick={onNewClient}>+ Client</button>
-                  <button style={{ ...s.btn('primary'), fontSize: 13, padding: '7px 14px' }} onClick={onNew}>+ Event</button>
-                </>
-              )}
-              <ThemeToggle />
-              {onProfile && <button onClick={onProfile} style={{ ...mkSphere(C.accent, 34, 13), border: 'none', cursor: 'pointer' }}>{(profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}</button>}
-            </div>
-          </div>
+          )}
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
             <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(auto-fit, minmax(190px, 1fr))' : 'repeat(2, 1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
@@ -7412,6 +7456,26 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>
       )}
 
+      </div>{/* /main column */}
+
+      {/* Mobile/tablet: slide-in nav drawer */}
+      {!isWide && drawerOpen && (
+        <>
+          <div onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
+          <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em' }}>NGW Event Boss</div>
+              <button onClick={() => setDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 15 }}>✕</button>
+            </div>
+            {navLinks(false)}
+            <div style={{ height: 1, background: C.border, margin: '14px 4px' }} />
+            {navActions(false)}
+            {navFooter(false)}
+          </div>
+        </>
+      )}
+
+    </div>{/* /layout wrapper */}
     </div>
   );
 }
