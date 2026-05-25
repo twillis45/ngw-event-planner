@@ -6996,11 +6996,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           </div>
 
           {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
               <StatCard label="Contracted Value" value={fmtD(totalEventValue)}    sub="total event budgets"  color={C.accent2}                                                                               onClick={() => setDashView('events')} />
               <StatCard label="Vendor Outstanding" value={fmtD(vendorOutstanding)} sub="balance due to vendors" color={vendorOutstanding > 0 ? C.warn : C.muted}                                            onClick={() => setDashView('events')} />
               {isWide ? (
-                <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 240 }}>
+                <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 150 }}>
                   <div style={{ padding: '13px 16px 10px', borderBottom: taskInboxItems.length ? `1px solid ${C.border}` : 'none', flexShrink: 0 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>
                       Task Inbox{taskInboxItems.length ? ` (${taskInboxItems.length}${urgentTasks.length ? ` · ${urgentTasks.length} overdue` : ''})` : ''}
