@@ -270,6 +270,41 @@ function Toast({ msg, variant = 'success', onDone }) {
 // ─── Theme toggle button ───────────────────────────────────────────────────────
 // Self-contained — reads ThemeCtx directly, no props needed.
 // Cycles dark ↔ light; extend THEMES map to add more options.
+// ─── Icon set — lightweight inline stroke SVGs (Lucide-style, currentColor) ─────
+// One component, named glyphs. Replaces emoji across the app's chrome for a
+// consistent, professional look. Inherits color via currentColor.
+function Icon({ name, size = 18, stroke = 2, style }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: stroke, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flexShrink: 0, display: 'block', ...style } };
+  switch (name) {
+    case 'home':        return <svg {...p}><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>;
+    case 'calendar':    return <svg {...p}><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>;
+    case 'list':        return <svg {...p}><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>;
+    case 'users':       return <svg {...p}><path d="M16 19v-1.3a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V19"/><circle cx="9" cy="7" r="3.2"/><path d="M22 19v-1.3a4 4 0 0 0-3-3.86"/><path d="M16 3.14a4 4 0 0 1 0 7.72"/></svg>;
+    case 'dollar':      return <svg {...p}><path d="M12 1.5v21"/><path d="M17 6c0-1.9-2.2-3-5-3S7 4.2 7 6.4s2.2 3 5 3.6 5 1.4 5 3.6-2.2 3.4-5 3.4-5-1.1-5-3"/></svg>;
+    case 'seating':     return <svg {...p}><path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M4 11h16a1 1 0 0 1 1 1v4H3v-4a1 1 0 0 1 1-1Z"/><path d="M6 16v3M18 16v3"/></svg>;
+    case 'store':       return <svg {...p}><path d="M4 4h16l1 5a3 3 0 0 1-5 2.2A3 3 0 0 1 12 11a3 3 0 0 1-4 .2A3 3 0 0 1 3 9l1-5Z"/><path d="M5 11.5V20h14v-8.5"/><path d="M9.5 20v-4.5h5V20"/></svg>;
+    case 'check':       return <svg {...p}><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5-6"/></svg>;
+    case 'clipboard':   return <svg {...p}><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/><path d="M9 11h6M9 15h4"/></svg>;
+    case 'file':        return <svg {...p}><path d="M6 2h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z"/><path d="M14 2v5h5M9 13h6M9 17h6"/></svg>;
+    case 'plus':        return <svg {...p}><path d="M12 5v14M5 12h14"/></svg>;
+    case 'sun':         return <svg {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>;
+    case 'moon':        return <svg {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>;
+    case 'menu':        return <svg {...p}><path d="M3 6h18M3 12h18M3 18h18"/></svg>;
+    case 'chevronLeft': return <svg {...p}><path d="m15 6-6 6 6 6"/></svg>;
+    case 'chevronRight':return <svg {...p}><path d="m9 6 6 6-6 6"/></svg>;
+    case 'arrowLeft':   return <svg {...p}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>;
+    case 'x':           return <svg {...p}><path d="M6 6l12 12M18 6 6 18"/></svg>;
+    case 'eye':         return <svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
+    case 'send':        return <svg {...p}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg>;
+    case 'copy':        return <svg {...p}><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>;
+    case 'download':    return <svg {...p}><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>;
+    case 'search':      return <svg {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>;
+    case 'trash':       return <svg {...p}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M10 11v6M14 11v6"/></svg>;
+    case 'archive':     return <svg {...p}><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg>;
+    default:            return null;
+  }
+}
+
 function ThemeToggle() {
   const { theme, setTheme } = useContext(ThemeCtx);
   const C = useT();
@@ -288,7 +323,7 @@ function ThemeToggle() {
         transition: 'border-color 0.15s, color 0.15s',
       }}
     >
-      {isDark ? '☀️' : '🌙'}
+      <Icon name={isDark ? 'sun' : 'moon'} size={17} />
     </button>
   );
 }
@@ -7108,10 +7143,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   // ── Primary navigation model (shared by desktop sidebar + mobile drawer) ──
   const navItems = [
-    { id: 'dashboard', label: 'Overview',   icon: '🏠' },
-    { id: 'calendar',  label: 'Calendar',   icon: '🗓️' },
-    { id: 'events',    label: 'All Events', icon: '📋' },
-    { id: 'clients',   label: 'Clients',    icon: '👥' },
+    { id: 'dashboard', label: 'Overview',   icon: 'home' },
+    { id: 'calendar',  label: 'Calendar',   icon: 'calendar' },
+    { id: 'events',    label: 'All Events', icon: 'list' },
+    { id: 'clients',   label: 'Clients',    icon: 'users' },
   ];
   const initials = (profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const goView = (id) => { setDashView(id); setDrawerOpen(false); };
@@ -7121,7 +7156,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     return (
       <button key={it.id} onClick={() => goView(it.id)} title={it.label}
         style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11, justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', padding: collapsed ? '11px 0' : '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: active ? 700 : 500, background: active ? C.accent + '22' : 'transparent', color: active ? C.accent : C.text, textAlign: 'left', transition: 'background 0.12s' }}>
-        <span style={{ fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0 }}>{it.icon}</span>
+        <span style={{ width: 22, display: 'flex', justifyContent: 'center', flexShrink: 0 }}><Icon name={it.icon} size={18} /></span>
         {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>}
       </button>
     );
@@ -7129,9 +7164,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const navActions = (collapsed) => (
     <>
       <button onClick={() => { onNew(); setDrawerOpen(false); }} title="New Event"
-        style={{ ...s.btn('primary'), width: '100%', justifyContent: 'center', fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px' }}>{collapsed ? '＋' : '+ New Event'}</button>
+        style={{ ...s.btn('primary'), width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px' }}><Icon name="plus" size={16} />{!collapsed && 'New Event'}</button>
       <button onClick={() => { onNewClient(); setDrawerOpen(false); }} title="New Client"
-        style={{ ...s.btn(), width: '100%', justifyContent: 'center', fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px', marginTop: 8 }}>{collapsed ? '👤' : '+ New Client'}</button>
+        style={{ ...s.btn(), width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, padding: collapsed ? '9px 0' : '9px 12px', marginTop: 8 }}><Icon name="users" size={16} />{!collapsed && 'New Client'}</button>
     </>
   );
   const navFooter = (collapsed) => (
@@ -7151,7 +7186,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: 8, marginBottom: 18, minHeight: 30 }}>
             {!sidebarCollapsed && <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em' }}>NGW Event Boss</div>}
             <button onClick={() => setSidebarCollapsed(c => !c)} title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'} aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
-              style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, fontSize: 13 }}>{sidebarCollapsed ? '»' : '«'}</button>
+              style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={sidebarCollapsed ? 'chevronRight' : 'chevronLeft'} size={15} /></button>
           </div>
           {navLinks(sidebarCollapsed)}
           <div style={{ height: 1, background: C.border, margin: '14px 4px' }} />
@@ -7167,7 +7202,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {!isWide && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: C.bg, zIndex: 25 }}>
           <button onClick={() => setDrawerOpen(true)} title="Menu" aria-label="Menu"
-            style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>☰</button>
+            style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="menu" size={20} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>NGW Event Boss</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
@@ -7465,7 +7500,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em' }}>NGW Event Boss</div>
-              <button onClick={() => setDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 15 }}>✕</button>
+              <button onClick={() => setDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {navLinks(false)}
             <div style={{ height: 1, background: C.border, margin: '14px 4px' }} />
@@ -13274,6 +13309,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
 // ─── Event Planner ────────────────────────────────────────────────────────────
 
 const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show'];
+const TAB_ICONS = { 'Overview': 'home', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file' };
 
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
   const C      = useT();
@@ -13288,6 +13324,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
   const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
+  const [evtDrawerOpen,   setEvtDrawerOpen]  = useState(false); // mobile: slide-in tab drawer
+  const [evtNavCollapsed, setEvtNavCollapsed] = useState(() => { try { return localStorage.getItem('ngw-evt-sidebar') === '1'; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem('ngw-evt-sidebar', evtNavCollapsed ? '1' : '0'); } catch {} }, [evtNavCollapsed]);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientPickVal,   setClientPickVal]  = useState('');
 
@@ -13361,6 +13400,21 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     transition: 'all 0.15s', whiteSpace: 'nowrap',
   });
 
+  // Shared event-nav tab button (icon + label + badge) — used by the desktop
+  // collapsible sidebar and the mobile drawer.
+  const renderEvtNavItem = (t, collapsed) => {
+    const active = tab === t;
+    const badge = tabBadge[t];
+    return (
+      <button key={t} onClick={() => { handleTabChange(t); setEvtDrawerOpen(false); }} title={t}
+        style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 11, justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', padding: collapsed ? '11px 0' : '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: active ? 700 : 500, background: active ? color + '1f' : 'transparent', color: active ? color : C.text, textAlign: 'left', borderLeft: active && !collapsed ? `3px solid ${color}` : '3px solid transparent', transition: 'background 0.12s' }}>
+        <span style={{ width: 22, display: 'flex', justifyContent: 'center', flexShrink: 0, color: active ? color : C.muted }}><Icon name={TAB_ICONS[t] || 'home'} size={18} /></span>
+        {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t}</span>}
+        {!collapsed && badge != null && <span style={{ fontSize: 10, fontWeight: 700, color: t === 'Planning Tasks' && overdueCount > 0 ? C.danger : C.muted, background: C.border + '88', borderRadius: 6, padding: '1px 5px', flexShrink: 0 }}>{badge}</span>}
+      </button>
+    );
+  };
+
   const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
   const bPad = isMobile ? '14px 14px'   : bp === 'tablet' ? '18px 20px'   : '24px 28px';
 
@@ -13426,10 +13480,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           {days !== null && days < -7 && (
             <button
               onClick={() => setEvent(e => ({ ...e, archived: !e.archived }))}
-              style={{ ...s.btn('ghost'), fontSize: 10, padding: '2px 8px' }}
+              style={{ ...s.btn('ghost'), fontSize: 10, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               title={event.archived ? 'Unarchive event' : 'Archive event'}
             >
-              {event.archived ? '↩ Unarchive' : '📦 Archive'}
+              <Icon name="archive" size={12} /> {event.archived ? 'Unarchive' : 'Archive'}
             </button>
           )}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -13443,10 +13497,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             ) : (
               <button
                 onClick={() => setConfirmEvtDel(true)}
-                style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px' }}
+                style={{ ...s.btn('danger'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
                 title="Delete this event"
               >
-                🗑 Delete
+                <Icon name="trash" size={13} /> Delete
               </button>
             )}
             <button
@@ -13461,15 +13515,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               title="Export to Google Sheets (.xlsx)"
               disabled={exporting}
             >
-              {exporting ? '⏳ Exporting…' : '📊 Export'}
+              <Icon name="download" size={13} /> {exporting ? 'Exporting…' : 'Export'}
             </button>
             {client && (
               <button
                 onClick={() => setShowPortal(true)}
-                style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px' }}
+                style={{ ...s.btn('teal'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
                 title="Preview what your client sees"
               >
-                👁 Client View
+                <Icon name="eye" size={13} /> Client View
               </button>
             )}
             <button
@@ -13477,14 +13531,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}
               title="Package and send event details to client"
             >
-              📦 Send to Client
+              <Icon name="send" size={13} /> Send to Client
             </button>
             <button
               onClick={onDuplicate}
-              style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }}
+              style={{ ...s.btn(), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
               title="Duplicate this event"
             >
-              ⎘ Duplicate
+              <Icon name="copy" size={13} /> Duplicate
             </button>
           </div>
         </div>
@@ -13555,32 +13609,32 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           ) : null}
         </div>
 
-        {/* Horizontal tabs — mobile + tablet portrait only */}
+        {/* Mobile + tablet portrait: menu button + current tab (drawer holds the tabs) */}
         {!isSidebarNav && (
-          <div style={s.tabs}>
-            {plannerTabs.map(t => (
-              <button key={t} style={evtTab(tab === t)} onClick={() => handleTabChange(t)}>
-                {t}{tabBadge[t] ? ` (${tabBadge[t]})` : ''}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, marginTop: 4 }}>
+            <button onClick={() => setEvtDrawerOpen(true)} title="Sections"
+              style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, padding: '8px 12px' }}>
+              <Icon name="menu" size={17} /> Menu
+            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 700, color, minWidth: 0 }}>
+              <Icon name={TAB_ICONS[tab] || 'home'} size={16} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab}{tabBadge[tab] != null ? ` (${tabBadge[tab]})` : ''}</span>
+            </span>
           </div>
         )}
       </div>
 
       {isSidebarNav ? (
-        /* ── Sidebar layout for tablet-land + desktop ── */
+        /* ── Collapsible sidebar layout for tablet-land + desktop ── */
         <div style={{ display: 'flex', minHeight: 'calc(100vh - 120px)' }}>
           {/* Sidebar nav */}
-          <div style={{ width: bp === 'desktop' ? 200 : 180, flexShrink: 0, borderRight: `1px solid ${C.border}`, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {plannerTabs.map(t => (
-              <button key={t} style={evtSideTab(tab === t)} onClick={() => handleTabChange(t)}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                  <span>{t}</span>
-                  {tabBadge[t] && <span style={{ fontSize: 10, fontWeight: 600, color: t === 'Planning Tasks' && overdueCount > 0 ? C.danger : C.muted, background: C.border + '88', borderRadius: 6, padding: '1px 5px', marginLeft: 4, flexShrink: 0 }}>{tabBadge[t]}</span>}
-                </div>
-              </button>
-            ))}
-            {bp === 'desktop' && (
+          <div style={{ width: evtNavCollapsed ? 64 : (bp === 'desktop' ? 208 : 184), flexShrink: 0, borderRight: `1px solid ${C.border}`, padding: '14px 10px', display: 'flex', flexDirection: 'column', gap: 2, transition: 'width 0.16s ease' }}>
+            <div style={{ display: 'flex', justifyContent: evtNavCollapsed ? 'center' : 'flex-end', marginBottom: 6 }}>
+              <button onClick={() => setEvtNavCollapsed(c => !c)} title={evtNavCollapsed ? 'Expand menu' : 'Collapse menu'} aria-label={evtNavCollapsed ? 'Expand menu' : 'Collapse menu'}
+                style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={evtNavCollapsed ? 'chevronRight' : 'chevronLeft'} size={15} /></button>
+            </div>
+            {plannerTabs.map(t => renderEvtNavItem(t, evtNavCollapsed))}
+            {bp === 'desktop' && !evtNavCollapsed && (
               <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.border}`, marginLeft: 2, marginRight: 2 }}>
                 {days !== null && (
                   <div style={{ fontSize: 11, color: days <= 30 ? C.danger : days <= 90 ? C.warn : C.muted, fontWeight: 600, marginBottom: 4 }}>
@@ -13608,6 +13662,20 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         <div style={{ padding: bPad }}>
           {tabContent}
         </div>
+      )}
+
+      {/* Mobile/tablet: slide-in section drawer */}
+      {!isSidebarNav && evtDrawerOpen && (
+        <>
+          <div onClick={() => setEvtDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
+          <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
+              <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Event'}</div>
+              <button onClick={() => setEvtDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
+            </div>
+            {plannerTabs.map(t => renderEvtNavItem(t, false))}
+          </div>
+        </>
       )}
     </div>
   );
