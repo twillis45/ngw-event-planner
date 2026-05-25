@@ -8203,6 +8203,8 @@ function Overview({ budget, guests, vendors, timeline, catererCount, onCatererUp
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const isMobile = bp === 'mobile';
   const [priorityOpen, setPriorityOpen] = useState(!isMobile); // mobile: collapsed by default
+  const [tasksOpen, setTasksOpen] = useState(!isMobile);
+  const [mealsOpen, setMealsOpen] = useState(!isMobile);
   const totalBudgeted   = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual     = budget.reduce((s, r) => s + r.actual, 0);
   const vendorTotal     = vendors.reduce((s, v) => s + vendorCommittedCost(v), 0);
@@ -8437,8 +8439,11 @@ Write the summary now:`;
 
   const mealCountsCard = (
     <div style={{ ...s.card, marginBottom: 0 }}>
-      <div style={s.cardTitle}>Meal Counts — {confirmed.length} attending{totalKids > 0 ? ` + ${totalKids} kids` : ''}</div>
-      {Object.entries(mealCounts).map(([meal, count]) => (
+      <button onClick={() => setMealsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: isMobile ? 'pointer' : 'default', marginBottom: mealsOpen ? 14 : 0 }}>
+        <div style={{ ...s.cardTitle, margin: 0, flex: 1, textAlign: 'left' }}>Meal Counts — {confirmed.length} attending{totalKids > 0 ? ` + ${totalKids} kids` : ''}</div>
+        {isMobile && <span style={{ color: C.muted, display: 'flex', transform: mealsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
+      </button>
+      {(!isMobile || mealsOpen) && Object.entries(mealCounts).map(([meal, count]) => (
         <div key={meal} onClick={onTabChange ? () => onTabChange('Guests') : undefined}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '4px 6px', borderRadius: 6, cursor: onTabChange ? 'pointer' : 'default' }}
           onMouseEnter={onTabChange ? (e => { e.currentTarget.style.background = C.surface2; }) : undefined}
@@ -8450,26 +8455,29 @@ Write the summary now:`;
           </div>
         </div>
       ))}
-      {totalKids > 0 && (
+      {(!isMobile || mealsOpen) && totalKids > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
           <span style={{ fontSize: 13, color: C.muted }}>Kids meals</span>
           <span style={{ fontSize: 12, color: C.muted }}>{totalKids}</span>
         </div>
       )}
-      {Object.keys(mealCounts).length === 0 && <div style={{ fontSize: 12, color: C.muted }}>No confirmed guests yet</div>}
+      {(!isMobile || mealsOpen) && Object.keys(mealCounts).length === 0 && <div style={{ fontSize: 12, color: C.muted }}>No confirmed guests yet</div>}
     </div>
   );
 
   const tasksCard = (
     <div style={s.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Upcoming Tasks</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tasksOpen ? 14 : 0 }}>
+        <button onClick={() => setTasksOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, background: 'none', border: 'none', padding: 0, cursor: isMobile ? 'pointer' : 'default' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Upcoming Tasks</span>
+          {isMobile && <span style={{ color: C.muted, display: 'flex', transform: tasksOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
+        </button>
         <div style={{ display: 'flex', gap: 6 }}>
           {setTimeline && <button style={{ ...s.btn('primary'), fontSize: 10, padding: '3px 8px' }} onClick={addQuickTask}>+ Task</button>}
           {onTabChange  && <button style={{ ...s.btn('ghost'),  fontSize: 11, padding: '3px 8px', color: C.accent }} onClick={() => onTabChange('Planning Tasks')}>All →</button>}
         </div>
       </div>
-      {timeline.filter(t => !t.done).slice(0, isWide ? 8 : 5).map(t => (
+      {(!isMobile || tasksOpen) && timeline.filter(t => !t.done).slice(0, isWide ? 8 : 5).map(t => (
         <div key={t.id}
           onClick={onTabChange ? () => onTabChange('Planning Tasks', t.id) : undefined}
           style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, cursor: onTabChange ? 'pointer' : 'default', padding: '4px 0', borderRadius: 6 }}
@@ -8483,7 +8491,7 @@ Write the summary now:`;
           </div>
         </div>
       ))}
-      {timeline.filter(t => !t.done).length === 0 && <div style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>All tasks complete!</div>}
+      {(!isMobile || tasksOpen) && timeline.filter(t => !t.done).length === 0 && <div style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>All tasks complete!</div>}
     </div>
   );
 
