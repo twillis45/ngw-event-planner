@@ -333,8 +333,10 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'check2':      return <svg {...p}><path d="M5 12l4.5 4.5L19 7"/></svg>;
     case 'history':     return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>;
     case 'import':      return <svg {...p}><path d="M12 3v12M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>;
-    case 'edit':        return <svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>;
-    default:            return null;
+    case 'edit':          return <svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>;
+    case 'alertTriangle': return <svg {...p}><path d="M10.3 4.6 3 18h18L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 10v4"/><path d="M12 18h.01"/></svg>;
+    case 'zap':           return <svg {...p}><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>;
+    default:              return null;
   }
 }
 
@@ -387,6 +389,7 @@ const getToday  = () => { const d = new Date(); d.setHours(0,0,0,0); return d; }
 const daysUntil = (d) => d ? Math.ceil((new Date(d + 'T00:00:00') - getToday()) / 86400000) : null;
 const parseMin  = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 const fmtDur    = (m) => { if (!m || m <= 0) return ''; const h = Math.floor(m / 60); const r = m % 60; return h > 0 ? (r > 0 ? `${h}h ${r}m` : `${h}h`) : `${r}m`; };
+const fmtTime12 = (t) => { if (!t) return '—'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
 const fmtDate   = (d) => { if (!d) return '—'; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 const fmtMon    = (ym) => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
 const today8601 = () => new Date().toISOString().slice(0, 10);
@@ -14121,6 +14124,259 @@ function EventCommunication({ event, setEvent, client, profile }) {
   );
 }
 
+// ─── Event Day Mode — helpers + components ───────────────────────────────────
+
+const getTaskTargetDateStr = (task, eventDate) => {
+  if (!eventDate || !task.week || !(task.week in PHASE_OFFSET)) return null;
+  const d = new Date(eventDate + 'T00:00:00');
+  d.setDate(d.getDate() + PHASE_OFFSET[task.week]);
+  return d.toISOString().slice(0, 10);
+};
+
+const bucketTasks = (tasks, eventDate) => {
+  const td = today8601();
+  const inSeven = (() => { const d = new Date(td + 'T00:00:00'); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); })();
+  const now = [], next = [], later = [];
+  tasks.filter(t => !t.done).forEach(t => {
+    const over   = isTaskOverdue(t, eventDate);
+    const target = getTaskTargetDateStr(t, eventDate);
+    if (over || target === td)              now.push(t);
+    else if (target && target <= inSeven)   next.push(t);
+    else                                    later.push(t);
+  });
+  return { now, next, later };
+};
+
+const computeDayAlerts = (event) => {
+  const td = today8601();
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const alerts = [];
+
+  if (event.date === td) {
+    (event.vendors || [])
+      .filter(v => v.arrivalTime && ['Confirmed','Contracted','Deposit Paid'].includes(v.status)
+                && v.arrivalStatus !== 'arrived' && v.arrivalStatus !== 'completed')
+      .forEach(v => {
+        const vm = parseMin(v.arrivalTime);
+        if (vm !== null && vm < nowMin - 10)
+          alerts.push({ id: `ov-${v.id}`, sev: 'critical', text: `${v.name} arrival overdue (${fmtTime12(v.arrivalTime)})`, navTo: 'Arrivals' });
+      });
+  }
+
+  const pending = (event.commClient || []).filter(m => m.message_type === 'approval_request' && (!m.approval_status || m.approval_status === 'pending'));
+  if (pending.length)
+    alerts.push({ id: 'approvals', sev: 'warning', text: `${pending.length} approval${pending.length > 1 ? 's' : ''} pending client response`, navTo: 'Communication' });
+
+  (event.vendors || []).filter(v => v.payDueDate === td && !v.balancePaid && v.name).forEach(v =>
+    alerts.push({ id: `pay-${v.id}`, sev: 'warning', text: `Payment due today: ${v.name}`, navTo: 'Vendors' })
+  );
+
+  const overdueCount = (event.timeline || []).filter(t => !t.done && isTaskOverdue(t, event.date)).length;
+  if (overdueCount)
+    alerts.push({ id: 'overdue-tasks', sev: 'warning', text: `${overdueCount} overdue planning task${overdueCount > 1 ? 's' : ''}`, navTo: 'Planning Tasks' });
+
+  return alerts;
+};
+
+// ─── EventDayBar ─────────────────────────────────────────────────────────────
+function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
+  const C = useT();
+  const isMobile = bp === 'mobile';
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+
+  const days    = daysUntil(event.date);
+  const nowMin  = now.getHours() * 60 + now.getMinutes();
+  const nextSeg = (event.ros || [])
+    .filter(r => r.time && r.segment)
+    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    .find(r => { const m = parseMin(r.time); return m !== null && m >= nowMin; });
+
+  const timeStr   = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  const isEvtDay  = days === 0;
+  const visible   = alerts.filter(a => !dismissed.has(a.id));
+
+  return (
+    <div>
+      {/* Clock / context strip */}
+      <div style={{ background: C.surface2, borderBottom: `1px solid ${C.border}`, padding: isMobile ? '9px 14px' : '10px 28px', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 18, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 14 : 16, fontWeight: 700, color: C.text, letterSpacing: '0.04em', flexShrink: 0 }}>{timeStr}</span>
+        {isEvtDay && <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44` }}>Event Day</span>}
+        {days !== null && !isEvtDay && <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{days > 0 ? `${days}d to event` : `${Math.abs(days)}d post`}</span>}
+        {nextSeg && !isMobile && (
+          <span style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            Next: <span style={{ color: C.text, fontWeight: 600 }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
+          </span>
+        )}
+        {visible.length > 0 ? (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, border: `1px solid ${C.danger}44`, background: C.danger + '10', color: C.danger, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+            <Icon name="alertTriangle" size={12} /> {visible.length} alert{visible.length > 1 ? 's' : ''}
+          </span>
+        ) : (
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: C.success, fontWeight: 700, flexShrink: 0 }}>● All clear</span>
+        )}
+      </div>
+      {/* Next segment — mobile second row */}
+      {nextSeg && isMobile && (
+        <div style={{ background: C.surface2, borderBottom: `1px solid ${C.border}`, padding: '5px 14px', fontSize: 11, color: C.muted }}>
+          Next: <span style={{ color: C.text, fontWeight: 600 }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
+        </div>
+      )}
+      {/* Alert rows */}
+      {visible.map(a => (
+        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px' : '8px 28px', background: a.sev === 'critical' ? C.danger + '0e' : C.warn + '0d', borderBottom: `1px solid ${a.sev === 'critical' ? C.danger : C.warn}30` }}>
+          <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.warn, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
+          <span style={{ flex: 1, fontSize: 12, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
+          {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
+          <button onClick={() => onDismiss(a.id)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon name="x" size={13} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── VendorArrivalView ────────────────────────────────────────────────────────
+const ARRIVAL_STATUS_CFG = {
+  pending:   'Pending',
+  arrived:   'Arrived',
+  delayed:   'Delayed',
+  completed: 'Done',
+};
+
+function VendorArrivalView({ vendors, setVendors, event }) {
+  const C = useT();
+  const s = makeS(C);
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+
+  const arrivals = (vendors || [])
+    .filter(v => v.arrivalTime && ['Confirmed','Contracted','Deposit Paid'].includes(v.status))
+    .sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
+
+  const setStatus = (id, status) => setVendors(vs => vs.map(v => v.id === id ? { ...v, arrivalStatus: status } : v));
+
+  if (arrivals.length === 0) {
+    return (
+      <div style={{ ...s.card, textAlign: 'center', padding: '40px 20px' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendor arrivals set</div>
+        <div style={{ fontSize: 12, color: C.muted }}>Add arrival times to confirmed vendors in the Vendors tab to track them here.</div>
+      </div>
+    );
+  }
+
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const isEvtDay = event.date === today8601();
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <StatCard label="Total"    value={arrivals.length} />
+        <StatCard label="Arrived"  value={arrivals.filter(v => v.arrivalStatus === 'arrived').length}   color={C.success} />
+        <StatCard label="Pending"  value={arrivals.filter(v => !v.arrivalStatus || v.arrivalStatus === 'pending').length} color={C.warn} />
+        <StatCard label="Delayed"  value={arrivals.filter(v => v.arrivalStatus === 'delayed').length}   color={C.danger} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {arrivals.map(v => {
+          const st     = v.arrivalStatus || 'pending';
+          const vm     = parseMin(v.arrivalTime);
+          const late   = isEvtDay && vm !== null && vm < nowMin - 10 && st !== 'arrived' && st !== 'completed';
+          const stColor = st === 'arrived' ? C.success : st === 'delayed' || late ? C.danger : st === 'completed' ? C.muted : C.warn;
+          return (
+            <div key={v.id} style={{ ...s.card, padding: '14px 16px', borderLeft: `3px solid ${stColor}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 18 : 20, fontWeight: 800, color: late ? C.danger : C.text, minWidth: 70, flexShrink: 0 }}>{fmtTime12(v.arrivalTime)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{v.category}</div>
+                  {late && <div style={{ fontSize: 10, fontWeight: 700, color: C.danger, marginTop: 2 }}>OVERDUE</div>}
+                </div>
+                <span style={{ ...s.pill(stColor), fontWeight: 700, flexShrink: 0, fontSize: 10 }}>{ARRIVAL_STATUS_CFG[st] || st}</span>
+              </div>
+              {/* Status tap buttons — 48px min height, thumb-friendly */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {Object.entries(ARRIVAL_STATUS_CFG).map(([key, label]) => {
+                  const kColor = key === 'arrived' ? C.success : key === 'delayed' ? C.danger : key === 'completed' ? C.muted : C.warn;
+                  return (
+                    <button key={key} onClick={() => setStatus(v.id, key)}
+                      style={{ flex: 1, minHeight: 44, padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${st === key ? kColor : C.border}`, background: st === key ? kColor + '18' : 'transparent', color: st === key ? kColor : C.muted, fontSize: 11, fontWeight: st === key ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s' }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {(v.phone || v.notes) && (
+                <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center', flexWrap: 'wrap', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                  {v.phone && <a href={`tel:${v.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 600 }}><Icon name="phone" size={13} /> {v.phone}</a>}
+                  {v.notes && <span style={{ fontSize: 11, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.notes}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── DayTaskView ──────────────────────────────────────────────────────────────
+function DayTaskView({ timeline, eventDate, setTimeline }) {
+  const C  = useT();
+  const s  = makeS(C);
+  const bp = useContext(BpCtx);
+  const [modalId, setModalId] = useState(null);
+  const modalTask = timeline.find(t => t.id === modalId);
+
+  const toggle   = (id) => setTimeline(t => t.map(r => r.id === id ? { ...r, done: !r.done } : r));
+  const upd      = (id, key, val) => setTimeline(t => t.map(r => r.id === id ? { ...r, [key]: val } : r));
+  const del      = (id) => { setTimeline(t => t.filter(r => r.id !== id)); setModalId(null); };
+  const isOverdue = (task) => isTaskOverdue(task, eventDate);
+
+  const { now, next, later } = bucketTasks(timeline, eventDate);
+  const doneCount = timeline.filter(t => t.done).length;
+
+  const TaskSection = ({ title, tasks, color }) => {
+    if (tasks.length === 0) return null;
+    return (
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+          <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color }}>{title}</span>
+          <span style={{ fontSize: 10, color: C.muted }}>({tasks.length})</span>
+        </div>
+        <div style={s.card}>
+          {tasks.map(t => <TaskRow key={t.id} t={t} C={C} s={s} bp={bp} isOverdue={isOverdue} toggle={toggle} setModalId={setModalId} />)}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+        <StatCard label="Now"   value={now.length}   color={now.length   > 0 ? C.danger  : C.muted} />
+        <StatCard label="Next"  value={next.length}  color={next.length  > 0 ? C.warn    : C.muted} />
+        <StatCard label="Later" value={later.length} color={later.length > 0 ? C.muted   : C.muted} />
+        <StatCard label="Done"  value={doneCount}    color={doneCount    > 0 ? C.success : C.muted} />
+      </div>
+      {now.length === 0 && next.length === 0 && later.length === 0 && (
+        <div style={{ ...s.card, textAlign: 'center', padding: '32px 20px' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.success, marginBottom: 6 }}>All clear</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{doneCount > 0 ? `${doneCount} task${doneCount !== 1 ? 's' : ''} complete.` : 'No outstanding tasks.'}</div>
+        </div>
+      )}
+      <TaskSection title="Now — Act Immediately" tasks={now}   color={C.danger} />
+      <TaskSection title="Next — Within 7 Days"  tasks={next}  color={C.warn}   />
+      <TaskSection title="Later"                 tasks={later} color={C.muted}  />
+      {modalTask && (
+        <TaskModal task={modalTask} eventDate={eventDate} onClose={() => setModalId(null)}
+          onChange={(key, val) => upd(modalTask.id, key, val)} onDelete={() => del(modalTask.id)} />
+      )}
+    </div>
+  );
+}
+
 // ─── Event Planner ────────────────────────────────────────────────────────────
 
 const PLANNER_TABS = ['Overview', 'Budget', 'Guests', 'Seating', 'Vendors', 'Planning Tasks', 'Calendar', 'Run of Show', 'Communication'];
@@ -14142,6 +14398,12 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [evtDrawerOpen,      setEvtDrawerOpen]      = useState(false);
   const [evtActionsOpen,     setEvtActionsOpen]     = useState(false);
   const [desktopEvtOverflow, setDesktopEvtOverflow] = useState(false);
+  const [alertsDismissed,    setAlertsDismissed]    = useState(() => new Set());
+
+  const dayMode    = !!event.dayMode;
+  const setDayMode = (val) => setEvent(e => ({ ...e, dayMode: !!val }));
+  const dayAlerts  = useMemo(() => computeDayAlerts(event), [event]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dismissAlert = (id) => setAlertsDismissed(s => new Set([...s, id]));
   const [evtNavCollapsed, setEvtNavCollapsed] = useState(() => { try { return localStorage.getItem('ngw-evt-sidebar') === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem('ngw-evt-sidebar', evtNavCollapsed ? '1' : '0'); } catch {} }, [evtNavCollapsed]);
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -14241,12 +14503,17 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   };
   const canArchive = days !== null && days < -7;
   const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: 'transparent', color: C.text, textAlign: 'left' };
-  // Mobile bottom-nav: the top operational sections that exist for this event.
-  const bottomNavItems = [
+  // Mobile bottom-nav: normal vs. Day Mode
+  const bottomNavItems = dayMode ? [
+    { id: 'Now',           icon: 'zap',       label: 'Now'      },
+    { id: 'Arrivals',      icon: 'store',     label: 'Arrivals' },
+    { id: 'Run of Show',   icon: 'clipboard', label: 'Schedule' },
+    { id: 'Communication', icon: 'message',   label: 'Comms'    },
+  ] : [
     { id: 'Overview',       icon: 'home',  label: 'Overview' },
-    { id: 'Planning Tasks', icon: 'check', label: 'Tasks' },
-    { id: 'Vendors',        icon: 'store', label: 'Vendors' },
-    { id: 'Guests',         icon: 'users', label: 'Guests' },
+    { id: 'Planning Tasks', icon: 'check', label: 'Tasks'    },
+    { id: 'Vendors',        icon: 'store', label: 'Vendors'  },
+    { id: 'Guests',         icon: 'users', label: 'Guests'   },
   ].filter(it => plannerTabs.includes(it.id));
   const bottomMoreActive = !bottomNavItems.some(it => it.id === tab);
 
@@ -14289,6 +14556,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         eventDate={event.date}
       />}
       {tab === 'Communication' && <EventCommunication event={event} setEvent={setEvent} client={client} profile={profile} />}
+      {tab === 'Now'      && dayMode && <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} />}
+      {tab === 'Arrivals' && dayMode && <VendorArrivalView vendors={event.vendors || []} setVendors={wrap('vendors')} event={event} />}
     </ErrorBoundary>
   );
 
@@ -14312,6 +14581,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           {days !== null && event.date && (
             <span style={s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : color)}>
               {days > 0 ? `${days}d away` : days === 0 ? 'Today!' : `${Math.abs(days)}d ago`}
+            </span>
+          )}
+          {dayMode && (
+            <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon name="zap" size={11} /> Day Mode
             </span>
           )}
           {isSidebarNav && canArchive && (
@@ -14359,6 +14633,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                       background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.20)', padding: '4px 0', minWidth: 186,
                     }}>
+                      <button onClick={() => { setDayMode(!dayMode); setDesktopEvtOverflow(false); if (!dayMode) handleTabChange('Now'); }} style={{ ...row, color: dayMode ? C.accent : C.text }}>
+                        <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: dayMode ? C.accent : C.muted }}><Icon name="zap" size={15} /></span>
+                        {dayMode ? 'Exit Day Mode' : 'Event Day Mode'}
+                      </button>
+                      <div style={{ margin: '4px 0', borderTop: `1px solid ${C.border}` }} />
                       <button onClick={() => { doExport(); setDesktopEvtOverflow(false); }} style={{ ...row, opacity: exporting ? 0.6 : 1 }} disabled={exporting}>
                         <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="download" size={15} /></span>
                         {exporting ? 'Exporting…' : 'Export XLSX'}
@@ -14472,6 +14751,18 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
       </div>
 
+      {/* Event Day Bar — live execution strip */}
+      {dayMode && (
+        <EventDayBar
+          event={event}
+          alerts={dayAlerts}
+          dismissed={alertsDismissed}
+          onDismiss={dismissAlert}
+          onNavTo={(tabId) => handleTabChange(tabId)}
+          bp={bp}
+        />
+      )}
+
       {isSidebarNav ? (
         /* ── Collapsible sidebar layout for tablet-land + desktop ── */
         <div style={{ display: 'flex', minHeight: 'calc(100vh - 120px)' }}>
@@ -14534,14 +14825,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Actions</div>
             {[
+              { icon: 'zap',      label: dayMode ? 'Exit Day Mode' : 'Event Day Mode', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
               { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
               client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
               { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
               { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
               canArchive && { icon: 'archive', label: event.archived ? 'Unarchive' : 'Archive', onClick: () => { setEvent(e => ({ ...e, archived: !e.archived })); setEvtActionsOpen(false); } },
             ].filter(Boolean).map(a => (
-              <button key={a.label} onClick={a.onClick} style={drawerActRow}>
-                <span style={{ width: 22, display: 'flex', justifyContent: 'center', color: C.muted, flexShrink: 0 }}><Icon name={a.icon} size={18} /></span>
+              <button key={a.label} onClick={a.onClick} style={{ ...drawerActRow, ...(a.style || {}) }}>
+                <span style={{ width: 22, display: 'flex', justifyContent: 'center', color: (a.style?.color || C.muted), flexShrink: 0 }}><Icon name={a.icon} size={18} /></span>
                 <span>{a.label}</span>
               </button>
             ))}
@@ -14617,11 +14909,21 @@ function LoginScreen() {
     if (!addr || status === 'sending') return;
     setStatus('sending'); setErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirect() } });
+      // Invite-only: never auto-create accounts. Unknown emails are rejected so a
+      // sign-in link only ever goes to a planner an admin has already added.
+      const { error } = await supabase.auth.signInWithOtp({
+        email: addr,
+        options: { emailRedirectTo: redirect(), shouldCreateUser: false },
+      });
       if (error) throw error;
       setStatus('sent');
     } catch (e2) {
-      setStatus('error'); setErr(e2?.message || 'Could not send the sign-in link.');
+      const msg = (e2?.message || '').toLowerCase();
+      const notAllowed = msg.includes('signups not allowed') || msg.includes('not found') || msg.includes('not allowed') || e2?.status === 422;
+      setStatus('error');
+      setErr(notAllowed
+        ? "That email isn't on the access list. Ask your admin to add you in Supabase."
+        : (e2?.message || 'Could not send the sign-in link.'));
     }
   };
 
@@ -14650,7 +14952,7 @@ function LoginScreen() {
         ) : (
           <>
             <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>Planner sign-in</div>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.55 }}>Enter your email and we'll send you a one-time sign-in link — no password needed.</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 18, lineHeight: 1.55 }}>Enter the email your admin added — we'll send a one-time sign-in link. No password needed.</div>
             {googleEnabled && (
               <>
                 <button type="button" onClick={google}
