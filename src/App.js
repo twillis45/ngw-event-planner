@@ -9242,14 +9242,16 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
   const mealOpts = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 
+  const C = useT();
+  // Guest-facing RSVP now matches the app theme (tokens + accent).
   const LC = {
-    bg: '#f4f4f8', surface: '#ffffff', border: '#e0e0ea',
-    accent: '#1a6fba', text: '#18181c', muted: '#6b6b80',
-    success: '#16a34a', danger: '#dc2626',
+    bg: C.bg, surface: C.surface, border: C.border,
+    accent: C.accent, text: C.text, muted: C.muted,
+    success: C.success, danger: C.danger,
   };
 
   const lInput = {
-    background: '#fff', border: `1.5px solid ${LC.border}`, borderRadius: 10,
+    background: LC.bg, border: `1.5px solid ${LC.border}`, borderRadius: 10,
     color: LC.text, fontSize: 16, padding: '12px 14px', outline: 'none',
     width: '100%', boxSizing: 'border-box', fontFamily: "'Inter', system-ui, sans-serif",
   };
@@ -9282,7 +9284,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
           </div>
 
           {submitted ? (
-            <div style={{ background: LC.surface, borderRadius: 20, padding: '40px 28px', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+            <div style={{ background: LC.surface, borderRadius: 20, padding: '40px 28px', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ fontSize: 52, marginBottom: 16 }}>{rsvp === 'Yes' ? '🎉' : '💌'}</div>
               <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {name.split(' ')[0]}!</h2>
               <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 28px', lineHeight: 1.6 }}>
@@ -9295,7 +9297,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
               )}
             </div>
           ) : (
-            <div style={{ background: LC.surface, borderRadius: 20, padding: '28px 24px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+            <div style={{ background: LC.surface, borderRadius: 20, padding: '28px 24px', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ marginBottom: 22 }}>
                 <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Your name</label>
                 <input style={lInput} value={name} onChange={e => setName(e.target.value)} placeholder="First & last name" autoFocus />
@@ -9308,7 +9310,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                     <button key={val} onClick={() => setRsvp(val)} style={{
                       flex: 1, padding: '14px 6px', borderRadius: 12,
                       border: `2px solid ${rsvp === val ? clr : LC.border}`,
-                      background: rsvp === val ? clr + '22' : '#fff',
+                      background: rsvp === val ? clr + '22' : LC.bg,
                       color: rsvp === val ? clr : LC.muted,
                       cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', lineHeight: 1.4,
                     }}>{label}</button>
@@ -9324,7 +9326,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                       {mealOpts.map(m => (
                         <button key={m} onClick={() => setMeal(m)} style={{
                           padding: '9px 16px', borderRadius: 10, border: `2px solid ${meal === m ? LC.accent : LC.border}`,
-                          background: meal === m ? LC.accent + '15' : '#fff', color: meal === m ? LC.accent : LC.text,
+                          background: meal === m ? LC.accent + '15' : LC.bg, color: meal === m ? LC.accent : LC.text,
                           cursor: 'pointer', fontSize: 14, fontWeight: meal === m ? 700 : 400, transition: 'all 0.12s',
                         }}>{m}</button>
                       ))}
@@ -9350,7 +9352,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                                 <button key={opt} onClick={() => togglePreset(opt)} style={{
                                   padding: '8px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
                                   border: `2px solid ${active ? LC.accent : LC.border}`,
-                                  background: active ? LC.accent + '15' : '#fff',
+                                  background: active ? LC.accent + '15' : LC.bg,
                                   color: active ? LC.accent : LC.text, fontWeight: active ? 700 : 400,
                                 }}>{opt}</button>
                               );
@@ -9358,7 +9360,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             <button onClick={() => setShowNeedsCustom(v => !v)} style={{
                               padding: '8px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
                               border: `2px solid ${showNeedsCustom ? LC.accent : LC.border}`,
-                              background: showNeedsCustom ? LC.accent + '15' : '#fff',
+                              background: showNeedsCustom ? LC.accent + '15' : LC.bg,
                               color: showNeedsCustom ? LC.accent : LC.text, fontWeight: showNeedsCustom ? 700 : 400,
                             }}>Other</button>
                           </div>
@@ -9379,7 +9381,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                     <label onClick={() => setHasPlusOne(!hasPlusOne)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
                       <div style={{
                         width: 24, height: 24, borderRadius: 7, border: `2px solid ${hasPlusOne ? LC.accent : LC.border}`,
-                        background: hasPlusOne ? LC.accent : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: hasPlusOne ? LC.accent : LC.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#fff', fontSize: 14, flexShrink: 0, transition: 'all 0.12s',
                       }}>{hasPlusOne ? '✓' : ''}</div>
                       <span style={{ fontSize: 15, fontWeight: 600, color: LC.text }}>I'm bringing a plus-one</span>
@@ -9393,7 +9395,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             {mealOpts.map(m => (
                               <button key={m} onClick={() => setPlusOneMeal(m)} style={{
                                 padding: '7px 14px', borderRadius: 10, border: `2px solid ${plusOneMeal === m ? LC.accent : LC.border}`,
-                                background: plusOneMeal === m ? LC.accent + '15' : '#fff', color: plusOneMeal === m ? LC.accent : LC.text,
+                                background: plusOneMeal === m ? LC.accent + '15' : LC.bg, color: plusOneMeal === m ? LC.accent : LC.text,
                                 cursor: 'pointer', fontSize: 13, fontWeight: plusOneMeal === m ? 700 : 400, transition: 'all 0.12s',
                               }}>{m}</button>
                             ))}
@@ -9406,9 +9408,9 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                   <div style={{ marginBottom: 22 }}>
                     <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Children in your party</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <button onClick={() => setKids(Math.max(0, kids - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: '#fff', color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>−</button>
+                      <button onClick={() => setKids(Math.max(0, kids - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>−</button>
                       <span style={{ fontSize: 24, fontWeight: 800, color: LC.text, minWidth: 28, textAlign: 'center' }}>{kids}</span>
-                      <button onClick={() => setKids(kids + 1)} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: '#fff', color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+</button>
+                      <button onClick={() => setKids(kids + 1)} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+</button>
                     </div>
                   </div>
                 </>
@@ -9438,7 +9440,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
           )}
 
           {!submitted && (
-            <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#9999aa' }}>
+            <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: LC.muted }}>
               Powered by <strong style={{ color: LC.accent }}>ngw</strong>
             </div>
           )}
