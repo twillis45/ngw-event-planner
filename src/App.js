@@ -309,6 +309,7 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'chevronRight':return <svg {...p}><path d="m9 6 6 6-6 6"/></svg>;
     case 'chevronDown': return <svg {...p}><path d="m6 9 6 6 6-6"/></svg>;
     case 'ellipsis':    return <svg {...p}><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>;
+    case 'lock':        return <svg {...p}><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>;
     case 'arrowLeft':   return <svg {...p}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>;
     case 'x':           return <svg {...p}><path d="M6 6l12 12M18 6 6 18"/></svg>;
     case 'eye':         return <svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
@@ -7927,35 +7928,33 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     );
 
     return (
-      <div style={s.card}>
-        {/* ── Channel tabs ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, rowGap: 8, marginBottom: 14, borderBottom: `1px solid ${C.border}`, paddingBottom: 10, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>Channel</div>
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {[['client', '💬 Client', clientUnread || null, 'unread'], ['internal', '🔒 Internal', internalCount || null, 'count']].map(([key, label, badge, kind]) => {
-              const active = commTab === key;
-              return (
-                <button key={key} onClick={() => { setCommTab(key); setLogSearch(''); }}
-                  title={badge && kind === 'unread' ? `${badge} message${badge === 1 ? '' : 's'} not yet confirmed read` : undefined}
-                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: active ? 700 : 500, border: `1.5px solid ${active ? (key === 'internal' ? C.warn : C.accent) : C.border}`, background: active ? (key === 'internal' ? C.warn + '14' : C.accent + '14') : 'transparent', color: active ? (key === 'internal' ? C.warn : C.accent) : C.muted, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.12s' }}>
-                  {label}
-                  {badge && <span style={{ background: kind === 'unread' ? C.accent : (key === 'internal' ? C.warn : C.accent), color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
-                </button>
-              );
-            })}
-          </div>
-          {activeLog.length > 2 && (
-            <div style={{ position: 'relative', flex: '1 1 130px', minWidth: 130 }}>
-              <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: C.muted, pointerEvents: 'none' }}>🔍</span>
-              <input style={{ ...s.input, padding: '4px 8px 4px 24px', fontSize: 11, width: '100%' }} placeholder="Search…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
-            </div>
-          )}
+      <div style={{ ...s.card, ...(isClient ? {} : { borderColor: C.warn + '66', boxShadow: `inset 0 0 0 1px ${C.warn}22` }) }}>
+        {/* ── Channel segmented control ── */}
+        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.border}`, marginBottom: 12 }}>
+          {[['client', 'message', 'Client', clientUnread || null, C.accent, 'unread'], ['internal', 'lock', 'Internal', internalCount || null, C.warn, 'count']].map(([key, icon, label, badge, clr, kind]) => {
+            const active = commTab === key;
+            return (
+              <button key={key} onClick={() => { setCommTab(key); setLogSearch(''); }}
+                title={badge && kind === 'unread' ? `${badge} message${badge === 1 ? '' : 's'} not yet confirmed read` : undefined}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 700 : 500, background: active ? clr + '1a' : 'transparent', color: active ? clr : C.muted, borderBottom: active ? `2px solid ${clr}` : '2px solid transparent', transition: 'all 0.12s' }}>
+                <Icon name={icon} size={15} /> {label}
+                {badge && <span style={{ background: clr, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
+              </button>
+            );
+          })}
         </div>
+        {activeLog.length > 2 && (
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: C.muted, pointerEvents: 'none' }}><Icon name="search" size={13} /></span>
+            <input style={{ ...s.input, padding: '6px 10px 6px 30px', fontSize: 12, width: '100%' }} placeholder="Search messages…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
+          </div>
+        )}
 
         {/* ── Internal channel notice ── */}
         {!isClient && (
-          <div style={{ padding: '8px 12px', background: C.warn + '10', border: `1px solid ${C.warn}30`, borderRadius: 8, marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: C.warn, fontWeight: 600 }}>🔒 Planner-only — never visible to client</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: C.warn + '12', border: `1px solid ${C.warn}40`, borderRadius: 8, marginBottom: 12 }}>
+            <span style={{ display: 'flex', color: C.warn }}><Icon name="lock" size={13} /></span>
+            <div style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>Planner-only — never visible to the client</div>
           </div>
         )}
 
