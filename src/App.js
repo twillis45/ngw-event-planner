@@ -6904,7 +6904,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [search, setSearch] = useState('');
   const [dashView, setDashView] = useState('dashboard');
   const eventsRef  = useRef(null);
-  const taskInboxRef = useRef(null);
+  const [showTasksMobile, setShowTasksMobile] = useState(false); // slim screens: tap KPI to reveal task rows inline
 
   // Total event value = sum of every event's budgeted total (what clients are spending overall).
   const totalEventValue  = useMemo(() => events.reduce((s, ev) => s + (ev.budget || []).reduce((b, r) => b + (r.budgeted || 0), 0), 0), [events]);
@@ -7036,8 +7036,40 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   </div>
                 </div>
               ) : (
-                <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track'} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => taskInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+                <StatCard label="Task Inbox" value={urgentTasks.length + soonTasks.length} sub={showTasksMobile ? 'tap to hide' : (urgentTasks.length > 0 ? `${urgentTasks.length} overdue` : 'on track')} color={urgentTasks.length > 0 ? C.danger : C.accent} onClick={() => setShowTasksMobile(v => !v)} />
               )}
+            </div>
+          )}
+
+          {/* Slim screens: tapping the Task Inbox KPI reveals the task rows here, inline. */}
+          {dashView === 'dashboard' && !isWide && showTasksMobile && taskInboxItems.length > 0 && (
+            <div style={{ ...s.card, padding: 0, overflow: 'hidden', marginBottom: 20 }}>
+              {taskInboxItems.map((t, i) => {
+                const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
+                const clr = evtCLR[t.eventType] || C.muted;
+                return (
+                  <div key={`${t.eventId}-${t.id}`}
+                    onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: i < taskInboxItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                  >
+                    <div style={mkDot(overdue ? C.danger : C.warn, 8)} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.task || 'Untitled task'}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: clr }}>{t.eventName}</span>
+                        {t.week !== 'Custom' && <span> · {t.week}</span>}
+                        {t.owner && <span> · {t.owner}</span>}
+                      </div>
+                    </div>
+                    {overdue && <span style={{ ...s.pill(C.danger), fontSize: 10, flexShrink: 0 }}>Overdue</span>}
+                    <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -7061,47 +7093,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
         {/* ── Dashboard body: events + what needs attention (clients live on their own view) ── */}
         <div>
-
-          {/* Cross-event task inbox — pinned to the top (desktop shows it in the KPI row instead) */}
-          {!isWide && (() => {
-            const allItems = taskInboxItems;
-            if (allItems.length === 0) return null;
-            return (
-              <div style={{ marginBottom: 32, scrollMarginTop: 16 }} ref={taskInboxRef}>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
-                  Task Inbox ({allItems.length}{urgentTasks.length > 0 ? ` · ${urgentTasks.length} overdue` : ''})
-                </div>
-                <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                  {allItems.map((t, i) => {
-                    const overdue = urgentTasks.some(u => u.id === t.id && u.eventId === t.eventId);
-                    const clr = evtCLR[t.eventType] || C.muted;
-                    return (
-                      <div key={`${t.eventId}-${t.id}`}
-                        onClick={() => onSelectEvent(t.eventId, { tab: 'Planning Tasks', taskId: t.id })}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', borderBottom: i < allItems.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                      >
-                        <div style={mkDot(overdue ? C.danger : C.warn, 8)} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, color: overdue ? C.danger : C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {t.task || 'Untitled task'}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
-                            <span style={{ color: clr }}>{t.eventName}</span>
-                            {t.week !== 'Custom' && <span> · {t.week}</span>}
-                            {t.owner && <span> · {t.owner}</span>}
-                          </div>
-                        </div>
-                        {overdue && <span style={{ ...s.pill(C.danger), fontSize: 10, flexShrink: 0 }}>Overdue</span>}
-                        <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
