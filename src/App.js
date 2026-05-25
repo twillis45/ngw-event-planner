@@ -6685,7 +6685,7 @@ function ProfileModal({ profile, onClose, onChange }) {
 }
 
 // ─── Dashboard week-at-a-glance: mini month + line-by-line week agenda ─────────
-function DashWeekView({ events, onSelectEvent, sidebar = false }) {
+function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote }) {
   const C = useT();
   const s = makeS(C);
   const bp = useContext(BpCtx);
@@ -6715,9 +6715,21 @@ function DashWeekView({ events, onSelectEvent, sidebar = false }) {
       if (v.payDueDate && !v.balancePaid && v.name) add(v.payDueDate, { kind: 'payment', label: `Pay ${v.name}`, color: C.warn, eventId: ev.id });
     });
   });
+  // Standalone day items the planner pins from the calendar (note / task / event).
+  const NOTE_KIND_COLOR = { event: C.accent2, task: C.accent, note: C.muted };
+  (calNotes || []).forEach(n => {
+    add(n.date, { kind: 'note', noteKind: n.kind, label: n.text, color: NOTE_KIND_COLOR[n.kind] || C.muted, noteId: n.id, done: n.done });
+  });
 
   const todayStr = today8601();
   const [selDay, setSelDay] = useState(todayStr); // drives the week shown on the right
+  const [addDay, setAddDay] = useState(null);     // ds currently showing the quick-add composer
+  const [draft, setDraft] = useState('');
+  const [draftKind, setDraftKind] = useState('note');
+  const submitAdd = (ds) => {
+    if (draft.trim() && onAddCalNote) onAddCalNote(ds, draft, draftKind);
+    setDraft(''); setAddDay(null);
+  };
   const viewMonth = new Date(getToday().getFullYear(), getToday().getMonth() + monthOffset, 1);
   const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -6773,7 +6785,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false }) {
               );
             })}
           </div>
-          <div style={{ fontSize: 9, color: C.muted, marginTop: 6, textAlign: 'center' }}>Tap a day to view its week</div>
+          <div style={{ fontSize: 9, color: C.muted, marginTop: 6, textAlign: 'center' }}>Tap a day to view its week · use “+ add” to pin a note, task or event</div>
         </div>
 
         {/* ── Line-by-line week agenda (driven by selected day) ── */}
@@ -6786,23 +6798,62 @@ function DashWeekView({ events, onSelectEvent, sidebar = false }) {
           </div>
           <div>
             {week.map(({ d, ds, isToday, dayItems }, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '7px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start', background: ds === selDay ? C.accent + '0c' : 'transparent', borderRadius: 6 }}>
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '7px 0', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', alignItems: 'flex-start', background: ds === selDay ? C.accent + '0c' : 'transparent', borderRadius: 6 }}
+                onMouseEnter={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a) a.style.opacity = 1; }}
+                onMouseLeave={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a && addDay !== ds) a.style.opacity = 0.45; }}>
                 <div style={{ width: 50, flexShrink: 0, textAlign: 'center', paddingLeft: ds === selDay ? 4 : 0 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase' }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? C.accent : C.text, lineHeight: 1.1 }}>{d.getDate()}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-                  {dayItems.length === 0 ? (
+                  {dayItems.length === 0 && addDay !== ds && (
                     <div style={{ fontSize: 12, color: C.border }}>—</div>
-                  ) : dayItems.map((it, j) => (
-                    <div key={j} onClick={() => onSelectEvent && onSelectEvent(it.eventId)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: C.text, cursor: 'pointer', padding: '2px 0' }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = 0.7}
-                      onMouseLeave={e => e.currentTarget.style.opacity = 1}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+                  )}
+                  {dayItems.map((it, j) => (
+                    <div key={j}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: it.done ? C.muted : C.text, padding: '2px 0' }}>
+                      {it.noteId && it.noteKind === 'task' ? (
+                        <input type="checkbox" checked={!!it.done} onChange={() => onToggleCalNote && onToggleCalNote(it.noteId)}
+                          style={{ width: 13, height: 13, flexShrink: 0, cursor: 'pointer', accentColor: C.accent }} />
+                      ) : (
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
+                      )}
+                      <span onClick={() => it.eventId && onSelectEvent && onSelectEvent(it.eventId)}
+                        style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: it.eventId ? 'pointer' : 'default', textDecoration: it.done ? 'line-through' : 'none' }}>
+                        {it.label}
+                      </span>
+                      {it.noteId && onDeleteCalNote && (
+                        <span onClick={() => onDeleteCalNote(it.noteId)} title="Remove"
+                          style={{ flexShrink: 0, color: C.muted, cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}>×</span>
+                      )}
                     </div>
                   ))}
+                  {addDay === ds ? (
+                    <div style={{ marginTop: 6 }}>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
+                        {['note', 'task', 'event'].map(k => (
+                          <button key={k} onClick={() => setDraftKind(k)}
+                            style={{ fontSize: 10, fontWeight: 700, textTransform: 'capitalize', padding: '2px 8px', borderRadius: 999, cursor: 'pointer',
+                              border: `1px solid ${draftKind === k ? (NOTE_KIND_COLOR[k]) : C.border}`,
+                              background: draftKind === k ? (NOTE_KIND_COLOR[k] + '22') : 'transparent',
+                              color: draftKind === k ? (NOTE_KIND_COLOR[k] === C.muted ? C.text : NOTE_KIND_COLOR[k]) : C.muted }}>{k}</button>
+                        ))}
+                      </div>
+                      <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') submitAdd(ds); if (e.key === 'Escape') { setDraft(''); setAddDay(null); } }}
+                        placeholder={`Add a ${draftKind}…`}
+                        style={{ ...s.input, fontSize: 12.5, padding: '5px 8px', width: '100%', boxSizing: 'border-box' }} />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                        <button onClick={() => submitAdd(ds)} style={{ ...s.btn('primary'), fontSize: 11, padding: '3px 12px' }}>Add</button>
+                        <button onClick={() => { setDraft(''); setAddDay(null); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button data-addbtn onClick={() => { setSelDay(ds); setAddDay(ds); setDraft(''); }}
+                      style={{ marginTop: 3, fontSize: 11, fontWeight: 600, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 0', opacity: 0.45, transition: 'opacity .12s' }}>
+                      + add
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -6814,7 +6865,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false }) {
   );
 }
 
-function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile }) {
+function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
@@ -6946,7 +6997,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {/* Desktop: events (left) + calendar (right). Mobile: events only (calendar below). */}
           <div>
             {enrichedEvents.length > 0 && (
-              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 470px', gap: 24, alignItems: 'start', marginBottom: 32 }}>
+              <div style={{ display: isWide ? 'grid' : 'block', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start', marginBottom: 32 }}>
                 <div ref={eventsRef}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 14 }}>
                   Upcoming Events ({enrichedEvents.length})
@@ -6982,12 +7033,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   })}
                 </div>
                 </div>{/* /events column */}
-                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
+                {isWide && <DashWeekView events={events} onSelectEvent={onSelectEvent} calNotes={calNotes} onAddCalNote={onAddCalNote} onToggleCalNote={onToggleCalNote} onDeleteCalNote={onDeleteCalNote} />}
               </div>
             )}
 
             {/* Mobile/tablet: calendar below events */}
-            {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} />}
+            {!isWide && events.length > 0 && <DashWeekView events={events} onSelectEvent={onSelectEvent} calNotes={calNotes} onAddCalNote={onAddCalNote} onToggleCalNote={onToggleCalNote} onDeleteCalNote={onDeleteCalNote} />}
 
             {/* Cross-event task inbox — left col below events */}
             {(() => {
@@ -13423,6 +13474,12 @@ export default function App() {
   const [profile,        setProfile]        = useState(() => {
     try { const d = localStorage.getItem('ngw-profile'); return d ? JSON.parse(d) : { name: '', businessName: '', email: '', phone: '', city: '', website: '', bio: '' }; } catch { return { name: '', businessName: '', email: '', phone: '', city: '', website: '', bio: '' }; }
   });
+  const [calNotes, setCalNotes] = useState(() => {
+    try { const d = localStorage.getItem('ngw-cal-notes'); return d ? JSON.parse(d) : []; } catch { return []; }
+  });
+  const addCalNote    = (date, text, kind) => setCalNotes(ns => [...ns, { id: uid(), date, text: text.trim(), kind, done: false }]);
+  const toggleCalNote = (id) => setCalNotes(ns => ns.map(n => n.id === id ? { ...n, done: !n.done } : n));
+  const deleteCalNote = (id) => setCalNotes(ns => ns.filter(n => n.id !== id));
   const [activeClientId, setActiveClientId] = useState(null);
   const [activeId,       setActiveId]       = useState(null);
   const [initialNav,     setInitialNav]     = useState(null);
@@ -13436,6 +13493,7 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('ngw-events', JSON.stringify(events)); } catch {} }, [events]);
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
   useEffect(() => { try { localStorage.setItem('ngw-clients', JSON.stringify(clients)); } catch {} }, [clients]);
+  useEffect(() => { try { localStorage.setItem('ngw-cal-notes', JSON.stringify(calNotes)); } catch {} }, [calNotes]);
 
   // ── Budget / deposit push notifications ────────────────────────────────────
   // Fires once on mount. Collects all unpaid vendor balances that are overdue
@@ -13648,6 +13706,10 @@ export default function App() {
         onProfile={() => setShowProfile(true)}
         onNew={() => setShowNew(true)}
         onNewClient={() => setShowNewClient(true)}
+        calNotes={calNotes}
+        onAddCalNote={addCalNote}
+        onToggleCalNote={toggleCalNote}
+        onDeleteCalNote={deleteCalNote}
       />
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
