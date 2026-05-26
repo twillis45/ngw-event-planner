@@ -9,7 +9,7 @@ import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 import AuthGate           from './components/AuthGate';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import { saveEvent, deleteEvent, saveClient, deleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
+import { saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
 
 // ─── App version ─────────────────────────────────────────────────────────────
 const APP_VERSION = '1.5.0';
@@ -15401,7 +15401,7 @@ export default function App() {
         setSyncState('saving');
         Promise.all([
           ...events.map(ev => saveEvent(ev)),
-          ...removedIds.map(id => deleteEvent(id)),
+          ...removedIds.map(id => cloudDeleteEvent(id)),
         ])
           .then(() => { setSyncState('saved'); setPendingCount(0); })
           .catch(() => { setSyncState('sync_failed'); setPendingCount(getPendingCount()); });
@@ -15423,7 +15423,7 @@ export default function App() {
       prevClientIdsRef.current = currentIds;
       if (isSupabaseConfigured() && navigator.onLine !== false) {
         clients.forEach(c => saveClient(c).catch(() => {}));
-        removedIds.forEach(id => deleteClient(id).catch(() => {}));
+        removedIds.forEach(id => cloudDeleteClient(id).catch(() => {}));
       }
     }, 1500);
     return () => clearTimeout(t);
