@@ -101,6 +101,11 @@ function ContextRail({ vendors }) {
 }
 
 // ─── Active Orchestration (center) — the single P1 ─────────────────────────
+// Refinement pass (Figma sprint): contained action widths, not full-bleed CTA
+// bars. Hierarchy is already carried by spatial orchestration + escalation
+// isolation + dimensionality + density collapse — buttons no longer need to
+// span the surface to assert primacy. Emergency feels HEAVIER (larger mass +
+// taller surface size), not WIDER. Operational instrument, not dashboard CTA.
 function ActiveOrchestration({ primary, onResolve, isEmergency }) {
   if (!primary) {
     return (
@@ -113,10 +118,17 @@ function ActiveOrchestration({ primary, onResolve, isEmergency }) {
   const sev = primary.status;
   const actions = ACTIONS[sev];
   const badgeStatus = STATUS_TO_BADGE[sev] || 'neutral';
+  // Contained widths (px). Within spec:
+  //   nominal      → intrinsic (n/a — slice only shows escalations)
+  //   escalation   → 240–320  → using 280
+  //   emergency    → 320–420  → using 360 (still 60–80px wider than escalation, mass not bloat)
+  const primaryWidth   = isEmergency ? 360 : 280;
+  const secondaryWidth = 160;
+  const primarySize    = isEmergency ? 'xl' : 'lg'; // emergency = taller mass, not wider
   return (
     <Surface role={isEmergency ? 'escalation' : 'active'} pad={6} rad="md"
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: space[6] }}>
-      <div>
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: space[8] }}>
+      <div style={{ maxWidth: 520 }}>
         <EscalationBadge status={badgeStatus}>
           {sev === 'emergency' ? 'EMERGENCY' : sev === 'non_responsive' ? 'CRITICAL' : 'ESCALATION'}
         </EscalationBadge>
@@ -127,11 +139,15 @@ function ActiveOrchestration({ primary, onResolve, isEmergency }) {
           {MESSAGE[sev](primary)}
         </Text>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: space[3], marginTop: 'auto' }}>
-        <Button priority={isEmergency ? 'escalation' : 'p1'} size="lg" full>{actions.primary}</Button>
-        <div style={{ display: 'flex', gap: space[3] }}>
+      {/* Action anchor — left-aligned, contained, with deliberate breathing room. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: space[4], marginTop: 'auto', alignItems: 'flex-start' }}>
+        <Button priority={isEmergency ? 'escalation' : 'p1'} size={primarySize}
+          style={{ width: primaryWidth }}>
+          {actions.primary}
+        </Button>
+        <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap' }}>
           {actions.secondary.map((a) => (
-            <Button key={a} priority="p2" size="md" full>{a}</Button>
+            <Button key={a} priority="p2" size="md" style={{ width: secondaryWidth }}>{a}</Button>
           ))}
         </div>
         <Button priority="ambient" size="sm" onClick={() => onResolve(primary.id)}>Mark resolved</Button>
