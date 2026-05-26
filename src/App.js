@@ -9,7 +9,8 @@ import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 import AuthGate           from './components/AuthGate';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import { saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
+import { saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations } from './lib/api';
+import MembersModal from './components/MembersModal';
 
 // ─── App version ─────────────────────────────────────────────────────────────
 const APP_VERSION = '1.5.0';
@@ -6553,7 +6554,7 @@ const getMetroFactor = (profile) => {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-function ProfileModal({ profile, onClose, onChange }) {
+function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
   const C = useT();
   const s = makeS(C);
   const auth = useContext(AuthCtx);
@@ -6661,6 +6662,7 @@ function ProfileModal({ profile, onClose, onChange }) {
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signed in</div>
                 <div style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{auth.user?.email || 'Planner'}</div>
               </div>
+              {onOpenMembers && <button onClick={() => { onOpenMembers(); onClose(); }} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>Members</button>}
               <button onClick={() => { auth.signOut(); onClose(); }} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>Sign out</button>
             </div>
           )}
@@ -15326,6 +15328,16 @@ export default function App() {
   const [showNew,        setShowNew]        = useState(false);
   const [showNewClient,  setShowNewClient]  = useState(false);
   const [showProfile,    setShowProfile]    = useState(false);
+  const [showMembers,    setShowMembers]    = useState(false);
+  // Pick up any pending invitations the moment a session is available.
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return;
+    let cancelled = false;
+    const claim = () => { claimPendingInvitations().catch(() => {}); };
+    supabase.auth.getSession().then(({ data }) => { if (!cancelled && data?.session) claim(); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (s) claim(); });
+    return () => { cancelled = true; sub?.subscription?.unsubscribe?.(); };
+  }, []);
   const [toast,          setToast]          = useState(null); // { msg, variant }
   const showToast = (msg, variant = 'success') => setToast({ msg, variant });
   const toastCtxVal = { showToast };
@@ -15726,7 +15738,8 @@ export default function App() {
       />
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
-      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} />}
+      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} />}
+      {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
     </>
   );
 }

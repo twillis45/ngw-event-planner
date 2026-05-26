@@ -14,3 +14,15 @@ export {
   deleteClient,
   migrateLocalToCloud as migrateClientsToCloud,
 } from './clients';
+
+export {
+  currentStudio,
+  currentStudioId,
+  listStudioMembers,
+  removeStudioMember,
+  updateStudioMemberRole,
+  listStudioInvitations,
+  inviteStudioMember,
+  cancelStudioInvitation,
+  claimPendingInvitations,
+} from './studio';
