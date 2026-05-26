@@ -9,7 +9,7 @@ import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 import AuthGate           from './components/AuthGate';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import { saveEvent, saveClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
+import { saveEvent, deleteEvent, saveClient, deleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount } from './lib/api';
 
 // ─── App version ─────────────────────────────────────────────────────────────
 const APP_VERSION = '1.5.0';
@@ -15373,6 +15373,8 @@ export default function App() {
   }, []);
 
   // Debounced save: events — writes localStorage first, then syncs to Supabase
+  // (upserts present rows AND deletes any rows that were removed locally).
+  const prevEventIdsRef = useRef(new Set((events || []).map(e => e.id)));
   useEffect(() => {
     const t = setTimeout(() => {
       // 1. Local write (offline-safe, always runs)
@@ -15389,10 +15391,18 @@ export default function App() {
           showToast('Storage full — import history cleared automatically to free space', 'warning');
         }
       }
-      // 2. Cloud sync (when Supabase configured + online; enqueues on failure)
+      // 2. Diff against previous snapshot to find removed ids (deletions).
+      const prevIds = prevEventIdsRef.current;
+      const currentIds = new Set(events.map(e => e.id));
+      const removedIds = [...prevIds].filter(id => !currentIds.has(id));
+      prevEventIdsRef.current = currentIds;
+      // 3. Cloud sync (when Supabase configured + online; enqueues on failure)
       if (isSupabaseConfigured() && navigator.onLine !== false) {
         setSyncState('saving');
-        Promise.all(events.map(ev => saveEvent(ev)))
+        Promise.all([
+          ...events.map(ev => saveEvent(ev)),
+          ...removedIds.map(id => deleteEvent(id)),
+        ])
           .then(() => { setSyncState('saved'); setPendingCount(0); })
           .catch(() => { setSyncState('sync_failed'); setPendingCount(getPendingCount()); });
       }
@@ -15402,12 +15412,18 @@ export default function App() {
 
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
 
-  // Debounced save: clients
+  // Debounced save: clients (upserts present + deletes removed, like events).
+  const prevClientIdsRef = useRef(new Set((clients || []).map(c => c.id)));
   useEffect(() => {
     const t = setTimeout(() => {
       try { localStorage.setItem('ngw-clients', JSON.stringify(clients)); } catch {}
+      const prevIds = prevClientIdsRef.current;
+      const currentIds = new Set(clients.map(c => c.id));
+      const removedIds = [...prevIds].filter(id => !currentIds.has(id));
+      prevClientIdsRef.current = currentIds;
       if (isSupabaseConfigured() && navigator.onLine !== false) {
         clients.forEach(c => saveClient(c).catch(() => {}));
+        removedIds.forEach(id => deleteClient(id).catch(() => {}));
       }
     }, 1500);
     return () => clearTimeout(t);
