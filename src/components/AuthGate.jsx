@@ -64,6 +64,10 @@ function LoginScreen() {
 
   const redirect     = () => window.location.origin + window.location.pathname;
   const googleEnabled = process.env.REACT_APP_ENABLE_GOOGLE_AUTH === 'true';
+  // Invite-only is OPT-IN: set REACT_APP_INVITE_ONLY=true to require pre-added
+  // users (lock this on before real launch). Default (unset) = open signups, so
+  // the magic link auto-creates the user — handy for bootstrapping/testing.
+  const inviteOnly = process.env.REACT_APP_INVITE_ONLY === 'true';
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -73,7 +77,7 @@ function LoginScreen() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: addr,
-        options: { emailRedirectTo: redirect(), shouldCreateUser: false },
+        options: { emailRedirectTo: redirect(), shouldCreateUser: !inviteOnly },
       });
       if (error) throw error;
       setStatus('sent');
