@@ -6,8 +6,10 @@ asymmetric signing keys without needing the JWT secret, and naturally respects
 revocation/expiry. Successful lookups are cached briefly to avoid a round-trip on
 every request.
 
-Falls back to the shared PLANNER_DEV_TOKEN (X-Planner-Token header) only while
-Supabase Auth is being rolled out. Remove that path once every planner signs in.
+The shared PLANNER_DEV_TOKEN (X-Planner-Token header) is a local-dev shorthand
+only — it is ignored unless ALLOW_DEV_TOKEN=true is set in the environment.
+Deployed environments (preview/staging/production) must NOT set that flag, so the
+only authoritative auth path in deployment is the Supabase JWT.
 """
 import time
 from typing import Optional
@@ -15,7 +17,7 @@ from typing import Optional
 import httpx
 from fastapi import HTTPException
 
-from .config import SUPABASE_URL, SUPABASE_ANON_KEY, PLANNER_DEV_TOKEN
+from .config import SUPABASE_URL, SUPABASE_ANON_KEY, PLANNER_DEV_TOKEN, ALLOW_DEV_TOKEN
 
 # token -> (expires_at_epoch, user_dict)
 _cache: dict[str, tuple[float, dict]] = {}
@@ -68,8 +70,10 @@ async def require_planner(
     """Authorize a privileged (planner) action.
 
     Order of preference:
-      1. A valid Supabase access token (the signed-in planner) — production path.
-      2. The shared dev token via X-Planner-Token — transition fallback only.
+      1. A valid Supabase access token (the signed-in planner) — the only path
+         honored in deployed environments.
+      2. The shared X-Planner-Token — honored ONLY when ALLOW_DEV_TOKEN=true is
+         set in the environment (explicit local development). Ignored otherwise.
     Raises 401 when neither is satisfied.
     """
     token = _bearer(authorization)
@@ -78,7 +82,7 @@ async def require_planner(
         if user:
             return {"id": user.get("id"), "email": user.get("email"), "via": "supabase"}
 
-    if PLANNER_DEV_TOKEN and x_planner_token and x_planner_token == PLANNER_DEV_TOKEN:
+    if ALLOW_DEV_TOKEN and PLANNER_DEV_TOKEN and x_planner_token and x_planner_token == PLANNER_DEV_TOKEN:
         return {"id": "dev-token", "via": "dev_token"}
 
     raise HTTPException(status_code=401, detail="Planner authentication required")

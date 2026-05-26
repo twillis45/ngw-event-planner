@@ -19,8 +19,10 @@ services:
         sync: false
       - key: COMMUNICATION_EMAIL_FROM # e.g. events@yourdomain.com (verified in Resend)
         sync: false
-      - key: PLANNER_DEV_TOKEN       # legacy fallback gate; optional once Supabase Auth is on
-        sync: false
+      - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
+        sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
+      # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every
+      # deployed environment so the X-Planner-Token bypass cannot be used in prod.
       # ── Supabase Auth (planner sign-in) — non-secret project values ──
       - key: SUPABASE_URL            # Supabase → Settings → API → Project URL
         sync: false

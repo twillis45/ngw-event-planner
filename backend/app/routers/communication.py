@@ -80,12 +80,13 @@ async def _channel(conn, event_id: str, channel_type: str):
 
 
 async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
-    """Authorize an authenticated planner for an event.
+    """Authorize an authenticated planner for an event — studio-scoped access only.
 
-    Studio-scoped (after migration 0003): an event belongs to a *studio*, and any
-    member of that studio may access it. The first authenticated touch claims the
-    event for the caller's studio. Falls back to the legacy per-user ownership when
-    the studios tables aren't present yet. The shared dev-token path skips this.
+    An event belongs to a *studio*; any member of that studio may access it. The
+    first authenticated touch claims the event for the caller's studio. There is
+    no per-user fallback — auth.uid() is identity only, never the tenant boundary
+    for operational data. The shared dev-token path (local dev only, gated by
+    ALLOW_DEV_TOKEN in require_planner) skips ownership entirely.
     """
     if not principal or principal.get("via") == "dev_token":
         return
@@ -93,44 +94,37 @@ async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
     if not uid:
         raise HTTPException(status_code=403, detail="Planner identity required")
 
-    has_studios = await conn.fetchval("select to_regclass('public.studio_members') is not null")
+    # Resolve caller's studio (identity → tenant).
+    studio = await conn.fetchval(
+        "select studio_id from studio_members where user_id=$1 order by (role='owner') desc limit 1", uid)
+    if studio is None:
+        raise HTTPException(status_code=403, detail="No studio for this user.")
 
-    if has_studios:
-        studio = await conn.fetchval(
-            "select studio_id from studio_members where user_id=$1 order by (role='owner') desc limit 1", uid)
-        row = await conn.fetchrow("select owner_id, studio_id from event_owners where event_id=$1", event_id)
-        if row is None:  # claim for this user + their studio
-            await conn.execute(
-                """insert into event_owners (event_id, owner_id, owner_email, studio_id)
-                   values ($1,$2,$3,$4) on conflict (event_id) do nothing""",
-                event_id, uid, principal.get("email"), studio)
-            return
-        owning_studio = row["studio_id"]
-        if owning_studio is None:
-            # event claimed before studios existed — allow original owner, then adopt studio
-            if row["owner_id"] in (None, uid):
-                if studio is not None:
-                    await conn.execute(
-                        "update event_owners set studio_id=$2 where event_id=$1 and studio_id is null",
-                        event_id, studio)
-                return
-            raise HTTPException(status_code=403, detail="You don't have access to this event.")
-        # studio-scoped: caller must be a member of the owning studio
-        member = await conn.fetchval(
-            "select 1 from studio_members where studio_id=$1 and user_id=$2", owning_studio, uid)
-        if not member:
-            raise HTTPException(status_code=403, detail="You don't have access to this event.")
-        return
-
-    # ── Legacy (studios not migrated yet): per-user ownership ──
-    row = await conn.fetchrow("select owner_id from event_owners where event_id=$1", event_id)
+    row = await conn.fetchrow("select studio_id from event_owners where event_id=$1", event_id)
     if row is None:
+        # Claim for the caller's studio. owner_id is kept as audit attribution only;
+        # it is NOT used for access decisions (studio_id is the tenant key).
         await conn.execute(
-            """insert into event_owners (event_id, owner_id, owner_email)
-               values ($1, $2, $3) on conflict (event_id) do nothing""",
-            event_id, uid, principal.get("email"))
+            """insert into event_owners (event_id, owner_id, owner_email, studio_id)
+               values ($1,$2,$3,$4) on conflict (event_id) do nothing""",
+            event_id, uid, principal.get("email"), studio)
         return
-    if row["owner_id"] and row["owner_id"] != uid:
+
+    owning_studio = row["studio_id"]
+    if owning_studio is None:
+        # Pre-studio row in the table (migration artifact) — adopt the caller's
+        # studio so future checks have the tenant key. Access is still gated by
+        # studio membership: only the caller (who is a member of their own studio)
+        # can adopt the row, which has the effect of binding it to that studio.
+        await conn.execute(
+            "update event_owners set studio_id=$2 where event_id=$1 and studio_id is null",
+            event_id, studio)
+        return
+
+    # Studio-scoped: caller must be a member of the event's owning studio.
+    member = await conn.fetchval(
+        "select 1 from studio_members where studio_id=$1 and user_id=$2", owning_studio, uid)
+    if not member:
         raise HTTPException(status_code=403, detail="You don't have access to this event.")
 
 

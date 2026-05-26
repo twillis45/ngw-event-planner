@@ -39,7 +39,9 @@ ALLOWED_ORIGIN_REGEX = os.environ.get(
 SUPABASE_URL      = os.environ.get("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
 
-# Legacy transition gate. Used ONLY as a fallback (shared X-Planner-Token header)
-# while planners migrate to Supabase sign-in. Remove once everyone uses Supabase
-# Auth. This is NOT production security on its own.
+# Legacy shared dev token. Honored ONLY in explicit local development (when
+# ALLOW_DEV_TOKEN=true). Deployed environments (preview/staging/production) must
+# NOT set ALLOW_DEV_TOKEN, so X-Planner-Token is ignored there regardless of value.
+# Real auth is the Supabase JWT path; this is a local-dev shorthand only.
 PLANNER_DEV_TOKEN = os.environ.get("PLANNER_DEV_TOKEN")
+ALLOW_DEV_TOKEN   = os.environ.get("ALLOW_DEV_TOKEN", "").lower() == "true"
