@@ -217,14 +217,18 @@ Use null for fields that cannot be determined."""
             resp.raise_for_status()
             data = resp.json()
 
-        import json
-        raw_text = data["choices"][0]["message"]["content"]
+        import json, re
+        raw_text = data["choices"][0]["message"]["content"] or ""
         try:
             extracted = json.loads(raw_text)
         except Exception:
-            import re
             match = re.search(r'\{[\s\S]+\}', raw_text)
-            extracted = json.loads(match.group()) if match else {"error": "Could not parse output", "raw": raw_text}
+            extracted = json.loads(match.group()) if match else {
+                "error": "Could not parse output",
+                "raw": raw_text[:500] if raw_text else "empty response",
+                "confidence": "low",
+                "disclaimer": "AI-extracted — verify all dates and amounts against the original document before acting.",
+            }
 
         log.info(
             "document_extract vendor=%s type=%s confidence=%s model=%s",
