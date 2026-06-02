@@ -8849,12 +8849,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
                 />
 
-                {/* Backend AI proxy */}
+                {/* Backend AI proxy — OpenAI */}
                 <IntRow
-                  label="AI proxy (server-side Claude)"
-                  desc={commApiOn ? 'AI calls route through backend — API key stays server-side' : 'AI uses your BYOK key directly from the browser'}
+                  label="AI proxy (server-side ChatGPT)"
+                  desc={commApiOn ? 'AI calls route through backend via OpenAI GPT-4o — key stays server-side' : 'AI uses your BYOK key directly from the browser'}
                   status={commApiOn ? 'connected' : 'partial'}
-                  detail={!commApiOn ? 'Connect the backend (REACT_APP_API_BASE_URL) and set ANTHROPIC_API_KEY on Render to enable server-side AI.' : null}
+                  detail={!commApiOn ? 'Connect the backend and set OPENAI_API_KEY on Render to enable server-side AI (GPT-4o).' : null}
                 />
 
                 {/* Google Maps */}
