@@ -9791,9 +9791,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   useEffect(() => { try { localStorage.setItem('ngw-events-filter', eventsFilter); } catch {} }, [eventsFilter]);
   // Sprint 58X: desktop right-rail preview panel on the Events Index
   const [previewEventId, setPreviewEventId] = useState(null);
-  // Sprint 60: Client Roster preview + filter
+  // Sprint 60: Client Roster preview + filter + search + sort
   const [previewClientId, setPreviewClientId] = useState(null);
   const [clientsFilter, setClientsFilter] = useState('all');
+  const [clientSort, setClientSort] = useState('attention');
+  const [clientSearch, setClientSearch] = useState('');
   const eventsRef  = useRef(null);
   // Slim screens: tap a KPI to reveal its rows inline below the KPI row.
   const [showTasksMobile,    setShowTasksMobile]    = useState(false);
@@ -10355,9 +10357,41 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   // ── Derived stats ──────────────────────────────────────────────
   const allClients = filteredClients; // search-filtered
-  const statusFiltered = allClients.filter(c => {
+
+  const searchFiltered = allClients.filter(c => {
+    if (!clientSearch.trim()) return true;
+    const q = clientSearch.toLowerCase();
+    return (c.name || '').toLowerCase().includes(q)
+      || (c.email || '').toLowerCase().includes(q)
+      || (c.partnerName || '').toLowerCase().includes(q);
+  });
+
+  const statusFiltered = searchFiltered.filter(c => {
     if (clientsFilter === 'all') return true;
+    if (clientsFilter === 'outstanding') return clientComputed(c).outstanding > 0;
+    if (clientsFilter === 'upcoming') {
+      const { nextDays } = clientComputed(c);
+      return nextDays !== null && nextDays <= 90;
+    }
     return c.status?.toLowerCase() === clientsFilter;
+  });
+
+  // Sort
+  const sortedClients = [...statusFiltered].sort((a, b) => {
+    if (clientSort === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (clientSort === 'outstanding') return clientComputed(b).outstanding - clientComputed(a).outstanding;
+    if (clientSort === 'event') {
+      const da = clientComputed(a).nextDays ?? 9999;
+      const db = clientComputed(b).nextDays ?? 9999;
+      return da - db;
+    }
+    // Default: attention (outstanding > 0 first, then by days to event)
+    const ao = clientComputed(a).outstanding, bo = clientComputed(b).outstanding;
+    if (ao > 0 && bo === 0) return -1;
+    if (bo > 0 && ao === 0) return 1;
+    const da = clientComputed(a).nextDays ?? 9999;
+    const db = clientComputed(b).nextDays ?? 9999;
+    return da - db;
   });
 
   // Per-client computed helpers
@@ -10381,12 +10415,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     })
     .sort((a, b) => a.days - b.days)[0] || null;
 
-  // Filter chips
+  // Filter chips — status + smart filters
   const clientStatuses = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
+  const outstandingCount = allClients.filter(c => clientComputed(c).outstanding > 0).length;
+  const upcomingCount    = allClients.filter(c => { const { nextDays } = clientComputed(c); return nextDays !== null && nextDays <= 90; }).length;
   const filterChips = [
-    { id: 'all', label: 'All', count: allClients.length },
+    { id: 'all',         label: 'All',         count: allClients.length },
+    { id: 'outstanding', label: 'Outstanding',  count: outstandingCount,  hide: outstandingCount === 0 },
+    { id: 'upcoming',    label: 'Event soon',   count: upcomingCount,     hide: upcomingCount === 0 },
     ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: st, count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
-  ];
+  ].filter(f => !f.hide);
 
   // Preview client
   const previewC          = previewClientId ? allClients.find(c => c.id === previewClientId) || null : null;
@@ -10564,6 +10602,29 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       }}>
         {/* ── Zone 3: Client List ─────────────────────────────────── */}
         <div>
+          {/* Search + sort row */}
+          {allClients.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.muted, fontSize: 13, pointerEvents: 'none' }}>⌕</span>
+                <input
+                  style={{ ...s.input, paddingLeft: 28, fontSize: 12 }}
+                  placeholder="Search clients by name or email…"
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                />
+                {clientSearch && (
+                  <button onClick={() => setClientSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 13, padding: '0 2px' }}>×</button>
+                )}
+              </div>
+              <select style={{ ...s.input, fontSize: 11, padding: '6px 10px', flexShrink: 0, minWidth: 130 }} value={clientSort} onChange={e => setClientSort(e.target.value)}>
+                <option value="attention">Sort: Attention</option>
+                <option value="event">Sort: Next event</option>
+                <option value="outstanding">Sort: Outstanding</option>
+                <option value="name">Sort: Name A–Z</option>
+              </select>
+            </div>
+          )}
           {/* Filter chips */}
           {allClients.length > 0 && (
             <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -10585,7 +10646,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 );
               })}
               <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>
-                {statusFiltered.length} client{statusFiltered.length !== 1 ? 's' : ''}
+                {sortedClients.length} client{sortedClients.length !== 1 ? 's' : ''}
               </span>
             </div>
           )}
@@ -10600,13 +10661,13 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               </div>
               <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
             </div>
-          ) : statusFiltered.length === 0 ? (
+          ) : sortedClients.length === 0 ? (
             <div style={{ padding: '28px 0', fontSize: 13, color: C.muted }}>
-              No clients match this filter.
+              {clientSearch ? `No clients match "${clientSearch}".` : 'No clients match this filter.'}
             </div>
           ) : (
             <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-              {statusFiltered.map((c, i) => {
+              {sortedClients.map((c, i) => {
                 const { clientEvents, collected, outstanding, nextEvt, nextDays, feeUrgent } = clientComputed(c);
                 const initials   = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                 const isPreviewC = previewClientId === c.id;
@@ -10626,7 +10687,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       alignItems: 'center',
                       gap: isMob ? 10 : 14,
                       padding: isMob ? '14px 14px' : '14px 20px',
-                      borderBottom: i < statusFiltered.length - 1 ? `1px solid ${C.border}` : 'none',
+                      borderBottom: i < sortedClients.length - 1 ? `1px solid ${C.border}` : 'none',
                       cursor: 'pointer',
                       background: isPreviewC ? C.accent + '0c' : 'transparent',
                       borderLeft: isPreviewC ? `3px solid ${C.accent}` : '3px solid transparent',
