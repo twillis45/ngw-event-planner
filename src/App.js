@@ -15,7 +15,7 @@ import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
-import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction } from './CommandCenter';
+import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, getUnansweredMessages } from './CommandCenter';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
@@ -10169,6 +10169,42 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             />
           )}
 
+          {/* ── Waiting for reply tracker ───────────────────────────── */}
+          {(() => {
+            const unanswered = getUnansweredMessages(events);
+            if (!unanswered.length) return null;
+            return (
+              <div style={{ ...s.card, marginBottom: 20, padding: 0, overflow: 'hidden', borderColor: C.warn + '55' }}>
+                <div style={{ padding: '12px 18px 10px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>
+                    ⏱ {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
+                  </span>
+                  <span style={{ fontSize: 11, color: C.muted, marginLeft: 4 }}>
+                    Sent more than 48 hours ago with no response
+                  </span>
+                </div>
+                {unanswered.slice(0, 4).map((u, i) => (
+                  <div
+                    key={`${u.eventId}-${u.thread}`}
+                    role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectEvent(u.eventId, { tab: 'Communication' }); } }}
+                    onClick={() => onSelectEvent(u.eventId, { tab: 'Communication' })}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: i < Math.min(unanswered.length, 4) - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{u.eventName} · <span style={{ color: C.muted, fontWeight: 500 }}>{u.thread === 'client' ? 'Client thread' : u.thread}</span></div>
+                      <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{u.body}</div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.warn, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
+                    <span style={{ color: C.muted, fontSize: 13 }}>›</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Sprint 48: Business Health — 4 lean metrics. The old Task Inbox /
               Due Soon / Action Required inbox panels were folded into the
               Attention Queue below, which surfaces the same data grouped by
@@ -18255,19 +18291,25 @@ function DayTaskView({ timeline, eventDate, setTimeline }) {
 // doctrine is preserved.
 const PLANNER_TABS = [
   'Command',
+  // Messages first — coordinators open this 10-30x per day
+  'Communication',
   // PLAN — the work of planning
-  'Budget', 'Timeline', 'Checklist', 'Planning Tasks', 'Decisions', 'Communication',
+  'Budget', 'Timeline', 'Checklist', 'Planning Tasks', 'Decisions',
   // PEOPLE — who's involved
   'Client Intake', 'Vendors', 'Guests', 'Seating',
   // DAY OF — event-day surfaces
   'Calendar', 'Run of Show',
 ];
 const TAB_GROUP_HEADERS = {
+  'Communication':  'MESSAGES',
   'Budget':         'PLAN',
   'Client Intake':  'PEOPLE',
   'Calendar':       'DAY OF',
 };
 const TAB_ICONS = { 'Command': 'zap', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Decisions': 'alertTriangle', 'Timeline': 'history', 'Checklist': 'check2', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file', 'Communication': 'message' };
+// Display labels — route keys are unchanged (routing depends on them),
+// but the tab UI shows these friendlier names where they differ.
+const TAB_LABELS = { 'Communication': 'Messages' };
 
 // ─── Sprint 49: EventVendorsTab — canonical Vendors L4 specialist ────────────
 // Wraps VendorPlanningWorkspace (Sprint 46 PLAN-overlay component) with the
@@ -18484,7 +18526,11 @@ function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clie
           payload.deliver_email   = true;
           payload.recipient_email = recipient.email;
           payload.recipient_name  = recipient.name || undefined;
-          payload.subject         = `Message from ${profile?.name || 'your event planner'} — ${event.name || 'your event'}`;
+          // Fix #9: Professional subject format with event date + type context
+          const evDate = event.date ? new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+          const threadLabel = thread?.tab === 'Vendors' ? thread.name : 'Client update';
+          payload.subject = opts.subject?.trim()
+            || `${evDate ? evDate + ' ' : ''}${event.name || 'Your event'} — ${threadLabel}`;
           payload.reply_to        = profile?.email || undefined;
         }
 
@@ -18735,10 +18781,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const plannerTabs = useMemo(
     () => event.type === 'Board Meeting'
       ? [
-          'Command',
+          'Command', 'Communication',
           'Client Intake', 'Agenda', 'Budget', 'Guests', 'Vendors',
           'Timeline', 'Checklist', 'Planning Tasks',
-          'Decisions', 'Communication',
+          'Decisions',
           'Calendar', 'Run of Show',
         ]
       : PLANNER_TABS,
@@ -18791,7 +18837,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         <span style={{ width: 20, display: 'flex', justifyContent: 'center', flexShrink: 0, color: active ? color : C.muted, opacity: active ? 1 : 0.65 }}>
           <Icon name={TAB_ICONS[t] || 'home'} size={active ? 17 : 16} />
         </span>
-        {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t}</span>}
+        {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{TAB_LABELS[t] || t}</span>}
         {!collapsed && badge != null && (
           <span style={{
             fontSize: 9.5, fontWeight: 700,

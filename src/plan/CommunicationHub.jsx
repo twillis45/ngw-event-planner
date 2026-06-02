@@ -529,12 +529,12 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                     )}
                     {isApproved && (
                       <div style={{ marginTop: 6, fontSize: 10, color: P.green, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
-                        ✓ APPROVED
+                        ✓ APPROVED — recorded by planner
                       </div>
                     )}
                     {isRejected && (
                       <div style={{ marginTop: 6, fontSize: 10, color: P.red, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
-                        REJECTED
+                        REJECTED — recorded by planner
                       </div>
                     )}
                   </div>

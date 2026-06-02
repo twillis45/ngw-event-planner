@@ -286,12 +286,32 @@ function VendorCommandStrip({ vendors, event, onSelectVendor }) {
 // ── Vendor list (left column) — risk-aware ──────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Fix #7: compute last contacted date for a vendor from event commClient
+function getVendorLastContacted(vendor, event) {
+  const comms = event?.commClient || [];
+  const vName = vendor.name || vendor.vendor_name || '';
+  const vMsgs = comms.filter(m =>
+    m.channel === 'vendor' &&
+    (m.vendor_name === vName || m.senderName === vName) &&
+    (m.direction === 'outbound' || m.sender === 'planner')
+  );
+  if (!vMsgs.length) return null;
+  const latest = vMsgs.reduce((best, m) => {
+    const t = new Date(m.createdAt || m.date || 0).getTime();
+    return t > (best?.t || 0) ? { t, msg: m } : best;
+  }, null);
+  if (!latest) return null;
+  const daysAgo = Math.floor((Date.now() - latest.t) / 86400000);
+  return daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
+}
+
 function VendorRow({ vendor, event, isSelected, onSelect }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const next = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
   const isCritical = readiness.level === 'critical';
   const isAttention = readiness.level === 'attention';
+  const lastContacted = useMemo(() => getVendorLastContacted(vendor, event), [vendor, event]);
 
   // Highest-risk vendor gets an extra emphasis line — but no neon, no glow.
   const emphasis = isCritical;
@@ -326,6 +346,12 @@ function VendorRow({ vendor, event, isSelected, onSelect }) {
           <span>{vendor.category || vendor.type || '—'}</span>
           <span style={{ color: P.borderDef }}>·</span>
           <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{stage}</span>
+          {lastContacted && (
+            <>
+              <span style={{ color: P.borderDef }}>·</span>
+              <span style={{ color: P.textTertiary }}>contacted {lastContacted}</span>
+            </>
+          )}
         </div>
         {next && (isCritical || isAttention) && (
           <div style={{
@@ -1514,12 +1540,24 @@ function ActivityLogSection({ vendor, onAddLog }) {
           borderRadius: radius.md, padding: space[4], marginBottom: space[3],
           fontFamily: FF,
         }}>
-          <div style={{
-            fontSize: 10, fontWeight: type.weight.semibold,
-            letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: P.textTertiary, marginBottom: space[3],
-          }}>
-            Log Activity · {today}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[3] }}>
+            <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary }}>
+              Log Activity · {today}
+            </div>
+            {/* Fix #5: Quick-log shortcuts — one click to log common interactions */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[
+                { label: '📞 Call', text: `Called ${vendor.name || 'vendor'} —` },
+                { label: '💬 WhatsApp', text: `WhatsApp with ${vendor.name || 'vendor'} —` },
+                { label: '✉ Email', text: `Emailed ${vendor.name || 'vendor'} —` },
+              ].map(({ label, text }) => (
+                <button key={label} onClick={() => setDraft(d => d ? d : text)} style={{
+                  padding: '3px 7px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`,
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 9, color: P.textTertiary, fontFamily: FF,
+                }}>{label}</button>
+              ))}
+            </div>
           </div>
           <textarea
             value={draft}

@@ -405,6 +405,53 @@ export function getDocumentsReadiness(event) {
   return { status: 'ATTENTION', label: 'Attention', note: `${approvedCount} approved · ${draftCount + pendingCount} pending` };
 }
 
+// ── Waiting-for-reply tracker ─────────────────────────────────────────────────
+// Finds outbound messages sent >48h ago with no subsequent activity.
+// Returns array of { eventId, eventName, thread, sentAt, hoursAgo, body }
+export function getUnansweredMessages(events = [], thresholdHours = 48) {
+  const now = Date.now();
+  const results = [];
+  for (const ev of events) {
+    const comms = ev.commClient || [];
+    // Group by thread (vendor name or 'client')
+    const byThread = {};
+    comms.forEach(m => {
+      const key = m.channel === 'vendor' ? (m.vendor_name || 'vendor') : 'client';
+      if (!byThread[key]) byThread[key] = [];
+      byThread[key].push(m);
+    });
+    for (const [thread, msgs] of Object.entries(byThread)) {
+      // Sort chronologically
+      const sorted = [...msgs].sort((a, b) =>
+        new Date(a.createdAt || a.date || 0) - new Date(b.createdAt || b.date || 0)
+      );
+      // Find last outbound message
+      const lastOut = [...sorted].reverse().find(m =>
+        m.direction === 'outbound' || m.sender === 'planner'
+      );
+      if (!lastOut) continue;
+      const sentAt = new Date(lastOut.createdAt || lastOut.date || 0);
+      const hoursAgo = (now - sentAt.getTime()) / 3600000;
+      if (hoursAgo < thresholdHours) continue;
+      // Check if there's any activity AFTER the last outbound message
+      const hasSubsequentActivity = sorted.some(m => {
+        const t = new Date(m.createdAt || m.date || 0);
+        return t > sentAt && (m.direction !== 'outbound' && m.sender !== 'planner');
+      });
+      if (hasSubsequentActivity) continue;
+      results.push({
+        eventId:   ev.id,
+        eventName: ev.name || 'Untitled event',
+        thread,
+        sentAt:    sentAt.toISOString(),
+        hoursAgo:  Math.round(hoursAgo),
+        body:      (lastOut.body || lastOut.text || '').slice(0, 80),
+      });
+    }
+  }
+  return results.sort((a, b) => b.hoursAgo - a.hoursAgo);
+}
+
 // ── Lightweight per-event attention summary — used by Home + Events Index ────
 // Returns only the counts each surface needs to know without paying the cost
 // of the full Command Center derivation.
