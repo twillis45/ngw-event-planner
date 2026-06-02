@@ -7,6 +7,7 @@ import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 import AuthGate           from './components/AuthGate';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import { isSentryConfigured } from './lib/sentry';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -8092,24 +8093,104 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             )}
           </div>
 
-          {/* ── CLAUDE AI ── collapsible */}
+          {/* ── INTEGRATIONS HUB ── live status for every service ── */}
           <SectionHead label="Integrations" />
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-            <button onClick={() => setShowAI(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Claude AI — drafting &amp; suggestions</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {profile?.anthropicKey ? <span style={{ ...s.pill(C.success), fontSize: 10 }}>Active</span> : <span style={{ fontSize: 11, color: C.muted }}>not set</span>}
-                <span style={{ color: C.muted, fontSize: 12 }}>{showAI ? '▾' : '▸'}</span>
-              </span>
-            </button>
-            {showAI && (
-              <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Anthropic API Key</label>
-                <input style={s.input} type="password" value={profile?.anthropicKey || ''} placeholder="sk-ant-…" onChange={e => onChange('anthropicKey', e.target.value)} />
-                <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Stored locally. Never sent anywhere except api.anthropic.com.</div>
+          {(() => {
+            const supabaseOn   = isSupabaseConfigured();
+            const commApiOn    = isCommApiConfigured();
+            const emailOn      = isEmailConfigured();
+            const aiOn         = Boolean(profile?.anthropicKey);
+            const sentryOn     = isSentryConfigured();
+
+            const IntRow = ({ label, desc, status, detail, actionLabel, onAction, expandContent }) => {
+              const [open, setOpen] = useState(false);
+              const dot = status === 'connected' ? C.success : status === 'partial' ? C.warn : C.muted;
+              const pill = status === 'connected' ? 'Connected' : status === 'partial' ? 'Partial' : 'Not set';
+              const pillColor = dot;
+              return (
+                <div style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', cursor: expandContent ? 'pointer' : 'default' }}
+                    onClick={expandContent ? () => setOpen(v => !v) : undefined}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{label}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {actionLabel && onAction && status !== 'connected' && (
+                        <button onClick={(e) => { e.stopPropagation(); onAction(); }} style={{ ...s.btn('secondary'), fontSize: 10, padding: '3px 10px' }}>{actionLabel}</button>
+                      )}
+                      <span style={{ fontSize: 10, fontWeight: 700, color: pillColor, background: pillColor + '18', border: `1px solid ${pillColor}33`, padding: '2px 8px', borderRadius: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{pill}</span>
+                      {expandContent && <span style={{ color: C.muted, fontSize: 11 }}>{open ? '▾' : '▸'}</span>}
+                    </div>
+                  </div>
+                  {detail && !open && (
+                    <div style={{ padding: '0 14px 10px 31px', fontSize: 10.5, color: C.muted, lineHeight: 1.5 }}>{detail}</div>
+                  )}
+                  {expandContent && open && (
+                    <div style={{ padding: '4px 14px 14px 31px', borderTop: `1px solid ${C.border}` }}>{expandContent}</div>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                {/* Supabase */}
+                <IntRow
+                  label="Cloud sync (Supabase)"
+                  desc={supabaseOn ? 'Events and clients sync across devices' : 'Running on local device storage only'}
+                  status={supabaseOn ? 'connected' : 'disconnected'}
+                  detail={supabaseOn ? null : 'Set REACT_APP_SUPABASE_URL + REACT_APP_SUPABASE_ANON_KEY to enable cloud sync.'}
+                />
+
+                {/* Communication backend */}
+                <IntRow
+                  label="Communication backend"
+                  desc={commApiOn ? 'Messages post to shared event threads' : 'Messages save locally — not shared'}
+                  status={commApiOn ? 'connected' : 'disconnected'}
+                  detail={commApiOn ? null : 'Set REACT_APP_API_BASE_URL to connect the FastAPI comms backend.'}
+                />
+
+                {/* Email sending */}
+                <IntRow
+                  label="Email sending (Resend)"
+                  desc={emailOn ? 'Outbound email delivery active' : commApiOn ? 'Backend connected — email not configured' : 'Requires communication backend first'}
+                  status={emailOn ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
+                  detail={!emailOn && commApiOn ? 'Configure Resend + custom domain on the backend. Set RESEND_API_KEY + RESEND_FROM_EMAIL server-side (never in the browser).' : null}
+                />
+
+                {/* Calendar export */}
+                <IntRow
+                  label="Calendar export (.ics)"
+                  desc="Download any event as a calendar file for iCal, Google, or Outlook"
+                  status="connected"
+                />
+
+                {/* Claude AI */}
+                <IntRow
+                  label="Claude AI — drafting & suggestions"
+                  desc={aiOn ? 'AI drafting active for vendor follow-ups and readiness summaries' : 'Add your Anthropic API key to enable AI drafting'}
+                  status={aiOn ? 'connected' : 'disconnected'}
+                  expandContent={
+                    <div>
+                      <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Anthropic API Key (BYOK)</label>
+                      <input style={s.input} type="password" value={profile?.anthropicKey || ''} placeholder="sk-ant-…" onChange={e => onChange('anthropicKey', e.target.value)} />
+                      <div style={{ fontSize: 10, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>Stored in your browser only. Calls go directly to api.anthropic.com — never through our servers.</div>
+                    </div>
+                  }
+                />
+
+                {/* Sentry monitoring */}
+                <IntRow
+                  label="Error monitoring (Sentry)"
+                  desc={sentryOn ? 'Runtime errors reported with PII masked' : 'Error monitoring inactive'}
+                  status={sentryOn ? 'connected' : 'disconnected'}
+                  detail={!sentryOn ? 'Set REACT_APP_SENTRY_DSN to activate. All PII is masked before events are sent.' : null}
+                />
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* ── TEAM & PERMISSIONS ── stub */}
           <SectionHead label="Team & Permissions" />
@@ -8181,20 +8262,21 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             ))}
           </div>
 
-          {/* ── CONNECTED SERVICES ── stub */}
-          <SectionHead label="Connected Services" />
+          {/* ── COMING SOON — honestly labeled ── */}
+          <SectionHead label="Planned Integrations" />
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
-              { label: 'Google Calendar', desc: 'Sync event dates and timeline milestones' },
-              { label: 'Outlook / Office 365', desc: 'Bi-directional calendar sync for enterprise planners' },
-              { label: 'Calendar export (.ics)', desc: 'Generate a portable calendar file for any client' },
-            ].map(({ label, desc }, i, arr) => (
+              { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar', phase: 'Phase 2' },
+              { label: 'Stripe — client deposits', desc: 'Collect deposits and balances without leaving the app', phase: 'Phase 3' },
+              { label: 'Client portal', desc: 'Magic-link approvals and file review for your clients', phase: 'Phase 3' },
+              { label: 'Intake form + website embed', desc: 'Capture leads and auto-create events from your website', phase: 'Phase 3' },
+            ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{label}</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, opacity: 0.7, marginTop: 1 }}>{desc}</div>
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: C.muted, flexShrink: 0, padding: '3px 10px', borderRadius: 6, border: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Coming soon</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, padding: '3px 8px', borderRadius: 6, border: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.6 }}>{phase}</div>
               </div>
             ))}
           </div>
