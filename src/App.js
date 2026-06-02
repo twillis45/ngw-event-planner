@@ -81,7 +81,7 @@ const APP_VERSION = '1.5.0';
 // Sprint 51: stable seed ids let us distinguish demo data from the planner's
 // real workspace. Used by the welcome hero, sample-data banner, and the
 // "Clear sample data" / "Load sample data" actions.
-const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf']);
+const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf', 'ev-msg']);
 const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise']);
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
@@ -2761,6 +2761,59 @@ const SEED_EVENTS = [
       { id: 'cfd2', kind: 'contract',     title: 'BrightStage AV',             status: 'signed',   updatedAt: '2026-09-25T11:00:00Z' },
       { id: 'cfd3', kind: 'final_packet', title: 'Speaker logistics packet',   status: 'draft',    updatedAt: '2027-01-10T14:00:00Z' },
       { id: 'cfd4', kind: 'menu',         title: 'Lunch + snacks',             status: 'approved', updatedAt: '2026-12-15T09:00:00Z' },
+    ],
+  },
+  // ── MSG Corporate Gala — venue autocomplete test event ──────────────────────
+  {
+    id: 'ev-msg',
+    rsvpCode: 'msg7kp2',
+    name: 'Apex Summit Annual Gala',
+    type: 'Fundraiser / Gala',
+    date: '2026-11-14',
+    venue: 'Madison Square Garden, 4 Pennsylvania Plaza, New York, NY 10001',
+    venueLat: 40.7505,
+    venueLon: -73.9934,
+    guestEstimate: 480,
+    totalBudget: 320000,
+    timeOfDay: 'evening',
+    client: { name: 'Apex Financial Group', id: 'cl-apex' },
+    guests: [],
+    vendors: [
+      { id: 'msgv1', name: 'MSG Event Operations',  category: 'Venue',         budgetCategory: 'Venue',         status: 'Confirmed',    cost: 185000, depositAmt: 92500, depositPaid: true,  balancePaid: false, payDueDate: '2026-10-01', arrivalTime: '12:00', contact: 'events@msg.com',           phone: '(212) 465-6741', contractSigned: true,  notes: 'Full arena floor + premium suites. Catering buyout required.', log: [] },
+      { id: 'msgv2', name: 'Gotham Catering',       category: 'Catering',      budgetCategory: 'Catering',      status: 'Contracted',   cost: 62000,  depositAmt: 20000, depositPaid: true,  balancePaid: false, payDueDate: '2026-10-15', arrivalTime: '14:00', contact: 'book@gothamcatering.com',  phone: '(212) 555-4401', contractSigned: true,  notes: '$129/head × 480. Includes cocktail hour + plated dinner.', log: [] },
+      { id: 'msgv3', name: 'Broadway Lighting Co',  category: 'AV / Tech',     budgetCategory: 'AV / Tech',     status: 'Deposit Paid', cost: 28000,  depositAmt: 8400,  depositPaid: true,  balancePaid: false, payDueDate: '2026-10-20', arrivalTime: '08:00', contact: 'info@bdwylighting.com',    phone: '(212) 555-2211', contractSigned: true,  notes: 'Full arena lighting design + LED wall backdrop.', log: [] },
+      { id: 'msgv4', name: 'NYC Photo Agency',      category: 'Photography',   budgetCategory: 'Photography',   status: 'Confirmed',    cost: 12000,  depositAmt: 6000,  depositPaid: true,  balancePaid: false, payDueDate: '2026-11-01', arrivalTime: '17:00', contact: 'studio@nycphoto.co',       phone: '(212) 555-9900', contractSigned: true,  notes: '2 photographers + 1 videographer. Highlight reel within 72h.', log: [] },
+      { id: 'msgv5', name: 'Elite Floral NYC',      category: 'Florals',       budgetCategory: 'Florals',       status: 'Considering',  cost: 18000,  depositAmt: 0,     depositPaid: false, balancePaid: false, payDueDate: null,         arrivalTime: '10:00', contact: 'design@elitefloral.nyc',  phone: '(212) 555-3344', contractSigned: false, notes: 'Proposal reviewed. Waiting on client approval for centerpiece design.', log: [] },
+    ],
+    timeline: [
+      { id: 'mt1', week: '6 Months Out',  task: 'Finalize venue contract and insurance',         done: true,  owner: 'Planner' },
+      { id: 'mt2', week: '5 Months Out',  task: 'Confirm catering package and headcount tier',   done: true,  owner: 'Both' },
+      { id: 'mt3', week: '4 Months Out',  task: 'Approve floral design and centerpiece concept', done: false, owner: 'Client' },
+      { id: 'mt4', week: '3 Months Out',  task: 'Send invitations to 480 guests',               done: false, owner: 'Client' },
+      { id: 'mt5', week: '2 Months Out',  task: 'Finalize AV lighting script and cue sheet',    done: false, owner: 'Planner' },
+      { id: 'mt6', week: '6 Weeks Out',   task: 'Confirm final headcount with Gotham Catering',  done: false, owner: 'Both' },
+      { id: 'mt7', week: '2 Weeks Out',   task: 'Distribute day-of briefing to all vendors',     done: false, owner: 'Planner' },
+      { id: 'mt8', week: 'Week Of',       task: 'Venue walkthrough and final logistics review',  done: false, owner: 'Both' },
+    ],
+    ros: [
+      { id: 'mr1', time: '08:00', segment: 'Load-in: lighting & AV',       location: 'Arena Floor',    type: 'vendor', owner: 'AV Lead',     confirmed: true,  vendorName: 'Broadway Lighting Co', notes: '8hr setup window' },
+      { id: 'mr2', time: '10:00', segment: 'Floral & décor installation',   location: 'Arena Floor',    type: 'vendor', owner: 'Floral Lead',  confirmed: false, vendorName: 'Elite Floral NYC',     notes: 'Pending design approval' },
+      { id: 'mr3', time: '14:00', segment: 'Catering setup begins',         location: 'Kitchen/Floor',  type: 'vendor', owner: 'Catering Lead',confirmed: true,  vendorName: 'Gotham Catering',      notes: 'Full floor flip at 15:00' },
+      { id: 'mr4', time: '17:00', segment: 'Photographer & videographer in', location: 'Main Entrance',  type: 'vendor', owner: 'Photo Lead',   confirmed: true,  vendorName: 'NYC Photo Agency',     notes: 'Red carpet arrival shots' },
+      { id: 'mr5', time: '18:00', segment: 'Doors open — cocktail hour',    location: 'Suite Level',    type: 'event',  owner: 'Events Lead',  confirmed: true,  vendorName: '',                     notes: 'Passed appetizers, signature cocktail' },
+      { id: 'mr6', time: '19:30', segment: 'Dinner service',                location: 'Arena Floor',    type: 'event',  owner: 'Catering Lead',confirmed: true,  vendorName: 'Gotham Catering',      notes: '3-course plated dinner' },
+      { id: 'mr7', time: '21:00', segment: 'Keynote + awards presentation', location: 'Main Stage',     type: 'event',  owner: 'CEO',          confirmed: true,  vendorName: '',                     notes: 'LED wall backdrop active. 7 awards.' },
+      { id: 'mr8', time: '22:30', segment: 'Close — guests depart',         location: 'Main Entrance',  type: 'event',  owner: 'Events Lead',  confirmed: true,  vendorName: '',                     notes: 'Valet and car service staged outside.' },
+    ],
+    documents: [
+      { id: 'md1', kind: 'contract',   title: 'MSG Venue Agreement',          status: 'signed',     updatedAt: '2026-05-15T10:00:00Z' },
+      { id: 'md2', kind: 'contract',   title: 'Gotham Catering — buyout',     status: 'signed',     updatedAt: '2026-05-28T14:00:00Z' },
+      { id: 'md3', kind: 'floor_plan', title: 'Arena floor layout v3',        status: 'pending',    updatedAt: '2026-06-01T09:00:00Z', notes: 'Awaiting final approval' },
+      { id: 'md4', kind: 'mood_board', title: 'Gala aesthetic — Midnight Gold',status: 'approved',  updatedAt: '2026-05-20T11:00:00Z' },
+    ],
+    commClient: [
+      { id: 'msg1', channel: 'client', direction: 'outbound', sender: 'planner', senderName: 'Jane Planner', body: 'Hi Apex team — following up on the floral design approval. Elite Floral needs a decision by June 15 to hold our date. Can you review the centerpiece mockups and confirm?', createdAt: '2026-06-01T10:00:00Z', message_type: 'approval_request', approval_status: 'pending', subject: 'Floral design approval — deadline June 15', deliveryStatus: 'email-sent' },
+      { id: 'msg2', channel: 'vendor', direction: 'outbound', sender: 'planner', senderName: 'Jane Planner', vendor_name: 'Elite Floral NYC', body: 'Hi Elite Floral — we are working on getting client approval for the centerpiece design. Please hold our November 14 date. We expect confirmation by June 15.', createdAt: '2026-06-01T11:00:00Z', message_type: 'standard', deliveryStatus: 'email-sent' },
     ],
   },
 ];
