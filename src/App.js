@@ -9318,6 +9318,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     try { return localStorage.getItem('ngw-events-filter') || 'all'; } catch { return 'all'; }
   });
   useEffect(() => { try { localStorage.setItem('ngw-events-filter', eventsFilter); } catch {} }, [eventsFilter]);
+  // Sprint 58X: desktop right-rail preview panel on the Events Index
+  const [previewEventId, setPreviewEventId] = useState(null);
   const eventsRef  = useRef(null);
   // Slim screens: tap a KPI to reveal its rows inline below the KPI row.
   const [showTasksMobile,    setShowTasksMobile]    = useState(false);
@@ -9476,7 +9478,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const pageMeta = dashView === 'calendar'
     ? { title: 'Calendar',    sub: 'All events, milestones & payments by date.' }
     : dashView === 'events'
-    ? { title: 'All Events',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} in your book.` }
+    ? { title: 'Event Portfolio',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} across your studio` }
     : dashView === 'clients'
     ? { title: 'All Clients', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
     : { title: 'Home',       sub: 'Your events and what needs attention.' };
@@ -9650,7 +9652,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>
       )}
 
-      <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
+      {/* Sprint 58X: Events Portfolio has its own full-width command header;
+          skip the padded header wrapper entirely on that view. */}
+      {dashView !== 'events' && <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
         <div style={inner}>
           {/* Desktop shows the page title here (brand lives in the sidebar).
               Sprint 48 / Figma I: on the dashboard view this is a time-aware
@@ -9759,7 +9763,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             />
           )}
         </div>
-      </div>
+      </div>}
 
       {dashView === 'calendar' && (
         <MasterCalendarView events={events} onSelectEvent={onSelectEvent} />
@@ -9934,15 +9938,15 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>
       )}
 
-      {/* ── Events list page ── */}
+      {/* ── Sprint 58X: Events Portfolio Command Board ── */}
       {dashView === 'events' && (() => {
-        // Sprint 48: filter and sort events by operational need
+        // ── Data layer ──────────────────────────────────────────────
         const allEvents = enrichedEvents.map(ev => ({ ev, att: getEventAttention(ev) }));
         const filtered = allEvents.filter(({ ev, att }) => {
           const totalAtt = att.decisions + att.approvals + att.requests + att.vendorIssues;
           switch (eventsFilter) {
             case 'needs':    return totalAtt > 0;
-            case 'client':   return att.approvals > 0; // proxy: pending approvals are mostly client-side
+            case 'client':   return att.approvals > 0;
             case 'vendor':   return att.vendorIssues > 0 || att.requests > 0;
             case 'risk':     return att.decisions > 0;
             case 'upcoming': return ev.date && daysUntil(ev.date) > 0;
@@ -9950,7 +9954,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             default: return true;
           }
         });
-        // Sort: by attention if filter is 'needs' or 'all'; otherwise keep date sort
         const sorted = (eventsFilter === 'all' || eventsFilter === 'needs')
           ? [...filtered].sort((a, b) => {
               const aT = a.att.decisions + a.att.approvals + a.att.requests + a.att.vendorIssues;
@@ -9959,133 +9962,517 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             })
           : filtered;
         const filterChips = [
-          { id: 'all',      label: 'All',           count: allEvents.length },
-          { id: 'needs',    label: 'Needs attention', count: allEvents.filter(({ att }) => (att.decisions + att.approvals + att.requests + att.vendorIssues) > 0).length },
-          { id: 'client',   label: 'Awaiting client', count: allEvents.filter(({ att }) => att.approvals > 0).length },
-          { id: 'vendor',   label: 'Awaiting vendor', count: allEvents.filter(({ att }) => (att.vendorIssues + att.requests) > 0).length },
-          { id: 'risk',     label: 'At risk',       count: allEvents.filter(({ att }) => att.decisions > 0).length },
-          { id: 'upcoming', label: 'Upcoming',      count: allEvents.filter(({ ev }) => ev.date && daysUntil(ev.date) > 0).length },
-          { id: 'complete', label: 'Completed',     count: allEvents.filter(({ ev }) => ev.date && daysUntil(ev.date) < 0).length },
+          { id: 'all',      label: 'All',             count: allEvents.length },
+          { id: 'needs',    label: 'Needs attention',  count: allEvents.filter(({ att }) => (att.decisions + att.approvals + att.requests + att.vendorIssues) > 0).length },
+          { id: 'client',   label: 'Awaiting client',  count: allEvents.filter(({ att }) => att.approvals > 0).length },
+          { id: 'vendor',   label: 'Awaiting vendor',  count: allEvents.filter(({ att }) => (att.vendorIssues + att.requests) > 0).length },
+          { id: 'risk',     label: 'At risk',          count: allEvents.filter(({ att }) => att.decisions > 0).length },
+          { id: 'upcoming', label: 'Upcoming',         count: allEvents.filter(({ ev }) => ev.date && daysUntil(ev.date) > 0).length },
+          { id: 'complete', label: 'Completed',        count: allEvents.filter(({ ev }) => ev.date && daysUntil(ev.date) < 0).length },
         ];
+
+        // ── Derived stats for Zone 1 ────────────────────────────────
+        const totalAttention = allEvents.reduce((n, { att }) => n + att.decisions + att.approvals + att.requests + att.vendorIssues, 0);
+        const upcomingEvents = allEvents.filter(({ ev }) => ev.date && daysUntil(ev.date) > 0);
+        const nextEvent = upcomingEvents.length > 0
+          ? upcomingEvents.reduce((best, cur) => {
+              const d = daysUntil(cur.ev.date);
+              return d < daysUntil(best.ev.date) ? cur : best;
+            })
+          : null;
+        const portfolioValue = allEvents.reduce((s, { ev }) => s + (ev.vendors || []).reduce((b, v) => b + vendorCommittedCost(v), 0), 0);
+
+        // ── Priority lane: top 3 events by attention ─────────────────
+        const priorityEvents = [...allEvents]
+          .map(item => ({ ...item, totalAtt: item.att.decisions + item.att.approvals + item.att.requests + item.att.vendorIssues }))
+          .filter(item => item.totalAtt > 0)
+          .sort((a, b) => b.totalAtt - a.totalAtt)
+          .slice(0, 3);
+
+        // ── Preview panel event (Zone 4 — desktop only) ──────────────
+        const previewEv = previewEventId
+          ? allEvents.find(({ ev }) => ev.id === previewEventId)?.ev || null
+          : null;
+        const previewR  = previewEv ? getEventReadiness(previewEv) : null;
+        const previewNA = previewEv ? selectEventNextAction(previewEv) : null;
+        const previewAtt = previewEv ? getEventAttention(previewEv) : null;
+
+        // ── Readiness helpers ────────────────────────────────────────
+        const colorFor = (st) => st === 'ON_TRACK' ? C.success : st === 'AT_RISK' ? C.danger : C.warn;
+        const readinessAxes = [
+          { key: 'decision',  label: 'Decisions' },
+          { key: 'vendor',    label: 'Vendors'   },
+          { key: 'timeline',  label: 'Timeline'  },
+          { key: 'document',  label: 'Documents' },
+        ];
+
+        // ── Responsive layout vars ───────────────────────────────────
+        const isMob = bp === 'mobile';
+        const isTab = bp === 'tablet';
+        const showRail = isWide && previewEv;
+        const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
+
         return (
-        <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
-          <div style={inner}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
-              <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={onNew}>+ New Event</button>
-            </div>
-            {/* Sprint 48: filter chips */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-              {filterChips.map(chip => {
-                const active = eventsFilter === chip.id;
-                return (
-                  <button key={chip.id} onClick={() => setEventsFilter(chip.id)} style={{
-                    padding: '5px 12px', borderRadius: 99, fontSize: 11.5,
-                    fontWeight: active ? 600 : 500, cursor: 'pointer',
-                    background: active ? C.text : 'transparent',
-                    color: active ? C.bg : C.muted,
-                    border: `1px solid ${active ? C.text : C.border}`,
-                    fontFamily: 'inherit',
-                    transition: 'background 0.12s, color 0.12s',
+        <div style={{ padding: pagePad }}>
+          <div style={{ maxWidth: showRail ? 'none' : 1200, margin: showRail ? 0 : '0 auto' }}>
+
+            {/* ═══ Zone 1: Command Header ═══════════════════════════════ */}
+            <div style={{ marginBottom: isMob ? 16 : 24 }}>
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
+                <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
+                <div style={{ flex: 1 }}>
+                  <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Event Portfolio</h1>
+                  {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
+                    {allEvents.length} event{allEvents.length !== 1 ? 's' : ''} across your studio
+                  </p>}
+                </div>
+                <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNew}>+ New Event</button>
+              </div>
+
+              {/* Summary stat cards */}
+              {allEvents.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                  gap: isMob ? 10 : 14,
+                  marginBottom: isMob ? 14 : 20,
+                }}>
+                  <div style={{
+                    ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 2,
                   }}>
-                    {chip.label}
-                    {chip.count > 0 && (
-                      <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>
-                        {chip.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {allEvents.length === 0 ? (
-              <div style={{ padding: '32px 0' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events in your roster yet</div>
-                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 16, maxWidth: 380 }}>Create your first event to begin building your command center — vendor roster, guest list, timeline, and budget in one place.</div>
-                <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNew}>New Event</button>
-              </div>
-            ) : sorted.length === 0 ? (
-              <div style={{ padding: '32px 0', fontSize: 13, color: C.muted }}>
-                No events match this filter.
-              </div>
-            ) : (
-              <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                {sorted.map(({ ev, att }, i) => {
-                  const days  = daysUntil(ev.date);
-                  const color = evtCLR[ev.type] || C.muted;
-                  const conf  = (ev.guests || []).filter(g => g.rsvp === 'Yes').length;
-                  const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed').length;
-                  const done  = (ev.timeline || []).filter(t => t.done).length;
-                  const total = (ev.timeline || []).length;
-                  const evCommitted = (ev.vendors || []).reduce((s, v) => s + vendorCommittedCost(v), 0);
-                  const balanceDue  = (ev.vendors || []).filter(vendorIsCommitted).reduce((s, v) => s + vendorBalance(v), 0);
-                  return (
-                    <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={ev.id} onClick={() => onSelectEvent(ev.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                    >
-                      <div style={mkDot(color, 10)} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                          <span style={{ fontWeight: 700, fontSize: 14 }}>{ev.name}</span>
-                          <span style={s.pill(color)}>{ev.type}</span>
-                          {/* Sprint 51 onboarding: Demo badge on seed events */}
-                          {SEED_EVENT_IDS.has(ev.id) && <span style={{ ...s.pill(C.accent2), fontSize: 10 }}>Demo</span>}
-                          {days !== null && <span style={{ ...s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : C.muted), fontSize: 10 }}>{countdownLabel(days)}</span>}
-                          {/* Sprint 48: operational chips */}
-                          {att.decisions > 0    && <span style={{ ...s.pill(C.danger), fontSize: 10 }}>{att.decisions} decision{att.decisions === 1 ? '' : 's'}</span>}
-                          {att.approvals > 0    && <span style={{ ...s.pill(C.warn),  fontSize: 10 }}>{att.approvals} approval{att.approvals === 1 ? '' : 's'}</span>}
-                          {att.requests > 0     && <span style={{ ...s.pill(C.accent2), fontSize: 10 }}>{att.requests} request{att.requests === 1 ? '' : 's'}</span>}
-                          {att.vendorIssues > 0 && <span style={{ ...s.pill(C.warn),  fontSize: 10 }}>{att.vendorIssues} vendor issue{att.vendorIssues === 1 ? '' : 's'}</span>}
-                        </div>
-                        <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {ev.client && <span>{ev.client.name}</span>}
-                          {ev.venue && <span>· {ev.venue}</span>}
-                          {ev.date && <span>· {fmtDate(ev.date)}</span>}
-                        </div>
-                        {/* Sprint 48: 4-axis readiness dots — matches Command
-                            Center's Planning Health rail. Replaces the old
-                            "guests/vendors/tasks" meta line. */}
-                        {(() => {
-                          const r = getEventReadiness(ev);
-                          const colorFor = (st) => st === 'ON_TRACK' ? C.success : st === 'AT_RISK' ? C.danger : C.warn;
-                          const axes = [
-                            { key: 'decision',  label: 'Decision'  },
-                            { key: 'vendor',    label: 'Vendor'    },
-                            { key: 'timeline',  label: 'Timeline'  },
-                            { key: 'document',  label: 'Document'  },
-                          ];
-                          return (
-                            <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
-                              {axes.map(({ key, label }) => {
-                                const r1 = r[key];
-                                const c1 = colorFor(r1.status);
-                                return (
-                                  <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5 }}>
-                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: c1 }} />
-                                    <span style={{ color: C.muted, fontWeight: 600 }}>{label}</span>
-                                    <span style={{ color: c1, fontSize: 10 }}>· {r1.note}</span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : C.warn }}>
-                          {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
-                        </div>
-                        <div style={{ fontSize: 11, color: C.muted }}>balance due</div>
-                      </div>
-                      <span style={{ color: C.muted, fontSize: 16 }}>›</span>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{allEvents.length} total in portfolio</div>
+                  </div>
+                  <div style={{
+                    ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
+                    <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {nextEvent ? nextEvent.ev.name : '—'}
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: 11, color: nextEvent ? (daysUntil(nextEvent.ev.date) <= 30 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>
+                      {nextEvent ? countdownLabel(daysUntil(nextEvent.ev.date)) : 'No upcoming events'}
+                    </div>
+                  </div>
+                  <div style={{
+                    ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                    cursor: totalAttention > 0 ? 'pointer' : 'default',
+                  }} onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Attention Items</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
+                    <div style={{ fontSize: 11, color: totalAttention > 0 ? C.warn : C.muted, marginTop: 2 }}>
+                      {totalAttention === 0 ? 'All clear' : `across ${priorityEvents.length} event${priorityEvents.length !== 1 ? 's' : ''}`}
+                    </div>
+                  </div>
+                  <div style={{
+                    ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 2,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: portfolioValue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{fmtD(portfolioValue)}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>contracted to vendors</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ═══ Zone 2: Priority "Start Here" Lane ═══════════════════ */}
+            {priorityEvents.length > 0 && (
+              <div style={{ marginBottom: isMob ? 16 : 24 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.warn, marginBottom: 10 }}>
+                  Start here
+                </div>
+                <div style={{
+                  display: isMob ? 'grid' : isWide ? 'grid' : 'flex',
+                  gridTemplateColumns: isMob ? '1fr' : priorityEvents.length === 1 ? '1fr' : priorityEvents.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                  gap: isMob ? 10 : 14,
+                  ...((!isMob && !isWide) ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', paddingBottom: 4 } : {}),
+                }}>
+                  {priorityEvents.map(({ ev, att, totalAtt }) => {
+                    const days  = daysUntil(ev.date);
+                    const color = evtCLR[ev.type] || C.muted;
+                    const na    = selectEventNextAction(ev);
+                    return (
+                      <div key={ev.id}
+                        role="button" tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                        onClick={() => onSelectEvent(ev.id)}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = C.warn + '66'; e.currentTarget.style.background = C.warn + '08'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.warn + '33'; e.currentTarget.style.background = C.surface; }}
+                        style={{
+                          ...s.card, marginBottom: 0, cursor: 'pointer',
+                          border: `1px solid ${C.warn}33`,
+                          padding: isMob ? '14px 16px' : '18px 22px',
+                          transition: 'border-color 0.15s, background 0.15s',
+                          ...(!isMob && !isWide ? { minWidth: 280, flexShrink: 0, scrollSnapAlign: 'start' } : {}),
+                        }}
+                      >
+                        {/* Priority card header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: isMob ? 14 : 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</span>
+                          <span style={s.pill(color)}>{ev.type}</span>
+                        </div>
+                        {/* Countdown + client */}
+                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {ev.client && <span>{ev.client.name}</span>}
+                          {days !== null && <span>{ev.client ? '·' : ''} {countdownLabel(days)}</span>}
+                        </div>
+                        {/* Attention summary — concise, not chip-spam */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: na ? 10 : 0 }}>
+                          {att.decisions > 0    && <span style={{ fontSize: 11, fontWeight: 600, color: C.danger }}>{att.decisions} decision{att.decisions !== 1 ? 's' : ''}</span>}
+                          {att.approvals > 0    && <span style={{ fontSize: 11, fontWeight: 600, color: C.warn }}>{att.approvals} approval{att.approvals !== 1 ? 's' : ''}</span>}
+                          {att.requests > 0     && <span style={{ fontSize: 11, fontWeight: 600, color: C.accent2 }}>{att.requests} request{att.requests !== 1 ? 's' : ''}</span>}
+                          {att.vendorIssues > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: C.warn }}>{att.vendorIssues} vendor issue{att.vendorIssues !== 1 ? 's' : ''}</span>}
+                        </div>
+                        {/* Next action hint */}
+                        {na && (
+                          <div style={{ fontSize: 11, color: C.text, lineHeight: 1.45, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+                            <span style={{ fontWeight: 700, color: na.level === 'critical' ? C.danger : C.warn, marginRight: 6 }}>Next:</span>
+                            {(na.title || '').slice(0, 80)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
+
+            {/* ═══ Zone 3+4 wrapper: Event list + Right rail ═══════════ */}
+            <div style={{
+              display: isWide ? 'grid' : 'block',
+              gridTemplateColumns: showRail ? 'minmax(0, 1fr) 360px' : '1fr',
+              gap: 20,
+              alignItems: 'start',
+            }}>
+              {/* ── Zone 3: Event List ─────────────────────────────────── */}
+              <div>
+                {/* Filter chips */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {filterChips.map(chip => {
+                    const active = eventsFilter === chip.id;
+                    return (
+                      <button key={chip.id} onClick={() => setEventsFilter(chip.id)} style={{
+                        padding: '5px 12px', borderRadius: 99, fontSize: 11.5,
+                        fontWeight: active ? 600 : 500, cursor: 'pointer',
+                        background: active ? C.text : 'transparent',
+                        color: active ? C.bg : C.muted,
+                        border: `1px solid ${active ? C.text : C.border}`,
+                        fontFamily: 'inherit',
+                        transition: 'background 0.12s, color 0.12s',
+                      }}>
+                        {chip.label}
+                        {chip.count > 0 && (
+                          <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>
+                    {sorted.length} event{sorted.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                {/* Empty state */}
+                {allEvents.length === 0 ? (
+                  <div style={{ padding: '32px 0' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events in your roster yet</div>
+                    <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 16, maxWidth: 380 }}>Create your first event to begin building your command center — vendor roster, guest list, timeline, and budget in one place.</div>
+                    <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNew}>New Event</button>
+                  </div>
+                ) : sorted.length === 0 ? (
+                  <div style={{ padding: '32px 0', fontSize: 13, color: C.muted }}>
+                    No events match this filter.
+                  </div>
+                ) : (
+                  <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+                    {sorted.map(({ ev, att }, i) => {
+                      const days  = daysUntil(ev.date);
+                      const color = evtCLR[ev.type] || C.muted;
+                      const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
+                      const vTotal = (ev.vendors || []).length;
+                      const tasksDone = (ev.timeline || []).filter(t => t.done).length;
+                      const tasksTotal = (ev.timeline || []).length;
+                      const evCommitted = (ev.vendors || []).reduce((sum, v) => sum + vendorCommittedCost(v), 0);
+                      const balanceDue  = (ev.vendors || []).filter(vendorIsCommitted).reduce((sum, v) => sum + vendorBalance(v), 0);
+                      const totalAtt = att.decisions + att.approvals + att.requests + att.vendorIssues;
+                      const isPreview = previewEventId === ev.id;
+                      const r = getEventReadiness(ev);
+                      // Worst readiness status across 4 axes → single summary dot
+                      const statuses = [r.decision.status, r.vendor.status, r.timeline.status, r.document.status];
+                      const worstStatus = statuses.includes('AT_RISK') ? 'AT_RISK' : statuses.includes('ATTENTION') ? 'ATTENTION' : 'ON_TRACK';
+
+                      return (
+                        <div role="button" tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                          key={ev.id}
+                          onClick={() => {
+                            if (isWide) { setPreviewEventId(isPreview ? null : ev.id); }
+                            else { onSelectEvent(ev.id); }
+                          }}
+                          onDoubleClick={() => onSelectEvent(ev.id)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMob ? '8px 1fr auto' : '8px 1fr auto 90px 20px',
+                            alignItems: 'center',
+                            gap: isMob ? 10 : 14,
+                            padding: isMob ? '14px 14px' : '14px 20px',
+                            borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : 'none',
+                            cursor: 'pointer',
+                            background: isPreview ? C.accent + '0c' : 'transparent',
+                            borderLeft: isPreview ? `3px solid ${C.accent}` : '3px solid transparent',
+                            transition: 'background 0.12s, border-color 0.12s',
+                          }}
+                          onMouseEnter={e => { if (!isPreview) e.currentTarget.style.background = C.surface2; }}
+                          onMouseLeave={e => { if (!isPreview) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          {/* Col 1: Type color dot */}
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+
+                          {/* Col 2: Event info */}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                              <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMob ? 200 : 'none' }}>{ev.name}</span>
+                              <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>{ev.type}</span>
+                              {SEED_EVENT_IDS.has(ev.id) && <span style={{ ...s.pill(C.accent2), fontSize: 9, padding: '1px 7px' }}>Demo</span>}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                              {ev.client && <span>{ev.client.name}</span>}
+                              {ev.venue && <span style={{ opacity: 0.7 }}>· {ev.venue}</span>}
+                              {ev.date && <span style={{ opacity: 0.7 }}>· {fmtDate(ev.date)}</span>}
+                              {days !== null && (
+                                <span style={{ fontWeight: 600, color: days <= 14 ? C.danger : days <= 30 ? C.warn : days <= 90 ? C.accent2 : C.muted, marginLeft: 2 }}>
+                                  {countdownShort(days)}
+                                </span>
+                              )}
+                            </div>
+                            {/* Compact readiness + attention strip */}
+                            <div style={{ display: 'flex', gap: isMob ? 8 : 14, marginTop: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {/* 4-dot readiness summary */}
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                {readinessAxes.map(({ key }) => (
+                                  <span key={key} style={{ width: 6, height: 6, borderRadius: '50%', background: colorFor(r[key].status) }} title={`${key}: ${r[key].note}`} />
+                                ))}
+                                {!isMob && <span style={{ fontSize: 10, color: colorFor(worstStatus), marginLeft: 3, fontWeight: 600 }}>
+                                  {worstStatus === 'ON_TRACK' ? 'On track' : worstStatus === 'AT_RISK' ? 'At risk' : 'Attention'}
+                                </span>}
+                              </div>
+                              {/* Condensed operational flags — max 2 */}
+                              {totalAtt > 0 && (
+                                <span style={{ fontSize: 10.5, fontWeight: 600, color: att.decisions > 0 ? C.danger : att.approvals > 0 ? C.warn : C.accent2 }}>
+                                  {totalAtt} item{totalAtt !== 1 ? 's' : ''} need attention
+                                </span>
+                              )}
+                              {/* Progress fraction */}
+                              {tasksTotal > 0 && !isMob && (
+                                <span style={{ fontSize: 10, color: C.muted }}>{tasksDone}/{tasksTotal} tasks</span>
+                              )}
+                              {vTotal > 0 && !isMob && (
+                                <span style={{ fontSize: 10, color: C.muted }}>{vConf}/{vTotal} vendors</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Col 3: Attention count badge (compact) */}
+                          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                            {totalAtt > 0 ? (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: 24, height: 24, borderRadius: '50%',
+                                background: att.decisions > 0 ? C.danger + '22' : C.warn + '22',
+                                color: att.decisions > 0 ? C.danger : C.warn,
+                                fontSize: 11, fontWeight: 700,
+                              }}>
+                                {totalAtt}
+                              </span>
+                            ) : (
+                              <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.success + '66' }} />
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Col 4: Balance due (desktop only) */}
+                          {!isMob && (
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : C.warn }}>
+                                {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
+                              </div>
+                              {evCommitted > 0 && <div style={{ fontSize: 10, color: C.muted }}>balance</div>}
+                            </div>
+                          )}
+
+                          {/* Col 5: Chevron (desktop only) */}
+                          {!isMob && (
+                            <span style={{ color: C.muted, fontSize: 14, textAlign: 'center' }}>›</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Zone 4: Desktop Right Rail — Event Preview ──────── */}
+              {showRail && previewEv && (
+                <div style={{
+                  ...s.card, marginBottom: 0,
+                  padding: 0, overflow: 'hidden',
+                  position: 'sticky', top: 20,
+                  maxHeight: 'calc(100vh - 40px)',
+                  display: 'flex', flexDirection: 'column',
+                }}>
+                  {/* Preview header */}
+                  <div style={{
+                    padding: '18px 20px 14px',
+                    borderBottom: `1px solid ${C.border}`,
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: evtCLR[previewEv.type] || C.muted, flexShrink: 0 }} />
+                        <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewEv.name}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{previewEv.type}</span>
+                        {previewEv.client && <span>· {previewEv.client.name}</span>}
+                        {previewEv.date && <span>· {fmtDate(previewEv.date)}</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => setPreviewEventId(null)} title="Close preview"
+                      style={{ ...s.btn('ghost'), padding: '4px 8px', fontSize: 14, color: C.muted, lineHeight: 1 }}>×</button>
+                  </div>
+
+                  {/* Preview body — scrollable */}
+                  <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1 }}>
+                    {/* Countdown */}
+                    {previewEv.date && (() => {
+                      const days = daysUntil(previewEv.date);
+                      return days !== null ? (
+                        <div style={{
+                          padding: '12px 16px', borderRadius: 8,
+                          background: days <= 14 ? C.danger + '12' : days <= 30 ? C.warn + '12' : C.surface2,
+                          marginBottom: 14, textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: days <= 14 ? C.danger : days <= 30 ? C.warn : C.text }}>{days}</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>days from now</div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* 4-axis readiness */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Readiness</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                        {readinessAxes.map(({ key, label }) => {
+                          const r1 = previewR[key];
+                          const c1 = colorFor(r1.status);
+                          return (
+                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: c1, flexShrink: 0 }} />
+                              <span style={{ color: C.muted, fontWeight: 600 }}>{label}</span>
+                              <span style={{ color: c1, fontSize: 10, marginLeft: 'auto' }}>{r1.note}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Attention items */}
+                    {previewAtt && (previewAtt.decisions + previewAtt.approvals + previewAtt.requests + previewAtt.vendorIssues) > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Needs Attention</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {previewAtt.decisions > 0 && (
+                            <div style={{ fontSize: 12, color: C.danger, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.danger }} />{previewAtt.decisions} open decision{previewAtt.decisions !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                          {previewAtt.approvals > 0 && (
+                            <div style={{ fontSize: 12, color: C.warn, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.warn }} />{previewAtt.approvals} pending approval{previewAtt.approvals !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                          {previewAtt.requests > 0 && (
+                            <div style={{ fontSize: 12, color: C.accent2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.accent2 }} />{previewAtt.requests} pending request{previewAtt.requests !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                          {previewAtt.vendorIssues > 0 && (
+                            <div style={{ fontSize: 12, color: C.warn, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.warn }} />{previewAtt.vendorIssues} vendor issue{previewAtt.vendorIssues !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Next action */}
+                    {previewNA && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Next Action</div>
+                        <div style={{
+                          padding: '10px 14px', borderRadius: 8,
+                          background: previewNA.level === 'critical' ? C.danger + '0c' : C.warn + '0c',
+                          border: `1px solid ${previewNA.level === 'critical' ? C.danger + '22' : C.warn + '22'}`,
+                        }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 3 }}>{previewNA.title}</div>
+                          {previewNA.consequence && (
+                            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45 }}>{(previewNA.consequence || '').slice(0, 120)}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Budget snapshot */}
+                    {(() => {
+                      const evVendors = previewEv.vendors || [];
+                      const committed = evVendors.reduce((sum, v) => sum + vendorCommittedCost(v), 0);
+                      const balance   = evVendors.filter(vendorIsCommitted).reduce((sum, v) => sum + vendorBalance(v), 0);
+                      if (committed === 0) return null;
+                      return (
+                        <div style={{ marginBottom: 16 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Budget</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Contracted</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(committed)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+                            <span style={{ color: C.muted }}>Balance due</span>
+                            <span style={{ fontWeight: 600, color: balance > 0 ? C.warn : C.success }}>{balance > 0 ? fmtD(balance) : 'Paid in full'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Venue */}
+                    {previewEv.venue && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Venue</div>
+                        <div style={{ fontSize: 12, color: C.text }}>{previewEv.venue}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview footer — primary CTA */}
+                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+                    <button
+                      onClick={() => onSelectEvent(previewEv.id)}
+                      style={{ ...s.btn('primary'), width: '100%', padding: '10px 0', fontSize: 13, textAlign: 'center' }}
+                    >
+                      Open {previewEv.name.length > 20 ? previewEv.name.slice(0, 18) + '…' : previewEv.name}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         );
