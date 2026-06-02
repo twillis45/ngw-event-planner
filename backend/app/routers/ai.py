@@ -134,7 +134,7 @@ async def extract_document(body: DocumentExtractRequest):
 
     # Fetch document bytes
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             r = await client.get(body.document_url)
             r.raise_for_status()
             doc_bytes = r.content
