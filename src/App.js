@@ -2037,6 +2037,88 @@ const SEED_EVENTS = [
       { id: 'd6', kind: 'seating_chart', title: 'Reception seating',              status: 'draft',      updatedAt: '2026-05-30T13:00:00Z', notes: '6 guests still unassigned' },
       { id: 'd7', kind: 'menu',          title: 'Reception menu draft',           status: 'draft',      updatedAt: '2026-05-25T12:00:00Z' },
     ],
+    // Test data: exercises thread search, approval workflow, waiting-for-reply, vendor contact logging
+    commClient: [
+      // ── Client thread: Sarah & Todd ─────────────────────────────
+      {
+        id: 'wm1', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Hi Sarah & Todd! Wanted to loop in on the final guest count. We need to give Fork & Flower their headcount by July 15. Currently sitting at 112 confirmed — does that feel right, or are you expecting late RSVPs?',
+        createdAt: '2026-05-01T10:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'wm2', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Following up on the guest count — I need a response this week. Caterer is asking. Also confirming the florist vision board approval below.',
+        createdAt: '2026-05-10T09:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      // Approval request — exercises inline Approve/Reject buttons
+      {
+        id: 'wm3', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Please review and approve the updated floral vision board. Wild Bloom has submitted their revised scope — ivory + blush arch, 12 centerpieces (elevated), 6 bridesmaids bouquets, and a flower crown for Sarah. Total stays within the original $3,800 contract. Approving this lets us sign off with Wild Bloom and lock in the design.',
+        createdAt: '2026-05-20T14:00:00Z',
+        message_type: 'approval_request', approval_status: 'pending',
+        subject: 'Floral vision board approval — Wild Bloom Florals',
+        deliveryStatus: 'email-sent',
+      },
+      // Older unanswered outbound — exercises "waiting for reply" tracker (>48h)
+      {
+        id: 'wm4', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'One more thing — the seating chart draft is ready for your review. I\'ve placed family at the head table and separated the two groups you mentioned. Can you check the layout and confirm by end of week?',
+        createdAt: '2026-05-27T11:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      // ── Vendor thread: Fork & Flower Catering ────────────────────
+      {
+        id: 'wm5', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Fork & Flower Catering',
+        body: 'Hi Fork & Flower — confirming our tasting results. Todd and Sarah loved the salmon and the vegetarian option. They\'d like to add 1 vegan plate (table 3). Please confirm the updated per-head rate and send a revised invoice.',
+        createdAt: '2026-04-22T15:30:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'wm6', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Fork & Flower Catering',
+        body: 'Final headcount update: 118 guests confirmed. 4 vegetarian, 1 vegan, 2 gluten-free. Please confirm you have these on file. We\'ll do a final update by July 15.',
+        createdAt: '2026-05-15T10:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      // ── Vendor thread: Bluebell Venue ─────────────────────────────
+      {
+        id: 'wm7', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Bluebell Venue',
+        body: 'Hi Bluebell — quick question on the ceremony garden. If it rains on Sept 12, what is the backup plan? Do you have an indoor ceremony option that fits 120 guests? Need to know so we can include it in the couple\'s day-of brief.',
+        createdAt: '2026-05-18T09:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      // Unanswered vendor message >48h — exercises waiting-for-reply tracker
+      {
+        id: 'wm8', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Bluebell Venue',
+        body: 'Following up on the rain contingency question from May 18. Also confirming our venue walkthrough for June 10 at 10am — is that still on?',
+        createdAt: '2026-05-25T14:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      // ── Vendor thread: Lena Kim Photography ──────────────────────
+      {
+        id: 'wm9', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Lena Kim Photography',
+        body: 'Hi Lena! Shot list is attached. Sarah specifically wants: getting-ready candids, first look in the garden, and a full family group shot. Also — what time do you typically wrap on the wedding day? We have the venue until 10pm.',
+        createdAt: '2026-05-05T11:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'wm10', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Lena Kim Photography',
+        body: 'Thanks for confirming! Just flagged that the engagement photos are being used on the welcome sign at the venue. Can you send over 3–4 high-res favorites from that session?',
+        createdAt: '2026-05-12T10:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+    ],
   },
   {
     id: 'ev-corp',
@@ -2105,6 +2187,53 @@ const SEED_EVENTS = [
       { id: 'd3', kind: 'mood_board',    title: 'Holiday theme — Velvet Noir',   status: 'approved',   updatedAt: '2026-05-20T15:30:00Z' },
       { id: 'd4', kind: 'menu',          title: 'Dinner + dessert tasting menu', status: 'draft',      updatedAt: '2026-05-28T09:00:00Z' },
       { id: 'd5', kind: 'final_packet',  title: 'Staff briefing packet',         status: 'not_started', updatedAt: null },
+    ],
+    // Test comms: approval request pending (for inline Approve/Reject demo)
+    commClient: [
+      {
+        id: 'hm1', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Hi TechCorp team — wanted to confirm the dinner menu selection. You chose the Holiday Buffet package at our tasting. Are you happy with that, or would you like to revisit the plated option?',
+        createdAt: '2026-05-15T10:30:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'hm2', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Quick follow-up on the menu — we need to give City Catering final confirmation by June 20. Can you let me know this week?',
+        createdAt: '2026-05-28T09:15:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'hm3', channel: 'client', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner',
+        body: 'Requesting approval: We need to confirm the Holiday Buffet menu with City Catering by June 20 to lock in pricing. Please approve so we can proceed.',
+        createdAt: '2026-06-01T14:00:00Z',
+        message_type: 'approval_request', approval_status: 'pending',
+        subject: 'Menu approval needed — deadline June 20',
+        deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'hm4', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Skyline Event Center',
+        body: 'Hi team — following up on the venue contract. We sent it May 12. Could you countersign and return? We need it on file before the deposit is due.',
+        createdAt: '2026-05-20T11:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'hm5', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Skyline Event Center',
+        body: 'Second follow-up on the contract — we are now 3 weeks out from your countersign deadline. Please advise on timing.',
+        createdAt: '2026-06-01T08:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
+      {
+        id: 'hm6', channel: 'vendor', direction: 'outbound', sender: 'planner',
+        senderName: 'Jane Planner', vendor_name: 'Premier AV Solutions',
+        body: 'Hi — confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confirm the team size and parking needs?',
+        createdAt: '2026-05-10T16:00:00Z',
+        message_type: 'standard', deliveryStatus: 'email-sent',
+      },
     ],
   },
   {
