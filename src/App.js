@@ -8,6 +8,7 @@ import AuthGate           from './components/AuthGate';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { isSentryConfigured } from './lib/sentry';
+import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -3266,6 +3267,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
   const [logSummLoad,    setLogSummLoad]    = useState(false);
   const [notesDraftLoad, setNotesDraftLoad] = useState(false);
   const [showOps,        setShowOps]        = useState(false);
+  const [contractUploading, setContractUploading] = useState(false);
+  const [contractUploadErr, setContractUploadErr] = useState(null);
+  const auth = useContext(AuthCtx);
   const [showPNotes,     setShowPNotes]     = useState(false);
   const [newPNote,       setNewPNote]       = useState('');
   const [newRiskFlag,    setNewRiskFlag]    = useState('');
@@ -3871,16 +3875,69 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
               </div>
 
               {/* Contract — folded into Payment */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 6, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
-                <label onClick={() => onChange('contractSigned', !vendor.contractSigned)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.contractSigned ? C.success : C.border}`, background: vendor.contractSigned ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s' }}>
-                    {vendor.contractSigned && <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>✓</span>}
+              <div style={{ paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: contractUploadErr ? 6 : 0 }}>
+                  <label onClick={() => onChange('contractSigned', !vendor.contractSigned)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.contractSigned ? C.success : C.border}`, background: vendor.contractSigned ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s' }}>
+                      {vendor.contractSigned && <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: vendor.contractSigned ? C.success : C.muted }}>Contract signed</span>
+                  </label>
+                  <input style={{ ...s.input, flex: 1, minWidth: 160, fontSize: 12 }} value={vendor.contractUrl || ''} placeholder="Paste URL or upload file below…" onChange={e => onChange('contractUrl', e.target.value)} />
+                  {vendor.contractUrl && (
+                    <a href={vendor.contractUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap' }}>Open →</a>
+                  )}
+                </div>
+                {/* File upload — shown when Supabase Storage is configured */}
+                {isStorageConfigured() && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <label style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600,
+                      border: `1px solid ${C.border}`, cursor: contractUploading ? 'wait' : 'pointer',
+                      color: C.muted, background: 'transparent', transition: 'border-color 0.12s',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}
+                    >
+                      {contractUploading ? '⏳ Uploading…' : '📎 Upload contract file'}
+                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }} disabled={contractUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const v = validateFile(file);
+                          if (!v.ok) { setContractUploadErr(v.error); return; }
+                          setContractUploadErr(null);
+                          setContractUploading(true);
+                          try {
+                            const result = await uploadFile({
+                              file,
+                              eventId: event?.id || 'unknown',
+                              category: 'contract',
+                              userId: auth?.user?.id || 'anon',
+                            });
+                            if (result.ok) {
+                              onChange('contractUrl', result.url || result.path);
+                              onChange('contractFileName', file.name);
+                              onChange('contractStoragePath', result.path);
+                              onChange('contractSigned', true);
+                            } else {
+                              setContractUploadErr(result.error || 'Upload failed');
+                            }
+                          } finally {
+                            setContractUploading(false);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                    {vendor.contractFileName && (
+                      <span style={{ fontSize: 11, color: C.muted }}>📄 {vendor.contractFileName}</span>
+                    )}
+                    {contractUploadErr && (
+                      <span style={{ fontSize: 11, color: C.danger }}>{contractUploadErr}</span>
+                    )}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: vendor.contractSigned ? C.success : C.muted }}>Contract signed</span>
-                </label>
-                <input style={{ ...s.input, flex: 1, minWidth: 160, fontSize: 12 }} value={vendor.contractUrl || ''} placeholder="Contract URL or file path…" onChange={e => onChange('contractUrl', e.target.value)} />
-                {vendor.contractUrl && (
-                  <a href={vendor.contractUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap' }}>Open →</a>
                 )}
               </div>
             </div>
