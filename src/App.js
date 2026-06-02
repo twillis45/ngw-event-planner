@@ -11,6 +11,7 @@ import { isSentryConfigured } from './lib/sentry';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk } from './lib/weather';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
+import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -295,7 +296,32 @@ const useToast  = () => useContext(ToastCtx).showToast;
 const AICtx = createContext(''); // stores the planner's Anthropic API key
 const useAIKey = () => useContext(AICtx);
 
-async function askClaude(apiKey, prompt, { maxTokens = 700, onChunk, signal } = {}) {
+async function askClaude(apiKey, prompt, { maxTokens = 700, onChunk, signal, system, context } = {}) {
+  // Sprint 61: try backend AI proxy first — keeps API key server-side.
+  // Falls back to BYOK (direct browser call) when proxy returns 503 or
+  // when apiKey is available but BASE_URL isn't.
+  const BASE = process.env.REACT_APP_API_BASE_URL;
+  if (BASE) {
+    try {
+      const proxyRes = await fetch(`${BASE}/api/ai/status`);
+      if (proxyRes.ok) {
+        const { configured } = await proxyRes.json();
+        if (configured) {
+          const r = await fetch(`${BASE}/api/ai/complete`, {
+            method: 'POST', signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, system, max_tokens: maxTokens, context }),
+          });
+          if (r.ok) {
+            const data = await r.json();
+            if (onChunk) onChunk(data.text || '');
+            return data.text || '';
+          }
+        }
+      }
+    } catch { /* fall through to BYOK */ }
+  }
+  // BYOK fallback
   if (!apiKey) throw new Error('no-key');
   const streaming = !!onChunk;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -5241,6 +5267,20 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   const budgetTmpl = BUDGET_TEMPLATES[form.type] || BUDGET_TEMPLATES.Other;
   const vendorCats = VENDOR_STUBS[form.type]     || VENDOR_STUBS.Other;
 
+  const venueInputRef = useRef(null);
+  useEffect(() => {
+    if (!isMapsConfigured()) return;
+    let cleanup = () => {};
+    loadMapsScript().then(ok => {
+      if (!ok || !venueInputRef.current) return;
+      cleanup = attachAutocomplete(venueInputRef.current, (place) => {
+        upd('venue', place.name || place.address);
+        if (place.lat && place.lon) upd('venueLat', place.lat) || upd('venueLon', place.lon);
+      }, ['establishment']);
+    });
+    return () => cleanup();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [kitExpanded,      setKitExpanded]     = useState({ timeline: false, budget: false, vendors: false });
   const [timelineChecked,  setTimelineChecked] = useState(() => tmpl ? tmpl.map(() => true) : []);
   const [budgetChecked,    setBudgetChecked]   = useState(() => budgetTmpl.map(() => true));
@@ -5431,7 +5471,7 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Venue</label>
-                <input style={s.input} value={form.venue} placeholder="Venue name" onChange={e => upd('venue', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
+                <input ref={venueInputRef} style={s.input} value={form.venue} placeholder={isMapsConfigured() ? 'Search venues…' : 'Venue name'} onChange={e => upd('venue', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -8326,6 +8366,22 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   detail={!dsBackend?.configured ? 'Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend (Render).' : null}
                   actionLabel={dsBackend?.configured && !dsConnected ? 'Connect DocuSign' : null}
                   onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
+                />
+
+                {/* Backend AI proxy */}
+                <IntRow
+                  label="AI proxy (server-side Claude)"
+                  desc={commApiOn ? 'AI calls route through backend — API key stays server-side' : 'AI uses your BYOK key directly from the browser'}
+                  status={commApiOn ? 'connected' : 'partial'}
+                  detail={!commApiOn ? 'Connect the backend (REACT_APP_API_BASE_URL) and set ANTHROPIC_API_KEY on Render to enable server-side AI.' : null}
+                />
+
+                {/* Google Maps */}
+                <IntRow
+                  label="Google Maps — venue autocomplete"
+                  desc={isMapsConfigured() ? 'Venue search active on event create and edit' : 'Venue fields are plain text — no address suggestions'}
+                  status={isMapsConfigured() ? 'connected' : 'disconnected'}
+                  detail={!isMapsConfigured() ? 'Set REACT_APP_GOOGLE_MAPS_KEY to enable. Free tier at console.cloud.google.com (Places API).' : null}
                 />
 
                 {/* Weather */}
