@@ -145,16 +145,17 @@ async def extract_document(body: DocumentExtractRequest):
     import base64
     doc_b64 = base64.standard_b64encode(doc_bytes).decode()
 
-    # Determine image media type for OpenAI vision
-    if "png" in content_type:
-        media_type = "image/png"
-    elif "pdf" in content_type or body.document_url.lower().endswith(".pdf"):
-        # GPT-4o can read PDFs sent as base64 via the file content block
-        media_type = "application/pdf"
-    else:
-        media_type = "image/jpeg"
+    # Determine how to send this document to GPT-4o.
+    # OpenAI vision (image_url) supports: JPEG, PNG, GIF, WebP.
+    # PDFs must be sent via the "file" content block (Chat Completions v1 with gpt-4o).
+    is_pdf = "pdf" in content_type or body.document_url.lower().endswith(".pdf")
 
-    context       = f"Vendor: {body.vendor_name or 'Unknown'}, Event: {body.event_name or 'Unknown'}"
+    if "png" in content_type:
+        image_media_type = "image/png"
+    else:
+        image_media_type = "image/jpeg"
+
+    context        = f"Vendor: {body.vendor_name or 'Unknown'}, Event: {body.event_name or 'Unknown'}"
     doc_type_label = body.document_type.replace("_", " ").title()
 
     prompt = f"""You are reviewing a {doc_type_label} document for an event planning studio.
@@ -183,25 +184,24 @@ Return ONLY valid JSON:
 
 Use null for fields that cannot be determined."""
 
-    # Build OpenAI vision message
-    if media_type == "application/pdf":
-        # OpenAI file content block for PDFs
+    # Build message content based on document type.
+    # PDFs: use the "file" content block (gpt-4o native PDF support).
+    # Images: use image_url with base64.
+    if is_pdf:
         content = [
+            {"type": "text", "text": prompt},
             {
-                "type": "text",
-                "text": prompt,
-            },
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:{media_type};base64,{doc_b64}",
+                "type": "file",
+                "file": {
+                    "filename": body.document_url.split("/")[-1] or "document.pdf",
+                    "file_data": f"data:application/pdf;base64,{doc_b64}",
                 },
             },
         ]
     else:
         content = [
             {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{doc_b64}"}},
+            {"type": "image_url", "image_url": {"url": f"data:{image_media_type};base64,{doc_b64}"}},
         ]
 
     payload = {
