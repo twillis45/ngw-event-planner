@@ -23,7 +23,8 @@
 // All intelligence is deterministic — see src/lib/vendorIntelligence.js and
 // src/lib/vendorQuestions.js. No AI, no fake scoring.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
+import { AuthCtx } from '../contexts/AuthContext';
 import { color, space, type, radius } from '../design/tokens';
 import {
   getVendorLifecycleStage,
@@ -52,6 +53,14 @@ import {
   getSuggestedPayMethod,
   getOfflinePayInstruction,
 } from '../lib/payLinks';
+import {
+  isStorageConfigured,
+  uploadFile,
+  getSignedUrl,
+  validateFile,
+  fmtFileSize,
+  inferCategory,
+} from '../lib/storage';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -499,7 +508,7 @@ function ReachActions({ vendor }) {
 // contract handling exposes URL paste + send-for-signature, arrival time
 // shows an inline time picker. No more "mark this happened" without giving
 // the planner a real way to make it happen.
-function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit }) {
+function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId }) {
   const step = useMemo(() => getActionableNextStep(nextAction, vendor), [nextAction, vendor]);
   const [doneState, setDoneState] = useState(null);
   const [expandedKind, setExpandedKind] = useState(null); // 'payment' | 'contract' | 'arrival'
@@ -613,6 +622,8 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
         <ContractFlow
           vendor={vendor}
           accent={accent}
+          eventId={eventId}
+          userId={userId}
           onCancel={() => setExpandedKind(null)}
           onAttachUrl={(url) => {
             if (onPatchVendor) onPatchVendor(vendor.id, { contractUrl: url, contractSigned: true });
@@ -627,6 +638,16 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
           onLogSentForSignature={() => {
             if (onAddLog) onAddLog(vendor.id, `Contract sent to ${vendor.contact || vendor.name} for signature.`);
             flashDone('Logged');
+          }}
+          onUploadFile={({ storagePath, fileName, fileSize }) => {
+            if (onPatchVendor) onPatchVendor(vendor.id, {
+              contractStoragePath: storagePath,
+              contractFileName: fileName,
+              contractFileSize: fileSize,
+              contractSigned: true,
+            });
+            if (onAddLog) onAddLog(vendor.id, `Contract uploaded: ${fileName} (${Math.round((fileSize || 0) / 1024)}KB)`);
+            flashDone('Contract uploaded');
           }}
         />
       )}
@@ -815,9 +836,11 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
   );
 }
 
-// ── Contract flow — paste URL, mark received, or send for signature ─────────
-function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, onLogSentForSignature }) {
+// ── Contract flow — paste URL, upload file, send for signature, or mark received
+function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, onLogSentForSignature, onUploadFile, eventId, userId }) {
   const [url, setUrl] = useState(vendor.contractUrl || '');
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState(null);
   const validUrl = /^https?:\/\/\S+/.test(url.trim());
 
   const mailtoHref = vendor.contact
@@ -925,7 +948,73 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
         </div>
       </div>
 
-      {/* Option 3: Mark received offline */}
+      {/* Option 3: Upload file directly — only when Supabase Storage is configured */}
+      {isStorageConfigured() && (
+        <div style={{
+          padding: space[3], marginBottom: space[3],
+          background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
+            Upload file
+          </div>
+          <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
+            PDF, image, or Word document — stored securely and attached to this vendor.
+          </div>
+          {uploadErr && (
+            <div style={{ fontSize: 11, color: '#e63946', marginBottom: 8 }}>{uploadErr}</div>
+          )}
+          <div style={{ display: 'flex', gap: space[2], alignItems: 'center' }}>
+            <label style={{
+              padding: '6px 12px', borderRadius: radius.sm,
+              border: `1px solid ${P.borderDef}`, cursor: uploading ? 'wait' : 'pointer',
+              background: 'none', color: P.textPrimary,
+              fontSize: 10, fontWeight: type.weight.semibold,
+              letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
+              display: 'inline-block',
+            }}>
+              {uploading ? 'Uploading…' : 'Choose file'}
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx"
+                style={{ display: 'none' }}
+                disabled={uploading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const validation = validateFile(file);
+                  if (!validation.ok) { setUploadErr(validation.error); return; }
+                  setUploadErr(null);
+                  setUploading(true);
+                  try {
+                    const result = await uploadFile({
+                      file,
+                      eventId: eventId || 'unknown',
+                      category: inferCategory(file),
+                      userId: userId || 'anon',
+                    });
+                    if (result.ok) {
+                      onUploadFile && onUploadFile({
+                        storagePath: result.path,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        signedUrl: result.url,
+                      });
+                    } else {
+                      setUploadErr(result.error || 'Upload failed — try again');
+                    }
+                  } finally {
+                    setUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
+            <span style={{ fontSize: 10, color: P.textTertiary }}>Max 10 MB</span>
+          </div>
+        </div>
+      )}
+
+      {/* Option 4: Mark received offline */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: space[2] }}>
         <span style={{ fontSize: 11, color: P.textTertiary, fontStyle: 'italic' }}>
           Already received offline?
@@ -1006,7 +1095,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
 }
 
 // 1 — Command Header
-function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog }) {
+function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId }) {
   const accent = levelColor(readiness.level);
   // Sprint 56 tone calm-down: "Vendor Cockpit" → "Vendor details". Internal
   // code references still call this the cockpit (the structural pattern); the
@@ -1092,6 +1181,8 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
             onPatchVendor={onPatchVendor}
             onAddLog={onAddLog}
             onEdit={onEdit}
+            eventId={event?.id}
+            userId={userId}
           />
         )}
       </div>
@@ -1891,7 +1982,7 @@ function EmptyLine({ text }) {
 }
 
 // ── Vendor Detail Cockpit (root of detail pane) ─────────────────────────────
-function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi }) {
+function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const nextAction = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
@@ -1916,6 +2007,7 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
         onEdit={onEdit}
         onPatchVendor={onPatchVendor}
         onAddLog={onAddLog}
+        userId={userId}
       />
 
       <div style={{
@@ -1991,6 +2083,8 @@ export default function VendorPlanningWorkspace({
   aiAvailable = false,
   onAskAi = null,
 }) {
+  const auth = useContext(AuthCtx);
+  const userId = auth?.user?.id || 'anon';
   const vendors = useMemo(() => event.vendors || [], [event.vendors]);
 
   const initialSelected = useMemo(() => {
@@ -2100,6 +2194,7 @@ export default function VendorPlanningWorkspace({
                 onPatchVendor={onPatchVendor}
                 aiAvailable={aiAvailable}
                 onAskAi={onAskAi}
+                userId={userId}
               />
             ) : (
               <NoSelection count={vendors.length} />
