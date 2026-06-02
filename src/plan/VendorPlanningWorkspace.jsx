@@ -1359,31 +1359,106 @@ function LinkedWorkSection({ linked }) {
   );
 }
 
-// 8 — Documents (honest until file storage)
+// 8 — Documents
 function DocumentsSection({ vendor }) {
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
-  const items = [
-    { label: 'Contract', status: contractSigned ? 'done' : 'missing', value: contractSigned ? 'Signed (no file storage yet)' : 'Not attached' },
-    { label: 'Invoice', status: 'not_tracked', value: 'Not attached' },
-    { label: 'COI / Insurance', status: vendor.insuranceStatus ? 'done' : 'not_tracked', value: vendor.insuranceStatus || 'Not attached' },
-    { label: 'Proposal', status: 'not_tracked', value: 'Not attached' },
-    { label: 'Menu / rider / floorplan', status: 'not_tracked', value: 'Not attached' },
-  ];
+  const hasContractFile = Boolean(vendor.contractUrl || vendor.contractStoragePath);
+
+  const contractValue = hasContractFile
+    ? vendor.contractFileName || 'Contract attached'
+    : contractSigned
+    ? 'Signed — no file attached'
+    : 'Not attached';
+
+  const contractStatus = hasContractFile && contractSigned
+    ? 'done'
+    : hasContractFile
+    ? 'attention'   // file exists but not marked signed
+    : contractSigned
+    ? 'attention'   // signed but no file
+    : 'missing';
+
+  const contractConsequence = !hasContractFile && !contractSigned
+    ? 'Booking record is incomplete without a contract on file.'
+    : hasContractFile && !contractSigned
+    ? 'File attached — mark signed once you confirm both parties have signed.'
+    : undefined;
+
   return (
     <div>
-      <SectionHeading label="Documents" hint="File uploads coming next" />
+      <SectionHeading label="Documents" />
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: `0 ${space[5]}px`,
       }}>
-        {items.map((it, i) => (
-          <StatusRow
-            key={it.label}
-            label={it.label}
-            value={it.value}
-            status={it.status}
-            consequence={i === 0 && it.status === 'missing' ? 'Booking record is incomplete without a contract on file.' : undefined}
-          />
+        {/* Contract row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: space[4], padding: `${space[4]}px 0`,
+          borderBottom: `1px solid ${P.borderSubtle}`,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>Contract</div>
+            <div style={{ fontSize: 11, color: contractConsequence ? P.textSecondary : P.textTertiary, lineHeight: 1.4 }}>
+              {contractConsequence || contractValue}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: space[3], flexShrink: 0 }}>
+            {hasContractFile && (
+              <a
+                href={vendor.contractUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 11, fontWeight: type.weight.semibold,
+                  color: P.accent, textDecoration: 'none',
+                  padding: `3px ${space[3]}px`,
+                  border: `1px solid ${P.borderSubtle}`,
+                  borderRadius: radius.sm,
+                }}
+              >
+                Open →
+              </a>
+            )}
+            <span style={{
+              fontSize: 10, fontWeight: type.weight.semibold,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: contractStatus === 'done' ? P.success
+                   : contractStatus === 'attention' ? P.warn
+                   : P.danger,
+            }}>
+              {contractStatus === 'done' ? 'Signed' : contractStatus === 'attention' ? 'Needs action' : 'Missing'}
+            </span>
+          </div>
+        </div>
+
+        {/* COI row */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: space[4], padding: `${space[4]}px 0`,
+          borderBottom: `1px solid ${P.borderSubtle}`,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
+            <div style={{ fontSize: 11, color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: vendor.insuranceStatus ? P.success : P.textTertiary }}>
+            {vendor.insuranceStatus ? 'On file' : 'Not tracked'}
+          </span>
+        </div>
+
+        {/* Invoice + other docs */}
+        {[{ label: 'Invoice', key: 'invoiceUrl' }, { label: 'Menu / rider / floorplan', key: 'menuUrl' }].map(({ label, key }) => (
+          <div key={label} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: space[4], padding: `${space[4]}px 0`,
+            borderBottom: label !== 'Menu / rider / floorplan' ? `1px solid ${P.borderSubtle}` : 'none',
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary }}>{label}</div>
+            </div>
+            <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>Not attached</span>
+          </div>
         ))}
       </div>
     </div>

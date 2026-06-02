@@ -9,6 +9,7 @@ import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { isSentryConfigured } from './lib/sentry';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
+import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk } from './lib/weather';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -8247,6 +8248,14 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   status={sentryOn ? 'connected' : 'disconnected'}
                   detail={!sentryOn ? 'Set REACT_APP_SENTRY_DSN to activate. All PII is masked before events are sent.' : null}
                 />
+
+                {/* Weather */}
+                <IntRow
+                  label="Weather risk (OpenWeather)"
+                  desc={isWeatherConfigured() ? 'Outdoor event forecasts active — alerts appear on Command tab' : 'No weather forecasts for outdoor events'}
+                  status={isWeatherConfigured() ? 'connected' : 'disconnected'}
+                  detail={!isWeatherConfigured() ? 'Set REACT_APP_OPENWEATHER_KEY to enable. Free tier: 1,000 calls/day at openweathermap.org.' : null}
+                />
               </div>
             );
           })()}
@@ -13109,13 +13118,49 @@ function Guests({ guests, setGuests, event = {} }) {
         const nonResponders = guests.filter(g => !g.rsvp || g.rsvp === 'Maybe');
         const daysLeft = event?.date ? daysUntil(event.date) : null;
         if (!nonResponders.length || daysLeft === null || daysLeft > 90) return null;
+        const withEmail = nonResponders.filter(g => g.email);
+        const emailEnabled = isEmailConfigured();
+        const rsvpUrl = event?.rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${event.rsvpCode}` : null;
         return (
           <div style={{ ...s.card, borderColor: C.warn + '66', marginBottom: 16 }}>
-            <button onClick={() => setNonRespOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: bp === 'mobile' ? 'pointer' : 'default', marginBottom: nonRespOpen ? 10 : 0 }}>
-              <span style={{ display: 'flex', color: C.warn }}><Icon name="calendar" size={15} /></span>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.warn, flex: 1, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
-              {bp === 'mobile' && <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: nonRespOpen ? 10 : 0 }}>
+              <button onClick={() => setNonRespOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                <span style={{ display: 'flex', color: C.warn }}><Icon name="calendar" size={15} /></span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.warn, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
+                <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
+              </button>
+              {/* Batch email reminder — DONE when email configured, DEEP HANDOFF via mailto otherwise */}
+              {withEmail.length > 0 && (
+                emailEnabled ? (
+                  <button
+                    style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0 }}
+                    onClick={async () => {
+                      let sent = 0;
+                      for (const g of withEmail) {
+                        try {
+                          await commApi.createMessage(event.id, 'CLIENT', {
+                            body: `Hi ${g.name.split(' ')[0]},\n\nWe'd love to have you join us for ${event?.name || 'our event'}! Could you take a moment to RSVP?${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nThank you!`,
+                            intent: 'email', toEmail: g.email,
+                            subject: `RSVP reminder — ${event?.name || 'our event'}`,
+                          });
+                          sent++;
+                        } catch {}
+                      }
+                      alert(`RSVP reminders sent to ${sent} guest${sent !== 1 ? 's' : ''} via email.`);
+                    }}
+                  >
+                    Send {withEmail.length} reminder{withEmail.length !== 1 ? 's' : ''} via email
+                  </button>
+                ) : (
+                  <a
+                    href={`mailto:${withEmail.map(g => g.email).join(',')}?subject=${encodeURIComponent(`RSVP reminder — ${event?.name || 'our event'}`)}&body=${encodeURIComponent(`Hi all,\n\nJust a friendly reminder to RSVP for ${event?.name || 'our event'}!${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nThank you!`)}`}
+                    style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0, textDecoration: 'none' }}
+                  >
+                    Open in email app ({withEmail.length})
+                  </a>
+                )
+              )}
+            </div>
             {(bp !== 'mobile' || nonRespOpen) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {nonResponders.map(g => {
@@ -17358,6 +17403,57 @@ const computeDayAlerts = (event) => {
   return alerts;
 };
 
+// ─── WeatherAlert — Sprint 63: outdoor event weather risk ────────────────────
+function WeatherAlert({ event }) {
+  const C = useT();
+  const s = makeS(C);
+  const [wx, setWx] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const days = event?.date ? daysUntil(event.date) : null;
+  const outdoor = isLikelyOutdoor(event?.venue, event?.notes);
+  const shouldFetch = isWeatherConfigured() && outdoor && days !== null && days >= 0 && days <= 14;
+
+  useEffect(() => {
+    if (!shouldFetch || dismissed) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const coords = await geocodeVenue(event.venue);
+        if (!coords || cancelled) return;
+        const risk = await getEventWeatherRisk(coords.lat, coords.lon, event.date);
+        if (!cancelled) setWx(risk);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [event?.id, event?.date, event?.venue, shouldFetch, dismissed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!shouldFetch || dismissed || loading || !wx || wx.risk === 'clear') return null;
+
+  const riskColor = wx.risk === 'high' ? C.danger : C.warn;
+  return (
+    <div style={{
+      margin: '0 0 12px', padding: '10px 16px', borderRadius: 8,
+      background: riskColor + '12', border: `1px solid ${riskColor}44`,
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <span style={{ fontSize: 16 }}>{wx.risk === 'high' ? '⛈' : '🌧'}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: riskColor, marginBottom: 2 }}>
+          Weather forecast · {wx.daysOut}d out
+        </div>
+        <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
+      </div>
+      <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: 12, color: C.muted }}>×</button>
+    </div>
+  );
+}
+
 // ─── EventDayBar ─────────────────────────────────────────────────────────────
 function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
   const C = useT();
@@ -18550,6 +18646,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         </div>
 
       </div>}
+
+      {/* Weather risk alert — outdoor events within 14 days */}
+      {!dayMode && tab === 'Command' && <WeatherAlert event={event} />}
 
       {/* Event Day Bar — live execution strip */}
       {dayMode && (
