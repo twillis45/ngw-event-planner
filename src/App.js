@@ -7241,7 +7241,211 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
   );
 }
 
-// ─── Client Portal ────────────────────────────────────────────────────────────
+// ─── Sprint 66: Client Portal — public shareable view ────────────────────────
+// Planner generates a token per event. Token is stored on event.portalToken.
+// URL: ?portal=TOKEN — no planner login required.
+// Client sees: event status, pending decisions to approve/reject.
+// Approvals are written to localStorage (ngw-client-approvals-{eventId})
+// and surfaced back to the planner in the Decisions tab.
+//
+// CTA truthfulness: DONE (approve/reject write to localStorage immediately).
+// Source-of-truth: NGW planner owns the decisions — client provides verdicts.
+
+function ClientPortalPublicView({ token, events }) {
+  const C = useT();
+  const [submitted, setSubmitted] = useState({}); // { decisionId: 'approved'|'rejected' }
+
+  // Find event by portalToken
+  const event = events.find(e => e.portalToken === token);
+
+  // Load any prior client responses from localStorage
+  useEffect(() => {
+    if (!event) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`ngw-client-approvals-${event.id}`) || '{}');
+      setSubmitted(stored);
+    } catch {}
+  }, [event]);
+
+  const respond = (decisionId, verdict) => {
+    if (!event) return;
+    const next = { ...submitted, [decisionId]: verdict };
+    setSubmitted(next);
+    try {
+      localStorage.setItem(`ngw-client-approvals-${event.id}`, JSON.stringify(next));
+    } catch {}
+  };
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  const bg     = '#0f1117';
+  const card   = '#1a1d27';
+  const border = '#2a2d3a';
+  const text   = '#eef0f4';
+  const muted  = '#9098b0';
+  const accent = '#1a6fba';
+  const green  = '#22c55e';
+  const amber  = '#f59e0b';
+  const red    = '#ef4444';
+
+  if (!event) {
+    return (
+      <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{ textAlign: 'center', maxWidth: 400 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: text, marginBottom: 8 }}>Link not found</div>
+          <div style={{ fontSize: 14, color: muted, lineHeight: 1.6 }}>
+            This client portal link is no longer valid or has expired.
+            Please contact your event planner for a fresh link.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const decisions = event.decisions || [];
+  const pending   = decisions.filter(d => d.status === 'pending' && !submitted[d.id]);
+  const resolved  = decisions.filter(d => d.status === 'approved' || submitted[d.id]);
+  const daysLeft  = event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - new Date()) / 86400000) : null;
+
+  const kindLabel = (k) => ({
+    contract: 'Contract', mood_board: 'Vision board', floor_plan: 'Floor plan',
+    menu: 'Menu', proposal: 'Proposal', invoice: 'Invoice',
+  }[k] || k || 'Decision');
+
+  return (
+    <div style={{ minHeight: '100vh', background: bg, fontFamily: "'Inter', system-ui, sans-serif", color: text }}>
+      {/* Header */}
+      <div style={{ background: card, borderBottom: `1px solid ${border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>✦</div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Client Portal</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: text }}>NGW Event Planner</div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
+        {/* Event summary card */}
+        <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 24, marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+            {event.type || 'Event'}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: text, marginBottom: 12 }}>{event.name}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+            {event.date && (
+              <div>
+                <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{fmtDate(event.date)}</div>
+              </div>
+            )}
+            {(event.venue || event.city) && (
+              <div>
+                <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Venue</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{[event.venue, event.city].filter(Boolean).join(' · ')}</div>
+              </div>
+            )}
+            {daysLeft !== null && (
+              <div>
+                <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Countdown</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: daysLeft <= 14 ? amber : text }}>
+                  {daysLeft > 0 ? `${daysLeft} days away` : daysLeft === 0 ? 'Today!' : 'Event passed'}
+                </div>
+              </div>
+            )}
+            {typeof (event.guestEstimate || event.guests?.length) === 'number' && (
+              <div>
+                <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Guests</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{event.guestEstimate || event.guests?.length}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pending approvals */}
+        {pending.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: amber, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: amber, display: 'inline-block' }} />
+              {pending.length} item{pending.length !== 1 ? 's' : ''} awaiting your response
+            </div>
+            {pending.map(d => (
+              <div key={d.id} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '16px 18px', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{kindLabel(d.kind)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: text }}>{d.title}</div>
+                    {d.notes && <div style={{ fontSize: 12, color: muted, marginTop: 4, lineHeight: 1.5 }}>{d.notes}</div>}
+                  </div>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: amber, background: amber + '18', border: `1px solid ${amber}33`, padding: '3px 8px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                    Needs response
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => respond(d.id, 'approved')}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${green}`, background: green + '15', color: green, fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'background 0.15s' }}
+                  >
+                    ✓ Approve
+                  </button>
+                  <button
+                    onClick={() => respond(d.id, 'rejected')}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                  >
+                    ✕ Request changes
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Submitted responses */}
+        {Object.keys(submitted).length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Your responses</div>
+            {Object.entries(submitted).map(([decId, verdict]) => {
+              const d = decisions.find(x => x.id === decId);
+              if (!d) return null;
+              const isApproved = verdict === 'approved';
+              return (
+                <div key={decId} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isApproved ? green : muted, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: muted }}>{kindLabel(d.kind)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: text }}>{d.title}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: isApproved ? green : muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {isApproved ? 'Approved' : 'Changes requested'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Nothing pending */}
+        {pending.length === 0 && Object.keys(submitted).length === 0 && (
+          <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>✓</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: text, marginBottom: 6 }}>You're all caught up</div>
+            <div style={{ fontSize: 13, color: muted }}>No items need your response right now. Your planner will reach out when something needs approval.</div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: `1px solid ${border}` }}>
+          <div style={{ fontSize: 11, color: muted }}>Powered by NGW Event Planner · This link is private — do not share</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Client Portal (planner-facing modal, pre-existing) ───────────────────────
 
 function ClientPortal({ client, events, onClose, onUpdateGuests }) {
   const C = useT();
@@ -8292,6 +8496,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
   // mode only; light mode preserved.
+  const showToast  = useToast(); // Sprint 68: needed for webhook test button
   const _themeCtx = useContext(ThemeCtx);
   const _isDark = _themeCtx.theme === 'dark';
   const C = useMemo(() => {
@@ -8880,6 +9085,43 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   status={isWeatherConfigured() ? 'connected' : 'disconnected'}
                   detail={!isWeatherConfigured() ? 'Set REACT_APP_OPENWEATHER_KEY to enable. Free tier: 1,000 calls/day at openweathermap.org.' : null}
                 />
+
+                {/* Outbound webhooks — Sprint 68 */}
+                <IntRow
+                  label="Outbound webhooks"
+                  desc={profile?.webhookUrl ? `Firing to ${profile.webhookUrl.slice(0, 42)}${profile.webhookUrl.length > 42 ? '…' : ''}` : 'Fire event.created and payment_due to any URL you configure'}
+                  status={profile?.webhookUrl ? 'connected' : 'disconnected'}
+                  expandContent={
+                    <div>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, lineHeight: 1.5 }}>
+                        Sends a POST request to your URL when an event is created or a payment becomes due.
+                        Works with webhook.site, Zapier, Make.com, Pipedream, or any custom endpoint.
+                      </div>
+                      <input
+                        type="url"
+                        value={profile?.webhookUrl || ''}
+                        onChange={e => onChange('webhookUrl', e.target.value)}
+                        placeholder="https://hooks.zapier.com/hooks/catch/..."
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 6 }}
+                      />
+                      <div style={{ fontSize: 10, color: C.muted, marginBottom: 6 }}>
+                        Events fired: <code style={{ color: C.accent }}>event.created</code> · <code style={{ color: C.accent }}>payment_due</code> · <code style={{ color: C.accent }}>decision.approved</code>
+                      </div>
+                      {profile?.webhookUrl && (
+                        <button
+                          onClick={async () => {
+                            const { fireWebhook } = await import('./lib/webhookService');
+                            const r = await fireWebhook(profile.webhookUrl, 'webhook.test', { message: 'NGW webhook test', studio: profile.businessName || profile.name || 'Studio' });
+                            showToast(r?.status === 'delivered' ? '✓ Test webhook delivered' : `Webhook ${r?.status || 'error'} — check your endpoint`, r?.status === 'delivered' ? 'success' : 'error');
+                          }}
+                          style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                          Send test webhook
+                        </button>
+                      )}
+                    </div>
+                  }
+                />
               </div>
             );
           })()}
@@ -8964,7 +9206,6 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             {[
               { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar', phase: 'Phase 2' },
               { label: 'Stripe — client deposits', desc: 'Collect deposits and balances without leaving the app', phase: 'Phase 3' },
-              { label: 'Client portal', desc: 'Magic-link approvals and file review for your clients', phase: 'Phase 3' },
               { label: 'Intake form + website embed', desc: 'Capture leads and auto-create events from your website', phase: 'Phase 3' },
             ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
@@ -19112,6 +19353,48 @@ function EventClientIntakeTab({ event, setEvent, isMobile, onBack }) {
 }
 
 function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
+  const C = useT();
+  const [copied, setCopied] = useState(false);
+  // Sprint 66: client approvals from portal (stored in localStorage by client)
+  const [clientApprovals, setClientApprovals] = useState({});
+
+  // Read client portal approvals from localStorage
+  useEffect(() => {
+    if (!event?.id) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`ngw-client-approvals-${event.id}`) || '{}');
+      setClientApprovals(stored);
+    } catch {}
+  }, [event?.id]);
+
+  // Generate a portal token if one doesn't exist and persist it on the event
+  const ensureToken = () => {
+    if (event?.portalToken) return event.portalToken;
+    const tok = `pt-${event.id}-${Math.random().toString(36).slice(2, 10)}`;
+    setEvent(e => ({ ...e, portalToken: tok }));
+    return tok;
+  };
+
+  const copyPortalLink = () => {
+    const tok = ensureToken();
+    const base = window.location.origin + window.location.pathname;
+    const url  = `${base}?portal=${tok}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // Fallback for browsers without clipboard API
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   const onResolveDecision = (taskId) => {
     setEvent(e => ({
       ...e,
@@ -19125,15 +19408,88 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
       commClient: (e.commClient || []).map(m => m.id === messageId ? { ...m, approval_status: next, actedAt: new Date().toISOString() } : m),
     }));
   };
+
+  // Count pending decisions so planner can see if client has responded
+  const pendingDecisions  = (event?.decisions || []).filter(d => d.status === 'pending');
+  const clientRespondedN  = Object.keys(clientApprovals).length;
+  const hasClientActivity = clientRespondedN > 0;
+
   return (
-    <DecisionApprovalCenter
-      event={event}
-      isMobile={isMobile}
-      openId={openId}
-      onBack={onBack}
-      onResolveDecision={onResolveDecision}
-      onActApproval={onActApproval}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Sprint 66: Portal share banner */}
+      <div style={{
+        padding: '10px 16px',
+        background: C.surface,
+        borderBottom: `1px solid ${C.border}`,
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+            Client portal
+            {hasClientActivity && (
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, color: '#22c55e', background: '#22c55e18', border: '1px solid #22c55e33', padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {clientRespondedN} response{clientRespondedN !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>
+            {pendingDecisions.length > 0
+              ? `Share a private link — client sees ${pendingDecisions.length} item${pendingDecisions.length !== 1 ? 's' : ''} awaiting approval`
+              : 'Share a private link so your client can view event status and approve decisions'}
+          </div>
+        </div>
+        <button
+          onClick={copyPortalLink}
+          style={{
+            padding: '7px 14px', borderRadius: 7,
+            border: `1px solid ${copied ? '#22c55e' : C.border}`,
+            background: copied ? '#22c55e18' : C.bg,
+            color: copied ? '#22c55e' : C.text,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          {copied ? '✓ Link copied' : '🔗 Copy portal link'}
+        </button>
+      </div>
+
+      {/* Client responses section — shown when client has responded */}
+      {hasClientActivity && (
+        <div style={{ padding: '10px 16px', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            Client responses (via portal)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {Object.entries(clientApprovals).map(([decId, verdict]) => {
+              const d = (event?.decisions || []).find(x => x.id === decId);
+              if (!d) return null;
+              const isApproved = verdict === 'approved';
+              return (
+                <div key={decId} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: isApproved ? '#22c55e' : C.muted, flexShrink: 0 }} />
+                  <span style={{ color: C.text, fontWeight: 500 }}>{d.title}</span>
+                  <span style={{ color: isApproved ? '#22c55e' : C.muted, fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    — {isApproved ? 'Approved' : 'Changes requested'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <DecisionApprovalCenter
+          event={event}
+          isMobile={isMobile}
+          openId={openId}
+          onBack={onBack}
+          onResolveDecision={onResolveDecision}
+          onActApproval={onActApproval}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -20401,6 +20757,12 @@ export default function App() {
 
   const createEvent = (ev, explicitClientId) => {
     setEvents(evts => [...evts, ev]);
+    // Sprint 68: fire event.created webhook if planner has configured a URL
+    if (profile?.webhookUrl) {
+      import('./lib/webhookService').then(({ fireWebhook, buildEventCreatedPayload }) => {
+        fireWebhook(profile.webhookUrl, 'event.created', buildEventCreatedPayload(ev));
+      }).catch(() => {});
+    }
     const linkId = explicitClientId || activeClientId;
     if (linkId) {
       setClients(cs => cs.map(c => c.id === linkId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), ev.id])] } : c));
@@ -20571,9 +20933,10 @@ export default function App() {
   const gated = (children) => providers(<AuthGate>{children}</AuthGate>);
 
   // ── Public RSVP route: ?rsvp=CODE opens the guest form directly ──
-  const urlParams  = new URLSearchParams(window.location.search);
-  const rsvpCode   = urlParams.get('rsvp');
-  const vendorCode = urlParams.get('vendor');
+  const urlParams   = new URLSearchParams(window.location.search);
+  const rsvpCode    = urlParams.get('rsvp');
+  const vendorCode  = urlParams.get('vendor');
+  const portalToken = urlParams.get('portal');
 
   if (rsvpCode) {
     const rsvpEvent = events.find(e => e.rsvpCode === rsvpCode || e.id === rsvpCode);
@@ -20609,6 +20972,11 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  // ── Sprint 66: Public Client Portal route: ?portal=TOKEN ──
+  if (portalToken) {
+    return providers(<ClientPortalPublicView token={portalToken} events={events} />);
   }
 
   // ── Event-Day Mode: ?mode=event-day[&event=ID] ──
