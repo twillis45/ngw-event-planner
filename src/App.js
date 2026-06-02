@@ -6587,6 +6587,8 @@ function EventsDashboard({ events, onSelect, onNew }) {
 
 // ─── Client Modal ─────────────────────────────────────────────────────────────
 
+const CLIENT_STYLES = ['Not decided yet', 'Black tie / Formal', 'Garden / Organic', 'Modern / Minimalist', 'Boho / Rustic', 'Glamour / Opulent', 'Coastal / Nautical', 'Vintage / Romantic', 'Corporate / Clean', 'Cultural / Traditional', 'Festival / Eclectic', 'Intimate / Micro'];
+
 function ClientModal({ client, onClose, onChange, onDelete }) {
   const C         = useT();
   const s         = makeS(C);
@@ -6597,6 +6599,55 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
   const [showCommsCheck, setShowCommsCheck] = useState(true);
   const [showLog,        setShowLog]        = useState(false);
   const [confirmClientDel, setConfirmClientDel] = useState(false);
+  // Section expand/collapse state — default open only if has data
+  const hasData = (keys) => keys.some(k => {
+    const v = client[k];
+    return v && v !== '' && v !== false && !(Array.isArray(v) && !v.length);
+  });
+  const [openSections, setOpenSections] = useState({
+    contact: true,
+    partner: hasData(['partnerName','partnerEmail','partnerPhone','address','instagram']),
+    preferences: hasData(['preferredContact','preferredTime','responseExpectation']),
+    vision: hasData(['eventStyle','colorPalette','mustHaves','toAvoid','inspirationLink','guestEstimate','budgetRange']),
+    personal: hasData(['birthday1','birthday2','anniversary','cultural','clientDietary']),
+    influencers: hasData(['decisionMakerNotes','influencer1Name','influencer2Name','influencer3Name']),
+    discovery: hasData(['intakeNotes','referredBy','referral']),
+    fee: true,
+    postEvent: hasData(['thankYouSent','reviewRequested','futureEventNotes','referralPotential']),
+  });
+  const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
+
+  // Section header component
+  const SecHeader = ({ skey, label, badge, badgeColor }) => (
+    <button onClick={() => toggleSection(skey)} style={{
+      width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+      background: openSections[skey] ? C.surface2 : 'transparent',
+      border: 'none', cursor: 'pointer', padding: '10px 14px', textAlign: 'left',
+    }}>
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>{label}</span>
+      {badge && <span style={{ fontSize: 10, fontWeight: 600, color: badgeColor || C.accent, background: (badgeColor || C.accent) + '18', padding: '2px 8px', borderRadius: 6 }}>{badge}</span>}
+      <span style={{ color: C.muted, fontSize: 11 }}>{openSections[skey] ? '▾' : '▸'}</span>
+    </button>
+  );
+  const Sec = ({ skey, label, badge, badgeColor, children }) => (
+    <div style={{ marginBottom: 12, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+      <SecHeader skey={skey} label={label} badge={badge} badgeColor={badgeColor} />
+      {openSections[skey] && (
+        <div style={{ padding: '14px 16px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+  const Field = ({ label, children }) => (
+    <div>
+      {label && <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>}
+      {children}
+    </div>
+  );
+  const Row = ({ children }) => (
+    <div style={{ display: 'flex', gap: 10 }}>{children}</div>
+  );
 
   const stageIdx    = CLIENT_STAGES.indexOf(client.status);
   const collected   = (client.feeSchedule || []).reduce((acc, f) => acc + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
@@ -6634,9 +6685,19 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: panelW, maxWidth: '100vw', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Header: name + pipeline ───────────────────────────────────────── */}
+        {/* ── Header: avatar + name + pipeline ─────────────────────────────── */}
         <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 14 }}>
+          {/* Avatar + name row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            {/* Client photo — upload or initials fallback */}
+            <ImageUpload
+              value={client.photo || null}
+              label={client.name || ''}
+              size={52}
+              max={400}
+              hint="Add client photo"
+              onChange={v => onChange('photo', v)}
+            />
             <input
               style={{ ...s.input, fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '6px 10px' }}
               value={client.name} placeholder="Client Name"
@@ -6672,50 +6733,250 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
         </div>
 
         {/* ── Scrollable body ───────────────────────────────────────────────── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
 
-          {/* ── 1. Contact ── */}
-          <Divider label="Contact" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-            {/* Email */}
-            <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Email</label>
-              <input
-                style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }}
-                type="email" value={client.email || ''} placeholder="client@email.com"
-                onChange={e => onChange('email', e.target.value)}
-                onBlur={() => touch('email')}
-              />
-              {errEmail && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
-            </div>
-            {/* Phone */}
-            <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Phone</label>
-              <input
-                style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }}
-                type="tel" value={client.phone || ''} placeholder="(555) 555-0100"
-                onChange={e => onChange('phone', formatPhone(e.target.value))}
-                onBlur={() => touch('phone')}
-              />
-              {errPhone && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
-            </div>
-            {/* Referral */}
-            <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>How They Found You</label>
-              <input style={s.input} value={client.referral || ''} placeholder="Instagram, The Knot, Word of mouth…"
-                onChange={e => onChange('referral', e.target.value)} />
-            </div>
+          {/* ── Identity extras (inline, not collapsible) ── */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <Field label="Client type">
+              <select style={{ ...s.input, fontSize: 12 }} value={client.clientType || ''} onChange={e => onChange('clientType', e.target.value)}>
+                <option value="">Select…</option>
+                {['Individual','Couple','Corporate','Nonprofit','Other'].map(t => <option key={t}>{t}</option>)}
+              </select>
+            </Field>
+            <Field label="Pronouns">
+              <select style={{ ...s.input, fontSize: 12 }} value={client.pronouns || ''} onChange={e => onChange('pronouns', e.target.value)}>
+                <option value="">Not specified</option>
+                {['She/Her','He/Him','They/Them','She/They','He/They','Any'].map(p => <option key={p}>{p}</option>)}
+              </select>
+            </Field>
+            <Field label="Address as">
+              <input style={{ ...s.input, fontSize: 12 }} value={client.addressedAs || ''} placeholder="e.g. Sarah & Todd" onChange={e => onChange('addressedAs', e.target.value)} />
+            </Field>
           </div>
 
-          {/* ── 2. Communication Checklist (collapsible) ── */}
+          {/* ── 1. Contact ── */}
+          <Sec skey="contact" label="Contact" badge={client.email ? 'Has contact' : null} badgeColor={C.success}>
+            <Row>
+              <Field label="Email">
+                <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }} type="email" value={client.email || ''} placeholder="client@email.com" onChange={e => onChange('email', e.target.value)} onBlur={() => touch('email')} />
+                {errEmail && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
+              </Field>
+              <Field label="Phone">
+                <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }} type="tel" value={client.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} onBlur={() => touch('phone')} />
+                {errPhone && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
+              </Field>
+            </Row>
+          </Sec>
+
+          {/* ── 2. Partner / Second Contact ── */}
+          <Sec skey="partner" label="Partner / Second Contact" badge={client.partnerName ? client.partnerName.split(' ')[0] : null}>
+            <Field label="Partner name">
+              <input style={s.input} value={client.partnerName || ''} placeholder="Partner or co-lead name" onChange={e => onChange('partnerName', e.target.value)} />
+            </Field>
+            <Row>
+              <Field label="Partner email">
+                <input style={s.input} type="email" value={client.partnerEmail || ''} placeholder="partner@email.com" onChange={e => onChange('partnerEmail', e.target.value)} />
+              </Field>
+              <Field label="Partner phone">
+                <input style={s.input} type="tel" value={client.partnerPhone || ''} placeholder="(555) 555-0200" onChange={e => onChange('partnerPhone', formatPhone(e.target.value))} />
+              </Field>
+            </Row>
+            <Row>
+              <Field label="Mailing / home address">
+                <input style={s.input} value={client.address || ''} placeholder="123 Main St, Nashville, TN 37201" onChange={e => onChange('address', e.target.value)} />
+              </Field>
+              <Field label="Instagram">
+                <input style={s.input} value={client.instagram || ''} placeholder="@handle" onChange={e => onChange('instagram', e.target.value)} />
+              </Field>
+            </Row>
+          </Sec>
+
+          {/* ── 3. Communication Preferences ── */}
+          <Sec skey="preferences" label="Communication Preferences">
+            <Row>
+              <Field label="Preferred contact method">
+                <select style={{ ...s.input, fontSize: 12 }} value={client.preferredContact || ''} onChange={e => onChange('preferredContact', e.target.value)}>
+                  <option value="">No preference</option>
+                  {['Text','Email','Call','WhatsApp','Any'].map(m => <option key={m}>{m}</option>)}
+                </select>
+              </Field>
+              <Field label="Preferred time">
+                <select style={{ ...s.input, fontSize: 12 }} value={client.preferredTime || ''} onChange={e => onChange('preferredTime', e.target.value)}>
+                  <option value="">Any time</option>
+                  {['Morning (9–12)','Afternoon (12–5)','Evening (5–8)','Weekdays only','Weekends OK'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </Field>
+            </Row>
+            <Field label="Response time expectation">
+              <select style={{ ...s.input, fontSize: 12 }} value={client.responseExpectation || ''} onChange={e => onChange('responseExpectation', e.target.value)}>
+                <option value="">No preference stated</option>
+                {['Same day','Within 24 hours','Within 48 hours','Within the week'].map(r => <option key={r}>{r}</option>)}
+              </select>
+            </Field>
+          </Sec>
+
+          {/* ── 4. Event Vision ── */}
+          <Sec skey="vision" label="Event Vision" badge={client.eventStyle || null} badgeColor={C.accent2}>
+            <Row>
+              <Field label="Style / aesthetic">
+                <select style={{ ...s.input, fontSize: 12 }} value={client.eventStyle || ''} onChange={e => onChange('eventStyle', e.target.value)}>
+                  <option value="">Not decided yet</option>
+                  {CLIENT_STYLES.filter(s => s !== 'Not decided yet').map(st => <option key={st}>{st}</option>)}
+                </select>
+              </Field>
+              <Field label="Color palette">
+                <input style={s.input} value={client.colorPalette || ''} placeholder="e.g. Dusty rose, ivory, sage" onChange={e => onChange('colorPalette', e.target.value)} />
+              </Field>
+            </Row>
+            <Row>
+              <Field label="Guest count estimate">
+                <input style={s.input} type="number" min="1" value={client.guestEstimate || ''} placeholder="e.g. 120" onChange={e => onChange('guestEstimate', e.target.value)} />
+              </Field>
+              <Field label="Budget range discussed">
+                <input style={s.input} value={client.budgetRange || ''} placeholder="e.g. $40k–$60k" onChange={e => onChange('budgetRange', e.target.value)} />
+              </Field>
+            </Row>
+            <Field label="Must-haves (non-negotiables)">
+              <textarea style={{ ...s.input, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.mustHaves || ''} placeholder="Live band, outdoor ceremony, specific florals…" onChange={e => onChange('mustHaves', e.target.value)} />
+            </Field>
+            <Field label="Things to avoid">
+              <textarea style={{ ...s.input, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.toAvoid || ''} placeholder="No balloons, no buffet style, avoid certain vendors…" onChange={e => onChange('toAvoid', e.target.value)} />
+            </Field>
+            <Field label="Inspiration link (Pinterest / website)">
+              <input style={s.input} type="url" value={client.inspirationLink || ''} placeholder="https://…" onChange={e => onChange('inspirationLink', e.target.value)} />
+            </Field>
+          </Sec>
+
+          {/* ── 5. Personal ── */}
+          <Sec skey="personal" label="Personal Details">
+            <Row>
+              <Field label="Birthday (client)">
+                <input style={s.input} type="date" value={client.birthday1 || ''} onChange={e => onChange('birthday1', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+              </Field>
+              <Field label="Birthday (partner)">
+                <input style={s.input} type="date" value={client.birthday2 || ''} onChange={e => onChange('birthday2', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+              </Field>
+              <Field label="Anniversary">
+                <input style={s.input} type="date" value={client.anniversary || ''} onChange={e => onChange('anniversary', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+              </Field>
+            </Row>
+            <Field label="Cultural / religious considerations">
+              <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.cultural || ''} placeholder="Religious ceremony requirements, cultural traditions, dietary laws…" onChange={e => onChange('cultural', e.target.value)} />
+            </Field>
+            <Field label="Dietary restrictions (client / partner)">
+              <input style={s.input} value={client.clientDietary || ''} placeholder="e.g. Vegan, gluten-free, kosher…" onChange={e => onChange('clientDietary', e.target.value)} />
+            </Field>
+          </Sec>
+
+          {/* ── 6. Decision Makers & Influencers ── */}
+          <Sec skey="influencers" label="Decision Makers & Key Influencers">
+            <Field label="Decision maker notes (who approves what)">
+              <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.decisionMakerNotes || ''} placeholder="e.g. Sarah leads florals, Todd leads venue. MOB has strong opinions on food." onChange={e => onChange('decisionMakerNotes', e.target.value)} />
+            </Field>
+            {[['influencer1Name','influencer1Role','Key family member 1'],['influencer2Name','influencer2Role','Key family member 2'],['influencer3Name','influencer3Role','Key family member 3']].map(([nameKey, roleKey, label]) => (
+              <Row key={nameKey}>
+                <Field label={label + ' name'}>
+                  <input style={s.input} value={client[nameKey] || ''} placeholder="e.g. Linda Chen" onChange={e => onChange(nameKey, e.target.value)} />
+                </Field>
+                <Field label="Role / relationship">
+                  <input style={s.input} value={client[roleKey] || ''} placeholder="e.g. Mother of bride" onChange={e => onChange(roleKey, e.target.value)} />
+                </Field>
+              </Row>
+            ))}
+          </Sec>
+
+          {/* ── 7. Discovery & Intake ── */}
+          <Sec skey="discovery" label="Discovery & Intake">
+            <Field label="Initial consultation notes">
+              <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.intakeNotes || ''} placeholder="What did they share in the first call? Their story, vision, concerns…" onChange={e => onChange('intakeNotes', e.target.value)} />
+            </Field>
+            <Row>
+              <Field label="How they found you">
+                <select style={{ ...s.input, fontSize: 12 }} value={client.referral || ''} onChange={e => onChange('referral', e.target.value)}>
+                  <option value="">Not specified</option>
+                  {REFERRAL_OPTIONS.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </Field>
+              <Field label="Referred by (specific person)">
+                <input style={s.input} value={client.referredBy || ''} placeholder="e.g. Jennifer Park" onChange={e => onChange('referredBy', e.target.value)} />
+              </Field>
+            </Row>
+          </Sec>
+
+          {/* ── 8. Planner Fee & Contract ── */}
+          <Sec skey="fee" label="Planner Fee & Contract" badge={outstanding > 0 ? `${fmtD(outstanding)} outstanding` : collected > 0 ? 'Paid in full' : null} badgeColor={outstanding > 0 ? C.warn : C.success}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Field label="Total fee">
+                <input style={s.input} type="number" value={client.plannerFee || 0} onChange={e => onChange('plannerFee', Number(e.target.value) || 0)} />
+              </Field>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.success }}>{fmtD(collected)}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Outstanding</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: outstanding > 0 ? C.warn : C.muted }}>{fmtD(outstanding)}</div>
+              </div>
+            </div>
+            {(client.feeSchedule || []).map(f => (
+              <div key={f.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                  <input style={{ ...s.input, flex: 2 }} value={f.label} placeholder="Label (e.g. Deposit)" onChange={e => updateInstallment(f.id, 'label', e.target.value)} />
+                  <input style={{ ...s.input, flex: 1 }} type="number" value={f.amount} placeholder="0" onChange={e => updateInstallment(f.id, 'amount', Number(e.target.value) || 0)} />
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input style={{ ...s.input, flex: 1, minWidth: 110 }} type="date" value={f.due || ''} onChange={e => updateInstallment(f.id, 'due', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                  <select style={{ ...s.input, flex: 1, minWidth: 100, fontSize: 12 }} value={f.paymentMethod || ''} onChange={e => updateInstallment(f.id, 'paymentMethod', e.target.value)}>
+                    <option value="">Method…</option>
+                    {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    <input type="checkbox" checked={f.paid} onChange={e => updateInstallment(f.id, 'paid', e.target.checked)} style={{ accentColor: C.success, width: 14, height: 14 }} />
+                    <span style={{ color: f.paid ? C.success : C.text }}>{f.paid ? 'Paid ✓' : 'Paid?'}</span>
+                  </label>
+                  <button aria-label="Remove installment" style={{ ...s.btn('danger'), padding: '4px 8px', fontSize: 11 }} onClick={() => removeInstallment(f.id)}>✕</button>
+                </div>
+              </div>
+            ))}
+            <button style={{ ...s.btn(), fontSize: 11 }} onClick={addInstallment}>+ Add Installment</button>
+          </Sec>
+
+          {/* ── 9. Post-Event ── */}
+          <Sec skey="postEvent" label="Post-Event & Follow-Up">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={!!client.thankYouSent} onChange={e => onChange('thankYouSent', e.target.checked)} style={{ accentColor: C.success, width: 15, height: 15 }} />
+                <span style={{ color: client.thankYouSent ? C.success : C.text }}>Thank-you note sent</span>
+                {client.thankYouSent && <input style={{ ...s.input, fontSize: 11, padding: '3px 8px', marginLeft: 8, width: 140 }} type="date" value={client.thankYouDate || ''} onChange={e => onChange('thankYouDate', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={!!client.reviewRequested} onChange={e => onChange('reviewRequested', e.target.checked)} style={{ accentColor: C.success, width: 15, height: 15 }} />
+                <span style={{ color: client.reviewRequested ? C.success : C.text }}>Review / testimonial requested</span>
+              </label>
+            </div>
+            <Field label="Future event potential">
+              <textarea style={{ ...s.input, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.futureEventNotes || ''} placeholder="Anniversary party, baby shower, corporate event, sibling's wedding…" onChange={e => onChange('futureEventNotes', e.target.value)} />
+            </Field>
+            <Field label="Referral potential">
+              <input style={s.input} value={client.referralPotential || ''} placeholder="e.g. Has two sisters getting married, runs a corporate events team" onChange={e => onChange('referralPotential', e.target.value)} />
+            </Field>
+          </Sec>
+
+          {/* ── 10. Internal Notes ── */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Internal Notes</label>
+            <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.notes || ''} placeholder="Family dynamics, sensitivities, decision-maker dynamics, anything the team should know…" onChange={e => onChange('notes', e.target.value)} />
+          </div>
+
+          {/* ── 11. Comms Checklist ── */}
           {(() => {
             const checklist  = client.commsChecklist || {};
             const totalItems = CLIENT_STAGES.flatMap(st => CLIENT_COMMS[st] || []);
             const totalDone  = totalItems.filter(it => checklist[it]).length;
             const currentClr = clientCLR[CLIENT_STAGES[stageIdx]] || C.muted;
             return (
-              <div style={{ marginBottom: 20, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
-                <button aria-label="Remove" onClick={() => setShowCommsCheck(v => !v)} style={{ width: '100%', background: showCommsCheck ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <div style={{ marginBottom: 12, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                <button aria-label="Toggle comms checklist" onClick={() => setShowCommsCheck(v => !v)} style={{ width: '100%', background: showCommsCheck ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comms Checklist</span>
                   <span style={{ fontSize: 11, color: totalDone === totalItems.length && totalItems.length > 0 ? C.success : currentClr, fontWeight: 600 }}>{totalDone}/{totalItems.length}</span>
                   <span style={{ color: C.muted, fontSize: 12 }}>{showCommsCheck ? '▾' : '▸'}</span>
@@ -6723,30 +6984,23 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
                 {showCommsCheck && (
                   <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {CLIENT_STAGES.map((stage, si) => {
-                      const clr       = clientCLR[stage];
-                      const isPast    = si < stageIdx;
-                      const isCurrent = si === stageIdx;
-                      const isFuture  = si > stageIdx;
-                      const allItems  = CLIENT_COMMS[stage] || [];
-                      if (allItems.length === 0) return null;
+                      const clr = clientCLR[stage], isPast = si < stageIdx, isCurrent = si === stageIdx;
+                      const allItems = CLIENT_COMMS[stage] || [];
+                      if (!allItems.length) return null;
                       const doneCount = allItems.filter(it => checklist[it]).length;
-                      const allDone   = doneCount === allItems.length;
                       return (
                         <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: allDone ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: doneCount === allItems.length ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
                             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
-                            <span style={{ fontSize: 10, color: allDone ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
+                            <span style={{ fontSize: 10, color: doneCount === allItems.length ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {allItems.map(item => {
                               const checked = !!checklist[item];
                               return (
                                 <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 12, padding: '2px 0' }}>
-                                  <input type="checkbox" checked={checked}
-                                    onChange={() => onChange('commsChecklist', { ...checklist, [item]: !checked })}
-                                    style={{ accentColor: clr, marginTop: 2, flexShrink: 0, width: 13, height: 13 }}
-                                  />
+                                  <input type="checkbox" checked={checked} onChange={() => onChange('commsChecklist', { ...checklist, [item]: !checked })} style={{ accentColor: clr, marginTop: 2, flexShrink: 0, width: 13, height: 13 }} />
                                   <span style={{ color: checked ? C.muted : C.text, textDecoration: checked ? 'line-through' : 'none', lineHeight: 1.45 }}>{item}</span>
                                 </label>
                               );
@@ -6761,85 +7015,17 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
             );
           })()}
 
-          {/* ── 3. Planner Fee ── */}
-          <Divider label="Planner Fee" />
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Total Fee</label>
-                <input style={{ ...s.input }} type="number" value={client.plannerFee || 0}
-                  onChange={e => onChange('plannerFee', Number(e.target.value) || 0)} />
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.success }}>{fmtD(collected)}</div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Outstanding</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: outstanding > 0 ? C.warn : C.muted }}>{fmtD(outstanding)}</div>
-              </div>
-            </div>
-
-            {/* Installments */}
-            {(client.feeSchedule || []).map(f => (
-              <div key={f.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                  <input style={{ ...s.input, flex: 2 }} value={f.label} placeholder="Label (e.g. Deposit)"
-                    onChange={e => updateInstallment(f.id, 'label', e.target.value)} />
-                  <input style={{ ...s.input, flex: 1 }} type="number" value={f.amount} placeholder="0"
-                    onChange={e => updateInstallment(f.id, 'amount', Number(e.target.value) || 0)} />
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input style={{ ...s.input, flex: 1, minWidth: 110 }} type="date" value={f.due || ''}
-                    onChange={e => updateInstallment(f.id, 'due', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
-                  <select style={{ ...s.input, flex: 1, minWidth: 100, fontSize: 12 }} value={f.paymentMethod || ''} onChange={e => updateInstallment(f.id, 'paymentMethod', e.target.value)}>
-                    <option value="">Method…</option>
-                    {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
-                  </select>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    <input type="checkbox" checked={f.paid} onChange={e => updateInstallment(f.id, 'paid', e.target.checked)}
-                      style={{ accentColor: C.success, width: 14, height: 14 }} />
-                    <span style={{ color: f.paid ? C.success : C.text }}>{f.paid ? 'Paid ✓' : 'Paid?'}</span>
-                  </label>
-                  <button aria-label="Remove installment" style={{ ...s.btn('danger'), padding: '4px 8px', fontSize: 11 }}
-                    onClick={() => removeInstallment(f.id)} title="Remove installment">✕</button>
-                </div>
-              </div>
-            ))}
-            <button style={{ ...s.btn(), fontSize: 11, marginTop: 4 }} onClick={addInstallment}>+ Add Installment</button>
-          </div>
-
-          {/* ── 3. Style & Vision ── */}
-          <Divider label="Style & Vision" />
-          <div style={{ marginBottom: 24 }}>
-            <textarea style={{ ...s.input, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
-              value={client.style || ''} placeholder="Palette, vibe, aesthetic references, must-haves…"
-              onChange={e => onChange('style', e.target.value)} />
-          </div>
-
-          {/* ── 4. Internal Notes ── */}
-          <Divider label="Internal Notes" />
-          <div style={{ marginBottom: 24 }}>
-            <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
-              value={client.notes || ''} placeholder="Family dynamics, key contacts, decision makers, anything to remember…"
-              onChange={e => onChange('notes', e.target.value)} />
-          </div>
-
-          {/* ── 5. Communication Log ── */}
+          {/* ── 12. Activity Log ── */}
           <div style={{ marginBottom: 8, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowLog(v => !v)} style={{ width: '100%', background: showLog ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comm Log</span>
-              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
-                {(client.log || []).length > 0 ? `${(client.log || []).length} entr${(client.log || []).length === 1 ? 'y' : 'ies'}` : 'no entries'}
-              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Activity Log</span>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{(client.log || []).length > 0 ? `${(client.log || []).length} entr${(client.log || []).length === 1 ? 'y' : 'ies'}` : 'no entries'}</span>
               <span style={{ color: C.muted, fontSize: 12 }}>{showLog ? '▾' : '▸'}</span>
             </button>
             {showLog && (
               <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}` }}>
-                <div style={{ marginBottom: 12 }}>
-                  <CommLogInput value={newLog} onChange={setNewLog} onAdd={addLog} />
-                </div>
-                {(client.log || []).length === 0 ? (
+                <div style={{ marginBottom: 12 }}><CommLogInput value={newLog} onChange={setNewLog} onAdd={addLog} /></div>
+                {!(client.log || []).length ? (
                   <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries yet.</div>
                 ) : [...(client.log || [])].reverse().map(entry => (
                   <div key={entry.id} style={{ borderLeft: `2px solid ${C.border}`, paddingLeft: 12, marginBottom: 10 }}>
@@ -10161,395 +10347,580 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* ── Clients list page ── */}
       {dashView === 'clients' && (() => {
-        const isMob  = bp === 'mobile';
-        const isTab  = bp === 'tablet';
-        const isWideC = bp === 'desktop' || bp === 'tablet-land';
-        const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
-        const showRailC = isWideC;
+  const isMob   = bp === 'mobile';
+  const isTab   = bp === 'tablet';
+  const isWideC = bp === 'desktop' || bp === 'tablet-land';
+  const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
+  const showRailC = isWideC;
 
-        // ── Derived stats ──────────────────────────────────────────────
-        const allClients = filteredClients; // search-filtered
-        const statusFiltered = allClients.filter(c => {
-          if (clientsFilter === 'all') return true;
-          return c.status?.toLowerCase() === clientsFilter;
-        });
-        const totalRevenue   = allClients.reduce((s, c) => s + ((c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0)), 0);
-        const totalOutstanding = allClients.reduce((s, c) => {
-          const collected = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
-          return s + Math.max(0, (c.plannerFee || 0) - collected);
-        }, 0);
-        const activeClientCount = allClients.filter(c => c.status === 'Active' || c.status === 'Contracted').length;
-        const clientEventsCount = allClients.reduce((s, c) => s + events.filter(e => (c.eventIds || []).includes(e.id)).length, 0);
+  // ── Derived stats ──────────────────────────────────────────────
+  const allClients = filteredClients; // search-filtered
+  const statusFiltered = allClients.filter(c => {
+    if (clientsFilter === 'all') return true;
+    return c.status?.toLowerCase() === clientsFilter;
+  });
 
-        // Filter chips
-        const clientStatuses = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
-        const filterChips = [
-          { id: 'all', label: 'All', count: allClients.length },
-          ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: st, count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
-        ];
+  // Per-client computed helpers
+  const clientComputed = (c) => {
+    const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
+    const collected    = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
+    const outstanding  = Math.max(0, (c.plannerFee || 0) - collected);
+    const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0);
+    const nextDays     = nextEvt ? daysUntil(nextEvt.date) : null;
+    const feeUrgent    = outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true);
+    return { clientEvents, collected, outstanding, nextEvt, nextDays, feeUrgent };
+  };
 
-        // Preview client
-        const previewC = previewClientId ? allClients.find(c => c.id === previewClientId) || null : null;
-        const previewClientEvts = previewC ? events.filter(e => (previewC.eventIds || []).includes(e.id)) : [];
-        const previewCollected  = previewC ? (previewC.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0) : 0;
-        const previewOutstanding = previewC ? Math.max(0, (previewC.plannerFee || 0) - previewCollected) : 0;
+  const totalRevenue     = allClients.reduce((s, c) => s + clientComputed(c).collected, 0);
+  const totalOutstanding = allClients.reduce((s, c) => s + clientComputed(c).outstanding, 0);
+  const activeClientCount = allClients.filter(c => c.status === 'Active' || c.status === 'Contracted').length;
+  const nextClientEvt    = allClients
+    .flatMap(c => {
+      const { nextEvt, nextDays } = clientComputed(c);
+      return nextEvt ? [{ c, ev: nextEvt, days: nextDays }] : [];
+    })
+    .sort((a, b) => a.days - b.days)[0] || null;
 
-        return (
-        <div style={{ padding: pagePad }}>
-          <div style={{ maxWidth: showRailC ? 'none' : 1200, margin: showRailC ? 0 : '0 auto' }}>
+  // Filter chips
+  const clientStatuses = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
+  const filterChips = [
+    { id: 'all', label: 'All', count: allClients.length },
+    ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: st, count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
+  ];
 
-            {/* ── Zone 1: Command Header ──────────────────────────────── */}
-            <div style={{ marginBottom: isMob ? 16 : 24 }}>
-              {/* Title row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
-                <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
-                <div style={{ flex: 1 }}>
-                  <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Roster</h1>
-                  {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
-                    {allClients.length > 0 ? 'Your active planning relationships.' : 'Add your first client to get started.'}
-                  </p>}
-                </div>
-                <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNewClient}>+ New Client</button>
-              </div>
+  // Preview client
+  const previewC          = previewClientId ? allClients.find(c => c.id === previewClientId) || null : null;
+  const previewClientEvts = previewC ? events.filter(e => (previewC.eventIds || []).includes(e.id)) : [];
+  const previewCollected  = previewC ? (previewC.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0) : 0;
+  const previewOutstanding = previewC ? Math.max(0, (previewC.plannerFee || 0) - previewCollected) : 0;
+  const previewNextEvt    = previewC ? [...previewClientEvts].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0) : null;
+  const previewNextDays   = previewNextEvt ? daysUntil(previewNextEvt.date) : null;
+  const previewFeeUrgent  = previewOutstanding > 0 && (previewNextDays !== null ? previewNextDays <= 30 : true);
 
-              {/* Stat cards */}
-              {allClients.length > 0 && (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                  gap: isMob ? 10 : 14,
-                  marginBottom: isMob ? 14 : 20,
-                }}>
-                  {[
-                    { label: 'Total Clients', value: allClients.length, sub: `${activeClientCount} active`, color: C.accent, big: true },
-                    { label: 'Linked Events', value: clientEventsCount, sub: clientEventsCount === 0 ? 'No events yet' : `across ${allClients.filter(c => (c.eventIds || []).length > 0).length} clients`, color: clientEventsCount > 0 ? C.text : C.muted, big: true },
-                    { label: 'Revenue', value: fmtD(totalRevenue), sub: 'collected to date', color: totalRevenue > 0 ? C.text : C.muted, big: false },
-                    { label: 'Outstanding', value: fmtD(totalOutstanding), sub: totalOutstanding === 0 ? 'All paid in full' : `across ${allClients.filter(c => { const col = (c.feeSchedule||[]).reduce((x,f)=>x+(f.paid?f.amount:(f.paidAmount||0)),0); return (c.plannerFee||0)-col>0; }).length} clients`, color: totalOutstanding > 0 ? C.warn : C.muted, big: false },
-                  ].map(({ label, value, sub, color, big }) => (
-                    <div key={label} style={{
-                      ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                      display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
-                    }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{label}</div>
-                      <div style={{ fontSize: big ? (isMob ? 26 : 32) : (isMob ? 20 : 26), fontWeight: 800, letterSpacing: '-0.03em', color, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+  // Priority lane: top 3 clients ranked by urgency
+  // Score = outstanding > 0 with event ≤30 days (critical), outstanding > 0 (high), event ≤14 days (medium)
+  const priorityScore = (c) => {
+    const { outstanding, nextDays } = clientComputed(c);
+    if (outstanding > 0 && nextDays !== null && nextDays <= 14) return 100;
+    if (outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true)) return 80;
+    if (outstanding > 0) return 50;
+    if (nextDays !== null && nextDays <= 14) return 30;
+    return 0;
+  };
+  const priorityClients = [...allClients]
+    .map(c => ({ c, score: priorityScore(c), ...clientComputed(c) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || (a.nextDays ?? 9999) - (b.nextDays ?? 9999))
+    .slice(0, 3);
+
+  return (
+  <div style={{ padding: pagePad }}>
+    <div style={{ maxWidth: showRailC ? 'none' : 1200, margin: showRailC ? 0 : '0 auto' }}>
+
+      {/* ═══ Zone 1: Command Header ═══════════════════════════════ */}
+      <div style={{ marginBottom: isMob ? 16 : 24 }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
+          <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Portfolio</h1>
+            {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
+              {allClients.length > 0 ? 'Which client relationship needs attention next?' : 'Add your first client to get started.'}
+            </p>}
+          </div>
+          <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNewClient}>+ New Client</button>
+        </div>
+
+        {/* Stat cards */}
+        {allClients.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: isMob ? 10 : 14,
+            marginBottom: isMob ? 14 : 20,
+          }}>
+            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Total Clients</div>
+              <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{activeClientCount} active or contracted</div>
             </div>
-
-            {/* ── Zone 2+3: List + Right Rail ─────────────────────────── */}
-            <div style={{
-              display: showRailC ? 'grid' : 'block',
-              gridTemplateColumns: showRailC ? (previewC ? 'minmax(0,1fr) 360px' : '1fr 360px') : '1fr',
-              gap: 20,
-              alignItems: 'start',
-            }}>
-              {/* ── Zone 2: Client List ──────────────────────────────── */}
-              <div>
-                {/* Filter chips */}
-                {allClients.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {filterChips.map(chip => {
-                      const active = clientsFilter === chip.id;
-                      return (
-                        <button key={chip.id} onClick={() => setClientsFilter(chip.id)} style={{
-                          padding: '5px 12px', borderRadius: 99, fontSize: 11.5,
-                          fontWeight: active ? 600 : 500, cursor: 'pointer',
-                          background: active ? C.text : 'transparent',
-                          color: active ? C.bg : C.muted,
-                          border: `1px solid ${active ? C.text : C.border}`,
-                          fontFamily: 'inherit',
-                          transition: 'background 0.12s, color 0.12s',
-                        }}>
-                          {chip.label}
-                          {chip.count > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>}
-                        </button>
-                      );
-                    })}
-                    <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>
-                      {statusFiltered.length} client{statusFiltered.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {allClients.length === 0 ? (
-                  <div style={{ padding: '28px 24px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
-                    <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
-                      Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.
-                    </div>
-                    <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
-                  </div>
-                ) : statusFiltered.length === 0 ? (
-                  <div style={{ padding: '28px 0', fontSize: 13, color: C.muted }}>
-                    No clients match this filter.
-                  </div>
-                ) : (
-                  <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                    {statusFiltered.map((c, i) => {
-                      const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
-                      const collected    = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
-                      const outstanding  = Math.max(0, (c.plannerFee || 0) - collected);
-                      const initials     = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                      const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0);
-                      const nextDays     = nextEvt ? daysUntil(nextEvt.date) : null;
-                      // Fee color: amber only when overdue (outstanding > 0 AND event within 30 days, or no upcoming event)
-                      const feeUrgent    = outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true);
-                      const isPreviewC   = previewClientId === c.id;
-                      return (
-                        <div role="button" tabIndex={0}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
-                          key={c.id}
-                          onClick={() => {
-                            if (isWideC) { setPreviewClientId(isPreviewC ? null : c.id); }
-                            else { onSelectClient(c.id); }
-                          }}
-                          onDoubleClick={() => onSelectClient(c.id)}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: isMob ? '36px 1fr auto' : '36px 1fr auto auto 20px',
-                            alignItems: 'center',
-                            gap: isMob ? 10 : 14,
-                            padding: isMob ? '14px 14px' : '14px 20px',
-                            borderBottom: i < statusFiltered.length - 1 ? `1px solid ${C.border}` : 'none',
-                            cursor: 'pointer',
-                            background: isPreviewC ? C.accent + '0c' : 'transparent',
-                            borderLeft: isPreviewC ? `3px solid ${C.accent}` : '3px solid transparent',
-                            transition: 'background 0.12s, border-color 0.12s',
-                          }}
-                          onMouseEnter={e => { if (!isPreviewC) e.currentTarget.style.background = C.surface2; }}
-                          onMouseLeave={e => { if (!isPreviewC) e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          {/* Col 1: Avatar */}
-                          <div style={{ ...mkSphere(C.muted, 36, 11), flexShrink: 0 }}>{initials}</div>
-
-                          {/* Col 2: Name + details */}
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
-                              {/* Neutral status chip — label communicates state, not color */}
-                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
-                            </div>
-                            <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginBottom: clientEvents.length > 0 ? 4 : 0 }}>
-                              {c.email && <span>{c.email}</span>}
-                              {c.phone && <span style={{ opacity: 0.7 }}>· {c.phone}</span>}
-                            </div>
-                            {/* Linked events — small dots + names */}
-                            {clientEvents.length > 0 && (
-                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {clientEvents.slice(0, isMob ? 1 : 3).map(e => {
-                                  const d = daysUntil(e.date);
-                                  return (
-                                    <span key={e.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                                      <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
-                                      <span style={{ color: C.muted }}>{e.name.length > 24 ? e.name.slice(0, 22) + '…' : e.name}
-                                        {d !== null && <span style={{ marginLeft: 4, fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted }}>{countdownShort(d)}</span>}
-                                      </span>
-                                    </span>
-                                  );
-                                })}
-                                {clientEvents.length > (isMob ? 1 : 3) && (
-                                  <span style={{ fontSize: 11, color: C.muted, opacity: 0.7 }}>+{clientEvents.length - (isMob ? 1 : 3)} more</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Col 3: Fee + outstanding */}
-                          {!isMob && (
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: c.plannerFee ? C.text : C.muted }}>
-                                {c.plannerFee ? fmtD(c.plannerFee) : '—'}
-                              </div>
-                              {c.plannerFee > 0 && (
-                                <div style={{ fontSize: 10, color: feeUrgent ? C.warn : C.muted }}>
-                                  {outstanding === 0 ? 'Paid' : `${fmtD(outstanding)} due`}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Col 4: Event count badge (desktop only) */}
-                          {!isMob && (
-                            <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                              {clientEvents.length > 0 ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: C.surface2, color: C.muted, fontSize: 10, fontWeight: 700, border: `1px solid ${C.border}` }}>
-                                  {clientEvents.length}
-                                </span>
-                              ) : (
-                                <span style={{ width: 22, height: 22, display: 'inline-flex' }} />
-                              )}
-                            </div>
-                          )}
-
-                          {/* Col 5: Chevron (desktop only) */}
-                          {!isMob && <span style={{ color: C.muted, fontSize: 14, textAlign: 'center' }}>›</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
+              <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {nextClientEvt ? nextClientEvt.ev.name : '—'}
               </div>
+              <div style={{ fontSize: 11, color: nextClientEvt ? (nextClientEvt.days <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>
+                {nextClientEvt ? countdownLabel(nextClientEvt.days) : 'No upcoming events'}
+              </div>
+            </div>
+            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
+              <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>collected to date</div>
+            </div>
+            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
+              <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                {totalOutstanding === 0 ? 'All paid in full' : `across ${allClients.filter(c => clientComputed(c).outstanding > 0).length} client${allClients.filter(c => clientComputed(c).outstanding > 0).length !== 1 ? 's' : ''}`}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-              {/* ── Zone 3: Desktop Right Rail ──────────────────────── */}
-              {showRailC && (previewC ? (
-                /* ── Client Preview ─────────────────────────────────── */
-                <div style={{
-                  ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
-                  position: 'sticky', top: 20,
-                  maxHeight: 'calc(100vh - 40px)',
-                  display: 'flex', flexDirection: 'column',
-                }}>
-                  {/* Preview header */}
-                  <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <div style={{ ...mkSphere(C.muted, 28, 9), flexShrink: 0 }}>
-                          {(previewC.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewC.name}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, border: `1px solid ${C.border}` }}>{previewC.status}</span>
-                        {previewC.email && <span>{previewC.email}</span>}
-                      </div>
+      {/* ═══ Zone 2: Priority "Start Here" Lane ═══════════════════ */}
+      {priorityClients.length > 0 && (
+        <div style={{ marginBottom: isMob ? 16 : 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>
+            Start here
+          </div>
+          <div style={{
+            display: isMob ? 'grid' : isWideC ? 'grid' : 'flex',
+            gridTemplateColumns: isMob ? '1fr' : priorityClients.length === 1 ? '1fr' : priorityClients.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+            gap: isMob ? 10 : 14,
+            ...(!isMob && !isWideC ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', paddingBottom: 4 } : {}),
+          }}>
+            {priorityClients.map(({ c, outstanding, nextEvt, nextDays, feeUrgent, score }, idx) => {
+              const initials    = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const isCritical  = score >= 80;
+              const isLead      = idx === 0;
+              const borderClr   = isLead && isCritical ? C.warn + '44' : C.border;
+              return (
+                <div key={c.id}
+                  role="button" tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                  onClick={() => onSelectClient(c.id)}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '55'; e.currentTarget.style.background = C.accent + '08'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = borderClr; e.currentTarget.style.background = C.surface; }}
+                  style={{
+                    ...s.card, marginBottom: 0, cursor: 'pointer',
+                    border: `1px solid ${borderClr}`,
+                    padding: isMob ? '14px 16px' : '18px 22px',
+                    transition: 'border-color 0.15s, background 0.15s',
+                    ...(!isMob && !isWideC ? { minWidth: 280, flexShrink: 0, scrollSnapAlign: 'start' } : {}),
+                  }}
+                >
+                  {/* Card header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>{initials}</div>
+                    <span style={{ fontWeight: 700, fontSize: isMob ? 14 : 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
+                  </div>
+                  {/* Event context */}
+                  {nextEvt && (
+                    <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+                      <span style={{ marginRight: 4 }}>{nextEvt.name}</span>
+                      <span style={{ fontWeight: 600, color: nextDays <= 14 ? C.danger : nextDays <= 30 ? C.warn : C.muted }}>
+                        · {countdownLabel(nextDays)}
+                      </span>
                     </div>
-                    <button onClick={() => setPreviewClientId(null)} title="Close preview" style={{ ...s.btn('ghost'), padding: '4px 8px', fontSize: 14, color: C.muted, lineHeight: 1 }}>×</button>
-                  </div>
-
-                  {/* Preview body */}
-                  <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1 }}>
-                    {/* Linked events */}
-                    {previewClientEvts.length > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Events</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {previewClientEvts.map(e => {
-                            const d = daysUntil(e.date);
-                            return (
-                              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                                <span style={mkDot(evtCLR[e.type] || C.muted, 6)} />
-                                <span style={{ flex: 1, color: C.text, fontWeight: 600 }}>{e.name}</span>
-                                {d !== null && <span style={{ fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted, fontSize: 11 }}>{countdownShort(d)}</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Fee breakdown */}
-                    {previewC.plannerFee > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Fee</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                            <span style={{ color: C.muted }}>Contracted</span>
-                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(previewC.plannerFee)}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                            <span style={{ color: C.muted }}>Collected</span>
-                            <span style={{ fontWeight: 600, color: previewCollected > 0 ? C.success : C.muted }}>{fmtD(previewCollected)}</span>
-                          </div>
-                          {previewOutstanding > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                              <span style={{ color: C.muted }}>Outstanding</span>
-                              <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(previewOutstanding)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Contact */}
-                    {(previewC.phone || previewC.email) && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Contact</div>
-                        {previewC.email && <div style={{ fontSize: 12, color: C.text, marginBottom: 2 }}>{previewC.email}</div>}
-                        {previewC.phone && <div style={{ fontSize: 12, color: C.muted }}>{previewC.phone}</div>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Preview footer */}
-                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-                    <button onClick={() => onSelectClient(previewC.id)} style={{ ...s.btn('primary'), width: '100%', padding: '10px 0', fontSize: 13, textAlign: 'center' }}>
+                  )}
+                  {/* Attention reason */}
+                  {outstanding > 0 && (
+                    <div style={{ fontSize: 11, fontWeight: 600, color: feeUrgent ? C.warn : C.muted, marginBottom: 10 }}>
+                      {fmtD(outstanding)} outstanding{feeUrgent ? ' — due soon' : ''}
+                    </div>
+                  )}
+                  {/* CTA */}
+                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelectClient(c.id); }}
+                      style={{
+                        ...s.btn('ghost'), fontSize: 11, padding: '5px 14px',
+                        background: 'transparent', border: `1px solid ${C.border}`,
+                        color: C.text, fontWeight: 600, cursor: 'pointer',
+                        transition: 'border-color 0.12s, color 0.12s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}
+                    >
                       Open Client
                     </button>
                   </div>
                 </div>
-              ) : (
-                /* ── Roster Snapshot — no client selected ───────────── */
-                <div style={{
-                  ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
-                  position: 'sticky', top: 20,
-                  maxHeight: 'calc(100vh - 40px)',
-                  display: 'flex', flexDirection: 'column',
-                }}>
-                  <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Roster Snapshot</div>
-                  </div>
-                  <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
-                    {/* By status breakdown */}
-                    {allClients.length > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Status</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          {clientStatuses.map(st => {
-                            const cnt = allClients.filter(c => c.status === st).length;
-                            if (cnt === 0) return null;
-                            const stClr = CLIENT_CLR(C)[st] || C.muted;
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Zone 3+4 wrapper: Client list + Right rail ═══════════ */}
+      <div style={{
+        display: showRailC ? 'grid' : 'block',
+        gridTemplateColumns: showRailC ? 'minmax(0, 1fr) 360px' : '1fr',
+        gap: 20,
+        alignItems: 'start',
+      }}>
+        {/* ── Zone 3: Client List ─────────────────────────────────── */}
+        <div>
+          {/* Filter chips */}
+          {allClients.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+              {filterChips.map(chip => {
+                const active = clientsFilter === chip.id;
+                return (
+                  <button key={chip.id} onClick={() => setClientsFilter(chip.id)} style={{
+                    padding: '5px 12px', borderRadius: 99, fontSize: 11.5,
+                    fontWeight: active ? 600 : 500, cursor: 'pointer',
+                    background: active ? C.text : 'transparent',
+                    color: active ? C.bg : C.muted,
+                    border: `1px solid ${active ? C.text : C.border}`,
+                    fontFamily: 'inherit',
+                    transition: 'background 0.12s, color 0.12s',
+                  }}>
+                    {chip.label}
+                    {chip.count > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>}
+                  </button>
+                );
+              })}
+              <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>
+                {statusFiltered.length} client{statusFiltered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {allClients.length === 0 ? (
+            <div style={{ padding: '28px 24px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+                Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.
+              </div>
+              <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+            </div>
+          ) : statusFiltered.length === 0 ? (
+            <div style={{ padding: '28px 0', fontSize: 13, color: C.muted }}>
+              No clients match this filter.
+            </div>
+          ) : (
+            <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+              {statusFiltered.map((c, i) => {
+                const { clientEvents, collected, outstanding, nextEvt, nextDays, feeUrgent } = clientComputed(c);
+                const initials   = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const isPreviewC = previewClientId === c.id;
+                const totalAtt   = (outstanding > 0 ? 1 : 0) + (nextDays !== null && nextDays <= 14 ? 1 : 0);
+                return (
+                  <div role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                    key={c.id}
+                    onClick={() => {
+                      if (isWideC) { setPreviewClientId(isPreviewC ? null : c.id); }
+                      else { onSelectClient(c.id); }
+                    }}
+                    onDoubleClick={() => onSelectClient(c.id)}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMob ? '36px 1fr auto' : '36px 1fr auto auto 20px',
+                      alignItems: 'center',
+                      gap: isMob ? 10 : 14,
+                      padding: isMob ? '14px 14px' : '14px 20px',
+                      borderBottom: i < statusFiltered.length - 1 ? `1px solid ${C.border}` : 'none',
+                      cursor: 'pointer',
+                      background: isPreviewC ? C.accent + '0c' : 'transparent',
+                      borderLeft: isPreviewC ? `3px solid ${C.accent}` : '3px solid transparent',
+                      transition: 'background 0.12s, border-color 0.12s',
+                    }}
+                    onMouseEnter={e => { if (!isPreviewC) e.currentTarget.style.background = C.surface2; }}
+                    onMouseLeave={e => { if (!isPreviewC) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {/* Col 1: Avatar — calm, no glow */}
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>{initials}</div>
+
+                    {/* Col 2: Name + context */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
+                        {/* Status chip — only non-Active statuses shown, Active is noise */}
+                        {c.status && c.status !== 'Active' && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[c.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
+                        )}
+                        {SEED_CLIENT_IDS && SEED_CLIENT_IDS.has(c.id) && (
+                          <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>
+                        )}
+                      </div>
+                      {/* Contact + event context */}
+                      <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginBottom: clientEvents.length > 0 ? 4 : 0 }}>
+                        {c.email && <span>{c.email}</span>}
+                        {c.phone && !isMob && <span style={{ opacity: 0.7 }}>· {c.phone}</span>}
+                      </div>
+                      {/* Linked events — type dot + name + countdown */}
+                      {clientEvents.length > 0 && (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {clientEvents.slice(0, isMob ? 1 : 3).map(e => {
+                            const d = daysUntil(e.date);
                             return (
-                              <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}
-                                onClick={() => setClientsFilter(clientsFilter === st.toLowerCase() ? 'all' : st.toLowerCase())}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: stClr, flexShrink: 0 }} />
-                                <span style={{ color: C.muted, flex: 1 }}>{st}</span>
-                                <span style={{ fontWeight: 600, color: C.text }}>{cnt}</span>
-                              </div>
+                              <span key={e.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                                <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
+                                <span style={{ color: C.muted }}>
+                                  {e.name.length > 24 ? e.name.slice(0, 22) + '…' : e.name}
+                                  {d !== null && <span style={{ marginLeft: 4, fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted }}>{countdownShort(d)}</span>}
+                                </span>
+                              </span>
                             );
                           })}
+                          {clientEvents.length > (isMob ? 1 : 3) && (
+                            <span style={{ fontSize: 11, color: C.muted, opacity: 0.7 }}>+{clientEvents.length - (isMob ? 1 : 3)} more</span>
+                          )}
                         </div>
+                      )}
+                      {/* Readiness sub-line */}
+                      <div style={{ marginTop: 4 }}>
+                        {outstanding > 0 ? (
+                          <span style={{ fontSize: 10.5, fontWeight: 600, color: feeUrgent ? C.warn : C.muted }}>
+                            Needs attention: {fmtD(outstanding)} outstanding{feeUrgent && nextDays !== null ? ` · ${nextDays}d to event` : ''}
+                          </span>
+                        ) : clientEvents.length > 0 ? (
+                          <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Col 3: Fee + outstanding */}
+                    {!isMob && (
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: c.plannerFee ? C.text : C.muted }}>
+                          {c.plannerFee ? fmtD(c.plannerFee) : '—'}
+                        </div>
+                        {c.plannerFee > 0 && (
+                          <div style={{ fontSize: 10, color: feeUrgent ? C.warn : outstanding === 0 ? C.success : C.muted }}>
+                            {outstanding === 0 ? 'Paid' : `${fmtD(outstanding)} due`}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Revenue overview */}
-                    {totalRevenue > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Revenue</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                            <span style={{ color: C.muted }}>Total contracted</span>
-                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(allClients.reduce((s, c) => s + (c.plannerFee || 0), 0))}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                            <span style={{ color: C.muted }}>Collected</span>
-                            <span style={{ fontWeight: 600, color: C.success }}>{fmtD(totalRevenue)}</span>
-                          </div>
-                          {totalOutstanding > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                              <span style={{ color: C.muted }}>Outstanding</span>
-                              <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(totalOutstanding)}</span>
+                    {/* Col 4: Event count badge (desktop only) */}
+                    {!isMob && (
+                      <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                        {clientEvents.length > 0 ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: C.surface2, color: C.muted, fontSize: 10, fontWeight: 700, border: `1px solid ${C.border}` }}>
+                            {clientEvents.length}
+                          </span>
+                        ) : (
+                          <span style={{ width: 22, height: 22, display: 'inline-flex' }} />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Col 5: Chevron (desktop only) */}
+                    {!isMob && <span style={{ color: C.muted, fontSize: 14, textAlign: 'center' }}>›</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Zone 4: Desktop Right Rail ──────────────────────────── */}
+        {showRailC && (previewC ? (
+          /* ── Client Preview ─────────────────────────────────────── */
+          <div style={{
+            ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
+            position: 'sticky', top: 20,
+            maxHeight: 'calc(100vh - 40px)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            {/* Preview header */}
+            <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>
+                    {(previewC.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewC.name}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[previewC.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, border: `1px solid ${C.border}` }}>{previewC.status}</span>
+                  {previewC.email && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{previewC.email}</span>}
+                </div>
+              </div>
+              <button onClick={() => setPreviewClientId(null)} title="Close preview" style={{ ...s.btn('ghost'), padding: '4px 8px', fontSize: 14, color: C.muted, lineHeight: 1 }}>×</button>
+            </div>
+
+            {/* Preview body */}
+            <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1 }}>
+
+              {/* Readiness summary */}
+              <div style={{ marginBottom: 16, padding: '10px 14px', background: C.surface2, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                {previewFeeUrgent ? (
+                  <>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warn, marginBottom: 2 }}>Needs attention</div>
+                    <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                      {fmtD(previewOutstanding)} outstanding
+                      {previewNextEvt ? ` · ${previewNextDays}d to ${previewNextEvt.name}` : ''}
+                    </div>
+                  </>
+                ) : previewOutstanding > 0 ? (
+                  <>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, marginBottom: 2 }}>Balance due</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>{fmtD(previewOutstanding)} remaining</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.success, marginBottom: 2 }}>Paid in full</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>No outstanding balance</div>
+                  </>
+                )}
+              </div>
+
+              {/* Linked events */}
+              {previewClientEvts.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Events</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {previewClientEvts.map(e => {
+                      const d = daysUntil(e.date);
+                      return (
+                        <div key={e.id}
+                          role="button" tabIndex={0}
+                          onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onSelectEvent(e.id); } }}
+                          onClick={() => onSelectEvent(e.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', padding: '4px 0' }}
+                          onMouseEnter={ev => ev.currentTarget.style.opacity = '0.75'}
+                          onMouseLeave={ev => ev.currentTarget.style.opacity = '1'}
+                        >
+                          <span style={mkDot(evtCLR[e.type] || C.muted, 6)} />
+                          <span style={{ flex: 1, color: C.text, fontWeight: 600 }}>{e.name}</span>
+                          {d !== null && <span style={{ fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted, fontSize: 11, flexShrink: 0 }}>{countdownShort(d)}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Fee breakdown */}
+              {previewC.plannerFee > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Fee</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Contracted</span>
+                      <span style={{ fontWeight: 600, color: C.text }}>{fmtD(previewC.plannerFee)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Collected</span>
+                      <span style={{ fontWeight: 600, color: previewCollected > 0 ? C.success : C.muted }}>{fmtD(previewCollected)}</span>
+                    </div>
+                    {previewOutstanding > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: C.muted }}>Outstanding</span>
+                        <span style={{ fontWeight: 600, color: previewFeeUrgent ? C.warn : C.muted }}>{fmtD(previewOutstanding)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact */}
+              {(previewC.phone || previewC.email) && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Contact</div>
+                  {previewC.email && <div style={{ fontSize: 12, color: C.text, marginBottom: 2 }}>{previewC.email}</div>}
+                  {previewC.phone && <div style={{ fontSize: 12, color: C.muted }}>{previewC.phone}</div>}
+                </div>
+              )}
+            </div>
+
+            {/* Preview footer */}
+            <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+              <button onClick={() => onSelectClient(previewC.id)} style={{ ...s.btn('primary'), width: '100%', padding: '10px 0', fontSize: 13, textAlign: 'center' }}>
+                Open Client
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ── Roster Snapshot — no client selected ──────────────── */
+          <div style={{
+            ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
+            position: 'sticky', top: 20,
+            maxHeight: 'calc(100vh - 40px)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Roster Snapshot</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>Click any client to preview details here.</div>
+            </div>
+            <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
+              {/* By status breakdown */}
+              {allClients.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Status</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {clientStatuses.map(st => {
+                      const cnt = allClients.filter(c => c.status === st).length;
+                      if (cnt === 0) return null;
+                      const stClr = CLIENT_CLR(C)[st] || C.muted;
+                      return (
+                        <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}
+                          onClick={() => setClientsFilter(clientsFilter === st.toLowerCase() ? 'all' : st.toLowerCase())}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: stClr, flexShrink: 0 }} />
+                          <span style={{ color: C.muted, flex: 1 }}>{st}</span>
+                          <span style={{ fontWeight: 600, color: C.text }}>{cnt}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Revenue overview */}
+              {(totalRevenue > 0 || totalOutstanding > 0) && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Revenue</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Total contracted</span>
+                      <span style={{ fontWeight: 600, color: C.text }}>{fmtD(allClients.reduce((s, c) => s + (c.plannerFee || 0), 0))}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                      <span style={{ color: C.muted }}>Collected</span>
+                      <span style={{ fontWeight: 600, color: totalRevenue > 0 ? C.success : C.muted }}>{fmtD(totalRevenue)}</span>
+                    </div>
+                    {totalOutstanding > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: C.muted }}>Outstanding</span>
+                        <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(totalOutstanding)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Attention summary */}
+              {priorityClients.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Needs Attention</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {priorityClients.map(({ c, outstanding, nextDays, feeUrgent }) => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                        onClick={() => setPreviewClientId(c.id)}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}`, marginTop: 1 }}>
+                          {(c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          {outstanding > 0 && (
+                            <div style={{ fontSize: 10.5, color: feeUrgent ? C.warn : C.muted }}>
+                              {fmtD(outstanding)} outstanding{nextDays !== null ? ` · ${nextDays}d` : ''}
                             </div>
                           )}
                         </div>
                       </div>
-                    )}
-
-                    <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginTop: 8 }}>
-                      Click any client to preview details here.
-                    </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        </div>
-        );
-      })()}
+        ))}
+      </div>
+    </div>
+  </div>
+  );
+})()}
 
       {/* ── Sprint 58X: Events Portfolio Command Board ── */}
       {dashView === 'events' && (() => {
