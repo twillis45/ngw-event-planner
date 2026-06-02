@@ -35,12 +35,15 @@ export const isSupabaseConfigured = () => Boolean(url && anonKey);
 export const supabase = isSupabaseConfigured()
   ? createClient(url, anonKey, {
       auth: {
-        persistSession:    true,
-        autoRefreshToken:  true,
+        persistSession:     true,
+        autoRefreshToken:   true,
         detectSessionInUrl: true,
-        // Store session in localStorage so it survives page reloads.
-        // The JWT is opaque to anyone without the Supabase signing secret.
-        storage: window.localStorage,
+        storage:            window.localStorage,
+        // Use implicit flow so magic links work when opened in any browser/tab.
+        // PKCE (the default) requires the code verifier to be in the same
+        // browser session that initiated the sign-in — this breaks on GitHub
+        // Pages where the email client may open the link in a fresh context.
+        flowType: 'implicit',
       },
     })
   : null;
