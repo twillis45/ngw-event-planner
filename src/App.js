@@ -9320,6 +9320,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   useEffect(() => { try { localStorage.setItem('ngw-events-filter', eventsFilter); } catch {} }, [eventsFilter]);
   // Sprint 58X: desktop right-rail preview panel on the Events Index
   const [previewEventId, setPreviewEventId] = useState(null);
+  // Sprint 60: Client Roster preview + filter
+  const [previewClientId, setPreviewClientId] = useState(null);
+  const [clientsFilter, setClientsFilter] = useState('all');
   const eventsRef  = useRef(null);
   // Slim screens: tap a KPI to reveal its rows inline below the KPI row.
   const [showTasksMobile,    setShowTasksMobile]    = useState(false);
@@ -9480,7 +9483,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     : dashView === 'events'
     ? { title: 'Event Portfolio',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} across your studio` }
     : dashView === 'clients'
-    ? { title: 'All Clients', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
+    ? { title: 'Client Roster', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
     : { title: 'Home',       sub: 'Your events and what needs attention.' };
 
   // ── Primary navigation model (shared by desktop sidebar + mobile drawer) ──
@@ -9654,7 +9657,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* Sprint 58X: Events Portfolio has its own full-width command header;
           skip the padded header wrapper entirely on that view. */}
-      {dashView !== 'events' && <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
+      {dashView !== 'events' && dashView !== 'clients' && <div style={{ padding: pad, borderBottom: `1px solid ${C.border}` }}>
         <div style={inner}>
           {/* Desktop shows the page title here (brand lives in the sidebar).
               Sprint 48 / Figma I: on the dashboard view this is a time-aware
@@ -9872,71 +9875,396 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       </div>}
 
       {/* ── Clients list page ── */}
-      {dashView === 'clients' && (
-        <div style={{ padding: bp === 'mobile' ? '14px' : bp === 'tablet' ? '16px 20px' : '28px 36px' }}>
-          <div style={inner}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>All Clients ({clients.length})</h2>
-              <button style={{ ...s.btn('primary'), marginLeft: 'auto' }} onClick={onNewClient}>+ New Client</button>
-            </div>
-            {filteredClients.length === 0 ? (
-              <div style={{ padding: '28px 24px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
-                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
-                  Clients connect your RSVP page, thank-you tracker, and fee collection to every event. Create one now to get started.
+      {dashView === 'clients' && (() => {
+        const isMob  = bp === 'mobile';
+        const isTab  = bp === 'tablet';
+        const isWideC = bp === 'desktop' || bp === 'tablet-land';
+        const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
+        const showRailC = isWideC;
+
+        // ── Derived stats ──────────────────────────────────────────────
+        const allClients = filteredClients; // search-filtered
+        const statusFiltered = allClients.filter(c => {
+          if (clientsFilter === 'all') return true;
+          return c.status?.toLowerCase() === clientsFilter;
+        });
+        const totalRevenue   = allClients.reduce((s, c) => s + ((c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0)), 0);
+        const totalOutstanding = allClients.reduce((s, c) => {
+          const collected = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
+          return s + Math.max(0, (c.plannerFee || 0) - collected);
+        }, 0);
+        const activeClientCount = allClients.filter(c => c.status === 'Active' || c.status === 'Contracted').length;
+        const clientEventsCount = allClients.reduce((s, c) => s + events.filter(e => (c.eventIds || []).includes(e.id)).length, 0);
+
+        // Filter chips
+        const clientStatuses = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
+        const filterChips = [
+          { id: 'all', label: 'All', count: allClients.length },
+          ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: st, count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
+        ];
+
+        // Preview client
+        const previewC = previewClientId ? allClients.find(c => c.id === previewClientId) || null : null;
+        const previewClientEvts = previewC ? events.filter(e => (previewC.eventIds || []).includes(e.id)) : [];
+        const previewCollected  = previewC ? (previewC.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0) : 0;
+        const previewOutstanding = previewC ? Math.max(0, (previewC.plannerFee || 0) - previewCollected) : 0;
+
+        return (
+        <div style={{ padding: pagePad }}>
+          <div style={{ maxWidth: showRailC ? 'none' : 1200, margin: showRailC ? 0 : '0 auto' }}>
+
+            {/* ── Zone 1: Command Header ──────────────────────────────── */}
+            <div style={{ marginBottom: isMob ? 16 : 24 }}>
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
+                <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
+                <div style={{ flex: 1 }}>
+                  <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Roster</h1>
+                  {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
+                    {allClients.length > 0 ? 'Your active planning relationships.' : 'Add your first client to get started.'}
+                  </p>}
                 </div>
-                <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+                <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNewClient}>+ New Client</button>
               </div>
-            ) : (
-              <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
-                {filteredClients.map((c, i) => {
-                  const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
-                  const collected    = (c.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
-                  const outstanding  = (c.plannerFee || 0) - collected;
-                  const initials     = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                  const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0];
-                  const clrDot       = (nextEvt ? evtCLR[nextEvt.type] : null) || CLIENT_CLR(C)[c.status] || C.muted;
-                  return (
-                    <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={c.id} onClick={() => onSelectClient(c.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', borderBottom: i < filteredClients.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-                    >
-                      <div style={mkSphere(clrDot, 40, 13)}>{initials}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                          <span style={{ fontWeight: 700, fontSize: 14 }}>{c.name}</span>
-                          <span style={s.pill(clrDot)}>{c.status}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {c.email && <span>{c.email}</span>}
-                          {c.phone && <span>· {c.phone}</span>}
-                          {clientEvents.length > 0 && <span>· {clientEvents.length} event{clientEvents.length !== 1 ? 's' : ''}</span>}
-                        </div>
-                        <div style={{ marginTop: 5, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {clientEvents.map(e => (
-                            <span key={e.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                              <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
-                              <span style={{ color: C.muted }}>{e.name}{e.date ? ` · ${fmtDate(e.date)}` : ''}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtD(c.plannerFee || 0)}</div>
-                        <div style={{ fontSize: 11, color: outstanding > 0 ? C.warn : C.muted }}>{outstanding > 0 ? `${fmtD(outstanding)} outstanding` : 'Paid in full'}</div>
-                      </div>
-                      <span style={{ color: C.muted, fontSize: 16 }}>›</span>
+
+              {/* Stat cards */}
+              {allClients.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                  gap: isMob ? 10 : 14,
+                  marginBottom: isMob ? 14 : 20,
+                }}>
+                  {[
+                    { label: 'Total Clients', value: allClients.length, sub: `${activeClientCount} active`, color: C.accent, big: true },
+                    { label: 'Linked Events', value: clientEventsCount, sub: clientEventsCount === 0 ? 'No events yet' : `across ${allClients.filter(c => (c.eventIds || []).length > 0).length} clients`, color: clientEventsCount > 0 ? C.text : C.muted, big: true },
+                    { label: 'Revenue', value: fmtD(totalRevenue), sub: 'collected to date', color: totalRevenue > 0 ? C.text : C.muted, big: false },
+                    { label: 'Outstanding', value: fmtD(totalOutstanding), sub: totalOutstanding === 0 ? 'All paid in full' : `across ${allClients.filter(c => { const col = (c.feeSchedule||[]).reduce((x,f)=>x+(f.paid?f.amount:(f.paidAmount||0)),0); return (c.plannerFee||0)-col>0; }).length} clients`, color: totalOutstanding > 0 ? C.warn : C.muted, big: false },
+                  ].map(({ label, value, sub, color, big }) => (
+                    <div key={label} style={{
+                      ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
+                      display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{label}</div>
+                      <div style={{ fontSize: big ? (isMob ? 26 : 32) : (isMob ? 20 : 26), fontWeight: 800, letterSpacing: '-0.03em', color, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Zone 2+3: List + Right Rail ─────────────────────────── */}
+            <div style={{
+              display: showRailC ? 'grid' : 'block',
+              gridTemplateColumns: showRailC ? (previewC ? 'minmax(0,1fr) 360px' : '1fr 360px') : '1fr',
+              gap: 20,
+              alignItems: 'start',
+            }}>
+              {/* ── Zone 2: Client List ──────────────────────────────── */}
+              <div>
+                {/* Filter chips */}
+                {allClients.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {filterChips.map(chip => {
+                      const active = clientsFilter === chip.id;
+                      return (
+                        <button key={chip.id} onClick={() => setClientsFilter(chip.id)} style={{
+                          padding: '5px 12px', borderRadius: 99, fontSize: 11.5,
+                          fontWeight: active ? 600 : 500, cursor: 'pointer',
+                          background: active ? C.text : 'transparent',
+                          color: active ? C.bg : C.muted,
+                          border: `1px solid ${active ? C.text : C.border}`,
+                          fontFamily: 'inherit',
+                          transition: 'background 0.12s, color 0.12s',
+                        }}>
+                          {chip.label}
+                          {chip.count > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>}
+                        </button>
+                      );
+                    })}
+                    <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>
+                      {statusFiltered.length} client{statusFiltered.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {allClients.length === 0 ? (
+                  <div style={{ padding: '28px 24px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
+                    <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
+                      Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.
+                    </div>
+                    <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+                  </div>
+                ) : statusFiltered.length === 0 ? (
+                  <div style={{ padding: '28px 0', fontSize: 13, color: C.muted }}>
+                    No clients match this filter.
+                  </div>
+                ) : (
+                  <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
+                    {statusFiltered.map((c, i) => {
+                      const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
+                      const collected    = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
+                      const outstanding  = Math.max(0, (c.plannerFee || 0) - collected);
+                      const initials     = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                      const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0);
+                      const nextDays     = nextEvt ? daysUntil(nextEvt.date) : null;
+                      // Fee color: amber only when overdue (outstanding > 0 AND event within 30 days, or no upcoming event)
+                      const feeUrgent    = outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true);
+                      const isPreviewC   = previewClientId === c.id;
+                      return (
+                        <div role="button" tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                          key={c.id}
+                          onClick={() => {
+                            if (isWideC) { setPreviewClientId(isPreviewC ? null : c.id); }
+                            else { onSelectClient(c.id); }
+                          }}
+                          onDoubleClick={() => onSelectClient(c.id)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMob ? '36px 1fr auto' : '36px 1fr auto auto 20px',
+                            alignItems: 'center',
+                            gap: isMob ? 10 : 14,
+                            padding: isMob ? '14px 14px' : '14px 20px',
+                            borderBottom: i < statusFiltered.length - 1 ? `1px solid ${C.border}` : 'none',
+                            cursor: 'pointer',
+                            background: isPreviewC ? C.accent + '0c' : 'transparent',
+                            borderLeft: isPreviewC ? `3px solid ${C.accent}` : '3px solid transparent',
+                            transition: 'background 0.12s, border-color 0.12s',
+                          }}
+                          onMouseEnter={e => { if (!isPreviewC) e.currentTarget.style.background = C.surface2; }}
+                          onMouseLeave={e => { if (!isPreviewC) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          {/* Col 1: Avatar */}
+                          <div style={{ ...mkSphere(C.muted, 36, 11), flexShrink: 0 }}>{initials}</div>
+
+                          {/* Col 2: Name + details */}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
+                              {/* Neutral status chip — label communicates state, not color */}
+                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginBottom: clientEvents.length > 0 ? 4 : 0 }}>
+                              {c.email && <span>{c.email}</span>}
+                              {c.phone && <span style={{ opacity: 0.7 }}>· {c.phone}</span>}
+                            </div>
+                            {/* Linked events — small dots + names */}
+                            {clientEvents.length > 0 && (
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {clientEvents.slice(0, isMob ? 1 : 3).map(e => {
+                                  const d = daysUntil(e.date);
+                                  return (
+                                    <span key={e.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                                      <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
+                                      <span style={{ color: C.muted }}>{e.name.length > 24 ? e.name.slice(0, 22) + '…' : e.name}
+                                        {d !== null && <span style={{ marginLeft: 4, fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted }}>{countdownShort(d)}</span>}
+                                      </span>
+                                    </span>
+                                  );
+                                })}
+                                {clientEvents.length > (isMob ? 1 : 3) && (
+                                  <span style={{ fontSize: 11, color: C.muted, opacity: 0.7 }}>+{clientEvents.length - (isMob ? 1 : 3)} more</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Col 3: Fee + outstanding */}
+                          {!isMob && (
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: c.plannerFee ? C.text : C.muted }}>
+                                {c.plannerFee ? fmtD(c.plannerFee) : '—'}
+                              </div>
+                              {c.plannerFee > 0 && (
+                                <div style={{ fontSize: 10, color: feeUrgent ? C.warn : C.muted }}>
+                                  {outstanding === 0 ? 'Paid' : `${fmtD(outstanding)} due`}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Col 4: Event count badge (desktop only) */}
+                          {!isMob && (
+                            <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                              {clientEvents.length > 0 ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: C.surface2, color: C.muted, fontSize: 10, fontWeight: 700, border: `1px solid ${C.border}` }}>
+                                  {clientEvents.length}
+                                </span>
+                              ) : (
+                                <span style={{ width: 22, height: 22, display: 'inline-flex' }} />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Col 5: Chevron (desktop only) */}
+                          {!isMob && <span style={{ color: C.muted, fontSize: 14, textAlign: 'center' }}>›</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* ── Zone 3: Desktop Right Rail ──────────────────────── */}
+              {showRailC && (previewC ? (
+                /* ── Client Preview ─────────────────────────────────── */
+                <div style={{
+                  ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
+                  position: 'sticky', top: 20,
+                  maxHeight: 'calc(100vh - 40px)',
+                  display: 'flex', flexDirection: 'column',
+                }}>
+                  {/* Preview header */}
+                  <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <div style={{ ...mkSphere(C.muted, 28, 9), flexShrink: 0 }}>
+                          {(previewC.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewC.name}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, border: `1px solid ${C.border}` }}>{previewC.status}</span>
+                        {previewC.email && <span>{previewC.email}</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => setPreviewClientId(null)} title="Close preview" style={{ ...s.btn('ghost'), padding: '4px 8px', fontSize: 14, color: C.muted, lineHeight: 1 }}>×</button>
+                  </div>
+
+                  {/* Preview body */}
+                  <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1 }}>
+                    {/* Linked events */}
+                    {previewClientEvts.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Events</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {previewClientEvts.map(e => {
+                            const d = daysUntil(e.date);
+                            return (
+                              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                                <span style={mkDot(evtCLR[e.type] || C.muted, 6)} />
+                                <span style={{ flex: 1, color: C.text, fontWeight: 600 }}>{e.name}</span>
+                                {d !== null && <span style={{ fontWeight: 600, color: d <= 14 ? C.danger : d <= 30 ? C.warn : C.muted, fontSize: 11 }}>{countdownShort(d)}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fee breakdown */}
+                    {previewC.plannerFee > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Fee</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Contracted</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(previewC.plannerFee)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Collected</span>
+                            <span style={{ fontWeight: 600, color: previewCollected > 0 ? C.success : C.muted }}>{fmtD(previewCollected)}</span>
+                          </div>
+                          {previewOutstanding > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <span style={{ color: C.muted }}>Outstanding</span>
+                              <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(previewOutstanding)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact */}
+                    {(previewC.phone || previewC.email) && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Contact</div>
+                        {previewC.email && <div style={{ fontSize: 12, color: C.text, marginBottom: 2 }}>{previewC.email}</div>}
+                        {previewC.phone && <div style={{ fontSize: 12, color: C.muted }}>{previewC.phone}</div>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview footer */}
+                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+                    <button onClick={() => onSelectClient(previewC.id)} style={{ ...s.btn('primary'), width: '100%', padding: '10px 0', fontSize: 13, textAlign: 'center' }}>
+                      Open Client
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Roster Snapshot — no client selected ───────────── */
+                <div style={{
+                  ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden',
+                  position: 'sticky', top: 20,
+                  maxHeight: 'calc(100vh - 40px)',
+                  display: 'flex', flexDirection: 'column',
+                }}>
+                  <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Roster Snapshot</div>
+                  </div>
+                  <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
+                    {/* By status breakdown */}
+                    {allClients.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Status</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {clientStatuses.map(st => {
+                            const cnt = allClients.filter(c => c.status === st).length;
+                            if (cnt === 0) return null;
+                            const stClr = CLIENT_CLR(C)[st] || C.muted;
+                            return (
+                              <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}
+                                onClick={() => setClientsFilter(clientsFilter === st.toLowerCase() ? 'all' : st.toLowerCase())}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: stClr, flexShrink: 0 }} />
+                                <span style={{ color: C.muted, flex: 1 }}>{st}</span>
+                                <span style={{ fontWeight: 600, color: C.text }}>{cnt}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Revenue overview */}
+                    {totalRevenue > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Revenue</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Total contracted</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(allClients.reduce((s, c) => s + (c.plannerFee || 0), 0))}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Collected</span>
+                            <span style={{ fontWeight: 600, color: C.success }}>{fmtD(totalRevenue)}</span>
+                          </div>
+                          {totalOutstanding > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <span style={{ color: C.muted }}>Outstanding</span>
+                              <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(totalOutstanding)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginTop: 8 }}>
+                      Click any client to preview details here.
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Sprint 58X: Events Portfolio Command Board ── */}
       {dashView === 'events' && (() => {
