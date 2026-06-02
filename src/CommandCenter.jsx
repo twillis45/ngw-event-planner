@@ -1224,7 +1224,8 @@ function DecisionCard({ d, onOpen, isMobile }) {
         <span style={{ fontSize: 11, color: P.textTertiary }}>{d.owner}</span>
         <div style={{ flex: 1 }} />
         <button onClick={onOpen} style={{
-          background: P.green, color: P.canvas, border: 'none', cursor: 'pointer',
+          background: 'transparent', color: P.textPrimary,
+          border: `1px solid ${P.borderDef}`, cursor: 'pointer',
           fontSize: 11.5, fontWeight: 600, fontFamily: FF,
           padding: '6px 12px', borderRadius: 6, whiteSpace: 'nowrap',
         }}>Decide →</button>
