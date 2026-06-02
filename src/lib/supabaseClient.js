@@ -44,3 +44,21 @@ export const supabase = isSupabaseConfigured()
       },
     })
   : null;
+
+// ─── Sprint 51: shared auth-redirect resolver ────────────────────────────────
+// Single source of truth for the URL Supabase should redirect to after a
+// successful magic-link / OAuth sign-in. Used by:
+//   - components/AuthGate.jsx (planner sign-in)
+//   - lib/api/studio.js inviteStudioMember (invitee magic link)
+// Resolution order:
+//   1. REACT_APP_AUTH_REDIRECT env var (explicit override — stable when set)
+//   2. window.location.origin + window.location.pathname (auto-correct in
+//      the absence of an override; whatever URL the browser opened)
+// Every consumer of this helper produces the SAME URL — eliminates the
+// previous inconsistency where AuthGate honored the env var but invites
+// silently fell back to the runtime origin, breaking LAN/tunnel setups.
+export function authRedirectUrl() {
+  const override = process.env.REACT_APP_AUTH_REDIRECT;
+  if (override) return override;
+  return window.location.origin + window.location.pathname;
+}

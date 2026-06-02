@@ -20,11 +20,14 @@ const primitive = {
     '050': '#e4ecf3', '100': '#d0dce8', '200': '#b9cedf', '300': '#9eb3c4',
     '400': '#849eb8', '500': '#6a87a0', '600': '#527088', '700': '#3d5870', '800': '#2a4058',
   },
-  // Clean tungsten amber (Sprint 6 — engineered, not burnt)
-  amber: { '300': '#f3a449', '400': '#ef962e', '500': '#df8116' },
-  green: { '200': '#7dcca0', '300': '#3eab6c', '400': '#298c52', '500': '#1b7040' },
-  // Clean alert red (Sprint 6 de-pink: 200 = #ef5757, not salmon)
-  red:   { '200': '#ef5757', '300': '#e06868', '400': '#c03838', '500': '#9c2828', 'bright': '#e63946' },
+  // Sprint 49 calibration: status colors dropped to ~40-60% saturation to
+  // sit in the same register as the steel/matte chroma rather than shouting
+  // against it. Semantic meaning preserved; visual weight matched.
+  amber: { '300': '#d99a59', '400': '#d4904a', '500': '#b87a38' }, // honey tungsten — was #f3a449/#ef962e/#df8116
+  green: { '200': '#8fbf9f', '300': '#5aa478', '400': '#3a8a62', '500': '#28704e' }, // calmer forest — was #7dcca0/#3eab6c/#298c52/#1b7040
+  // Deeper crimson — Sprint 49+: lightness dropped from L=48% → L=42% to
+  // restore visual depth lost when saturation dropped. Same hue/sat, deeper.
+  red:   { '200': '#c25a5a', '300': '#ad4646', '400': '#9a3a3a', '500': '#7c2828', 'bright': '#b03842' },
   // Smoked graphite-teal atmosphere (Sprint 6 — environment only, never CTA)
   teal:  { '400': '#6ea6aa', '500': '#4b878b', '600': '#283639', '700': '#1d282a', '800': '#141d1f', '900': '#0c1213' },
 };
@@ -57,12 +60,12 @@ export const color = {
     confirmed:     primitive.green['400'],
     confirmedText: primitive.green['200'],
     confirmedBg:   '#0d2818',
-    warning:       primitive.amber['400'], // #ef962e clean tungsten
-    warningText:   primitive.amber['300'], // #f3a449
+    warning:       primitive.amber['400'], // #d4904a — Sprint 49 calibrated honey tungsten
+    warningText:   primitive.amber['300'], // #d99a59
     warningBg:     '#1a1004',
-    risk:          primitive.red['400'],   // #c03838 controlled
-    riskText:      primitive.red['200'],   // #ef5757 clean alert (de-pinked)
-    riskBright:    primitive.red['bright'], // #e63946 emergency tier
+    risk:          primitive.red['400'],   // #b04848 — Sprint 49 calibrated dignified crimson
+    riskText:      primitive.red['200'],   // #d36c6c — calibrated
+    riskBright:    primitive.red['bright'], // #c93f4a emergency tier
     riskBg:        '#1a0608',
     neutral:       primitive.steel['500'],
     neutralText:   primitive.steel['300'],

@@ -204,7 +204,6 @@ export default function ImportHistoryDrawer({ batches = [], onUndo, onClose, tit
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           {batches.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>📋</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No import history yet</div>
               <div style={{ fontSize: 12, color: C.muted }}>
                 When you import a CSV, each batch will be recorded here with full audit details.

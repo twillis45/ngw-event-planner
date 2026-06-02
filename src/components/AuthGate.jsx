@@ -4,7 +4,7 @@
 // circular-dependency issues. ThemeCtx lives in App.js, so this file must NOT
 // import it. The login screen is always dark — hardcoded palette below.
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabaseClient';
 import { AuthCtx } from '../contexts/AuthContext';
 
 // Hardcoded DARK palette — login/splash appear before the user can change theme.
@@ -62,7 +62,11 @@ function LoginScreen() {
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [err,    setErr]    = useState('');
 
-  const redirect     = () => window.location.origin + window.location.pathname;
+  // Sprint 51: redirect URL now comes from the shared lib/supabaseClient
+  // helper so every auth endpoint (LoginScreen here + inviteStudioMember
+  // in lib/api/studio.js) resolves identically. Env override:
+  // REACT_APP_AUTH_REDIRECT (see .env.local for LAN/tunnel guidance).
+  const redirect = authRedirectUrl;
   const googleEnabled = process.env.REACT_APP_ENABLE_GOOGLE_AUTH === 'true';
   // Invite-only is OPT-IN: set REACT_APP_INVITE_ONLY=true to require pre-added
   // users (lock this on before real launch). Default (unset) = open signups, so
@@ -179,12 +183,78 @@ function ThemeFallbackSplash() {
   );
 }
 
+// ── Sprint 56b: Dev auth bypass ──────────────────────────────────────────────
+// Set `REACT_APP_AUTH_BYPASS=true` in `.env.local` (gitignored) to skip the
+// login wall during dev/QA. The bypass:
+//   • short-circuits Supabase session resolution
+//   • injects a synthetic AuthCtx so downstream code keeps working
+//   • renders a visible "AUTH BYPASS · dev only" pill in the top-right so
+//     we never accidentally ship a build with it on
+//
+// Safety notes:
+//   • `REACT_APP_*` env vars are baked into the build at compile time.
+//     A production build will NOT include this unless someone explicitly
+//     sets the flag at production-build time — don't.
+//   • localStorage persistence still works in bypass mode (it doesn't
+//     depend on auth). Supabase cloud sync will NOT — calls would fail
+//     with the synthetic session. That's the intended tradeoff for a
+//     local-only dev demo.
+//   • Bypass takes precedence over `isSupabaseConfigured()`. Even when
+//     Supabase env is set, the bypass flag wins.
+const BYPASS_ACTIVE = process.env.REACT_APP_AUTH_BYPASS === 'true';
+
+const BYPASS_USER = {
+  id: 'dev-bypass-user',
+  email: 'dev-bypass@local',
+  user_metadata: { name: 'Dev Bypass' },
+  app_metadata: { provider: 'dev-bypass' },
+};
+const BYPASS_SESSION = {
+  user: BYPASS_USER,
+  access_token: 'dev-bypass-token',
+  // Far-future expiry so nothing tries to refresh.
+  expires_at: 9999999999,
+};
+
+function BypassBadge() {
+  return (
+    <div
+      role="status"
+      aria-label="Auth bypass active — development only"
+      style={{
+        position: 'fixed',
+        top: 8, right: 8,
+        zIndex: 100000,
+        background: '#7a2a2a',
+        color: '#ffe9d4',
+        border: '1px solid #b06060',
+        borderRadius: 6,
+        padding: '3px 9px',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.10em',
+        textTransform: 'uppercase',
+        fontFamily: "'Inter', system-ui, sans-serif",
+        pointerEvents: 'none',
+        opacity: 0.92,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+      }}
+    >
+      Auth bypass · dev only
+    </div>
+  );
+}
+
 export default function AuthGate({ children }) {
   const configured = isSupabaseConfigured();
   const [session, setSession] = useState(null);
-  const [ready,   setReady]   = useState(!configured);
+  // Bypass mode is "ready" immediately; same behavior as !configured.
+  const [ready,   setReady]   = useState(BYPASS_ACTIVE || !configured);
 
   useEffect(() => {
+    // Skip Supabase entirely in bypass mode — synthetic session is already set
+    // via the AuthCtx value below.
+    if (BYPASS_ACTIVE) { setReady(true); return; }
     if (!configured || !supabase) { setReady(true); return; }
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -198,12 +268,24 @@ export default function AuthGate({ children }) {
 
   const value = {
     configured,
+    bypass:  BYPASS_ACTIVE,
     ready,
-    session,
-    user:    session?.user || null,
-    signOut: () => supabase?.auth?.signOut(),
+    session: BYPASS_ACTIVE ? BYPASS_SESSION : session,
+    user:    BYPASS_ACTIVE ? BYPASS_USER : (session?.user || null),
+    signOut: () => BYPASS_ACTIVE
+      ? Promise.resolve({ error: null })
+      : supabase?.auth?.signOut(),
   };
 
+  // Bypass wins — never show splash or login when active.
+  if (BYPASS_ACTIVE) {
+    return (
+      <AuthCtx.Provider value={value}>
+        <BypassBadge />
+        {children}
+      </AuthCtx.Provider>
+    );
+  }
   if (configured && !ready)    return <ThemeFallbackSplash />;
   if (configured && !session)  return <LoginScreen />;
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

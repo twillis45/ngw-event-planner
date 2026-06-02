@@ -18,6 +18,7 @@ export {
 export {
   currentStudio,
   currentStudioId,
+  clearStudioCache,
   listStudioMembers,
   removeStudioMember,
   updateStudioMemberRole,

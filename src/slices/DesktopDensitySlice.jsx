@@ -37,14 +37,14 @@ const INITIAL_VENDORS = [
 ];
 
 const MESSAGE = {
-  delayed:        (v) => `${v.role} delay · 25 min behind schedule`,
-  non_responsive: (v) => `${v.role} non-responsive · 18 min, no contact`,
-  emergency:      (v) => `${v.role} CRITICAL — direct action required now`,
+  delayed:        (v) => `${v.role} · 25 min behind`,
+  non_responsive: (v) => `${v.role} · 18 min · no contact`,
+  emergency:      (v) => `${v.role} · direct action required now`,
 };
 const ACTIONS = {
   delayed:        { primary: 'Check ETA',          secondary: ['Notify next station', 'Reroute timeline'] },
   non_responsive: { primary: 'Call lead directly', secondary: ['Page backup',         'Escalate to venue'] },
-  emergency:      { primary: 'CONTACT NOW',        secondary: ['Activate backup',     'Mark resolved'] },
+  emergency:      { primary: 'CONTACT NOW',        secondary: ['Move to backup',      'Mark resolved'] },
 };
 
 function useViewport() {
@@ -111,7 +111,7 @@ function ActiveOrchestration({ primary, onResolve, isEmergency }) {
     return (
       <Surface role="card" pad={6} rad="md"
         style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Text variant="secondary" color={color.text.tertiary}>All clear — no active escalations.</Text>
+        <Text variant="secondary" color={color.text.tertiary}>All clear · no active escalations · monitoring</Text>
       </Surface>
     );
   }
@@ -163,7 +163,7 @@ function SupportingThreads({ secondaries, onPromote, dense }) {
       <Text variant="label" color={color.text.tertiary}>OTHER THREADS ({secondaries.length})</Text>
       {secondaries.length === 0 && (
         <Text variant="secondary" color={color.text.tertiary} style={{ marginTop: space[2] }}>
-          Nothing else needs attention.
+          All other threads nominal · monitoring
         </Text>
       )}
       {secondaries.map((v) => {
@@ -194,40 +194,186 @@ function SupportingThreads({ secondaries, onPromote, dense }) {
 }
 
 // ─── Demo driver ───────────────────────────────────────────────────────────
+// Operational command bar. Compressed verbs. Segmented vendor-cycle cluster.
+// Reset is visually demoted. Active-escalations reads as a system-status pill
+// to parallel the LIVE indicator on the command layer.
+// Forced single-line at every desktop width.
 function DemoDriver({ vendors, onCycle, onCascade, onResolveAll, onReset }) {
   const activeCount = vendors.filter((v) => v.status !== 'nominal' && v.status !== 'resolved').length;
+
+  const BTN_H = 40;
+
+  // Standard operational button (single-line, 40px min target).
   const btn = {
-    padding: '6px 10px', fontSize: type.size.sm, borderRadius: radius.sm,
-    border: `1px solid ${color.border.subtle}`, background: 'transparent',
-    color: color.text.secondary, cursor: 'pointer', fontFamily: type.family,
+    padding: `0 ${space[4]}px`,
+    height: BTN_H,
+    fontSize: type.size.sm,
+    borderRadius: radius.sm,
+    border: `1px solid ${color.border.subtle}`,
+    background: 'transparent',
+    color: color.text.secondary,
+    cursor: 'pointer',
+    fontFamily: type.family,
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
   };
+
+  // Segmented child button (no individual border; shares cluster shell).
+  const seg = (isFirst) => ({
+    padding: `0 ${space[3]}px`,
+    height: BTN_H,
+    fontSize: type.size.sm,
+    borderRadius: 0,
+    border: 'none',
+    borderLeft: isFirst ? 'none' : `1px solid ${color.border.subtle}`,
+    background: 'transparent',
+    color: color.text.secondary,
+    cursor: 'pointer',
+    fontFamily: type.family,
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
+    alignItems: 'center',
+  });
+
+  const active = activeCount > 0;
+
   return (
     <div style={{
-      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: space[2],
-      padding: `${space[3]}px ${space[5]}px`, borderBottom: `1px solid ${color.border.subtle}`,
+      display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: space[3],
+      padding: `${space[3]}px ${space[5]}px`,
+      borderBottom: `1px solid ${color.border.subtle}`,
       background: color.surface.canvas,
+      minHeight: BTN_H + 24,
     }}>
-      <Text variant="label" color={color.text.tertiary}>DEMO DRIVER</Text>
-      <button style={btn} onClick={onCascade}>Trigger 3 cascading delays</button>
-      <button style={btn} onClick={() => onCycle('catering')}>Cycle Catering</button>
-      <button style={btn} onClick={() => onCycle('florist')}>Cycle Florist</button>
-      <button style={btn} onClick={() => onCycle('av')}>Cycle AV</button>
-      <button style={btn} onClick={() => onCycle('photo')}>Cycle Photo</button>
-      <button style={btn} onClick={onResolveAll}>Resolve all</button>
-      <button style={btn} onClick={onReset}>Reset</button>
-      <span style={{ flex: 1 }} />
-      <Text variant="caption" color={color.text.tertiary}>Active escalations: {activeCount}</Text>
+      <Text variant="label" color={color.text.tertiary} style={{ flexShrink: 0, letterSpacing: '0.14em' }}>
+        DEMO DRIVER
+      </Text>
+
+      <button style={btn} onClick={onCascade}>Trigger cascade</button>
+
+      {/* Segmented cycle cluster — "CYCLE" label band on the left, vendors share the shell.
+          The cluster turns four redundant "Cycle X" buttons into one operational instrument. */}
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        border: `1px solid ${color.border.subtle}`,
+        borderRadius: radius.sm,
+        overflow: 'hidden',
+        flexShrink: 0,
+        height: BTN_H,
+      }}>
+        <span style={{
+          padding: `0 ${space[3]}px`,
+          height: BTN_H,
+          display: 'inline-flex',
+          alignItems: 'center',
+          fontFamily: type.family,
+          fontSize: type.size.xs || 11,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          color: color.text.tertiary,
+          borderRight: `1px solid ${color.border.subtle}`,
+          background: 'rgba(255,255,255,0.025)',
+        }}>CYCLE</span>
+        <button style={seg(true)}  onClick={() => onCycle('catering')}>Catering</button>
+        <button style={seg(false)} onClick={() => onCycle('florist')}>Florist</button>
+        <button style={seg(false)} onClick={() => onCycle('av')}>AV</button>
+        <button style={seg(false)} onClick={() => onCycle('photo')}>Photo</button>
+      </div>
+
+      <button style={btn} onClick={onResolveAll}>Clear all</button>
+
+      <span style={{ flex: 1, minWidth: space[3] }} />
+
+      {/* Demoted reset — text-only ambient affordance, never competes for attention. */}
+      <button
+        onClick={onReset}
+        style={{
+          padding: `0 ${space[3]}px`, height: BTN_H,
+          fontSize: type.size.xs || 11,
+          background: 'transparent', border: 'none',
+          color: color.text.tertiary, cursor: 'pointer',
+          fontFamily: type.family,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          opacity: 0.65,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+        }}
+      >reset</button>
+
+      {/* System-status pill — parallels the LIVE indicator language.
+          Quiet when count is 0; warm warning when threads are active. */}
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: space[2],
+        padding: `0 ${space[3]}px`,
+        height: BTN_H,
+        background: active ? 'rgba(226, 171, 81, 0.07)' : 'transparent',
+        border: `1px solid ${active ? color.status.warning : color.border.subtle}`,
+        borderRadius: radius.sm,
+        flexShrink: 0,
+      }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: active ? color.status.warning : color.text.disabled,
+        }} />
+        <span style={{
+          fontFamily: type.family,
+          fontSize: type.size.xs || 11,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          color: active ? color.text.primary : color.text.tertiary,
+          whiteSpace: 'nowrap',
+        }}>
+          ACTIVE {activeCount}
+        </span>
+      </div>
     </div>
   );
 }
 
 // ─── Workflow ──────────────────────────────────────────────────────────────
+// URL-driven initial state for reproducible screenshot captures:
+//   ?slice=desktop-density&state=cascade   — catering+floral delayed, AV non-responsive
+//   ?slice=desktop-density&state=emergency — adds AV at emergency tier
+function initialVendorsFromUrl() {
+  const s = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('state')
+    : null;
+  if (s === 'cascade') {
+    return INITIAL_VENDORS.map((v) =>
+      v.id === 'catering' ? { ...v, status: 'delayed' }
+      : v.id === 'florist' ? { ...v, status: 'delayed' }
+      : v.id === 'av'      ? { ...v, status: 'non_responsive' }
+      : v
+    );
+  }
+  if (s === 'emergency') {
+    return INITIAL_VENDORS.map((v) =>
+      v.id === 'catering' ? { ...v, status: 'delayed' }
+      : v.id === 'florist' ? { ...v, status: 'delayed' }
+      : v.id === 'av'      ? { ...v, status: 'emergency' }
+      : v
+    );
+  }
+  return INITIAL_VENDORS;
+}
+
 function Workflow() {
-  const [vendors, setVendors] = useState(INITIAL_VENDORS);
+  const [vendors, setVendors] = useState(initialVendorsFromUrl);
   const esc = useEscalation();
   const { setDensity } = useDensity();
   const w = useViewport();
-  const isDesktop = w >= 1100;
+  // Polish pass: tablet-landscape (≥1024) is an orchestration surface, not a
+  // stretched phone. Promote it to true 3-zone orchestration — rail / active /
+  // threads — with a tighter rail+threads to give the center room. Below 1024
+  // (tablet portrait + mobile) we still stack threads.
+  const isWide = w >= 1024;          // 3-zone orchestration territory
+  const isLarge = w >= 1280;         // generous orchestration spacing
 
   // Severity-ordered non-nominal vendors. Primary = highest severity.
   const sorted = useMemo(
@@ -275,8 +421,12 @@ function Workflow() {
     return vs.map((v) => (v.id === id ? { ...v, status: newSev } : v));
   });
 
-  const gridStyle = isDesktop
+  // 3-zone orchestration territory @ ≥1024. Tighter columns at tablet-landscape
+  // (1024–1279) so the center keeps breathing room; full columns at ≥1280.
+  const gridStyle = isLarge
     ? { display: 'grid', gridTemplateColumns: '280px minmax(0, 1fr) 360px', gap: space[5], padding: space[5], alignItems: 'stretch', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box' }
+    : isWide
+    ? { display: 'grid', gridTemplateColumns: '220px minmax(0, 1fr) 280px', gap: space[4], padding: space[5], alignItems: 'stretch', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box' }
     : { display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)',         gap: space[5], padding: space[5], alignItems: 'stretch', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box' };
 
   return (
@@ -289,8 +439,8 @@ function Workflow() {
       <div style={gridStyle}>
         <ContextRail vendors={vendors} />
         <ActiveOrchestration primary={primary} onResolve={resolveOne} isEmergency={isEmergency} />
-        {isDesktop ? (
-          <SupportingThreads secondaries={secondaries} onPromote={promote} dense={isEmergency || secondaries.length >= 2} />
+        {isWide ? (
+          <SupportingThreads secondaries={secondaries} onPromote={promote} dense={isEmergency || secondaries.length >= 2 || !isLarge} />
         ) : (
           secondaries.length > 0 && (
             <div style={{ gridColumn: '1 / -1' }}>

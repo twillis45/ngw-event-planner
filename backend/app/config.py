@@ -10,6 +10,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL
 
 RESEND_API_KEY           = os.environ.get("RESEND_API_KEY")
 COMMUNICATION_EMAIL_FROM = os.environ.get("COMMUNICATION_EMAIL_FROM", "events@example.com")
+RESEND_FROM_NAME         = os.environ.get("RESEND_FROM_NAME", "NGW Events")
 APP_BASE_URL             = os.environ.get("APP_BASE_URL", "https://twillis45.github.io/ngw-event-planner")
 
 # CORS — the frontends allowed to call this API.

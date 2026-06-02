@@ -1,8 +1,12 @@
 """Operational communication ledger — CLIENT + INTERNAL_TEAM channels.
 
-Architecture: frontend -> this API -> Supabase Postgres -> Resend (approvals only).
+Architecture: frontend -> this API -> Supabase Postgres -> Resend (email delivery).
 No direct frontend DB writes. No realtime. This is a controlled ledger, not chat.
+
+Sprint 58.2: general email delivery via Resend for any standard message when the
+planner provides a recipient email + `deliver_email: true`.
 """
+import json
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -12,7 +16,7 @@ from pydantic import BaseModel
 from ..db import get_pool
 from ..config import APP_BASE_URL
 from ..auth import require_planner
-from ..emailer import send_approval_email
+from ..emailer import send_approval_email, send_thread_email, is_email_configured
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
 
@@ -42,6 +46,12 @@ class MessageCreate(BaseModel):
     approval_context: Optional[str] = None
     required_by: Optional[datetime] = None
     notify_email: Optional[str] = None   # recipient for approval_request emails (no clients table yet)
+    # Sprint 58.2 — email delivery fields
+    deliver_email: bool = False           # True → attempt Resend delivery (standard messages only)
+    recipient_email: Optional[str] = None # Where to send the email
+    recipient_name: Optional[str] = None  # Display name in the email
+    subject: Optional[str] = None         # Email subject line (defaults to "Message from {author_name}")
+    reply_to: Optional[str] = None        # Reply-to address (planner's email)
 
 class MessagePatch(BaseModel):
     body: Optional[str] = None
@@ -204,18 +214,76 @@ async def create_message(
         if principal:
             await _assert_event_access(conn, event_id, principal)
         ch = await _channel(conn, event_id, channel_type)
+
+        # Build initial metadata. Sprint 58.2: delivery intent is recorded here
+        # so the frontend can read it back. The actual delivery result is patched
+        # in after the Resend call below.
+        metadata = {}
+        if payload.deliver_email:
+            metadata["delivery"] = {
+                "intent": "email",
+                "recipient_email": payload.recipient_email,
+                "recipient_name": payload.recipient_name,
+                "status": "pending",
+            }
+
         row = await conn.fetchrow(
             """insert into event_messages
                (event_id, channel_id, message_type, author_role, author_name, body,
-                approval_status, approval_context, required_by)
-               values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning *""",
+                approval_status, approval_context, required_by, metadata)
+               values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *""",
             event_id, ch["id"], payload.message_type, payload.author_role,
             payload.author_name, payload.body, approval_status,
             payload.approval_context, payload.required_by,
+            json.dumps(metadata) if metadata else "{}",
         )
 
-    # Resend notification — ONLY for approval requests in the CLIENT channel. Fail-soft.
-    if payload.message_type == "approval_request" and channel_type == "CLIENT":
+    msg_id = row["id"]
+
+    # ── Email delivery ─────────────────────────────────────────────────────────
+    # Sprint 58.2: general email delivery for standard messages.
+    # The message is already persisted — email is a best-effort sidecar.
+    if payload.deliver_email and payload.recipient_email and payload.message_type == "standard":
+        # Build a minimal but readable HTML body
+        body_text = payload.body or ""
+        body_html = body_text.replace("\n", "<br>")
+        sender = payload.author_name or "Your event planner"
+        subj = payload.subject or f"Message from {sender}"
+        greeting = f"<p>Hi{(' ' + payload.recipient_name) if payload.recipient_name else ''},</p>" if payload.recipient_name else ""
+        html = f"{greeting}<div style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;\">{body_html}</div><p style=\"margin-top:24px;font-size:13px;color:#888;\">— Sent via NGW Events</p>"
+
+        delivery_result = await send_thread_email(
+            to=payload.recipient_email,
+            subject=subj,
+            body_html=html,
+            sender_name=sender,
+            reply_to=payload.reply_to,
+        )
+
+        # Patch the message metadata with the delivery result
+        delivery_meta = {
+            "intent": "email",
+            "recipient_email": payload.recipient_email,
+            "recipient_name": payload.recipient_name,
+            "status": "sent" if delivery_result.get("ok") else "failed",
+            "provider": delivery_result.get("provider"),
+        }
+        if delivery_result.get("ok"):
+            delivery_meta["resend_id"] = delivery_result.get("resend_id")
+        else:
+            delivery_meta["error"] = delivery_result.get("error")
+
+        pool2 = await get_pool()
+        async with pool2.acquire() as conn2:
+            row = await conn2.fetchrow(
+                """update event_messages set metadata = jsonb_set(
+                       coalesce(metadata, '{}'), '{delivery}', $2::jsonb
+                   ) where id=$1 returning *""",
+                msg_id, json.dumps(delivery_meta),
+            )
+
+    # Legacy: approval_request Resend notification (Sprint 58)
+    elif payload.message_type == "approval_request" and channel_type == "CLIENT":
         link = f"{APP_BASE_URL}?event={event_id}"
         await send_approval_email(payload.notify_email, event_id, payload.approval_context or "", link)
 

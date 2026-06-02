@@ -44,10 +44,25 @@ function VendorRow({ v, active }) {
   );
 }
 
+// Desktop action containment (Figma 44_Desktop_Containment_Rules):
+//   mobile (<768)            → full
+//   tablet portrait (≥768)   → full (acts as ~100% column)
+//   tablet landscape (≥1024) → 60–75% of right pane (use ~75% via contained widths)
+//   desktop (≥1280)          → contained 280 (escalation) / 360 (emergency)
+// Returns a style object applied to the primary action button.
+// Mass at emergency comes from the Button's xl size growth, NOT extra width.
+function primaryWidthFor(viewportW, severity) {
+  if (viewportW < 768) return { width: '100%' };                       // mobile: full
+  if (viewportW < 1024) return { width: '100%' };                      // tablet portrait: full column
+  if (viewportW < 1280) return { width: severity === 'emergency' ? 320 : 260 }; // tablet landscape: contained, slightly tighter
+  return { width: severity === 'emergency' ? 360 : 280 };              // desktop: canonical 280 / 360
+}
+
 function Workflow() {
   const esc = useEscalation();
   const { density } = useDensity();
-  const wide = useViewport() >= 768;
+  const vw = useViewport();
+  const wide = vw >= 768;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [resolvedNote, setResolvedNote] = useState(null);
 
@@ -55,7 +70,7 @@ function Workflow() {
   const focal = VENDORS.find((v) => v.focal);
   const delayed = esc.isEscalated;
   const vendors = VENDORS.map((v) => (v.focal && delayed
-    ? { ...v, status: 'delayed', meta: esc.emergency ? 'No coverage · cocktail hour at risk' : '45 min overdue · no ETA' }
+    ? { ...v, status: 'delayed', meta: esc.emergency ? 'No contact · cocktail hour at risk' : '45 min behind · no ETA' }
     : v));
 
   // Density reduction: how many nominal vendors stay visible.
@@ -68,30 +83,39 @@ function Workflow() {
 
   function triggerDelay() { esc.setLevel('escalated'); setResolvedNote(null); setSheetOpen(true); }
   function goEmergency() { esc.setLevel('emergency'); setSheetOpen(true); }
-  function resolve() { esc.setLevel('nominal'); setSheetOpen(false); setResolvedNote('Catering rerouted · arrived 15:22 · operations resumed'); }
+  function resolve() { esc.setLevel('nominal'); setSheetOpen(false); setResolvedNote('Catering rerouted · arrived 15:22 · back on timeline'); }
 
   // The single structural primary is chosen by context (escalation when escalated).
+  // Desktop containment: primary action is no longer full-width on tablet-landscape+.
+  // Mass at emergency comes from the surface + button-size growth, not width.
+  const primaryStyle = primaryWidthFor(vw, severity);
+  const primaryIsFull = primaryStyle.width === '100%';
   const primaryAction = esc.isEscalated
-    ? <Button priority="escalation" full onClick={() => setSheetOpen(true)}>{esc.emergency ? 'CONTACT VENUE NOW' : 'Escalate to Supervisor'}</Button>
-    : <Button priority="p1" full onClick={() => setSheetOpen(true)}>Open Vendor Actions</Button>;
+    ? <Button priority="escalation" full={primaryIsFull} style={primaryIsFull ? undefined : primaryStyle} onClick={() => setSheetOpen(true)}>{esc.emergency ? 'CONTACT VENUE NOW' : 'Escalate to lead'}</Button>
+    : <Button priority="p1"        full={primaryIsFull} style={primaryIsFull ? undefined : primaryStyle} onClick={() => setSheetOpen(true)}>Vendor actions</Button>;
 
   const issuePanel = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: space[4] }}>
       {severity !== 'nominal' && (
         <AlertBanner
           severity={severity}
-          title={esc.emergency ? 'Catering — no coverage' : 'Catering — 45 min overdue'}
-          body={esc.emergency ? 'Immediate action required · cocktail hour at risk' : 'No confirmed ETA · last contact 12 min ago'}
+          title={esc.emergency ? 'Catering — no contact' : 'Catering — 45 min behind'}
+          body={esc.emergency ? 'Cocktail hour at risk · contact venue now' : 'No confirmed ETA · last contact 12 min ago'}
         />
       )}
-      {resolvedNote && <AlertBanner severity="resolved" title="Escalation resolved" body={resolvedNote} />}
+      {resolvedNote && <AlertBanner severity="resolved" title="Stabilized" body={resolvedNote} />}
       {severity === 'nominal' && !resolvedNote && (
         <Surface role="card" pad={5}>
           <Text variant="label" as="div" style={{ marginBottom: space[2] }}>VENDOR STATUS</Text>
-          <Text variant="body" as="div">All vendors nominal. Catering on schedule.</Text>
+          <Text variant="body" as="div">All vendors nominal · catering on schedule</Text>
         </Surface>
       )}
-      <div>{primaryAction}</div>
+      {/* Action anchor — bottom-left of orchestration column on desktop, full-width on mobile.
+          Polish pass: a quiet top-margin band on tablet-landscape+ to assert negative-space
+          confidence around the primary; mobile keeps the natural stacking rhythm. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: vw >= 1024 ? space[3] : 0 }}>
+        {primaryAction}
+      </div>
     </div>
   );
 
@@ -135,9 +159,9 @@ function Workflow() {
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={esc.emergency ? 'Emergency — Catering' : 'Catering — operational actions'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
-          <Button priority={esc.isEscalated ? 'escalation' : 'p1'} full onClick={() => {}}>{esc.emergency ? 'CONTACT VENUE NOW' : 'Contact Vendor'}</Button>
-          <Button priority="p2" full onClick={() => {}}>Reroute Timeline</Button>
-          <Button priority="ambient" full onClick={resolve}>Mark Resolved</Button>
+          <Button priority={esc.isEscalated ? 'escalation' : 'p1'} full onClick={() => {}}>{esc.emergency ? 'CONTACT VENUE NOW' : 'Contact vendor'}</Button>
+          <Button priority="p2" full onClick={() => {}}>Reroute timeline</Button>
+          <Button priority="ambient" full onClick={resolve}>Mark resolved</Button>
         </div>
       </BottomSheet>
     </div>
@@ -145,9 +169,18 @@ function Workflow() {
 }
 
 export default function VendorEscalationSlice() {
+  // Optional URL-driven initial state for reproducible screenshot captures:
+  //   ?slice=vendor&state=escalation
+  //   ?slice=vendor&state=emergency
+  const initial = (typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('state')
+    : null) || 'nominal';
+  const initialLevel = initial === 'emergency' ? 'emergency'
+                     : initial === 'escalation' ? 'escalated'
+                     : 'nominal';
   return (
     <OperationalModeProvider initialMode="live">
-      <EscalationProvider initialLevel="nominal">
+      <EscalationProvider initialLevel={initialLevel}>
         <DensityProvider>
           <Workflow />
         </DensityProvider>

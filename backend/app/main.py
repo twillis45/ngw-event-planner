@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from .db import close_pool
 from .routers import communication
+from .emailer import is_email_configured
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +34,15 @@ app.add_middleware(CORSMiddleware, **_cors)
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "ngw-events-api"}
+
+@app.get("/api/capabilities")
+async def capabilities():
+    """Sprint 58.2: tells the frontend what backend features are available.
+    Never exposes secrets — only boolean flags."""
+    return {
+        "email_configured": is_email_configured(),
+        "service": "ngw-events-api",
+    }
 
 @app.on_event("shutdown")
 async def _shutdown():

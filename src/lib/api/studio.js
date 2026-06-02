@@ -3,7 +3,7 @@
 // Resolves the current user's studio id from studio_members (prefers an 'owner'
 // membership, falls back to any). Returns null when Supabase is unconfigured or
 // the user is signed out, so callers fall back to localStorage.
-import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { supabase, isSupabaseConfigured, authRedirectUrl } from '../supabaseClient';
 
 let _cache = { uid: null, studioId: null }; // tiny per-session cache (keyed by uid)
 
@@ -89,10 +89,14 @@ export async function inviteStudioMember(studioId, email, role = 'planner') {
     .insert({ studio_id: studioId, email: addr, role, invited_by: invitedBy });
   if (error) throw error;
   // Best-effort magic link so they can sign in; ignore errors (the invitation is saved).
+  // Sprint 51 endpoint consistency: use the shared authRedirectUrl() so this
+  // invite redirect matches the planner's own sign-in redirect. Previously
+  // hardcoded window.location.origin + pathname, which silently broke when
+  // REACT_APP_AUTH_REDIRECT was set for LAN/tunnel development.
   try {
     await supabase.auth.signInWithOtp({
       email: addr,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      options: { emailRedirectTo: authRedirectUrl() },
     });
   } catch { /* invitation row is the source of truth */ }
 }

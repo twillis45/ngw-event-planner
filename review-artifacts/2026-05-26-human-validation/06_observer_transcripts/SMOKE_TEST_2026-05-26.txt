@@ -1,0 +1,22 @@
+NGW Observer transcript — SMOKE TEST (not a real operator session)
+URL: http://localhost:3000/?slice=desktop-density&state=cascade&observe=1
+Viewport: 1440x900
+Recorded: 2026-05-26T12:23:23.771Z
+Entries: 6
+
+time         hesitation_ms   kind     what
+------------ --------------- -------- --------------------------------------------------
+12:23:02.207                 state    badge → CRITICAL
+12:23:02.208                 state    secondaries → OTHER THREADS (2)
+12:23:02.208                 state    primary action → Call lead directly
+12:23:09.792            7584 click    Cycle AV
+12:23:09.808                 state    badge → EMERGENCY
+12:23:09.808                 state    primary action → CONTACT NOW
+
+# Smoke-test notes
+# This is NOT operator data. It's me clicking once to prove the observer captures:
+#   - URL-driven initial state (cascade preloaded — badge starts at CRITICAL)
+#   - state-significant DOM changes (badge / secondaries / primary action)
+#   - clicks with hesitation in ms
+#   - __ngwTranscript() returns formatted text ready to paste
+# Ctrl/Cmd+Shift+L copies the same to clipboard.
