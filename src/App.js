@@ -12,6 +12,7 @@ import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk } from './lib/weather';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
+import { isAnalyticsConfigured, identifyStudio, track, trackPageView, EVENTS } from './lib/analytics';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -8122,6 +8123,118 @@ const getRushFactor = (eventDate) => {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
+// ─── Preferred Vendor Directory — Sprint 65 ───────────────────────────────────
+// Studio-private list of go-to vendors. Persists to localStorage under
+// 'ngw-preferred-vendors'. Each entry: { id, name, category, contact, phone,
+// website, notes, rehireCount, rating } — planner-maintained.
+function PreferredVendorDirectory({ C, s }) {
+  const STORAGE_KEY = 'ngw-preferred-vendors';
+  const [vendors, setVendors] = useState(() => {
+    try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : []; } catch { return []; }
+  });
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ name: '', category: '', contact: '', phone: '', website: '', notes: '' });
+  const [search, setSearch] = useState('');
+
+  const save = (v) => {
+    setVendors(v);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); } catch {}
+  };
+
+  const addVendor = () => {
+    if (!draft.name.trim()) return;
+    const next = [...vendors, { ...draft, id: `pv-${Date.now()}`, rehireCount: 0, addedAt: new Date().toISOString() }];
+    save(next);
+    setDraft({ name: '', category: '', contact: '', phone: '', website: '', notes: '' });
+    setAdding(false);
+  };
+
+  const removeVendor = (id) => save(vendors.filter(v => v.id !== id));
+  const bumpRehire = (id) => save(vendors.map(v => v.id === id ? { ...v, rehireCount: (v.rehireCount || 0) + 1 } : v));
+
+  const filtered = search.trim()
+    ? vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.category || '').toLowerCase().includes(search.toLowerCase()))
+    : vendors;
+
+  const VENDOR_CATS = ['Venue', 'Catering', 'Florals', 'Photography', 'Entertainment', 'AV / Tech', 'Hair & Makeup', 'Transportation', 'Lighting', 'Décor', 'Officiant', 'Other'];
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
+        Your studio's trusted vendor roster — built from experience across events. Private to your studio.
+      </div>
+
+      {/* Search + Add */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input style={{ ...s.input, flex: 1, fontSize: 12 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search preferred vendors…" />
+        <button style={{ ...s.btn('primary'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }} onClick={() => setAdding(v => !v)}>
+          {adding ? 'Cancel' : '+ Add Vendor'}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <div>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Vendor name *</label>
+              <input style={s.input} value={draft.name} placeholder="e.g. Wild Bloom Florals" onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Category</label>
+              <select style={{ ...s.input, fontSize: 12 }} value={draft.category} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}>
+                <option value="">Select…</option>
+                {VENDOR_CATS.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Email / contact</label>
+              <input style={s.input} value={draft.contact} placeholder="booking@vendor.com" onChange={e => setDraft(d => ({ ...d, contact: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Phone</label>
+              <input style={s.input} value={draft.phone} placeholder="(615) 555-0100" onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Notes (what they're great at, pricing range, quirks)</label>
+            <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={draft.notes} placeholder="Best for outdoor weddings. Responsive. Budget: $3–5k for florals." onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
+          </div>
+          <button style={{ ...s.btn('primary'), fontSize: 12 }} onClick={addVendor} disabled={!draft.name.trim()}>Save to directory</button>
+        </div>
+      )}
+
+      {/* Vendor list */}
+      {filtered.length === 0 ? (
+        <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '12px 0' }}>
+          {search ? 'No vendors match your search.' : 'No preferred vendors yet — add the vendors you trust and rehire.'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filtered.map(v => (
+            <div key={v.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: v.notes ? 4 : 0 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{v.name}</span>
+                  {v.category && <span style={{ fontSize: 10, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '1px 7px', marginLeft: 6 }}>{v.category}</span>}
+                  {v.rehireCount > 0 && <span style={{ fontSize: 10, color: C.success, marginLeft: 6 }}>↻ {v.rehireCount}x booked</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                  {v.contact && <a href={`mailto:${v.contact}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.contact}>✉</a>}
+                  {v.phone && <a href={`tel:${v.phone}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.phone}>📞</a>}
+                  <button style={{ ...s.btn(), fontSize: 10, padding: '3px 8px' }} onClick={() => bumpRehire(v.id)} title="Mark as booked again">↻</button>
+                  <button style={{ ...s.btn('danger'), fontSize: 10, padding: '3px 8px' }} onClick={() => removeVendor(v.id)} title="Remove from directory">×</button>
+                </div>
+              </div>
+              {v.notes && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{v.notes}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
@@ -8699,6 +8812,14 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   detail={!isMapsConfigured() ? 'Set REACT_APP_GOOGLE_MAPS_KEY to enable. Free tier at console.cloud.google.com (Places API).' : null}
                 />
 
+                {/* PostHog analytics */}
+                <IntRow
+                  label="Product analytics (PostHog)"
+                  desc={isAnalyticsConfigured() ? 'Behavioral analytics active — no PII collected' : 'Track feature usage to improve the product'}
+                  status={isAnalyticsConfigured() ? 'connected' : 'disconnected'}
+                  detail={!isAnalyticsConfigured() ? 'Set REACT_APP_POSTHOG_KEY to enable. Free: 1M events/month at posthog.com.' : null}
+                />
+
                 {/* Weather */}
                 <IntRow
                   label="Weather risk (OpenWeather)"
@@ -8781,6 +8902,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
           </div>
 
           {/* ── COMING SOON — honestly labeled ── */}
+          {/* ── PREFERRED VENDOR DIRECTORY ── Sprint 65 ── */}
+          <SectionHead label="Preferred Vendors" />
+          <PreferredVendorDirectory C={C} s={s} />
+
           <SectionHead label="Planned Integrations" />
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
@@ -20114,6 +20239,8 @@ export default function App() {
   }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
+  // PostHog: identify studio when profile is set
+  useEffect(() => { if (profile?.businessName || profile?.name) identifyStudio(profile); }, [profile?.businessName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // DocuSign OAuth callback — parse tokens from URL after redirect
   useEffect(() => {

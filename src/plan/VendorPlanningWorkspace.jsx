@@ -1385,10 +1385,33 @@ function LinkedWorkSection({ linked }) {
   );
 }
 
+// Document AI extraction via backend proxy
+async function extractDocumentAI({ contractUrl, vendorName, eventName, documentType = 'contract' }) {
+  const BASE = process.env.REACT_APP_API_BASE_URL;
+  if (!BASE || !contractUrl) return null;
+  try {
+    const res = await fetch(`${BASE}/api/ai/extract-document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        document_url: contractUrl,
+        document_type: documentType,
+        vendor_name: vendorName,
+        event_name: eventName,
+      }),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
 // 8 — Documents
-function DocumentsSection({ vendor }) {
+function DocumentsSection({ vendor, event }) {
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const hasContractFile = Boolean(vendor.contractUrl || vendor.contractStoragePath);
+  const [extracting, setExtracting] = useState(false);
+  const [extracted, setExtracted] = useState(null);
+  const [extractErr, setExtractErr] = useState(null);
 
   const contractValue = hasContractFile
     ? vendor.contractFileName || 'Contract attached'
@@ -1431,20 +1454,35 @@ function DocumentsSection({ vendor }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: space[3], flexShrink: 0 }}>
             {hasContractFile && (
-              <a
-                href={vendor.contractUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 11, fontWeight: type.weight.semibold,
-                  color: P.accent, textDecoration: 'none',
-                  padding: `3px ${space[3]}px`,
-                  border: `1px solid ${P.borderSubtle}`,
-                  borderRadius: radius.sm,
-                }}
-              >
-                Open →
-              </a>
+              <div style={{ display: 'flex', gap: space[2] }}>
+                <a
+                  href={vendor.contractUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11, fontWeight: type.weight.semibold, color: P.accent, textDecoration: 'none', padding: `3px ${space[3]}px`, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm }}
+                >
+                  Open →
+                </a>
+                {process.env.REACT_APP_API_BASE_URL && (
+                  <button
+                    onClick={async () => {
+                      setExtracting(true); setExtractErr(null);
+                      const result = await extractDocumentAI({
+                        contractUrl: vendor.contractUrl,
+                        vendorName: vendor.name,
+                        eventName: event?.name,
+                      });
+                      setExtracting(false);
+                      if (result?.ok) setExtracted(result.extracted);
+                      else setExtractErr('AI extraction failed — try again');
+                    }}
+                    disabled={extracting}
+                    style={{ fontSize: 10, fontWeight: type.weight.semibold, color: P.textSecondary, background: 'transparent', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: `3px ${space[3]}px`, cursor: 'pointer', fontFamily: FF }}
+                  >
+                    {extracting ? '⏳ Analyzing…' : '✨ Analyze with AI'}
+                  </button>
+                )}
+              </div>
             )}
             <span style={{
               fontSize: 10, fontWeight: type.weight.semibold,
@@ -1457,6 +1495,44 @@ function DocumentsSection({ vendor }) {
             </span>
           </div>
         </div>
+
+        {/* AI extraction results */}
+        {extractErr && (
+          <div style={{ fontSize: 11, color: P.red, padding: `${space[2]}px 0` }}>{extractErr}</div>
+        )}
+        {extracted && (
+          <div style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: space[4], marginBottom: space[3] }}>
+            <div style={{ fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3], display: 'flex', justifyContent: 'space-between' }}>
+              <span>✨ AI-EXTRACTED · Verify against original document</span>
+              <button onClick={() => setExtracted(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontFamily: FF, fontSize: 11 }}>×</button>
+            </div>
+            {extracted.action_items?.length > 0 && (
+              <div style={{ marginBottom: space[3] }}>
+                <div style={{ fontSize: 10, color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>ACTION ITEMS</div>
+                {extracted.action_items.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', gap: space[2], fontSize: 11, color: a.priority === 'high' ? P.red : P.textSecondary, marginBottom: 3 }}>
+                    <span>{a.priority === 'high' ? '🔴' : a.priority === 'medium' ? '🟡' : '⚪'}</span>
+                    <span>{a.task}{a.due_date ? ` — ${a.due_date}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {extracted.key_dates?.length > 0 && (
+              <div style={{ marginBottom: space[3] }}>
+                <div style={{ fontSize: 10, color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>KEY DATES</div>
+                {extracted.key_dates.map((d, i) => (
+                  <div key={i} style={{ fontSize: 11, color: P.textSecondary, marginBottom: 2 }}>{d.label}: {d.date}</div>
+                ))}
+              </div>
+            )}
+            {extracted.cancellation_policy && (
+              <div style={{ fontSize: 10, color: P.textTertiary, lineHeight: 1.4 }}>{extracted.cancellation_policy}</div>
+            )}
+            {extracted.disclaimer && (
+              <div style={{ fontSize: 9, color: P.textTertiary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
+            )}
+          </div>
+        )}
 
         {/* COI row */}
         <div style={{
@@ -2145,7 +2221,7 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
 
         <RequiredQuestionsSection vendor={vendor} questions={questions} />
         <LinkedWorkSection linked={linked} />
-        <DocumentsSection vendor={vendor} />
+        <DocumentsSection vendor={vendor} event={event} />
         <NotesSection vendor={vendor} />
         <ActivityLogSection vendor={vendor} onAddLog={onAddLog} />
       </div>
