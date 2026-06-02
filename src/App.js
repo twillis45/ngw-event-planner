@@ -10394,6 +10394,17 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // ── Derived stats ──────────────────────────────────────────────
   const allClients = filteredClients; // search-filtered
 
+  // Per-client computed helpers — MUST be declared before filters/sorts that use it
+  const clientComputed = (c) => {
+    const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
+    const collected    = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
+    const outstanding  = Math.max(0, (c.plannerFee || 0) - collected);
+    const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0);
+    const nextDays     = nextEvt ? daysUntil(nextEvt.date) : null;
+    const feeUrgent    = outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true);
+    return { clientEvents, collected, outstanding, nextEvt, nextDays, feeUrgent };
+  };
+
   const searchFiltered = allClients.filter(c => {
     if (!clientSearch.trim()) return true;
     const q = clientSearch.toLowerCase();
@@ -10421,7 +10432,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       const db = clientComputed(b).nextDays ?? 9999;
       return da - db;
     }
-    // Default: attention (outstanding > 0 first, then by days to event)
     const ao = clientComputed(a).outstanding, bo = clientComputed(b).outstanding;
     if (ao > 0 && bo === 0) return -1;
     if (bo > 0 && ao === 0) return 1;
@@ -10429,17 +10439,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     const db = clientComputed(b).nextDays ?? 9999;
     return da - db;
   });
-
-  // Per-client computed helpers
-  const clientComputed = (c) => {
-    const clientEvents = events.filter(e => (c.eventIds || []).includes(e.id));
-    const collected    = (c.feeSchedule || []).reduce((x, f) => x + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
-    const outstanding  = Math.max(0, (c.plannerFee || 0) - collected);
-    const nextEvt      = [...clientEvents].sort((a, b) => (a.date || '').localeCompare(b.date || '')).find(e => daysUntil(e.date) > 0);
-    const nextDays     = nextEvt ? daysUntil(nextEvt.date) : null;
-    const feeUrgent    = outstanding > 0 && (nextDays !== null ? nextDays <= 30 : true);
-    return { clientEvents, collected, outstanding, nextEvt, nextDays, feeUrgent };
-  };
 
   const totalRevenue     = allClients.reduce((s, c) => s + clientComputed(c).collected, 0);
   const totalOutstanding = allClients.reduce((s, c) => s + clientComputed(c).outstanding, 0);
@@ -11173,90 +11172,87 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               )}
             </div>
 
-            {/* ═══ Zone 2: Priority "Start Here" Lane ═══════════════════ */}
-            {priorityEvents.length > 0 && (
-              <div style={{ marginBottom: isMob ? 16 : 24 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>
-                  Start here
-                </div>
-                <div style={{
-                  display: isMob ? 'grid' : isWide ? 'grid' : 'flex',
-                  gridTemplateColumns: isMob ? '1fr' : priorityEvents.length === 1 ? '1fr' : priorityEvents.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                  gap: isMob ? 10 : 14,
-                  ...((!isMob && !isWide) ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', paddingBottom: 4 } : {}),
+            {/* ═══ Zone 2: Start Here — editorial panel matching Home screen ══ */}
+            {priorityEvents.length > 0 && (() => {
+              const lead = priorityEvents[0];
+              const { ev, att, totalAtt } = lead;
+              const na = selectEventNextAction(ev);
+              const days = daysUntil(ev.date);
+              const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
+              const accent = hasCritical ? C.danger : totalAtt > 0 ? C.warn : C.accent2;
+              const label = hasCritical
+                ? 'Which event needs you today · Critical'
+                : totalAtt > 0
+                ? 'Which event needs you today · Needs attention'
+                : 'Which event needs you today';
+
+              // Build headline + consequence
+              const attPart = att.decisions > 0
+                ? `${att.decisions} decision${att.decisions !== 1 ? 's' : ''} pending`
+                : att.vendorIssues > 0
+                ? `${att.vendorIssues} vendor follow-up${att.vendorIssues !== 1 ? 's' : ''}`
+                : att.approvals > 0
+                ? `${att.approvals} approval${att.approvals !== 1 ? 's' : ''} waiting`
+                : totalAtt > 0 ? `${totalAtt} items need attention` : null;
+
+              const headline = `Start here: ${ev.name}${attPart ? ' — ' + attPart + '.' : '.'}`;
+              const consequence = [
+                ev.client?.name,
+                days !== null ? countdownLabel(days) : null,
+                na ? `Next: ${(na.title || '').slice(0, 60)}` : null,
+              ].filter(Boolean).join(' · ');
+
+              const otherCount = priorityEvents.length - 1;
+
+              return (
+                <div role="region" aria-label="Which event needs you today" style={{
+                  position: 'relative',
+                  marginBottom: isMob ? 16 : 24,
+                  padding: isMob ? '20px 18px 20px 22px' : '24px 28px 24px 32px',
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 12,
+                  overflow: 'hidden',
                 }}>
-                  {priorityEvents.map(({ ev, att, totalAtt }, idx) => {
-                    const days  = daysUntil(ev.date);
-                    const color = evtCLR[ev.type] || C.muted;
-                    const na    = selectEventNextAction(ev);
-                    // Emphasis hierarchy: first card gets subtle warm border, rest are neutral
-                    const isLead = idx === 0;
-                    const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
-                    const borderClr = isLead && hasCritical ? C.warn + '44' : C.border;
-                    return (
-                      <div key={ev.id}
-                        role="button" tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
-                        onClick={() => onSelectEvent(ev.id)}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '55'; e.currentTarget.style.background = C.accent + '08'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = borderClr; e.currentTarget.style.background = C.surface; }}
-                        style={{
-                          ...s.card, marginBottom: 0, cursor: 'pointer',
-                          border: `1px solid ${borderClr}`,
-                          padding: isMob ? '14px 16px' : '18px 22px',
-                          transition: 'border-color 0.15s, background 0.15s',
-                          ...(!isMob && !isWide ? { minWidth: 280, flexShrink: 0, scrollSnapAlign: 'start' } : {}),
-                        }}
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accent, opacity: hasCritical ? 1 : 0.6 }} />
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
+                    {label}
+                  </div>
+                  <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
+                    {headline}
+                  </h2>
+                  <p style={{ margin: 0, marginBottom: 18, fontSize: isMob ? 12 : 13, lineHeight: 1.55, color: C.muted, maxWidth: 680 }}>
+                    {consequence}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => onSelectEvent(ev.id)}
+                      style={{
+                        padding: isMob ? '9px 18px' : '10px 22px',
+                        borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: accent,
+                        color: hasCritical || totalAtt > 0 ? '#fff' : '#070809',
+                        fontSize: isMob ? 12.5 : 13, fontWeight: 700, letterSpacing: '0.01em', fontFamily: 'inherit',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        transition: 'transform 0.12s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      Open {ev.name.split(' ')[0]} →
+                    </button>
+                    {otherCount > 0 && (
+                      <button
+                        onClick={() => setEventsFilter('needs')}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: 500, fontFamily: 'inherit', padding: '4px 0' }}
                       >
-                        {/* Priority card header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                          <span style={{ fontWeight: 700, fontSize: isMob ? 14 : 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{ev.type}</span>
-                        </div>
-                        {/* Countdown + client */}
-                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {ev.client && <span>{ev.client.name}</span>}
-                          {days !== null && <span>{ev.client ? '·' : ''} {countdownLabel(days)}</span>}
-                        </div>
-                        {/* Attention reason — single readable line, not chip-spam */}
-                        {totalAtt > 0 && (
-                          <div style={{ fontSize: 11, color: hasCritical ? C.danger : C.warn, fontWeight: 600, marginBottom: na ? 10 : 0 }}>
-                            {att.decisions > 0 ? `${att.decisions} decision${att.decisions !== 1 ? 's' : ''} pending` :
-                             att.vendorIssues > 0 ? `${att.vendorIssues} vendor follow-up${att.vendorIssues !== 1 ? 's' : ''}` :
-                             att.approvals > 0 ? `${att.approvals} approval${att.approvals !== 1 ? 's' : ''} waiting` :
-                             `${att.requests} request${att.requests !== 1 ? 's' : ''} open`}
-                          </div>
-                        )}
-                        {/* Next action hint */}
-                        {na && (
-                          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
-                            <span style={{ fontWeight: 700, color: C.text, marginRight: 6 }}>Next:</span>
-                            {(na.title || '').slice(0, 80)}
-                          </div>
-                        )}
-                        {/* Open Command CTA */}
-                        <div style={{ marginTop: na ? 10 : 8, borderTop: na ? 'none' : `1px solid ${C.border}`, paddingTop: na ? 0 : 8 }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onSelectEvent(ev.id); }}
-                            style={{
-                              ...s.btn('secondary'), fontSize: 11, padding: '5px 14px',
-                              background: 'transparent', border: `1px solid ${C.border}`,
-                              color: C.text, fontWeight: 600, cursor: 'pointer',
-                              transition: 'border-color 0.12s, color 0.12s',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}
-                          >
-                            Open Command
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        View {otherCount} more event{otherCount !== 1 ? 's' : ''} needing attention →
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ═══ Zone 3+4 wrapper: Event list + Right rail ═══════════ */}
             <div style={{
