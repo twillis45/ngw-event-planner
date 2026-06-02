@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { isSentryConfigured } from './lib/sentry';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk } from './lib/weather';
+import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -3270,6 +3271,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
   const [showOps,        setShowOps]        = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
   const [contractUploadErr, setContractUploadErr] = useState(null);
+  const [docusignSending,   setDocusignSending]   = useState(false);
+  const [docusignErr,       setDocusignErr]        = useState(null);
+  const [docusignResult,    setDocusignResult]     = useState(null);
   const auth = useContext(AuthCtx);
   const [showPNotes,     setShowPNotes]     = useState(false);
   const [newPNote,       setNewPNote]       = useState('');
@@ -3889,6 +3893,68 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                     <a href={vendor.contractUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap' }}>Open →</a>
                   )}
                 </div>
+                {/* DocuSign — send for signature (both parties) */}
+                {profile?.docusignAccessToken && vendor.contractUrl && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    {vendor.docusignEnvelopeId ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: vendor.docusignStatus === 'completed' ? C.success : C.warn, fontWeight: 600 }}>
+                          DocuSign: {envelopeStatusLabel(vendor.docusignStatus)}
+                        </span>
+                        {vendor.docusignStatus !== 'completed' && (
+                          <button style={{ ...s.btn(), fontSize: 10, padding: '3px 8px' }}
+                            onClick={async () => {
+                              const r = await getEnvelopeStatus(vendor.docusignEnvelopeId, profile.docusignAccessToken);
+                              if (r.ok) {
+                                onChange('docusignStatus', r.status);
+                                if (r.status === 'completed') {
+                                  onChange('contractSigned', true);
+                                  onChange('docusignCompletedAt', r.completedDateTime);
+                                }
+                              }
+                            }}>Refresh</button>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        disabled={docusignSending || !vendor.contact}
+                        title={!vendor.contact ? 'Add vendor email first' : 'Send contract to vendor for signature via DocuSign'}
+                        style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0, opacity: !vendor.contact ? 0.5 : 1, cursor: !vendor.contact ? 'not-allowed' : 'pointer' }}
+                        onClick={async () => {
+                          if (!vendor.contact) return;
+                          setDocusignErr(null);
+                          setDocusignSending(true);
+                          try {
+                            const r = await sendForSignature({
+                              accessToken: profile.docusignAccessToken,
+                              contractUrl: vendor.contractUrl,
+                              documentName: vendor.contractFileName || `${vendor.name} Contract`,
+                              vendorName: vendor.name,
+                              vendorEmail: vendor.contact,
+                              plannerName: profile.name || 'Planner',
+                              plannerEmail: profile.email || '',
+                              eventName: event?.name || 'Event',
+                              eventId: event?.id || '',
+                              vendorId: vendor.id,
+                            });
+                            if (r.ok) {
+                              onChange('docusignEnvelopeId', r.envelope_id);
+                              onChange('docusignStatus', r.status);
+                            } else {
+                              setDocusignErr(r.error);
+                            }
+                          } finally {
+                            setDocusignSending(false);
+                          }
+                        }}
+                      >
+                        {docusignSending ? '⏳ Sending…' : '✍ Send via DocuSign'}
+                      </button>
+                    )}
+                    {docusignErr && <span style={{ fontSize: 11, color: C.danger }}>{docusignErr}</span>}
+                  </div>
+                )}
+
                 {/* File upload — shown when Supabase Storage is configured */}
                 {isStorageConfigured() && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -7730,6 +7796,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
   const [copied,       setCopied]       = useState(false);
   const [showPay,      setShowPay]      = useState(!!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote));
   const [showAI,       setShowAI]       = useState(false);
+  const [dsBackend,    setDsBackend]    = useState(null);
+  useEffect(() => { checkDocuSignStatus().then(setDsBackend); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [specCat,      setSpecCat]      = useState(Object.keys(EVT_CATEGORIES)[0]);
 
   const hasPayData = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote);
@@ -8161,6 +8229,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             const emailOn      = isEmailConfigured();
             const aiOn         = Boolean(profile?.anthropicKey);
             const sentryOn     = isSentryConfigured();
+            const dsConnected  = Boolean(profile?.docusignAccessToken);
 
             const IntRow = ({ label, desc, status, detail, actionLabel, onAction, expandContent }) => {
               const [open, setOpen] = useState(false);
@@ -8247,6 +8316,16 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   desc={sentryOn ? 'Runtime errors reported with PII masked' : 'Error monitoring inactive'}
                   status={sentryOn ? 'connected' : 'disconnected'}
                   detail={!sentryOn ? 'Set REACT_APP_SENTRY_DSN to activate. All PII is masked before events are sent.' : null}
+                />
+
+                {/* DocuSign */}
+                <IntRow
+                  label="DocuSign — e-signatures"
+                  desc={dsConnected ? `Connected as ${profile?.docusignAccountName || 'DocuSign account'}` : dsBackend?.configured ? 'Backend configured — connect your DocuSign account' : 'Send contracts for legal e-signature'}
+                  status={dsConnected ? 'connected' : dsBackend?.configured ? 'partial' : 'disconnected'}
+                  detail={!dsBackend?.configured ? 'Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend (Render).' : null}
+                  actionLabel={dsBackend?.configured && !dsConnected ? 'Connect DocuSign' : null}
+                  onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
                 />
 
                 {/* Weather */}
@@ -19163,6 +19242,18 @@ export default function App() {
   }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
+
+  // DocuSign OAuth callback — parse tokens from URL after redirect
+  useEffect(() => {
+    const ds = parseDocuSignCallback();
+    if (ds) {
+      setProfile(p => ({ ...p, docusignAccessToken: ds.accessToken, docusignRefreshToken: ds.refreshToken, docusignConnectedAt: ds.connectedAt, docusignAccountName: ds.accountName }));
+      // Clean URL params
+      const url = new URL(window.location.href);
+      ['docusign_connected','docusign_access_token','docusign_refresh_token','docusign_expires_in','docusign_account_name','docusign_error'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced save: clients (upserts present + deletes removed, like events).
   const prevClientIdsRef = useRef(new Set((clients || []).map(c => c.id)));

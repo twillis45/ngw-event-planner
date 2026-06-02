@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from .db import close_pool
 from .routers import communication
+from .routers import docusign
 from .emailer import is_email_configured
 
 logging.basicConfig(level=logging.INFO)
@@ -49,3 +50,4 @@ async def _shutdown():
     await close_pool()
 
 app.include_router(communication.router)
+app.include_router(docusign.router)
