@@ -665,17 +665,21 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
             if (onAddLog) onAddLog(vendor.id, `Contract sent to ${vendor.contact || vendor.name} for signature.`);
             flashDone('Logged');
           }}
-          onUploadFile={({ storagePath, fileName, fileSize }) => {
+          onUploadFile={({ storagePath, fileName, fileSize, signedUrl }) => {
             if (onPatchVendor) onPatchVendor(vendor.id, {
               contractStoragePath: storagePath,
               contractFileName: fileName,
               contractFileSize: fileSize,
+              // Store the signed URL so DocumentsSection and AI extraction can
+              // use it immediately. Signed URLs expire in 1 hour — for long-lived
+              // access the planner can re-open the cockpit to refresh.
+              ...(signedUrl ? { contractUrl: signedUrl } : {}),
               // contractSigned intentionally NOT set here — uploading a file
               // does not mean the contract is signed. Planner marks it signed
               // separately after confirming signatures exist.
             });
             if (onAddLog) onAddLog(vendor.id, `Contract file uploaded: ${fileName} (${Math.round((fileSize || 0) / 1024)}KB) — mark signed once you confirm signatures.`);
-            flashDone('Contract uploaded');
+            flashDone('Contract uploaded — ready to analyze');
           }}
         />
       )}
@@ -1028,7 +1032,12 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
                         signedUrl: result.url,
                       });
                     } else {
-                      setUploadErr(result.error || 'Upload failed — try again');
+                      const errMsg = result.error || 'Upload failed';
+                      // Surface bucket-not-found as an actionable message
+                      const isBucketMissing = errMsg.toLowerCase().includes('bucket') || errMsg.toLowerCase().includes('not found') || errMsg.toLowerCase().includes('does not exist');
+                      setUploadErr(isBucketMissing
+                        ? 'Storage bucket not set up — run the event-files bucket SQL migration in Supabase Dashboard → SQL Editor'
+                        : errMsg + ' — check browser console for details');
                     }
                   } finally {
                     setUploading(false);
