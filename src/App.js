@@ -85,13 +85,13 @@ const ONBOARD_DONE_KEY = 'ngw-onboard-done';
 // Themes — add new themes here; ThemeCtx distributes the active one.
 const DARK = {
   bg:       '#0f0f11',
-  surface:  '#18181c',
-  surface2: '#1e1e24',
-  border:   '#2a2a32',
+  surface:  '#18181b',
+  surface2: '#1e1e22',
+  border:   '#2a2a2f',
   accent:   '#4a90d9',
   accent2:  '#14b8a6',
-  text:     '#e8e8f0',
-  muted:    '#9090a8',
+  text:     '#e8e8ec',
+  muted:    '#90909a',
   danger:   '#e63946',
   success:  '#22c55e',
   warn:     '#f59e0b',
@@ -9981,6 +9981,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             })
           : null;
         const portfolioValue = allEvents.reduce((s, { ev }) => s + (ev.vendors || []).reduce((b, v) => b + vendorCommittedCost(v), 0), 0);
+        const portfolioBalance = allEvents.reduce((s, { ev }) => s + (ev.vendors || []).filter(vendorIsCommitted).reduce((b, v) => b + vendorBalance(v), 0), 0);
 
         // ── Priority lane: top 3 events by attention ─────────────────
         const priorityEvents = [...allEvents]
@@ -10009,7 +10010,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         // ── Responsive layout vars ───────────────────────────────────
         const isMob = bp === 'mobile';
         const isTab = bp === 'tablet';
-        const showRail = isWide && previewEv;
+        const showRail = isWide; // Always show right rail on desktop — Portfolio Snapshot when no event selected
         const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
 
         return (
@@ -10024,7 +10025,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 <div style={{ flex: 1 }}>
                   <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Event Portfolio</h1>
                   {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
-                    {allEvents.length} event{allEvents.length !== 1 ? 's' : ''} across your studio
+                    {allEvents.length > 0 ? 'Choose the event that needs work next.' : 'Create your first event to get started.'}
                   </p>}
                 </div>
                 <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNew}>+ New Event</button>
@@ -10040,7 +10041,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 }}>
                   <div style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2,
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
@@ -10048,30 +10049,30 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   </div>
                   <div style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2,
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
                     <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {nextEvent ? nextEvent.ev.name : '—'}
                     </div>
-                    <div style={{ fontSize: 11, color: nextEvent ? (daysUntil(nextEvent.ev.date) <= 30 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: nextEvent ? (daysUntil(nextEvent.ev.date) <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>
                       {nextEvent ? countdownLabel(daysUntil(nextEvent.ev.date)) : 'No upcoming events'}
                     </div>
                   </div>
                   <div style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2,
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
                     cursor: totalAttention > 0 ? 'pointer' : 'default',
                   }} onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Attention Items</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
-                    <div style={{ fontSize: 11, color: totalAttention > 0 ? C.warn : C.muted, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                       {totalAttention === 0 ? 'All clear' : `across ${priorityEvents.length} event${priorityEvents.length !== 1 ? 's' : ''}`}
                     </div>
                   </div>
                   <div style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2,
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: portfolioValue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{fmtD(portfolioValue)}</div>
@@ -10084,7 +10085,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             {/* ═══ Zone 2: Priority "Start Here" Lane ═══════════════════ */}
             {priorityEvents.length > 0 && (
               <div style={{ marginBottom: isMob ? 16 : 24 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.warn, marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>
                   Start here
                 </div>
                 <div style={{
@@ -10093,20 +10094,24 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   gap: isMob ? 10 : 14,
                   ...((!isMob && !isWide) ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', paddingBottom: 4 } : {}),
                 }}>
-                  {priorityEvents.map(({ ev, att, totalAtt }) => {
+                  {priorityEvents.map(({ ev, att, totalAtt }, idx) => {
                     const days  = daysUntil(ev.date);
                     const color = evtCLR[ev.type] || C.muted;
                     const na    = selectEventNextAction(ev);
+                    // Emphasis hierarchy: first card gets subtle warm border, rest are neutral
+                    const isLead = idx === 0;
+                    const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
+                    const borderClr = isLead && hasCritical ? C.warn + '44' : C.border;
                     return (
                       <div key={ev.id}
                         role="button" tabIndex={0}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                         onClick={() => onSelectEvent(ev.id)}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = C.warn + '66'; e.currentTarget.style.background = C.warn + '08'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.warn + '33'; e.currentTarget.style.background = C.surface; }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '55'; e.currentTarget.style.background = C.accent + '08'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = borderClr; e.currentTarget.style.background = C.surface; }}
                         style={{
                           ...s.card, marginBottom: 0, cursor: 'pointer',
-                          border: `1px solid ${C.warn}33`,
+                          border: `1px solid ${borderClr}`,
                           padding: isMob ? '14px 16px' : '18px 22px',
                           transition: 'border-color 0.15s, background 0.15s',
                           ...(!isMob && !isWide ? { minWidth: 280, flexShrink: 0, scrollSnapAlign: 'start' } : {}),
@@ -10116,27 +10121,45 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                           <span style={{ fontWeight: 700, fontSize: isMob ? 14 : 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</span>
-                          <span style={s.pill(color)}>{ev.type}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{ev.type}</span>
                         </div>
                         {/* Countdown + client */}
                         <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {ev.client && <span>{ev.client.name}</span>}
                           {days !== null && <span>{ev.client ? '·' : ''} {countdownLabel(days)}</span>}
                         </div>
-                        {/* Attention summary — concise, not chip-spam */}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: na ? 10 : 0 }}>
-                          {att.decisions > 0    && <span style={{ fontSize: 11, fontWeight: 600, color: C.danger }}>{att.decisions} decision{att.decisions !== 1 ? 's' : ''}</span>}
-                          {att.approvals > 0    && <span style={{ fontSize: 11, fontWeight: 600, color: C.warn }}>{att.approvals} approval{att.approvals !== 1 ? 's' : ''}</span>}
-                          {att.requests > 0     && <span style={{ fontSize: 11, fontWeight: 600, color: C.accent2 }}>{att.requests} request{att.requests !== 1 ? 's' : ''}</span>}
-                          {att.vendorIssues > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: C.warn }}>{att.vendorIssues} vendor issue{att.vendorIssues !== 1 ? 's' : ''}</span>}
-                        </div>
+                        {/* Attention reason — single readable line, not chip-spam */}
+                        {totalAtt > 0 && (
+                          <div style={{ fontSize: 11, color: hasCritical ? C.danger : C.warn, fontWeight: 600, marginBottom: na ? 10 : 0 }}>
+                            {att.decisions > 0 ? `${att.decisions} decision${att.decisions !== 1 ? 's' : ''} pending` :
+                             att.vendorIssues > 0 ? `${att.vendorIssues} vendor follow-up${att.vendorIssues !== 1 ? 's' : ''}` :
+                             att.approvals > 0 ? `${att.approvals} approval${att.approvals !== 1 ? 's' : ''} waiting` :
+                             `${att.requests} request${att.requests !== 1 ? 's' : ''} open`}
+                          </div>
+                        )}
                         {/* Next action hint */}
                         {na && (
-                          <div style={{ fontSize: 11, color: C.text, lineHeight: 1.45, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
-                            <span style={{ fontWeight: 700, color: na.level === 'critical' ? C.danger : C.warn, marginRight: 6 }}>Next:</span>
+                          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+                            <span style={{ fontWeight: 700, color: C.text, marginRight: 6 }}>Next:</span>
                             {(na.title || '').slice(0, 80)}
                           </div>
                         )}
+                        {/* Open Command CTA */}
+                        <div style={{ marginTop: na ? 10 : 8, borderTop: na ? 'none' : `1px solid ${C.border}`, paddingTop: na ? 0 : 8 }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onSelectEvent(ev.id); }}
+                            style={{
+                              ...s.btn('secondary'), fontSize: 11, padding: '5px 14px',
+                              background: 'transparent', border: `1px solid ${C.border}`,
+                              color: C.text, fontWeight: 600, cursor: 'pointer',
+                              transition: 'border-color 0.12s, color 0.12s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}
+                          >
+                            Open Command
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -10240,8 +10263,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
                               <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMob ? 200 : 'none' }}>{ev.name}</span>
-                              <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>{ev.type}</span>
-                              {SEED_EVENT_IDS.has(ev.id) && <span style={{ ...s.pill(C.accent2), fontSize: 9, padding: '1px 7px' }}>Demo</span>}
+                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{ev.type}</span>
+                              {SEED_EVENT_IDS.has(ev.id) && <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>}
                             </div>
                             <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                               {ev.client && <span>{ev.client.name}</span>}
@@ -10253,30 +10276,37 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                 </span>
                               )}
                             </div>
-                            {/* Compact readiness + attention strip */}
+                            {/* Readiness label — single readable line with specific reasons */}
                             <div style={{ display: 'flex', gap: isMob ? 8 : 14, marginTop: 5, alignItems: 'center', flexWrap: 'wrap' }}>
-                              {/* 4-dot readiness summary */}
-                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                {readinessAxes.map(({ key }) => (
-                                  <span key={key} style={{ width: 6, height: 6, borderRadius: '50%', background: colorFor(r[key].status) }} title={`${key}: ${r[key].note}`} />
-                                ))}
-                                {!isMob && <span style={{ fontSize: 10, color: colorFor(worstStatus), marginLeft: 3, fontWeight: 600 }}>
-                                  {worstStatus === 'ON_TRACK' ? 'On track' : worstStatus === 'AT_RISK' ? 'At risk' : 'Attention'}
-                                </span>}
-                              </div>
-                              {/* Condensed operational flags — max 2 */}
-                              {totalAtt > 0 && (
-                                <span style={{ fontSize: 10.5, fontWeight: 600, color: att.decisions > 0 ? C.danger : att.approvals > 0 ? C.warn : C.accent2 }}>
-                                  {totalAtt} item{totalAtt !== 1 ? 's' : ''} need attention
-                                </span>
-                              )}
-                              {/* Progress fraction */}
-                              {tasksTotal > 0 && !isMob && (
-                                <span style={{ fontSize: 10, color: C.muted }}>{tasksDone}/{tasksTotal} tasks</span>
-                              )}
-                              {vTotal > 0 && !isMob && (
-                                <span style={{ fontSize: 10, color: C.muted }}>{vConf}/{vTotal} vendors</span>
-                              )}
+                              {(() => {
+                                const atRiskAxes = readinessAxes.filter(a => r[a.key].status === 'AT_RISK');
+                                const attentionAxes = readinessAxes.filter(a => r[a.key].status === 'ATTENTION');
+                                // Build specific reason fragments
+                                const fragments = [];
+                                if (att.vendorIssues > 0) fragments.push(`${att.vendorIssues} vendor follow-up${att.vendorIssues !== 1 ? 's' : ''}`);
+                                if (att.decisions > 0) fragments.push(`${att.decisions} decision${att.decisions !== 1 ? 's' : ''} pending`);
+                                if (att.approvals > 0) fragments.push(`${att.approvals} approval${att.approvals !== 1 ? 's' : ''} waiting`);
+                                if (att.requests > 0) fragments.push(`${att.requests} request${att.requests !== 1 ? 's' : ''} open`);
+                                // Add progress fractions on desktop
+                                if (!isMob) {
+                                  if (tasksTotal > 0) fragments.push(`${tasksDone}/${tasksTotal} tasks`);
+                                  if (vTotal > 0) fragments.push(`${vConf}/${vTotal} vendors`);
+                                }
+                                if (atRiskAxes.length > 0) {
+                                  const detail = fragments.length > 0 ? fragments.slice(0, 3).join(' · ') : atRiskAxes[0].label.toLowerCase();
+                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.danger }}>At risk: {detail}</span>;
+                                }
+                                if (attentionAxes.length > 0 || totalAtt > 0) {
+                                  const detail = fragments.length > 0 ? fragments.slice(0, 3).join(' · ') : 'items need review';
+                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.warn }}>Needs attention: {detail}</span>;
+                                }
+                                // On track — still show progress fractions on desktop
+                                const trackFrags = [];
+                                if (!isMob && tasksTotal > 0) trackFrags.push(`${tasksDone}/${tasksTotal} tasks`);
+                                if (!isMob && vTotal > 0) trackFrags.push(`${vConf}/${vTotal} vendors`);
+                                const suffix = trackFrags.length > 0 ? ` · ${trackFrags.join(' · ')}` : '';
+                                return <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track{suffix}</span>;
+                              })()}
                             </div>
                           </div>
 
@@ -10299,10 +10329,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                             )}
                           </div>
 
-                          {/* Col 4: Balance due (desktop only) */}
+                          {/* Col 4: Balance due (desktop only) — only amber when overdue or due soon */}
                           {!isMob && (
                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : C.warn }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.warn : C.text }}>
                                 {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
                               </div>
                               {evCommitted > 0 && <div style={{ fontSize: 10, color: C.muted }}>balance</div>}
@@ -10320,8 +10350,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 )}
               </div>
 
-              {/* ── Zone 4: Desktop Right Rail — Event Preview ──────── */}
-              {showRail && previewEv && (
+              {/* ── Zone 4: Desktop Right Rail ──────────────────────── */}
+              {showRail && (previewEv ? (
+                /* ── Event Preview ──────────────────────────────────── */
                 <div style={{
                   ...s.card, marginBottom: 0,
                   padding: 0, overflow: 'hidden',
@@ -10367,7 +10398,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       ) : null;
                     })()}
 
-                    {/* 4-axis readiness */}
+                    {/* 4-axis readiness — readable labels, not dot clusters */}
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Readiness</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -10401,8 +10432,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                             </div>
                           )}
                           {previewAtt.requests > 0 && (
-                            <div style={{ fontSize: 12, color: C.accent2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.accent2 }} />{previewAtt.requests} pending request{previewAtt.requests !== 1 ? 's' : ''}
+                            <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.muted }} />{previewAtt.requests} pending request{previewAtt.requests !== 1 ? 's' : ''}
                             </div>
                           )}
                           {previewAtt.vendorIssues > 0 && (
@@ -10420,8 +10451,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Next Action</div>
                         <div style={{
                           padding: '10px 14px', borderRadius: 8,
-                          background: previewNA.level === 'critical' ? C.danger + '0c' : C.warn + '0c',
-                          border: `1px solid ${previewNA.level === 'critical' ? C.danger + '22' : C.warn + '22'}`,
+                          background: C.surface2,
+                          border: `1px solid ${previewNA.level === 'critical' ? C.danger + '33' : C.border}`,
                         }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 3 }}>{previewNA.title}</div>
                           {previewNA.consequence && (
@@ -10437,6 +10468,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       const committed = evVendors.reduce((sum, v) => sum + vendorCommittedCost(v), 0);
                       const balance   = evVendors.filter(vendorIsCommitted).reduce((sum, v) => sum + vendorBalance(v), 0);
                       if (committed === 0) return null;
+                      const pvDays = previewEv.date ? daysUntil(previewEv.date) : null;
                       return (
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Budget</div>
@@ -10446,7 +10478,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
                             <span style={{ color: C.muted }}>Balance due</span>
-                            <span style={{ fontWeight: 600, color: balance > 0 ? C.warn : C.success }}>{balance > 0 ? fmtD(balance) : 'Paid in full'}</span>
+                            <span style={{ fontWeight: 600, color: balance > 0 ? (pvDays !== null && pvDays <= 30 ? C.warn : C.text) : C.success }}>{balance > 0 ? fmtD(balance) : 'Paid in full'}</span>
                           </div>
                         </div>
                       );
@@ -10461,17 +10493,115 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     )}
                   </div>
 
-                  {/* Preview footer — primary CTA */}
-                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+                  {/* Preview footer — honest CTAs */}
+                  <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', gap: 8 }}>
                     <button
                       onClick={() => onSelectEvent(previewEv.id)}
-                      style={{ ...s.btn('primary'), width: '100%', padding: '10px 0', fontSize: 13, textAlign: 'center' }}
+                      style={{ ...s.btn('primary'), flex: 1, padding: '10px 0', fontSize: 13, textAlign: 'center' }}
                     >
-                      Open {previewEv.name.length > 20 ? previewEv.name.slice(0, 18) + '…' : previewEv.name}
+                      Open Command
                     </button>
+                    {(previewEv.vendors || []).length > 0 && (
+                      <button
+                        onClick={() => onSelectEvent(previewEv.id, { tab: 'Vendors' })}
+                        style={{
+                          ...s.btn('secondary'), flex: 1, padding: '10px 0', fontSize: 13, textAlign: 'center',
+                          background: 'transparent', border: `1px solid ${C.border}`, color: C.text,
+                        }}
+                      >
+                        Review Vendors
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
+              ) : (
+                /* ── Portfolio Snapshot — when no event selected ────── */
+                <div style={{
+                  ...s.card, marginBottom: 0,
+                  padding: 0, overflow: 'hidden',
+                  position: 'sticky', top: 20,
+                  maxHeight: 'calc(100vh - 40px)',
+                  display: 'flex', flexDirection: 'column',
+                }}>
+                  <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Snapshot</div>
+                  </div>
+                  <div style={{ padding: '16px 20px', flex: 1 }}>
+                    {/* Next upcoming event */}
+                    {nextEvent && (() => {
+                      const neDays = daysUntil(nextEvent.ev.date);
+                      return (
+                        <div style={{ marginBottom: 16 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Next Up</div>
+                          <div style={{
+                            padding: '12px 14px', borderRadius: 8, background: C.surface2,
+                            cursor: 'pointer',
+                          }} onClick={() => { setPreviewEventId(nextEvent.ev.id); }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{nextEvent.ev.name}</div>
+                            <div style={{ fontSize: 12, color: C.muted }}>
+                              {nextEvent.ev.client && <span>{nextEvent.ev.client.name} · </span>}
+                              {neDays !== null && <span style={{ fontWeight: 600, color: neDays <= 14 ? C.danger : neDays <= 30 ? C.warn : C.text }}>{countdownLabel(neDays)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Portfolio stats */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Overview</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                          <span style={{ color: C.muted }}>Active events</span>
+                          <span style={{ fontWeight: 600, color: C.text }}>{upcomingEvents.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                          <span style={{ color: C.muted }}>Items needing attention</span>
+                          <span style={{ fontWeight: 600, color: totalAttention > 0 ? C.warn : C.muted }}>{totalAttention}</span>
+                        </div>
+                        {portfolioValue > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Contracted value</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(portfolioValue)}</span>
+                          </div>
+                        )}
+                        {portfolioBalance > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                            <span style={{ color: C.muted }}>Balance outstanding</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>{fmtD(portfolioBalance)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Event type breakdown */}
+                    {allEvents.length > 0 && (() => {
+                      const typeCounts = {};
+                      allEvents.forEach(({ ev }) => { typeCounts[ev.type] = (typeCounts[ev.type] || 0) + 1; });
+                      const entries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+                      return (
+                        <div style={{ marginBottom: 16 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Type</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {entries.map(([type, count]) => (
+                              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: evtCLR[type] || C.muted, flexShrink: 0 }} />
+                                <span style={{ color: C.muted, flex: 1 }}>{type}</span>
+                                <span style={{ fontWeight: 600, color: C.text }}>{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Prompt to select an event */}
+                    <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginTop: 8 }}>
+                      Click any event in the list to preview details here.
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
