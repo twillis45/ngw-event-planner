@@ -37,6 +37,57 @@ app.add_middleware(CORSMiddleware, **_cors)
 async def health():
     return {"ok": True, "service": "ngw-events-api"}
 
+
+@app.post("/api/resend-webhook")
+async def resend_webhook(request):
+    """Fix #5: Resend delivery status webhooks → update message metadata.
+    Configure in Resend → Webhooks → Add endpoint:
+      URL: https://ngw-events-api.onrender.com/api/resend-webhook
+      Events: email.sent, email.delivered, email.bounced, email.opened
+    """
+    import logging
+    log = logging.getLogger("ngw.resend_webhook")
+    try:
+        payload = await request.json()
+    except Exception:
+        return {"ok": True}
+
+    event_type = payload.get("type", "")
+    data       = payload.get("data", {})
+    resend_id  = data.get("email_id") or data.get("id")
+
+    if not resend_id:
+        return {"ok": True}
+
+    status_map = {
+        "email.sent":       "email-sent",
+        "email.delivered":  "email-delivered",
+        "email.opened":     "email-opened",
+        "email.bounced":    "email-bounced",
+        "email.complained": "email-bounced",
+        "email.clicked":    "email-opened",
+    }
+    new_status = status_map.get(event_type)
+    if not new_status:
+        return {"ok": True}
+
+    try:
+        from .db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """update event_messages
+                      set metadata = jsonb_set(coalesce(metadata,'{}'),'{delivery,status}',to_jsonb($1::text)),
+                          updated_at = now()
+                    where metadata->'delivery'->>'resend_id' = $2""",
+                new_status, resend_id,
+            )
+            log.info("resend_webhook: %s id=%s → %s", event_type, resend_id, new_status)
+    except Exception as e:
+        log.error("resend_webhook error: %s", e)
+
+    return {"ok": True}
+
 @app.get("/api/capabilities")
 async def capabilities():
     """Sprint 58.2: tells the frontend what backend features are available.

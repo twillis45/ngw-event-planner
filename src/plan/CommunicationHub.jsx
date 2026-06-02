@@ -8,7 +8,7 @@
 // Messages from embedded surfaces (Client Intake, Vendor Planning) aggregate here.
 // Status via color + text only. No emoji. No icons.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { color, space, type, radius } from '../design/tokens';
 
 const P = {
@@ -126,13 +126,22 @@ function buildThreads(event) {
 }
 
 // ── Thread list ───────────────────────────────────────────────────────────────
+// Fix #2: Thread list with live search
 function ThreadList({ threads, tab, onTab, selected, onSelect }) {
-  const filtered = threads.filter(t => t.tab === tab);
+  const [search, setSearch] = useState('');
+  const allInTab = threads.filter(t => t.tab === tab);
+  const filtered = search.trim()
+    ? allInTab.filter(t =>
+        t.name.toLowerCase().includes(search.toLowerCase()) ||
+        (t.preview || '').toLowerCase().includes(search.toLowerCase())
+      )
+    : allInTab;
   const counts = {
     Client:  threads.filter(t => t.tab === 'Client').length,
     Vendors: threads.filter(t => t.tab === 'Vendors').length,
     Team:    threads.filter(t => t.tab === 'Team').length,
   };
+  const needsAttention = threads.filter(t => t.tab === tab && t.needsApproval).length;
 
   return (
     <div style={{
@@ -149,77 +158,79 @@ function ThreadList({ threads, tab, onTab, selected, onSelect }) {
       }}>
         {TABS.map(t => {
           const active = t === tab;
+          const cnt = counts[t];
+          const attn = threads.filter(th => th.tab === t && th.needsApproval).length;
           return (
-            <button
-              key={t}
-              onClick={() => onTab(t)}
-              style={{
-                flex: 1, height: 30, borderRadius: radius.sm,
-                border: 'none', cursor: 'pointer',
-                background: active ? P.borderSubtle : 'transparent',
-                fontFamily: FF, fontSize: 11,
-                fontWeight: active ? type.weight.semibold : type.weight.regular,
-                color: active ? P.textPrimary : P.textSecondary,
-              }}
-            >
+            <button key={t} onClick={() => { onTab(t); setSearch(''); }} style={{
+              flex: 1, height: 30, borderRadius: radius.sm,
+              border: 'none', cursor: 'pointer',
+              background: active ? P.borderSubtle : 'transparent',
+              fontFamily: FF, fontSize: 11,
+              fontWeight: active ? type.weight.semibold : type.weight.regular,
+              color: active ? P.textPrimary : P.textSecondary,
+              position: 'relative',
+            }}>
               {t}
-              {counts[t] > 0 && (
-                <span style={{
-                  marginLeft: 4, fontSize: 10,
-                  color: active ? P.textSecondary : P.textTertiary,
-                }}>{counts[t]}</span>
-              )}
+              {cnt > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: active ? P.textSecondary : P.textTertiary }}>{cnt}</span>}
+              {attn > 0 && <span style={{ position: 'absolute', top: 3, right: 6, width: 5, height: 5, borderRadius: '50%', background: P.amber }} />}
             </button>
           );
         })}
       </div>
 
+      {/* Fix #2: search input */}
+      <div style={{ padding: '8px 10px', borderBottom: `1px solid ${P.borderSubtle}`, flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: P.textTertiary, fontSize: 12 }}>⌕</span>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search threads…"
+            style={{
+              width: '100%', padding: '5px 8px 5px 22px',
+              borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`,
+              background: P.canvas, color: P.textPrimary,
+              fontSize: 11, fontFamily: FF, outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: 13, padding: 0 }}>×</button>
+          )}
+        </div>
+      </div>
+
       {/* Thread rows */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: space[7], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
-            No {tab.toLowerCase()} threads
+          <div style={{ padding: space[5], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
+            {search ? `No results for "${search}"` : `No ${tab.toLowerCase()} threads`}
           </div>
         ) : filtered.map(thread => {
           const isSelected = selected?.id === thread.id;
           return (
-            <button
-              key={thread.id}
-              onClick={() => onSelect(thread)}
-              style={{
-                display: 'flex', flexDirection: 'column', gap: 4,
-                width: '100%', padding: '12px 16px',
-                borderBottom: `1px solid ${P.borderSubtle}`,
-                border: 'none',
-                borderLeft: isSelected ? `3px solid ${P.green}` : '3px solid transparent',
-                background: isSelected ? P.borderSubtle : 'transparent',
-                cursor: 'pointer', textAlign: 'left',
-              }}
-            >
+            <button key={thread.id} onClick={() => onSelect(thread)} style={{
+              display: 'flex', flexDirection: 'column', gap: 4,
+              width: '100%', padding: '12px 16px',
+              borderBottom: `1px solid ${P.borderSubtle}`,
+              border: 'none',
+              borderLeft: isSelected ? `3px solid ${P.green}` : '3px solid transparent',
+              background: isSelected ? P.borderSubtle : 'transparent',
+              cursor: 'pointer', textAlign: 'left',
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{
-                  fontSize: 12, fontWeight: type.weight.medium,
-                  color: P.textPrimary, fontFamily: FF,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  flex: 1,
-                }}>
+                <span style={{ fontSize: 12, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                   {thread.name}
                 </span>
                 <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
                   {fmtRelative(thread.timestamp)}
                 </span>
               </div>
-              <div style={{
-                fontSize: 11, color: P.textSecondary, fontFamily: FF,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
+              <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {thread.preview}
               </div>
               {thread.needsApproval && (
-                <span style={{
-                  fontSize: 9, fontWeight: type.weight.semibold,
-                  color: P.amber, letterSpacing: '0.06em', fontFamily: FF,
-                }}>
+                <span style={{ fontSize: 9, fontWeight: type.weight.semibold, color: P.amber, letterSpacing: '0.06em', fontFamily: FF }}>
                   APPROVAL NEEDED
                 </span>
               )}
@@ -246,8 +257,11 @@ function ThreadList({ threads, tab, onTab, selected, onSelect }) {
 //   3. "Log to thread" — backend not connected
 // The planner always sees the truth. "Send email" never appears unless the
 // email will actually be attempted.
+// Fix #6: Composer with optional email subject field
 function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
   const [body, setBody]       = useState('');
+  const [subject, setSubject] = useState('');
+  const [showSubject, setShowSubject] = useState(false);
   const [busy, setBusy]       = useState(false);
   const [status, setStatus]   = useState(null); // { kind, text }
   if (!thread || !onSend) return null;
@@ -262,7 +276,7 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
     setBusy(true); setStatus(null);
     try {
       const result = await Promise.resolve(
-        onSend(thread, text, { deliverEmail: deliverEmail && canEmail })
+        onSend(thread, text, { deliverEmail: deliverEmail && canEmail, subject: subject.trim() || undefined })
       );
       const ok       = result && (result.ok || result.status === 'sent' || result.status === 'logged' || result.status === 'email-sent');
       const fellBack = result && result.fallback;
@@ -299,15 +313,36 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
       borderTop: `1px solid ${P.borderSubtle}`, background: P.base,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      {/* Recipient indicator when email is available */}
+      {/* Recipient + subject toggle */}
       {canEmail && (
-        <div style={{
-          fontSize: 10, color: P.green, fontFamily: FF,
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: P.green, flexShrink: 0 }} />
-          Email delivery available — {recipientInfo.email}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 10, color: P.green, fontFamily: FF, display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: P.green, flexShrink: 0 }} />
+            Email to {recipientInfo.email}
+          </div>
+          {/* Fix #6: toggle subject field */}
+          <button onClick={() => setShowSubject(v => !v)} style={{
+            fontSize: 10, color: showSubject ? P.green : P.textTertiary,
+            background: 'none', border: `1px solid ${showSubject ? P.green + '44' : P.borderSubtle}`,
+            borderRadius: radius.sm, padding: '2px 7px', cursor: 'pointer', fontFamily: FF,
+          }}>
+            {showSubject ? 'Subject ✓' : '+ Subject'}
+          </button>
         </div>
+      )}
+      {/* Fix #6: email subject field */}
+      {canEmail && showSubject && (
+        <input
+          value={subject}
+          onChange={e => setSubject(e.target.value)}
+          placeholder="Email subject (optional — defaults to event name)"
+          style={{
+            padding: '6px 10px', borderRadius: radius.sm,
+            border: `1px solid ${P.borderSubtle}`,
+            background: P.canvas, color: P.textPrimary,
+            fontSize: 11.5, fontFamily: FF, outline: 'none',
+          }}
+        />
       )}
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
         <textarea
@@ -321,14 +356,14 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
             }
           }}
           style={{
-            flex: 1, minHeight: 38, maxHeight: 120, resize: 'vertical',
+            flex: 1, minHeight: 60, maxHeight: 140, resize: 'vertical',
             padding: '9px 12px', borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`,
             background: P.canvas, color: P.textPrimary,
             fontSize: 12.5, fontFamily: FF, outline: 'none', lineHeight: 1.45,
           }}
         />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
           <button
             onClick={() => submit(primaryIsEmail)}
             disabled={!body.trim() || busy}
@@ -344,16 +379,16 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
           >
             {busy ? '…' : ctaLabel}
           </button>
-          {/* Secondary action: when email is primary, offer "Log only" as alternative */}
+          {/* Fix #9: Log only — proper ghost button, not tiny tertiary text */}
           {primaryIsEmail && body.trim() && !busy && (
             <button
               onClick={() => submit(false)}
               title="Save to event thread without sending email"
               style={{
-                padding: '4px 10px', borderRadius: radius.sm,
+                padding: '6px 12px', borderRadius: radius.sm,
                 border: `1px solid ${P.borderSubtle}`, background: 'transparent',
-                fontSize: 10, fontWeight: type.weight.medium, fontFamily: FF,
-                color: P.textTertiary, cursor: 'pointer', whiteSpace: 'nowrap',
+                fontSize: 11, fontWeight: type.weight.medium, fontFamily: FF,
+                color: P.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
               Log only
@@ -384,56 +419,65 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
   );
 }
 
-function ConversationPane({ thread, event, onSend, commLive, emailEnabled, resolveEmail }) {
+// Fix #3 + #7: ConversationPane with inline approve/reject + scroll preservation
+function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEnabled, resolveEmail }) {
+  // Fix #7: preserve scroll position per thread
+  const scrollRef = useRef(null);
+  const scrollPositions = useRef({});
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !thread) return;
+    // Restore saved position for this thread
+    const saved = scrollPositions.current[thread.id];
+    if (saved !== undefined) el.scrollTop = saved;
+    else el.scrollTop = el.scrollHeight; // new thread → scroll to bottom
+    const onScroll = () => { scrollPositions.current[thread.id] = el.scrollTop; };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [thread?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll to bottom when new messages arrive
+  const msgCount = thread?.messages?.length || 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const pos = scrollPositions.current[thread?.id];
+    const nearBottom = pos === undefined || (el.scrollHeight - pos - el.clientHeight) < 80;
+    if (nearBottom) el.scrollTop = el.scrollHeight;
+  }, [msgCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!thread) {
     return (
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: P.canvas,
-        fontSize: 12, color: P.textTertiary, fontFamily: FF,
-      }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: P.canvas, fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
         Select a thread to view the conversation
       </div>
     );
   }
 
-  // Find linked decision
   const linkedDecision = (event.commClient || []).find(m =>
     m.message_type === 'approval_request' && thread.messages.some(tm => tm.id === m.id)
   );
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column',
-      background: P.canvas, overflow: 'hidden',
-    }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: P.canvas, overflow: 'hidden' }}>
       {/* Thread header */}
       <div style={{
         height: 48, flexShrink: 0,
         background: P.base, borderBottom: `1px solid ${P.borderSubtle}`,
-        display: 'flex', alignItems: 'center', gap: 16,
-        padding: '0 24px',
+        display: 'flex', alignItems: 'center', gap: 16, padding: '0 24px',
       }}>
-        <span style={{
-          fontSize: 14, fontWeight: type.weight.semibold,
-          color: P.textPrimary, fontFamily: FF,
-        }}>
+        <span style={{ fontSize: 14, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
           {thread.name}
         </span>
-        {linkedDecision && (
-          <span style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
-            Linked to:{' '}
-            <span style={{ color: P.green }}>
-              {linkedDecision.subject || 'Decision'}
-            </span>
-            {' '}·{' '}
-            <span style={{ color: P.green, cursor: 'pointer' }}>View decision →</span>
+        {thread.needsApproval && (
+          <span style={{ fontSize: 10, fontWeight: type.weight.semibold, color: P.amber, letterSpacing: '0.06em', fontFamily: FF, background: P.amber + '14', border: `1px solid ${P.amber}44`, borderRadius: radius.sm, padding: '2px 7px' }}>
+            APPROVAL PENDING
           </span>
         )}
       </div>
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `${space[5]}px ${space[6]}px` }}>
+      {/* Messages — Fix #7: ref for scroll preservation */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: `${space[5]}px ${space[6]}px` }}>
         {thread.messages.length === 0 ? (
           <div style={{ textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
             No messages yet
@@ -441,43 +485,59 @@ function ConversationPane({ thread, event, onSend, commLive, emailEnabled, resol
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {thread.messages.map((m, i) => {
-              const isPlanner = m.direction === 'outbound' || m.sender === 'planner';
+              const isPlanner  = m.direction === 'outbound' || m.sender === 'planner';
               const isApproval = m.message_type === 'approval_request';
+              const isPending  = isApproval && !['approved','rejected'].includes(m.approval_status);
+              const isApproved = m.approval_status === 'approved';
+              const isRejected = m.approval_status === 'rejected';
               return (
-                <div key={m.id || i} style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: isPlanner ? 'flex-end' : 'flex-start',
-                }}>
-                  <div style={{
-                    fontSize: 10, color: P.textTertiary, fontFamily: FF, marginBottom: 4,
-                  }}>
+                <div key={m.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: isPlanner ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>
                     {isPlanner ? 'Planner' : (m.senderName || thread.name)} · {fmtRelative(m.createdAt || m.date)}
                   </div>
                   <div style={{
                     maxWidth: '70%',
-                    background: isApproval ? P.amber + '18'
-                      : isPlanner ? P.borderSubtle
-                      : P.card,
-                    border: `1px solid ${isApproval ? P.amber + '44' : P.borderSubtle}`,
+                    background: isApproval ? (isApproved ? P.green + '14' : isRejected ? P.red + '14' : P.amber + '14')
+                      : isPlanner ? P.borderSubtle : P.card,
+                    border: `1px solid ${isApproval ? (isApproved ? P.green + '44' : isRejected ? P.red + '44' : P.amber + '44') : P.borderSubtle}`,
                     borderRadius: radius.md,
                     padding: `${space[3]}px ${space[4]}px`,
                     fontSize: 12, color: P.textPrimary, fontFamily: FF,
                     lineHeight: type.leading.relaxed,
                   }}>
                     {m.body || m.text || m.message}
-                    {isApproval && (
-                      <div style={{
-                        fontSize: 10, color: P.amber, fontFamily: FF,
-                        fontWeight: type.weight.semibold, marginTop: 6,
-                        letterSpacing: '0.06em',
-                      }}>
-                        APPROVAL NEEDED
+
+                    {/* Fix #3: inline approve/reject on pending approval messages */}
+                    {isPending && onApprove && (
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, color: P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, flex: 1 }}>
+                          APPROVAL NEEDED
+                        </span>
+                        <button
+                          onClick={() => onApprove(m.id, 'approved')}
+                          style={{ padding: '4px 10px', borderRadius: radius.sm, border: 'none', background: P.green, color: P.canvas, fontSize: 10, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => onApprove(m.id, 'rejected')}
+                          style={{ padding: '4px 10px', borderRadius: radius.sm, border: `1px solid ${P.red}44`, background: 'transparent', color: P.red, fontSize: 10, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    {isApproved && (
+                      <div style={{ marginTop: 6, fontSize: 10, color: P.green, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
+                        ✓ APPROVED
+                      </div>
+                    )}
+                    {isRejected && (
+                      <div style={{ marginTop: 6, fontSize: 10, color: P.red, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
+                        REJECTED
                       </div>
                     )}
                   </div>
-                  {/* Sprint 58 / 58.2: honest delivery status for planner-sent
-                      messages. Shows what actually happened — email sent,
-                      logged to backend, or saved locally only. */}
                   {isPlanner && m.deliveryStatus && (
                     <div style={{
                       fontSize: 9.5, fontFamily: FF, marginTop: 3,
@@ -487,7 +547,7 @@ function ConversationPane({ thread, event, onSend, commLive, emailEnabled, resol
                       fontStyle: m.deliveryStatus === 'local-only' ? 'italic' : 'normal',
                       letterSpacing: '0.04em',
                     }}>
-                      {m.deliveryStatus === 'email-sent'   ? 'Email sent and saved to thread.'
+                      {m.deliveryStatus === 'email-sent'    ? 'Email sent and saved to thread.'
                        : m.deliveryStatus === 'email-failed' ? 'Email failed — logged to thread.'
                        : m.deliveryStatus === 'sent-via-app' ? 'Message sent and saved to thread.'
                        : m.deliveryStatus === 'local-only'   ? 'Email provider not configured — message logged.'
@@ -501,32 +561,36 @@ function ConversationPane({ thread, event, onSend, commLive, emailEnabled, resol
         )}
       </div>
 
-      {/* Sprint 49: real composer — sends through host onSend handler */}
       <Composer thread={thread} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
     </div>
   );
 }
 
-// ── Context panel (right) ─────────────────────────────────────────────────────
+// Fix #4: Populate ContextPanel with event + contact data
 function ContextPanel({ thread, event }) {
   if (!thread) return null;
 
-  // Find linked items from this thread's messages
-  const approvalMsg = thread.messages.find(m => m.message_type === 'approval_request');
+  const approvalMsg  = thread.messages.find(m => m.message_type === 'approval_request');
   const linkedVendor = (event.vendors || []).find(v =>
-    thread.tab === 'Vendors' &&
-    (v.name === thread.name || v.vendor_name === thread.name)
+    thread.tab === 'Vendors' && (v.name === thread.name || v.vendor_name === thread.name)
   );
   const taskMsg = thread.messages.find(m => m.task_id || m.linked_task);
-
-  // Open questions — from approval requests that are still pending
   const openQuestions = thread.messages
     .filter(m => m.open_questions)
     .flatMap(m => Array.isArray(m.open_questions) ? m.open_questions : [m.open_questions])
-    .filter(Boolean)
-    .slice(0, 3);
+    .filter(Boolean).slice(0, 3);
 
-  const hasContext = approvalMsg || linkedVendor || taskMsg || openQuestions.length > 0;
+  // Event context
+  const eventDate  = event?.date;
+  const daysToEvt  = eventDate ? Math.ceil((new Date(eventDate) - new Date()) / 86400000) : null;
+  const daysLabel  = daysToEvt === null ? null : daysToEvt < 0 ? `${Math.abs(daysToEvt)}d ago` : daysToEvt === 0 ? 'Today' : `${daysToEvt}d`;
+
+  // Vendor contact details for quick reach
+  const vendorEmail    = linkedVendor?.contact;
+  const vendorPhone    = linkedVendor?.phone;
+  const vendorWhatsApp = linkedVendor?.whatsapp;
+
+  const hasContext = approvalMsg || linkedVendor || taskMsg || openQuestions.length > 0 || daysToEvt !== null;
 
   return (
     <div style={{
@@ -546,119 +610,84 @@ function ContextPanel({ thread, event }) {
         }}>Context</span>
       </div>
 
-      {!hasContext ? (
-        <div style={{ padding: space[5], fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
-          No linked items for this thread
-        </div>
-      ) : (
-        <div style={{ padding: '0 16px' }}>
+      <div style={{ padding: '0 16px' }}>
+        {/* Fix #4: Event countdown always shown */}
+        {daysLabel && (
+          <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>EVENT</div>
+            <div style={{ fontSize: 13, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{event?.name}</div>
+            <div style={{ fontSize: 11, color: daysToEvt !== null && daysToEvt <= 14 ? P.red : daysToEvt !== null && daysToEvt <= 30 ? P.amber : P.textSecondary, fontFamily: FF, marginTop: 2 }}>
+              {daysLabel} {daysToEvt !== null && daysToEvt >= 0 ? 'from now' : ''}
+            </div>
+          </div>
+        )}
 
-          {/* Linked items */}
-          {(approvalMsg || linkedVendor || taskMsg) && (
-            <>
-              <div style={{
-                fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em',
-                color: P.textTertiary, fontFamily: FF,
-                marginTop: space[5], marginBottom: space[3],
-              }}>
-                LINKED ITEMS
+        {/* Vendor contact — quick-reach links */}
+        {linkedVendor && (
+          <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>VENDOR</div>
+            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginBottom: 6 }}>{linkedVendor.name}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {vendorEmail && (
+                <a href={`mailto:${vendorEmail}`} style={{ fontSize: 11, color: P.green, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>✉</span> {vendorEmail}
+                </a>
+              )}
+              {vendorPhone && (
+                <a href={`tel:${vendorPhone}`} style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>📞</span> {vendorPhone}
+                </a>
+              )}
+              {vendorWhatsApp && (
+                <a href={`https://wa.me/${vendorWhatsApp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: P.green, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span>💬</span> WhatsApp
+                </a>
+              )}
+            </div>
+            <div style={{ fontSize: 9, color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
+              {(linkedVendor.status || '').toUpperCase()}
+            </div>
+          </div>
+        )}
+
+        {/* Pending approval */}
+        {approvalMsg && !['approved','rejected'].includes(approvalMsg.approval_status) && (
+          <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>DECISION</div>
+            <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{approvalMsg.subject || 'Approval request'}</div>
+            <span style={{ fontSize: 9, fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
+          </div>
+        )}
+
+        {/* Linked task */}
+        {taskMsg && (
+          <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>TASK</div>
+            <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{taskMsg.linked_task || 'Linked task'}</div>
+            {taskMsg.task_due && <div style={{ fontSize: 10, color: P.red, fontFamily: FF }}>DUE {taskMsg.task_due.toUpperCase()}</div>}
+          </div>
+        )}
+
+        {/* Open questions */}
+        {openQuestions.length > 0 && (
+          <>
+            <div style={{ fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF, marginTop: space[4], marginBottom: space[3] }}>
+              OPEN QUESTIONS
+            </div>
+            {openQuestions.map((q, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: `${space[2]}px 0` }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: P.amber, flexShrink: 0, marginTop: 5 }} />
+                <span style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, lineHeight: 1.4 }}>{q}</span>
               </div>
+            ))}
+          </>
+        )}
 
-              {approvalMsg && (
-                <div style={{
-                  padding: `${space[3]}px 0`,
-                  borderBottom: `1px solid ${P.borderSubtle}`,
-                }}>
-                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>
-                    DECISION
-                  </div>
-                  <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>
-                    {approvalMsg.subject || 'Approval request'}
-                  </div>
-                  <span style={{
-                    fontSize: 9, fontWeight: type.weight.medium,
-                    color: P.amber, letterSpacing: '0.06em',
-                    padding: '1px 5px', borderRadius: 2,
-                    border: `1px solid ${P.amber}44`, background: P.amber + '12',
-                    fontFamily: FF,
-                  }}>
-                    PENDING
-                  </span>
-                </div>
-              )}
-
-              {taskMsg && (
-                <div style={{
-                  padding: `${space[3]}px 0`,
-                  borderBottom: `1px solid ${P.borderSubtle}`,
-                }}>
-                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>
-                    TASK
-                  </div>
-                  <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>
-                    {taskMsg.linked_task || 'Linked task'}
-                  </div>
-                  {taskMsg.task_due && (
-                    <div style={{ fontSize: 10, color: P.red, fontFamily: FF }}>
-                      DUE {taskMsg.task_due.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {linkedVendor && (
-                <div style={{
-                  padding: `${space[3]}px 0`,
-                  borderBottom: `1px solid ${P.borderSubtle}`,
-                }}>
-                  <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>
-                    VENDOR
-                  </div>
-                  <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>
-                    {linkedVendor.name}
-                  </div>
-                  <span style={{
-                    fontSize: 9, fontWeight: type.weight.medium, fontFamily: FF,
-                    color: linkedVendor.status === 'Confirmed' ? P.green : P.amber,
-                    letterSpacing: '0.06em',
-                  }}>
-                    {(linkedVendor.status || 'UNKNOWN').toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Open questions */}
-          {openQuestions.length > 0 && (
-            <>
-              <div style={{
-                fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em',
-                color: P.textTertiary, fontFamily: FF,
-                marginTop: space[5], marginBottom: space[3],
-              }}>
-                OPEN QUESTIONS
-              </div>
-              {openQuestions.map((q, i) => (
-                <div key={i} style={{
-                  display: 'flex', gap: 8, alignItems: 'flex-start',
-                  padding: `${space[2]}px 0`,
-                }}>
-                  <div style={{
-                    width: 5, height: 5, borderRadius: '50%',
-                    background: P.amber, flexShrink: 0, marginTop: 5,
-                  }} />
-                  <span style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, lineHeight: 1.4 }}>
-                    {q}
-                  </span>
-                </div>
-              ))}
-            </>
-          )}
-
-          <div style={{ height: space[5] }} />
-        </div>
-      )}
+        {!hasContext && (
+          <div style={{ paddingTop: space[5], fontSize: 11, color: P.textTertiary, fontFamily: FF }}>No linked items</div>
+        )}
+        <div style={{ height: space[5] }} />
+      </div>
     </div>
   );
 }
@@ -666,18 +695,16 @@ function ContextPanel({ thread, event }) {
 // ── Root export ───────────────────────────────────────────────────────────────
 export default function CommunicationHub({
   event, isMobile,
-  // Sprint 49: editing + routing props for canonical Communication tab promotion
   openId,
   onBack,
   onSend,
+  onApprove,   // Fix #3: (messageId, verdict) => void
   commLive,
-  // Sprint 58.2: email delivery props
   emailEnabled,
   resolveEmail,
 }) {
   const threads = useMemo(() => buildThreads(event), [event]);
   const [tab, setTab] = useState('Client');
-  // Sprint 49: openId honored — selects the thread containing that message id
   const initialSelected = useMemo(() => {
     if (openId) {
       const found = threads.find(t => t.messages?.some(m => m.id === openId)) || threads.find(t => t.id === openId);
@@ -686,44 +713,12 @@ export default function CommunicationHub({
     return threads.find(t => t.tab === 'Client') || threads[0] || null;
   }, [openId, threads]);
   const [selected, setSelected] = useState(initialSelected);
-  // Sync selection if openId changes after mount
   useEffect(() => {
     if (!openId) return;
     const found = threads.find(t => t.messages?.some(m => m.id === openId)) || threads.find(t => t.id === openId);
-    if (found) {
-      setSelected(found);
-      setTab(found.tab || 'Client');
-    }
+    if (found) { setSelected(found); setTab(found.tab || 'Client'); }
   }, [openId, threads]);
-  // Mobile: 'list' | 'conversation'
   const [mobileView, setMobileView] = useState(openId ? 'conversation' : 'list');
-
-  // New message / search — non-functional placeholders matching Figma topbar
-  const topBarActions = (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      marginLeft: 'auto', flexShrink: 0,
-    }}>
-      <button style={{
-        padding: '4px 10px', borderRadius: radius.sm,
-        border: `1px solid ${P.borderSubtle}`,
-        background: 'transparent', cursor: 'pointer',
-        fontSize: 11, fontWeight: type.weight.medium,
-        color: P.green, fontFamily: FF,
-      }}>
-        + New Message
-      </button>
-      <button style={{
-        padding: '4px 10px', borderRadius: radius.sm,
-        border: `1px solid ${P.borderSubtle}`,
-        background: 'transparent', cursor: 'pointer',
-        fontSize: 11, fontWeight: type.weight.medium,
-        color: P.textSecondary, fontFamily: FF,
-      }}>
-        Search
-      </button>
-    </div>
-  );
 
   // Sprint 49: workspace header — one-click return to Command Center
   const workspaceHeader = onBack && (
@@ -784,7 +779,7 @@ export default function CommunicationHub({
             >
               ← All threads
             </button>
-            <ConversationPane thread={selected} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
+            <ConversationPane thread={selected} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
           </div>
         )}
       </div>

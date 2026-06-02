@@ -419,3 +419,4 @@ async def mark_read(
                do update set last_read_at=now(), unread_count=0, updated_at=now()""",
             event_id, ch["id"], payload.reader_key)
         return {"ok": True}
+
