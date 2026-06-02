@@ -9870,6 +9870,209 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   );
 }
 
+// ─── Global Compose — floating message composer, accessible from every screen ──
+// One click to message any vendor or client without navigating away.
+// Appears bottom-right as a FAB → expands to a compact panel.
+function GlobalCompose({ events, profile, clients, onMessageSent }) {
+  const C = useT();
+  const s = makeS(C);
+  const bp = useContext(BpCtx);
+  const [open, setOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [channel, setChannel] = useState('client'); // 'client' | vendorName
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const commLive = isCommApiConfigured() && canAuthenticatePlanner();
+  const emailEnabled = isEmailConfigured();
+
+  const activeEvents = useMemo(() =>
+    events.filter(e => !e.archived && e.date && daysUntil(e.date) > -30)
+      .sort((a, b) => (a.date || '').localeCompare(b.date || '')),
+    [events]
+  );
+
+  const selectedEvent = useMemo(() =>
+    events.find(e => e.id === selectedEventId) || null,
+    [events, selectedEventId]
+  );
+
+  // Auto-select first active event
+  useEffect(() => {
+    if (!selectedEventId && activeEvents.length) setSelectedEventId(activeEvents[0].id);
+  }, [activeEvents.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const vendors = selectedEvent ? (selectedEvent.vendors || []).filter(v => v.contact) : [];
+
+  // Recipient info for email
+  const recipientEmail = useMemo(() => {
+    if (!selectedEvent) return null;
+    if (channel === 'client') {
+      const client = clients.find(c => (c.eventIds || []).includes(selectedEvent.id));
+      return client?.email ? { email: client.email, name: client.name } : null;
+    }
+    const vendor = vendors.find(v => v.name === channel);
+    return vendor?.contact ? { email: vendor.contact, name: vendor.contactName || vendor.name } : null;
+  }, [selectedEvent, channel, clients, vendors]);
+
+  const canEmail = commLive && emailEnabled && !!recipientEmail;
+
+  const handleSend = async () => {
+    if (!body.trim() || !selectedEvent || busy) return;
+    setBusy(true);
+    const now = new Date().toISOString();
+    const msgChannel = channel === 'client' ? 'client' : 'vendor';
+    const baseMsg = {
+      id: `gc-${Date.now()}`,
+      channel: msgChannel,
+      direction: 'outbound',
+      sender: 'planner',
+      senderName: profile?.name || 'Planner',
+      body, text: body,
+      createdAt: now,
+      vendor_name: msgChannel === 'vendor' ? channel : undefined,
+    };
+    try {
+      if (commLive && selectedEvent.id) {
+        const payload = {
+          message_type: 'standard',
+          author_role: 'planner',
+          author_name: profile?.name || 'Planner',
+          body,
+          ...(canEmail && recipientEmail ? {
+            deliver_email: true,
+            recipient_email: recipientEmail.email,
+            recipient_name: recipientEmail.name,
+          } : {}),
+        };
+        await commApi.createMessage(selectedEvent.id, msgChannel === 'client' ? 'CLIENT' : 'CLIENT', payload);
+      }
+      onMessageSent(selectedEvent.id, { ...baseMsg, deliveryStatus: canEmail ? 'email-sent' : 'sent-via-app' });
+      setBody('');
+      setSent(true);
+      setTimeout(() => { setSent(false); setOpen(false); }, 1800);
+    } catch {
+      onMessageSent(selectedEvent.id, { ...baseMsg, deliveryStatus: 'local-only' });
+      setBody('');
+      setSent(true);
+      setTimeout(() => { setSent(false); setOpen(false); }, 1800);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const isMob = bp === 'mobile';
+  const panelW = isMob ? '100vw' : 360;
+
+  return (
+    <>
+      {/* FAB button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Compose message"
+          title="Quick message — send from anywhere"
+          style={{
+            position: 'fixed', bottom: isMob ? 80 : 28, right: 20, zIndex: 200,
+            width: 52, height: 52, borderRadius: '50%',
+            background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 4px 16px ${C.accent}55, 0 2px 8px rgba(0,0,0,0.3)`,
+            transition: 'transform 0.15s, box-shadow 0.15s',
+            fontSize: 20,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          ✉
+        </button>
+      )}
+
+      {/* Compose panel */}
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 198 }} />
+          <div style={{
+            position: 'fixed', bottom: isMob ? 0 : 24, right: isMob ? 0 : 20, zIndex: 199,
+            width: panelW, maxWidth: '100vw',
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: isMob ? '16px 16px 0 0' : 14,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 16 }}>✉</span>
+              <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>Quick message</span>
+              <button onClick={() => setOpen(false)} style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 15, color: C.muted }}>×</button>
+            </div>
+
+            {/* Selectors */}
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Event</label>
+                  <select style={{ ...s.input, fontSize: 12 }} value={selectedEventId} onChange={e => { setSelectedEventId(e.target.value); setChannel('client'); }}>
+                    {activeEvents.map(ev => (
+                      <option key={ev.id} value={ev.id}>{ev.name}</option>
+                    ))}
+                    {activeEvents.length === 0 && <option value="">No active events</option>}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>To</label>
+                  <select style={{ ...s.input, fontSize: 12 }} value={channel} onChange={e => setChannel(e.target.value)}>
+                    <option value="client">Client</option>
+                    {vendors.map(v => <option key={v.id || v.name} value={v.name}>{v.name}</option>)}
+                    <option value="__team">Team (internal)</option>
+                  </select>
+                </div>
+              </div>
+              {canEmail && recipientEmail && (
+                <div style={{ fontSize: 10, color: C.success, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.success, flexShrink: 0 }} />
+                  Email to {recipientEmail.email}
+                </div>
+              )}
+            </div>
+
+            {/* Compose area */}
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <textarea
+                autoFocus
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder={channel === 'client' ? 'Message client…' : channel === '__team' ? 'Internal note…' : `Message ${channel}…`}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend(); } }}
+                style={{
+                  ...s.input, minHeight: 80, maxHeight: 180, resize: 'vertical',
+                  fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13,
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, color: C.muted }}>⌘↵ to send</span>
+                <button
+                  onClick={handleSend}
+                  disabled={!body.trim() || busy || !selectedEvent || sent}
+                  style={{
+                    ...s.btn(body.trim() && !busy && !sent ? 'primary' : 'secondary'),
+                    fontSize: 12, padding: '8px 18px', fontWeight: 600,
+                    opacity: !body.trim() || busy ? 0.5 : 1,
+                    cursor: !body.trim() || busy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {sent ? '✓ Sent' : busy ? 'Sending…' : canEmail ? 'Send email' : commLive ? 'Send' : 'Log message'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
@@ -20324,6 +20527,15 @@ export default function App() {
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
+      {/* Global floating compose — accessible from every screen */}
+      <GlobalCompose events={events} profile={profile} clients={clients}
+        onMessageSent={(eventId, msg) => {
+          setEvents(prev => prev.map(e => e.id === eventId
+            ? { ...e, commClient: [...(e.commClient || []), msg] }
+            : e
+          ));
+        }}
+      />
     </>
   );
 }
