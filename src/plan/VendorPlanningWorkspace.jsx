@@ -644,9 +644,11 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
               contractStoragePath: storagePath,
               contractFileName: fileName,
               contractFileSize: fileSize,
-              contractSigned: true,
+              // contractSigned intentionally NOT set here — uploading a file
+              // does not mean the contract is signed. Planner marks it signed
+              // separately after confirming signatures exist.
             });
-            if (onAddLog) onAddLog(vendor.id, `Contract uploaded: ${fileName} (${Math.round((fileSize || 0) / 1024)}KB)`);
+            if (onAddLog) onAddLog(vendor.id, `Contract file uploaded: ${fileName} (${Math.round((fileSize || 0) / 1024)}KB) — mark signed once you confirm signatures.`);
             flashDone('Contract uploaded');
           }}
         />

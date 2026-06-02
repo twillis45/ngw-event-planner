@@ -3920,7 +3920,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                               onChange('contractUrl', result.url || result.path);
                               onChange('contractFileName', file.name);
                               onChange('contractStoragePath', result.path);
-                              onChange('contractSigned', true);
+                              // Do NOT auto-mark contractSigned — uploading a file
+                              // does not mean signatures exist. Planner checks the
+                              // "Contract signed" box manually after confirming.
                             } else {
                               setContractUploadErr(result.error || 'Upload failed');
                             }
