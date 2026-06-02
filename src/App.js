@@ -10469,81 +10469,91 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         )}
       </div>
 
-      {/* ═══ Zone 2: Priority "Start Here" Lane ═══════════════════ */}
-      {priorityClients.length > 0 && (
-        <div style={{ marginBottom: isMob ? 16 : 24 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>
-            Start here
-          </div>
-          <div style={{
-            display: isMob ? 'grid' : isWideC ? 'grid' : 'flex',
-            gridTemplateColumns: isMob ? '1fr' : priorityClients.length === 1 ? '1fr' : priorityClients.length === 2 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-            gap: isMob ? 10 : 14,
-            ...(!isMob && !isWideC ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory', paddingBottom: 4 } : {}),
+      {/* ═══ Zone 2: Start Here — editorial panel matching Home screen ══ */}
+      {priorityClients.length > 0 && (() => {
+        const lead = priorityClients[0];
+        const { c, outstanding, nextEvt, nextDays, feeUrgent, score } = lead;
+        const isCritical = score >= 80 || feeUrgent;
+        const accent = isCritical ? C.warn : C.accent2;
+        const label = isCritical
+          ? 'Which client needs you today · Needs attention'
+          : 'Which client needs you today';
+
+        // Build headline + consequence
+        const parts = [];
+        if (outstanding > 0) parts.push(`${fmtD(outstanding)} outstanding`);
+        if (nextEvt && nextDays !== null) parts.push(`${nextDays} days to ${nextEvt.name}`);
+        const headline = `Start here: ${c.name}${parts.length ? ' — ' + parts[0] : '.'}`;
+        const consequence = parts.length > 1
+          ? parts.slice(1).join(' · ') + (c.status ? ` · ${c.status} client` : '')
+          : nextEvt
+          ? `${nextEvt.name}${nextDays !== null ? ` · ${countdownLabel(nextDays)}` : ''}${c.status ? ` · ${c.status}` : ''}`
+          : c.status || 'Review this client relationship.';
+
+        const otherCount = priorityClients.length - 1;
+
+        return (
+          <div role="region" aria-label="Which client needs you today" style={{
+            position: 'relative',
+            marginBottom: isMob ? 16 : 24,
+            padding: isMob ? '20px 18px 20px 22px' : '24px 28px 24px 32px',
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            overflow: 'hidden',
           }}>
-            {priorityClients.map(({ c, outstanding, nextEvt, nextDays, feeUrgent, score }, idx) => {
-              const initials    = (c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-              const isCritical  = score >= 80;
-              const isLead      = idx === 0;
-              const borderClr   = isLead && isCritical ? C.warn + '44' : C.border;
-              return (
-                <div key={c.id}
-                  role="button" tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
-                  onClick={() => onSelectClient(c.id)}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + '55'; e.currentTarget.style.background = C.accent + '08'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = borderClr; e.currentTarget.style.background = C.surface; }}
-                  style={{
-                    ...s.card, marginBottom: 0, cursor: 'pointer',
-                    border: `1px solid ${borderClr}`,
-                    padding: isMob ? '14px 16px' : '18px 22px',
-                    transition: 'border-color 0.15s, background 0.15s',
-                    ...(!isMob && !isWideC ? { minWidth: 280, flexShrink: 0, scrollSnapAlign: 'start' } : {}),
-                  }}
+            {/* Left accent strip */}
+            <div style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+              background: accent, opacity: isCritical ? 1 : 0.5,
+            }} />
+
+            {/* Label */}
+            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
+              {label}
+            </div>
+
+            {/* Headline */}
+            <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
+              {headline}
+            </h2>
+
+            {/* Consequence */}
+            <p style={{ margin: 0, marginBottom: 18, fontSize: isMob ? 12 : 13, lineHeight: 1.55, color: C.muted, maxWidth: 680 }}>
+              {consequence}
+            </p>
+
+            {/* Action row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => onSelectClient(c.id)}
+                style={{
+                  padding: isMob ? '9px 18px' : '10px 22px',
+                  borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: accent,
+                  color: isCritical ? '#fff' : '#070809',
+                  fontSize: isMob ? 12.5 : 13, fontWeight: 700,
+                  letterSpacing: '0.01em', fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  transition: 'transform 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                Open {c.name.split(' ')[0]} →
+              </button>
+              {otherCount > 0 && (
+                <button
+                  onClick={() => setClientsFilter('needs')}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: 500, fontFamily: 'inherit', padding: '4px 0' }}
                 >
-                  {/* Card header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>{initials}</div>
-                    <span style={{ fontWeight: 700, fontSize: isMob ? 14 : 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
-                  </div>
-                  {/* Event context */}
-                  {nextEvt && (
-                    <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
-                      <span style={{ marginRight: 4 }}>{nextEvt.name}</span>
-                      <span style={{ fontWeight: 600, color: nextDays <= 14 ? C.danger : nextDays <= 30 ? C.warn : C.muted }}>
-                        · {countdownLabel(nextDays)}
-                      </span>
-                    </div>
-                  )}
-                  {/* Attention reason */}
-                  {outstanding > 0 && (
-                    <div style={{ fontSize: 11, fontWeight: 600, color: feeUrgent ? C.warn : C.muted, marginBottom: 10 }}>
-                      {fmtD(outstanding)} outstanding{feeUrgent ? ' — due soon' : ''}
-                    </div>
-                  )}
-                  {/* CTA */}
-                  <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onSelectClient(c.id); }}
-                      style={{
-                        ...s.btn('ghost'), fontSize: 11, padding: '5px 14px',
-                        background: 'transparent', border: `1px solid ${C.border}`,
-                        color: C.text, fontWeight: 600, cursor: 'pointer',
-                        transition: 'border-color 0.12s, color 0.12s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}
-                    >
-                      Open Client
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  View {otherCount} more client{otherCount !== 1 ? 's' : ''} needing attention →
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══ Zone 3+4 wrapper: Client list + Right rail ═══════════ */}
       <div style={{
