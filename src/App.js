@@ -9491,8 +9491,23 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
               );
             };
 
+            // ─── Sprint 60: Connections sub-grouping ───────────────────────
+            // Six groups: Core platform / Communication / Money / AI /
+            // Logistics / Monitoring (+ Signatures + Automation). Each
+            // group header is a single quiet uppercase label so the
+            // status pills stay the dominant visual. No row content
+            // changes — just visual grouping.
+            const ConnGroupHeader = ({ label }) => (
+              <div style={{
+                padding: '14px 14px 4px', borderBottom: `1px solid ${C.border}`,
+                fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: C.muted, opacity: 0.7,
+                background: C.bg,
+              }}>{label}</div>
+            );
             return (
               <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                <ConnGroupHeader label="Core platform" />
                 {/* Supabase */}
                 <IntRow
                   label="Cloud sync (Supabase)"
@@ -9509,6 +9524,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   detail={commApiOn ? null : 'Set REACT_APP_API_BASE_URL to connect the FastAPI comms backend.'}
                 />
 
+                <ConnGroupHeader label="Communication" />
                 {/* Email sending */}
                 <IntRow
                   label="Email sending (Resend)"
@@ -9543,6 +9559,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   status="connected"
                 />
 
+                <ConnGroupHeader label="AI" />
                 {/* Claude AI */}
                 <IntRow
                   label="Claude AI — drafting & suggestions"
@@ -9557,14 +9574,24 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   }
                 />
 
-                {/* Sentry monitoring */}
+                {/* Backend AI proxy — surfaced after Claude AI so the two AI rows sit together visually. */}
                 <IntRow
-                  label="Error monitoring (Sentry)"
-                  desc={sentryOn ? 'Runtime errors reported with PII masked' : 'Error monitoring inactive'}
-                  status={sentryOn ? 'connected' : 'disconnected'}
-                  detail={!sentryOn ? 'Set REACT_APP_SENTRY_DSN to activate. All PII is masked before events are sent.' : null}
+                  label="AI proxy (server-side ChatGPT)"
+                  desc={commApiOn ? 'AI calls route through backend via OpenAI GPT-4o — key stays server-side' : 'AI uses your BYOK key directly from the browser'}
+                  status={commApiOn ? 'connected' : 'partial'}
+                  detail={!commApiOn ? 'Connect the backend and set OPENAI_API_KEY on Render to enable server-side AI (GPT-4o).' : null}
                 />
 
+                <ConnGroupHeader label="Money" />
+                {/* Stripe — client deposits */}
+                <IntRow
+                  label="Stripe — client deposits & balances"
+                  desc={stripeReady ? 'Create payment links for client fee milestones — clients pay on Stripe\'s hosted page' : commApiOn ? 'Backend connected — add STRIPE_SECRET_KEY on Render to enable' : 'Requires communication backend first'}
+                  status={stripeReady ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
+                  detail={!stripeReady && commApiOn ? 'Set STRIPE_SECRET_KEY (sk_live_... or sk_test_...) on the Render backend. Create a restricted key at dashboard.stripe.com → Developers → API keys.' : null}
+                />
+
+                <ConnGroupHeader label="Signatures" />
                 {/* DocuSign */}
                 <IntRow
                   label="DocuSign — e-signatures"
@@ -9575,28 +9602,13 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
                 />
 
-                {/* Backend AI proxy — OpenAI */}
-                <IntRow
-                  label="AI proxy (server-side ChatGPT)"
-                  desc={commApiOn ? 'AI calls route through backend via OpenAI GPT-4o — key stays server-side' : 'AI uses your BYOK key directly from the browser'}
-                  status={commApiOn ? 'connected' : 'partial'}
-                  detail={!commApiOn ? 'Connect the backend and set OPENAI_API_KEY on Render to enable server-side AI (GPT-4o).' : null}
-                />
-
+                <ConnGroupHeader label="Logistics" />
                 {/* Google Maps */}
                 <IntRow
                   label="Google Maps — venue autocomplete"
                   desc={isMapsConfigured() ? 'Venue search active on event create and edit' : 'Venue fields are plain text — no address suggestions'}
                   status={isMapsConfigured() ? 'connected' : 'disconnected'}
                   detail={!isMapsConfigured() ? 'Set REACT_APP_GOOGLE_MAPS_KEY to enable. Free tier at console.cloud.google.com (Places API).' : null}
-                />
-
-                {/* PostHog analytics */}
-                <IntRow
-                  label="Product analytics (PostHog)"
-                  desc={isAnalyticsConfigured() ? 'Behavioral analytics active — no PII collected' : 'Track feature usage to improve the product'}
-                  status={isAnalyticsConfigured() ? 'connected' : 'disconnected'}
-                  detail={!isAnalyticsConfigured() ? 'Set REACT_APP_POSTHOG_KEY to enable. Free: 1M events/month at posthog.com.' : null}
                 />
 
                 {/* Weather */}
@@ -9607,7 +9619,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   detail={!isWeatherConfigured() ? 'Set REACT_APP_OPENWEATHER_KEY to enable. Free tier: 1,000 calls/day at openweathermap.org.' : null}
                 />
 
-                {/* Outbound webhooks — Sprint 68 */}
+                <ConnGroupHeader label="Automation" />
+                {/* Outbound webhooks — Sprint 68 (Sprint 60: regrouped under Automation, content unchanged) */}
                 <IntRow
                   label="Outbound webhooks"
                   desc={profile?.webhookUrl ? `Firing to ${profile.webhookUrl.slice(0, 42)}${profile.webhookUrl.length > 42 ? '…' : ''}` : 'Fire event.created and payment_due to any URL you configure'}
@@ -9644,12 +9657,21 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                   }
                 />
 
-                {/* Stripe — client deposits */}
+                <ConnGroupHeader label="Monitoring" />
+                {/* Sentry monitoring */}
                 <IntRow
-                  label="Stripe — client deposits & balances"
-                  desc={stripeReady ? 'Create payment links for client fee milestones — clients pay on Stripe\'s hosted page' : commApiOn ? 'Backend connected — add STRIPE_SECRET_KEY on Render to enable' : 'Requires communication backend first'}
-                  status={stripeReady ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
-                  detail={!stripeReady && commApiOn ? 'Set STRIPE_SECRET_KEY (sk_live_... or sk_test_...) on the Render backend. Create a restricted key at dashboard.stripe.com → Developers → API keys.' : null}
+                  label="Error monitoring (Sentry)"
+                  desc={sentryOn ? 'Runtime errors reported with PII masked' : 'Error monitoring inactive'}
+                  status={sentryOn ? 'connected' : 'disconnected'}
+                  detail={!sentryOn ? 'Set REACT_APP_SENTRY_DSN to activate. All PII is masked before events are sent.' : null}
+                />
+
+                {/* PostHog analytics */}
+                <IntRow
+                  label="Product analytics (PostHog)"
+                  desc={isAnalyticsConfigured() ? 'Behavioral analytics active — no PII collected' : 'Track feature usage to improve the product'}
+                  status={isAnalyticsConfigured() ? 'connected' : 'disconnected'}
+                  detail={!isAnalyticsConfigured() ? 'Set REACT_APP_POSTHOG_KEY to enable. Free: 1M events/month at posthog.com.' : null}
                 />
 
               </div>
@@ -11009,7 +11031,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
 // ─── Global Compose — full communications hub, accessible from every screen ─────
 // Sprint 66+: Message · Approval request · Follow-up · Internal note ·
 // 📞 Call · 💬 WhatsApp · 📧 Email client — all one click from anywhere.
-function GlobalCompose({ events, profile, clients, onMessageSent }) {
+function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnections }) {
   const C    = useT();
   const s    = makeS(C);
   const bp   = useContext(BpCtx);
@@ -11319,13 +11341,25 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                 {/* Delivery hint — Sprint 58P.4a: explicit "NOT notified" copy when email is
                     not configured so the planner is never misled into thinking the recipient
                     received anything externally. */}
-                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, flexShrink: 0 }} />
-                  {msgType === 'note'
-                    ? 'Internal only — not sent to anyone'
-                    : canEmail ? `Email + in-app to ${recipient?.email}`
-                    : commLive ? `Email not configured — logged to thread only. ${recipient?.name || 'Recipient'} will NOT be notified.`
-                    : `Saved locally. ${recipient?.name || 'Recipient'} will NOT be notified.`}
+                  <span>
+                    {msgType === 'note'
+                      ? 'Internal only — not sent to anyone'
+                      : canEmail ? `Email + in-app to ${recipient?.email}`
+                      : commLive ? `Email not configured — logged to thread only. ${recipient?.name || 'Recipient'} will NOT be notified.`
+                      : `Saved locally. ${recipient?.name || 'Recipient'} will NOT be notified.`}
+                  </span>
+                  {/* Sprint 60: route-to-fix when email is the missing capability. */}
+                  {msgType !== 'note' && !canEmail && commLive && onOpenConnections && (
+                    <button
+                      type="button"
+                      onClick={onOpenConnections}
+                      style={{ background: 'none', border: 'none', color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', padding: 0, marginLeft: 4 }}
+                    >
+                      Open Connections →
+                    </button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 10, color: C.muted }}>⌘↵ to send</span>
@@ -14153,7 +14187,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor }) {
+function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -15020,6 +15054,21 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                   <StatCard label="Collected"   value={fmtD(collected)}   color={collected > 0 ? C.success : C.text} />
                   <StatCard label="Outstanding" value={fmtD(outstanding)} color={outstanding > 0 ? C.warn : C.success} />
                 </div>
+                {/* Sprint 60: provider-blocked routing chip. When Stripe
+                    isn't configured AND the planner has unpaid milestones,
+                    surface a single inline hint at the top of the section
+                    with a route to Connections — instead of leaving the
+                    capability silently absent on every milestone row. */}
+                {!stripeOn && (client.feeSchedule || []).some(f => !f.paid && f.amount > 0) && onOpenConnections && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 12, borderRadius: 8, background: C.bg, border: `1px dashed ${C.border}` }}>
+                    <span style={{ fontSize: 11, color: C.muted, flex: 1, lineHeight: 1.45 }}>
+                      Stripe isn't connected — clients pay manually until you set it up. <strong style={{ color: C.text, fontWeight: 600 }}>Manual milestones still work.</strong>
+                    </span>
+                    <button onClick={onOpenConnections} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                      Open Connections →
+                    </button>
+                  </div>
+                )}
                 {(client.feeSchedule || []).length === 0 ? (
                   <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No milestones yet — add payment milestones to track deposits and installments from your client.</div>
                 ) : (
@@ -20646,6 +20695,24 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
 
   const empty = eventDocs.length === 0 && vendorDocs.length === 0;
 
+  // ─── Sprint 60: Documents "Needs attention" derivation ──────────────────
+  // Surfaces the rows the planner most likely wants to act on:
+  //   • Event docs with status pending/draft/sent
+  //   • Vendor contracts that are uploaded but unsigned
+  //   • Vendor contracts that are signed but have no file attached
+  //   • DocuSign envelopes in flight (not completed)
+  // Plain aggregation — no new write paths. Each attention row links back
+  // to the canonical owner via "Open vendor →" (vendor docs) or just sits
+  // as a labeled prompt (event docs the planner edits elsewhere).
+  const attentionEventDocs = eventDocs.filter(d => d.status === 'pending' || d.status === 'draft' || d.status === 'sent');
+  const attentionVendorDocs = vendorDocs.filter(v => {
+    const signed = v.contractSigned === true || v.contract_signed === true;
+    const hasFile = Boolean(v.contractUrl || v.contractFileName || v.contractStoragePath);
+    const dsInFlight = v.docusignEnvelopeId && v.docusignStatus !== 'completed';
+    return (hasFile && !signed) || (signed && !hasFile) || dsInFlight;
+  });
+  const attentionCount = attentionEventDocs.length + attentionVendorDocs.length;
+
   return (
     <>
       <LegacyTabHeader label="Documents" onBack={onBack} />
@@ -20662,6 +20729,69 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
               Vendor contracts attach on the vendor record and appear here automatically.
             </div>
           </div>
+        )}
+
+        {/* ── Sprint 60 · Needs attention ───────────────────────────
+            Top section surfacing docs the planner most likely wants to
+            act on. Hidden when nothing needs attention so the tab still
+            feels calm. */}
+        {attentionCount > 0 && (
+          <>
+            <SectionTitle label="Needs attention" count={attentionCount} />
+            <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {attentionEventDocs.map(d => {
+                const kindLabel = KIND_LABEL[d.kind] || (d.kind || 'File');
+                return (
+                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {d.title || d.fileName || '(untitled)'}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                        {kindLabel} · status: {d.status}
+                      </div>
+                    </div>
+                    {(d.url || d.signedUrl || d.fileUrl) ? (
+                      <a href={d.url || d.signedUrl || d.fileUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                        Open file →
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link yet</span>
+                    )}
+                  </div>
+                );
+              })}
+              {attentionVendorDocs.map(v => {
+                const signed = v.contractSigned === true || v.contract_signed === true;
+                const hasFile = Boolean(v.contractUrl || v.contractFileName || v.contractStoragePath);
+                const reason = v.docusignEnvelopeId && v.docusignStatus !== 'completed'
+                  ? `DocuSign · ${v.docusignStatus || 'pending'}`
+                  : signed && !hasFile
+                    ? 'Signed — no file on file'
+                    : 'File uploaded — not marked signed';
+                return (
+                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                        {v.category ? `${v.category} · ` : ''}{reason}
+                      </div>
+                    </div>
+                    {v.contractUrl && (
+                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                        Open file →
+                      </a>
+                    )}
+                    {onOpenVendor && (
+                      <button onClick={() => onOpenVendor(v.id)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                        Open vendor →
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* ── Event files ──────────────────────────────────────────── */}
@@ -20837,6 +20967,35 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
 
       <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
         <SectionHead2 label="Venue" hint="Where it happens. Address, contact, and the operational notes the team will need on event day." />
+        {/* Sprint 60: Venue logistics gaps. Surfaces only when a real gap
+            applies — outdoor events without rain plan, near-event events
+            without a venue contact, COI required but not on file. Quiet
+            until there's something actionable. */}
+        {(() => {
+          const days = event?.date ? daysUntil(event.date) : null;
+          const isUpcoming = typeof days === 'number' && days >= 0 && days <= 90;
+          const outdoors = event?.indoorOutdoor === 'outdoor' || event?.indoorOutdoor === 'both';
+          const gaps = [];
+          if (outdoors && !event?.rainPlan) gaps.push('Rain plan missing for outdoor event');
+          if (isUpcoming && !event?.venueContact) gaps.push('No venue contact for day-of');
+          if (isUpcoming && !event?.loadInNotes) gaps.push('No load-in notes for vendors');
+          if (event?.coiNeeded === 'required') gaps.push('COI required — collect from vendors');
+          if (gaps.length === 0) return null;
+          return (
+            <div style={{ padding: '10px 12px', marginBottom: 12, borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.warn, marginBottom: 5 }}>
+                Heads up
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {gaps.map(g => (
+                  <li key={g} style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>
+                    <span style={{ color: C.warn, marginRight: 6 }}>•</span>{g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
         <Row>
           <Field label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder="Bluebell Venue" />
           <Field label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
@@ -21018,7 +21177,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
   );
 }
 
-function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
+function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
@@ -21370,7 +21529,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           function definition is kept in this file as documented dead code for
           one release so any team script referencing it doesn't trip; remove
           in next sprint. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)} onOpenConnections={onOpenConnections} /></>}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
@@ -22785,6 +22944,9 @@ export default function App() {
         backLabel={activeClient ? `← ${activeClient.name}` : '← Home'}
         initialNav={initialNav}
         profile={profile}
+        /* Sprint 60: opens the Studio Setup profile modal so interior
+           "Open Connections →" chips have a destination. */
+        onOpenConnections={() => setShowProfile(true)}
         onDelete={deleteEvent}
         clients={clients}
         onLinkClient={linkClientToEvent}
@@ -22863,8 +23025,11 @@ export default function App() {
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events} />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
-      {/* Global floating compose — accessible from every screen */}
+      {/* Global floating compose — accessible from every screen. Sprint 60:
+          onOpenConnections gives the in-compose delivery hint a route to
+          fix when email isn't configured. */}
       <GlobalCompose events={events} profile={profile} clients={clients}
+        onOpenConnections={() => setShowProfile(true)}
         onMessageSent={(eventId, msg) => {
           setEvents(prev => prev.map(e => e.id === eventId
             ? { ...e, commClient: [...(e.commClient || []), msg] }
