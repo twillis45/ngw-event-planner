@@ -20,6 +20,7 @@ import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEven
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
+import { isStripeConfigured, createCheckoutSession, verifySession as stripeVerifySession } from './lib/stripeApi';
 // Sprint 57f: compressed workflow intelligence — derive how rushed the timeline
 // is and classify template tasks into friendly urgency buckets so newly-created
 // short-runway events don't show "6 Months Out" guidance or a wall of red.
@@ -10358,154 +10359,194 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   );
 }
 
-// ─── Global Compose — floating message composer, accessible from every screen ──
-// One click to message any vendor or client without navigating away.
-// Appears bottom-right as a FAB → expands to a compact panel.
+// ─── Global Compose — full communications hub, accessible from every screen ─────
+// Sprint 66+: Message · Approval request · Follow-up · Internal note ·
+// 📞 Call · 💬 WhatsApp · 📧 Email client — all one click from anywhere.
 function GlobalCompose({ events, profile, clients, onMessageSent }) {
-  const C = useT();
-  const s = makeS(C);
-  const bp = useContext(BpCtx);
-  const [open, setOpen] = useState(false);
+  const C    = useT();
+  const s    = makeS(C);
+  const bp   = useContext(BpCtx);
+  const [open,            setOpen]            = useState(false);
   const [selectedEventId, setSelectedEventId] = useState('');
-  const [channel, setChannel] = useState('client'); // 'client' | vendorName
-  const [body, setBody] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-  const commLive = isCommApiConfigured() && canAuthenticatePlanner();
+  const [channel,         setChannel]         = useState('client');
+  const [msgType,         setMsgType]         = useState('message');
+  const [subject,         setSubject]         = useState('');
+  const [body,            setBody]            = useState('');
+  const [busy,            setBusy]            = useState(false);
+  const [sent,            setSent]            = useState(false);
+  const [showTpl,         setShowTpl]         = useState(false);
+  const commLive     = isCommApiConfigured() && canAuthenticatePlanner();
   const emailEnabled = isEmailConfigured();
 
   const activeEvents = useMemo(() =>
     events.filter(e => !e.archived && e.date && daysUntil(e.date) > -30)
       .sort((a, b) => (a.date || '').localeCompare(b.date || '')),
-    [events]
-  );
-
+    [events]);
   const selectedEvent = useMemo(() =>
     events.find(e => e.id === selectedEventId) || null,
-    [events, selectedEventId]
-  );
-
-  // Auto-select first active event
+    [events, selectedEventId]);
   useEffect(() => {
     if (!selectedEventId && activeEvents.length) setSelectedEventId(activeEvents[0].id);
   }, [activeEvents.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const vendors = selectedEvent ? (selectedEvent.vendors || []).filter(v => v.contact) : [];
+  const vendors = selectedEvent ? (selectedEvent.vendors || []).filter(v => v.contact || v.phone) : [];
 
-  // Recipient info for email
-  const recipientEmail = useMemo(() => {
+  // Full recipient — email + phone + WhatsApp
+  const recipient = useMemo(() => {
     if (!selectedEvent) return null;
+    if (channel === '__team') return { name: 'Team', isInternal: true };
     if (channel === 'client') {
-      const client = clients.find(c => (c.eventIds || []).includes(selectedEvent.id));
-      return client?.email ? { email: client.email, name: client.name } : null;
+      const cl = clients.find(c => (c.eventIds || []).includes(selectedEvent.id));
+      return cl ? { name: cl.name, email: cl.email, phone: cl.phone, whatsapp: cl.whatsapp } : null;
     }
-    const vendor = vendors.find(v => v.name === channel);
-    return vendor?.contact ? { email: vendor.contact, name: vendor.contactName || vendor.name } : null;
+    const v = vendors.find(vd => vd.name === channel);
+    return v ? { name: v.contactName || v.name, email: v.contact, phone: v.phone, whatsapp: v.whatsapp } : null;
   }, [selectedEvent, channel, clients, vendors]);
 
-  const canEmail = commLive && emailEnabled && !!recipientEmail;
+  const canEmail = commLive && emailEnabled && !!recipient?.email;
+  const canWA    = !!(recipient?.whatsapp || recipient?.phone);
+  const canCall  = !!recipient?.phone;
+
+  const TYPES = [
+    { id: 'message',  label: '💬 Message',      placeholder: 'Write your message…',            autoSubj: '' },
+    { id: 'approval', label: '✅ Approval',      placeholder: 'Describe what needs approval…',  autoSubj: 'Approval needed' },
+    { id: 'followup', label: '🔔 Follow-up',    placeholder: 'Following up on…',               autoSubj: 'Following up' },
+    { id: 'note',     label: '📋 Internal note', placeholder: 'Private note — not sent…',      autoSubj: '' },
+  ];
+
+  const TEMPLATES = [
+    { label: 'Contract follow-up',   text: 'Hi [Name], following up on the contract for your event. Could you review and sign at your earliest convenience?' },
+    { label: 'Payment reminder',     text: 'Hi [Name], friendly reminder that a payment is due for your event. Let me know if you need invoice details.' },
+    { label: 'Confirm arrival time', text: 'Hi [Name], confirming your arrival time. Please confirm so we can coordinate venue access.' },
+    { label: 'RSVP deadline',        text: 'Hi [Name], RSVP deadline is approaching. Could you send the final headcount this week? Catering needs it.' },
+    { label: 'Day-of logistics',     text: 'Hi [Name], sharing day-of logistics. Please confirm you have everything you need from your end.' },
+    { label: 'Request approval',     text: 'Hi [Name], requesting your approval before we proceed. Please review and confirm at your earliest convenience.' },
+    { label: 'Thank you',            text: 'Hi [Name], thank you for everything. It was a pleasure working with you and we look forward to future events.' },
+  ];
+
+  const pickType = (id) => {
+    setMsgType(id);
+    const t = TYPES.find(x => x.id === id);
+    setSubject(t?.autoSubj || '');
+    setShowTpl(false);
+  };
 
   const handleSend = async () => {
-    if (!body.trim() || !selectedEvent || busy) return;
+    if (!body.trim() || !selectedEvent) return;
+    if (msgType === 'note') {
+      onMessageSent(selectedEvent.id, {
+        id: `gc-note-${Date.now()}`, channel: 'internal', direction: 'internal',
+        sender: 'planner', senderName: profile?.name || 'Planner',
+        body, text: body, message_type: 'note',
+        createdAt: new Date().toISOString(), deliveryStatus: 'note',
+      });
+      setBody(''); setSent(true);
+      setTimeout(() => { setSent(false); setOpen(false); }, 1500);
+      return;
+    }
+    if (busy) return;
     setBusy(true);
     const now = new Date().toISOString();
-    const msgChannel = channel === 'client' ? 'client' : 'vendor';
-    const baseMsg = {
-      id: `gc-${Date.now()}`,
-      channel: msgChannel,
-      direction: 'outbound',
-      sender: 'planner',
-      senderName: profile?.name || 'Planner',
-      body, text: body,
-      createdAt: now,
-      vendor_name: msgChannel === 'vendor' ? channel : undefined,
+    const msgCh = channel === 'client' || channel === '__team' ? 'client' : 'vendor';
+    const isApproval = msgType === 'approval';
+    const base = {
+      id: `gc-${Date.now()}`, channel: msgCh, direction: 'outbound',
+      sender: 'planner', senderName: profile?.name || 'Planner',
+      body, text: body, subject,
+      message_type: isApproval ? 'approval_request' : 'standard',
+      approval_status: isApproval ? 'pending' : null,
+      createdAt: now, vendor_name: msgCh === 'vendor' ? channel : undefined,
     };
     try {
       if (commLive && selectedEvent.id) {
-        const payload = {
-          message_type: 'standard',
-          author_role: 'planner',
-          author_name: profile?.name || 'Planner',
-          body,
-          ...(canEmail && recipientEmail ? {
+        await commApi.createMessage(selectedEvent.id, 'CLIENT', {
+          message_type: base.message_type, author_role: 'planner',
+          author_name: profile?.name || 'Planner', body, subject,
+          ...(canEmail && recipient?.email ? {
             deliver_email: true,
-            recipient_email: recipientEmail.email,
-            recipient_name: recipientEmail.name,
+            recipient_email: recipient.email,
+            recipient_name: recipient.name,
           } : {}),
-        };
-        await commApi.createMessage(selectedEvent.id, msgChannel === 'client' ? 'CLIENT' : 'CLIENT', payload);
+        });
       }
-      onMessageSent(selectedEvent.id, { ...baseMsg, deliveryStatus: canEmail ? 'email-sent' : 'sent-via-app' });
-      setBody('');
-      setSent(true);
-      setTimeout(() => { setSent(false); setOpen(false); }, 1800);
+      onMessageSent(selectedEvent.id, { ...base, deliveryStatus: canEmail ? 'email-sent' : 'sent-via-app' });
     } catch {
-      onMessageSent(selectedEvent.id, { ...baseMsg, deliveryStatus: 'local-only' });
-      setBody('');
-      setSent(true);
-      setTimeout(() => { setSent(false); setOpen(false); }, 1800);
-    } finally {
-      setBusy(false);
+      onMessageSent(selectedEvent.id, { ...base, deliveryStatus: 'local-only' });
     }
+    setBody(''); setSubject(''); setSent(true); setBusy(false);
+    setTimeout(() => { setSent(false); setOpen(false); }, 1800);
+  };
+
+  const openWA = () => {
+    const num  = (recipient?.whatsapp || recipient?.phone || '').replace(/\D/g, '');
+    const text = encodeURIComponent(body || 'Hi, regarding your event');
+    window.open(`https://wa.me/${num}?text=${text}`, '_blank');
+  };
+  const openCall   = () => window.open(`tel:${recipient?.phone}`, '_self');
+  const openMailto = () => {
+    const sub = encodeURIComponent(subject || 'Re: Your Event');
+    const bod = encodeURIComponent(body || '');
+    window.open(`mailto:${recipient?.email}?subject=${sub}&body=${bod}`, '_blank');
   };
 
   const isMob = bp === 'mobile';
-  const panelW = isMob ? '100vw' : 360;
+  const qBtnBase = {
+    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+    padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
+    fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+  };
 
   return (
     <>
-      {/* FAB button */}
+      {/* FAB */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
           aria-label="Compose message"
-          title="Quick message — send from anywhere"
+          title="Communications hub — message, call, WhatsApp from anywhere"
           style={{
             position: 'fixed', bottom: isMob ? 80 : 28, right: 20, zIndex: 200,
             width: 52, height: 52, borderRadius: '50%',
             background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: `0 4px 16px ${C.accent}55, 0 2px 8px rgba(0,0,0,0.3)`,
-            transition: 'transform 0.15s, box-shadow 0.15s',
-            fontSize: 20,
+            transition: 'transform 0.15s', fontSize: 20,
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-        >
-          ✉
-        </button>
+        >✉</button>
       )}
 
-      {/* Compose panel */}
+      {/* Panel */}
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 198 }} />
           <div style={{
             position: 'fixed', bottom: isMob ? 0 : 24, right: isMob ? 0 : 20, zIndex: 199,
-            width: panelW, maxWidth: '100vw',
+            width: isMob ? '100vw' : 440, maxWidth: '100vw',
             background: C.surface, border: `1px solid ${C.border}`,
             borderRadius: isMob ? '16px 16px 0 0' : 14,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
             display: 'flex', flexDirection: 'column',
-            overflow: 'hidden',
+            maxHeight: isMob ? '90vh' : '87vh', overflow: 'hidden',
           }}>
+
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
               <span style={{ fontSize: 16 }}>✉</span>
-              <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>Quick message</span>
-              <button onClick={() => setOpen(false)} style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 15, color: C.muted }}>×</button>
+              <span style={{ fontWeight: 700, fontSize: 14, flex: 1, color: C.text }}>Communications</span>
+              <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
 
-            {/* Selectors */}
-            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+              {/* Event + To selectors */}
+              <div style={{ padding: '12px 16px', display: 'flex', gap: 8, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Event</label>
                   <select style={{ ...s.input, fontSize: 12 }} value={selectedEventId} onChange={e => { setSelectedEventId(e.target.value); setChannel('client'); }}>
-                    {activeEvents.map(ev => (
-                      <option key={ev.id} value={ev.id}>{ev.name}</option>
-                    ))}
-                    {activeEvents.length === 0 && <option value="">No active events</option>}
+                    {activeEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                    {!activeEvents.length && <option value="">No active events</option>}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -10513,45 +10554,123 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                   <select style={{ ...s.input, fontSize: 12 }} value={channel} onChange={e => setChannel(e.target.value)}>
                     <option value="client">Client</option>
                     {vendors.map(v => <option key={v.id || v.name} value={v.name}>{v.name}</option>)}
-                    <option value="__team">Team (internal)</option>
+                    <option value="__team">Team (internal note)</option>
                   </select>
                 </div>
               </div>
-              {canEmail && recipientEmail && (
-                <div style={{ fontSize: 10, color: C.success, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.success, flexShrink: 0 }} />
-                  Email to {recipientEmail.email}
+
+              {/* Recipient card + quick-action buttons */}
+              {recipient && (
+                <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, marginBottom: recipient.isInternal ? 0 : 8, display: 'flex', flexWrap: 'wrap', gap: '2px 14px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, color: C.text, fontSize: 12 }}>{recipient.name}</span>
+                    {recipient.email && <span style={{ color: C.muted }}>📧 {recipient.email}</span>}
+                    {recipient.phone && <span style={{ color: C.muted }}>📞 {recipient.phone}</span>}
+                    {!recipient.email && !recipient.phone && !recipient.isInternal && (
+                      <span style={{ color: C.warn, fontSize: 10 }}>⚠ No contact info on file</span>
+                    )}
+                  </div>
+                  {!recipient.isInternal && (canCall || canWA || recipient.email) && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {canCall && (
+                        <button onClick={openCall} style={{ ...qBtnBase, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                          📞 Call
+                        </button>
+                      )}
+                      {canWA && (
+                        <button onClick={openWA} style={{ ...qBtnBase, border: '1px solid #25D366', background: '#25D36614', color: '#25D366' }}>
+                          💬 WhatsApp
+                        </button>
+                      )}
+                      {recipient.email && (
+                        <button onClick={openMailto} style={{ ...qBtnBase, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                          📧 Email app
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Compose area */}
-            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <textarea
-                autoFocus
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                placeholder={channel === 'client' ? 'Message client…' : channel === '__team' ? 'Internal note…' : `Message ${channel}…`}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend(); } }}
-                style={{
-                  ...s.input, minHeight: 80, maxHeight: 180, resize: 'vertical',
-                  fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13,
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: C.muted }}>⌘↵ to send</span>
-                <button
-                  onClick={handleSend}
-                  disabled={!body.trim() || busy || !selectedEvent || sent}
-                  style={{
-                    ...s.btn(body.trim() && !busy && !sent ? 'primary' : 'secondary'),
-                    fontSize: 12, padding: '8px 18px', fontWeight: 600,
-                    opacity: !body.trim() || busy ? 0.5 : 1,
-                    cursor: !body.trim() || busy ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {sent ? '✓ Sent' : busy ? 'Sending…' : canEmail ? 'Send email' : commLive ? 'Send' : 'Log message'}
+              {/* Message type pills */}
+              <div style={{ padding: '10px 16px', display: 'flex', gap: 5, flexWrap: 'wrap', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                {TYPES.map(t => (
+                  <button key={t.id} onClick={() => pickType(t.id)} style={{
+                    padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    border: `1px solid ${msgType === t.id ? C.accent : C.border}`,
+                    background: msgType === t.id ? C.accent + '20' : 'transparent',
+                    color: msgType === t.id ? C.accent : C.muted,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{t.label}</button>
+                ))}
+              </div>
+
+              {/* Templates */}
+              <div style={{ padding: '8px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                <button onClick={() => setShowTpl(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: C.muted, fontFamily: 'inherit', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {showTpl ? '▾' : '▸'} Quick templates
                 </button>
+                {showTpl && (
+                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {TEMPLATES.map(t => (
+                      <button key={t.label} onClick={() => { setBody(t.text); setShowTpl(false); }}
+                        style={{ textAlign: 'left', background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 11, color: C.text, fontFamily: 'inherit' }}
+                        onMouseEnter={e => e.currentTarget.style.background = C.accent + '14'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Subject line */}
+              {(canEmail || msgType === 'approval' || msgType === 'followup') && msgType !== 'note' && (
+                <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
+                  <input
+                    type="text" value={subject} onChange={e => setSubject(e.target.value)}
+                    placeholder="Subject line…"
+                    style={{ ...s.input, fontSize: 12, width: '100%', boxSizing: 'border-box' }}
+                  />
+                </div>
+              )}
+
+              {/* Body + footer */}
+              <div style={{ padding: '8px 16px 14px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                <textarea
+                  autoFocus value={body} onChange={e => setBody(e.target.value)}
+                  placeholder={TYPES.find(t => t.id === msgType)?.placeholder || 'Write your message…'}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend(); } }}
+                  style={{ ...s.input, minHeight: 90, maxHeight: 200, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }}
+                />
+                {/* Delivery hint */}
+                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.muted, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.warn : canEmail ? C.success : C.muted, flexShrink: 0 }} />
+                  {msgType === 'note'
+                    ? 'Internal only — not sent to anyone'
+                    : canEmail ? `Email + in-app to ${recipient?.email}`
+                    : commLive ? 'In-app only (email not configured)'
+                    : 'Logged locally'}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, color: C.muted }}>⌘↵ to send</span>
+                  <button
+                    onClick={handleSend}
+                    disabled={!body.trim() || busy || !selectedEvent || sent}
+                    style={{
+                      ...s.btn(body.trim() && !busy && !sent ? 'primary' : 'secondary'),
+                      fontSize: 12, padding: '8px 20px', fontWeight: 700,
+                      opacity: !body.trim() || busy ? 0.5 : 1,
+                    }}
+                  >
+                    {sent ? '✓ Sent'
+                      : busy ? 'Sending…'
+                      : msgType === 'note' ? 'Save note'
+                      : msgType === 'approval' ? 'Request approval'
+                      : canEmail ? 'Send email'
+                      : commLive ? 'Send'
+                      : 'Log message'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -13265,7 +13384,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange }) {
+function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -13293,6 +13412,68 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   // Estimator auto-collapses once line items exist — open on first visit
   const [showEstimator, setShowEstimator] = useState(budget.length === 0);
   const [catsOpen, setCatsOpen] = useState(bp !== 'mobile'); // mobile: collapse the category breakdown
+
+  // Sprint 64 — Stripe payment link state per fee milestone
+  const [stripeLoading,  setStripeLoading]  = useState({}); // { [feeId]: bool }
+  const [stripeCopied,   setStripeCopied]   = useState({}); // { [feeId]: bool }
+  const [stripeChecking, setStripeChecking] = useState({}); // { [feeId]: bool }
+  const [stripeError,    setStripeError]    = useState({}); // { [feeId]: string }
+  const stripeOn = isStripeConfigured();
+
+  const handleCreateStripeLink = async (f, eventId) => {
+    if (f.amount <= 0) return;
+    setStripeLoading(prev => ({ ...prev, [f.id]: true }));
+    setStripeError(prev => ({ ...prev, [f.id]: null }));
+    try {
+      const result = await createCheckoutSession({
+        amountCents: Math.round(f.amount * 100),
+        label:       f.label,
+        feeId:       f.id,
+        eventId,
+        clientName:  client?.name,
+      });
+      setClient(c => ({
+        ...c,
+        feeSchedule: c.feeSchedule.map(x =>
+          x.id === f.id ? { ...x, stripeSessionId: result.session_id, stripeUrl: result.url } : x,
+        ),
+      }));
+    } catch (err) {
+      setStripeError(prev => ({ ...prev, [f.id]: err.message }));
+    } finally {
+      setStripeLoading(prev => ({ ...prev, [f.id]: false }));
+    }
+  };
+
+  const handleCheckStripePayment = async (f) => {
+    if (!f.stripeSessionId) return;
+    setStripeChecking(prev => ({ ...prev, [f.id]: true }));
+    setStripeError(prev => ({ ...prev, [f.id]: null }));
+    try {
+      const result = await stripeVerifySession(f.stripeSessionId);
+      if (result.payment_status === 'paid') {
+        setClient(c => ({
+          ...c,
+          feeSchedule: c.feeSchedule.map(x =>
+            x.id === f.id ? { ...x, paid: true, paidAmount: f.amount, paymentMethod: 'Stripe' } : x,
+          ),
+        }));
+      } else {
+        setStripeError(prev => ({ ...prev, [f.id]: 'Not paid yet — Stripe status: ' + result.payment_status }));
+      }
+    } catch (err) {
+      setStripeError(prev => ({ ...prev, [f.id]: err.message }));
+    } finally {
+      setStripeChecking(prev => ({ ...prev, [f.id]: false }));
+    }
+  };
+
+  const handleCopyStripeLink = (f) => {
+    if (!f.stripeUrl) return;
+    navigator.clipboard.writeText(f.stripeUrl).catch(() => {});
+    setStripeCopied(prev => ({ ...prev, [f.id]: true }));
+    setTimeout(() => setStripeCopied(prev => ({ ...prev, [f.id]: false })), 2000);
+  };
 
   const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
   const totalActual    = budget.reduce((s, r) => s + r.actual, 0);
@@ -13994,33 +14175,79 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(client.feeSchedule || []).map(f => {
                       const days = daysUntil(f.due || f.dueDate);
-                      const dueVal = f.due || f.dueDate || '';
+                      const dueVal       = f.due || f.dueDate || '';
+                      const hasStripeLink = Boolean(f.stripeUrl);
+                      const isLoading    = stripeLoading[f.id];
+                      const isCopied     = stripeCopied[f.id];
+                      const isChecking   = stripeChecking[f.id];
+                      const stripeErr    = stripeError[f.id];
                       return (
-                        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.bg, borderRadius: 10, padding: '10px 14px', border: `1px solid ${f.paid ? C.success + '44' : days !== null && days <= 14 ? C.danger + '44' : C.border}` }}>
-                          <div style={{ flex: 1 }}>
-                            {setClient ? (
-                              <input style={{ ...s.input, fontSize: 13, fontWeight: 600, marginBottom: 3 }} value={f.label} onChange={e => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, label: e.target.value } : x) }))} />
-                            ) : (
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{f.label}</div>
-                            )}
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: f.paid ? C.success : C.text }}>{fmtD(f.amount)}</span>
-                              {dueVal && <span style={{ fontSize: 11, color: f.paid ? C.success : days !== null && days <= 14 ? C.danger : C.muted }}>
-                                {f.paid ? 'Paid ✓' : days !== null ? (days === 0 ? 'Due today!' : days < 0 ? 'Overdue' : `Due in ${days}d`) : fmtDate(dueVal)}
-                              </span>}
+                        <div key={f.id} style={{ background: C.bg, borderRadius: 10, padding: '10px 14px', border: `1px solid ${f.paid ? C.success + '44' : days !== null && days <= 14 ? C.danger + '44' : C.border}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ flex: 1 }}>
+                              {setClient ? (
+                                <input style={{ ...s.input, fontSize: 13, fontWeight: 600, marginBottom: 3 }} value={f.label} onChange={e => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, label: e.target.value } : x) }))} />
+                              ) : (
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.label}</div>
+                              )}
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: f.paid ? C.success : C.text }}>{fmtD(f.amount)}</span>
+                                {dueVal && <span style={{ fontSize: 11, color: f.paid ? C.success : days !== null && days <= 14 ? C.danger : C.muted }}>
+                                  {f.paid ? 'Paid ✓' : days !== null ? (days === 0 ? 'Due today!' : days < 0 ? 'Overdue' : `Due in ${days}d`) : fmtDate(dueVal)}
+                                </span>}
+                                {f.paid && f.paymentMethod === 'Stripe' && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: C.success, background: C.success + '18', border: `1px solid ${C.success}44`, borderRadius: 5, padding: '1px 6px', letterSpacing: '0.06em' }}>STRIPE</span>
+                                )}
+                              </div>
                             </div>
+                            {/* Sprint 64: Create Stripe link (unpaid, has amount, Stripe configured, no link yet) */}
+                            {setClient && !f.paid && f.amount > 0 && stripeOn && !hasStripeLink && (
+                              <button
+                                disabled={isLoading}
+                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 9px', color: C.accent, border: `1px solid ${C.accent}55` }}
+                                title="Create Stripe payment link — client pays on Stripe's hosted page"
+                                onClick={() => handleCreateStripeLink(f, eventId)}>
+                                {isLoading ? '…' : '$ Create Link'}
+                              </button>
+                            )}
+                            {setClient && (
+                              <button
+                                style={{ ...s.btn(f.paid ? 'success' : 'default'), fontSize: 11, padding: '4px 10px' }}
+                                title={f.paid ? 'Click to mark unpaid' : 'Mark as paid'}
+                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, paid: !x.paid } : x) }))}>
+                                {f.paid ? '✓ Paid' : 'Mark Paid'}
+                              </button>
+                            )}
+                            {setClient && (
+                              <button aria-label="Remove fee installment" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 8px', color: C.danger }}
+                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.filter(x => x.id !== f.id) }))}>✕</button>
+                            )}
                           </div>
-                          {setClient && (
-                            <button
-                              style={{ ...s.btn(f.paid ? 'success' : 'default'), fontSize: 11, padding: '4px 10px' }}
-                              title={f.paid ? 'Click to mark unpaid' : 'Mark as paid'}
-                              onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, paid: !x.paid } : x) }))}>
-                              {f.paid ? '✓ Paid' : 'Mark Paid'}
-                            </button>
+                          {/* Stripe link row — shown once a checkout session exists and not yet paid */}
+                          {setClient && !f.paid && hasStripeLink && (
+                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Stripe Link Ready</span>
+                              <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
+                              <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }} onClick={() => handleCopyStripeLink(f)}>
+                                {isCopied ? '✓ Copied' : 'Copy Link'}
+                              </button>
+                              <button
+                                disabled={isChecking}
+                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }}
+                                title="Check if client has paid on Stripe"
+                                onClick={() => handleCheckStripePayment(f)}>
+                                {isChecking ? 'Checking…' : 'Check Payment'}
+                              </button>
+                              <button
+                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', color: C.muted, flexShrink: 0 }}
+                                title="Remove this Stripe link"
+                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
+                                Remove
+                              </button>
+                            </div>
                           )}
-                          {setClient && (
-                            <button aria-label="Remove fee installment" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 8px', color: C.danger }}
-                              onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.filter(x => x.id !== f.id) }))}>✕</button>
+                          {stripeErr && (
+                            <div style={{ marginTop: 6, fontSize: 11, color: C.danger }}>{stripeErr}</div>
                           )}
                         </div>
                       );
@@ -19868,7 +20095,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           function definition is kept in this file as documented dead code for
           one release so any team script referencing it doesn't trip; remove
           in next sprint. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} /></>}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
