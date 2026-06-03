@@ -768,7 +768,7 @@ export function selectStudioCommand(events = []) {
       eventId: critical.eventId,
       eventName: critical.eventName,
       title: `Start here: ${critical.eventName} has ${sameEventCount > 1 ? `${sameEventCount} unresolved blockers` : 'an unresolved blocker'} before event day.`,
-      consequence: `"${critical.title}" — ${critical.dueLabel || 'awaiting your action'}. Other surfaces won't move until this clears.`,
+      consequence: `"${critical.title}" — ${critical.dueLabel || 'awaiting your action'}. Other tasks are stuck until this is handled.`,
       primaryCta: `Open ${critical.eventName.length > 22 ? critical.eventName.slice(0, 20) + '…' : critical.eventName}`,
       primaryRoute: { eventId: critical.eventId, ...critical.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,

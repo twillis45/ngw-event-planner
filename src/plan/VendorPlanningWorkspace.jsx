@@ -1377,7 +1377,7 @@ function ReadinessSnapshot({ challenges, isOpen, onToggle }) {
     : 'All categories OK';
   const summaryColor = critical > 0 ? P.red : attention > 0 ? P.amber : P.green;
   return (
-    <CollapsibleSection label="Readiness Snapshot" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
+    <CollapsibleSection label="Where this vendor stands" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
@@ -1566,7 +1566,7 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
     { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.', tab: 'Planning Tasks' },
     { key: 'communication', label: 'Communication', empty: 'No linked messages yet.', tab: 'Communication' },
     { key: 'budget', label: 'Budget Items', empty: 'No linked budget items yet.', tab: 'Budget' },
-    { key: 'documents', label: 'Linked Documents', empty: 'No linked documents yet.', tab: 'Documents' },
+    { key: 'documents', label: 'Linked files', empty: 'No linked files yet.', tab: 'Documents' },
   ];
   // Default collapse state — groups with items are open; empty groups are
   // collapsed so the cockpit shows the actionable signal first.
@@ -1908,7 +1908,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
   const summary = feed.length === 0 ? 'No activity yet'
     : `${feed.length} entr${feed.length === 1 ? 'y' : 'ies'}${latest && latest.date && latest.date !== '—' ? ` · last ${latest.date}` : ''}`;
   return (
-    <CollapsibleSection label="Activity Log" summary={summary} hintColor={feed.length > 0 ? P.textSecondary : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
+    <CollapsibleSection label="Recent activity" summary={summary} hintColor={feed.length > 0 ? P.textSecondary : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
       {onAddLog && (
         <div style={{
           background: P.card, border: `1px solid ${P.borderSubtle}`,
@@ -2238,7 +2238,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
   const summary = preview.source === 'ai' ? 'AI-enhanced brief ready' : 'Rule-based preview';
   return (
     <CollapsibleSection
-      label="Readiness Copilot"
+      label="Quick read"
       summary={summary}
       hintColor={preview.source === 'ai' ? P.green : P.textTertiary}
       isOpen={isOpen}
@@ -2264,7 +2264,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
             letterSpacing: '0.16em', textTransform: 'uppercase',
             color: sourceColor, marginBottom: 4,
           }}>
-            Readiness Copilot
+            Quick read
           </div>
           <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>
             {sourceLabel}
