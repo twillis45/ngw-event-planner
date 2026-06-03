@@ -49,16 +49,27 @@ async def _send_via_resend(
         return resp.json()
 
 
-async def send_approval_email(to: str | None, event_name: str, context: str, link: str) -> bool:
-    """Sprint 58 approval_request notification. Fail-soft."""
+async def send_approval_email(to: str | None, event_name: str, context: str, link: str) -> dict:
+    """Sprint 58 approval_request notification. Fail-soft.
+
+    Sprint 58P.4c: return shape now matches send_thread_email() so the Resend
+    webhook (POST /api/resend-webhook) can update approval-email delivery the
+    same way it updates thread-email delivery. The caller (communication
+    router) stores `resend_id` in `metadata.delivery.resend_id` and the
+    webhook looks messages up by that id.
+
+    Returns:
+        {"ok": True,  "resend_id": "...", "provider": "resend"} on success
+        {"ok": False, "error": "no_recipient" | "email_not_configured" | "...", "provider": "resend"} otherwise
+    """
     if not to:
         log.info("approval email skipped: no recipient")
-        return False
+        return {"ok": False, "error": "no_recipient", "provider": "resend"}
     if not is_email_configured():
         log.warning("approval email skipped: RESEND_API_KEY not set")
-        return False
+        return {"ok": False, "error": "email_not_configured", "provider": "resend"}
     try:
-        await _send_via_resend(
+        result = await _send_via_resend(
             to=to,
             subject=f"Approval needed — {event_name}",
             html=(
@@ -67,10 +78,12 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
                 f"<p><a href=\"{link}\">Review &amp; respond</a></p>"
             ),
         )
-        return True
+        resend_id = result.get("id") if isinstance(result, dict) else None
+        log.info("approval email sent to=%s resend_id=%s", to, resend_id)
+        return {"ok": True, "resend_id": resend_id, "provider": "resend"}
     except Exception as e:  # noqa: BLE001 — fail-soft by design
-        log.error("approval email failed: %s", e)
-        return False
+        log.error("approval email failed to=%s error=%s", to, e)
+        return {"ok": False, "error": str(e), "provider": "resend"}
 
 
 async def send_thread_email(

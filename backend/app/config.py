@@ -11,6 +11,10 @@ DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL
 RESEND_API_KEY           = os.environ.get("RESEND_API_KEY")
 COMMUNICATION_EMAIL_FROM = os.environ.get("COMMUNICATION_EMAIL_FROM", "events@example.com")
 RESEND_FROM_NAME         = os.environ.get("RESEND_FROM_NAME", "NGW Events")
+# Webhook signing secret from Resend Dashboard → Webhooks → endpoint → Signing Secret.
+# When set, all inbound webhook payloads are verified via HMAC-SHA256 (Svix protocol).
+# If unset, verification is skipped (dev/testing only — set this in production).
+RESEND_WEBHOOK_SECRET    = os.environ.get("RESEND_WEBHOOK_SECRET")
 APP_BASE_URL             = os.environ.get("APP_BASE_URL", "https://twillis45.github.io/ngw-event-planner")
 
 # CORS — the frontends allowed to call this API.
@@ -46,3 +50,11 @@ SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY")
 # Real auth is the Supabase JWT path; this is a local-dev shorthand only.
 PLANNER_DEV_TOKEN = os.environ.get("PLANNER_DEV_TOKEN")
 ALLOW_DEV_TOKEN   = os.environ.get("ALLOW_DEV_TOKEN", "").lower() == "true"
+
+# ── Stripe ─────────────────────────────────────────────────────────────────────
+# Stripe Checkout for client deposits/balances — Sprint 64.
+# STRIPE_SECRET_KEY:     Stripe Dashboard → Developers → API keys → Secret key (sk_live_... or sk_test_...)
+# STRIPE_WEBHOOK_SECRET: Stripe Dashboard → Webhooks → endpoint signing secret (whsec_...)
+# Never expose either value to the browser.
+STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")

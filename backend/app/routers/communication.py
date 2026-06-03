@@ -52,6 +52,24 @@ class MessageCreate(BaseModel):
     recipient_name: Optional[str] = None  # Display name in the email
     subject: Optional[str] = None         # Email subject line (defaults to "Message from {author_name}")
     reply_to: Optional[str] = None        # Reply-to address (planner's email)
+    # Sprint 58P.4c — portal-respond authorization
+    portal_token: Optional[str] = None    # planner's event.portalToken; stored in metadata.portal_token
+                                          # for approval_request messages so the public portal-respond
+                                          # endpoint can authorize verdicts without a new table.
+
+
+class PortalResponse(BaseModel):
+    """Sprint 58P.4c: client portal approval verdict payload.
+
+    The portal_token in the body is the credential — there is no Authorization
+    header on this endpoint. The token must match the
+    metadata.portal_token stored on the target approval_request message.
+    """
+    portal_token: str
+    response: Literal["approved", "rejected"]
+    comment: Optional[str] = None
+    responder_name: Optional[str] = None
+    responder_email: Optional[str] = None
 
 class MessagePatch(BaseModel):
     body: Optional[str] = None
@@ -218,6 +236,9 @@ async def create_message(
         # Build initial metadata. Sprint 58.2: delivery intent is recorded here
         # so the frontend can read it back. The actual delivery result is patched
         # in after the Resend call below.
+        # Sprint 58P.4c: approval_request messages also carry the planner's
+        # event.portalToken so the public portal-respond endpoint can authorize
+        # verdicts on a per-message basis without a new table.
         metadata = {}
         if payload.deliver_email:
             metadata["delivery"] = {
@@ -226,6 +247,8 @@ async def create_message(
                 "recipient_name": payload.recipient_name,
                 "status": "pending",
             }
+        if payload.message_type == "approval_request" and payload.portal_token:
+            metadata["portal_token"] = payload.portal_token
 
         row = await conn.fetchrow(
             """insert into event_messages
@@ -260,13 +283,17 @@ async def create_message(
             reply_to=payload.reply_to,
         )
 
-        # Patch the message metadata with the delivery result
+        # Patch the message metadata with the delivery result.
+        # Status is "accepted" (Resend accepted for delivery) NOT "delivered".
+        # The Resend webhook at /api/resend-webhook updates status to
+        # "delivered", "bounced", "complained", or "deferred" when those
+        # events arrive. Until then, "accepted" is the honest state.
         delivery_meta = {
-            "intent": "email",
+            "intent":          "email",
             "recipient_email": payload.recipient_email,
-            "recipient_name": payload.recipient_name,
-            "status": "sent" if delivery_result.get("ok") else "failed",
-            "provider": delivery_result.get("provider"),
+            "recipient_name":  payload.recipient_name,
+            "status":          "accepted" if delivery_result.get("ok") else "failed",
+            "provider":        delivery_result.get("provider"),
         }
         if delivery_result.get("ok"):
             delivery_meta["resend_id"] = delivery_result.get("resend_id")
@@ -282,10 +309,62 @@ async def create_message(
                 msg_id, json.dumps(delivery_meta),
             )
 
-    # Legacy: approval_request Resend notification (Sprint 58)
+    # Approval request email notification.
+    # Uses recipient_email (Sprint 58.2 field) with notify_email as legacy fallback.
+    # Stores delivery result in metadata so the planner can see whether the
+    # approval email was accepted, failed, or not attempted.
+    # Sprint 58P.4c: send_approval_email now returns the same dict shape as
+    # send_thread_email, so resend_id is captured and the existing Resend
+    # webhook (/api/resend-webhook) can update delivered/bounced/complained
+    # statuses for approval emails too.
     elif payload.message_type == "approval_request" and channel_type == "CLIENT":
+        # Resolve the best available recipient address
+        approval_recipient = payload.recipient_email or payload.notify_email
+
         link = f"{APP_BASE_URL}?event={event_id}"
-        await send_approval_email(payload.notify_email, event_id, payload.approval_context or "", link)
+        email_result = await send_approval_email(
+            approval_recipient, event_id, payload.approval_context or "", link
+        )
+
+        # Build delivery metadata so the planner can see notification status
+        if approval_recipient:
+            if email_result.get("ok"):
+                approval_delivery = {
+                    "intent": "approval_email",
+                    "recipient_email": approval_recipient,
+                    "status": "accepted",
+                    "provider": "resend",
+                }
+                if email_result.get("resend_id"):
+                    approval_delivery["resend_id"] = email_result["resend_id"]
+            elif email_result.get("error") == "email_not_configured" or not is_email_configured():
+                approval_delivery = {
+                    "intent": "approval_email",
+                    "recipient_email": approval_recipient,
+                    "status": "provider_not_configured",
+                }
+            else:
+                approval_delivery = {
+                    "intent": "approval_email",
+                    "recipient_email": approval_recipient,
+                    "status": "failed",
+                    "provider": "resend",
+                    "error": email_result.get("error", "send_failed"),
+                }
+        else:
+            approval_delivery = {
+                "intent": "approval_email",
+                "status": "no_recipient",
+            }
+
+        pool3 = await get_pool()
+        async with pool3.acquire() as conn3:
+            row = await conn3.fetchrow(
+                """update event_messages set metadata = jsonb_set(
+                       coalesce(metadata, '{}'), '{delivery}', $2::jsonb
+                   ) where id=$1 returning *""",
+                msg_id, json.dumps(approval_delivery),
+            )
 
     return dict(row)
 
@@ -394,6 +473,61 @@ async def unpin_message(
         await conn.execute(
             "delete from pinned_decisions where message_id=$1 and event_id=$2", message_id, event_id)
         return {"ok": True, "pinned": False}
+
+
+# ── POST /messages/{message_id}/portal-respond (PUBLIC) ────────────────────────
+# Sprint 58P.4c — client portal approval verdict path.
+# Public endpoint: no Authorization / X-Planner-Token. The portal_token in the
+# body is the credential — it must match metadata.portal_token persisted on the
+# target approval_request message when the planner sent it. This keeps approval
+# verdicts cross-device durable in event_messages.metadata.approval instead of
+# the legacy per-device localStorage write that this sprint replaces.
+@router.post("/messages/{message_id}/portal-respond")
+async def portal_respond(event_id: str, message_id: str, payload: PortalResponse):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cur = await conn.fetchrow(
+            "select * from event_messages where id=$1 and event_id=$2 and deleted_at is null",
+            message_id, event_id,
+        )
+        if not cur:
+            raise HTTPException(status_code=404, detail="approval request not found")
+        if cur["message_type"] != "approval_request":
+            raise HTTPException(status_code=400, detail="not an approval request")
+        if cur["approval_status"] not in (None, "pending"):
+            raise HTTPException(status_code=409, detail="approval already resolved")
+
+        # metadata.portal_token is the per-message credential set at create time.
+        meta = cur["metadata"] or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        stored_token = (meta or {}).get("portal_token")
+        if not stored_token or stored_token != payload.portal_token:
+            # Generic 401 — do not leak which check failed.
+            raise HTTPException(status_code=401, detail="portal token invalid for this approval request")
+
+        approval_meta = {
+            "response":        payload.response,           # "approved" | "rejected"
+            "responded_at":    datetime.utcnow().isoformat() + "Z",
+            "source":          "client_portal",
+            "synced":          True,
+            "comment":         payload.comment,
+            "responder_name":  payload.responder_name,
+            "responder_email": payload.responder_email,
+        }
+
+        row = await conn.fetchrow(
+            """update event_messages
+                  set approval_status = $3,
+                      metadata = jsonb_set(coalesce(metadata, '{}'), '{approval}', $4::jsonb)
+                where id=$1 and event_id=$2
+              returning *""",
+            message_id, event_id, payload.response, json.dumps(approval_meta),
+        )
+    return dict(row)
 
 
 # ── 8. POST /channels/{channel_type}/read ───────────────────────────────────────
