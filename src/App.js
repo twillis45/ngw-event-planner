@@ -10711,8 +10711,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       border:   '#1c2026',  // borderSubtle
       text:     '#eef0f4',  // textPrimary
       muted:    '#849eb8',  // textSecondary
-      accent:   '#1a6fba',  // deep steel blue — canonical dark-mode primary accent
-      accent2:  '#0891b2',  // cyan-600 — secondary accent
+      accent:   '#3a8a62',  // green (replaces teal as primary)
+      accent2:  '#3a8a62',  // green
       warn:     '#d4904a',  // amber
       danger:   '#9a3a3a',  // red
       success:  '#3a8a62',  // green — kept for semantic correctness
@@ -12127,8 +12127,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const na = selectEventNextAction(ev);
               const days = daysUntil(ev.date);
               const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
-              // Red only for real decision blockers; steel blue for everything else
-              const accent = hasCritical ? C.danger : C.accent;
+              const accent = hasCritical ? C.danger : totalAtt > 0 ? C.warn : C.accent2;
               const label = hasCritical
                 ? 'Which event needs you today · Critical'
                 : totalAtt > 0
