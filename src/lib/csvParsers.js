@@ -72,6 +72,87 @@ export const PLATFORMS = {
       return row;
     },
   },
+
+  evite: {
+    label: 'Evite',
+    templatePath: '/templates/evite-guests-import.csv',
+    // Evite exports vary by event type. Common column names:
+    // "Name", "Email", "RSVP", "Response", "Plus One", "Dietary Needs"
+    // Flexible mapping covers both formats observed in the wild.
+    fields: {
+      'Name':             'name',
+      'Guest Name':       'name',       // alternate column name
+      'Email':            'email',
+      'Email Address':    'email',      // alternate
+      'RSVP':             'rsvp_status',
+      'Response':         'rsvp_status', // alternate
+      'Status':           'rsvp_status', // alternate
+      'Plus One':         'plus_one_name',
+      'Dietary Needs':    'dietary_restrictions',
+      'Dietary':          'dietary_restrictions',
+      'Note':             'notes',
+      'Notes':            'notes',
+    },
+    rsvpMap: {
+      yes: 'Yes', attending: 'Yes', accepted: 'Yes',
+      no: 'No', 'not attending': 'No', declined: 'No',
+      maybe: 'Maybe', 'might attend': 'Maybe',
+      'no response': 'Pending', pending: 'Pending', awaiting: 'Pending', '': 'Pending',
+    },
+  },
+
+  partiful: {
+    label: 'Partiful',
+    templatePath: '/templates/partiful-guests-import.csv',
+    // Partiful exports guest lists with these columns (as of 2026).
+    // "Going", "Not Going", "Maybe" appear as RSVP values.
+    fields: {
+      'Name':          'name',
+      'Phone':         'phone',
+      'Email':         'email',
+      'RSVP':          'rsvp_status',
+      'Status':        'rsvp_status',  // alternate
+      'Plus One':      'plus_one_name',
+      'Note':          'notes',
+      'Notes':         'notes',
+    },
+    rsvpMap: {
+      going: 'Yes', yes: 'Yes', attending: 'Yes',
+      'not going': 'No', no: 'No', declined: 'No',
+      maybe: 'Maybe', 'on the fence': 'Maybe',
+      invited: 'Pending', pending: 'Pending', '': 'Pending',
+    },
+  },
+
+  greenvelope: {
+    label: 'Greenvelope',
+    templatePath: '/templates/greenvelope-guests-import.csv',
+    fields: {
+      'First Name':     '_first',
+      'Last Name':      '_last',
+      'Email Address':  'email',
+      'Email':          'email',
+      'RSVP':           'rsvp_status',
+      'Response':       'rsvp_status',
+      'Meal':           'meal_preference',
+      'Dietary':        'dietary_restrictions',
+      'Notes':          'notes',
+    },
+    rsvpMap: {
+      attending: 'Yes', yes: 'Yes', accepted: 'Yes',
+      'not attending': 'No', no: 'No', declined: 'No',
+      maybe: 'Maybe',
+      'no response': 'Pending', pending: 'Pending', '': 'Pending',
+    },
+    postProcess(row) {
+      if (!row.name && (row._first || row._last)) {
+        row.name = [row._first, row._last].filter(Boolean).join(' ').trim();
+      }
+      delete row._first;
+      delete row._last;
+      return row;
+    },
+  },
 };
 
 // ─── constants ───────────────────────────────────────────────────────────────

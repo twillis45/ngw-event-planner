@@ -127,7 +127,7 @@ function buildThreads(event) {
 
 // ── Thread list ───────────────────────────────────────────────────────────────
 // Fix #2: Thread list with live search
-function ThreadList({ threads, tab, onTab, selected, onSelect }) {
+function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus }) {
   const [search, setSearch] = useState('');
   const allInTab = threads.filter(t => t.tab === tab);
   const filtered = search.trim()
@@ -178,8 +178,26 @@ function ThreadList({ threads, tab, onTab, selected, onSelect }) {
         })}
       </div>
 
-      {/* Fix #2: search input */}
+      {/* Status indicator + search */}
       <div style={{ padding: '8px 10px', borderBottom: `1px solid ${P.borderSubtle}`, flexShrink: 0 }}>
+        {chatStatus && (
+          <div
+            title={chatStatus.detail}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, cursor: 'default' }}
+          >
+            <div style={{
+              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+              background: chatStatus.color,
+              boxShadow: chatStatus.live ? `0 0 0 2px ${chatStatus.color}30` : 'none',
+            }} />
+            <span style={{ fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatStatus.color, fontFamily: FF }}>
+              {chatStatus.label}
+            </span>
+            <span style={{ fontSize: 9, color: P.textTertiary, fontFamily: FF, marginLeft: 2 }}>
+              — {chatStatus.detail}
+            </span>
+          </div>
+        )}
         <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: P.textTertiary, fontSize: 12 }}>⌕</span>
           <input
@@ -226,6 +244,13 @@ function ThreadList({ threads, tab, onTab, selected, onSelect }) {
                   {fmtRelative(thread.timestamp)}
                 </span>
               </div>
+              {/* Show subject if any message in thread has one */}
+              {thread.messages?.some(m => m.subject || m.subject_line) && (
+                <div style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
+                  {(thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject ||
+                    thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject_line)}
+                </div>
+              )}
               <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {thread.preview}
               </div>
@@ -258,10 +283,13 @@ function ThreadList({ threads, tab, onTab, selected, onSelect }) {
 // The planner always sees the truth. "Send email" never appears unless the
 // email will actually be attempted.
 // Fix #6: Composer with optional email subject field
-function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
+function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail }) {
   const [body, setBody]       = useState('');
-  const [subject, setSubject] = useState('');
-  const [showSubject, setShowSubject] = useState(false);
+  // Subject is shown by default — helps relate the message to the event/client
+  const defaultSubject = event?.name
+    ? `Re: ${event.name}${thread?.name && thread.name !== event?.name ? ` — ${thread.name}` : ''}`
+    : thread?.name ? `Re: ${thread.name}` : '';
+  const [subject, setSubject] = useState(defaultSubject);
   const [busy, setBusy]       = useState(false);
   const [status, setStatus]   = useState(null); // { kind, text }
   if (!thread || !onSend) return null;
@@ -280,8 +308,8 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
       );
       const ok       = result && (result.ok || result.status === 'sent' || result.status === 'logged' || result.status === 'email-sent');
       const fellBack = result && result.fallback;
-      if (result?.status === 'email-sent') {
-        setStatus({ kind: 'email', text: `Email sent and saved to thread.` });
+      if (result?.status === 'email-sent' || result?.status === 'email-accepted') {
+        setStatus({ kind: 'email', text: `Email accepted by provider — saved to thread.` });
       } else if (ok && !fellBack && commLive) {
         setStatus({ kind: 'sent',   text: 'Message sent and saved to thread.' });
       } else if (ok && fellBack) {
@@ -313,37 +341,25 @@ function Composer({ thread, onSend, commLive, emailEnabled, resolveEmail }) {
       borderTop: `1px solid ${P.borderSubtle}`, background: P.base,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      {/* Recipient + subject toggle */}
+      {/* Recipient indicator when email is live */}
       {canEmail && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontSize: 10, color: P.green, fontFamily: FF, display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: P.green, flexShrink: 0 }} />
-            Email to {recipientInfo.email}
-          </div>
-          {/* Fix #6: toggle subject field */}
-          <button onClick={() => setShowSubject(v => !v)} style={{
-            fontSize: 10, color: showSubject ? P.green : P.textTertiary,
-            background: 'none', border: `1px solid ${showSubject ? P.green + '44' : P.borderSubtle}`,
-            borderRadius: radius.sm, padding: '2px 7px', cursor: 'pointer', fontFamily: FF,
-          }}>
-            {showSubject ? 'Subject ✓' : '+ Subject'}
-          </button>
+        <div style={{ fontSize: 10, color: P.green, fontFamily: FF, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: P.green, flexShrink: 0 }} />
+          Email to {recipientInfo.email}
         </div>
       )}
-      {/* Fix #6: email subject field */}
-      {canEmail && showSubject && (
-        <input
-          value={subject}
-          onChange={e => setSubject(e.target.value)}
-          placeholder="Email subject (optional — defaults to event name)"
-          style={{
-            padding: '6px 10px', borderRadius: radius.sm,
-            border: `1px solid ${P.borderSubtle}`,
-            background: P.canvas, color: P.textPrimary,
-            fontSize: 11.5, fontFamily: FF, outline: 'none',
-          }}
-        />
-      )}
+      {/* Subject — always visible, pre-filled with event + recipient context */}
+      <input
+        value={subject}
+        onChange={e => setSubject(e.target.value)}
+        placeholder="Subject"
+        style={{
+          padding: '6px 10px', borderRadius: radius.sm,
+          border: `1px solid ${P.borderSubtle}`,
+          background: P.canvas, color: P.textPrimary,
+          fontSize: 11.5, fontFamily: FF, outline: 'none',
+        }}
+      />
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
         <textarea
           value={body}
@@ -505,6 +521,18 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                     fontSize: 12, color: P.textPrimary, fontFamily: FF,
                     lineHeight: type.leading.relaxed,
                   }}>
+                    {/* Subject line — shown when present */}
+                    {(m.subject || m.subject_line) && (
+                      <div style={{
+                        fontSize: 11, fontWeight: type.weight.semibold,
+                        color: P.textSecondary, fontFamily: FF,
+                        marginBottom: 5, paddingBottom: 5,
+                        borderBottom: `1px solid ${P.borderSubtle}`,
+                        letterSpacing: '0.01em',
+                      }}>
+                        {m.subject || m.subject_line}
+                      </div>
+                    )}
                     {m.body || m.text || m.message}
 
                     {/* Fix #3: inline approve/reject on pending approval messages */}
@@ -538,22 +566,41 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                       </div>
                     )}
                   </div>
-                  {isPlanner && m.deliveryStatus && (
-                    <div style={{
-                      fontSize: 9.5, fontFamily: FF, marginTop: 3,
-                      color: (m.deliveryStatus === 'sent-via-app' || m.deliveryStatus === 'email-sent') ? P.green
-                           : m.deliveryStatus === 'email-failed' ? P.amber
-                           : P.textTertiary,
-                      fontStyle: m.deliveryStatus === 'local-only' ? 'italic' : 'normal',
-                      letterSpacing: '0.04em',
-                    }}>
-                      {m.deliveryStatus === 'email-sent'    ? 'Email sent and saved to thread.'
-                       : m.deliveryStatus === 'email-failed' ? 'Email failed — logged to thread.'
-                       : m.deliveryStatus === 'sent-via-app' ? 'Message sent and saved to thread.'
-                       : m.deliveryStatus === 'local-only'   ? 'Email provider not configured — message logged.'
-                       : 'Message logged to thread.'}
-                    </div>
-                  )}
+                  {isPlanner && m.deliveryStatus && (() => {
+                    // Delivery status truth map.
+                    // "accepted" = Resend accepted; not yet confirmed delivered.
+                    // "delivered" = Resend webhook confirmed inbox delivery.
+                    // "bounced" / "complained" / "deferred" from Resend webhook.
+                    const ds = m.deliveryStatus;
+                    const color =
+                      ds === 'email-delivered'                          ? P.green
+                      : (ds === 'email-accepted' || ds === 'email-sent'
+                          || ds === 'sent-via-app')                     ? P.green
+                      : (ds === 'email-bounced' || ds === 'email-failed'
+                          || ds === 'email-complained')                  ? P.red
+                      : ds === 'email-deferred'                         ? P.amber
+                      : P.textTertiary;
+                    const text =
+                      ds === 'email-delivered'   ? 'Email delivered.'
+                      : ds === 'email-accepted'  ? 'Email accepted by provider — delivery not yet confirmed.'
+                      : ds === 'email-sent'       ? 'Email accepted by provider — delivery not yet confirmed.' // legacy
+                      : ds === 'email-failed'     ? 'Email failed — logged to thread. Recipient was NOT notified.'
+                      : ds === 'email-bounced'    ? 'Email bounced — recipient address may be invalid. Not delivered.'
+                      : ds === 'email-complained' ? 'Recipient marked as spam. Further emails may be blocked.'
+                      : ds === 'email-deferred'   ? 'Email delivery delayed — provider will retry.'
+                      : ds === 'sent-via-app'     ? 'Message sent and saved to thread.'
+                      : ds === 'local-only'       ? 'Email not configured — message logged only. Recipient was NOT notified.'
+                      : 'Message logged to thread.';
+                    return (
+                      <div style={{
+                        fontSize: 9.5, fontFamily: FF, marginTop: 3,
+                        color, letterSpacing: '0.04em',
+                        fontStyle: (ds === 'local-only' || ds === 'email-deferred') ? 'italic' : 'normal',
+                      }}>
+                        {text}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -561,7 +608,7 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
         )}
       </div>
 
-      <Composer thread={thread} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
+      <Composer thread={thread} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
     </div>
   );
 }
@@ -720,10 +767,20 @@ export default function CommunicationHub({
   }, [openId, threads]);
   const [mobileView, setMobileView] = useState(openId ? 'conversation' : 'list');
 
+  // Derive a single status descriptor from commLive + emailEnabled.
+  // LIVE   = backend up + email sending wired  → green
+  // BACKEND = backend up, no email             → amber
+  // LOCAL  = no backend                        → muted
+  const chatStatus = commLive && emailEnabled
+    ? { label: 'Live',    color: P.green,         detail: 'Messages send via email',              live: true  }
+    : commLive
+    ? { label: 'Backend', color: P.amber,          detail: 'Backend connected — email not wired',  live: true  }
+    : { label: 'Local',   color: P.textTertiary,   detail: 'Messages saved locally only',          live: false };
+
   // Sprint 49: workspace header — one-click return to Command Center
   const workspaceHeader = onBack && (
     <div style={{
-      height: 42, flexShrink: 0,
+      height: 42, flexShrink: 0, width: '100%', boxSizing: 'border-box',
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '0 16px',
       background: P.base,
@@ -748,6 +805,32 @@ export default function CommunicationHub({
       }}>
         Communication
       </span>
+      {/* Chat live status indicator */}
+      <div
+        title={chatStatus.detail}
+        style={{
+          marginLeft: 'auto',
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '3px 9px',
+          borderRadius: 20,
+          border: `1px solid ${chatStatus.color}44`,
+          background: chatStatus.color + '14',
+          cursor: 'default',
+        }}
+      >
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: chatStatus.color,
+          boxShadow: commLive ? `0 0 0 2px ${chatStatus.color}30` : 'none',
+        }} />
+        <span style={{
+          fontSize: 9, fontWeight: type.weight.semibold,
+          letterSpacing: '0.1em', textTransform: 'uppercase',
+          color: chatStatus.color, fontFamily: FF,
+        }}>
+          {chatStatus.label}
+        </span>
+      </div>
     </div>
   );
 
@@ -762,6 +845,7 @@ export default function CommunicationHub({
             onTab={t => { setTab(t); }}
             selected={selected}
             onSelect={t => { setSelected(t); setMobileView('conversation'); }}
+            chatStatus={chatStatus}
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -796,6 +880,7 @@ export default function CommunicationHub({
         onTab={setTab}
         selected={selected}
         onSelect={setSelected}
+        chatStatus={chatStatus}
       />
       <ConversationPane thread={selected} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
       <ContextPanel thread={selected} event={event} />

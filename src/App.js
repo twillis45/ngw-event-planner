@@ -903,6 +903,37 @@ const vendorPaid        = (v) => v.balancePaid ? (v.cost || 0) : (v.depositPaid 
 const vendorBalance     = (v) => Math.max(0, (v.cost || 0) - vendorPaid(v));
 // Committed contract value = total cost of vendors that are Contracted+.
 const vendorCommittedCost = (v) => vendorIsCommitted(v) ? (v.cost || 0) : 0;
+
+// ─── Sprint 59C: payment status color discipline ─────────────────────────────
+// Locks the semantic map called out in the Sprint 59A audit and the Sprint 59C
+// prompt: green = paid/done, red = overdue/broken, amber = actionable risk
+// (due ≤30 days), neutral steel = no due date / future. Stops `C.warn` from
+// painting every "money still owed" state amber regardless of urgency.
+//
+// `daysUntilDue` is the integer day delta to the soonest unpaid due date in
+// the row's scope (a single vendor, or the soonest of all category-linked
+// vendors). Pass `null` when no due date is known — the row stays neutral.
+const paymentStatusColor = (C, paid, daysUntilDue) => {
+  if (paid) return C.success;
+  if (typeof daysUntilDue !== 'number') return C.muted;
+  if (daysUntilDue < 0)   return C.danger;
+  if (daysUntilDue <= 30) return C.warn;
+  return C.muted;
+};
+// Find the soonest unpaid `payDueDate` across a category's committed vendors.
+// Returns `null` when nothing in scope has a due date — the caller paints
+// the row neutral instead of falsely warning.
+const soonestUnpaidDueDays = (vendors, category) => {
+  if (!Array.isArray(vendors) || !category) return null;
+  const days = vendors
+    .filter(v => (v.budgetCategory || v.category) === category)
+    .filter(vendorIsCommitted)
+    .filter(v => !v.balancePaid)
+    .map(v => v.payDueDate ? daysUntil(v.payDueDate) : null)
+    .filter(d => d !== null);
+  if (!days.length) return null;
+  return Math.min(...days);
+};
 // Color maps are now functions so they react to the active theme token set.
 // Usage inside components: const stageCLR = STAGE_CLR(C); stageCLR['Confirmed']
 const STAGE_CLR = (C) => ({ Considering: C.muted, Quoted: C.warn, Contracted: C.accent2, 'Deposit Paid': C.accent, Confirmed: C.success });
@@ -3531,7 +3562,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   const tier = vendorTier(vendor);
   const badges = vendorBadges(vendor);
   // Auto-expand secondary contact fields if any already have a value
-  const hasSecondaryContact = !!(vendor.fax || vendor.whatsapp || vendor.zoomUrl || vendor.meetUrl || vendor.teamsUrl);
+  const hasSecondaryContact = !!(vendor.fax || vendor.whatsapp || vendor.googleVoice || vendor.zoomUrl || vendor.meetUrl || vendor.teamsUrl);
   const [showMoreContact, setShowMoreContact] = useState(hasSecondaryContact);
 
   // Field-level validation (null = ok, string = error message)
@@ -3549,7 +3580,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
     if (vendor.phone)    lines.push(vendor.phone);
     if (vendor.fax)      lines.push(`Fax: ${vendor.fax}`);
     if (vendor.contact)  lines.push(vendor.contact);
-    if (vendor.whatsapp) lines.push(`WhatsApp: ${vendor.whatsapp}`);
+    if (vendor.whatsapp)    lines.push(`WhatsApp: ${vendor.whatsapp}`);
+    if (vendor.googleVoice) lines.push(`Google Voice: ${vendor.googleVoice}`);
     if (vendor.website) lines.push(vendor.website);
     if (vendor.zoomUrl)  lines.push(`Zoom: ${vendor.zoomUrl}`);
     if (vendor.meetUrl)  lines.push(`Meet: ${vendor.meetUrl}`);
@@ -3747,6 +3779,28 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <a href={waHref(vendor.whatsapp)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#25D366', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #25D36644', borderRadius: 8, padding: '5px 10px' }}>
                           <IconWA size={14} /> Chat
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Google Voice</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input style={{ ...s.input, flex: 1 }} value={vendor.googleVoice || ''} placeholder="+1 555-0000" onChange={e => onChange('googleVoice', e.target.value)} />
+                      {vendor.googleVoice && (
+                        <a
+                          href={`https://voice.google.com/calls?a=nc,%2B${vendor.googleVoice.replace(/\D/g, '')}`}
+                          target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
+                          📞 Call
+                        </a>
+                      )}
+                      {vendor.googleVoice && (
+                        <a
+                          href={`https://voice.google.com/sms?a=mt,${vendor.googleVoice.replace(/\D/g, '')}`}
+                          target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
+                          💬 Text
                         </a>
                       )}
                     </div>
@@ -5243,7 +5297,7 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
 
 // ─── Budget Modal ─────────────────────────────────────────────────────────────
 
-function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDelete }) {
+function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDelete, onOpenVendor }) {
   const C          = useT();
   const s          = makeS(C);
   const stageCLR   = STAGE_CLR(C);
@@ -5253,6 +5307,30 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
   const isPaid     = !!row.paid;
   const [confirmDel, setConfirmDel] = useState(false);
   const [synced, setSynced] = useState(false);
+
+  // ─── Sprint 59C: Vendor payment source-of-truth lock ─────────────────────
+  // When a Budget row has at least one committed vendor, the vendor record
+  // (not the Budget row) is canonical for payment status + method. The row's
+  // own `paid` + `paymentMethod` controls are hidden — replaced by a
+  // read-only mirror of the primary vendor's payment state plus an
+  // "Open vendor" CTA that routes to the Vendor cockpit. `budgeted`, `actual`,
+  // `notes`, and `receiptPhoto` remain editable on the row — those are
+  // planning inputs, not vendor truth.
+  const committedVendors = (categoryVendors || []).filter(vendorIsCommitted);
+  const isVendorLinked   = committedVendors.length > 0;
+  // Primary mirror vendor: the largest unpaid commitment, falling back to the
+  // largest cost overall. Drives the header chip and the inline CTA copy.
+  const primaryVendor    = isVendorLinked
+    ? ([...committedVendors].sort((a, b) => vendorBalance(b) - vendorBalance(a) || (b.cost || 0) - (a.cost || 0))[0])
+    : null;
+  const soonestDays      = isVendorLinked ? soonestUnpaidDueDays(categoryVendors, row.category) : null;
+  const allBalancesPaid  = isVendorLinked && committedVendors.every(v => v.balancePaid);
+  const mirrorMethod     = (primaryVendor && (primaryVendor.balanceMethod || primaryVendor.depositMethod)) || null;
+  const mirrorPaidLabel  = allBalancesPaid
+    ? 'Paid in full'
+    : primaryVendor && primaryVendor.depositPaid
+      ? 'Deposit paid'
+      : 'Unpaid';
 
   // Local state for numeric inputs so user can clear the field and retype
   const [localActual,   setLocalActual]   = useState(() => String(row.actual));
@@ -5289,7 +5367,10 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Balance Due</div>
-              <div style={{ ...s.statNum(committed === 0 ? C.muted : balDue <= 0 ? C.success : C.warn), fontSize: 26 }}>
+              {/* Sprint 59C: payment status color discipline — amber only
+                  when there's an actionable due date ≤30d; red for overdue;
+                  green for paid; neutral when no due date exists yet. */}
+              <div style={{ ...s.statNum(committed === 0 ? C.muted : paymentStatusColor(C, balDue <= 0, soonestDays)), fontSize: 26 }}>
                 {committed === 0 ? '—' : balDue <= 0 ? 'Paid' : fmtD(balDue)}
               </div>
             </div>
@@ -5300,12 +5381,26 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               </div>
             )}
             <div style={{ marginLeft: 'auto' }}>
-              <button
-                onClick={() => { onChange('paid', !isPaid); if (!isPaid && !row.paymentMethod) onChange('paymentMethod', 'Credit Card'); }}
-                style={{ ...s.btn(isPaid ? 'success' : 'default'), fontSize: 12, padding: '6px 14px', fontWeight: 700 }}
-              >
-                {isPaid ? '✓ Paid' : '○ Unpaid'}
-              </button>
+              {isVendorLinked ? (
+                /* Sprint 59C: vendor-linked rows mirror the vendor's payment
+                   truth (paid state + method) and route edits to the Vendor
+                   cockpit. Local row.paid + row.paymentMethod are suppressed
+                   so the planner doesn't fight two sources of truth. */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <span style={{ ...s.pill(paymentStatusColor(C, allBalancesPaid, soonestDays)), fontSize: 11 }}>
+                    {allBalancesPaid ? '✓ Paid' : mirrorPaidLabel}
+                    {mirrorMethod ? ` · ${mirrorMethod}` : ''}
+                  </span>
+                  <span style={{ fontSize: 10, color: C.muted }}>Vendor-owned</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { onChange('paid', !isPaid); if (!isPaid && !row.paymentMethod) onChange('paymentMethod', 'Credit Card'); }}
+                  style={{ ...s.btn(isPaid ? 'success' : 'default'), fontSize: 12, padding: '6px 14px', fontWeight: 700 }}
+                >
+                  {isPaid ? '✓ Paid' : '○ Unpaid'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -5348,14 +5443,38 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
             </div>
           )}
 
-          {/* Payment method — shown always so you can pre-set it */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Payment Method</label>
-            <select style={s.input} value={row.paymentMethod || ''} onChange={e => onChange('paymentMethod', e.target.value)}>
-              <option value="">— not set —</option>
-              {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
-            </select>
-          </div>
+          {/* Payment method — manual rows only. For vendor-linked rows the
+              payment method lives on the vendor record; show a read-only
+              mirror with a route-to-vendor CTA instead of a fight-the-vendor
+              dropdown. Sprint 59C. */}
+          {isVendorLinked ? (
+            <div style={{ marginBottom: 16, padding: '10px 12px', background: C.bg, border: `1px dashed ${C.border}`, borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Payment method</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+                    {mirrorMethod || <span style={{ color: C.muted, fontWeight: 400 }}>— not set on vendor —</span>}
+                  </div>
+                </div>
+                {primaryVendor && onOpenVendor && (
+                  <button onClick={() => onOpenVendor(primaryVendor.id)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px' }}>
+                    Open vendor →
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.muted, marginTop: 6, lineHeight: 1.4 }}>
+                Payment details live on the vendor record. Edit on the vendor to keep one source of truth.
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Payment Method</label>
+              <select style={s.input} value={row.paymentMethod || ''} onChange={e => onChange('paymentMethod', e.target.value)}>
+                <option value="">— not set —</option>
+                {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Notes</label>
@@ -5388,13 +5507,18 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
             <span>{fmtD(previewBudgeted)} budgeted</span>
           </div>
 
-          {/* Linked vendors in this budget category */}
+          {/* Linked vendors in this budget category. Sprint 59C: each row
+              gets an "Open vendor" CTA so payment edits route to the canonical
+              owner. Balance-due color follows the payment status discipline
+              (amber only when ≤30d, red overdue, neutral otherwise). */}
           {categoryVendors && categoryVendors.length > 0 && (
             <div style={{ marginTop: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 10 }}>Vendors in this category</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {categoryVendors.map(v => {
-                  const bal = vendorBalance(v);
+                  const bal      = vendorBalance(v);
+                  const dueDays  = v.payDueDate ? daysUntil(v.payDueDate) : null;
+                  const balColor = paymentStatusColor(C, false, dueDays);
                   return (
                     <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -5403,10 +5527,20 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 700 }}>{fmtD(v.cost)}</div>
-                        {bal > 0 && <div style={{ fontSize: 10, color: C.warn }}>{fmtD(bal)} due</div>}
+                        {bal > 0 && <div style={{ fontSize: 10, color: balColor }}>{fmtD(bal)} due{typeof dueDays === 'number' ? ` · ${dueDays < 0 ? `${-dueDays}d overdue` : `${dueDays}d`}` : ''}</div>}
                         {v.balancePaid && <div style={{ fontSize: 10, color: C.success }}>Paid ✓</div>}
                       </div>
                       <span style={s.pill(stageCLR[v.status] || C.muted)}>{v.status}</span>
+                      {onOpenVendor && (
+                        <button
+                          onClick={() => onOpenVendor(v.id)}
+                          title={`Open ${v.name} in the Vendors tab`}
+                          aria-label={`Open ${v.name}`}
+                          style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}
+                        >
+                          Open vendor →
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -7323,7 +7457,12 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
 
 function ClientPortalPublicView({ token, events }) {
   const C = useT();
-  const [submitted, setSubmitted] = useState({}); // { decisionId: 'approved'|'rejected' }
+  const [submitted, setSubmitted] = useState({}); // legacy decisions: { decisionId: 'approved'|'rejected' }
+  // Sprint 58P.4c — approval_request verdicts. Backend-first when the planner
+  // attached a portal_token to the message; localStorage fallback otherwise.
+  // Shape: { messageId: { verdict: 'approved'|'rejected', source: 'backend'|'local', when: ISO } }
+  const [msgResp, setMsgResp] = useState({});
+  const [responding, setResponding] = useState(null); // messageId currently in-flight
 
   // Find event by portalToken
   const event = events.find(e => e.portalToken === token);
@@ -7335,15 +7474,52 @@ function ClientPortalPublicView({ token, events }) {
       const stored = JSON.parse(localStorage.getItem(`ngw-client-approvals-${event.id}`) || '{}');
       setSubmitted(stored);
     } catch {}
+    try {
+      const storedMsg = JSON.parse(localStorage.getItem(`ngw-client-msg-approvals-${event.id}`) || '{}');
+      setMsgResp(storedMsg);
+    } catch {}
   }, [event]);
 
-  const respond = (decisionId, verdict) => {
+  // Legacy decisions verdict — localStorage only, no backend persistence path.
+  // Honest copy in the resolved card calls this out so clients know it lives
+  // only on this device.
+  const respondDecision = (decisionId, verdict) => {
     if (!event) return;
     const next = { ...submitted, [decisionId]: verdict };
     setSubmitted(next);
     try {
       localStorage.setItem(`ngw-client-approvals-${event.id}`, JSON.stringify(next));
     } catch {}
+  };
+
+  // Sprint 58P.4c — approval_request verdict. Try the public portal-respond
+  // endpoint first; fall back to localStorage if the API is not configured,
+  // the message has no portal_token (planner sent it before this sprint
+  // shipped, or backend was offline at send time), or the request fails.
+  const respondMessage = async (msg, verdict) => {
+    if (!event || !msg) return;
+    const portalTok = msg?.metadata?.portal_token;
+    const apiOn = isCommApiConfigured();
+    setResponding(msg.id);
+    let source = 'local';
+    if (apiOn && portalTok) {
+      try {
+        await commApi.portalRespond(event.id, msg.id, {
+          portal_token: portalTok,
+          response: verdict,
+        });
+        source = 'backend';
+      } catch {
+        source = 'local';
+      }
+    }
+    const entry = { verdict, source, when: new Date().toISOString() };
+    const next = { ...msgResp, [msg.id]: entry };
+    setMsgResp(next);
+    try {
+      localStorage.setItem(`ngw-client-msg-approvals-${event.id}`, JSON.stringify(next));
+    } catch {}
+    setResponding(null);
   };
 
   const fmtDate = (d) => {
@@ -7378,8 +7554,49 @@ function ClientPortalPublicView({ token, events }) {
   }
 
   const decisions = event.decisions || [];
-  const pending   = decisions.filter(d => d.status === 'pending' && !submitted[d.id]);
-  const resolved  = decisions.filter(d => d.status === 'approved' || submitted[d.id]);
+
+  // Sprint 58P.4c — normalize approval items from BOTH sources so the same
+  // pending/resolved UI handles legacy decisions and backend approval_request
+  // messages. Backend approval_status (set via portal-respond OR planner-side
+  // PATCH) always wins over a stale localStorage entry of the same id.
+  const decisionItems = decisions.map(d => ({
+    kind: 'decision',
+    id: d.id,
+    title: d.title,
+    notes: d.notes,
+    typeLabel: d.kind,
+    status: submitted[d.id] || (d.status === 'approved' ? 'approved' : d.status === 'rejected' ? 'rejected' : null),
+    persistedRemotely: false,
+    sourceLabel: 'Saved on this device.',
+  }));
+
+  const messageItems = (event.commClient || [])
+    .filter(m => m.message_type === 'approval_request')
+    .map(m => {
+      const backendVerdict = ['approved', 'rejected'].includes(m.approval_status) ? m.approval_status : null;
+      const local = msgResp[m.id];
+      const verdict = backendVerdict || local?.verdict || null;
+      const sourceLabel = backendVerdict || local?.source === 'backend'
+        ? 'Saved. Your planner can see it.'
+        : local?.source === 'local'
+          ? 'Saved on this device only — your planner cannot see it from another device.'
+          : null;
+      return {
+        kind: 'message',
+        id: m.id,
+        title: m.subject || (m.approval_context ? m.approval_context.slice(0, 80) : 'Approval request'),
+        notes: m.approval_context || m.body || '',
+        typeLabel: 'Approval request',
+        status: verdict,
+        persistedRemotely: !!backendVerdict || local?.source === 'backend',
+        sourceLabel,
+        msg: m,
+      };
+    });
+
+  const allItems = [...decisionItems, ...messageItems];
+  const pending  = allItems.filter(it => !it.status);
+  const resolved = allItems.filter(it => !!it.status);
   const daysLeft  = event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - new Date()) / 86400000) : null;
 
   const kindLabel = (k) => ({
@@ -7442,13 +7659,20 @@ function ClientPortalPublicView({ token, events }) {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: amber, display: 'inline-block' }} />
               {pending.length} item{pending.length !== 1 ? 's' : ''} awaiting your response
             </div>
-            {pending.map(d => (
-              <div key={d.id} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '16px 18px', marginBottom: 10 }}>
+            {pending.map(it => {
+              const busy = responding === it.id;
+              const doRespond = (verdict) => {
+                if (busy) return;
+                if (it.kind === 'message') respondMessage(it.msg, verdict);
+                else respondDecision(it.id, verdict);
+              };
+              return (
+              <div key={`${it.kind}-${it.id}`} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '16px 18px', marginBottom: 10, opacity: busy ? 0.65 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{kindLabel(d.kind)}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: text }}>{d.title}</div>
-                    {d.notes && <div style={{ fontSize: 12, color: muted, marginTop: 4, lineHeight: 1.5 }}>{d.notes}</div>}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{kindLabel(it.typeLabel)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: text }}>{it.title}</div>
+                    {it.notes && <div style={{ fontSize: 12, color: muted, marginTop: 4, lineHeight: 1.5 }}>{it.notes}</div>}
                   </div>
                   <span style={{ fontSize: 9, fontWeight: 700, color: amber, background: amber + '18', border: `1px solid ${amber}33`, padding: '3px 8px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                     Needs response
@@ -7456,39 +7680,45 @@ function ClientPortalPublicView({ token, events }) {
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
-                    onClick={() => respond(d.id, 'approved')}
-                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${green}`, background: green + '15', color: green, fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'background 0.15s' }}
+                    disabled={busy}
+                    onClick={() => doRespond('approved')}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${green}`, background: green + '15', color: green, fontWeight: 700, fontSize: 13, cursor: busy ? 'default' : 'pointer', transition: 'background 0.15s' }}
                   >
-                    ✓ Approve
+                    {busy ? 'Saving…' : '✓ Approve'}
                   </button>
                   <button
-                    onClick={() => respond(d.id, 'rejected')}
-                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: muted, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                    disabled={busy}
+                    onClick={() => doRespond('rejected')}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: muted, fontWeight: 600, fontSize: 13, cursor: busy ? 'default' : 'pointer' }}
                   >
                     ✕ Request changes
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Submitted responses */}
-        {Object.keys(submitted).length > 0 && (
+        {resolved.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Your responses</div>
-            {Object.entries(submitted).map(([decId, verdict]) => {
-              const d = decisions.find(x => x.id === decId);
-              if (!d) return null;
-              const isApproved = verdict === 'approved';
+            {resolved.map(it => {
+              const isApproved = it.status === 'approved';
               return (
-                <div key={decId} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isApproved ? green : muted, flexShrink: 0 }} />
+                <div key={`${it.kind}-${it.id}`} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isApproved ? green : muted, flexShrink: 0, marginTop: 6 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: muted }}>{kindLabel(d.kind)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: text }}>{d.title}</div>
+                    <div style={{ fontSize: 10, color: muted }}>{kindLabel(it.typeLabel)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: text }}>{it.title}</div>
+                    {it.sourceLabel && (
+                      <div style={{ fontSize: 10, color: it.persistedRemotely ? muted : amber, marginTop: 3, lineHeight: 1.4 }}>
+                        {it.sourceLabel}
+                      </div>
+                    )}
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: isApproved ? green : muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: isApproved ? green : muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
                     {isApproved ? 'Approved' : 'Changes requested'}
                   </span>
                 </div>
@@ -7498,7 +7728,7 @@ function ClientPortalPublicView({ token, events }) {
         )}
 
         {/* Nothing pending */}
-        {pending.length === 0 && Object.keys(submitted).length === 0 && (
+        {pending.length === 0 && resolved.length === 0 && (
           <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>✓</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: text, marginBottom: 6 }}>You're all caught up</div>
@@ -7510,6 +7740,185 @@ function ClientPortalPublicView({ token, events }) {
         <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: `1px solid ${border}` }}>
           <div style={{ fontSize: 11, color: muted }}>Powered by NGW Event Planner · This link is private — do not share</div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sprint 67: Public Intake Form ───────────────────────────────────────────
+// URL: ?intake=TOKEN — no planner login required.
+// Token is stored on profile.intakeToken (stable, copy once, share anywhere).
+// Submissions written to localStorage: ngw-intake-submissions-{token}
+// Planner sees them in Studio Home → New Inquiries. "Convert to Event" creates
+// the event + client from the submission.
+//
+// CTA truthfulness: DONE — submission writes to localStorage immediately and
+// shows a confirmation. No fake "sent to planner" unless backend is wired.
+// Source-of-truth: NGW planner owns events. Intake form is the import source.
+
+const INTAKE_EVENT_TYPES = [
+  'Wedding', 'Corporate Event', 'Birthday Party', 'Baby Shower', 'Bridal Shower',
+  'Quinceañera', 'Sweet 16', 'Holiday Party', 'Graduation Party', 'Gala / Fundraiser',
+  'Conference / Summit', 'Other',
+];
+
+function PublicIntakeForm({ token }) {
+  const C = useT();
+  // ?embed=1 — tighter padding, no footer, transparent bg for iframe use
+  const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '',
+    eventType: '', eventDate: '', venue: '',
+    guestCount: '', budget: '', notes: '',
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // Look up studio branding from any event that shares this token
+  // (the token lives on profile so we can't easily read it here — show generic branding)
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const canSubmit = form.name.trim() && form.email.trim() && form.eventType;
+
+  const submit = () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    try {
+      const key  = `ngw-intake-submissions-${token}`;
+      const prev = JSON.parse(localStorage.getItem(key) || '[]');
+      const sub  = {
+        id:          `sub-${Date.now()}`,
+        token,
+        submittedAt: new Date().toISOString(),
+        status:      'new',
+        name:        form.name.trim(),
+        email:       form.email.trim(),
+        phone:       form.phone.trim(),
+        eventType:   form.eventType,
+        eventDate:   form.eventDate,
+        venue:       form.venue.trim(),
+        guestCount:  form.guestCount,
+        budget:      form.budget,
+        notes:       form.notes.trim(),
+      };
+      localStorage.setItem(key, JSON.stringify([...prev, sub]));
+      setSubmitted(true);
+    } catch {}
+    setBusy(false);
+  };
+
+  const fieldStyle = {
+    width: '100%', padding: '11px 14px', borderRadius: 10, boxSizing: 'border-box',
+    border: `1.5px solid ${C.border}`, background: C.surface, color: C.text,
+    fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  };
+  const labelStyle = { fontSize: 12, color: C.muted, display: 'block', marginBottom: 5, fontWeight: 600 };
+
+  if (submitted) {
+    return (
+      <div style={{ minHeight: isEmbed ? 'auto' : '100vh', background: isEmbed ? 'transparent' : C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isEmbed ? 16 : 24 }}>
+        <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>✓</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 8 }}>Inquiry received</div>
+          <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: isEmbed ? 0 : 32 }}>
+            Thanks, {form.name.split(' ')[0]}! We'll be in touch shortly to discuss your {form.eventType || 'event'}.
+          </div>
+          {!isEmbed && <div style={{ fontSize: 12, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 32 }}>Powered by NGW Event Planner</div>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: isEmbed ? 'auto' : '100vh', background: isEmbed ? 'transparent' : C.bg, padding: isEmbed ? '12px 0' : '32px 16px', fontFamily: 'inherit' }}>
+      <div style={{ maxWidth: 540, margin: '0 auto' }}>
+        {/* Header — hidden in embed mode (host page provides its own heading) */}
+        {!isEmbed && (
+          <div style={{ marginBottom: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: C.text, marginBottom: 8 }}>Tell us about your event</div>
+            <div style={{ fontSize: 14, color: C.muted }}>Fill out this form and we'll be in touch to start planning.</div>
+          </div>
+        )}
+
+        <div style={{ background: C.surface, borderRadius: 16, border: `1px solid ${C.border}`, padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Contact */}
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={labelStyle}>Your name <span style={{ color: C.danger }}>*</span></label>
+              <input style={fieldStyle} value={form.name} placeholder="Jane Smith" onChange={e => upd('name', e.target.value)} />
+            </div>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={labelStyle}>Email <span style={{ color: C.danger }}>*</span></label>
+              <input style={fieldStyle} type="email" value={form.email} placeholder="you@email.com" onChange={e => upd('email', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Phone</label>
+            <input style={fieldStyle} type="tel" value={form.phone} placeholder="(555) 000-0000" onChange={e => upd('phone', e.target.value)} />
+          </div>
+
+          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18 }} />
+
+          {/* Event details */}
+          <div>
+            <label style={labelStyle}>Event type <span style={{ color: C.danger }}>*</span></label>
+            <select style={fieldStyle} value={form.eventType} onChange={e => upd('eventType', e.target.value)}>
+              <option value="">Select…</option>
+              {INTAKE_EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={labelStyle}>Event date</label>
+              <input style={fieldStyle} type="date" value={form.eventDate} onChange={e => upd('eventDate', e.target.value)} />
+            </div>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={labelStyle}>Guest count (approx)</label>
+              <input style={fieldStyle} type="number" min="1" value={form.guestCount} placeholder="e.g. 80" onChange={e => upd('guestCount', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Venue / location (if known)</label>
+            <input style={fieldStyle} value={form.venue} placeholder="Venue name or city" onChange={e => upd('venue', e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Estimated budget</label>
+            <select style={fieldStyle} value={form.budget} onChange={e => upd('budget', e.target.value)}>
+              <option value="">Prefer not to say</option>
+              <option>Under $2,500</option>
+              <option>$2,500 – $5,000</option>
+              <option>$5,000 – $10,000</option>
+              <option>$10,000 – $25,000</option>
+              <option>$25,000 – $50,000</option>
+              <option>Over $50,000</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Anything else you'd like us to know?</label>
+            <textarea
+              style={{ ...fieldStyle, minHeight: 90, resize: 'vertical', lineHeight: 1.5 }}
+              value={form.notes}
+              placeholder="Vision, priorities, questions…"
+              onChange={e => upd('notes', e.target.value)}
+            />
+          </div>
+
+          <button
+            disabled={!canSubmit || busy}
+            onClick={submit}
+            style={{
+              width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
+              background: canSubmit ? C.accent : C.border,
+              color: canSubmit ? '#fff' : C.muted,
+              fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default',
+              fontFamily: 'inherit', transition: 'background 0.2s',
+            }}
+          >
+            {busy ? 'Submitting…' : 'Submit inquiry'}
+          </button>
+        </div>
+
+        {!isEmbed && <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: C.muted }}>Powered by NGW Event Planner</div>}
       </div>
     </div>
   );
@@ -8493,7 +8902,7 @@ function PreferredVendorDirectory({ C, s }) {
 
       {/* Search + Add */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-        <input style={{ ...s.input, flex: 1, fontSize: 12 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search preferred vendors…" />
+        <input style={{ ...s.input, flex: 1, fontSize: 12 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search my vendor bank…" />
         <button style={{ ...s.btn('primary'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }} onClick={() => setAdding(v => !v)}>
           {adding ? 'Cancel' : '+ Add Vendor'}
         </button>
@@ -8527,14 +8936,14 @@ function PreferredVendorDirectory({ C, s }) {
             <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Notes (what they're great at, pricing range, quirks)</label>
             <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={draft.notes} placeholder="Best for outdoor weddings. Responsive. Budget: $3–5k for florals." onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
           </div>
-          <button style={{ ...s.btn('primary'), fontSize: 12 }} onClick={addVendor} disabled={!draft.name.trim()}>Save to directory</button>
+          <button style={{ ...s.btn('primary'), fontSize: 12 }} onClick={addVendor} disabled={!draft.name.trim()}>Save to my vendor bank</button>
         </div>
       )}
 
       {/* Vendor list */}
       {filtered.length === 0 ? (
         <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '12px 0' }}>
-          {search ? 'No vendors match your search.' : 'No preferred vendors yet — add the vendors you trust and rehire.'}
+          {search ? 'No vendors match your search.' : 'No vendors in your bank yet — add the ones you trust and rehire.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -8550,7 +8959,7 @@ function PreferredVendorDirectory({ C, s }) {
                   {v.contact && <a href={`mailto:${v.contact}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.contact}>✉</a>}
                   {v.phone && <a href={`tel:${v.phone}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.phone}>📞</a>}
                   <button style={{ ...s.btn(), fontSize: 10, padding: '3px 8px' }} onClick={() => bumpRehire(v.id)} title="Mark as booked again">↻</button>
-                  <button style={{ ...s.btn('danger'), fontSize: 10, padding: '3px 8px' }} onClick={() => removeVendor(v.id)} title="Remove from directory">×</button>
+                  <button style={{ ...s.btn('danger'), fontSize: 10, padding: '3px 8px' }} onClick={() => removeVendor(v.id)} title="Remove from my vendor bank">×</button>
                 </div>
               </div>
               {v.notes && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{v.notes}</div>}
@@ -8562,7 +8971,7 @@ function PreferredVendorDirectory({ C, s }) {
   );
 }
 
-function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
+function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
   // mode only; light mode preserved.
@@ -9018,7 +9427,11 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
           </div>
 
           {/* ── INTEGRATIONS HUB ── live status for every service ── */}
-          <SectionHead label="Integrations" />
+          {/* Sprint 59E: renamed "Integrations" → "Connections" per Sprint
+              59A audit. Provider statuses already truthful (configured-state
+              aware via isXConfigured() helpers); only the section header
+              changes here. */}
+          <SectionHead label="Connections" />
           {(() => {
             const supabaseOn   = isSupabaseConfigured();
             const commApiOn    = isCommApiConfigured();
@@ -9027,6 +9440,24 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             const sentryOn     = isSentryConfigured();
             const stripeReady  = isStripeConfigured();
             const dsConnected  = Boolean(profile?.docusignAccessToken);
+
+            // Email delivery health — derived from currently loaded events.
+            // Only messages with a deliveryStatus that implies an email attempt are counted.
+            // This is honest: counts reflect what the app has in memory, not a server query.
+            const cutoff = Date.now() - 24 * 3600 * 1000;
+            const emailStatuses = (events || []).flatMap(ev => (ev.commClient || []))
+              .filter(m => m.createdAt && new Date(m.createdAt).getTime() > cutoff)
+              .map(m => m.deliveryStatus)
+              .filter(s => s && s.startsWith('email-'));
+            const deliveryHealth = emailStatuses.length === 0 ? null : {
+              accepted:  emailStatuses.filter(s => s === 'email-accepted' || s === 'email-sent').length,
+              delivered: emailStatuses.filter(s => s === 'email-delivered').length,
+              bounced:   emailStatuses.filter(s => s === 'email-bounced').length,
+              complained:emailStatuses.filter(s => s === 'email-complained').length,
+              failed:    emailStatuses.filter(s => s === 'email-failed').length,
+              deferred:  emailStatuses.filter(s => s === 'email-deferred').length,
+              total:     emailStatuses.length,
+            };
 
             const IntRow = ({ label, desc, status, detail, actionLabel, onAction, expandContent }) => {
               const [open, setOpen] = useState(false);
@@ -9085,6 +9516,25 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                   status={emailOn ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
                   detail={!emailOn && commApiOn ? 'Configure Resend + custom domain on the backend. Set RESEND_API_KEY + RESEND_FROM_EMAIL server-side (never in the browser).' : null}
                 />
+
+                {/* Email delivery health — last 24h, derived from loaded events */}
+                {emailOn && (
+                  <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, background: C.bg }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email delivery — last 24h (loaded events)</div>
+                    {deliveryHealth ? (
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                        {deliveryHealth.accepted > 0 && <span style={{ fontSize: 11, color: C.success }}>{deliveryHealth.accepted} accepted</span>}
+                        {deliveryHealth.delivered > 0 && <span style={{ fontSize: 11, color: C.success }}>{deliveryHealth.delivered} delivered</span>}
+                        {deliveryHealth.deferred > 0 && <span style={{ fontSize: 11, color: C.warn }}>{deliveryHealth.deferred} deferred</span>}
+                        {deliveryHealth.bounced > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.bounced} bounced</span>}
+                        {deliveryHealth.complained > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.complained} complained</span>}
+                        {deliveryHealth.failed > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.failed} failed</span>}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>No email activity in the last 24 hours.</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Calendar export */}
                 <IntRow
@@ -9277,15 +9727,81 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
           </div>
 
           {/* ── COMING SOON — honestly labeled ── */}
-          {/* ── PREFERRED VENDOR DIRECTORY ── Sprint 65 ── */}
-          <SectionHead label="Preferred Vendors" />
+          {/* ── MY VENDOR BANK ── Sprint 65 (renamed Sprint 59B) ── */}
+          {/* Sprint 59B: renamed "Preferred Vendor Directory" / "Preferred
+              Vendors" → "My Vendor Bank" to distinguish it from event-scoped
+              Vendors. Studio-private asset bank, not event-committed work. */}
+          <SectionHead label="My Vendor Bank" />
           <PreferredVendorDirectory C={C} s={s} />
+
+          {/* ── Sprint 67: Lead Intake ── */}
+          <SectionHead label="Lead Intake" />
+          {(() => {
+            const getOrCreateIntakeToken = () => {
+              if (profile?.intakeToken) return profile.intakeToken;
+              const tok = `intake-${Math.random().toString(36).slice(2, 14)}`;
+              onChange('intakeToken', tok);
+              return tok;
+            };
+            const intakeUrl = profile?.intakeToken
+              ? `${window.location.origin}${window.location.pathname}?intake=${profile.intakeToken}`
+              : null;
+            return (
+              <div style={{ padding: '16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>Shareable intake form</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 14 }}>
+                  Send this link to prospective clients. They fill out the form and their inquiry appears here — ready to convert into an event.
+                </div>
+                {intakeUrl ? (() => {
+                  const embedUrl   = `${intakeUrl}&embed=1`;
+                  const embedCode  = `<iframe\n  src="${embedUrl}"\n  width="100%"\n  height="620"\n  frameborder="0"\n  style="border-radius:12px;"\n  title="Event inquiry form"\n></iframe>`;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Direct link */}
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Direct link</div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input readOnly value={intakeUrl} style={{ ...s.input, flex: 1, fontSize: 11, color: C.muted, minWidth: 180 }} onClick={e => e.target.select()} />
+                          <button style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }}
+                            onClick={() => navigator.clipboard?.writeText(intakeUrl).catch(() => {})}>Copy link</button>
+                          <a href={intakeUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 14px', textDecoration: 'none', flexShrink: 0 }}>Preview</a>
+                        </div>
+                      </div>
+                      {/* Embed code */}
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Website embed</div>
+                        <div style={{ position: 'relative' }}>
+                          <textarea
+                            readOnly
+                            value={embedCode}
+                            rows={5}
+                            onClick={e => e.target.select()}
+                            style={{ ...s.input, width: '100%', fontSize: 11, color: C.muted, fontFamily: 'monospace', resize: 'none', lineHeight: 1.5, boxSizing: 'border-box' }}
+                          />
+                          <button
+                            style={{ position: 'absolute', top: 8, right: 8, ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}
+                            onClick={() => navigator.clipboard?.writeText(embedCode).catch(() => {})}>
+                            Copy
+                          </button>
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Paste into any page to embed the form inline. Works on Squarespace, Wix, Webflow, and plain HTML.</div>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <button style={{ ...s.btn('primary'), fontSize: 12, padding: '7px 16px' }} onClick={getOrCreateIntakeToken}>
+                    Generate intake link
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           <SectionHead label="Planned Integrations" />
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
               { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar', phase: 'Phase 2' },
-              { label: 'Intake form + website embed', desc: 'Capture leads and auto-create events from your website', phase: 'Phase 3' },
             ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -9674,10 +10190,22 @@ function SetupBanner({ profile, onOpenProfile }) {
 // decisions, approvals, requests, and vendor issues across every event into a
 // single sorted list. Each row is independently actionable — clicking opens
 // the event and routes to the right tab.
-function AttentionQueue({ events, onSelectEvent }) {
+function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
   const C  = useT();
   const [filter, setFilter] = useState('all');
   const allItems = useMemo(() => getCrossEventAttentionItems(events), [events]);
+  // Sprint 59H: optimistic in-row state for items the planner has just
+  // acted on. Lets the row show "Done ✓" / "Handled ✓" / "Logged ✓"
+  // immediately even though the cross-event recomputation will drop the
+  // row on the next render. Keyed by attention-item id.
+  const [actedOn, setActedOn] = useState({});
+  const flashActed = (id, label) => {
+    setActedOn(prev => ({ ...prev, [id]: label }));
+    // The recomputation on the next state tick removes the row entirely
+    // (timeline.done / msg.handled / vendor.log update all drop the item
+    // out of getCrossEventAttentionItems). The flash is just a confidence
+    // signal in the brief window before that happens.
+  };
 
   const filtered = filter === 'all' ? allItems : allItems.filter(it => it.kind === filter);
   const visible = filtered.slice(0, 8); // cap to avoid scroll fatigue
@@ -9754,47 +10282,157 @@ function AttentionQueue({ events, onSelectEvent }) {
         </div>
       ) : (
         <div>
-          {visible.map((it, i) => (
-            <button key={it.id}
-              onClick={() => onSelectEvent(it.eventId, it.clickTarget)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                padding: '11px 0', background: 'none',
-                border: 'none', borderTop: i === 0 ? `1px solid ${C.border}` : `1px solid ${C.border}`,
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.surface; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-            >
-              {/* Status pill */}
-              <span style={{
-                display: 'inline-flex', alignItems: 'center',
-                fontSize: 8.5, fontWeight: 600, letterSpacing: '0.10em',
-                padding: '2px 7px', borderRadius: 3, marginLeft: 4,
-                background: it.statusColor, color: '#070809',
-                flexShrink: 0, whiteSpace: 'nowrap',
-              }}>{it.statusLabel}</span>
+          {visible.map((it, i) => {
+            // Sprint 59H: derive inline quick actions per row kind. Each
+            // action is { label, kind: 'record' | 'route' | 'handoff',
+            // onClick }. Mobile wraps; desktop sits inline at the right.
+            // Always include a route fallback so the planner can still
+            // open the canonical owner for context.
+            const ev = events.find(e => e.id === it.eventId);
+            // Vendor-stale items carry the vendor id on their clickTarget
+            // (CommandCenter.jsx:594), so we don't need to parse the row id.
+            const vendor = ev && it.kind === 'vendor-stale' && it.clickTarget?.vendorId
+              ? (ev.vendors || []).find(v => v.id === it.clickTarget.vendorId)
+              : null;
+            const vendorEmail = vendor?.contact;
+            const mailtoAskTime = vendorEmail
+              ? `mailto:${vendorEmail}?subject=${encodeURIComponent(`Quick reconfirm — ${ev?.name || 'event'}`)}&body=${encodeURIComponent(`Hi ${vendor?.name || ''},\n\nJust checking in — we're still on for ${ev?.name || 'your event'} and wanted to confirm everything's good on your end. Anything you need from us?\n\nThanks.`)}`
+              : null;
+            const acted = actedOn[it.id];
+            const quickActions = [];
+            if (acted) {
+              quickActions.push({ key: 'acted', label: acted, kind: 'done' });
+            } else if (it.kind === 'decision' && onMarkTaskDone) {
+              // Overdue planning task — Mark done writes to event.timeline.
+              quickActions.push({
+                key: 'done',
+                label: 'Mark done',
+                kind: 'record',
+                onClick: () => { onMarkTaskDone(it.eventId, it.clickTarget?.decisionId); flashActed(it.id, '✓ Done'); },
+              });
+            } else if (it.kind === 'request' && onMarkMsgHandled) {
+              // Inbound message — Mark handled writes to event.commClient.
+              quickActions.push({
+                key: 'handled',
+                label: 'Mark handled',
+                kind: 'record',
+                onClick: () => { onMarkMsgHandled(it.eventId, it.clickTarget?.commId); flashActed(it.id, '✓ Handled'); },
+              });
+            } else if (it.kind === 'vendor-stale' && onLogVendorContact && vendor) {
+              // 21+ days quiet — primary action is the email handoff
+              // (mailto) when we have a contact email, secondary is the
+              // record-only log entry. Both surfaced.
+              if (mailtoAskTime) {
+                quickActions.push({
+                  key: 'email',
+                  label: 'Open email draft',
+                  kind: 'handoff',
+                  href: mailtoAskTime,
+                  onClick: () => { /* mailto handled by href; no state write */ },
+                });
+              }
+              quickActions.push({
+                key: 'log',
+                label: 'Log contact',
+                kind: 'record',
+                onClick: () => { onLogVendorContact(it.eventId, vendor.id); flashActed(it.id, '✓ Logged'); },
+              });
+            }
+            const routeLabel = it.kind === 'decision' ? 'Open decision →'
+              : it.kind === 'request' ? 'Open Communication →'
+              : it.kind === 'vendor-stale' ? 'Open vendor →'
+              : it.kind === 'approval' ? 'Open Decision →'
+              : it.kind === 'compression' ? 'Open compressed tasks →'
+              : 'Open event →';
+            const onRowOpen = () => onSelectEvent(it.eventId, it.clickTarget);
 
-              {/* Title + meta */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 12.5, fontWeight: 500, color: C.text,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{it.title}</div>
-                <div style={{
-                  fontSize: 10.5, color: C.muted, marginTop: 2,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{it.meta}</div>
+            return (
+              <div key={it.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  padding: '11px 0',
+                  borderTop: `1px solid ${C.border}`,
+                  fontFamily: 'inherit',
+                }}
+              >
+                {/* Status pill */}
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  fontSize: 8.5, fontWeight: 600, letterSpacing: '0.10em',
+                  padding: '2px 7px', borderRadius: 3, marginLeft: 4,
+                  background: it.statusColor, color: '#070809',
+                  flexShrink: 0, whiteSpace: 'nowrap',
+                }}>{it.statusLabel}</span>
+
+                {/* Title + meta (clickable area — opens the event) */}
+                <button
+                  onClick={onRowOpen}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    textAlign: 'left', padding: 0, fontFamily: 'inherit',
+                  }}
+                  title={routeLabel}
+                >
+                  <div style={{
+                    fontSize: 12.5, fontWeight: 500, color: C.text,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{it.title}</div>
+                  <div style={{
+                    fontSize: 10.5, color: C.muted, marginTop: 2,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{it.meta}</div>
+                </button>
+
+                {/* Due / timing */}
+                <span style={{
+                  fontSize: 11, fontWeight: 600, color: it.dueColor, flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}>{it.dueLabel}</span>
+
+                {/* Sprint 59H inline action chips. On narrow widths these
+                    wrap below the row via the parent's flexWrap. Each chip
+                    absorbs its own click so the row's open-event button
+                    doesn't fire. */}
+                {quickActions.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                    {quickActions.map(a => a.kind === 'done' ? (
+                      <span key={a.key} style={{
+                        fontSize: 10.5, fontWeight: 700,
+                        color: C.success, background: C.success + '14',
+                        border: `1px solid ${C.success}44`,
+                        padding: '4px 10px', borderRadius: 6,
+                      }}>{a.label}</span>
+                    ) : a.kind === 'handoff' ? (
+                      <a key={a.key} href={a.href} target="_blank" rel="noopener noreferrer"
+                        onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
+                        title="Opens your email app with a draft. Nothing is sent until you send it."
+                        style={{
+                          fontSize: 10.5, fontWeight: 600,
+                          color: C.text, background: 'transparent',
+                          border: `1px solid ${C.border}`,
+                          padding: '4px 10px', borderRadius: 6,
+                          textDecoration: 'none', cursor: 'pointer',
+                        }}>{a.label}</a>
+                    ) : (
+                      <button key={a.key} onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
+                        style={{
+                          fontSize: 10.5, fontWeight: 600,
+                          color: C.accent, background: C.accent + '14',
+                          border: `1px solid ${C.accent}66`,
+                          padding: '4px 10px', borderRadius: 6,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>{a.label}</button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Route chevron */}
+                <button onClick={onRowOpen} title={routeLabel} aria-label={routeLabel}
+                  style={{ background: 'none', border: 'none', color: C.muted, fontSize: 13, marginRight: 4, cursor: 'pointer', padding: '4px 6px', fontFamily: 'inherit' }}>›</button>
               </div>
-
-              {/* Due / timing */}
-              <span style={{
-                fontSize: 11, fontWeight: 600, color: it.dueColor, flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}>{it.dueLabel}</span>
-              <span style={{ color: C.muted, fontSize: 13, marginRight: 4 }}>›</span>
-            </button>
-          ))}
+            );
+          })}
           {filtered.length > visible.length && (
             <div style={{ padding: '8px 0', fontSize: 11, color: C.muted, textAlign: 'center', borderTop: `1px solid ${C.border}` }}>
               {filtered.length - visible.length} more · scroll for full queue
@@ -10406,10 +11044,10 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
     if (channel === '__team') return { name: 'Team', isInternal: true };
     if (channel === 'client') {
       const cl = clients.find(c => (c.eventIds || []).includes(selectedEvent.id));
-      return cl ? { name: cl.name, email: cl.email, phone: cl.phone, whatsapp: cl.whatsapp } : null;
+      return cl ? { name: cl.name, email: cl.email, phone: cl.phone, whatsapp: cl.whatsapp, googleVoice: cl.googleVoice } : null;
     }
     const v = vendors.find(vd => vd.name === channel);
-    return v ? { name: v.contactName || v.name, email: v.contact, phone: v.phone, whatsapp: v.whatsapp } : null;
+    return v ? { name: v.contactName || v.name, email: v.contact, phone: v.phone, whatsapp: v.whatsapp, googleVoice: v.googleVoice } : null;
   }, [selectedEvent, channel, clients, vendors]);
 
   const canEmail = commLive && emailEnabled && !!recipient?.email;
@@ -10468,17 +11106,34 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
     };
     try {
       if (commLive && selectedEvent.id) {
-        await commApi.createMessage(selectedEvent.id, 'CLIENT', {
+        const apiPayload = {
           message_type: base.message_type, author_role: 'planner',
           author_name: profile?.name || 'Planner', body, subject,
-          ...(canEmail && recipient?.email ? {
-            deliver_email: true,
-            recipient_email: recipient.email,
-            recipient_name: recipient.name,
-          } : {}),
-        });
+        };
+        if (isApproval) {
+          // approval_request requires approval_context (= the message body).
+          // notify_email + recipient_email both sent so the backend can use
+          // whichever field is checked first (legacy + current paths).
+          apiPayload.approval_context = body;
+          if (recipient?.email) {
+            apiPayload.notify_email     = recipient.email;
+            apiPayload.recipient_email  = recipient.email;
+            apiPayload.recipient_name   = recipient.name || undefined;
+          }
+          // Sprint 58P.4c — per-message portal authorization. Stored in
+          // metadata.portal_token; the public portal-respond endpoint requires
+          // it. Without it the client portal can only fall back to localStorage.
+          if (selectedEvent?.portalToken) {
+            apiPayload.portal_token = selectedEvent.portalToken;
+          }
+        } else if (canEmail && recipient?.email) {
+          apiPayload.deliver_email    = true;
+          apiPayload.recipient_email  = recipient.email;
+          apiPayload.recipient_name   = recipient.name || undefined;
+        }
+        await commApi.createMessage(selectedEvent.id, 'CLIENT', apiPayload);
       }
-      onMessageSent(selectedEvent.id, { ...base, deliveryStatus: canEmail ? 'email-sent' : 'sent-via-app' });
+      onMessageSent(selectedEvent.id, { ...base, deliveryStatus: canEmail ? 'email-accepted' : 'sent-via-app' });
     } catch {
       onMessageSent(selectedEvent.id, { ...base, deliveryStatus: 'local-only' });
     }
@@ -10492,6 +11147,11 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
     window.open(`https://wa.me/${num}?text=${text}`, '_blank');
   };
   const openCall   = () => window.open(`tel:${recipient?.phone}`, '_self');
+  const canGV      = !!(recipient?.googleVoice || recipient?.phone);
+  const openGV     = () => {
+    const num = (recipient?.googleVoice || recipient?.phone || '').replace(/\D/g, '');
+    window.open(`https://voice.google.com/calls?a=nc,%2B${num}`, '_blank');
+  };
   const openMailto = () => {
     const sub = encodeURIComponent(subject || 'Re: Your Event');
     const bod = encodeURIComponent(body || '');
@@ -10579,8 +11239,8 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                       <span style={{ color: C.warn, fontSize: 10 }}>⚠ No contact info on file</span>
                     )}
                   </div>
-                  {!recipient.isInternal && (canCall || canWA || recipient.email) && (
-                    <div style={{ display: 'flex', gap: 6 }}>
+                  {!recipient.isInternal && (canCall || canWA || canGV || recipient.email) && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {canCall && (
                         <button onClick={openCall} style={{ ...qBtnBase, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
                           📞 Call
@@ -10591,9 +11251,14 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                           💬 WhatsApp
                         </button>
                       )}
+                      {canGV && (
+                        <button onClick={openGV} style={{ ...qBtnBase, border: '1px solid #1A73E8', background: '#1A73E814', color: '#1A73E8' }}>
+                          📞 Google Voice
+                        </button>
+                      )}
                       {recipient.email && (
-                        <button onClick={openMailto} style={{ ...qBtnBase, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
-                          📧 Email app
+                        <button onClick={openMailto} title="Opens your email app with a draft. Nothing is sent until you send the draft." style={{ ...qBtnBase, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                          📧 Open in email app
                         </button>
                       )}
                     </div>
@@ -10651,14 +11316,16 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                   onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSend(); } }}
                   style={{ ...s.input, minHeight: 90, maxHeight: 200, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }}
                 />
-                {/* Delivery hint */}
-                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.muted, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.warn : canEmail ? C.success : C.muted, flexShrink: 0 }} />
+                {/* Delivery hint — Sprint 58P.4a: explicit "NOT notified" copy when email is
+                    not configured so the planner is never misled into thinking the recipient
+                    received anything externally. */}
+                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, flexShrink: 0 }} />
                   {msgType === 'note'
                     ? 'Internal only — not sent to anyone'
                     : canEmail ? `Email + in-app to ${recipient?.email}`
-                    : commLive ? 'In-app only (email not configured)'
-                    : 'Logged locally'}
+                    : commLive ? `Email not configured — logged to thread only. ${recipient?.name || 'Recipient'} will NOT be notified.`
+                    : `Saved locally. ${recipient?.name || 'Recipient'} will NOT be notified.`}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 10, color: C.muted }}>⌘↵ to send</span>
@@ -10671,13 +11338,15 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
                       opacity: !body.trim() || busy ? 0.5 : 1,
                     }}
                   >
-                    {sent ? '✓ Sent'
-                      : busy ? 'Sending…'
+                    {sent ? (msgType === 'note' ? '✓ Saved'
+                              : canEmail ? '✓ Email sent'
+                              : '✓ Logged to thread')
+                      : busy ? (canEmail ? 'Sending…' : 'Logging…')
                       : msgType === 'note' ? 'Save note'
                       : msgType === 'approval' ? 'Request approval'
                       : canEmail ? 'Send email'
-                      : commLive ? 'Send'
-                      : 'Log message'}
+                      : commLive ? 'Log to thread'
+                      : 'Log locally'}
                   </button>
                 </div>
               </div>
@@ -10689,7 +11358,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent }) {
   );
 }
 
-function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone }) {
+function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
   // stable strings only used by the seed objects.
@@ -10724,6 +11393,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const bp = useContext(BpCtx);
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const [search, setSearch] = useState('');
+  const [intakeRefresh, setIntakeRefresh] = useState(0); // bump to re-read localStorage after dismiss/convert
   // Sprint 49 closure (Item 6 — preserve L2 filter context): dashView and
   // eventsFilter persist via localStorage so a Dashboard → Event → Back
   // round-trip lands the user back in the same view + filter they left.
@@ -11193,6 +11863,83 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             <HomeQuickActions events={events} onSelectEvent={onSelectEvent} onNew={onNew} onNewClient={onNewClient} />
           )}
 
+          {/* Sprint 67: New inquiries from intake form */}
+          {dashView === 'dashboard' && profile?.intakeToken && (() => {
+            void intakeRefresh; // read to establish dependency for re-render
+            const key  = `ngw-intake-submissions-${profile.intakeToken}`;
+            let subs = [];
+            try { subs = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+            const newSubs = subs.filter(s => s.status === 'new');
+            if (newSubs.length === 0) return null;
+            return (
+              <div style={{ marginBottom: 20, padding: '16px 18px', background: C.surface, border: `1px solid ${C.accent}44`, borderLeft: `3px solid ${C.accent}`, borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: C.accent, letterSpacing: '0.14em', padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44` }}>NEW</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>New Inquiries</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{newSubs.length} pending</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {newSubs.map(sub => (
+                    <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.bg, borderRadius: 8, padding: '10px 14px', border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{sub.name}</div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                          {sub.eventType}{sub.eventDate ? ` · ${fmtDate(sub.eventDate)}` : ''}{sub.guestCount ? ` · ${sub.guestCount} guests` : ''}{sub.budget ? ` · ${sub.budget}` : ''}
+                        </div>
+                        {sub.notes && <div style={{ fontSize: 11, color: C.muted, marginTop: 2, fontStyle: 'italic' }}>"{sub.notes}"</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          style={{ ...s.btn('primary'), fontSize: 11, padding: '5px 12px' }}
+                          onClick={() => {
+                            // Convert to event + client
+                            const newClient = {
+                              id: uid(), name: sub.name, email: sub.email, phone: sub.phone,
+                              status: 'Inquiry', stage: 'Inquiry', eventIds: [], log: [],
+                              intakeNotes: sub.notes || '',
+                              feeSchedule: [], plannerFee: 0,
+                            };
+                            const newEvent = {
+                              id: uid(), rsvpCode: uid(),
+                              name: `${sub.name}'s ${sub.eventType || 'Event'}`,
+                              type: sub.eventType || 'Other',
+                              date: sub.eventDate || '',
+                              venue: sub.venue || '',
+                              guestCount: sub.guestCount ? Number(sub.guestCount) : 0,
+                              budget: [], vendors: [], guests: [], timeline: [], ros: [],
+                              commClient: [],
+                            };
+                            // Mark submission as converted
+                            try {
+                              const updated = subs.map(s => s.id === sub.id ? { ...s, status: 'converted', convertedEventId: newEvent.id } : s);
+                              localStorage.setItem(key, JSON.stringify(updated));
+                              setIntakeRefresh(n => n + 1);
+                            } catch {}
+                            onCreateFromIntake && onCreateFromIntake(newEvent, newClient);
+                          }}>
+                          Convert to event
+                        </button>
+                        <button
+                          style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px', color: C.muted }}
+                          onClick={() => {
+                            try {
+                              const updated = subs.map(s => s.id === sub.id ? { ...s, status: 'dismissed' } : s);
+                              localStorage.setItem(key, JSON.stringify(updated));
+                              setIntakeRefresh(n => n + 1);
+                            } catch {}
+                          }}>
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Sprint 48 / Figma I: two-column body — AttentionQueue (left, wider)
               and Upcoming Events + This Week panels stacked (right rail). On
               mobile everything stacks. */}
@@ -11202,7 +11949,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               gridTemplateColumns: isWide ? 'minmax(0, 1.6fr) minmax(0, 1fr)' : '1fr',
               gap: 16, alignItems: 'start', marginBottom: 20,
             }} ref={eventsRef}>
-              <AttentionQueue events={events} onSelectEvent={onSelectEvent} />
+              <AttentionQueue
+                events={events}
+                onSelectEvent={onSelectEvent}
+                /* Sprint 59H — inline quick actions for decision/request/vendor-stale rows */
+                onMarkTaskDone={onMarkTaskDone}
+                onMarkMsgHandled={onMarkMsgHandled}
+                onLogVendorContact={onLogVendorContact}
+              />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                 <HomeUpcomingPanel events={events} onSelectEvent={onSelectEvent} />
                 <HomeThisWeekPanel events={events} calNotes={calNotes} onOpenCalendar={() => setDashView('calendar')} />
@@ -11261,47 +12015,53 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
             {/* Three explicit paths, each as a card-button */}
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 22 }}>
-              {/* Path 1 — Load sample data (most discoverable, lowest commitment) */}
+              {/* Sprint 59B: real workspace path is now primary. The sprint
+                  rule is "the goal is fewer confusing paths, more confidence
+                  for first-time planners" — so the recommended action is to
+                  plan a real event, not to explore demo data. Sample data
+                  becomes a secondary "Try a sample event" option. */}
+              <button
+                onClick={() => { if (onMarkOnboardDone) onMarkOnboardDone(); onNew(); }}
+                style={{
+                  textAlign: 'left', padding: '16px 18px', borderRadius: 10,
+                  background: C.surface, border: `1px solid ${C.accent}88`,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                  transition: 'border-color 0.12s, background 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.accent + '12'; e.currentTarget.style.borderColor = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.accent + '88'; }}
+              >
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Start here</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Plan your first event</div>
+                <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
+                  Wedding, birthday, baby shower, fundraiser, corporate event — pick a type, set a date, and start. You can link a client now or later.
+                </div>
+              </button>
+              {/* Secondary — sample data. Demoted to a quiet card with a
+                  neutral border. Hidden entirely if no sample path exists. */}
               {onLoadSampleData && (
                 <button
                   onClick={onLoadSampleData}
                   style={{
                     textAlign: 'left', padding: '16px 18px', borderRadius: 10,
-                    background: C.surface, border: `1px solid ${C.accent2}55`,
+                    background: C.surface, border: `1px solid ${C.border}`,
                     cursor: 'pointer', fontFamily: 'inherit',
                     display: 'flex', flexDirection: 'column', gap: 6,
                     transition: 'border-color 0.12s, background 0.12s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = C.accent2 + '0e'; e.currentTarget.style.borderColor = C.accent2 + '99'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.accent2 + '55'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.accent2 + '0e'; e.currentTarget.style.borderColor = C.accent2 + '66'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent2 }}>Recommended</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Explore with sample data</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Just exploring?</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Try a sample event</div>
                   <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
-                    Loads a populated workspace — a wedding, a corporate event, vendors, guests, decisions. Click around without commitment. Clear it any time.
+                    Loads a populated workspace — a wedding, a corporate event, vendors, guests, decisions. Clear it any time.
                   </div>
                 </button>
               )}
-              {/* Path 2 — New Event (real start) */}
-              <button
-                onClick={() => { if (onMarkOnboardDone) onMarkOnboardDone(); onNew(); }}
-                style={{
-                  textAlign: 'left', padding: '16px 18px', borderRadius: 10,
-                  background: C.surface, border: `1px solid ${C.border}`,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', flexDirection: 'column', gap: 6,
-                  transition: 'border-color 0.12s, background 0.12s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.accent + '0e'; e.currentTarget.style.borderColor = C.accent + '88'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
-              >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Real workspace</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Add your first event</div>
-                <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
-                  Start fresh with a real event. You can link a client later — or now.
-                </div>
-              </button>
-              {/* Path 3 — New Client (real start, alternate) */}
+              {/* Tertiary — start from a client. Real workspace, alternate
+                  entry. Kept for planners who think client-first. */}
               <button
                 onClick={() => { if (onMarkOnboardDone) onMarkOnboardDone(); onNewClient(); }}
                 style={{
@@ -11314,7 +12074,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 onMouseEnter={e => { e.currentTarget.style.background = C.accent + '0e'; e.currentTarget.style.borderColor = C.accent + '88'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Real workspace</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Or</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Add your first client</div>
                 <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
                   Connects the RSVP page, thank-you tracker, and fee collection to every event automatically.
@@ -13393,7 +14153,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId }) {
+function Budget({ budget, setBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -13587,6 +14347,10 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
           onClose={() => setModalId(null)}
           onChange={(key, val) => upd(modalId, key, val)}
           onDelete={() => del(modalId)}
+          /* Sprint 59C: route vendor-mirror "Open vendor" CTA back through
+             EventPlanner. Closes the Budget modal as it switches tabs so the
+             vendor cockpit lands focused. */
+          onOpenVendor={(vendorId) => { setModalId(null); onOpenVendor && onOpenVendor(vendorId); }}
         />
       )}
 
@@ -13639,8 +14403,23 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         </div>
         {/* Supporting trio — compact, smaller numbers */}
         <StatCard label="Committed"     value={fmtD(totalCommitted)}                          sub="On contract or deposit" color={totalCommitted > totalBudgeted ? C.danger : C.accent2} />
-        <StatCard label="Balance Due"   value={fmtD(Math.max(0, totalCommitted - totalActual))} sub="Committed not yet paid" color={totalCommitted > totalActual ? C.warn : C.success} />
-        <StatCard label="Uncontracted"  value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget not yet committed" color={totalCommitted > totalBudgeted ? C.danger : C.success} />
+        {/* Sprint 59C: KPI color discipline. Balance Due paints amber only
+            when an unpaid vendor commitment falls due within 30 days; red
+            when something is overdue; neutral otherwise. Uncontracted is no
+            longer painted green when fully contracted — neutral is right. */}
+        {(() => {
+          const totalBal = totalCommitted - totalActual;
+          const allDays  = (vendors || [])
+            .filter(vendorIsCommitted)
+            .filter(v => !v.balancePaid)
+            .map(v => v.payDueDate ? daysUntil(v.payDueDate) : null)
+            .filter(d => d !== null);
+          const soonest  = allDays.length ? Math.min(...allDays) : null;
+          return (
+            <StatCard label="Balance Due"   value={fmtD(Math.max(0, totalBal))} sub="Committed not yet paid" color={paymentStatusColor(C, totalBal <= 0, soonest)} />
+          );
+        })()}
+        <StatCard label="Uncontracted"  value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget not yet committed" color={totalCommitted > totalBudgeted ? C.danger : C.muted} />
       </div>
 
       {/* Upcoming Payment Alerts */}
@@ -13998,6 +14777,11 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
               const balDue       = committed - r.actual;
               const spendPct     = r.budgeted > 0 ? (r.actual    / r.budgeted) * 100 : 0;
               const sharePct     = totalBudgeted > 0 ? Math.round((r.budgeted / totalBudgeted) * 100) : 0;
+              // Sprint 59C: row balance-due color follows the soonest unpaid
+              // vendor due date instead of painting amber for any positive
+              // balance. Future commitments stay neutral steel.
+              const rowDueDays   = soonestUnpaidDueDays(vendors, r.category);
+              const rowBalColor  = paymentStatusColor(C, balDue <= 0, rowDueDays);
               return (
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={r.id} onClick={() => setModalId(r.id)}
                   style={{ ...s.card, padding: '12px 14px', marginBottom: 0, cursor: 'pointer' }}
@@ -14008,7 +14792,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                       {sharePct > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{sharePct}%</span>}
                     </div>
                     {committed > 0
-                      ? <span style={{ fontSize: 12, fontWeight: 700, color: balDue <= 0 ? C.success : C.warn }}>
+                      ? <span style={{ fontSize: 12, fontWeight: 700, color: rowBalColor }}>
                           {balDue <= 0 ? 'Paid' : `${fmtD(balDue)} due`}
                         </span>
                       : <span style={{ fontSize: 12, color: C.muted }}>Uncontracted</span>}
@@ -14034,7 +14818,23 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
             })}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', fontWeight: 700, fontSize: 13, borderTop: `1px solid ${C.border}` }}>
               <span>Balance Due</span>
-              <span style={{ color: totalCommitted - totalActual <= 0 ? C.success : C.warn }}>{totalCommitted - totalActual <= 0 ? 'Paid' : fmtD(totalCommitted - totalActual)}</span>
+              {/* Sprint 59C: total balance color follows the soonest unpaid
+                  vendor due date across every category. Stays neutral when
+                  the balance is entirely future-scheduled. */}
+              {(() => {
+                const totalBal = totalCommitted - totalActual;
+                const allDays  = (vendors || [])
+                  .filter(vendorIsCommitted)
+                  .filter(v => !v.balancePaid)
+                  .map(v => v.payDueDate ? daysUntil(v.payDueDate) : null)
+                  .filter(d => d !== null);
+                const soonest  = allDays.length ? Math.min(...allDays) : null;
+                return (
+                  <span style={{ color: paymentStatusColor(C, totalBal <= 0, soonest) }}>
+                    {totalBal <= 0 ? 'Paid' : fmtD(totalBal)}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -14063,6 +14863,18 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                 const uncontracted = r.budgeted - committed;
                 const balDue       = committed - r.actual;
                 const sharePct     = totalBudgeted > 0 ? (r.budgeted / totalBudgeted) * 100 : 0;
+                // Sprint 59C: same row-color discipline as the mobile path.
+                const rowDueDays   = soonestUnpaidDueDays(vendors, r.category);
+                const rowBalColor  = paymentStatusColor(C, balDue <= 0, rowDueDays);
+                // Sprint 59C: vendor-linked rows mirror the vendor's paid
+                // state in the Notes column instead of the row's own paid
+                // flag (which is meaningless and confusing when the vendor
+                // owns the truth).
+                const rowVendorLinked = committed > 0;
+                const rowAllPaid      = rowVendorLinked && (vendors || [])
+                  .filter(v => (v.budgetCategory || v.category) === r.category)
+                  .filter(vendorIsCommitted)
+                  .every(v => v.balancePaid);
                 return (
                   <tr key={r.id} onClick={() => setModalId(r.id)} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
@@ -14082,7 +14894,9 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', color: committed > r.budgeted ? C.danger : C.accent2, fontWeight: committed > 0 ? 600 : 400 }}>
                       {committed > 0 ? fmtD(committed) : <span style={{ color: C.muted }}>—</span>}
                     </td>
-                    <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', color: uncontracted < 0 ? C.danger : uncontracted === 0 ? C.warn : C.muted }}>
+                    {/* Sprint 59C: uncontracted = 0 is GOOD (fully contracted),
+                        not a warning. Neutral steel until it goes negative. */}
+                    <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', color: uncontracted < 0 ? C.danger : C.muted }}>
                       {r.budgeted === 0 ? <span style={{ color: C.muted }}>—</span> : uncontracted < 0
                         ? <span style={{ color: C.danger }}>−{fmtD(Math.abs(uncontracted))} over</span>
                         : fmtD(uncontracted)}
@@ -14093,11 +14907,16 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                         ? <span style={{ color: C.muted }}>—</span>
                         : balDue <= 0
                           ? <span style={{ color: C.success }}>Paid</span>
-                          : <span style={{ color: C.warn }}>{fmtD(balDue)}</span>}
+                          : <span style={{ color: rowBalColor }}>{fmtD(balDue)}</span>}
                     </td>
                     <td style={{ ...s.td, color: C.muted, fontSize: 12, maxWidth: 180 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        {r.paid && <span style={{ ...s.pill(C.success), fontSize: 10 }}>✓ Paid{r.paymentMethod ? ` · ${r.paymentMethod}` : ''}</span>}
+                        {/* Manual rows: row's own paid pill.
+                            Vendor-linked rows: hint that payment lives on the
+                            vendor (the Balance Due column already carries the
+                            mirrored status). */}
+                        {!rowVendorLinked && r.paid && <span style={{ ...s.pill(C.success), fontSize: 10 }}>✓ Paid{r.paymentMethod ? ` · ${r.paymentMethod}` : ''}</span>}
+                        {rowVendorLinked && !rowAllPaid && <span style={{ fontSize: 10, color: C.muted, fontStyle: 'italic' }}>Vendor-owned</span>}
                         {r.receiptPhoto && <span style={{ fontSize: 10, color: C.muted }} title="Receipt attached">Receipt</span>}
                         <span style={{ color: C.muted }}>{r.notes || ''}</span>
                       </div>
@@ -14112,7 +14931,21 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                 <td style={{ ...s.td, fontWeight: 700, color: C.accent2 }}>{fmtD(totalCommitted)}</td>
                 <td style={{ ...s.td, fontWeight: 700, color: totalBudgeted - totalCommitted < 0 ? C.danger : C.muted }}>{fmtD(Math.max(0, totalBudgeted - totalCommitted))}</td>
                 <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalActual)}</td>
-                <td style={{ ...s.td, fontWeight: 700, color: totalCommitted - totalActual <= 0 ? C.success : C.warn }}>{totalCommitted - totalActual <= 0 ? 'Paid' : fmtD(totalCommitted - totalActual)}</td>
+                {/* Sprint 59C: total balance follows soonest-due discipline. */}
+                {(() => {
+                  const totalBal = totalCommitted - totalActual;
+                  const allDays  = (vendors || [])
+                    .filter(vendorIsCommitted)
+                    .filter(v => !v.balancePaid)
+                    .map(v => v.payDueDate ? daysUntil(v.payDueDate) : null)
+                    .filter(d => d !== null);
+                  const soonest  = allDays.length ? Math.min(...allDays) : null;
+                  return (
+                    <td style={{ ...s.td, fontWeight: 700, color: paymentStatusColor(C, totalBal <= 0, soonest) }}>
+                      {totalBal <= 0 ? 'Paid' : fmtD(totalBal)}
+                    </td>
+                  );
+                })()}
                 <td /><td />
               </tr>
             </tbody>
@@ -14120,22 +14953,31 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         ))}
       </div>
 
-      {/* Cash flow */}
+      {/* Cash flow. Sprint 59C: month total reds only when something is
+          overdue (negative days); within-30 is amber, future neutral. Per-
+          vendor pill follows the same discipline: overdue red, due-soon
+          amber, future neutral. */}
       {Object.keys(cashFlow).length > 0 && (
         <div style={s.card}>
           <div style={s.cardTitle}>Payment Schedule — Cash Out by Month</div>
           {Object.entries(cashFlow).map(([mon, vs]) => {
-            const monthTotal = vs.reduce((s, v) => s + vendorBalance(v), 0);
-            const d = daysUntil(mon + '-01');
+            const monthTotal   = vs.reduce((s, v) => s + vendorBalance(v), 0);
+            const monthOverdue = vs.some(v => { const d = daysUntil(v.payDueDate); return d !== null && d < 0; });
+            const monthSoon    = vs.some(v => { const d = daysUntil(v.payDueDate); return d !== null && d >= 0 && d <= 30; });
+            const monthColor   = monthOverdue ? C.danger : monthSoon ? C.warn : C.text;
             return (
               <div key={mon} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtMon(mon)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: d !== null && d <= 30 ? C.danger : C.text }}>{fmtD(monthTotal)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: monthColor }}>{fmtD(monthTotal)}</span>
                 </div>
                 {vs.map(v => {
                   const days = daysUntil(v.payDueDate);
                   const catRow = budget.find(b => b.category === (v.budgetCategory || v.category));
+                  const pillColor = days === null ? null
+                    : days < 0  ? C.danger
+                    : days <= 30 ? C.warn
+                    : null; /* future commitments → no pill at all */
                   return (
                     <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={v.id} onClick={catRow ? () => setModalId(catRow.id) : undefined}
                       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px 4px 12px', marginBottom: 3, borderRadius: 6, cursor: catRow ? 'pointer' : 'default' }}
@@ -14143,7 +14985,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                       onMouseLeave={catRow ? (e => { e.currentTarget.style.background = ''; }) : undefined}>
                       <span style={{ fontSize: 12, color: C.muted }}>{v.name} — due {fmtDate(v.payDueDate)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {days !== null && days <= 30 && <span style={s.pill(days <= 14 ? C.danger : C.warn)}>{days}d</span>}
+                        {pillColor && <span style={s.pill(pillColor)}>{days < 0 ? `${-days}d overdue` : `${days}d`}</span>}
                         <span style={{ fontSize: 12, fontWeight: 600 }}>{fmtD(vendorBalance(v))}</span>
                       </div>
                     </div>
@@ -14794,24 +15636,39 @@ function Guests({ guests, setGuests, event = {} }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.warn, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
                 <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
               </button>
-              {/* Batch email reminder — DONE when email configured, DEEP HANDOFF via mailto otherwise */}
+              {/* Batch email reminder — DONE when email configured, DEEP HANDOFF via mailto otherwise.
+                  Sprint 58P.4a: previous wiring used wrong field names (intent/toEmail) so the
+                  backend never attempted Resend delivery — button said "Sent" but guests were
+                  not notified. Now uses the backend's MessageCreate schema and checks the
+                  returned delivery metadata so the alert reflects what actually happened. */}
               {withEmail.length > 0 && (
                 emailEnabled ? (
                   <button
                     style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0 }}
                     onClick={async () => {
-                      let sent = 0;
+                      let delivered = 0;
+                      let loggedOnly = 0;
+                      let failedToPost = 0;
                       for (const g of withEmail) {
                         try {
-                          await commApi.createMessage(event.id, 'CLIENT', {
+                          const r = await commApi.createMessage(event.id, 'CLIENT', {
+                            message_type: 'standard',
+                            author_role: 'planner',
                             body: `Hi ${g.name.split(' ')[0]},\n\nWe'd love to have you join us for ${event?.name || 'our event'}! Could you take a moment to RSVP?${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nThank you!`,
-                            intent: 'email', toEmail: g.email,
+                            deliver_email: true,
+                            recipient_email: g.email,
+                            recipient_name: g.name,
                             subject: `RSVP reminder — ${event?.name || 'our event'}`,
                           });
-                          sent++;
-                        } catch {}
+                          if (r?.metadata?.delivery?.status === 'sent') delivered++;
+                          else loggedOnly++;
+                        } catch { failedToPost++; }
                       }
-                      alert(`RSVP reminders sent to ${sent} guest${sent !== 1 ? 's' : ''} via email.`);
+                      const parts = [];
+                      if (delivered)    parts.push(`${delivered} email${delivered === 1 ? '' : 's'} delivered`);
+                      if (loggedOnly)   parts.push(`${loggedOnly} logged to thread only — those guests were NOT notified`);
+                      if (failedToPost) parts.push(`${failedToPost} failed to post`);
+                      alert(parts.length ? parts.join(' · ') + '.' : 'No reminders sent.');
                     }}
                   >
                     Send {withEmail.length} reminder{withEmail.length !== 1 ? 's' : ''} via email
@@ -14819,9 +15676,10 @@ function Guests({ guests, setGuests, event = {} }) {
                 ) : (
                   <a
                     href={`mailto:${withEmail.map(g => g.email).join(',')}?subject=${encodeURIComponent(`RSVP reminder — ${event?.name || 'our event'}`)}&body=${encodeURIComponent(`Hi all,\n\nJust a friendly reminder to RSVP for ${event?.name || 'our event'}!${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nThank you!`)}`}
+                    title="Opens your email app. Reminders are not sent until you send the draft."
                     style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0, textDecoration: 'none' }}
                   >
-                    Open in email app ({withEmail.length})
+                    Open email draft ({withEmail.length})
                   </a>
                 )
               )}
@@ -18605,406 +19463,14 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
   );
 }
 
-// ─── Event Communication (event-scoped ledger) ─────────────────────────────────
-// Two channels per event: CLIENT (client-facing) and INTERNAL_TEAM (planner-only).
-// When REACT_APP_API_BASE_URL is set, this talks to the live FastAPI backend keyed
-// by event.id. Otherwise it falls back to event-local storage (event.commClient /
-// event.commInternal) so the demo stays fully functional with no backend/secrets.
-const COMM_CHANNELS = [
-  { key: 'CLIENT',        local: 'commClient',   icon: 'message', label: 'Client',   clr: 'accent' },
-  { key: 'INTERNAL_TEAM', local: 'commInternal', icon: 'lock',    label: 'Internal', clr: 'warn'   },
-];
-const commTypeStyle = (mt, C) => ({
-  standard:             { border: C.border,  bg: 'transparent',   icon: '📝', label: 'Message'            },
-  operational_update:   { border: C.accent,  bg: C.accent  + '10', icon: '📋', label: 'Operational Update' },
-  approval_request:     { border: C.warn,    bg: C.warn    + '10', icon: '✋', label: 'Approval Request'   },
-  guest_impact_summary: { border: C.accent2, bg: C.accent2 + '10', icon: '👥', label: 'Guest Impact'       },
-}[mt] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Message' });
+// Sprint 59G: EventCommunication block removed (was lines 19337-19742).
+// EventCommunication was a Sprint-58 in-app communication component that
+// became dead code when the canonical Communication mount moved to
+// EventCommTab + CommunicationHub. Its helpers (COMM_CHANNELS,
+// commTypeStyle, CLIENT_COMPOSE, INTERNAL_COMPOSE) were consumed only by
+// EventCommunication and are removed with it. Approval shape constants
+// kept elsewhere in App.js continue to serve the live message paths.
 
-const CLIENT_COMPOSE = [
-  { ui: 'standard',           mt: 'standard',           icon: '📝', label: 'Message' },
-  { ui: 'operational_update', mt: 'operational_update', icon: '📋', label: 'Update'  },
-  { ui: 'approval_request',   mt: 'approval_request',   icon: '✋', label: 'Approval' },
-];
-const INTERNAL_COMPOSE = [
-  { ui: 'standard',           mt: 'standard',           icon: '📝', label: 'Note'   },
-  { ui: 'operational_update', mt: 'operational_update', icon: '📋', label: 'Update' },
-];
-
-function EventCommunication({ event, setEvent, client, profile }) {
-  const C   = useT();
-  const s   = makeS(C);
-  const bp  = useContext(BpCtx);
-  const auth = useContext(AuthCtx);
-  const live     = isCommApiConfigured();
-  // Planner can write when authenticated: a Supabase session (preferred) or, while
-  // Supabase Auth isn't configured, the legacy shared token. `canAuthenticatePlanner`
-  // is true when either path exists; `authed` reflects the *current* signed-in state.
-  const authed   = auth?.configured ? Boolean(auth.session) : canAuthenticatePlanner();
-  const eventId  = event.id;
-  const plannerName = profile?.businessName || profile?.name || 'Planner';
-
-  const [channel,       setChannel]       = useState('CLIENT');
-  const [msgs,          setMsgs]          = useState({ CLIENT: [], INTERNAL_TEAM: [] });
-  const [loading,       setLoading]       = useState(live);
-  const [error,         setError]         = useState('');
-  const [busy,          setBusy]          = useState(false);
-  const [text,          setText]          = useState('');
-  const [composeType,   setComposeType]   = useState('standard');
-  const [search,        setSearch]        = useState('');
-  const [decisionsOpen, setDecisionsOpen] = useState(false);
-
-  const isClient = channel === 'CLIENT';
-  // Internal channel & all planner writes need an authenticated planner when live.
-  const writeBlocked = live && !authed;
-  const internalLocked = live && !authed;
-
-  // ── Data layer: live API or event-local storage, normalized to one shape ──────
-  const localKey  = isClient ? 'commClient' : 'commInternal';
-  const localList = useMemo(() => event[localKey] || [], [event, localKey]);
-  const setLocal  = (updater) =>
-    setEvent(e => ({ ...e, [localKey]: typeof updater === 'function' ? updater(e[localKey] || []) : updater }));
-
-  const refresh = async (ch = channel) => {
-    if (!live) return;
-    if (ch === 'INTERNAL_TEAM' && !authed) { setLoading(false); return; }
-    setLoading(true); setError('');
-    try {
-      const rows = await commApi.listMessages(eventId, ch, 200);
-      setMsgs(m => ({ ...m, [ch]: rows }));
-    } catch (e) {
-      setError('Could not reach the communication service. ' + (e?.message || ''));
-    } finally { setLoading(false); }
-  };
-
-  // On mount: ensure both channels exist, then load the active one.
-  useEffect(() => {
-    let cancelled = false;
-    if (!live) { setLoading(false); return; }
-    (async () => {
-      try { await commApi.listChannels(eventId); } catch { /* ensure is best-effort */ }
-      if (!cancelled) refresh(channel);
-    })();
-    return () => { cancelled = true; };
-  }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reload when switching channel (live mode).
-  useEffect(() => { if (live) refresh(channel); }, [channel]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const activeMsgs = live ? (msgs[channel] || []) : localList;
-
-  // ── Mutations ────────────────────────────────────────────────────────────────
-  const add = async () => {
-    const t = text.trim();
-    if (!t || busy || writeBlocked) return;
-    const cfg = (isClient ? CLIENT_COMPOSE : INTERNAL_COMPOSE).find(c => c.ui === composeType) || CLIENT_COMPOSE[0];
-    const isApproval = cfg.mt === 'approval_request';
-    setBusy(true); setError('');
-    try {
-      if (live) {
-        await commApi.createMessage(eventId, channel, {
-          message_type: cfg.mt, author_role: 'planner', author_name: plannerName,
-          body: isApproval ? null : t,
-          approval_context: isApproval ? t : null,
-        });
-        await refresh(channel);
-      } else {
-        const row = {
-          id: uid(), message_type: cfg.mt, author_role: 'planner', author_name: plannerName,
-          body: isApproval ? null : t, approval_context: isApproval ? t : null,
-          approval_status: isApproval ? 'pending' : null, pinned: false,
-          created_at: new Date().toISOString(), requestSentAt: null, readAt: null,
-        };
-        setLocal(list => [...list, row]);
-      }
-      setText(''); setComposeType('standard');
-    } catch (e) {
-      setError('Could not save the message. ' + (e?.message || ''));
-    } finally { setBusy(false); }
-  };
-
-  const resolveApproval = async (id, status) => { // status: 'approved' | 'rejected'
-    if (busy || writeBlocked) return;
-    setBusy(true); setError('');
-    try {
-      if (live) { await commApi.updateMessage(eventId, id, { approval_status: status }); await refresh(channel); }
-      else setLocal(list => list.map(m => m.id === id ? { ...m, approval_status: status } : m));
-    } catch (e) { setError('Could not update the approval. ' + (e?.message || '')); }
-    finally { setBusy(false); }
-  };
-
-  const togglePin = async (m) => {
-    if (busy || writeBlocked) return;
-    setBusy(true); setError('');
-    try {
-      if (live) {
-        if (m.pinned) await commApi.unpinMessage(eventId, m.id);
-        else await commApi.pinMessage(eventId, m.id, { pinned_by: plannerName, label: 'Decision' });
-        await refresh(channel);
-      } else setLocal(list => list.map(x => x.id === m.id ? { ...x, pinned: !x.pinned } : x));
-    } catch (e) { setError('Could not pin the decision. ' + (e?.message || '')); }
-    finally { setBusy(false); }
-  };
-
-  const removeMsg = async (m) => {
-    if (busy || writeBlocked) return;
-    if (!window.confirm('Delete this message? This removes it from the ledger.')) return;
-    setBusy(true); setError('');
-    try {
-      if (live) { await commApi.deleteMessage(eventId, m.id); await refresh(channel); }
-      else setLocal(list => list.filter(x => x.id !== m.id));
-    } catch (e) { setError('Could not delete the message. ' + (e?.message || '')); }
-    finally { setBusy(false); }
-  };
-
-  const markChannelRead = async () => {
-    try {
-      if (live) await commApi.markRead(eventId, channel, 'planner');
-      else setLocal(list => list.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() })));
-    } catch { /* non-critical */ }
-  };
-  const toggleLocalRead = (id) => // local mode only — per-message read confirmation
-    setLocal(list => list.map(m => m.id === id ? { ...m, readAt: m.readAt ? null : new Date().toISOString() } : m));
-  const markLocalSent = (id) =>
-    setLocal(list => list.map(m => m.id === id ? { ...m, requestSentAt: new Date().toISOString() } : m));
-
-  const buildApprovalMessage = (m) => {
-    const ctx = m.approval_context || m.body || '';
-    const signoff = [profile?.name, profile?.businessName, profile?.phone].filter(Boolean).join('\n');
-    const subject = `Approval needed — ${plannerName}`;
-    const body = `Hi ${client?.name || 'there'},\n\nQuick approval needed before I move forward:\n\n"${ctx}"\n\nJust reply to confirm and I'll take it from there. Thank you!\n\n${signoff || plannerName}`;
-    return { subject, body };
-  };
-
-  // ── Derived ──────────────────────────────────────────────────────────────────
-  const q = search.trim().toLowerCase();
-  const display = (m) => m.body || m.approval_context || '';
-  const sorted = [...activeMsgs].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  const filtered = sorted.filter(m => !q || display(m).toLowerCase().includes(q));
-  const decisions = sorted.filter(m => m.pinned);
-  const clientUnread = !live ? (event.commClient || []).filter(m => !m.readAt).length : 0;
-  const fmtWhen = (iso) => fmtDate(String(iso || '').slice(0, 10));
-
-  const COMPOSE = isClient ? CLIENT_COMPOSE : INTERNAL_COMPOSE;
-  const maxW = 760;
-
-  return (
-    <div style={{ maxWidth: maxW }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: bp === 'mobile' ? 17 : 19, fontWeight: 700, letterSpacing: '-0.02em' }}>Communication</h2>
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-            Per-event ledger — client-facing and planner-only channels.
-            {live ? <span style={{ color: C.success, marginLeft: 6 }}>● Live</span>
-                  : <span style={{ color: C.muted, marginLeft: 6 }}>● Local (this device)</span>}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ ...s.card }}>
-        {/* Channel segmented control */}
-        <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.border}`, marginBottom: 12 }}>
-          {COMM_CHANNELS.map(ch => {
-            const active = channel === ch.key;
-            const clr = ch.clr === 'warn' ? C.warn : C.accent;
-            const badge = ch.key === 'CLIENT' ? (clientUnread || null) : null;
-            return (
-              <button key={ch.key} onClick={() => { setChannel(ch.key); setSearch(''); setComposeType('standard'); }}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 8px', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: active ? 700 : 500, background: active ? clr + '1a' : 'transparent', color: active ? clr : C.muted, borderBottom: active ? `2px solid ${clr}` : '2px solid transparent', transition: 'all 0.12s' }}>
-                <Icon name={ch.icon} size={15} /> {ch.label}
-                {badge && <span style={{ background: clr, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{badge}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Internal-channel notice */}
-        {!isClient && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', background: C.warn + '12', border: `1px solid ${C.warn}40`, borderRadius: 8, marginBottom: 12 }}>
-            <span style={{ display: 'flex', color: C.warn }}><Icon name="lock" size={13} /></span>
-            <div style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>Planner-only — never visible to the client</div>
-          </div>
-        )}
-
-        {/* Live-but-not-authenticated gate */}
-        {writeBlocked && (
-          <div style={{ padding: '10px 12px', background: C.bg, border: `1px dashed ${C.border}`, borderRadius: 8, marginBottom: 12, fontSize: 11.5, color: C.muted }}>
-            Connected to the live service in read-only mode. {auth?.configured
-              ? 'Sign in as the planner to post and open the internal channel.'
-              : 'Configure Supabase Auth (or set a planner token for local dev) to enable posting and the internal channel.'}
-          </div>
-        )}
-
-        {internalLocked && !isClient ? (
-          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 0' }}>
-            Internal channel is locked until you sign in as the planner.
-          </div>
-        ) : (
-          <>
-            {/* Search */}
-            {activeMsgs.length > 2 && (
-              <div style={{ position: 'relative', marginBottom: 12 }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: C.muted, pointerEvents: 'none' }}><Icon name="search" size={13} /></span>
-                <input style={{ ...s.input, padding: '6px 10px 6px 30px', fontSize: 12, width: '100%' }} placeholder="Search messages…" value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-            )}
-
-            {/* Composer */}
-            {!writeBlocked && (
-              <>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
-                  {COMPOSE.map(c => {
-                    const ts = commTypeStyle(c.mt, C);
-                    const active = composeType === c.ui;
-                    return (
-                      <button key={c.ui} onClick={() => setComposeType(c.ui)}
-                        style={{ padding: '3px 10px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${active ? ts.border : C.border}`, background: active ? ts.bg : 'transparent', color: active ? ts.border : C.muted, fontWeight: active ? 700 : 400, transition: 'all 0.1s', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {c.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', flexDirection: bp === 'mobile' ? 'column' : 'row', gap: 8, marginBottom: 16 }}>
-                  <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={text}
-                    placeholder={
-                      composeType === 'approval_request' ? 'Describe what needs approval…'
-                      : composeType === 'operational_update' ? 'Operational update…'
-                      : isClient ? 'Log a call, email, meeting…' : 'Internal planner note…'
-                    }
-                    onChange={e => setText(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && add()} />
-                  <button style={{ ...s.btn('primary'), alignSelf: bp === 'mobile' ? 'flex-end' : 'auto' }} onClick={add} disabled={busy}>{busy ? '…' : 'Add'}</button>
-                </div>
-              </>
-            )}
-
-            {error && (
-              <div style={{ padding: '8px 12px', background: C.danger + '12', border: `1px solid ${C.danger}40`, borderRadius: 8, marginBottom: 12, fontSize: 11.5, color: C.danger, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span>{error}</span>
-                {live && <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '2px 8px' }} onClick={() => refresh(channel)}>Retry</button>}
-              </div>
-            )}
-
-            {/* Decisions (pinned) */}
-            {decisions.length > 0 && (
-              <div style={{ marginBottom: 14, border: `1px solid ${C.accent2}44`, background: C.accent2 + '0c', borderRadius: 10, overflow: 'hidden' }}>
-                <button onClick={() => setDecisionsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '9px 12px', cursor: 'pointer' }}>
-                  <span style={{ display: 'flex', color: C.accent2 }}><Icon name="check2" size={14} /></span>
-                  <span style={{ flex: 1, textAlign: 'left', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent2 }}>Decisions ({decisions.length})</span>
-                  <span style={{ color: C.muted, display: 'flex', transform: decisionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={15} /></span>
-                </button>
-                {decisionsOpen && (
-                  <div style={{ padding: '0 12px 10px' }}>
-                    {decisions.map(d => (
-                      <div key={d.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderTop: `1px solid ${C.accent2}22`, fontSize: 12.5, color: C.text }}>
-                        <span style={{ fontSize: 10.5, color: C.muted, flexShrink: 0, minWidth: 52 }}>{fmtWhen(d.created_at)}</span>
-                        <span style={{ flex: 1 }}>{display(d)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Feed */}
-            {loading ? (
-              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 0' }}>Loading…</div>
-            ) : activeMsgs.length === 0 ? (
-              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
-                {isClient ? 'No client communication yet.' : 'No internal notes yet.'}
-              </div>
-            ) : filtered.length === 0 ? (
-              <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No entries match "{search}".</div>
-            ) : filtered.map(m => {
-              const ts = commTypeStyle(m.message_type, C);
-              const isApproval = m.message_type === 'approval_request';
-              const st = m.approval_status;
-              const statusColor = st === 'approved' ? C.success : (st === 'rejected' || st === 'declined') ? C.danger : C.warn;
-              return (
-                <div key={m.id} style={{ borderLeft: `3px solid ${m.pinned ? C.accent2 : ts.border}`, background: ts.bg, borderRadius: '0 6px 6px 0', padding: '8px 10px 8px 12px', marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: ts.border || C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{ts.label}</span>
-                    <span style={{ fontSize: 11, color: C.muted }}>{fmtWhen(m.created_at)}</span>
-                    {isApproval && st && (
-                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {st === 'pending' ? 'Pending' : st === 'approved' ? '✓ Approved' : '✗ Declined'}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{display(m)}</div>
-
-                  {/* Row actions: pin/read */}
-                  {!writeBlocked && (
-                    <div style={{ marginTop: 7, display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
-                      <button onClick={() => togglePin(m)} title={m.pinned ? 'Unpin decision' : 'Pin as decision'}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: m.pinned ? C.accent2 : C.muted, background: 'none', border: `1px solid ${m.pinned ? C.accent2 + '66' : C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
-                        <Icon name="check2" size={11} /> {m.pinned ? 'Decision' : 'Pin as decision'}
-                      </button>
-                      {isClient && !live && (
-                        m.readAt ? (
-                          <button aria-label="Mark unread" onClick={() => toggleLocalRead(m.id)} title="Mark unread"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.success, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                            <Icon name="check2" size={13} /> Read · {fmtWhen(m.readAt)}
-                          </button>
-                        ) : (
-                          <button aria-label="Confirm the client read this" onClick={() => toggleLocalRead(m.id)} title="Confirm the client read this"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}>
-                            <Icon name="check2" size={12} /> Mark read
-                          </button>
-                        )
-                      )}
-                      <button aria-label="Delete message" onClick={() => removeMsg(m)} title="Delete message" disabled={busy}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: C.muted, background: 'none', border: `1px solid ${C.border}`, borderRadius: 12, padding: '2px 9px', cursor: 'pointer' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = C.danger + '66'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}>
-                        <Icon name="trash" size={11} /> Delete
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Approval send + response */}
-                  {isApproval && (!st || st === 'pending') && !writeBlocked && (() => {
-                    const { subject, body } = buildApprovalMessage(m);
-                    const mailto = client?.email ? `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` : null;
-                    const sms    = client?.phone ? `sms:${client.phone}?body=${encodeURIComponent(body)}` : null;
-                    return (
-                      <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Request</span>
-                          {mailto && <a href={mailto} onClick={() => !live && markLocalSent(m.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>✉ Email</a>}
-                          {sms    && <a href={sms}    onClick={() => !live && markLocalSent(m.id)} style={{ ...s.btn(), fontSize: 11, padding: '3px 10px', textDecoration: 'none' }}>Text</a>}
-                          <button onClick={() => { navigator.clipboard?.writeText(body).catch(() => {}); if (!live) markLocalSent(m.id); }} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>⎘ Copy</button>
-                          {!live && m.requestSentAt && <span style={{ fontSize: 10, color: C.success, fontWeight: 600 }}>Sent ✓ {fmtWhen(m.requestSentAt)}</span>}
-                          {!mailto && !sms && <span style={{ fontSize: 10, color: C.muted }}>Add client email/phone to send directly</span>}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', width: 56 }}>Response</span>
-                          <button onClick={() => resolveApproval(m.id, 'approved')} disabled={busy}
-                            style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.success}`, background: C.success + '14', color: C.success, fontWeight: 700 }}>✓ Approve</button>
-                          <button onClick={() => resolveApproval(m.id, 'rejected')} disabled={busy}
-                            style={{ padding: '3px 12px', borderRadius: 16, fontSize: 11, cursor: 'pointer', border: `1.5px solid ${C.danger}`, background: C.danger + '14', color: C.danger, fontWeight: 700 }}>✗ Decline</button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-
-            {/* Channel-level read (live mode) */}
-            {live && isClient && !writeBlocked && activeMsgs.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                <button onClick={markChannelRead} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <Icon name="check2" size={13} /> Mark channel read
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Event Day Mode — helpers + components ───────────────────────────────────
 
@@ -19186,7 +19652,7 @@ const ARRIVAL_STATUS_CFG = {
   completed: 'Done',
 };
 
-function VendorArrivalView({ vendors, setVendors, event }) {
+function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
   const C = useT();
   const s = makeS(C);
   const bp = useContext(BpCtx);
@@ -19196,9 +19662,19 @@ function VendorArrivalView({ vendors, setVendors, event }) {
     .filter(v => v.arrivalTime && ['Confirmed','Contracted','Deposit Paid'].includes(v.status))
     .sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
 
+  // Sprint 59H: confirmed vendors who don't have an arrivalTime yet are
+  // invisible in the arrivals list above. On event day that's a problem —
+  // surface them in a small "Missing arrival times" panel with an inline
+  // mailto handoff (when v.contact exists) plus a route to the cockpit.
+  const missingArrivalTime = (vendors || [])
+    .filter(v => !v.arrivalTime && ['Confirmed','Contracted','Deposit Paid'].includes(v.status));
+
   const setStatus = (id, status) => setVendors(vs => vs.map(v => v.id === id ? { ...v, arrivalStatus: status } : v));
 
-  if (arrivals.length === 0) {
+  // Sprint 59H: only short-circuit when BOTH lists are empty. If we have
+  // confirmed vendors missing arrival times, we want to render the
+  // "Missing arrival times" panel even when no arrivals are scheduled.
+  if (arrivals.length === 0 && missingArrivalTime.length === 0) {
     return (
       <div style={{ ...s.card, textAlign: 'center', padding: '40px 20px' }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendor arrivals set</div>
@@ -19218,6 +19694,55 @@ function VendorArrivalView({ vendors, setVendors, event }) {
         <StatCard label="Pending"  value={arrivals.filter(v => !v.arrivalStatus || v.arrivalStatus === 'pending').length} color={C.warn} />
         <StatCard label="Delayed"  value={arrivals.filter(v => v.arrivalStatus === 'delayed').length}   color={C.danger} />
       </div>
+
+      {/* Sprint 59H — Missing arrival times panel. Confirmed vendors with no
+          arrivalTime never appeared in the day-of arrivals list before; the
+          planner had to discover them by absence. This panel makes the gap
+          visible AND offers a one-tap email handoff (mailto, so it's honest
+          — opens the planner's email app, doesn't send anything). */}
+      {missingArrivalTime.length > 0 && (
+        <div style={{ ...s.card, padding: '14px 16px', marginBottom: 16, borderLeft: `3px solid ${C.warn}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.warn, marginBottom: 6 }}>
+            Missing arrival times · {missingArrivalTime.length}
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
+            Confirmed vendors who haven't shared an arrival time yet. Ask them or open the vendor record to add it.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {missingArrivalTime.map(v => {
+              const mailto = v.contact
+                ? `mailto:${v.contact}?subject=${encodeURIComponent(`Arrival time for ${event?.name || 'event'}`)}&body=${encodeURIComponent(`Hi ${v.name || ''},\n\nWhat time should we expect you on event day? Just need it for the run-of-show and the team's check-in list.\n\nThanks.`)}`
+                : null;
+              return (
+                <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                    <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                      {v.category || 'vendor'}{v.contact ? ` · ${v.contact}` : ' · no contact on file'}
+                    </div>
+                  </div>
+                  {mailto ? (
+                    <a href={mailto} target="_blank" rel="noopener noreferrer"
+                      title="Opens your email app with a draft. Nothing is sent until you send it."
+                      style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                      Open email draft
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No email on file</span>
+                  )}
+                  {onOpenVendor && (
+                    <button onClick={() => onOpenVendor(v.id)} title={`Open ${v.name} in the Vendors tab`}
+                      style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px', flexShrink: 0 }}>
+                      Open vendor →
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {arrivals.map(v => {
           const st     = v.arrivalStatus || 'pending';
@@ -19345,23 +19870,59 @@ const PLANNER_TABS = [
   'Command',
   // Messages first — coordinators open this 10-30x per day
   'Communication',
-  // PLAN — the work of planning
-  'Budget', 'Timeline', 'Checklist', 'Planning Tasks', 'Decisions',
+  // PLAN — the work of planning. Sprint 59B: 'Timeline', 'Checklist', and
+  // 'Planning Tasks' merged into a single 'Planning' surface with three view
+  // modes (List / Timeline / Checklist). event.timeline remains the single
+  // source of truth; only the host tab is consolidated.
+  'Budget', 'Planning', 'Decisions',
   // PEOPLE — who's involved
   'Client Intake', 'Vendors', 'Guests', 'Seating',
   // DAY OF — event-day surfaces
   'Calendar', 'Run of Show',
+  // FILES (Sprint 59E) — one canonical home for files, links, signatures.
+  // Reads from event.documents[] (the Sprint 49 store) and from vendor
+  // contract/file fields. Does not create a new storage surface.
+  'Documents',
+  // EVENT (Sprint 59E) — identity + venue truth in one editable surface.
+  // Renames the old "Manage Event" overflow concept into a real tab.
+  // Secondary actions (Duplicate / Archive / Delete / Export) stay in the
+  // header dropdown.
+  'Event Details',
 ];
 const TAB_GROUP_HEADERS = {
   'Communication':  'MESSAGES',
   'Budget':         'PLAN',
   'Client Intake':  'PEOPLE',
   'Calendar':       'DAY OF',
+  'Documents':      'FILES',
+  'Event Details':  'EVENT',
 };
-const TAB_ICONS = { 'Command': 'zap', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Decisions': 'alertTriangle', 'Timeline': 'history', 'Checklist': 'check2', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file', 'Communication': 'message' };
+const TAB_ICONS = { 'Command': 'zap', 'Budget': 'dollar', 'Guests': 'users', 'Seating': 'seating', 'Vendors': 'store', 'Decisions': 'alertTriangle', 'Planning': 'check', 'Timeline': 'history', 'Checklist': 'check2', 'Planning Tasks': 'check', 'Calendar': 'calendar', 'Run of Show': 'clipboard', 'Agenda': 'file', 'Communication': 'message', 'Documents': 'file', 'Event Details': 'settings' };
 // Display labels — route keys are unchanged (routing depends on them),
 // but the tab UI shows these friendlier names where they differ.
 const TAB_LABELS = { 'Communication': 'Messages' };
+
+// ─── Sprint 59B: legacy → canonical tab-route normalization ────────────────
+// Pre-59B the three planning surfaces shipped as separate L4 tabs:
+//   'Planning Tasks' → list editor of event.timeline
+//   'Timeline'       → TimelineBuilder visual phase grid
+//   'Checklist'      → ChecklistGenerator
+// All three wrote to the same event.timeline array. 59B merges them into a
+// single 'Planning' tab with three view modes (list | timeline | checklist).
+// Callers (Home attention queue, CommandCenter compressed CTAs, Sprint 57f
+// '__compressed__' sentinel routes) still emit the legacy tab names — we
+// normalize at the EventPlanner entrypoint so every old route lands in the
+// right Planning view with the right item id, including the compressed
+// sentinel. Returns: { tab, planningView, openId } — planningView is null
+// for non-Planning targets.
+const PLANNING_VIEWS = ['list', 'timeline', 'checklist'];
+const normalizeEventTabRoute = (rawTab, itemId) => {
+  if (rawTab === 'Overview')        return { tab: 'Command',  planningView: null,        openId: null };
+  if (rawTab === 'Planning Tasks')  return { tab: 'Planning', planningView: 'list',      openId: itemId || null };
+  if (rawTab === 'Timeline')        return { tab: 'Planning', planningView: 'timeline',  openId: itemId || null };
+  if (rawTab === 'Checklist')       return { tab: 'Planning', planningView: 'checklist', openId: itemId || null };
+  return { tab: rawTab, planningView: null, openId: itemId || null };
+};
 
 // ─── Sprint 49: EventVendorsTab — canonical Vendors L4 specialist ────────────
 // Wraps VendorPlanningWorkspace (Sprint 46 PLAN-overlay component) with the
@@ -19459,49 +20020,11 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, ros, pro
 // corresponding commClient entry. Both flow through setEvent so all other
 // surfaces (Home Attention Queue, Command Center, Events Index 4-axis) update
 // in real time.
-// ─── Sprint 49: EventChecklistTab — canonical Checklist L4 specialist ───────
-// Wraps ChecklistGenerator (Sprint 46 PLAN-overlay). Toggling a task done
-// flows through to the host event.timeline so Command Center, Home Attention
-// Queue, and Events Index 4-axis readiness all stay in sync.
-function EventChecklistTab({ event, setEvent, isMobile, onBack }) {
-  const onToggleTask = (taskId) => {
-    setEvent(e => ({
-      ...e,
-      timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t),
-    }));
-  };
-  return (
-    <ChecklistGenerator
-      event={event}
-      isMobile={isMobile}
-      onBack={onBack}
-      onToggleTask={onToggleTask}
-    />
-  );
-}
-
-// ─── Sprint 49: EventTimelineTab — canonical Timeline L4 specialist ─────────
-// Wraps TimelineBuilder (Sprint 46 PLAN-overlay visual phase grid). Read-only
-// today; clicking a task selects it in the right detail panel. Editing
-// continues to happen on the Planning Tasks tab — Timeline is the visual
-// lens, Planning Tasks is the editor.
-function EventTimelineTab({ event, openId, isMobile, onBack }) {
-  // Sprint 51 Path B: phase focus band migrated from retired Overview.
-  // Computes the current phase + focus + first tip and passes to TimelineBuilder.
-  const phaseFocus = useMemo(() => {
-    const days = daysUntil(event?.date);
-    return getWorkflowGuidance(event?.type, days);
-  }, [event?.date, event?.type]);
-  return (
-    <TimelineBuilder
-      event={event}
-      isMobile={isMobile}
-      openId={openId}
-      onBack={onBack}
-      phaseFocus={phaseFocus}
-    />
-  );
-}
+// Sprint 59G: EventChecklistTab + EventTimelineTab removed. Both were
+// thin Sprint-49 wrappers that became dead code in Sprint 59B when the
+// Planning surface absorbed their views (List / Timeline / Checklist) into
+// `EventPlanningTab`. ChecklistGenerator + TimelineBuilder + Timeline list
+// remain live — they're rendered as views inside EventPlanningTab.
 
 // ─── Sprint 49: EventCommTab — canonical Communication L4 specialist ────────
 // Sprint 58: onSend attempts the FastAPI comms backend.
@@ -19588,11 +20111,15 @@ function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clie
 
         const result = await commApi.createMessage(event.id, channel, payload);
 
-        // Determine delivery status from backend response
+        // Determine delivery status from backend response.
+        // "accepted" = Resend accepted for delivery (not yet confirmed delivered).
+        // Webhook updates to "delivered", "bounced", "complained", or "deferred".
         const delivery = result?.metadata?.delivery;
         let deliveryStatus = 'sent-via-app';
-        if (delivery?.status === 'sent') deliveryStatus = 'email-sent';
+        if (delivery?.status === 'accepted') deliveryStatus = 'email-accepted';
+        else if (delivery?.status === 'sent') deliveryStatus = 'email-accepted'; // legacy compat
         else if (delivery?.status === 'failed') deliveryStatus = 'email-failed';
+        else if (delivery?.status === 'provider_not_configured') deliveryStatus = 'local-only';
 
         setEvent(e => ({
           ...e,
@@ -19662,6 +20189,11 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
   const [copied, setCopied] = useState(false);
   // Sprint 66: client approvals from portal (stored in localStorage by client)
   const [clientApprovals, setClientApprovals] = useState({});
+  // Sprint 59D: legacy decisions migration state
+  const commLive = isCommApiConfigured() && canAuthenticatePlanner();
+  const [migrating, setMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState(null); // { ok, moved, failed, error? }
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Read client portal approvals from localStorage
   useEffect(() => {
@@ -19719,8 +20251,150 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
   const clientRespondedN  = Object.keys(clientApprovals).length;
   const hasClientActivity = clientRespondedN > 0;
 
+  // ─── Sprint 59D: legacy decisions migration ──────────────────────────────
+  // A legacy decision = an entry in `event.decisions[]` (local-only truth
+  // that pre-dates the Sprint 58P.4c backend approval_request canon). The
+  // bridge banner offers opt-in migration to durable backend records when
+  // the backend is reachable; otherwise it honestly says so. Originals are
+  // preserved until each backend write succeeds. Re-runs are idempotent:
+  // we skip any decision whose `migratedToMessageId` is already set.
+  const unmigrated = (event?.decisions || []).filter(d => !d.migratedToMessageId);
+  const showLegacyBanner = unmigrated.length > 0 && !bannerDismissed && !migrationResult;
+
+  const runDecisionsMigration = async () => {
+    if (!commLive || !event?.id || migrating || unmigrated.length === 0) return;
+    setMigrating(true);
+    setMigrationResult(null);
+    const moved = [];
+    const failed = [];
+    for (const d of unmigrated) {
+      const legacyVerdict = clientApprovals[d.id]; // 'approved' | 'rejected' | undefined
+      // Body carries the legacy markers so the migrated record is traceable
+      // even though the backend MessageCreate schema doesn't accept custom
+      // metadata fields today. The frontend stores the link by message id.
+      const bodyLines = [
+        d.title || '(untitled decision)',
+        d.notes ? `\n${d.notes}` : '',
+        legacyVerdict ? `\n[Client portal verdict: ${legacyVerdict}]` : '',
+        d.status === 'resolved' && d.verdict ? `\n[Resolved: ${d.verdict}]` : '',
+        `\n— Migrated from legacy decisions on ${new Date().toISOString().slice(0, 10)}.`,
+      ].join('');
+      const subject = d.title ? `[Legacy decision] ${d.title}` : '[Legacy decision]';
+      try {
+        const created = await commApi.createMessage(event.id, 'CLIENT', {
+          message_type: 'approval_request',
+          author_role:  'planner',
+          author_name:  'Migration · legacy decisions',
+          body:         bodyLines,
+          subject,
+          approval_context: d.title || '(untitled decision)',
+        });
+        moved.push({ id: d.id, messageId: created?.id || null });
+      } catch (err) {
+        failed.push({ id: d.id, error: (err && err.message) || 'unknown error' });
+      }
+    }
+    // Preserve originals. Only attach `migratedToMessageId` for the ones
+    // that actually wrote to the backend. Failures stay flagged so the
+    // banner can offer a retry.
+    if (moved.length) {
+      const movedMap = Object.fromEntries(moved.map(m => [m.id, m.messageId]));
+      setEvent(e => ({
+        ...e,
+        decisions: (e.decisions || []).map(d => movedMap[d.id]
+          ? { ...d, migratedToMessageId: movedMap[d.id] || true, migratedAt: new Date().toISOString() }
+          : d
+        ),
+      }));
+    }
+    setMigrating(false);
+    setMigrationResult({ ok: failed.length === 0, moved: moved.length, failed: failed.length });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Sprint 59D: legacy decisions bridge banner. Renders only when the
+          event has decisions that haven't been moved into the backend
+          approval history. Backend-unavailable state is honestly labeled —
+          no silent pretend-migration. Originals are never destroyed in this
+          sprint; on success the decision row is marked with
+          `migratedToMessageId` so the banner stops showing. */}
+      {showLegacyBanner && (
+        <div style={{
+          padding: '10px 16px',
+          background: C.warn + '0d',
+          borderBottom: `1px solid ${C.warn}33`,
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+              {unmigrated.length} legacy decision{unmigrated.length !== 1 ? 's' : ''} saved locally
+            </div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>
+              {commLive
+                ? "Move them into shared approval history so they're durable across devices. Originals stay on the event until each write succeeds."
+                : "Connect the backend to move them into shared approval history. Until then they live in this browser only."}
+            </div>
+          </div>
+          {commLive && (
+            <button
+              onClick={runDecisionsMigration}
+              disabled={migrating}
+              style={{
+                padding: '7px 14px', borderRadius: 7,
+                border: `1px solid ${migrating ? C.border : C.accent + '66'}`,
+                background: migrating ? C.bg : C.accent + '18',
+                color: migrating ? C.muted : C.accent,
+                fontSize: 11, fontWeight: 600,
+                cursor: migrating ? 'default' : 'pointer',
+                fontFamily: 'inherit', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              {migrating ? 'Moving…' : 'Move old decisions'}
+            </button>
+          )}
+          <button
+            onClick={() => setBannerDismissed(true)}
+            title="Hide this banner for now. Old decisions stay on the event; the banner returns on next session."
+            style={{
+              padding: '7px 12px', borderRadius: 7,
+              border: `1px solid ${C.border}`,
+              background: 'transparent',
+              color: C.muted,
+              fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+            }}
+          >
+            Keep for now
+          </button>
+        </div>
+      )}
+      {/* Migration result toast (in-banner). Surfaces the actual count so
+          the planner sees what happened — no silent success. */}
+      {migrationResult && (
+        <div style={{
+          padding: '10px 16px',
+          background: migrationResult.ok ? C.success + '14' : C.warn + '0d',
+          borderBottom: `1px solid ${migrationResult.ok ? C.success + '44' : C.warn + '33'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
+            <strong style={{ fontWeight: 700 }}>
+              {migrationResult.ok
+                ? `Moved ${migrationResult.moved} decision${migrationResult.moved !== 1 ? 's' : ''} into shared approval history.`
+                : `Moved ${migrationResult.moved}; ${migrationResult.failed} could not be moved.`}
+            </strong>
+            <span style={{ color: C.muted, marginLeft: 6 }}>
+              Originals remain on the event.
+            </span>
+          </div>
+          <button
+            onClick={() => setMigrationResult(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+          >×</button>
+        </div>
+      )}
       {/* Sprint 66: Portal share banner */}
       <div style={{
         padding: '10px 16px',
@@ -19837,34 +20511,573 @@ function LegacyTabHeader({ label, onBack }) {
   );
 }
 
+// ─── Sprint 59B: EventPlanningTab — merged Planning surface ─────────────────
+// Hosts the three legacy planning views (List / Timeline / Checklist) inside
+// one L4 tab. event.timeline stays the single source of truth — each view
+// renders the same data array through its existing component (no duplicate
+// state, no migration). The view selector is local UI state seeded from the
+// inbound route via normalizeEventTabRoute.
+//
+// Compression routing (Sprint 57f.1): when a caller routes with
+// taskId === '__compressed__' the List view is selected and the sentinel is
+// forwarded as `openId` so the existing Timeline list opens the compressed
+// virtual phase. Switching views inside the tab does NOT clear openId — the
+// underlying components ignore it where it doesn't apply.
+function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningView, setPlanningView, openTaskId, openTimelineId }) {
+  const C = useT();
+  const view = PLANNING_VIEWS.includes(planningView) ? planningView : 'list';
+
+  // Phase focus band feeding TimelineBuilder's visual phase grid.
+  const phaseFocus = useMemo(() => {
+    const days = daysUntil(event?.date);
+    return getWorkflowGuidance(event?.type, days);
+  }, [event?.date, event?.type]);
+
+  // Toggle a task done in the canonical event.timeline (Checklist view).
+  const onToggleTask = (taskId) => {
+    setEvent(e => ({
+      ...e,
+      timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t),
+    }));
+  };
+
+  const tabPill = (id, label, title) => {
+    const active = view === id;
+    return (
+      <button
+        key={id}
+        onClick={() => setPlanningView(id)}
+        title={title}
+        aria-pressed={active}
+        style={{
+          fontSize: 12, fontWeight: active ? 700 : 500,
+          color: active ? C.text : C.muted,
+          background: active ? C.surface2 : 'transparent',
+          border: `1px solid ${active ? C.border : 'transparent'}`,
+          borderRadius: 8, padding: '6px 14px',
+          cursor: 'pointer', fontFamily: 'inherit',
+          letterSpacing: active ? '-0.01em' : '0.01em',
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <>
+      <LegacyTabHeader label="Planning" onBack={onBack} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 14px 10px' : '0 28px 12px', flexWrap: 'wrap' }}>
+        {tabPill('list',      'List',      'Edit planning tasks as a list')}
+        {tabPill('timeline',  'Timeline',  'Visual timeline by phase')}
+        {tabPill('checklist', 'Checklist', 'Quick checklist view')}
+      </div>
+      {view === 'list' && (
+        <Timeline
+          timeline={event.timeline}
+          setTimeline={wrap('timeline')}
+          eventDate={event.date}
+          openId={openTaskId}
+          eventType={event.type}
+        />
+      )}
+      {view === 'timeline' && (
+        <TimelineBuilder
+          event={event}
+          isMobile={isMobile}
+          openId={openTimelineId}
+          onBack={onBack}
+          phaseFocus={phaseFocus}
+        />
+      )}
+      {view === 'checklist' && (
+        <ChecklistGenerator
+          event={event}
+          isMobile={isMobile}
+          onBack={onBack}
+          onToggleTask={onToggleTask}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── Sprint 59E: EventDocumentsTab — canonical Files L4 surface ─────────────
+// Aggregates documents from the two pre-existing stores into one home:
+//   • event.documents[] — Sprint 49 per-event documents (contracts, floor
+//     plans, mood boards, seating charts, menus, final packets).
+//   • event.vendors[i].contractUrl / contractFileName — the vendor cockpit's
+//     contract attachments (truth still lives on the vendor record).
+// No new storage is created; no fake upload affordances. Vendor-owned rows
+// route to the Vendor cockpit via the Sprint 59C onOpenVendor pattern.
+function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
+  const C = useT();
+  const s = makeS(C);
+  const eventDocs   = Array.isArray(event?.documents) ? event.documents : [];
+  const vendors     = Array.isArray(event?.vendors)   ? event.vendors   : [];
+  const vendorDocs  = vendors.filter(v => v.contractUrl || v.contractFileName || v.contractStoragePath || v.docusignEnvelopeId);
+
+  // Kind labels mirror the Sprint 49 / CommandCenter taxonomy so the Documents
+  // tab speaks the same vocabulary the rest of the app uses.
+  const KIND_LABEL = {
+    contract:      'Contract',
+    floor_plan:    'Floor plan',
+    mood_board:    'Mood board',
+    seating_chart: 'Seating chart',
+    menu:          'Menu',
+    final_packet:  'Final packet',
+  };
+  // Status palette follows the Sprint 59C semantic discipline: green = done,
+  // amber = needs attention, neutral = informational only.
+  const statusColor = (st) => {
+    if (st === 'signed' || st === 'approved' || st === 'final') return C.success;
+    if (st === 'pending' || st === 'draft' || st === 'sent')    return C.warn;
+    return C.muted;
+  };
+
+  const SectionTitle = ({ label, count }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '14px 14px 6px' : '20px 28px 8px' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{label}</span>
+      {typeof count === 'number' && (
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+      )}
+    </div>
+  );
+
+  const empty = eventDocs.length === 0 && vendorDocs.length === 0;
+
+  return (
+    <>
+      <LegacyTabHeader label="Documents" onBack={onBack} />
+      {/* Sprint 59F: bounded width on desktop/wide so rows never stretch
+          across 1700px monitors. The 960 cap matches the typical Studio
+          Matte form/list width and leaves room for the Communication rail
+          on desktop. */}
+      <div style={{ padding: isMobile ? '4px 0 24px' : '4px 0 32px', maxWidth: 960, margin: '0 auto' }}>
+        {empty && (
+          <div style={{ padding: isMobile ? '20px 14px' : '24px 28px' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 6 }}>No documents on this event yet</div>
+            <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, maxWidth: 460 }}>
+              Contracts, floor plans, mood boards, menus, and final packets all live here.
+              Vendor contracts attach on the vendor record and appear here automatically.
+            </div>
+          </div>
+        )}
+
+        {/* ── Event files ──────────────────────────────────────────── */}
+        {eventDocs.length > 0 && (
+          <>
+            <SectionTitle label="Event files" count={eventDocs.length} />
+            <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {eventDocs.map(d => {
+                const kindLabel = KIND_LABEL[d.kind] || (d.kind || 'File');
+                const sColor = statusColor(d.status);
+                const opener = d.url || d.signedUrl || d.fileUrl || null;
+                return (
+                  <div key={d.id || d.title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {d.title || d.fileName || '(untitled)'}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>
+                        {kindLabel}
+                        {d.fileName ? ` · ${d.fileName}` : ''}
+                        {d.notes ? ` · ${d.notes}` : ''}
+                      </div>
+                    </div>
+                    {d.status && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                        {d.status}
+                      </span>
+                    )}
+                    {opener ? (
+                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                        Open file →
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link on file</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── Vendor documents ─────────────────────────────────────── */}
+        {vendorDocs.length > 0 && (
+          <>
+            <SectionTitle label="Vendor documents" count={vendorDocs.length} />
+            <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {vendorDocs.map(v => {
+                const fileLabel = v.contractFileName
+                  ? v.contractFileName
+                  : v.contractUrl
+                    ? 'Contract link'
+                    : v.contractStoragePath
+                      ? 'Contract uploaded'
+                      : 'DocuSign envelope';
+                const signed = v.contractSigned === true || v.contract_signed === true;
+                const sColor = signed ? C.success : v.docusignStatus === 'completed' ? C.success : C.warn;
+                const sLabel = signed ? 'Signed' : v.docusignEnvelopeId ? `DocuSign · ${v.docusignStatus || 'pending'}` : 'Unsigned';
+                return (
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                        {v.category ? `${v.category} · ` : ''}{fileLabel}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                      {sLabel}
+                    </span>
+                    {v.contractUrl && (
+                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                        Open file →
+                      </a>
+                    )}
+                    {onOpenVendor && (
+                      <button onClick={() => onOpenVendor(v.id)} title={`Open ${v.name} in the Vendors tab`} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                        Open vendor →
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {!empty && (
+          <div style={{ padding: isMobile ? '14px 14px 0' : '20px 28px 0', fontSize: 10.5, color: C.muted, lineHeight: 1.55, maxWidth: 560 }}>
+            Vendor documents live on the vendor record. Use "Open vendor" to edit contract status, send for signature, or attach a new file.
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Sprint 59E: EventDetailsTab — identity + venue truth ───────────────────
+// One editable surface for the event's core identity and venue logistics.
+// Used to be scattered across the header inputs, NewEventModal, vendor notes,
+// and the "Manage Event" overflow dropdown. Sprint 59A audit asked for one
+// owner; this is it. Secondary actions (Export / Duplicate / Archive / Delete)
+// stay in the header "Event Details" dropdown — that menu is unchanged.
+function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
+  const C = useT();
+  const s = makeS(C);
+  const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
+  // Local state for the freeform text fields so the input stays responsive
+  // while the planner is typing; commit on blur to event state.
+  const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
+  const SectionHead2 = ({ label, hint }) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>{label}</div>
+      {hint && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{hint}</div>}
+    </div>
+  );
+  const Row = ({ children }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>{children}</div>
+  );
+  const Field = ({ label, value, placeholder, onChange, type = 'text', textarea, options }) => (
+    <div>
+      <label style={{ fontSize: 10.5, color: C.muted, display: 'block', marginBottom: 4 }}>{label}</label>
+      {options ? (
+        <select style={{ ...s.input, fontSize: 12 }} value={value || ''} onChange={e => onChange(e.target.value)}>
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      ) : textarea ? (
+        <textarea
+          style={{ ...s.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+          value={value || ''}
+          placeholder={placeholder || ''}
+          onChange={e => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          type={type}
+          style={{ ...s.input, fontSize: 12 }}
+          value={value || ''}
+          placeholder={placeholder || ''}
+          onChange={e => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <LegacyTabHeader label="Event Details" onBack={onBack} />
+      {/* Sprint 59F: bounded form width on desktop/wide. A 720-cap keeps
+          the form readable on wide monitors instead of stretching to
+          1700px-wide single inputs. */}
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ padding: sectionPad }}>
+        <SectionHead2 label="Identity" hint="The basics — what the event is called, when it happens, and what kind of event it is." />
+        <Row>
+          <Field label="Event name"   value={event.name}      onChange={v => upd('name', v)} placeholder="Wedding · Birthday · Corporate offsite" />
+          <Field label="Event type"   value={event.type}      onChange={v => upd('type', v)} options={EVT_TYPES.map(t => ({ value: t, label: t }))} />
+        </Row>
+        <Row>
+          <Field label="Date"         value={event.date}      onChange={v => upd('date', v)} type="date" />
+          <Field
+            label="Time of day"
+            value={event.timeOfDay || 'afternoon'}
+            onChange={v => upd('timeOfDay', v)}
+            options={[
+              { value: 'morning',   label: 'Morning' },
+              { value: 'afternoon', label: 'Afternoon' },
+              { value: 'evening',   label: 'Evening' },
+              { value: 'night',     label: 'Night' },
+            ]}
+          />
+        </Row>
+      </div>
+
+      <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
+        <SectionHead2 label="Venue" hint="Where it happens. Address, contact, and the operational notes the team will need on event day." />
+        <Row>
+          <Field label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder="Bluebell Venue" />
+          <Field label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
+        </Row>
+        <Row>
+          <Field label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
+          <Field label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />
+        </Row>
+        <Row>
+          <Field label="Email"              value={event.venueEmail}   onChange={v => upd('venueEmail', v)} type="email" placeholder="venue@example.com" />
+          <Field
+            label="Indoor / outdoor"
+            value={event.indoorOutdoor || ''}
+            onChange={v => upd('indoorOutdoor', v)}
+            options={[
+              { value: '',         label: '— not set —' },
+              { value: 'indoor',   label: 'Indoor' },
+              { value: 'outdoor',  label: 'Outdoor' },
+              { value: 'both',     label: 'Both — partially outdoor' },
+            ]}
+          />
+        </Row>
+        <div style={{ marginBottom: 10 }}>
+          <Field label="Load-in notes"    value={event.loadInNotes} onChange={v => upd('loadInNotes', v)} textarea placeholder="Loading dock on the south side. Service elevator. Vendors arrive 2 hours before doors." />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <Field label="Parking"          value={event.parkingNotes} onChange={v => upd('parkingNotes', v)} textarea placeholder="Free guest parking in Lot B after 5pm. Validate at the front desk." />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <Field label="House rules"      value={event.houseRules} onChange={v => upd('houseRules', v)} textarea placeholder="No open flames. Music off by 11pm. Decor must be removed same night." />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <Field label="Rain plan"        value={event.rainPlan} onChange={v => upd('rainPlan', v)} textarea placeholder="Move ceremony into Ballroom B. Decision by 10am day-of." />
+        </div>
+        <Row>
+          <Field
+            label="Insurance / COI"
+            value={event.coiNeeded || ''}
+            onChange={v => upd('coiNeeded', v)}
+            options={[
+              { value: '',          label: '— not set —' },
+              { value: 'required',  label: 'Required — collect from vendors' },
+              { value: 'on_file',   label: 'On file' },
+              { value: 'not_needed', label: 'Not required' },
+            ]}
+          />
+        </Row>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.55, maxWidth: 560 }}>
+          Day-of view reads these notes on event day. Vendors check this for load-in instructions. Keep them short and explicit.
+        </div>
+      </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Sprint 59F: Communication rail (desktop only) ──────────────────────────
+// A 260px right-side context strip surfacing the most recent activity on the
+// event's communication thread plus an Open Communication CTA. Intentionally
+// minimal: this is a "where to go" hint, not a chat window. The floating
+// GlobalCompose still handles composition; the full CommunicationHub still
+// handles thread management. Reads `event.commClient[]` directly (the same
+// per-event in-memory thread store; no new fetch path).
+function CommunicationRail({ event, onOpenCommunication }) {
+  const C = useT();
+  const s = makeS(C);
+  // Use event.commClient directly so the useMemo dep is stable across
+  // renders (a conditional array literal would invalidate every render).
+  // Most-recent first; cap at 3 to keep the rail calm.
+  const recent = useMemo(() => {
+    const arr = Array.isArray(event?.commClient) ? event.commClient : [];
+    return [...arr]
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 3);
+  }, [event?.commClient]);
+  // Pending approvals badge — uses the same shape as the rest of the app.
+  const pendingApprovals = (event?.commClient || []).filter(m =>
+    m.message_type === 'approval_request' &&
+    (m.approval_status === 'pending' || !m.approval_status)
+  ).length;
+  // Best-effort relative time. Falls back to date string if older.
+  const fmtRel = (iso) => {
+    if (!iso) return '';
+    const t = new Date(iso).getTime();
+    if (Number.isNaN(t)) return '';
+    const delta = Date.now() - t;
+    if (delta < 60_000)          return 'just now';
+    if (delta < 60 * 60_000)     return `${Math.floor(delta / 60_000)}m ago`;
+    if (delta < 24 * 60 * 60_000) return `${Math.floor(delta / (60 * 60_000))}h ago`;
+    if (delta < 7 * 24 * 60 * 60_000) return `${Math.floor(delta / (24 * 60 * 60_000))}d ago`;
+    return iso.slice(0, 10);
+  };
+  // Status label kept honest per the Sprint 58P / 59C semantic map.
+  const statusLabel = (m) => {
+    if (m.deliveryStatus === 'email-delivered') return 'Delivered';
+    if (m.deliveryStatus === 'email-accepted' || m.deliveryStatus === 'email-sent') return 'Accepted by Resend';
+    if (m.deliveryStatus === 'email-bounced')   return 'Bounced';
+    if (m.deliveryStatus === 'email-complained') return 'Marked as spam';
+    if (m.deliveryStatus === 'email-failed')    return 'Failed';
+    if (m.deliveryStatus === 'email-deferred')  return 'Provider deferred';
+    if (m.deliveryStatus === 'local-only')      return 'Local only';
+    if (m.deliveryStatus === 'sent-via-app')    return 'Logged to thread';
+    if (m.deliveryStatus === 'note')            return 'Internal note';
+    return null;
+  };
+  return (
+    <aside
+      aria-label="Communication"
+      style={{
+        width: 260, flexShrink: 0,
+        borderLeft: `1px solid ${C.border}`,
+        padding: '18px 16px',
+        overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', gap: 12,
+        background: C.surface,
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
+          Communication
+        </div>
+        <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+          Latest event thread activity and outbound messages.
+        </div>
+      </div>
+
+      {pendingApprovals > 0 && (
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warn, background: C.warn + '14', border: `1px solid ${C.warn}44`, padding: '6px 10px', borderRadius: 7 }}>
+          {pendingApprovals} pending approval{pendingApprovals !== 1 ? 's' : ''}
+        </div>
+      )}
+
+      {recent.length === 0 ? (
+        <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5, padding: '4px 0' }}>
+          No messages yet on this event.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {recent.map(m => {
+            const label = statusLabel(m);
+            const preview = (m.body || m.text || m.subject || '').slice(0, 120);
+            return (
+              <div key={m.id} style={{ fontSize: 11, color: C.text, padding: '8px 10px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>
+                    {m.senderName || m.sender || (m.direction === 'outbound' ? 'You' : 'Thread')}
+                  </span>
+                  <span style={{ fontSize: 10, color: C.muted }}>{fmtRel(m.createdAt)}</span>
+                </div>
+                {preview && (
+                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {preview}
+                  </div>
+                )}
+                {label && (
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {label}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onOpenCommunication}
+        style={{
+          ...s.btn('ghost'),
+          fontSize: 11, padding: '8px 12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          marginTop: 'auto',
+        }}
+      >
+        <span>Open Communication</span>
+        <span aria-hidden>→</span>
+      </button>
+    </aside>
+  );
+}
+
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
   const { savedAt, online, syncState, pendingCount } = useContext(SaveCtx);
-  // Sprint 51 Path B: any 'Overview' from initialNav (stale URL, persisted
-  // state, third-party call) resolves to Command on first render.
-  const [tab,             setTab]            = useState((initialNav?.tab === 'Overview' ? 'Command' : initialNav?.tab) || 'Command');
+  // Sprint 51 Path B + Sprint 59B: any legacy tab name from initialNav (stale
+  // URL, persisted state, third-party trigger, Home/CommandCenter Sprint-57f
+  // compressed routes) is normalized at mount so we land in the right
+  // surface + view from the very first render.
+  const _initialNorm = normalizeEventTabRoute(initialNav?.tab, initialNav?.taskId || initialNav?.timelineId);
+  const [tab,             setTab]            = useState(_initialNorm.tab || 'Command');
+  // Sprint 59B: which view inside the merged Planning tab is active. Seeded
+  // from the legacy tab name so a route to 'Timeline' opens Planning →
+  // Timeline view, 'Checklist' opens Planning → Checklist view, and
+  // 'Planning Tasks' (including __compressed__) opens Planning → List view.
+  const [planningView,    setPlanningView]   = useState(_initialNorm.planningView || 'list');
   const [showConsult,     setShowConsult]    = useState(!!initialNav?.openConsult);
   const [exporting,       setExporting]      = useState(false);
   const [showSendClient,  setShowSendClient] = useState(false);
   const [showPortal,      setShowPortal]     = useState(false);
   const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
-  const [openTaskId,      setOpenTaskId]     = useState(initialNav?.taskId || null);
+  // Sprint 59B: legacy 'Planning Tasks' routes carry their item id under
+  // `taskId`. If the normalized landing view is `list`, seed openTaskId from
+  // that. The compressed sentinel '__compressed__' flows through unchanged.
+  const [openTaskId,      setOpenTaskId]     = useState(_initialNorm.planningView === 'list' ? (_initialNorm.openId || null) : (initialNav?.taskId || null));
   // Sprint 49: decision id (timeline task id or approval message id)
   const [openDecisionId,  setOpenDecisionId] = useState(initialNav?.decisionId || null);
   // Sprint 49: comm thread id (message id used to lookup the containing thread)
   const [openCommId,      setOpenCommId]     = useState(initialNav?.commId || null);
-  // Sprint 49: timeline item id (task id from Next Up routing)
-  const [openTimelineId,  setOpenTimelineId] = useState(initialNav?.timelineId || null);
+  // Sprint 49: timeline item id (task id from Next Up routing). Sprint 59B:
+  // legacy 'Timeline' tab routes still carry timelineId; seed it through the
+  // same normalization so Planning → Timeline opens to the right item.
+  const [openTimelineId,  setOpenTimelineId] = useState(_initialNorm.planningView === 'timeline' ? (_initialNorm.openId || null) : (initialNav?.timelineId || null));
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
   const [evtDrawerOpen,      setEvtDrawerOpen]      = useState(false);
   const [evtActionsOpen,     setEvtActionsOpen]     = useState(false);
   const [desktopEvtOverflow, setDesktopEvtOverflow] = useState(false);
   const [alertsDismissed,    setAlertsDismissed]    = useState(() => new Set());
 
-  const dayMode    = !!event.dayMode;
+  // ─── Sprint 59D: Day-of Mode auto-engage ─────────────────────────────────
+  // Pre-59D `event.dayMode` was a plain boolean and Day-of Mode was only
+  // reachable through the manual header toggle. Per Sprint 59A audit + 59D
+  // prompt: on event day the planner should not have to hunt for it.
+  //
+  // Behavior:
+  //  • `event.dayMode === undefined` (never touched) → auto-engage on event
+  //    day, off any other day. Old events untouched.
+  //  • `event.dayMode === true`  → on, regardless of date (explicit override).
+  //  • `event.dayMode === false` → off, regardless of date (planner exited
+  //    on event day — respect their call). Once event.date passes, the
+  //    auto-engage condition no longer fires anyway.
+  //  • Future / past events with no explicit toggle stay OFF.
+  //
+  // Toggling now always writes an explicit boolean so the next render reflects
+  // the planner's last choice.
+  const isEventToday = !!event.date && event.date === today8601();
+  const hasExplicitDayMode = event.dayMode === true || event.dayMode === false;
+  const dayMode    = hasExplicitDayMode ? event.dayMode : isEventToday;
+  const autoEngaged = dayMode && !hasExplicitDayMode && isEventToday;
   const setDayMode = (val) => setEvent(e => ({ ...e, dayMode: !!val }));
   const dayAlerts  = useMemo(() => computeDayAlerts(event), [event]); // eslint-disable-line react-hooks/exhaustive-deps
   const dismissAlert = (id) => setAlertsDismissed(s => new Set([...s, id]));
@@ -19876,28 +21089,41 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // Sprint 49 closure: showPlanDashboard removed — PLAN overlay retired.
 
   const handleTabChange = (newTab, itemId) => {
-    // Sprint 51 Path B: Overview retired. Any stale routing target ('Overview'
-    // from cached URL state, persisted localStorage, or third-party trigger)
-    // resolves to Command instead. Keeps the user in a known good state.
-    const resolvedTab = newTab === 'Overview' ? 'Command' : newTab;
+    // Sprint 51 Path B + Sprint 59B: every inbound route flows through one
+    // normalizer so legacy callers (Home attention queue, CommandCenter
+    // compressed CTAs, third-party deep links) automatically land in the
+    // right Planning view with the right item id. Overview → Command;
+    // Planning Tasks / Timeline / Checklist → Planning with the matching
+    // view; everything else passes through.
+    const norm = normalizeEventTabRoute(newTab, itemId);
+    const resolvedTab  = norm.tab;
+    const resolvedView = norm.planningView;
     setOpenVendorId(resolvedTab === 'Vendors'        ? (itemId || null) : null);
-    setOpenTaskId(resolvedTab   === 'Planning Tasks' ? (itemId || null) : null);
+    // Planning · List inherits the item id (taskId, including the
+    // '__compressed__' sentinel). All other tabs clear it.
+    setOpenTaskId(resolvedView === 'list'            ? (norm.openId || null) : null);
     // Sprint 49: Decisions tab routes carry an item id too
     setOpenDecisionId(resolvedTab === 'Decisions'    ? (itemId || null) : null);
     // Sprint 49: Communication tab routes carry an item id too
     setOpenCommId(resolvedTab === 'Communication'    ? (itemId || null) : null);
-    // Sprint 49: Timeline tab routes carry an item id (task id)
-    setOpenTimelineId(resolvedTab === 'Timeline'     ? (itemId || null) : null);
+    // Planning · Timeline inherits the timeline item id (Sprint 49 Next-Up).
+    setOpenTimelineId(resolvedView === 'timeline'    ? (norm.openId || null) : null);
+    if (resolvedView) setPlanningView(resolvedView);
     setTab(resolvedTab);
   };
 
   // Sprint 49: when re-entering an already-mounted EventPlanner from L1 (Home
   // attention items) with a new initialNav, sync the tab + openId. Without
   // this, useState only reads initialNav once at mount and stale navigation
-  // wins. Compare by stable identity (tab+vendorId+taskId+decisionId).
+  // wins. Sprint 59B: route through the normalizer so legacy initialNav.tab
+  // values still route to the merged Planning surface + correct view.
   useEffect(() => {
     if (!initialNav) return;
-    if (initialNav.tab && initialNav.tab !== tab) setTab(initialNav.tab);
+    if (initialNav.tab) {
+      const norm = normalizeEventTabRoute(initialNav.tab, initialNav.taskId || initialNav.timelineId);
+      if (norm.tab && norm.tab !== tab) setTab(norm.tab);
+      if (norm.planningView && norm.planningView !== planningView) setPlanningView(norm.planningView);
+    }
     if (initialNav.vendorId   && initialNav.vendorId   !== openVendorId)   setOpenVendorId(initialNav.vendorId);
     if (initialNav.taskId     && initialNav.taskId     !== openTaskId)     setOpenTaskId(initialNav.taskId);
     if (initialNav.decisionId && initialNav.decisionId !== openDecisionId) setOpenDecisionId(initialNav.decisionId);
@@ -19935,6 +21161,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     'Guests':         guestCount > 0   ? String(guestCount)                                      : null,
     'Vendors':        vendorCount > 0  ? String(vendorCount)                                     : null,
     'Decisions':      decisionsOpen > 0 ? `${decisionsOpen}${decisionCt > 0 ? ' ⚠' : ''}`        : null,
+    // Sprint 59B: single badge for the merged Planning surface — inherits
+    // the Planning Tasks done/total + overdue marker that surfaced before
+    // the merge. Legacy keys ('Timeline', 'Checklist', 'Planning Tasks')
+    // kept for any badge consumer that may still read by old name.
+    'Planning':       taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
     'Timeline':       taskTotal > 0    ? `${Math.round((taskDone / taskTotal) * 100)}%${overdueCount > 0 ? ' ⚠' : ''}` : null,
     'Checklist':      taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
     'Planning Tasks': taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
@@ -19944,15 +21175,21 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     'Communication':  unreadCommCt > 0 ? `${unreadCommCt} new`                                   : null,
   };
 
-  // Board Meeting gets an extra Agenda tab
+  // Board Meeting gets specialized ordering. Sprint 59B: same Planning merge
+  // applied. Sprint 59E: Agenda removed from the visible Board Meeting nav
+  // (data preserved on event.agenda — the render handler still answers a
+  // direct tab='Agenda' route for any legacy deep links). Documents +
+  // Event Details appended to match the canonical PLANNER_TABS shape.
   const plannerTabs = useMemo(
     () => event.type === 'Board Meeting'
       ? [
           'Command', 'Communication',
-          'Client Intake', 'Agenda', 'Budget', 'Guests', 'Vendors',
-          'Timeline', 'Checklist', 'Planning Tasks',
+          'Client Intake', 'Budget', 'Guests', 'Vendors',
+          'Planning',
           'Decisions',
           'Calendar', 'Run of Show',
+          'Documents',
+          'Event Details',
         ]
       : PLANNER_TABS,
     [event.type]
@@ -20068,19 +21305,48 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   };
   const canArchive = days !== null && days < -7;
   const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: 'transparent', color: C.text, textAlign: 'left' };
-  // Mobile bottom-nav: normal vs. Day Mode
+  // ─── Sprint 59F: mobile bottom nav — 5-item lane model ──────────────────
+  // Pre-59F shipped 4 routing items (Command / Planning / Vendors / Comms).
+  // Sprint 59A audit asked for a 5-lane shape that matches how planners
+  // actually think: Command / Planning / People / Money / Comms. People and
+  // Money are lane buttons that open a small bottom sheet so the planner
+  // can pick between Vendors/Guests/Seating or Budget/Documents without
+  // burning a top-level slot per surface. Decisions / Calendar / Run of
+  // Show / Event Details / Day-of stay reachable via the existing "More"
+  // button (which opens the full nav drawer).
+  //
+  // Day-of mode bottom nav is unchanged — it's the focused event-day shape.
+  const [bottomSheet, setBottomSheet] = useState(null); // 'people' | 'money' | null
+  const PEOPLE_TABS = ['Vendors', 'Guests', 'Seating'];
+  const MONEY_TABS  = ['Budget',  'Documents'];
   const bottomNavItems = dayMode ? [
     { id: 'Now',           icon: 'zap',       label: 'Now'      },
     { id: 'Arrivals',      icon: 'store',     label: 'Arrivals' },
     { id: 'Run of Show',   icon: 'clipboard', label: 'Schedule' },
     { id: 'Communication', icon: 'message',   label: 'Comms'    },
   ] : [
-    { id: 'Command',        icon: 'zap',   label: 'Command'  },
-    { id: 'Planning Tasks', icon: 'check', label: 'Tasks'    },
-    { id: 'Vendors',        icon: 'store', label: 'Vendors'  },
-    { id: 'Communication',  icon: 'message', label: 'Comms'  },
-  ].filter(it => plannerTabs.includes(it.id));
-  const bottomMoreActive = !bottomNavItems.some(it => it.id === tab);
+    { id: 'Command',  icon: 'zap',     label: 'Command',  target: 'Command' },
+    { id: 'Planning', icon: 'check',   label: 'Planning', target: 'Planning' },
+    { id: 'People',   icon: 'users',   label: 'People',   sheet:  'people'   },
+    { id: 'Money',    icon: 'dollar',  label: 'Money',    sheet:  'money'    },
+    { id: 'Comms',    icon: 'message', label: 'Comms',    target: 'Communication' },
+  ];
+  // Active-state computation per lane. Tracks both the current tab and the
+  // open sheet so lane-button highlights stay correct while the planner is
+  // picking from a sheet.
+  const laneActive = (it) => {
+    if (it.id === 'Command')  return tab === 'Command';
+    if (it.id === 'Planning') return tab === 'Planning';
+    if (it.id === 'People')   return PEOPLE_TABS.includes(tab) || bottomSheet === 'people';
+    if (it.id === 'Money')    return MONEY_TABS.includes(tab)  || bottomSheet === 'money';
+    if (it.id === 'Comms')    return tab === 'Communication';
+    return tab === it.id;
+  };
+  // "More" surfaces every tab that isn't in the 5 primary lanes — Decisions,
+  // Calendar, Run of Show, Event Details, and (when not in day-of mode) the
+  // day-of operational surfaces.
+  const PRIMARY_LANE_TABS = new Set(['Command', 'Planning', 'Communication', ...PEOPLE_TABS, ...MONEY_TABS]);
+  const bottomMoreActive = dayMode ? !bottomNavItems.some(it => it.id === tab) : !PRIMARY_LANE_TABS.has(tab);
 
   const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
   const bPad = isMobile ? '14px 14px'   : bp === 'tablet' ? '18px 20px'   : '24px 28px';
@@ -20104,7 +21370,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           function definition is kept in this file as documented dead code for
           one release so any team script referencing it doesn't trip; remove
           in next sprint. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)} /></>}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
@@ -20148,29 +21414,70 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           />
         </Suspense>
       )}
-      {tab === 'Timeline'       && (
+      {/* Sprint 59B: merged Planning surface. Hosts List / Timeline /
+          Checklist as view modes against the same event.timeline source of
+          truth. Suspense wrapper handles the lazy-loaded plan/ modules
+          (TimelineBuilder, ChecklistGenerator) used by the Timeline and
+          Checklist views. */}
+      {tab === 'Planning'       && (
         <Suspense fallback={<SpecialistFallback />}>
-          <EventTimelineTab
-            event={event}
-            openId={openTimelineId}
-            isMobile={isMobile}
-            onBack={() => handleTabChange('Command')}
-          />
-        </Suspense>
-      )}
-      {tab === 'Checklist'      && (
-        <Suspense fallback={<SpecialistFallback />}>
-          <EventChecklistTab
+          <EventPlanningTab
             event={event}
             setEvent={setEvent}
+            wrap={wrap}
             isMobile={isMobile}
             onBack={() => handleTabChange('Command')}
+            planningView={planningView}
+            setPlanningView={setPlanningView}
+            openTaskId={openTaskId}
+            openTimelineId={openTimelineId}
           />
         </Suspense>
       )}
-      {tab === 'Planning Tasks' && <><LegacyTabHeader label="Planning Tasks" onBack={() => handleTabChange('Command')} /><Timeline  timeline={event.timeline} setTimeline={wrap('timeline')} eventDate={event.date} openId={openTaskId} eventType={event.type} /></>}
+      {/* Sprint 59E: Documents L4 — one home for files, links, vendor
+          contracts, DocuSign envelopes. Routes vendor-owned rows to the
+          Vendor cockpit via the Sprint 59C onOpenVendor pattern. */}
+      {tab === 'Documents' && (
+        <EventDocumentsTab
+          event={event}
+          isMobile={isMobile}
+          onBack={() => handleTabChange('Command')}
+          onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)}
+        />
+      )}
+      {/* Sprint 59E: Event Details L4 — identity + venue truth in one
+          editable surface. Secondary actions (Duplicate / Archive / Delete /
+          Export) remain in the header dropdown. */}
+      {tab === 'Event Details' && (
+        <EventDetailsTab
+          event={event}
+          setEvent={setEvent}
+          isMobile={isMobile}
+          onBack={() => handleTabChange('Command')}
+        />
+      )}
       {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} eventName={event.name} /></>}
-      {tab === 'Run of Show' && <><LegacyTabHeader label="Run of Show" onBack={() => handleTabChange('Command')} /><RunOfShow ros={event.ros}           setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} /></>}
+      {tab === 'Run of Show' && (
+        <>
+          <LegacyTabHeader label="Run of Show" onBack={() => handleTabChange('Command')} />
+          {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
+              this sprint; if the event still has persisted agenda items
+              from a previous sprint, surface an inline "View legacy agenda"
+              link so the data isn't orphaned. Run of Show is the canonical
+              event-day schedule from here on. */}
+          {(event.agenda || []).length > 0 && (
+            <div style={{ padding: isMobile ? '8px 14px' : '10px 28px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.border}`, background: C.surface }}>
+              <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+                {(event.agenda || []).length} agenda note{(event.agenda || []).length !== 1 ? 's' : ''} on this event (from the legacy Agenda tab).
+              </span>
+              <button onClick={() => handleTabChange('Agenda')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px' }}>
+                View legacy agenda →
+              </button>
+            </div>
+          )}
+          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} />
+        </>
+      )}
       {tab === 'Agenda'      && <>
         <LegacyTabHeader label="Agenda" onBack={() => handleTabChange('Command')} />
         <AgendaBuilder
@@ -20196,7 +21503,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         </Suspense>
       )}
       {tab === 'Now'      && dayMode && <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} />}
-      {tab === 'Arrivals' && dayMode && <VendorArrivalView vendors={event.vendors || []} setVendors={wrap('vendors')} event={event} />}
+      {tab === 'Arrivals' && dayMode && (
+        <VendorArrivalView
+          vendors={event.vendors || []}
+          setVendors={wrap('vendors')}
+          event={event}
+          /* Sprint 59H — Day-of "Missing arrival times" panel routes to the
+             specific vendor inside the Vendor cockpit. */
+          onOpenVendor={(vId) => handleTabChange('Vendors', vId)}
+        />
+      )}
     </ErrorBoundary>
   );
 
@@ -20226,14 +21542,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               {countdownLabel(days)}
             </span>
           )}
-          {/* Sprint 57: Day Mode toggle promoted from Manage Event dropdown to
-              a visible header button. Audit v2 §6 — high-value mode toggle
-              shouldn't be buried in an ellipsis menu. Always visible so the
-              planner knows which mode they're in; one click flips. */}
+          {/* Sprint 57: Day-of toggle promoted from Manage Event dropdown to
+              a visible header button. Sprint 59D: copy locked to
+              "Day-of view" ↔ "Full event view" per the audit; the button
+              is always the way back to the other mode. Auto-engaged events
+              get a small "Today's event" tag below so the planner knows
+              why they landed in Day-of view. */}
           <button
             onClick={() => setDayMode(!dayMode)}
-            aria-label={dayMode ? 'Switch back to planning view' : 'Switch to Day-Of view'}
-            title={dayMode ? 'Switch back to planning view' : 'Switch to Day-Of view'}
+            aria-label={dayMode ? 'Switch to the full event editor' : "Switch to today's day-of view"}
+            title={dayMode ? 'Switch to the full event editor' : "Switch to today's day-of view"}
             style={{
               fontSize: 10, fontWeight: 700,
               color: dayMode ? C.accent : C.muted,
@@ -20245,8 +21563,26 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               display: 'inline-flex', alignItems: 'center', gap: 4,
             }}
           >
-            <Icon name="zap" size={11} /> {dayMode ? 'Day Mode · switch back' : 'Day-Of view'}
+            <Icon name="zap" size={11} /> {dayMode ? 'Full event view' : 'Day-of view'}
           </button>
+          {/* Sprint 59D: auto-engage hint. Only renders when Day-of view was
+              chosen for the planner (event is today AND they haven't made an
+              explicit choice this session). Disappears as soon as the planner
+              toggles either way. */}
+          {autoEngaged && (
+            <span
+              title="Day-of view opened automatically because the event is today. Switch back any time with the button on the left."
+              style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: C.accent,
+                background: C.accent + '14',
+                border: `1px solid ${C.accent}44`,
+                padding: '2px 7px', borderRadius: 5,
+              }}
+            >
+              Today's event
+            </span>
+          )}
           {syncState === 'offline' && (
             <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● Offline</span>
           )}
@@ -20297,11 +21633,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 <button
                   onClick={e => { e.stopPropagation(); setDesktopEvtOverflow(o => !o); }}
                   style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: desktopEvtOverflow ? C.accent : C.border, color: desktopEvtOverflow ? C.accent : C.text }}
-                  title="Manage event"
-                  aria-label="Manage event"
+                  title="Event details"
+                  aria-label="Event details"
                   aria-expanded={desktopEvtOverflow}
                 >
-                  <Icon name="ellipsis" size={13} /> Manage Event
+                  {/* Sprint 59B: "Manage Event" renamed to "Event Details".
+                      The label was vague — this is the entry-point for
+                      identity / mode / secondary actions, not a separate
+                      management surface. */}
+                  <Icon name="ellipsis" size={13} /> Event Details
                 </button>
                 {desktopEvtOverflow && (() => {
                   const row = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: C.text, fontFamily: 'inherit', textAlign: 'left', whiteSpace: 'nowrap' };
@@ -20311,10 +21651,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                       background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.20)', padding: '4px 0', minWidth: 200,
                     }}>
-                      <div style={{ padding: '8px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Manage Event</div>
+                      <div style={{ padding: '8px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Event Details</div>
                       <button onClick={() => { setDayMode(!dayMode); setDesktopEvtOverflow(false); if (!dayMode) handleTabChange('Now'); }} style={{ ...row, color: dayMode ? C.accent : C.text }}>
                         <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: dayMode ? C.accent : C.muted }}><Icon name="zap" size={15} /></span>
-                        {dayMode ? 'Exit Day Mode' : 'Event Day Mode'}
+                        {/* Sprint 59D: copy locked to Day-of/Full event view. */}
+                        {dayMode ? 'Full event view' : 'Day-of view'}
                       </button>
                       {/* Sprint 51 follow-up: ConsultScriptModal trigger restored
                           after Overview retirement. Lives in Manage Event so it
@@ -20452,6 +21793,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         />
       )}
 
+      {(() => {
+        // Sprint 59F: Communication rail policy. Only on desktop (≥1280),
+        // only on tabs where the rail adds context without redundancy.
+        // Command has its own dashboard, Communication IS the full surface,
+        // and Day-of focuses the planner — none of them need a side rail.
+        // Computed up here so the layout shell can decide column structure.
+        const showCommRail = bp === 'desktop' && !dayMode && tab !== 'Command' && tab !== 'Communication';
+        return (
+      <>
       {isSidebarNav ? (
         /* ── Collapsible sidebar layout for tablet-land + desktop ── */
         <div style={{ display: 'flex', minHeight: 'calc(100vh - 120px)' }}>
@@ -20493,12 +21843,26 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </div>
             )}
           </div>
-          {/* Content — fills full remaining width, capped on desktop */}
+          {/* Content — fills full remaining width, capped on desktop.
+              Sprint 59F: cap drops to 880 when the Communication rail is
+              showing so the page still has comfortable breathing room with
+              the rail on the right edge. */}
           <div style={{ flex: 1, minWidth: 0, padding: bPad, overflowY: 'auto' }}>
-            <div style={{ maxWidth: bp === 'desktop' ? 1060 : 'none', margin: '0 auto' }}>
+            <div style={{ maxWidth: bp === 'desktop' ? (showCommRail ? 880 : 1060) : 'none', margin: '0 auto' }}>
               {tabContent}
             </div>
           </div>
+          {/* Sprint 59F: persistent Communication rail (desktop only).
+              Honest content — last 3 thread items + Open Communication CTA.
+              No fake live-chat, no fake provider status. Floating
+              GlobalCompose continues to handle composition; the rail is a
+              context surface, not a replacement. */}
+          {showCommRail && (
+            <CommunicationRail
+              event={event}
+              onOpenCommunication={() => handleTabChange('Communication')}
+            />
+          )}
         </div>
       ) : (
         /* ── Stacked layout for mobile + tablet portrait ── */
@@ -20506,6 +21870,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           {tabContent}
         </div>
       )}
+      </>
+        );
+      })()}
 
       {/* Mobile/tablet: slide-in section drawer (sections only — actions live in the header sheet) */}
       {!isSidebarNav && evtDrawerOpen && (
@@ -20527,10 +21894,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <div onClick={() => setEvtActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 61, padding: '8px 14px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)', maxHeight: '88vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Manage Event</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Event Details</div>
             {[
               // Sprint 49 closure: 'Plan Dashboard' entry removed — PLAN overlay retired.
-              { icon: 'zap',      label: dayMode ? 'Exit Day Mode' : 'Event Day Mode', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
+              // Sprint 59D: mobile drawer copy locked to Day-of/Full event view.
+              { icon: 'zap',      label: dayMode ? 'Full event view' : 'Day-of view', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
               // Sprint 51 follow-up: ConsultScriptModal trigger restored after Overview retirement.
               { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
               { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
@@ -20567,6 +21935,72 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       )}
 
       {/* Mobile/tablet: thumb-zone bottom navigation */}
+      {/* Sprint 59F: People / Money lane sheets. Render above the bottom
+          nav with an overlay so the planner can dismiss by tapping outside.
+          Each option carries a contextual count so the planner picks with
+          information (vendors / confirmed guests / table count for People;
+          total budget / document count for Money). */}
+      {!isSidebarNav && bottomSheet && (
+        <>
+          <div
+            onClick={() => setBottomSheet(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 49 }}
+          />
+          <div style={{
+            position: 'fixed', left: 0, right: 0,
+            bottom: 'calc(52px + env(safe-area-inset-bottom))',
+            background: C.surface,
+            borderTop: `1px solid ${C.border}`,
+            borderRadius: '14px 14px 0 0',
+            zIndex: 50,
+            padding: '14px 12px 18px',
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} />
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8, padding: '0 4px' }}>
+              {bottomSheet === 'people' ? 'People' : 'Money & Files'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {(bottomSheet === 'people'
+                ? [
+                    { id: 'Vendors', icon: 'store',   label: 'Vendors', sub: `${vendorCount} on event` },
+                    { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}` },
+                    { id: 'Seating', icon: 'seating', label: 'Seating', sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables' },
+                  ]
+                : [
+                    { id: 'Budget',    icon: 'dollar', label: 'Budget',    sub: 'Plan + actuals' },
+                    { id: 'Documents', icon: 'file',   label: 'Documents', sub: `${(event.documents || []).length} on event` },
+                  ]
+              ).map(opt => {
+                const isActive = tab === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => { handleTabChange(opt.id); setBottomSheet(null); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '12px 14px', borderRadius: 10,
+                      background: isActive ? color + '16' : 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left',
+                      color: isActive ? color : C.text,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ width: 28, display: 'flex', justifyContent: 'center', color: isActive ? color : C.muted }}><Icon name={opt.icon} size={18} /></span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{opt.label}</div>
+                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{opt.sub}</div>
+                    </div>
+                    <Icon name="chevronRight" size={14} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
       {!isSidebarNav && (
         <div style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40,
@@ -20578,9 +22012,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           WebkitBackdropFilter: 'blur(12px)',
         }}>
           {bottomNavItems.map(it => {
-            const active = tab === it.id;
+            // Sprint 59F: lane-aware active state. Sheet items (People,
+            // Money) light up when their child tab is active OR the sheet
+            // is open.
+            const active  = laneActive(it);
+            const onClick = it.sheet
+              ? () => setBottomSheet(it.sheet)
+              : () => { setBottomSheet(null); handleTabChange(it.target || it.id); };
             return (
-              <button key={it.id} onClick={() => handleTabChange(it.id)} title={it.id}
+              <button key={it.id} onClick={onClick} title={it.id} aria-label={it.id} aria-haspopup={it.sheet ? 'true' : undefined}
                 style={{
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                   padding: active ? '8px 0 11px' : '10px 0 11px',
@@ -21060,6 +22500,35 @@ export default function App() {
   // Update guests for any event (used by ClientPortal so the client can manage the guest list)
   const updateEventGuests = (evId, fn) => setEvents(evts => evts.map(e => e.id === evId ? { ...e, guests: typeof fn === 'function' ? fn(e.guests || []) : fn } : e));
 
+  // ─── Sprint 59H: cross-event quick-action writers ────────────────────────
+  // Used by Home AttentionQueue rows so the planner can resolve attention
+  // items inline without first routing into the event. Each writer targets
+  // a single canonical owner (event.timeline / event.commClient /
+  // event.vendors[i].log) — no shadow stores, no fake delivery, no Resend
+  // attempts. Communication-bound actions (Email vendor) still use a
+  // mailto handoff so the planner sees the truth ("opens your mail app").
+  const markTaskDone = (evId, taskId) => {
+    setEvents(evts => evts.map(e => e.id === evId
+      ? { ...e, timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: true, resolvedAt: new Date().toISOString() } : t) }
+      : e
+    ));
+  };
+  const markMsgHandled = (evId, msgId) => {
+    setEvents(evts => evts.map(e => e.id === evId
+      ? { ...e, commClient: (e.commClient || []).map(m => m.id === msgId ? { ...m, handled: true, handledAt: new Date().toISOString() } : m) }
+      : e
+    ));
+  };
+  const logVendorContact = (evId, vendorId, text) => {
+    const today = new Date().toISOString().slice(0, 10);
+    setEvents(evts => evts.map(e => e.id === evId
+      ? { ...e, vendors: (e.vendors || []).map(v => v.id === vendorId
+          ? { ...v, log: [...(v.log || []), { date: today, text: text || 'Reconfirmed — manual log from Home attention queue.' }] }
+          : v) }
+      : e
+    ));
+  };
+
   const createEvent = (ev, explicitClientId) => {
     setEvents(evts => [...evts, ev]);
     // Sprint 68: fire event.created webhook if planner has configured a URL
@@ -21238,10 +22707,11 @@ export default function App() {
   const gated = (children) => providers(<AuthGate>{children}</AuthGate>);
 
   // ── Public RSVP route: ?rsvp=CODE opens the guest form directly ──
-  const urlParams   = new URLSearchParams(window.location.search);
-  const rsvpCode    = urlParams.get('rsvp');
-  const vendorCode  = urlParams.get('vendor');
-  const portalToken = urlParams.get('portal');
+  const urlParams    = new URLSearchParams(window.location.search);
+  const rsvpCode     = urlParams.get('rsvp');
+  const vendorCode   = urlParams.get('vendor');
+  const portalToken  = urlParams.get('portal');
+  const intakeToken  = urlParams.get('intake');
 
   if (rsvpCode) {
     const rsvpEvent = events.find(e => e.rsvpCode === rsvpCode || e.id === rsvpCode);
@@ -21282,6 +22752,11 @@ export default function App() {
   // ── Sprint 66: Public Client Portal route: ?portal=TOKEN ──
   if (portalToken) {
     return providers(<ClientPortalPublicView token={portalToken} events={events} />);
+  }
+
+  // ── Sprint 67: Public Intake Form route: ?intake=TOKEN ──
+  if (intakeToken) {
+    return providers(<PublicIntakeForm token={intakeToken} />);
   }
 
   // ── Event-Day Mode: ?mode=event-day[&event=ID] ──
@@ -21368,6 +22843,10 @@ export default function App() {
         onProfile={() => setShowProfile(true)}
         onNew={() => setShowNew(true)}
         onNewClient={() => setShowNewClient(true)}
+        onCreateFromIntake={(ev, cl) => {
+          setClients(cs => [...cs, { ...cl, eventIds: [...(cl.eventIds || []), ev.id] }]);
+          createEvent(ev, cl.id);
+        }}
         calNotes={calNotes}
         onAddCalNote={addCalNote}
         onToggleCalNote={toggleCalNote}
@@ -21375,10 +22854,14 @@ export default function App() {
         onLoadSampleData={loadSampleData}
         onClearSampleData={clearSampleData}
         onMarkOnboardDone={markOnboardDone}
+        /* Sprint 59H — cross-event quick-action writers for AttentionQueue */
+        onMarkTaskDone={markTaskDone}
+        onMarkMsgHandled={markMsgHandled}
+        onLogVendorContact={logVendorContact}
       />
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
-      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} />}
+      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events} />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
       {/* Global floating compose — accessible from every screen */}
       <GlobalCompose events={events} profile={profile} clients={clients}

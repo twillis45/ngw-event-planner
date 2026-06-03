@@ -4,10 +4,12 @@
 // here is called. UI wiring is deferred until the backend is deployed + testable.
 //
 // Sprint 58.2: channel type mapping, capabilities endpoint, email delivery fields.
+// Sprint 64: stripe_configured added to capabilities, forwarded to stripeApi.
 //
 // The planner token is a TEMPORARY dev gate (matches backend PLANNER_DEV_TOKEN)
 // until Supabase Auth is wired. It is sent as X-Planner-Token.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { setStripeConfigured } from './stripeApi';
 
 const BASE  = process.env.REACT_APP_API_BASE_URL;
 const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
@@ -81,6 +83,7 @@ export const getCapabilities = async () => {
       if (!res.ok) return { email_configured: false };
       const data = await res.json();
       _capCache = data;
+      if (data.stripe_configured) setStripeConfigured(true);
       return data;
     } catch {
       return { email_configured: false };
@@ -95,6 +98,32 @@ export const getCapabilities = async () => {
 // Callers that need a guaranteed result should await getCapabilities() first.
 export const isEmailConfigured = () => _capCache?.email_configured ?? false;
 
+// ── Sprint 58P.4c — Public client-portal approval response ──────────────────
+// Posts the client's approve/reject verdict directly. NO auth headers — the
+// portal_token in the body is the credential (matched against
+// metadata.portal_token persisted on the approval_request message at create
+// time). Throws on non-2xx so the caller can fall back to localStorage and
+// surface honest "saved on this device only" copy.
+export const portalRespond = async (eventId, messageId, payload) => {
+  if (!BASE) throw new Error('Comm API not configured');
+  const res = await fetch(
+    `${BASE}${base(eventId)}/messages/${encodeURIComponent(messageId)}/portal-respond`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err.detail || `portal-respond ${res.status}`;
+    const e = new Error(msg);
+    e.status = res.status;
+    throw e;
+  }
+  return res.json();
+};
+
 export const commApi = {
   listChannels:   (eventId)                       => req('GET',  `${base(eventId)}/channels`),
   ensureChannels: (eventId)                       => req('POST', `${base(eventId)}/channels/ensure`),
@@ -105,5 +134,7 @@ export const commApi = {
   pinMessage:     (eventId, messageId, opts={})   => req('POST', `${base(eventId)}/messages/${messageId}/pin`, opts),
   unpinMessage:   (eventId, messageId)            => req('DELETE', `${base(eventId)}/messages/${messageId}/pin`),
   markRead:       (eventId, channelType, readerKey) => req('POST', `${base(eventId)}/channels/${mapChannel(channelType)}/read`, { reader_key: readerKey }),
+  // Sprint 58P.4c — public portal verdict path; no planner auth.
+  portalRespond,
   getCapabilities,
 };
