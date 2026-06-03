@@ -11550,8 +11550,6 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   const s  = makeS(C);
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
-  const [intakeRefresh, setIntakeRefresh] = useState(0);
-
   // Record the first-pipeline-viewed timestamp the first time this surface
   // mounts. Idempotent: ignores all later mounts.
   useEffect(() => {
@@ -11559,16 +11557,18 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   }, []);
 
   // ── Intake submissions (Sprint 67 store) ─────────────────────────────
-  const intakeSubs = useMemo(() => {
-    if (!profile?.intakeToken) return [];
+  // useState + effect (not useMemo) so callers can trigger a re-read after
+  // writing back to localStorage without a phantom dependency that confuses
+  // the exhaustive-deps lint rule.
+  const [intakeSubs, setIntakeSubs] = useState([]);
+  const reloadIntakeSubs = () => {
+    if (!profile?.intakeToken) { setIntakeSubs([]); return; }
     try {
       const raw = localStorage.getItem(`ngw-intake-submissions-${profile.intakeToken}`);
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-    // intakeRefresh is the manual re-read trigger after convertInquiry writes
-    // back to localStorage; the lint rule cannot see that side-effect signal.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.intakeToken, intakeRefresh]);
+      setIntakeSubs(raw ? JSON.parse(raw) : []);
+    } catch { setIntakeSubs([]); }
+  };
+  useEffect(() => { reloadIntakeSubs(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [profile?.intakeToken]);
   const newInquiries = intakeSubs.filter(s => s.status === 'new');
 
   // ── Client-stage derivation ──────────────────────────────────────────
@@ -11671,13 +11671,23 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       guestCount: sub.guestCount ? Number(sub.guestCount) : 0,
       budget: [], vendors: [], guests: [], timeline: [], ros: [], commClient: [],
     };
+    // Race fix: create the event first. Only mark the intake submission
+    // converted if onCreateFromIntake didn't throw — otherwise the planner
+    // could see "converted" with no matching event.
+    try {
+      onCreateFromIntake && onCreateFromIntake(newEvent, newClient);
+    } catch (e) {
+      // Surface visibly; do NOT touch the submission state.
+      // eslint-disable-next-line no-console
+      console.error('convertInquiry: onCreateFromIntake failed — submission left as-is', e);
+      return;
+    }
     try {
       const key = `ngw-intake-submissions-${profile.intakeToken}`;
       const updated = intakeSubs.map(x => x.id === sub.id ? { ...x, status: 'converted', convertedEventId: newEvent.id } : x);
       localStorage.setItem(key, JSON.stringify(updated));
-      setIntakeRefresh(n => n + 1);
+      reloadIntakeSubs();
     } catch {}
-    onCreateFromIntake && onCreateFromIntake(newEvent, newClient);
   };
 
   // ── Inquiry card (intake submission) ─────────────────────────────────
