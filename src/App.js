@@ -3462,12 +3462,23 @@ const waHref = (val) => val.startsWith('http') ? val : `https://wa.me/${val.repl
 
 // ─── Vendor Modal ─────────────────────────────────────────────────────────────
 
-function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, event, ros, profile }) {
+function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDelete, event, ros, profile }) {
   const C          = useT();
   const s          = makeS(C);
   const stageCLR   = STAGE_CLR(C);
   const showToast  = useToast();
   const aiKey      = useAIKey();
+
+  // Autosave: every field change immediately persists to the vendor list.
+  // The parent's onSave expects a full updated vendor object. This wrapper
+  // handles both onChange(field, value) and onChange(fullVendorObject) calls.
+  const onChange = (fieldOrVendor, value) => {
+    if (typeof fieldOrVendor === 'string') {
+      onSave({ ...vendor, [fieldOrVendor]: value });
+    } else {
+      onSave(fieldOrVendor);  // already a full vendor object (e.g. contract upload)
+    }
+  };
   const [newLog,         setNewLog]        = useState('');
   const [copied,         setCopied]        = useState(false);
   const [showBrief,      setShowBrief]     = useState(false);
