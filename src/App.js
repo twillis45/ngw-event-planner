@@ -4177,62 +4177,112 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 
                 {/* File upload — shown when Supabase Storage is configured */}
                 {isStorageConfigured() && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                    <label style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600,
-                      border: `1px solid ${C.border}`, cursor: contractUploading ? 'wait' : 'pointer',
-                      color: C.muted, background: 'transparent', transition: 'border-color 0.12s',
-                    }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}
-                    >
-                      {contractUploading ? '⏳ Uploading…' : '📎 Upload contract file'}
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }} disabled={contractUploading}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const v = validateFile(file);
-                          if (!v.ok) { setContractUploadErr(v.error); return; }
-                          setContractUploadErr(null);
-                          setContractUploading(true);
-                          try {
-                            const result = await uploadFile({
-                              file,
-                              eventId: event?.id || 'unknown',
-                              category: 'contract',
-                              userId: auth?.user?.id || 'anon',
-                            });
-                            if (result.ok) {
-                              // Pass the full updated vendor object — the parent's
-                              // onChange expects (updatedVendor), not (field, value).
-                              onChange({
-                                ...vendor,
-                                contractUrl:         result.url || result.path,
-                                contractFileName:    file.name,
-                                contractStoragePath: result.path,
-                                // Do NOT auto-mark contractSigned — uploading a file
-                                // does not mean signatures exist. Planner confirms separately.
-                              });
-                            } else {
-                              const errMsg = result.error || 'Upload failed';
-                              const isBucketMissing = errMsg.toLowerCase().includes('bucket') || errMsg.toLowerCase().includes('not found');
-                              setContractUploadErr(isBucketMissing
-                                ? 'Storage not set up — run the event-files bucket SQL in Supabase Dashboard'
-                                : errMsg);
-                            }
-                          } finally {
-                            setContractUploading(false);
-                            e.target.value = '';
-                          }
-                        }}
-                      />
-                    </label>
-                    {vendor.contractFileName && (
-                      <span style={{ fontSize: 11, color: C.muted }}>📄 {vendor.contractFileName}</span>
+                  <div style={{ marginTop: 8 }}>
+                    {/* Success state — file already attached */}
+                    {vendor.contractFileName && !contractUploading && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 8,
+                        background: '#16a34a18', border: '1.5px solid #16a34a55',
+                        marginBottom: 6,
+                      }}>
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>Contract uploaded</div>
+                          <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            📄 {vendor.contractFileName}
+                          </div>
+                        </div>
+                        {/* Replace button */}
+                        <label style={{
+                          fontSize: 10, fontWeight: 600, color: C.muted, cursor: 'pointer',
+                          padding: '3px 8px', borderRadius: 5, border: `1px solid ${C.border}`,
+                          background: 'transparent', whiteSpace: 'nowrap', flexShrink: 0,
+                        }}>
+                          Replace
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const v = validateFile(file);
+                              if (!v.ok) { setContractUploadErr(v.error); return; }
+                              setContractUploadErr(null);
+                              setContractUploading(true);
+                              try {
+                                const result = await uploadFile({ file, eventId: event?.id || 'unknown', category: 'contract', userId: auth?.user?.id || 'anon' });
+                                if (result.ok) {
+                                  onChange({ ...vendor, contractUrl: result.url || result.path, contractFileName: file.name, contractStoragePath: result.path });
+                                } else {
+                                  setContractUploadErr(result.error || 'Upload failed');
+                                }
+                              } finally { setContractUploading(false); e.target.value = ''; }
+                            }}
+                          />
+                        </label>
+                      </div>
                     )}
+
+                    {/* Upload button — shown when no file yet, or while uploading */}
+                    {(!vendor.contractFileName || contractUploading) && (
+                      <label style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '7px 14px', borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        border: `1.5px dashed ${contractUploading ? C.accent : C.border}`,
+                        cursor: contractUploading ? 'wait' : 'pointer',
+                        color: contractUploading ? C.accent : C.muted,
+                        background: contractUploading ? C.accent + '0a' : 'transparent',
+                        transition: 'all 0.15s',
+                        width: '100%', boxSizing: 'border-box',
+                      }}
+                        onMouseEnter={e => { if (!contractUploading) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; e.currentTarget.style.background = C.accent + '0a'; } }}
+                        onMouseLeave={e => { if (!contractUploading) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        {contractUploading
+                          ? <><span style={{ fontSize: 14 }}>⏳</span> Uploading…</>
+                          : <><span style={{ fontSize: 14 }}>📎</span> Upload contract file<span style={{ fontSize: 10, color: C.muted, fontWeight: 400, marginLeft: 4 }}>PDF · image · Word</span></>
+                        }
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }} disabled={contractUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const v = validateFile(file);
+                            if (!v.ok) { setContractUploadErr(v.error); return; }
+                            setContractUploadErr(null);
+                            setContractUploading(true);
+                            try {
+                              const result = await uploadFile({
+                                file,
+                                eventId: event?.id || 'unknown',
+                                category: 'contract',
+                                userId: auth?.user?.id || 'anon',
+                              });
+                              if (result.ok) {
+                                onChange({
+                                  ...vendor,
+                                  contractUrl:         result.url || result.path,
+                                  contractFileName:    file.name,
+                                  contractStoragePath: result.path,
+                                });
+                              } else {
+                                const errMsg = result.error || 'Upload failed';
+                                const isBucketMissing = errMsg.toLowerCase().includes('bucket') || errMsg.toLowerCase().includes('not found');
+                                setContractUploadErr(isBucketMissing
+                                  ? 'Storage not set up — run the event-files bucket SQL in Supabase Dashboard'
+                                  : errMsg);
+                              }
+                            } finally {
+                              setContractUploading(false);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+
                     {contractUploadErr && (
-                      <span style={{ fontSize: 11, color: C.danger }}>{contractUploadErr}</span>
+                      <div style={{ fontSize: 11, color: C.danger, marginTop: 5, padding: '6px 10px', borderRadius: 6, background: C.danger + '12', border: `1px solid ${C.danger}33` }}>
+                        {contractUploadErr}
+                      </div>
                     )}
                   </div>
                 )}
