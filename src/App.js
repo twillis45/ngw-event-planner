@@ -10524,8 +10524,8 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                 {/* Status pill */}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center',
-                  fontSize: 8.5, fontWeight: 600, letterSpacing: '0.10em',
-                  padding: '2px 7px', borderRadius: 3, marginLeft: 4,
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                  padding: '3px 8px', borderRadius: 4, marginLeft: 4,
                   background: it.statusColor, color: '#070809',
                   flexShrink: 0, whiteSpace: 'nowrap',
                 }}>{it.statusLabel}</span>
@@ -10545,14 +10545,14 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{it.title}</div>
                   <div style={{
-                    fontSize: 10.5, color: C.muted, marginTop: 2,
+                    fontSize: 11.5, color: C.muted, marginTop: 3,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{it.meta}</div>
                 </button>
 
                 {/* Due / timing */}
                 <span style={{
-                  fontSize: 11, fontWeight: 600, color: it.dueColor, flexShrink: 0,
+                  fontSize: 12, fontWeight: 600, color: it.dueColor, flexShrink: 0,
                   whiteSpace: 'nowrap',
                 }}>{it.dueLabel}</span>
 
@@ -10564,29 +10564,29 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                     {quickActions.map(a => a.kind === 'done' ? (
                       <span key={a.key} style={{
-                        fontSize: 10.5, fontWeight: 700,
+                        fontSize: 12, fontWeight: 700,
                         color: C.success, background: C.success + '14',
                         border: `1px solid ${C.success}44`,
-                        padding: '4px 10px', borderRadius: 6,
+                        padding: '6px 12px', borderRadius: 7,
                       }}>{a.label}</span>
                     ) : a.kind === 'handoff' ? (
                       <a key={a.key} href={a.href} target="_blank" rel="noopener noreferrer"
                         onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
                         title="Opens your email app with a draft. Nothing is sent until you send it."
                         style={{
-                          fontSize: 10.5, fontWeight: 600,
+                          fontSize: 12, fontWeight: 600,
                           color: C.text, background: 'transparent',
                           border: `1px solid ${C.border}`,
-                          padding: '4px 10px', borderRadius: 6,
+                          padding: '6px 12px', borderRadius: 7,
                           textDecoration: 'none', cursor: 'pointer',
                         }}>{a.label}</a>
                     ) : (
                       <button key={a.key} onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
                         style={{
-                          fontSize: 10.5, fontWeight: 600,
+                          fontSize: 12, fontWeight: 600,
                           color: C.accent, background: C.accent + '14',
                           border: `1px solid ${C.accent}66`,
-                          padding: '4px 10px', borderRadius: 6,
+                          padding: '6px 12px', borderRadius: 7,
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}>{a.label}</button>
                     ))}
@@ -11807,17 +11807,17 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   const hasRealClient = (clients || []).some(c => !SEED_CLIENT_IDS.has(c.id));
   const hasSample     = (events || []).some(e => SEED_EVENT_IDS.has(e.id));
   const steps = [
-    { key: 'open',     label: 'App opened',           done: Boolean(setupSignals.firstAppOpenAt) },
-    { key: 'event',    label: 'First event created',  done: hasRealEvent  || Boolean(setupSignals.firstEventCreatedAt) },
-    { key: 'client',   label: 'First client added',   done: hasRealClient || Boolean(setupSignals.firstClientCreatedAt) },
-    { key: 'pipeline', label: 'Pipeline viewed',      done: Boolean(setupSignals.firstPipelineViewedAt) },
-    { key: 'sample',   label: 'Sample event loaded',  done: hasSample     || Boolean(setupSignals.firstSampleLoadedAt) },
+    { key: 'open',     label: 'Got started',                done: Boolean(setupSignals.firstAppOpenAt) },
+    { key: 'event',    label: 'Added your first event',     done: hasRealEvent  || Boolean(setupSignals.firstEventCreatedAt) },
+    { key: 'client',   label: 'Added a client',             done: hasRealClient || Boolean(setupSignals.firstClientCreatedAt) },
+    { key: 'pipeline', label: 'Checked out the Pipeline',   done: Boolean(setupSignals.firstPipelineViewedAt) },
+    { key: 'sample',   label: 'Tried the sample event',     done: hasSample     || Boolean(setupSignals.firstSampleLoadedAt) },
   ];
   const doneCount = steps.filter(s => s.done).length;
-  const nextStep = !steps[1].done ? { label: 'Plan your first event', action: onNew }
-    : !steps[2].done ? { label: 'Add your first client', action: null /* opens client modal — handled by parent */ }
+  const nextStep = !steps[1].done ? { label: 'Add your first event', action: onNew }
+    : !steps[2].done ? { label: 'Add a client', action: null /* opens client modal — handled by parent */ }
     : !steps[0].done ? { label: 'Open the app once more to record', action: null }
-    : (hasSample && !hasRealEvent) ? { label: 'Create a real event', action: onNew }
+    : (hasSample && !hasRealEvent) ? { label: 'Create your real event', action: onNew }
     : null;
   const setupProgressCard = doneCount < steps.length ? (
     <div style={{
@@ -11830,14 +11830,14 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
           Setup progress
         </div>
         <div style={{ fontSize: 11, color: C.muted }}>
-          {doneCount} of {steps.length} setup steps recorded
+          {doneCount} of {steps.length} done
         </div>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {steps.map(s => (
           <span key={s.key} style={{
-            fontSize: 10.5, fontWeight: 600,
-            padding: '4px 9px', borderRadius: 99,
+            fontSize: 12, fontWeight: 600,
+            padding: '6px 11px', borderRadius: 99,
             color: s.done ? C.success : C.muted,
             background: s.done ? C.success + '14' : 'transparent',
             border: `1px solid ${s.done ? C.success + '44' : C.border}`,
@@ -12519,7 +12519,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {dashView === 'dashboard' && events.length > 0 && (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isWide ? 'minmax(0, 1.6fr) minmax(0, 1fr)' : '1fr',
+              gridTemplateColumns: isWide ? 'minmax(0, 1.6fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
               gap: 16, alignItems: 'start', marginBottom: 20,
             }} ref={eventsRef}>
               <AttentionQueue
@@ -21092,36 +21092,50 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
 // Sprint 49 `← Command Center` back-strip. Matches the PLAN-overlay style
 // (ChecklistGenerator.jsx:206) so the back path is consistent across all 13
 // tabs — the v2 audit flagged this inconsistency as a Major-severity finding.
-function LegacyTabHeader({ label, onBack }) {
+function LegacyTabHeader({ label, hint, onBack }) {
   const C = useT();
   if (!onBack) return null;
   return (
     <div style={{
-      height: 42, flexShrink: 0,
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '0 16px',
+      flexShrink: 0,
       background: C.surface,
       borderBottom: `1px solid ${C.border}`,
     }}>
-      <button
-        onClick={onBack}
-        style={{
-          background: 'transparent', border: `1px solid ${C.border}`,
-          borderRadius: 6, cursor: 'pointer',
-          fontSize: 11, fontWeight: 500,
-          color: C.muted, padding: '4px 10px',
-          fontFamily: 'inherit',
-        }}
-      >
-        ← Command Center
-      </button>
-      <span style={{
-        fontSize: 9, fontWeight: 700,
-        letterSpacing: '0.16em', textTransform: 'uppercase',
-        color: C.muted,
+      <div style={{
+        minHeight: 42,
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '0 16px',
       }}>
-        {label}
-      </span>
+        <button
+          onClick={onBack}
+          style={{
+            background: 'transparent', border: `1px solid ${C.border}`,
+            borderRadius: 6, cursor: 'pointer',
+            fontSize: 11, fontWeight: 500,
+            color: C.muted, padding: '4px 10px',
+            fontFamily: 'inherit',
+          }}
+        >
+          ← Command Center
+        </button>
+        <span style={{
+          fontSize: 9, fontWeight: 700,
+          letterSpacing: '0.16em', textTransform: 'uppercase',
+          color: C.muted,
+        }}>
+          {label}
+        </span>
+      </div>
+      {hint && (
+        <div style={{
+          padding: '0 16px 12px',
+          fontSize: 13,
+          lineHeight: 1.45,
+          color: C.muted,
+        }}>
+          {hint}
+        </div>
+      )}
     </div>
   );
 }
@@ -21181,7 +21195,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
 
   return (
     <>
-      <LegacyTabHeader label="Planning" onBack={onBack} />
+      <LegacyTabHeader label="Planning" hint="What's left to do and by when. Tap a task to open it." onBack={onBack} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 14px 10px' : '0 28px 12px', flexWrap: 'wrap' }}>
         {tabPill('list',      'List',      'Edit planning tasks as a list')}
         {tabPill('timeline',  'Timeline',  'Visual timeline by phase')}
@@ -21281,7 +21295,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
 
   return (
     <>
-      <LegacyTabHeader label="Documents" onBack={onBack} />
+      <LegacyTabHeader label="Documents" hint="Contracts and files for this event. Things needing attention show up first." onBack={onBack} />
       {/* Sprint 59F: bounded width on desktop/wide so rows never stretch
           across 1700px monitors. The 960 cap matches the typical Studio
           Matte form/list width and leaves room for the Communication rail
@@ -21612,7 +21626,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
 
   return (
     <>
-      <LegacyTabHeader label="Event Details" onBack={onBack} />
+      <LegacyTabHeader label="Event Details" hint="The basics — name, type, date, venue, parking, rain plan. Edit anything here." onBack={onBack} />
       {/* Sprint 59F: bounded form width on desktop/wide. A 720-cap keeps
           the form readable on wide monitors instead of stretching to
           1700px-wide single inputs. */}
@@ -22241,9 +22255,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           function definition is kept in this file as documented dead code for
           one release so any team script referencing it doesn't trip; remove
           in next sprint. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} /></>}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
-      {tab === 'Seating'     && <><LegacyTabHeader label="Seating" onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" hint="What's owed, what's paid, and what to pay next. Vendor payments live on the vendor." onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" hint="Who's invited and who's coming. Track RSVPs and dietary notes." onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
+      {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
           per branch keeps the fallback scoped if multiple tabs ever switch
@@ -22336,10 +22350,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           onBack={() => handleTabChange('Command')}
         />
       )}
-      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} eventName={event.name} /></>}
+      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} eventName={event.name} /></>}
       {tab === 'Run of Show' && (
         <>
-          <LegacyTabHeader label="Run of Show" onBack={() => handleTabChange('Command')} />
+          <LegacyTabHeader label="Run of Show" hint="The event-day schedule. What happens, when, and who's responsible." onBack={() => handleTabChange('Command')} />
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"
@@ -22359,7 +22373,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         </>
       )}
       {tab === 'Agenda'      && <>
-        <LegacyTabHeader label="Agenda" onBack={() => handleTabChange('Command')} />
+        <LegacyTabHeader label="Agenda" hint="Old agenda notes from a previous version of the planner. Run of Show is the new home for event-day timing." onBack={() => handleTabChange('Command')} />
         <AgendaBuilder
           agenda={event.agenda || []}
           setAgenda={wrap('agenda')}
