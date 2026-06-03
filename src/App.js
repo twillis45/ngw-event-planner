@@ -4193,14 +4193,22 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange, onDelete, ev
                               userId: auth?.user?.id || 'anon',
                             });
                             if (result.ok) {
-                              onChange('contractUrl', result.url || result.path);
-                              onChange('contractFileName', file.name);
-                              onChange('contractStoragePath', result.path);
-                              // Do NOT auto-mark contractSigned — uploading a file
-                              // does not mean signatures exist. Planner checks the
-                              // "Contract signed" box manually after confirming.
+                              // Pass the full updated vendor object — the parent's
+                              // onChange expects (updatedVendor), not (field, value).
+                              onChange({
+                                ...vendor,
+                                contractUrl:         result.url || result.path,
+                                contractFileName:    file.name,
+                                contractStoragePath: result.path,
+                                // Do NOT auto-mark contractSigned — uploading a file
+                                // does not mean signatures exist. Planner confirms separately.
+                              });
                             } else {
-                              setContractUploadErr(result.error || 'Upload failed');
+                              const errMsg = result.error || 'Upload failed';
+                              const isBucketMissing = errMsg.toLowerCase().includes('bucket') || errMsg.toLowerCase().includes('not found');
+                              setContractUploadErr(isBucketMissing
+                                ? 'Storage not set up — run the event-files bucket SQL in Supabase Dashboard'
+                                : errMsg);
                             }
                           } finally {
                             setContractUploading(false);

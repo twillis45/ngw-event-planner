@@ -64,7 +64,7 @@ export async function uploadFile({ file, eventId, category = 'other', userId }) 
       .from(BUCKET)
       .upload(path, file, {
         cacheControl: '3600',
-        upsert: false,
+        upsert: true,   // allow re-upload of the same filename
         contentType: file.type || 'application/octet-stream',
       });
 
