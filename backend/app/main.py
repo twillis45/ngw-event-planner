@@ -2,7 +2,7 @@
 Run locally:  uvicorn app.main:app --reload --port 8000
 """
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 import base64
