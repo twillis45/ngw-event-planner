@@ -901,6 +901,32 @@ const STAGES    = ['Considering', 'Quoted', 'Contracted', 'Deposit Paid', 'Confi
 const vendorIsCommitted = (v) => STAGES.indexOf(v.status) >= 2;
 const vendorPaid        = (v) => v.balancePaid ? (v.cost || 0) : (v.depositPaid ? (v.depositAmt || 0) : 0);
 const vendorBalance     = (v) => Math.max(0, (v.cost || 0) - vendorPaid(v));
+
+// ─── Sprint 60.A: first-run signals (local-only, not analytics theater) ────
+// Records timestamps of real product milestones so we can later judge
+// whether onboarding actually works. Plain localStorage; no PII; no
+// network. Reads/writes are idempotent — the first occurrence wins.
+//
+// Keys we record:
+//   firstAppOpenAt      — first time App component mounted
+//   firstEventCreatedAt — first real (non-sample) event created
+//   firstClientCreatedAt — first client created
+//   firstPipelineViewedAt — first time Pipeline L1 opened
+//   firstSampleLoadedAt — first time sample data was loaded
+//   onboardingPath      — 'real_event' | 'sample_event' | 'client_first' | 'unknown'
+const FIRST_RUN_KEY = 'ngw-firstrun-signals';
+const readFirstRunSignals = () => {
+  try { return JSON.parse(localStorage.getItem(FIRST_RUN_KEY) || '{}'); }
+  catch { return {}; }
+};
+const recordFirstRunSignal = (key, value) => {
+  try {
+    const cur = readFirstRunSignals();
+    if (cur[key] != null && value == null) return; // idempotent — don't overwrite a timestamp
+    const next = { ...cur, [key]: value != null ? value : new Date().toISOString() };
+    localStorage.setItem(FIRST_RUN_KEY, JSON.stringify(next));
+  } catch {}
+};
 // Committed contract value = total cost of vendors that are Contracted+.
 const vendorCommittedCost = (v) => vendorIsCommitted(v) ? (v.cost || 0) : 0;
 
@@ -1108,6 +1134,73 @@ const EVT_PARENT = Object.entries(EVT_CATEGORIES).reduce((acc, [cat, types]) => 
 const isCorporateType = (t) => EVT_PARENT[t] === 'Corporate' || t === 'Corporate';
 // eslint-disable-next-line no-unused-vars
 const isCelebration   = (t) => EVT_PARENT[t] === 'Weddings & Celebrations';
+
+// ─── Hybrid (primary + optional secondary) event-type helpers ────────────────
+// Primary remains canonical for color, category, compression, isCorporateType.
+// Secondary layers in additive templates (vendors / budget / timeline) at create
+// time and via a manual "merge templates" action post-creation.
+const eventTypesOf = (e) => {
+  if (!e) return [];
+  const primary   = e.type || '';
+  const secondary = e.secondaryType || '';
+  const out = [];
+  if (primary && EVT_PARENT[primary]) out.push(primary);
+  if (secondary && secondary !== primary && EVT_PARENT[secondary]) out.push(secondary);
+  return out;
+};
+const eventTypeLabel = (e) => {
+  const types = eventTypesOf(e);
+  if (types.length === 0) return e?.type || '';
+  return types.join(' + ');
+};
+// Union vendor stubs across types (dedupe by category name).
+const mergeVendorStubs = (...types) => {
+  const seen = new Set();
+  const out  = [];
+  for (const t of types) {
+    const stubs = VENDOR_STUBS[t] || [];
+    for (const cat of stubs) {
+      const k = cat.toLowerCase();
+      if (!seen.has(k)) { seen.add(k); out.push(cat); }
+    }
+  }
+  return out;
+};
+// Union budget templates: dedupe by category; sum overlapping pcts; renormalize
+// so total still equals 1 (template math stays honest).
+const mergeBudgetTemplate = (...types) => {
+  const byCat = new Map(); // category → { c, pct }
+  for (const t of types) {
+    const rows = BUDGET_TEMPLATES[t] || [];
+    for (const r of rows) {
+      const k = r.c.toLowerCase();
+      if (byCat.has(k)) {
+        // Average overlapping categories (better than max — keeps proportions sane)
+        const cur = byCat.get(k);
+        cur.pct = (cur.pct + r.pct) / 2;
+      } else {
+        byCat.set(k, { c: r.c, pct: r.pct });
+      }
+    }
+  }
+  const rows = Array.from(byCat.values());
+  const sum  = rows.reduce((a, r) => a + r.pct, 0);
+  if (sum <= 0) return rows;
+  return rows.map(r => ({ c: r.c, pct: r.pct / sum }));
+};
+// Union timeline templates: dedupe by lowercased task text (catches near-dupes).
+const mergeTimelineTemplate = (...types) => {
+  const seen = new Set();
+  const out  = [];
+  for (const t of types) {
+    const tasks = TIMELINE_TEMPLATES[t] || [];
+    for (const task of tasks) {
+      const k = (task.task || '').toLowerCase().trim();
+      if (k && !seen.has(k)) { seen.add(k); out.push(task); }
+    }
+  }
+  return out;
+};
 const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.warn, event: C.accent });
 const EVT_CLR   = (C) => {
   const isLight = C.surface === '#ffffff';
@@ -5457,8 +5550,8 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                   </div>
                 </div>
                 {primaryVendor && onOpenVendor && (
-                  <button onClick={() => onOpenVendor(primaryVendor.id)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px' }}>
-                    Open vendor →
+                  <button onClick={() => onOpenVendor(primaryVendor.id, 'payment')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px' }}>
+                    Open payment details →
                   </button>
                 )}
               </div>
@@ -5533,12 +5626,12 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                       <span style={s.pill(stageCLR[v.status] || C.muted)}>{v.status}</span>
                       {onOpenVendor && (
                         <button
-                          onClick={() => onOpenVendor(v.id)}
-                          title={`Open ${v.name} in the Vendors tab`}
-                          aria-label={`Open ${v.name}`}
+                          onClick={() => onOpenVendor(v.id, 'payment')}
+                          title={`Open ${v.name}'s payment details`}
+                          aria-label={`Open ${v.name} payment details`}
                           style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}
                         >
-                          Open vendor →
+                          Open payment details →
                         </button>
                       )}
                     </div>
@@ -5644,15 +5737,19 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
   const isMobile = useContext(BpCtx) === 'mobile';
-  const [form,             setForm]            = useState({ name: '', type: 'Wedding', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
+  const [form,             setForm]            = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
   const [useTimeline,      setUseTimeline]     = useState(true);
   const [useBudget,        setUseBudget]       = useState(true);
   const [useVendors,       setUseVendors]      = useState(true);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [activeCat,        setActiveCat]       = useState('Weddings & Celebrations');
-  const tmpl       = TIMELINE_TEMPLATES[form.type];
-  const budgetTmpl = BUDGET_TEMPLATES[form.type] || BUDGET_TEMPLATES.Other;
-  const vendorCats = VENDOR_STUBS[form.type]     || VENDOR_STUBS.Other;
+  // Hybrid: when secondaryType is set, layer its templates in on top of the
+  // primary's. Primary's templates are always present; secondary only adds
+  // missing rows/tasks/categories (see mergeBudgetTemplate dedupe rules).
+  const _types     = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
+  const tmpl       = mergeTimelineTemplate(..._types);
+  const budgetTmpl = _types.length ? mergeBudgetTemplate(..._types) : BUDGET_TEMPLATES.Other;
+  const vendorCats = _types.length ? mergeVendorStubs(..._types)    : VENDOR_STUBS.Other;
 
   const venueInputRef = useRef(null);
   useEffect(() => {
@@ -5685,17 +5782,18 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
   const estTimeOfDay = form.timeOfDay || 'afternoon';
   const setEstTimeOfDay = (v) => upd('timeOfDay', v);
 
-  // Reset item-level state whenever event type changes
+  // Reset item-level state whenever event type OR secondary type changes
   useEffect(() => {
-    const newTmpl    = TIMELINE_TEMPLATES[form.type];
-    const newBudget  = BUDGET_TEMPLATES[form.type]  || BUDGET_TEMPLATES.Other;
-    const newVendors = VENDOR_STUBS[form.type]       || VENDOR_STUBS.Other;
-    setTimelineChecked(newTmpl ? newTmpl.map(() => true) : []);
+    const ts         = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
+    const newTmpl    = mergeTimelineTemplate(...ts);
+    const newBudget  = ts.length ? mergeBudgetTemplate(...ts) : BUDGET_TEMPLATES.Other;
+    const newVendors = ts.length ? mergeVendorStubs(...ts)    : VENDOR_STUBS.Other;
+    setTimelineChecked(newTmpl.map(() => true));
     setBudgetChecked(newBudget.map(() => true));
     setBudgetAmounts({});
     setVendorChecked(newVendors.map(() => true));
     setKitExpanded({ timeline: false, budget: false, vendors: false });
-  }, [form.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form.type, form.secondaryType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleKit = (key) => setKitExpanded(p => ({ ...p, [key]: !p[key] }));
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -5740,7 +5838,7 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
     // future surface read from one canonical source. Falls back to 'afternoon'
     // when the form lost it for any reason — matches the default the
     // estimator displays in the chip row.
-    onCreate({ id: uid(), rsvpCode: uid(), name: form.name, type: form.type, date: form.date, venue: form.venue, tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon', budget, guests: [], vendors, timeline, ros: [] }, selectedClientId || null);
+    onCreate({ id: uid(), rsvpCode: uid(), name: form.name, type: form.type, secondaryType: form.secondaryType || '', date: form.date, venue: form.venue, tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon', budget, guests: [], vendors, timeline, ros: [] }, selectedClientId || null);
     onClose();
   };
 
@@ -5837,6 +5935,23 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
                 Selected: <span style={{ color: evtCLR[form.type] || C.accent, fontWeight: 600 }}>{form.type}</span>
               </div>
             )}
+
+            {/* Optional hybrid / secondary event type */}
+            <div style={{ marginTop: 10 }}>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>
+                Secondary type <span style={{ color: C.muted }}>(optional — for hybrids like "Wedding + Brunch")</span>
+              </label>
+              <select
+                style={s.input}
+                value={form.secondaryType || ''}
+                onChange={e => upd('secondaryType', e.target.value)}
+              >
+                <option value="">— none —</option>
+                {EVT_TYPES.filter(t => t !== form.type).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Core details */}
@@ -6172,7 +6287,7 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
                       style={{ accentColor: typeColor, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
                       onClick={e => e.stopPropagation()} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{form.type} Timeline</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{form.secondaryType ? `${form.type} + ${form.secondaryType}` : form.type} Timeline</div>
                       <div style={{ fontSize: 11, color: C.muted }}>{enabledCt} of {tmpl.length} tasks · auto-dated from event date</div>
                     </div>
                     {useTimeline && (
@@ -6515,7 +6630,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     if (!aiKey) return;
     setProposalLoad(true); setProposalDraft(''); setShowProposal(true);
     const answerLines = Object.entries(answers).map(([k,v])=>`${k}: ${v}`).join('\n');
-    const prompt = `Write a short, professional event planning proposal (3-4 paragraphs) based on these intake answers. Address the client by the event name. Cover: what you'll do, how it addresses their specific needs, why it'll be great. End with clear next steps. Use a warm, confident tone.\n\nEvent type: ${event.type}\nEvent name: ${event.name}\nDate: ${event.date||'TBD'}\nVenue: ${event.venue||'TBD'}\nBudget: ${event.budget||'TBD'}\nPlanner: ${event.profile?.name||'Your Planner'}, ${event.profile?.businessName||''}\n\nIntake answers:\n${answerLines}\n\nProposal:`;
+    const prompt = `Write a short, professional event planning proposal (3-4 paragraphs) based on these intake answers. Address the client by the event name. Cover: what you'll do, how it addresses their specific needs, why it'll be great. End with clear next steps. Use a warm, confident tone.\n\nEvent type: ${eventTypeLabel(event) || event.type}\nEvent name: ${event.name}\nDate: ${event.date||'TBD'}\nVenue: ${event.venue||'TBD'}\nBudget: ${event.budget||'TBD'}\nPlanner: ${event.profile?.name||'Your Planner'}, ${event.profile?.businessName||''}\n\nIntake answers:\n${answerLines}\n\nProposal:`;
     try { await askClaude(aiKey, prompt, { maxTokens: 500, onChunk: t => setProposalDraft(t) }); }
     catch(e) { setProposalDraft('⚠ Check your API key in Profile.'); }
     setProposalLoad(false);
@@ -6650,7 +6765,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const getSummaryText = () =>
-    `CLIENT INTAKE — ${event.name || 'New Event'}\nType: ${event.type}\n` +
+    `CLIENT INTAKE — ${event.name || 'New Event'}\nType: ${eventTypeLabel(event) || event.type}\n` +
     (event.intake?.savedAt ? `Saved: ${event.intake.savedAt}\n` : '') + '\n' +
     questions.map(sec =>
       `━━ ${sec.title} ━━\n` +
@@ -6712,7 +6827,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
                 Client Intake
                 {hasSaved && <span style={{ marginLeft: 8, color: C.success, fontWeight: 400 }}>· Saved {event.intake.savedAt}</span>}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{event.name || event.type + ' Event'}</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{event.name || (eventTypeLabel(event) || event.type) + ' Event'}</div>
             </div>
             <button aria-label="Close" style={{ ...s.btn('ghost'), padding: '4px 8px', color: C.muted, fontSize: 16 }} onClick={onClose}>✕</button>
           </div>
@@ -6917,7 +7032,7 @@ function EventCard({ event, onClick }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', flex: 1, paddingRight: 8 }}>{event.name}</h3>
-        <span style={{ ...s.pill(color), flexShrink: 0 }}>{event.type}</span>
+        <span style={{ ...s.pill(color), flexShrink: 0 }}>{event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{event.venue || '—'} · {fmtDate(event.date)}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -6976,6 +7091,24 @@ function EventsDashboard({ events, onSelect, onNew }) {
 
 const CLIENT_STYLES = ['Not decided yet', 'Black tie / Formal', 'Garden / Organic', 'Modern / Minimalist', 'Boho / Rustic', 'Glamour / Opulent', 'Coastal / Nautical', 'Vintage / Romantic', 'Corporate / Clean', 'Cultural / Traditional', 'Festival / Eclectic', 'Intimate / Micro'];
 
+// ─── Sprint 60.C: hoisted wrappers for ClientModal ───────────────────────────
+// Field/Row defined inside ClientModal were re-created per render, so each
+// keystroke remounted the <input> passed as children → focus + typed
+// character lost. Hoisting to module scope stabilizes the type identity.
+function CMField({ C, label, children }) {
+  return (
+    <div>
+      {label && <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>}
+      {children}
+    </div>
+  );
+}
+function CMRow({ children }) {
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>{children}</div>
+  );
+}
+
 function ClientModal({ client, onClose, onChange, onDelete }) {
   const C         = useT();
   const s         = makeS(C);
@@ -7026,16 +7159,7 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
       )}
     </div>
   );
-  const Field = ({ label, children }) => (
-    <div>
-      {label && <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>}
-      {children}
-    </div>
-  );
-  const Row = ({ children }) => (
-    <div style={{ display: 'flex', gap: 10 }}>{children}</div>
-  );
-
+  // Sprint 60.C: CMField + CMRow live at module scope; passing C explicitly.
   const stageIdx    = CLIENT_STAGES.indexOf(client.status);
   const collected   = (client.feeSchedule || []).reduce((acc, f) => acc + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
   const outstanding = (client.plannerFee || 0) - collected;
@@ -7124,178 +7248,178 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
 
           {/* ── Identity extras (inline, not collapsible) ── */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <Field label="Client type">
+            <CMField C={C} label="Client type">
               <select style={{ ...s.input, fontSize: 12 }} value={client.clientType || ''} onChange={e => onChange('clientType', e.target.value)}>
                 <option value="">Select…</option>
                 {['Individual','Couple','Corporate','Nonprofit','Other'].map(t => <option key={t}>{t}</option>)}
               </select>
-            </Field>
-            <Field label="Pronouns">
+            </CMField>
+            <CMField C={C} label="Pronouns">
               <select style={{ ...s.input, fontSize: 12 }} value={client.pronouns || ''} onChange={e => onChange('pronouns', e.target.value)}>
                 <option value="">Not specified</option>
                 {['She/Her','He/Him','They/Them','She/They','He/They','Any'].map(p => <option key={p}>{p}</option>)}
               </select>
-            </Field>
-            <Field label="Address as">
+            </CMField>
+            <CMField C={C} label="Address as">
               <input style={{ ...s.input, fontSize: 12 }} value={client.addressedAs || ''} placeholder="e.g. Sarah & Todd" onChange={e => onChange('addressedAs', e.target.value)} />
-            </Field>
+            </CMField>
           </div>
 
           {/* ── 1. Contact ── */}
           <Sec skey="contact" label="Contact" badge={client.email ? 'Has contact' : null} badgeColor={C.success}>
-            <Row>
-              <Field label="Email">
+            <CMRow>
+              <CMField C={C} label="Email">
                 <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }} type="email" value={client.email || ''} placeholder="client@email.com" onChange={e => onChange('email', e.target.value)} onBlur={() => touch('email')} />
                 {errEmail && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
-              </Field>
-              <Field label="Phone">
+              </CMField>
+              <CMField C={C} label="Phone">
                 <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }} type="tel" value={client.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} onBlur={() => touch('phone')} />
                 {errPhone && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
-              </Field>
-            </Row>
+              </CMField>
+            </CMRow>
           </Sec>
 
           {/* ── 2. Partner / Second Contact ── */}
           <Sec skey="partner" label="Partner / Second Contact" badge={client.partnerName ? client.partnerName.split(' ')[0] : null}>
-            <Field label="Partner name">
+            <CMField C={C} label="Partner name">
               <input style={s.input} value={client.partnerName || ''} placeholder="Partner or co-lead name" onChange={e => onChange('partnerName', e.target.value)} />
-            </Field>
-            <Row>
-              <Field label="Partner email">
+            </CMField>
+            <CMRow>
+              <CMField C={C} label="Partner email">
                 <input style={s.input} type="email" value={client.partnerEmail || ''} placeholder="partner@email.com" onChange={e => onChange('partnerEmail', e.target.value)} />
-              </Field>
-              <Field label="Partner phone">
+              </CMField>
+              <CMField C={C} label="Partner phone">
                 <input style={s.input} type="tel" value={client.partnerPhone || ''} placeholder="(555) 555-0200" onChange={e => onChange('partnerPhone', formatPhone(e.target.value))} />
-              </Field>
-            </Row>
-            <Row>
-              <Field label="Mailing / home address">
+              </CMField>
+            </CMRow>
+            <CMRow>
+              <CMField C={C} label="Mailing / home address">
                 <input style={s.input} value={client.address || ''} placeholder="123 Main St, Nashville, TN 37201" onChange={e => onChange('address', e.target.value)} />
-              </Field>
-              <Field label="Instagram">
+              </CMField>
+              <CMField C={C} label="Instagram">
                 <input style={s.input} value={client.instagram || ''} placeholder="@handle" onChange={e => onChange('instagram', e.target.value)} />
-              </Field>
-            </Row>
+              </CMField>
+            </CMRow>
           </Sec>
 
           {/* ── 3. Communication Preferences ── */}
           <Sec skey="preferences" label="Communication Preferences">
-            <Row>
-              <Field label="Preferred contact method">
+            <CMRow>
+              <CMField C={C} label="Preferred contact method">
                 <select style={{ ...s.input, fontSize: 12 }} value={client.preferredContact || ''} onChange={e => onChange('preferredContact', e.target.value)}>
                   <option value="">No preference</option>
                   {['Text','Email','Call','WhatsApp','Any'].map(m => <option key={m}>{m}</option>)}
                 </select>
-              </Field>
-              <Field label="Preferred time">
+              </CMField>
+              <CMField C={C} label="Preferred time">
                 <select style={{ ...s.input, fontSize: 12 }} value={client.preferredTime || ''} onChange={e => onChange('preferredTime', e.target.value)}>
                   <option value="">Any time</option>
                   {['Morning (9–12)','Afternoon (12–5)','Evening (5–8)','Weekdays only','Weekends OK'].map(t => <option key={t}>{t}</option>)}
                 </select>
-              </Field>
-            </Row>
-            <Field label="Response time expectation">
+              </CMField>
+            </CMRow>
+            <CMField C={C} label="Response time expectation">
               <select style={{ ...s.input, fontSize: 12 }} value={client.responseExpectation || ''} onChange={e => onChange('responseExpectation', e.target.value)}>
                 <option value="">No preference stated</option>
                 {['Same day','Within 24 hours','Within 48 hours','Within the week'].map(r => <option key={r}>{r}</option>)}
               </select>
-            </Field>
+            </CMField>
           </Sec>
 
           {/* ── 4. Event Vision ── */}
           <Sec skey="vision" label="Event Vision" badge={client.eventStyle || null} badgeColor={C.accent2}>
-            <Row>
-              <Field label="Style / aesthetic">
+            <CMRow>
+              <CMField C={C} label="Style / aesthetic">
                 <select style={{ ...s.input, fontSize: 12 }} value={client.eventStyle || ''} onChange={e => onChange('eventStyle', e.target.value)}>
                   <option value="">Not decided yet</option>
                   {CLIENT_STYLES.filter(s => s !== 'Not decided yet').map(st => <option key={st}>{st}</option>)}
                 </select>
-              </Field>
-              <Field label="Color palette">
+              </CMField>
+              <CMField C={C} label="Color palette">
                 <input style={s.input} value={client.colorPalette || ''} placeholder="e.g. Dusty rose, ivory, sage" onChange={e => onChange('colorPalette', e.target.value)} />
-              </Field>
-            </Row>
-            <Row>
-              <Field label="Guest count estimate">
+              </CMField>
+            </CMRow>
+            <CMRow>
+              <CMField C={C} label="Guest count estimate">
                 <input style={s.input} type="number" min="1" value={client.guestEstimate || ''} placeholder="e.g. 120" onChange={e => onChange('guestEstimate', e.target.value)} />
-              </Field>
-              <Field label="Budget range discussed">
+              </CMField>
+              <CMField C={C} label="Budget range discussed">
                 <input style={s.input} value={client.budgetRange || ''} placeholder="e.g. $40k–$60k" onChange={e => onChange('budgetRange', e.target.value)} />
-              </Field>
-            </Row>
-            <Field label="Must-haves (non-negotiables)">
+              </CMField>
+            </CMRow>
+            <CMField C={C} label="Must-haves (non-negotiables)">
               <textarea style={{ ...s.input, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.mustHaves || ''} placeholder="Live band, outdoor ceremony, specific florals…" onChange={e => onChange('mustHaves', e.target.value)} />
-            </Field>
-            <Field label="Things to avoid">
+            </CMField>
+            <CMField C={C} label="Things to avoid">
               <textarea style={{ ...s.input, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.toAvoid || ''} placeholder="No balloons, no buffet style, avoid certain vendors…" onChange={e => onChange('toAvoid', e.target.value)} />
-            </Field>
-            <Field label="Inspiration link (Pinterest / website)">
+            </CMField>
+            <CMField C={C} label="Inspiration link (Pinterest / website)">
               <input style={s.input} type="url" value={client.inspirationLink || ''} placeholder="https://…" onChange={e => onChange('inspirationLink', e.target.value)} />
-            </Field>
+            </CMField>
           </Sec>
 
           {/* ── 5. Personal ── */}
           <Sec skey="personal" label="Personal Details">
-            <Row>
-              <Field label="Birthday (client)">
+            <CMRow>
+              <CMField C={C} label="Birthday (client)">
                 <input style={s.input} type="date" value={client.birthday1 || ''} onChange={e => onChange('birthday1', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
-              </Field>
-              <Field label="Birthday (partner)">
+              </CMField>
+              <CMField C={C} label="Birthday (partner)">
                 <input style={s.input} type="date" value={client.birthday2 || ''} onChange={e => onChange('birthday2', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
-              </Field>
-              <Field label="Anniversary">
+              </CMField>
+              <CMField C={C} label="Anniversary">
                 <input style={s.input} type="date" value={client.anniversary || ''} onChange={e => onChange('anniversary', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
-              </Field>
-            </Row>
-            <Field label="Cultural / religious considerations">
+              </CMField>
+            </CMRow>
+            <CMField C={C} label="Cultural / religious considerations">
               <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.cultural || ''} placeholder="Religious ceremony requirements, cultural traditions, dietary laws…" onChange={e => onChange('cultural', e.target.value)} />
-            </Field>
-            <Field label="Dietary restrictions (client / partner)">
+            </CMField>
+            <CMField C={C} label="Dietary restrictions (client / partner)">
               <input style={s.input} value={client.clientDietary || ''} placeholder="e.g. Vegan, gluten-free, kosher…" onChange={e => onChange('clientDietary', e.target.value)} />
-            </Field>
+            </CMField>
           </Sec>
 
           {/* ── 6. Decision Makers & Influencers ── */}
           <Sec skey="influencers" label="Decision Makers & Key Influencers">
-            <Field label="Decision maker notes (who approves what)">
+            <CMField C={C} label="Decision maker notes (who approves what)">
               <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.decisionMakerNotes || ''} placeholder="e.g. Sarah leads florals, Todd leads venue. MOB has strong opinions on food." onChange={e => onChange('decisionMakerNotes', e.target.value)} />
-            </Field>
+            </CMField>
             {[['influencer1Name','influencer1Role','Key family member 1'],['influencer2Name','influencer2Role','Key family member 2'],['influencer3Name','influencer3Role','Key family member 3']].map(([nameKey, roleKey, label]) => (
-              <Row key={nameKey}>
-                <Field label={label + ' name'}>
+              <CMRow key={nameKey}>
+                <CMField C={C} label={label + ' name'}>
                   <input style={s.input} value={client[nameKey] || ''} placeholder="e.g. Linda Chen" onChange={e => onChange(nameKey, e.target.value)} />
-                </Field>
-                <Field label="Role / relationship">
+                </CMField>
+                <CMField C={C} label="Role / relationship">
                   <input style={s.input} value={client[roleKey] || ''} placeholder="e.g. Mother of bride" onChange={e => onChange(roleKey, e.target.value)} />
-                </Field>
-              </Row>
+                </CMField>
+              </CMRow>
             ))}
           </Sec>
 
           {/* ── 7. Discovery & Intake ── */}
           <Sec skey="discovery" label="Discovery & Intake">
-            <Field label="Initial consultation notes">
+            <CMField C={C} label="Initial consultation notes">
               <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.intakeNotes || ''} placeholder="What did they share in the first call? Their story, vision, concerns…" onChange={e => onChange('intakeNotes', e.target.value)} />
-            </Field>
-            <Row>
-              <Field label="How they found you">
+            </CMField>
+            <CMRow>
+              <CMField C={C} label="How they found you">
                 <select style={{ ...s.input, fontSize: 12 }} value={client.referral || ''} onChange={e => onChange('referral', e.target.value)}>
                   <option value="">Not specified</option>
                   {REFERRAL_OPTIONS.map(r => <option key={r}>{r}</option>)}
                 </select>
-              </Field>
-              <Field label="Referred by (specific person)">
+              </CMField>
+              <CMField C={C} label="Referred by (specific person)">
                 <input style={s.input} value={client.referredBy || ''} placeholder="e.g. Jennifer Park" onChange={e => onChange('referredBy', e.target.value)} />
-              </Field>
-            </Row>
+              </CMField>
+            </CMRow>
           </Sec>
 
           {/* ── 8. Planner Fee & Contract ── */}
           <Sec skey="fee" label="Planner Fee & Contract" badge={outstanding > 0 ? `${fmtD(outstanding)} outstanding` : collected > 0 ? 'Paid in full' : null} badgeColor={outstanding > 0 ? C.warn : C.success}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Field label="Total fee">
+              <CMField C={C} label="Total fee">
                 <input style={s.input} type="number" value={client.plannerFee || 0} onChange={e => onChange('plannerFee', Number(e.target.value) || 0)} />
-              </Field>
+              </CMField>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.success }}>{fmtD(collected)}</div>
@@ -7341,12 +7465,12 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
                 <span style={{ color: client.reviewRequested ? C.success : C.text }}>Review / testimonial requested</span>
               </label>
             </div>
-            <Field label="Future event potential">
+            <CMField C={C} label="Future event potential">
               <textarea style={{ ...s.input, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.futureEventNotes || ''} placeholder="Anniversary party, baby shower, corporate event, sibling's wedding…" onChange={e => onChange('futureEventNotes', e.target.value)} />
-            </Field>
-            <Field label="Referral potential">
+            </CMField>
+            <CMField C={C} label="Referral potential">
               <input style={s.input} value={client.referralPotential || ''} placeholder="e.g. Has two sisters getting married, runs a corporate events team" onChange={e => onChange('referralPotential', e.target.value)} />
-            </Field>
+            </CMField>
           </Sec>
 
           {/* ── 10. Internal Notes ── */}
@@ -7619,7 +7743,7 @@ function ClientPortalPublicView({ token, events }) {
         {/* Event summary card */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 24, marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-            {event.type || 'Event'}
+            {eventTypeLabel(event) || event.type || 'Event'}
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: text, marginBottom: 12 }}>{event.name}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
@@ -8509,7 +8633,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               <select style={s.input} value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
                 <option value="">No event — add later</option>
                 {events.map(ev => (
-                  <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` · ${ev.type}` : ''}</option>
+                  <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` · ${eventTypeLabel(ev) || ev.type}` : ''}</option>
                 ))}
               </select>
               {/* Linked event summary card */}
@@ -8971,6 +9095,29 @@ function PreferredVendorDirectory({ C, s }) {
   );
 }
 
+// ─── Sprint 60.C: hoisted inputs for ProfileModal ─────────────────────────────
+// Same bug class as EventDetailsTab — defining a Field component inside
+// ProfileModal's render gave React a new component reference each keystroke,
+// remounting the <input> and dropping focus + characters. Hoisted to module
+// scope so the type identity stays stable across parent re-renders.
+function PMRow2({ children }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{children}</div>
+  );
+}
+function PMField({ C, s, profile, onChange, fkey, label, type = 'text', ph }) {
+  const err = fkey === 'email' ? (!profile?.[fkey] || isEmail(profile?.[fkey]) ? null : 'Invalid email')
+            : fkey === 'phone' ? (!profile?.[fkey] || isPhone(profile?.[fkey]) ? null : 'Invalid phone')
+            : null;
+  return (
+    <div>
+      <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
+      <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} value={profile?.[fkey] || ''} placeholder={ph} onChange={e => onChange(fkey, e.target.value)} />
+      {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 2 }}>{err}</div>}
+    </div>
+  );
+}
+
 function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
@@ -9067,22 +9214,9 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     } else { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); try { document.execCommand('copy'); finish(); } catch {} document.body.removeChild(el); }
   };
 
-  // 2-column field pair helper
-  const Row2 = ({ children }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>{children}</div>
-  );
-  const Field = ({ fkey, label, type = 'text', ph }) => {
-    const err = fkey === 'email' ? (!profile?.[fkey] || isEmail(profile?.[fkey]) ? null : 'Invalid email')
-              : fkey === 'phone' ? (!profile?.[fkey] || isPhone(profile?.[fkey]) ? null : 'Invalid phone')
-              : null;
-    return (
-      <div>
-        <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{label}</label>
-        <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} value={profile?.[fkey] || ''} placeholder={ph} onChange={e => onChange(fkey, e.target.value)} />
-        {err && <div style={{ fontSize: 11, color: C.danger, marginTop: 2 }}>{err}</div>}
-      </div>
-    );
-  };
+  // Sprint 60.C: PMField + PMRow2 are hoisted to module scope so React
+  // doesn't see a new component type each keystroke. Pass C / s / profile /
+  // onChange explicitly to keep them pure.
 
   return (
     <ThemeCtx.Provider value={_childThemeCtx}>
@@ -9151,21 +9285,21 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
 
           {/* ── STUDIO IDENTITY ── */}
           <SectionHead label="Studio" />
-          <Row2>
-            <Field fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
+          <PMRow2>
+            <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Your Role</label>
               <select value={profile?.role || 'Owner'} onChange={e => onChange('role', e.target.value)} style={{ ...s.input, cursor: 'pointer' }}>
                 {['Owner', 'Lead Planner', 'Assistant Planner', 'Coordinator'].map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
-          </Row2>
+          </PMRow2>
 
           {/* ── PLANNER IDENTITY ── */}
           <SectionHead label="Planner" />
-          <Row2>
-            <Field fkey="name"         label="Your Name"      ph="Jane Planner" />
-          </Row2>
+          <PMRow2>
+            <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="name"         label="Your Name"      ph="Jane Planner" />
+          </PMRow2>
 
           {/* Sprint 58: planner headshot. Optional — falls back to initials
               everywhere the avatar appears. Drives the top-bar avatar pill
@@ -9228,20 +9362,20 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           {/* ── CONTACT & REACH ── */}
           <SectionHead label="Contact & Reach" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Row2>
-              <Field fkey="email"     label="Email"     type="email" ph="you@planner.com"  />
-              <Field fkey="phone"     label="Phone"     type="tel"   ph="(555) 555-0100"   />
-            </Row2>
-            <Row2>
-              <Field fkey="website"   label="Website"              ph="yoursite.com"  />
-              <Field fkey="instagram" label="Instagram"            ph="@yourhandle"   />
-            </Row2>
+            <PMRow2>
+              <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="email"     label="Email"     type="email" ph="you@planner.com"  />
+              <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="phone"     label="Phone"     type="tel"   ph="(555) 555-0100"   />
+            </PMRow2>
+            <PMRow2>
+              <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="website"   label="Website"              ph="yoursite.com"  />
+              <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="instagram" label="Instagram"            ph="@yourhandle"   />
+            </PMRow2>
           </div>
 
           {/* ── SERVICE AREA ── */}
           <SectionHead label="Service Area & Market" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Field fkey="city" label="City / Region" ph="Nashville, TN" />
+            <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="city" label="City / Region" ph="Nashville, TN" />
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Primary Metro Market</label>
               <select
@@ -10362,11 +10496,21 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
             }
             const routeLabel = it.kind === 'decision' ? 'Open decision →'
               : it.kind === 'request' ? 'Open Communication →'
-              : it.kind === 'vendor-stale' ? 'Open vendor →'
+              : it.kind === 'vendor-stale' ? 'Open contact details →'
               : it.kind === 'approval' ? 'Open Decision →'
               : it.kind === 'compression' ? 'Open compressed tasks →'
               : 'Open event →';
-            const onRowOpen = () => onSelectEvent(it.eventId, it.clickTarget);
+            // Sprint 60.B: vendor-stale lands inside the vendor's contact
+            // section (which today routes through the edit modal — no inline
+            // contact panel exists). The clickTarget below carries the
+            // vendorSection so the EventPlanner route chain expands the
+            // right place after the event opens.
+            const onRowOpen = () => {
+              const navWithSection = (it.kind === 'vendor-stale' && it.clickTarget)
+                ? { ...it.clickTarget, vendorSection: 'contact' }
+                : it.clickTarget;
+              onSelectEvent(it.eventId, navWithSection);
+            };
 
             return (
               <div key={it.id}
@@ -10567,7 +10711,7 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
                   }}>{ev.name}</div>
                   <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {[ev.type, vTot > 0 && `${conf} conf · ${vConf}/${vTot} vendors`].filter(Boolean).join(' · ')}
+                    {[eventTypeLabel(ev) || ev.type, vTot > 0 && `${conf} conf · ${vConf}/${vTot} vendors`].filter(Boolean).join(' · ')}
                   </div>
                 </div>
 
@@ -11392,6 +11536,386 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
   );
 }
 
+// ─── Sprint 60.A: Pipeline L1 surface ──────────────────────────────────────
+// Reads (does not own) clients + events + intake submissions and renders
+// them as the revenue workflow: New inquiry → Proposal → Contracted →
+// Deposit pending → Booked / Active → Complete. Every card carries a
+// truthful primary CTA + an explicit status reason. Zero fake CRM
+// pretense, zero new write paths. Conversion of an intake submission
+// reuses the Sprint 67 conversion logic via onCreateFromIntake. Sprint
+// 60.A also records a first-pipeline-viewed timestamp for the first-run
+// signals.
+function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient, onNew, onLoadSampleData, onCreateFromIntake, onProfile }) {
+  const C  = useT();
+  const s  = makeS(C);
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const [intakeRefresh, setIntakeRefresh] = useState(0);
+
+  // Record the first-pipeline-viewed timestamp the first time this surface
+  // mounts. Idempotent: ignores all later mounts.
+  useEffect(() => {
+    recordFirstRunSignal('firstPipelineViewedAt');
+  }, []);
+
+  // ── Intake submissions (Sprint 67 store) ─────────────────────────────
+  const intakeSubs = useMemo(() => {
+    if (!profile?.intakeToken) return [];
+    try {
+      const raw = localStorage.getItem(`ngw-intake-submissions-${profile.intakeToken}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+    // intakeRefresh is the manual re-read trigger after convertInquiry writes
+    // back to localStorage; the lint rule cannot see that side-effect signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.intakeToken, intakeRefresh]);
+  const newInquiries = intakeSubs.filter(s => s.status === 'new');
+
+  // ── Client-stage derivation ──────────────────────────────────────────
+  // Each client + linked event(s) becomes one or more pipeline cards.
+  // We lane on client.status (CLIENT_STAGES). Lane assignment is:
+  //   • Proposal    ← client.status in ['Inquiry', 'Proposal']
+  //   • Contracted  ← client.status === 'Contracted' AND not yet deposit-paid
+  //   • Deposit     ← client.status === 'Contracted' AND has unpaid milestone
+  //   • Active      ← client.status === 'Active'
+  //   • Complete    ← client.status === 'Complete'
+  // A client with no events linked still shows up in Proposal so the
+  // planner can act on the lead before scheduling.
+  const cards = useMemo(() => {
+    const out = [];
+    for (const c of clients) {
+      const linkedEvents = events.filter(e => (c.eventIds || []).includes(e.id));
+      // Compute money state from the client's fee schedule.
+      const fee        = c.plannerFee || 0;
+      const collected  = (c.feeSchedule || []).reduce((sum, f) => sum + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
+      const outstanding = Math.max(0, fee - collected);
+      const hasUnpaidMilestone = (c.feeSchedule || []).some(f => !f.paid && f.amount > 0);
+      const hasMilestones = (c.feeSchedule || []).length > 0;
+      const stage = c.status || 'Inquiry';
+
+      // What event date do we surface? Soonest future, or last past.
+      const nextEvent = [...linkedEvents].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        .find(e => e.date && daysUntil(e.date) >= 0) || linkedEvents[0] || null;
+
+      // Lane assignment
+      let lane;
+      let reason;
+      if (stage === 'Complete') {
+        lane = 'complete';
+        reason = 'Event complete';
+      } else if (stage === 'Active') {
+        lane = 'active';
+        reason = nextEvent && nextEvent.date
+          ? `Active · ${daysUntil(nextEvent.date) >= 0 ? `${daysUntil(nextEvent.date)}d to event` : 'past event date'}`
+          : 'Active client';
+      } else if (stage === 'Contracted') {
+        if (hasUnpaidMilestone) {
+          lane = 'deposit';
+          reason = `Deposit pending · ${fmtD(outstanding)} outstanding`;
+        } else {
+          lane = 'contracted';
+          reason = hasMilestones ? 'Milestones paid' : 'Contract signed — add payment milestones';
+        }
+      } else {
+        // Inquiry / Proposal — pre-contract work
+        lane = 'proposal';
+        reason = stage === 'Proposal' ? 'Proposal in progress' : 'New lead — start a proposal';
+      }
+      out.push({
+        id: `c-${c.id}`,
+        client: c,
+        event: nextEvent,
+        lane,
+        reason,
+        stage,
+        outstanding,
+        fee,
+        hasUnpaidMilestone,
+        hasMilestones,
+      });
+    }
+    return out;
+  }, [clients, events]);
+
+  const byLane = (lane) => cards.filter(c => c.lane === lane);
+
+  // Mobile: a single lane selector chip row; desktop: 5 columns.
+  const [mobileLane, setMobileLane] = useState('proposal');
+  const lanes = [
+    { id: 'inquiry',    label: 'New inquiry',  count: newInquiries.length },
+    { id: 'proposal',   label: 'Proposal',     count: byLane('proposal').length },
+    { id: 'contracted', label: 'Contracted',   count: byLane('contracted').length },
+    { id: 'deposit',    label: 'Deposit',      count: byLane('deposit').length },
+    { id: 'active',     label: 'Active',       count: byLane('active').length },
+    { id: 'complete',   label: 'Complete',     count: byLane('complete').length },
+  ];
+  const totalCards = newInquiries.length + cards.length;
+  const isEmpty = totalCards === 0;
+
+  // ── Sprint 67 conversion reused. Marks submission converted and creates
+  // event + client via the existing onCreateFromIntake callback. No new
+  // write path.
+  const convertInquiry = (sub) => {
+    const newClient = {
+      id: uid(), name: sub.name, email: sub.email, phone: sub.phone,
+      status: 'Inquiry', stage: 'Inquiry', eventIds: [], log: [],
+      intakeNotes: sub.notes || '',
+      feeSchedule: [], plannerFee: 0,
+    };
+    const newEvent = {
+      id: uid(), rsvpCode: uid(),
+      name: `${sub.name}'s ${sub.eventType || 'Event'}`,
+      type: sub.eventType || 'Other',
+      date: sub.eventDate || '',
+      venue: sub.venue || '',
+      guestCount: sub.guestCount ? Number(sub.guestCount) : 0,
+      budget: [], vendors: [], guests: [], timeline: [], ros: [], commClient: [],
+    };
+    try {
+      const key = `ngw-intake-submissions-${profile.intakeToken}`;
+      const updated = intakeSubs.map(x => x.id === sub.id ? { ...x, status: 'converted', convertedEventId: newEvent.id } : x);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setIntakeRefresh(n => n + 1);
+    } catch {}
+    onCreateFromIntake && onCreateFromIntake(newEvent, newClient);
+  };
+
+  // ── Inquiry card (intake submission) ─────────────────────────────────
+  const renderInquiryCard = (sub) => (
+    <div key={sub.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{sub.name}</div>
+      <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+        {sub.eventType || 'Event'}{sub.eventDate ? ` · ${fmtDate(sub.eventDate)}` : ''}{sub.guestCount ? ` · ${sub.guestCount} guests` : ''}
+      </div>
+      {sub.notes && <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic', lineHeight: 1.4 }}>"{sub.notes}"</div>}
+      <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+        <button onClick={() => convertInquiry(sub)} style={{ ...s.btn('primary'), fontSize: 11, padding: '5px 10px' }}>
+          Convert to event
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Client/event card. Primary CTA per lane is truthful: it always
+  // routes; it never claims to send anything.
+  const renderCard = (card) => {
+    const ev = card.event;
+    const ctaLabel = card.lane === 'active' || card.lane === 'complete'
+      ? (ev ? 'Open event →' : 'Open client →')
+      : card.lane === 'deposit'
+        ? 'Open Budget →'
+        : card.lane === 'contracted'
+          ? (ev ? 'Open event →' : 'Open client →')
+          : 'Open client →';
+    const ctaAction = () => {
+      if (card.lane === 'active' || card.lane === 'complete' || card.lane === 'contracted') {
+        if (ev) onSelectEvent(ev.id);
+        else onSelectClient(card.client.id);
+      } else if (card.lane === 'deposit') {
+        if (ev) onSelectEvent(ev.id, { tab: 'Budget' });
+        else onSelectClient(card.client.id);
+      } else {
+        onSelectClient(card.client.id);
+      }
+    };
+    return (
+      <div key={card.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{card.client.name}</div>
+        {ev && (
+          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+            {ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}
+          </div>
+        )}
+        <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.4 }}>{card.reason}</div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+          <button onClick={ctaAction} style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px' }}>
+            {ctaLabel}
+          </button>
+          {ev && card.lane !== 'deposit' && (
+            <button onClick={() => onSelectEvent(ev.id)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px' }}>
+              Open event →
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Empty state ──────────────────────────────────────────────────────
+  if (isEmpty) {
+    return (
+      <div style={{ padding: '32px 0' }}>
+        <div style={{ maxWidth: 560 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 8 }}>No active pipeline items yet</div>
+          <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 18 }}>
+            Pipeline shows leads, contracted events, deposits pending, and bookings —
+            grouped by stage. Start with an event or copy your intake-form link to
+            collect inquiries.
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {onNew && (
+              <button onClick={onNew} style={{ ...s.btn('primary'), fontSize: 12, padding: '7px 14px' }}>
+                Plan your first event
+              </button>
+            )}
+            {profile?.intakeToken && (
+              <button
+                onClick={() => {
+                  const base = window.location.origin + window.location.pathname;
+                  const url  = `${base}?intake=${profile.intakeToken}`;
+                  navigator.clipboard.writeText(url).catch(() => {});
+                }}
+                title="Copy your public intake form link"
+                style={{ ...s.btn('ghost'), fontSize: 12, padding: '7px 14px' }}
+              >
+                Copy intake link
+              </button>
+            )}
+            {!profile?.intakeToken && onProfile && (
+              <button onClick={onProfile} style={{ ...s.btn('ghost'), fontSize: 12, padding: '7px 14px' }}>
+                Set up intake form →
+              </button>
+            )}
+            {onLoadSampleData && (
+              <button onClick={onLoadSampleData} style={{ ...s.btn('ghost'), fontSize: 12, padding: '7px 14px', color: C.muted }}>
+                Try a sample event
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Sprint 60.C: Setup Progress card — real signals only ────────────
+  // Derived from the existing ngw-firstrun-signals localStorage (Sprint
+  // 60.A) plus live state for "first event" / "first client" so the card
+  // never lies: a freshly-cleared workspace shows 0 steps even if the
+  // signal timestamps were recorded historically. No fake percentages.
+  const setupSignals = readFirstRunSignals();
+  const hasRealEvent  = (events || []).some(e => !SEED_EVENT_IDS.has(e.id));
+  const hasRealClient = (clients || []).some(c => !SEED_CLIENT_IDS.has(c.id));
+  const hasSample     = (events || []).some(e => SEED_EVENT_IDS.has(e.id));
+  const steps = [
+    { key: 'open',     label: 'App opened',           done: Boolean(setupSignals.firstAppOpenAt) },
+    { key: 'event',    label: 'First event created',  done: hasRealEvent  || Boolean(setupSignals.firstEventCreatedAt) },
+    { key: 'client',   label: 'First client added',   done: hasRealClient || Boolean(setupSignals.firstClientCreatedAt) },
+    { key: 'pipeline', label: 'Pipeline viewed',      done: Boolean(setupSignals.firstPipelineViewedAt) },
+    { key: 'sample',   label: 'Sample event loaded',  done: hasSample     || Boolean(setupSignals.firstSampleLoadedAt) },
+  ];
+  const doneCount = steps.filter(s => s.done).length;
+  const nextStep = !steps[1].done ? { label: 'Plan your first event', action: onNew }
+    : !steps[2].done ? { label: 'Add your first client', action: null /* opens client modal — handled by parent */ }
+    : !steps[0].done ? { label: 'Open the app once more to record', action: null }
+    : (hasSample && !hasRealEvent) ? { label: 'Create a real event', action: onNew }
+    : null;
+  const setupProgressCard = doneCount < steps.length ? (
+    <div style={{
+      marginBottom: 16, padding: '14px 16px', borderRadius: 10,
+      background: C.surface, border: `1px solid ${C.border}`,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>
+          Setup progress
+        </div>
+        <div style={{ fontSize: 11, color: C.muted }}>
+          {doneCount} of {steps.length} setup steps recorded
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {steps.map(s => (
+          <span key={s.key} style={{
+            fontSize: 10.5, fontWeight: 600,
+            padding: '4px 9px', borderRadius: 99,
+            color: s.done ? C.success : C.muted,
+            background: s.done ? C.success + '14' : 'transparent',
+            border: `1px solid ${s.done ? C.success + '44' : C.border}`,
+          }}>
+            {s.done ? '✓ ' : '○ '}{s.label}
+          </span>
+        ))}
+      </div>
+      {nextStep && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
+          <span>Next:</span>
+          {nextStep.action ? (
+            <button onClick={nextStep.action} style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}>
+              {nextStep.label} →
+            </button>
+          ) : (
+            <span style={{ color: C.text, fontWeight: 600 }}>{nextStep.label}</span>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  // ── Mobile layout: lane chip row + selected lane content ─────────────
+  if (isMobile) {
+    const activeLane = mobileLane;
+    const items = activeLane === 'inquiry' ? newInquiries.map(renderInquiryCard) : byLane(activeLane).map(renderCard);
+    return (
+      <div>
+        {setupProgressCard}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
+          {lanes.map(ln => (
+            <button key={ln.id} onClick={() => setMobileLane(ln.id)}
+              style={{
+                padding: '6px 11px', borderRadius: 99, fontSize: 11,
+                fontWeight: activeLane === ln.id ? 700 : 500,
+                background: activeLane === ln.id ? C.text : 'transparent',
+                color: activeLane === ln.id ? C.bg : C.muted,
+                border: `1px solid ${activeLane === ln.id ? C.text : C.border}`,
+                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+              }}>
+              {ln.label} {ln.count > 0 && <span style={{ opacity: 0.7, marginLeft: 4 }}>{ln.count}</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {items.length > 0 ? items : (
+            <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '14px 0' }}>
+              Nothing in this lane right now.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop / tablet-land: 6-column board, auto-wrap to multi-row ────
+  const LaneColumn = ({ lane }) => {
+    const items = lane.id === 'inquiry' ? newInquiries.map(renderInquiryCard) : byLane(lane.id).map(renderCard);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px 6px', borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{lane.label}</span>
+          {lane.count > 0 && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{lane.count}</span>
+          )}
+        </div>
+        {items.length > 0 ? items : (
+          <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic', padding: '8px 4px' }}>—</div>
+        )}
+      </div>
+    );
+  };
+  return (
+    <div>
+      {setupProgressCard}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 16,
+        alignItems: 'start',
+      }}>
+        {lanes.map(ln => <LaneColumn key={ln.id} lane={ln} />)}
+      </div>
+    </div>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
@@ -11609,6 +12133,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     ? { title: 'Event Portfolio',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} across your studio` }
     : dashView === 'clients'
     ? { title: 'Client Roster', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
+    : dashView === 'pipeline'
+    ? { title: 'Pipeline', sub: 'Intake → planning → contract → deposit → booked.' }
     : { title: 'Home',       sub: 'Your events and what needs attention.' };
 
   // ── Primary navigation model (shared by desktop sidebar + mobile drawer) ──
@@ -11618,6 +12144,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // dashView — so it's marked with `external: true` and handled in goView.
   const navItems = [
     { id: 'dashboard', label: 'Home',       icon: 'home' },
+    // Sprint 60.A: Pipeline sits between Home and Calendar as the revenue
+    // workflow layer (intake → planning → contract → deposit → booked).
+    { id: 'pipeline',  label: 'Pipeline',   icon: 'list' },
     { id: 'calendar',  label: 'Calendar',   icon: 'calendar' },
     { id: 'events',    label: 'All Events', icon: 'list' },
     { id: 'clients',   label: 'Clients',    icon: 'users' },
@@ -12124,6 +12653,25 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>{/* /dashboard body */}
         </div>{/* /inner */}
       </div>}
+
+      {/* ── Sprint 60.A: Pipeline page ── */}
+      {dashView === 'pipeline' && (
+        <div style={{ padding: bp === 'mobile' ? '14px' : '28px 36px' }}>
+          <div style={inner}>
+            <PipelineView
+              events={events}
+              clients={clients}
+              profile={profile}
+              onSelectEvent={onSelectEvent}
+              onSelectClient={onSelectClient}
+              onNew={onNew}
+              onLoadSampleData={onLoadSampleData}
+              onCreateFromIntake={onCreateFromIntake}
+              onProfile={onProfile}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Clients list page ── */}
       {dashView === 'clients' && (() => {
@@ -13092,7 +13640,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
                               <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMob ? 200 : 'none' }}>{ev.name}</span>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{ev.type}</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{eventTypeLabel(ev) || ev.type}</span>
                               {SEED_EVENT_IDS.has(ev.id) && <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>}
                             </div>
                             <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -13689,7 +14237,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           <select style={{ ...s.input, flex: 1, fontSize: 12 }} value={linkEventId} onChange={e => setLinkEventId(e.target.value)}>
             <option value="">Select an event to link…</option>
             {unlinkableEvents.map(ev => (
-              <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` (${ev.type})` : ''}</option>
+              <option key={ev.id} value={ev.id}>{ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}{ev.type ? ` (${eventTypeLabel(ev) || ev.type})` : ''}</option>
             ))}
           </select>
           <button style={{ ...s.btn('primary'), fontSize: 12, padding: '6px 14px' }}
@@ -13725,7 +14273,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{ev.name}</div>
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{ev.type}{ev.venue ? ` · ${ev.venue}` : ''}</div>
+                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{eventTypeLabel(ev) || ev.type}{ev.venue ? ` · ${ev.venue}` : ''}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                     {days !== null && <span style={s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : evClr)}>{days > 0 ? `${days}d` : days === 0 ? 'Today' : 'Done'}</span>}
@@ -19780,9 +20328,9 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
                     <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No email on file</span>
                   )}
                   {onOpenVendor && (
-                    <button onClick={() => onOpenVendor(v.id)} title={`Open ${v.name} in the Vendors tab`}
+                    <button onClick={() => onOpenVendor(v.id, 'contract')} title={`Open ${v.name}'s contract details`}
                       style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px', flexShrink: 0 }}>
-                      Open vendor →
+                      Open contract details →
                     </button>
                   )}
                 </div>
@@ -19980,7 +20528,7 @@ const normalizeEventTabRoute = (rawTab, itemId) => {
 // from Command Center routing. This is the single source of truth for vendor
 // work — the PLAN-overlay Vendors sidebar entry is being deprecated in the
 // same sprint.
-function EventVendorsTab({ event, setEvent, setVendors, budget, openId, ros, profile, allEvents, isMobile, onBack }) {
+function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSection, sectionPing, ros, profile, allEvents, isMobile, onBack, onRouteToLinked }) {
   const [editingVendor, setEditingVendor] = useState(null);
   const budgetCategories = (budget || []).map(b => b.category).filter(Boolean);
   // Sprint 54: AI Readiness Copilot wiring. Pulls the planner's BYOK Anthropic
@@ -20026,6 +20574,13 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, ros, pro
         event={event}
         isMobile={isMobile}
         openId={openId}
+        /* Sprint 60.B — section focus. openSection is the target section
+           key (contact / payment / arrival / contract / documents / notes
+           / activity). sectionPing increments on each new request so the
+           focus side-effect re-fires when the same section is requested
+           twice in a row. */
+        openSection={openSection}
+        sectionPing={sectionPing}
         onBack={onBack}
         onEditVendor={(v) => setEditingVendor(v)}
         onAddVendor={() => setEditingVendor({
@@ -20037,6 +20592,7 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, ros, pro
         onPatchVendor={onPatchVendor}
         aiAvailable={aiAvailable}
         onAskAi={onAskAi}
+        onRouteToLinked={onRouteToLinked}
       />
       {editingVendor && (
         <VendorModal
@@ -20783,8 +21339,8 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                       </a>
                     )}
                     {onOpenVendor && (
-                      <button onClick={() => onOpenVendor(v.id)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
-                        Open vendor →
+                      <button onClick={() => onOpenVendor(v.id, 'contract')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                        Open contract details →
                       </button>
                     )}
                   </div>
@@ -20867,8 +21423,8 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                       </a>
                     )}
                     {onOpenVendor && (
-                      <button onClick={() => onOpenVendor(v.id)} title={`Open ${v.name} in the Vendors tab`} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
-                        Open vendor →
+                      <button onClick={() => onOpenVendor(v.id, 'arrival')} title={`Open ${v.name}'s arrival details`} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
+                        Open arrival details →
                       </button>
                     )}
                   </div>
@@ -20894,23 +21450,27 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
 // and the "Manage Event" overflow dropdown. Sprint 59A audit asked for one
 // owner; this is it. Secondary actions (Export / Duplicate / Archive / Delete)
 // stay in the header "Event Details" dropdown — that menu is unchanged.
-function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
-  const C = useT();
-  const s = makeS(C);
-  const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
-  // Local state for the freeform text fields so the input stays responsive
-  // while the planner is typing; commit on blur to event state.
-  const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
-  const SectionHead2 = ({ label, hint }) => (
+// ─── Hot-fix: hoisted inputs for EventDetailsTab ──────────────────────────────
+// These components MUST live at module scope. When they were defined inside
+// EventDetailsTab, every setEvent() call re-created the component reference,
+// React saw a different type, unmounted and remounted every <input> on each
+// keystroke — and the input lost focus + the character. Hoisting gives them
+// a stable reference so React preserves the input across renders.
+function EDTSectionHead({ C, label, hint }) {
+  return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>{label}</div>
       {hint && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{hint}</div>}
     </div>
   );
-  const Row = ({ children }) => (
+}
+function EDTRow({ isMobile, children }) {
+  return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>{children}</div>
   );
-  const Field = ({ label, value, placeholder, onChange, type = 'text', textarea, options }) => (
+}
+function EDTField({ C, s, label, value, placeholder, onChange, type = 'text', textarea, options }) {
+  return (
     <div>
       <label style={{ fontSize: 10.5, color: C.muted, display: 'block', marginBottom: 4 }}>{label}</label>
       {options ? (
@@ -20935,6 +21495,110 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
       )}
     </div>
   );
+}
+
+// Hybrid post-creation merge — offers to append missing vendor stubs / budget
+// rows / timeline tasks from the secondary type to an existing event. Only the
+// MISSING items are added (existing rows are never touched, so client data is
+// preserved). Renders nothing when there's nothing to merge.
+function HybridTemplateMerge({ C, s, event, setEvent }) {
+  const sec = event.secondaryType;
+  if (!sec || !EVT_PARENT[sec]) return null;
+
+  const haveVendorCats = new Set(
+    (event.vendors || []).map(v => (v.category || '').toLowerCase()).filter(Boolean)
+  );
+  const haveBudgetCats = new Set(
+    (event.budget || []).map(b => (b.category || '').toLowerCase()).filter(Boolean)
+  );
+  const haveTasks = new Set(
+    (event.timeline || []).map(t => (t.task || '').toLowerCase().trim()).filter(Boolean)
+  );
+
+  const missingVendors  = (VENDOR_STUBS[sec]      || []).filter(c => !haveVendorCats.has(c.toLowerCase()));
+  const missingBudget   = (BUDGET_TEMPLATES[sec]  || []).filter(r => !haveBudgetCats.has(r.c.toLowerCase()));
+  const missingTimeline = (TIMELINE_TEMPLATES[sec]|| []).filter(t => {
+    const k = (t.task || '').toLowerCase().trim();
+    return k && !haveTasks.has(k);
+  });
+
+  const total = missingVendors.length + missingBudget.length + missingTimeline.length;
+  if (total === 0) return null;
+
+  // Use the current event's budget total to size new budget rows. Falls back
+  // to the sum of existing rows if no `budget` field exists.
+  const totalBudget = Number(event.totalBudget)
+    || (event.budget || []).reduce((a, r) => a + (Number(r.budgeted) || 0), 0)
+    || 0;
+
+  const applyMerge = () => {
+    setEvent(ev => {
+      const next = { ...ev };
+      if (missingVendors.length) {
+        const newVendors = missingVendors.map(cat => ({
+          id: uid(), name: '', category: cat, budgetCategory: cat,
+          status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false,
+          balancePaid: false, payDueDate: '', arrivalTime: '', contact: '',
+          phone: '', website: '', backup: '', notes: '', log: [],
+        }));
+        next.vendors = [...(ev.vendors || []), ...newVendors];
+      }
+      if (missingBudget.length && totalBudget > 0) {
+        const newRows = missingBudget.map(r => ({
+          id: uid(), category: r.c, actual: 0, notes: '',
+          budgeted: Math.round(totalBudget * r.pct),
+        }));
+        next.budget = [...(ev.budget || []), ...newRows];
+      }
+      if (missingTimeline.length) {
+        const newTasks = missingTimeline.map(t => ({
+          ...t, id: uid(), done: false,
+        }));
+        next.timeline = [...(ev.timeline || []), ...newTasks];
+      }
+      return next;
+    });
+  };
+
+  const lineParts = [];
+  if (missingVendors.length)  lineParts.push(`${missingVendors.length} vendor ${missingVendors.length === 1 ? 'category' : 'categories'}`);
+  if (missingBudget.length && totalBudget > 0) lineParts.push(`${missingBudget.length} budget ${missingBudget.length === 1 ? 'row' : 'rows'}`);
+  if (missingTimeline.length) lineParts.push(`${missingTimeline.length} timeline ${missingTimeline.length === 1 ? 'task' : 'tasks'}`);
+  const summary = lineParts.length ? lineParts.join(' · ') : '';
+  const skippedBudget = missingBudget.length > 0 && totalBudget <= 0;
+
+  return (
+    <div style={{
+      margin: '0 0 12px', padding: '10px 12px', borderRadius: 8,
+      background: C.warn + '10', border: `1px solid ${C.warn}33`,
+      display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.warn, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        {sec} templates not applied
+      </div>
+      <div style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
+        Add {summary} from the {sec} template? Existing rows stay as-is.
+        {skippedBudget && <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4 }}>Budget rows skipped — set a total budget first.</div>}
+      </div>
+      <div>
+        <button onClick={applyMerge} style={{ ...s.btn('primary'), fontSize: 11, padding: '5px 10px' }}>
+          Add {sec} templates
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
+  const C = useT();
+  const s = makeS(C);
+  const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
+  const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
+  // Hot-fix: do NOT define inner-function wrappers — that re-creates the
+  // component type each render and remounts every <input>. Call the
+  // hoisted EDTField / EDTRow / EDTSectionHead directly from the JSX
+  // below with C, s, isMobile passed explicitly. Stable types → React
+  // preserves focus + typed characters across renders.
 
   return (
     <>
@@ -20944,14 +21608,31 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           1700px-wide single inputs. */}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <div style={{ padding: sectionPad }}>
-        <SectionHead2 label="Identity" hint="The basics — what the event is called, when it happens, and what kind of event it is." />
-        <Row>
-          <Field label="Event name"   value={event.name}      onChange={v => upd('name', v)} placeholder="Wedding · Birthday · Corporate offsite" />
-          <Field label="Event type"   value={event.type}      onChange={v => upd('type', v)} options={EVT_TYPES.map(t => ({ value: t, label: t }))} />
-        </Row>
-        <Row>
-          <Field label="Date"         value={event.date}      onChange={v => upd('date', v)} type="date" />
-          <Field
+        <EDTSectionHead C={C}label="Identity" hint="The basics — what the event is called, when it happens, and what kind of event it is." />
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="Event name"   value={event.name}      onChange={v => upd('name', v)} placeholder="Wedding · Birthday · Corporate offsite" />
+          <EDTField C={C} s={s} label="Event type"   value={event.type}      onChange={v => upd('type', v)} options={EVT_TYPES.map(t => ({ value: t, label: t }))} />
+        </EDTRow>
+        {/* Hybrid event type — optional. Primary stays canonical for color +
+            template behavior; secondary appears in cards/header pills as
+            "Primary + Secondary" so the team sees both. */}
+        <EDTRow isMobile={isMobile}>
+          <EDTField
+            C={C} s={s}
+            label="Secondary type (optional)"
+            value={event.secondaryType || ''}
+            onChange={v => upd('secondaryType', v)}
+            options={[
+              { value: '', label: '— none —' },
+              ...EVT_TYPES.filter(t => t !== event.type).map(t => ({ value: t, label: t })),
+            ]}
+          />
+          <div /> {/* keep two-column grid */}
+        </EDTRow>
+        <HybridTemplateMerge C={C} s={s} event={event} setEvent={setEvent} />
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => upd('date', v)} type="date" />
+          <EDTField C={C} s={s}
             label="Time of day"
             value={event.timeOfDay || 'afternoon'}
             onChange={v => upd('timeOfDay', v)}
@@ -20962,11 +21643,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
-        </Row>
+        </EDTRow>
       </div>
 
       <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
-        <SectionHead2 label="Venue" hint="Where it happens. Address, contact, and the operational notes the team will need on event day." />
+        <EDTSectionHead C={C}label="Venue" hint="Where it happens. Address, contact, and the operational notes the team will need on event day." />
         {/* Sprint 60: Venue logistics gaps. Surfaces only when a real gap
             applies — outdoor events without rain plan, near-event events
             without a venue contact, COI required but not on file. Quiet
@@ -20996,17 +21677,17 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             </div>
           );
         })()}
-        <Row>
-          <Field label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder="Bluebell Venue" />
-          <Field label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
-        </Row>
-        <Row>
-          <Field label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
-          <Field label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />
-        </Row>
-        <Row>
-          <Field label="Email"              value={event.venueEmail}   onChange={v => upd('venueEmail', v)} type="email" placeholder="venue@example.com" />
-          <Field
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder="Bluebell Venue" />
+          <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
+        </EDTRow>
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
+          <EDTField C={C} s={s} label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />
+        </EDTRow>
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="Email"              value={event.venueEmail}   onChange={v => upd('venueEmail', v)} type="email" placeholder="venue@example.com" />
+          <EDTField C={C} s={s}
             label="Indoor / outdoor"
             value={event.indoorOutdoor || ''}
             onChange={v => upd('indoorOutdoor', v)}
@@ -21017,21 +21698,21 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'both',     label: 'Both — partially outdoor' },
             ]}
           />
-        </Row>
+        </EDTRow>
         <div style={{ marginBottom: 10 }}>
-          <Field label="Load-in notes"    value={event.loadInNotes} onChange={v => upd('loadInNotes', v)} textarea placeholder="Loading dock on the south side. Service elevator. Vendors arrive 2 hours before doors." />
+          <EDTField C={C} s={s} label="Load-in notes"    value={event.loadInNotes} onChange={v => upd('loadInNotes', v)} textarea placeholder="Loading dock on the south side. Service elevator. Vendors arrive 2 hours before doors." />
         </div>
         <div style={{ marginBottom: 10 }}>
-          <Field label="Parking"          value={event.parkingNotes} onChange={v => upd('parkingNotes', v)} textarea placeholder="Free guest parking in Lot B after 5pm. Validate at the front desk." />
+          <EDTField C={C} s={s} label="Parking"          value={event.parkingNotes} onChange={v => upd('parkingNotes', v)} textarea placeholder="Free guest parking in Lot B after 5pm. Validate at the front desk." />
         </div>
         <div style={{ marginBottom: 10 }}>
-          <Field label="House rules"      value={event.houseRules} onChange={v => upd('houseRules', v)} textarea placeholder="No open flames. Music off by 11pm. Decor must be removed same night." />
+          <EDTField C={C} s={s} label="House rules"      value={event.houseRules} onChange={v => upd('houseRules', v)} textarea placeholder="No open flames. Music off by 11pm. Decor must be removed same night." />
         </div>
         <div style={{ marginBottom: 10 }}>
-          <Field label="Rain plan"        value={event.rainPlan} onChange={v => upd('rainPlan', v)} textarea placeholder="Move ceremony into Ballroom B. Decision by 10am day-of." />
+          <EDTField C={C} s={s} label="Rain plan"        value={event.rainPlan} onChange={v => upd('rainPlan', v)} textarea placeholder="Move ceremony into Ballroom B. Decision by 10am day-of." />
         </div>
-        <Row>
-          <Field
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s}
             label="Insurance / COI"
             value={event.coiNeeded || ''}
             onChange={v => upd('coiNeeded', v)}
@@ -21042,7 +21723,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'not_needed', label: 'Not required' },
             ]}
           />
-        </Row>
+        </EDTRow>
         <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.55, maxWidth: 560 }}>
           Day-of view reads these notes on event day. Vendors check this for load-in instructions. Keep them short and explicit.
         </div>
@@ -21199,6 +21880,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [showSendClient,  setShowSendClient] = useState(false);
   const [showPortal,      setShowPortal]     = useState(false);
   const [openVendorId,    setOpenVendorId]   = useState(initialNav?.vendorId || null);
+  // Sprint 60.B: vendor-section focus. Callers can route to a specific
+  // section inside the vendor cockpit (contact / payment / arrival /
+  // contract / documents / notes / activity). Cleared when leaving Vendors.
+  const [openVendorSection, setOpenVendorSection] = useState(initialNav?.vendorSection || null);
+  // Bump on each new route request so VendorPlanningWorkspace can re-fire
+  // the focus side-effect (scroll + flash) even when the same section is
+  // requested twice in a row.
+  const [vendorSectionPing, setVendorSectionPing] = useState(0);
   // Sprint 59B: legacy 'Planning Tasks' routes carry their item id under
   // `taskId`. If the normalized landing view is `list`, seed openTaskId from
   // that. The compressed sentinel '__compressed__' flows through unchanged.
@@ -21247,13 +21936,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // Sprint 46: PLAN layer dashboard (Tier 0, Track A)
   // Sprint 49 closure: showPlanDashboard removed — PLAN overlay retired.
 
-  const handleTabChange = (newTab, itemId) => {
+  const handleTabChange = (newTab, itemId, opts) => {
     // Sprint 51 Path B + Sprint 59B: every inbound route flows through one
     // normalizer so legacy callers (Home attention queue, CommandCenter
     // compressed CTAs, third-party deep links) automatically land in the
     // right Planning view with the right item id. Overview → Command;
     // Planning Tasks / Timeline / Checklist → Planning with the matching
     // view; everything else passes through.
+    // Sprint 60.B: optional opts.vendorSection lands the planner in a
+    // specific section inside the Vendor cockpit.
     const norm = normalizeEventTabRoute(newTab, itemId);
     const resolvedTab  = norm.tab;
     const resolvedView = norm.planningView;
@@ -21268,6 +21959,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // Planning · Timeline inherits the timeline item id (Sprint 49 Next-Up).
     setOpenTimelineId(resolvedView === 'timeline'    ? (norm.openId || null) : null);
     if (resolvedView) setPlanningView(resolvedView);
+    // Sprint 60.B: vendor-section landing target. Reset to null whenever
+    // we leave the Vendors tab.
+    const requestedSection = (resolvedTab === 'Vendors' && opts && opts.vendorSection) ? opts.vendorSection : null;
+    setOpenVendorSection(requestedSection);
+    if (requestedSection) setVendorSectionPing(p => p + 1);
     setTab(resolvedTab);
   };
 
@@ -21288,8 +21984,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     if (initialNav.decisionId && initialNav.decisionId !== openDecisionId) setOpenDecisionId(initialNav.decisionId);
     if (initialNav.commId     && initialNav.commId     !== openCommId)     setOpenCommId(initialNav.commId);
     if (initialNav.timelineId && initialNav.timelineId !== openTimelineId) setOpenTimelineId(initialNav.timelineId);
+    // Sprint 60.B: re-fire vendor section focus on every initialNav update
+    // even if the section repeats (planner clicked the same issue twice).
+    if (initialNav.vendorSection) {
+      setOpenVendorSection(initialNav.vendorSection);
+      setVendorSectionPing(p => p + 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialNav?.tab, initialNav?.vendorId, initialNav?.taskId, initialNav?.decisionId, initialNav?.commId, initialNav?.timelineId]);
+  }, [initialNav?.tab, initialNav?.vendorId, initialNav?.taskId, initialNav?.decisionId, initialNav?.commId, initialNav?.timelineId, initialNav?.vendorSection]);
 
   const wrap = (field) => (fn) =>
     setEvent(e => ({ ...e, [field]: typeof fn === 'function' ? fn(e[field]) : fn }));
@@ -21529,7 +22231,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           function definition is kept in this file as documented dead code for
           one release so any team script referencing it doesn't trip; remove
           in next sprint. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)} onOpenConnections={onOpenConnections} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget    budget={event.budget}     setBudget={wrap('budget')}     vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} /></>}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests    guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
@@ -21554,11 +22256,17 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             setVendors={wrap('vendors')}
             budget={event.budget}
             openId={openVendorId}
+            /* Sprint 60.B: section focus inside the vendor cockpit. */
+            openSection={openVendorSection}
+            sectionPing={vendorSectionPing}
             ros={event.ros}
             profile={profile}
             allEvents={allEvents}
             isMobile={isMobile}
             onBack={() => handleTabChange('Command')}
+            /* Vendor Readiness Pass: lets the cockpit route to a linked
+               item on another L4 tab. Maps category → canonical tab. */
+            onRouteToLinked={(targetTab, itemId) => handleTabChange(targetTab, itemId)}
           />
         </Suspense>
       )}
@@ -21601,7 +22309,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           event={event}
           isMobile={isMobile}
           onBack={() => handleTabChange('Command')}
-          onOpenVendor={(vendorId) => handleTabChange('Vendors', vendorId)}
+          /* Sprint 60.B: section-aware open. Documents rows route to the
+             contract section by default; the vendor mirror routes through
+             the same chain so the planner lands in the right spot. */
+          onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)}
         />
       )}
       {/* Sprint 59E: Event Details L4 — identity + venue truth in one
@@ -21668,8 +22379,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           setVendors={wrap('vendors')}
           event={event}
           /* Sprint 59H — Day-of "Missing arrival times" panel routes to the
-             specific vendor inside the Vendor cockpit. */
-          onOpenVendor={(vId) => handleTabChange('Vendors', vId)}
+             specific vendor. Sprint 60.B — also lands inside the arrival
+             section of the cockpit (handleTabChange tracks vendorSection). */
+          onOpenVendor={(vId, section) => handleTabChange('Vendors', vId, section ? { vendorSection: section } : undefined)}
         />
       )}
     </ErrorBoundary>
@@ -21695,7 +22407,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             value={event.name}
             onChange={e => setEvent(ev => ({ ...ev, name: e.target.value }))}
           />
-          <span style={s.pill(color)}>{event.type}</span>
+          <span style={s.pill(color)}>{event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>
           {days !== null && event.date && (
             <span style={s.pill(days <= 30 ? C.danger : days <= 90 ? C.warn : color)}>
               {countdownLabel(days)}
@@ -22330,6 +23042,10 @@ export default function App() {
   // Keep the page base (body) matching the theme so edges/overscroll never flash white.
   useEffect(() => { document.body.style.background = themeC.bg; }, [themeC.bg]);
 
+  // Sprint 60.A: first-app-open timestamp. Idempotent — only the very first
+  // mount writes the value; later mounts no-op.
+  useEffect(() => { recordFirstRunSignal('firstAppOpenAt'); }, []);
+
   // Sprint 51 onboarding: when ngw-onboard-done is set (user has chosen
   // "Start fresh" or "Clear sample data"), we never auto-inject seeds again.
   // First-run users still see the welcome hero before deciding what to do.
@@ -22643,6 +23359,10 @@ export default function App() {
       const userOwned = (prev || []).filter(c => !isSeedClient(c));
       return [...userOwned, ...SEED_CLIENTS];
     });
+    // Sprint 60.A: record first-sample-load + onboarding path (if not set).
+    recordFirstRunSignal('firstSampleLoadedAt');
+    const sigs = readFirstRunSignals();
+    if (!sigs.onboardingPath) recordFirstRunSignal('onboardingPath', 'sample_event');
   };
   const clearSampleData = () => {
     setEvents(prev => (prev || []).filter(e => !isSeedEvent(e)));
@@ -22696,6 +23416,13 @@ export default function App() {
         fireWebhook(profile.webhookUrl, 'event.created', buildEventCreatedPayload(ev));
       }).catch(() => {});
     }
+    // Sprint 60.A: first-event-created + onboarding path signal. Don't count
+    // seed events.
+    if (!isSeedEvent(ev)) {
+      recordFirstRunSignal('firstEventCreatedAt');
+      const sigs = readFirstRunSignals();
+      if (!sigs.onboardingPath) recordFirstRunSignal('onboardingPath', 'real_event');
+    }
     const linkId = explicitClientId || activeClientId;
     if (linkId) {
       setClients(cs => cs.map(c => c.id === linkId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), ev.id])] } : c));
@@ -22705,6 +23432,13 @@ export default function App() {
   };
   const createClient = (cl, linkedEventId, openIntake) => {
     setClients(cs => [...cs, cl]);
+    // Sprint 60.A: first-client-created signal. Records onboarding path
+    // only if no event was created first.
+    if (!isSeedClient(cl)) {
+      recordFirstRunSignal('firstClientCreatedAt');
+      const sigs = readFirstRunSignals();
+      if (!sigs.onboardingPath) recordFirstRunSignal('onboardingPath', 'client_first');
+    }
     // Seed the linked event's intake from the client's quick-intake so the
     // questionnaire starts pre-filled (guest count flows straight through).
     if (linkedEventId) {

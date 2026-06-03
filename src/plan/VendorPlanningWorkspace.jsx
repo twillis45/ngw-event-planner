@@ -23,7 +23,7 @@
 // All intelligence is deterministic — see src/lib/vendorIntelligence.js and
 // src/lib/vendorQuestions.js. No AI, no fake scoring.
 
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthCtx } from '../contexts/AuthContext';
 import { color, space, type, radius } from '../design/tokens';
 import {
@@ -152,6 +152,88 @@ function SectionHeading({ label, hint }) {
   );
 }
 
+// ─── Sprint 60.C: reusable collapsible section wrapper ───────────────────────
+// Replaces ad-hoc collapse code per-section so every cockpit section uses the
+// same chevron + count + aria-expanded affordance. Caller drives isOpen so
+// the sticky localStorage hook above can persist preferences per vendor.
+function CollapsibleSection({ label, summary, hintColor, isOpen, onToggle, children }) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 9, fontWeight: type.weight.semibold,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.textSecondary, fontFamily: FF,
+          }}>{label}</span>
+        </span>
+        {summary && (
+          <span style={{
+            fontSize: 10,
+            color: hintColor || P.textTertiary,
+            fontFamily: FF, fontStyle: 'italic',
+          }}>{summary}</span>
+        )}
+      </button>
+      {isOpen && children}
+    </div>
+  );
+}
+
+// ─── Sprint 60.C: sticky collapse state per vendor (localStorage-backed) ────
+// Stores BOOLEANS ONLY under `ngw-vendor-collapse-{vendorId}`. No vendor
+// content; no PII. Falls back to in-memory state if localStorage throws.
+// Smart defaults from the caller's `defaults` arg only apply when no saved
+// state exists.
+function useStickyVendorCollapse(vendorId, defaults) {
+  const storageKey = vendorId ? `ngw-vendor-collapse-${vendorId}` : null;
+  const [state, setState] = useState(() => {
+    if (!storageKey) return defaults;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Merge with defaults so missing keys (e.g. new sections added later)
+        // pick up their smart defaults instead of being undefined.
+        return { ...defaults, ...parsed };
+      }
+    } catch {}
+    return defaults;
+  });
+  // Re-init when switching vendors (the hook is called per-VendorDetail render).
+  // Effect keys are vendorId-scoped so changing vendor doesn't write the new
+  // defaults over the prior vendor's localStorage.
+  useEffect(() => {
+    if (!storageKey) { setState(defaults); return; }
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setState(raw ? { ...defaults, ...JSON.parse(raw) } : defaults);
+    } catch { setState(defaults); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorId]);
+  const update = (patch) => {
+    setState(prev => {
+      const next = typeof patch === 'function' ? patch(prev) : { ...prev, ...patch };
+      if (storageKey) {
+        try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
+  };
+  return [state, update];
+}
+
 // Status-color → label mapping for planning/day-of/closeout rows
 function rowStatusVisual(status) {
   switch (status) {
@@ -163,14 +245,15 @@ function rowStatusVisual(status) {
   }
 }
 
-function StatusRow({ label, value, status, consequence }) {
+// Vendor Readiness Pass · v2: every actionable status row is a button that
+// addresses the issue. `onAddress` is the click handler the parent sets per
+// row. When provided, the row renders with hover affordance + → indicator.
+// When absent (e.g. status === 'not_tracked' where no field exists yet),
+// the row stays inert.
+function StatusRow({ label, value, status, consequence, onAddress, addressLabel }) {
   const v = rowStatusVisual(status);
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 12,
-      padding: `${space[3]}px 0`,
-      borderBottom: `1px solid ${P.borderSubtle}`,
-    }}>
+  const body = (
+    <>
       <span style={{
         width: 18, height: 18, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -193,6 +276,41 @@ function StatusRow({ label, value, status, consequence }) {
           </div>
         )}
       </div>
+      {onAddress && (
+        <span style={{ color: P.textTertiary, fontSize: 11, flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
+      )}
+    </>
+  );
+
+  if (onAddress) {
+    return (
+      <button
+        type="button"
+        onClick={onAddress}
+        title={addressLabel || `Address: ${label}`}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: `${space[3]}px 4px`,
+          borderBottom: `1px solid ${P.borderSubtle}`,
+          background: 'none', border: 'none', borderLeft: 'none', borderRight: 'none',
+          borderTop: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: FF,
+          transition: 'background 0.1s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '33'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+      >
+        {body}
+      </button>
+    );
+  }
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: `${space[3]}px 0`,
+      borderBottom: `1px solid ${P.borderSubtle}`,
+    }}>
+      {body}
     </div>
   );
 }
@@ -534,10 +652,16 @@ function ReachActions({ vendor }) {
 // contract handling exposes URL paste + send-for-signature, arrival time
 // shows an inline time picker. No more "mark this happened" without giving
 // the planner a real way to make it happen.
-function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId }) {
+function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId, expandedKind: extExpandedKind, setExpandedKind: extSetExpandedKind }) {
   const step = useMemo(() => getActionableNextStep(nextAction, vendor), [nextAction, vendor]);
   const [doneState, setDoneState] = useState(null);
-  const [expandedKind, setExpandedKind] = useState(null); // 'payment' | 'contract' | 'arrival'
+  // Sprint 60.B: when VendorDetail drives expandedKind from outside (e.g.
+  // section-focus route from Day-of Missing arrival), use the external
+  // state. Otherwise fall back to local state so call sites that don't
+  // pass the prop keep the pre-60.B behavior.
+  const [localExpandedKind, setLocalExpandedKind] = useState(null);
+  const expandedKind     = extSetExpandedKind ? extExpandedKind   : localExpandedKind;
+  const setExpandedKind  = extSetExpandedKind ? extSetExpandedKind : setLocalExpandedKind;
   const isDone = doneState && Date.now() < doneState.until;
 
   const flashDone = (label) => {
@@ -1132,7 +1256,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
 }
 
 // 1 — Command Header
-function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId }) {
+function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId, expandedKind, setExpandedKind }) {
   const accent = levelColor(readiness.level);
   // Sprint 56 tone calm-down: "Vendor Cockpit" → "Vendor details". Internal
   // code references still call this the cockpit (the structural pattern); the
@@ -1220,6 +1344,8 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
             onEdit={onEdit}
             eventId={event?.id}
             userId={userId}
+            expandedKind={expandedKind}
+            setExpandedKind={setExpandedKind}
           />
         )}
       </div>
@@ -1240,10 +1366,18 @@ const CATEGORY_LABELS = {
   closeout: 'Wrap-up',
 };
 
-function ReadinessSnapshot({ challenges }) {
+function ReadinessSnapshot({ challenges, isOpen, onToggle }) {
+  // Sprint 60.C: collapsible. Summary shows attention/critical counts so a
+  // collapsed snapshot still surfaces signal.
+  const cats = challenges ? Object.values(challenges) : [];
+  const critical = cats.filter(c => c && c.level === 'critical').length;
+  const attention = cats.filter(c => c && c.level === 'attention').length;
+  const summary = critical > 0 ? `${critical} critical${attention > 0 ? ` · ${attention} attention` : ''}`
+    : attention > 0 ? `${attention} need${attention === 1 ? 's' : ''} attention`
+    : 'All categories OK';
+  const summaryColor = critical > 0 ? P.red : attention > 0 ? P.amber : P.green;
   return (
-    <div>
-      <SectionHeading label="Readiness Snapshot" hint="9 categories" />
+    <CollapsibleSection label="Readiness Snapshot" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
@@ -1276,116 +1410,257 @@ function ReadinessSnapshot({ challenges }) {
           );
         })}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 3/4/5 — Phase sections (Planning / Day-Of / Closeout)
-function PhaseSection({ label, hint, rows }) {
+// Vendor Readiness Pass: each phase is now collapsible. Planning is open
+// by default (most relevant before event day); Day-Of + Wrap Up collapse
+// to keep the cockpit scrollable on long vendor records. Items needing
+// attention show in the collapsed-state count so the planner still sees
+// signal.
+function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const attentionCount = rows.filter(r => r.status === 'missing' || r.status === 'attention' || r.status === 'pending').length;
+  const collapsedHint = !isOpen && attentionCount > 0
+    ? `${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+    : hint;
   return (
     <div>
-      <SectionHeading label={label} hint={hint} />
-      <div style={{
-        background: P.card, border: `1px solid ${P.borderSubtle}`,
-        borderRadius: radius.md, padding: `0 ${space[5]}px`,
-      }}>
-        {rows.map((r, i) => (
-          <StatusRow
-            key={r.key}
-            label={r.label}
-            value={r.value}
-            status={r.status}
-            consequence={r.consequence}
-          />
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(o => !o)}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 9, fontWeight: type.weight.semibold,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.textSecondary, fontFamily: FF,
+          }}>{label}</span>
+        </span>
+        {collapsedHint && (
+          <span style={{
+            fontSize: 10,
+            color: !isOpen && attentionCount > 0 ? P.amber : P.textTertiary,
+            fontFamily: FF, fontStyle: 'italic',
+          }}>
+            {collapsedHint}
+          </span>
+        )}
+      </button>
+      {isOpen && (
+        <div style={{
+          background: P.card, border: `1px solid ${P.borderSubtle}`,
+          borderRadius: radius.md, padding: `0 ${space[5]}px`,
+        }}>
+          {rows.map((r, i) => {
+            // Vendor Readiness v2: every actionable row routes via
+            // onAddressRow. The parent decides where each row.key goes
+            // (most route to onEditVendor). 'not_tracked' rows stay
+            // inert because the data model has no field to edit yet.
+            const canAddress = r.status !== 'not_tracked' && Boolean(onAddressRow);
+            return (
+              <StatusRow
+                key={r.key}
+                label={r.label}
+                value={r.value}
+                status={r.status}
+                consequence={r.consequence}
+                onAddress={canAddress ? () => onAddressRow(r) : undefined}
+                addressLabel={canAddress ? `Address: ${r.label}` : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // 6 — Required Questions
-function RequiredQuestionsSection({ vendor, questions }) {
+// Vendor Readiness Pass: collapsible. Open by default when any question is
+// unanswered (signal-first); collapses to a one-line "All answered" summary
+// once the vendor's checklist is complete.
+function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
   const cat = vendor.category || 'this vendor';
   const open = questions.filter(q => q.status !== 'answered').length;
+  const [isOpen, setIsOpen] = useState(open > 0);
   return (
     <div>
-      <SectionHeading
-        label={`Required Questions · ${cat}`}
-        hint={open > 0 ? `${open} unanswered` : 'All answered'}
-      />
-      <div style={{
-        background: P.card, border: `1px solid ${P.borderSubtle}`,
-        borderRadius: radius.md, padding: `0 ${space[5]}px`,
-      }}>
-        {questions.map(q => {
-          const status = q.status === 'answered' ? 'done' : (q.status === 'missing' ? 'missing' : 'not_tracked');
-          return (
-            <StatusRow
-              key={q.key}
-              label={q.question}
-              value={q.value || (q.status === 'answered' ? 'Confirmed' : 'Not tracked yet')}
-              status={status}
-              consequence={q.consequence}
-            />
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(o => !o)}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 9, fontWeight: type.weight.semibold,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.textSecondary, fontFamily: FF,
+          }}>{`Required Questions · ${cat}`}</span>
+        </span>
+        <span style={{
+          fontSize: 10,
+          color: open > 0 ? P.amber : P.textTertiary,
+          fontFamily: FF, fontStyle: 'italic',
+        }}>
+          {open > 0 ? `${open} unanswered` : 'All answered'}
+        </span>
+      </button>
+      {isOpen && (
+        <div style={{
+          background: P.card, border: `1px solid ${P.borderSubtle}`,
+          borderRadius: radius.md, padding: `0 ${space[5]}px`,
+        }}>
+          {questions.map(q => {
+            const status = q.status === 'answered' ? 'done' : (q.status === 'missing' ? 'missing' : 'not_tracked');
+            // Every required question that has a real backing field routes
+            // to the vendor edit modal where the planner can answer it.
+            const canAddress = status !== 'not_tracked' && Boolean(onAddressRow);
+            return (
+              <StatusRow
+                key={q.key}
+                label={q.question}
+                value={q.value || (q.status === 'answered' ? 'Confirmed' : 'Not tracked yet')}
+                status={status}
+                consequence={q.consequence}
+                onAddress={canAddress ? () => onAddressRow({ key: q.key, kind: 'question' }) : undefined}
+                addressLabel={canAddress ? `Answer: ${q.question}` : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // 7 — Linked Event Work
-function LinkedWorkSection({ linked }) {
+// Vendor Readiness Pass: every linked item is now a button that routes to
+// its canonical L4 tab (timeline → Run of Show, decisions → Decisions with
+// decisionId, tasks → Planning with taskId, communication → Communication
+// with commId, budget → Budget, documents → Documents). Each of the 6
+// sub-cards is collapsible so a vendor with lots of linked work doesn't
+// dominate the scroll. Defaults: any group with items is open; empty
+// groups stay collapsed.
+function LinkedWorkSection({ linked, onRouteToLinked }) {
   const groups = [
-    { key: 'timeline', label: 'Timeline / Run-of-Show', empty: 'No linked timeline items yet.' },
-    { key: 'decisions', label: 'Decisions / Approvals', empty: 'No linked decisions yet.' },
-    { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.' },
-    { key: 'communication', label: 'Communication', empty: 'No linked messages yet.' },
-    { key: 'budget', label: 'Budget Items', empty: 'No linked budget items yet.' },
-    { key: 'documents', label: 'Linked Documents', empty: 'No linked documents yet.' },
+    { key: 'timeline', label: 'Timeline / Run-of-Show', empty: 'No linked timeline items yet.', tab: 'Run of Show' },
+    { key: 'decisions', label: 'Decisions / Approvals', empty: 'No linked decisions yet.', tab: 'Decisions' },
+    { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.', tab: 'Planning Tasks' },
+    { key: 'communication', label: 'Communication', empty: 'No linked messages yet.', tab: 'Communication' },
+    { key: 'budget', label: 'Budget Items', empty: 'No linked budget items yet.', tab: 'Budget' },
+    { key: 'documents', label: 'Linked Documents', empty: 'No linked documents yet.', tab: 'Documents' },
   ];
+  // Default collapse state — groups with items are open; empty groups are
+  // collapsed so the cockpit shows the actionable signal first.
+  const [openKeys, setOpenKeys] = useState(() => {
+    const initial = new Set();
+    groups.forEach(g => { if ((linked[g.key] || []).length > 0) initial.add(g.key); });
+    return initial;
+  });
+  const toggle = (k) => setOpenKeys(prev => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
   return (
     <div>
       <SectionHeading label="Linked Event Work" hint="What depends on this vendor" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
         {groups.map(g => {
           const items = linked[g.key] || [];
+          const isOpen = openKeys.has(g.key);
           return (
             <div key={g.key} style={{
               background: P.card, border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.md, padding: `${space[3]}px ${space[5]}px`,
               fontFamily: FF,
             }}>
-              <div style={{
-                fontSize: 10, fontWeight: type.weight.semibold,
-                letterSpacing: '0.10em', textTransform: 'uppercase',
-                color: P.textTertiary, marginBottom: 6,
-              }}>
-                {g.label} {items.length > 0 && <span style={{ color: P.textSecondary }}>· {items.length}</span>}
-              </div>
-              {items.length === 0 ? (
-                <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic' }}>
+              <button
+                type="button"
+                onClick={() => toggle(g.key)}
+                aria-expanded={isOpen}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  textAlign: 'left', fontFamily: FF,
+                  marginBottom: isOpen ? 6 : 0,
+                }}
+              >
+                <span style={{ color: P.textTertiary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: type.weight.semibold,
+                  letterSpacing: '0.10em', textTransform: 'uppercase',
+                  color: P.textTertiary,
+                }}>
+                  {g.label} {items.length > 0 && <span style={{ color: P.textSecondary }}>· {items.length}</span>}
+                </span>
+              </button>
+              {isOpen && (items.length === 0 ? (
+                <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic', paddingLeft: 18 }}>
                   {g.empty}
                 </div>
               ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-                  {items.map((it, i) => (
-                    <li key={it.id || i} style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 12,
-                      padding: '3px 0', fontSize: 12, color: P.textPrimary,
-                    }}>
-                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {it.label}
-                      </span>
-                      {it.note && (
-                        <span style={{ color: P.textTertiary, flexShrink: 0 }}>
-                          {it.note}
-                        </span>
-                      )}
-                    </li>
-                  ))}
+                <ul style={{ margin: 0, padding: '0 0 0 18px', listStyle: 'none' }}>
+                  {items.map((it, i) => {
+                    const canRoute = Boolean(onRouteToLinked);
+                    const handleRoute = () => {
+                      if (!canRoute) return;
+                      onRouteToLinked(g.tab, it.id || null);
+                    };
+                    if (!canRoute) {
+                      return (
+                        <li key={it.id || i} style={{
+                          display: 'flex', justifyContent: 'space-between', gap: 12,
+                          padding: '3px 0', fontSize: 12, color: P.textPrimary,
+                        }}>
+                          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0 }}>{it.note}</span>}
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={it.id || i} style={{ padding: 0 }}>
+                        <button
+                          type="button"
+                          onClick={handleRoute}
+                          title={`Open in ${g.tab}`}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            gap: 12, padding: '4px 6px', margin: '1px -6px',
+                            background: 'none', border: '1px solid transparent', borderRadius: radius.sm,
+                            cursor: 'pointer', fontFamily: FF, textAlign: 'left',
+                            fontSize: 12, color: P.textPrimary, transition: 'all 0.1s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '55'; e.currentTarget.style.borderColor = P.borderSubtle; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent'; }}
+                        >
+                          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0, fontSize: 11 }}>{it.note}</span>}
+                          <span style={{ color: P.textTertiary, fontSize: 11, flexShrink: 0 }}>→</span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
-              )}
+              ))}
             </div>
           );
         })}
@@ -1415,7 +1690,7 @@ async function extractDocumentAI({ contractUrl, vendorName, eventName, documentT
 }
 
 // 8 — Documents
-function DocumentsSection({ vendor, event }) {
+function DocumentsSection({ vendor, event, isOpen, onToggle }) {
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const hasContractFile = Boolean(vendor.contractUrl || vendor.contractStoragePath);
   const [extracting, setExtracting] = useState(false);
@@ -1442,9 +1717,17 @@ function DocumentsSection({ vendor, event }) {
     ? 'File attached — mark signed once you confirm both parties have signed.'
     : undefined;
 
+  // Sprint 60.C: collapsible. Summary mirrors the contract status so the
+  // collapsed header still signals "Signed" / "Pending" / "Missing".
+  const summary = contractStatus === 'done' ? 'Signed'
+    : contractStatus === 'attention' ? 'Needs attention'
+    : 'Missing';
+  const summaryColor = contractStatus === 'done' ? P.green
+    : contractStatus === 'attention' ? P.amber
+    : P.red;
+
   return (
-    <div>
-      <SectionHeading label="Documents" />
+    <CollapsibleSection label="Documents" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: `0 ${space[5]}px`,
@@ -1572,15 +1855,18 @@ function DocumentsSection({ vendor, event }) {
           </div>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 9 — Notes
-function NotesSection({ vendor }) {
+function NotesSection({ vendor, isOpen, onToggle }) {
+  // Sprint 60.C: collapsible. Closed by default; summary surfaces note
+  // presence so the planner sees signal without expanding.
+  const hasNotes = Boolean(vendor.notes && vendor.notes.trim());
+  const summary = hasNotes ? 'Notes on file' : 'No notes';
   return (
-    <div>
-      <SectionHeading label="Notes" />
+    <CollapsibleSection label="Notes" summary={summary} hintColor={hasNotes ? P.green : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: space[5], minHeight: 80,
@@ -1590,12 +1876,12 @@ function NotesSection({ vendor }) {
       }}>
         {vendor.notes || 'No notes for this vendor.'}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 10 — Activity log (preserves Sprint 50 functionality)
-function ActivityLogSection({ vendor, onAddLog }) {
+function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
   const [draft, setDraft] = useState('');
   const log = Array.isArray(vendor.log) ? vendor.log : [];
   const entries = [...log].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -1616,9 +1902,13 @@ function ActivityLogSection({ vendor, onAddLog }) {
     setDraft('');
   };
 
+  // Sprint 60.C: collapsible. Summary surfaces latest entry's date so the
+  // collapsed header still hints at recency.
+  const latest = feed[0];
+  const summary = feed.length === 0 ? 'No activity yet'
+    : `${feed.length} entr${feed.length === 1 ? 'y' : 'ies'}${latest && latest.date && latest.date !== '—' ? ` · last ${latest.date}` : ''}`;
   return (
-    <div>
-      <SectionHeading label="Activity Log" hint={feed.length > 0 ? `${feed.length} entr${feed.length === 1 ? 'y' : 'ies'}` : undefined} />
+    <CollapsibleSection label="Activity Log" summary={summary} hintColor={feed.length > 0 ? P.textSecondary : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
       {onAddLog && (
         <div style={{
           background: P.card, border: `1px solid ${P.borderSubtle}`,
@@ -1716,7 +2006,7 @@ function ActivityLogSection({ vendor, onAddLog }) {
           </div>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -1868,7 +2158,7 @@ function CopyableDraft({ text }) {
   );
 }
 
-function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
+function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, onToggle }) {
   const context = useMemo(() => buildVendorCopilotContext(vendor, event), [vendor, event]);
   const rulePreview = useMemo(() => getRuleBasedPreview(context), [context]);
 
@@ -1943,9 +2233,19 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
     setAiLoading(false);
   };
 
+  // Sprint 60.C: collapsible. Summary surfaces preview source so a closed
+  // copilot still shows whether AI is active.
+  const summary = preview.source === 'ai' ? 'AI-enhanced brief ready' : 'Rule-based preview';
   return (
+    <CollapsibleSection
+      label="Readiness Copilot"
+      summary={summary}
+      hintColor={preview.source === 'ai' ? P.green : P.textTertiary}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
     <div style={{
-      marginTop: space[5], marginBottom: space[5],
+      marginTop: 0, marginBottom: space[5],
       background: P.card,
       border: `1px solid ${P.borderSubtle}`,
       borderLeft: `2px solid ${preview.source === 'ai' ? P.green : '#3a5a78'}`,
@@ -2158,6 +2458,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
       <CollapsibleList label="Evidence used" items={preview.evidence} />
       <CollapsibleList label="Limitations" items={preview.limitations} />
     </div>
+    </CollapsibleSection>
   );
 }
 
@@ -2182,7 +2483,7 @@ function EmptyLine({ text }) {
 }
 
 // ── Vendor Detail Cockpit (root of detail pane) ─────────────────────────────
-function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId }) {
+function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const nextAction = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
@@ -2193,24 +2494,128 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
   const questions = useMemo(() => getVendorRequiredQuestions(vendor, event), [vendor, event]);
   const linked = useMemo(() => getVendorLinkedWork(vendor, event), [vendor, event]);
 
+  // Sprint 60.B — section-focus state. expandedKind is shared with
+  // NextActionCard so payment/contract/arrival routes from outside the
+  // cockpit can open the right inline panel. flashSection drives a 2-second
+  // amber outline on the target section after focus lands.
+  const [expandedKind, setExpandedKind] = useState(null);
+  const [flashSection, setFlashSection] = useState(null);
+  const scrollContainerRef = useRef(null);
+  const nextActionRef = useRef(null);
+  const documentsRef = useRef(null);
+  const notesRef = useRef(null);
+  const activityRef = useRef(null);
+  const questionsRef = useRef(null);
+
+  // Sprint 60.C — sticky per-vendor collapse state. Smart defaults reflect
+  // signal-first behavior: open the sections that have something the
+  // planner should see immediately, collapse the rest.
+  const challengesCats = challenges ? Object.values(challenges) : [];
+  const hasReadinessSignal = challengesCats.some(c => c && (c.level === 'critical' || c.level === 'attention'));
+  const contractHasIssue = !(vendor.contractSigned === true || vendor.contract_signed === true)
+    || !(vendor.contractUrl || vendor.contractStoragePath);
+  const collapseDefaults = {
+    readinessSnapshot: hasReadinessSignal,
+    readinessCopilot: false,
+    documents: contractHasIssue,
+    notes: false,
+    activity: false,
+  };
+  const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
+  const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Vendor Readiness v2: address-row router. Status rows from PhaseSection
+  // and RequiredQuestionsSection route through here. For payment / contract /
+  // arrival, we drive the NextActionCard's inline expand. For contact /
+  // scope / vendor-status (no inline panel today), we fall back to the
+  // canonical vendor edit modal.
+  const addressRow = (row) => {
+    const key = row?.key;
+    const targetKind = (key === 'deposit' || key === 'balance' || key === 'payment-overdue') ? 'payment'
+      : (key === 'contract' || key === 'documents') ? 'contract'
+      : (key === 'arrival' || key === 'expectedArrival') ? 'arrival'
+      : null;
+    if (targetKind) {
+      setExpandedKind(targetKind);
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    if (onEdit) onEdit();
+  };
+
+  // Sprint 60.B — react to external section-focus requests (from Budget,
+  // Documents, Day-of arrivals, Home AttentionQueue, CommandCenter NEXT
+  // actions). Re-fires when sectionPing increments so the same section
+  // can be requested twice in a row. Sprint 60.C — also force-open the
+  // sticky-collapse state for the target section so a planner who
+  // previously collapsed it still lands inside an expanded panel.
+  useEffect(() => {
+    if (!openSection) return;
+    if (openSection === 'contact') {
+      if (onEdit) onEdit();
+      return;
+    }
+    if (openSection === 'payment' || openSection === 'contract' || openSection === 'arrival') {
+      setExpandedKind(openSection);
+      // Contract also expands the Documents collapsible so the planner sees
+      // the contract row context after the inline panel.
+      if (openSection === 'contract') {
+        setCollapse(prev => ({ ...prev, documents: true }));
+      }
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    const refMap = { documents: documentsRef, notes: notesRef, activity: activityRef, questions: questionsRef };
+    const collapseKeyMap = { documents: 'documents', notes: 'notes', activity: 'activity' };
+    const collapseKey = collapseKeyMap[openSection];
+    if (collapseKey) setCollapse(prev => ({ ...prev, [collapseKey]: true }));
+    const targetRef = refMap[openSection];
+    if (targetRef && targetRef.current) {
+      setFlashSection(openSection);
+      setTimeout(() => setFlashSection(null), 2000);
+      if (targetRef.current.scrollIntoView) {
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [openSection, sectionPing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper: amber outline wrapper applied to the flashing section.
+  const flashStyle = (key) => flashSection === key ? {
+    boxShadow: `0 0 0 2px ${P.amber}`,
+    borderRadius: radius.md,
+    transition: 'box-shadow 0.18s ease-out',
+  } : { transition: 'box-shadow 0.4s ease-out' };
+
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       background: P.canvas, overflow: 'hidden',
     }}>
-      <CommandHeader
-        vendor={vendor}
-        event={event}
-        readiness={readiness}
-        stage={stage}
-        nextAction={nextAction}
-        onEdit={onEdit}
-        onPatchVendor={onPatchVendor}
-        onAddLog={onAddLog}
-        userId={userId}
-      />
+      <div ref={nextActionRef} style={flashStyle('nextAction')}>
+        <CommandHeader
+          vendor={vendor}
+          event={event}
+          readiness={readiness}
+          stage={stage}
+          nextAction={nextAction}
+          onEdit={onEdit}
+          onPatchVendor={onPatchVendor}
+          onAddLog={onAddLog}
+          userId={userId}
+          expandedKind={expandedKind}
+          setExpandedKind={setExpandedKind}
+        />
+      </div>
 
-      <div style={{
+      <div ref={scrollContainerRef} style={{
         flex: 1, overflowY: 'auto',
         padding: `${space[2]}px ${space[6]}px ${space[7]}px`,
       }}>
@@ -2220,19 +2625,33 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
           vendor={vendor} event={event}
           aiAvailable={aiAvailable}
           onAskAi={onAskAi}
+          isOpen={collapse.readinessCopilot}
+          onToggle={() => toggle('readinessCopilot')}
         />
 
-        <ReadinessSnapshot challenges={challenges} />
+        <ReadinessSnapshot
+          challenges={challenges}
+          isOpen={collapse.readinessSnapshot}
+          onToggle={() => toggle('readinessSnapshot')}
+        />
 
-        <PhaseSection label="Planning" hint="Before the event" rows={planning} />
-        <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} />
-        <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} />
+        <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={true} onAddressRow={addressRow} />
+        <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} defaultOpen={false} onAddressRow={addressRow} />
+        <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} defaultOpen={false} onAddressRow={addressRow} />
 
-        <RequiredQuestionsSection vendor={vendor} questions={questions} />
-        <LinkedWorkSection linked={linked} />
-        <DocumentsSection vendor={vendor} event={event} />
-        <NotesSection vendor={vendor} />
-        <ActivityLogSection vendor={vendor} onAddLog={onAddLog} />
+        <div ref={questionsRef} style={flashStyle('questions')}>
+          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} />
+        </div>
+        <LinkedWorkSection linked={linked} onRouteToLinked={onRouteToLinked} />
+        <div ref={documentsRef} style={flashStyle('documents')}>
+          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')} />
+        </div>
+        <div ref={notesRef} style={flashStyle('notes')}>
+          <NotesSection vendor={vendor} isOpen={collapse.notes} onToggle={() => toggle('notes')} />
+        </div>
+        <div ref={activityRef} style={flashStyle('activity')}>
+          <ActivityLogSection vendor={vendor} onAddLog={onAddLog} isOpen={collapse.activity} onToggle={() => toggle('activity')} />
+        </div>
       </div>
     </div>
   );
@@ -2266,6 +2685,9 @@ function NoSelection({ count }) {
 export default function VendorPlanningWorkspace({
   event, isMobile,
   openId,
+  // Sprint 60.B: section focus inside the vendor cockpit.
+  openSection = null,
+  sectionPing = 0,
   onBack,
   onEditVendor,
   onAddVendor,
@@ -2282,6 +2704,10 @@ export default function VendorPlanningWorkspace({
   // label, deterministic output).
   aiAvailable = false,
   onAskAi = null,
+  // Vendor Readiness Pass: route a linked item (timeline/decision/task/
+  // communication/budget/document) back to its canonical L4 tab. The
+  // caller maps category → tab and forwards an optional item id.
+  onRouteToLinked = null,
 }) {
   const auth = useContext(AuthCtx);
   const userId = auth?.user?.id || 'anon';
@@ -2395,6 +2821,9 @@ export default function VendorPlanningWorkspace({
                 aiAvailable={aiAvailable}
                 onAskAi={onAskAi}
                 userId={userId}
+                onRouteToLinked={onRouteToLinked}
+                openSection={openSection}
+                sectionPing={sectionPing}
               />
             ) : (
               <NoSelection count={vendors.length} />
@@ -2427,6 +2856,9 @@ export default function VendorPlanningWorkspace({
             onPatchVendor={onPatchVendor}
             aiAvailable={aiAvailable}
             onAskAi={onAskAi}
+            onRouteToLinked={onRouteToLinked}
+            openSection={openSection}
+            sectionPing={sectionPing}
           />
         ) : (
           <NoSelection count={vendors.length} />

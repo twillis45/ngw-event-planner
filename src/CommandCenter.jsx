@@ -1025,8 +1025,9 @@ function _selectEventNextActionInner(event) {
       category: 'vendor',
       title: `Send payment to ${v.name || 'this vendor'}.`,
       consequence: `Balance was due ${daysWord(od)} ago${v.cost ? ` (${fmtMoney0(v.cost)})` : ''}. Late payments can affect how the vendor prioritizes your event — better to settle now.`,
-      primaryCta: 'Open vendor',
-      primaryRoute: { tab: 'Vendors', vendorId: v.id },
+      // Sprint 60.B: issue-specific CTA. Lands inside the payment section.
+      primaryCta: 'Open payment details',
+      primaryRoute: { tab: 'Vendors', vendorId: v.id, vendorSection: 'payment' },
       contextLine: daysSub,
     };
   }
@@ -1038,6 +1039,8 @@ function _selectEventNextActionInner(event) {
       category: 'vendor',
       title: `Confirm ${unconfirmed.name}.`,
       consequence: `Currently ${(unconfirmed.status || 'open').toLowerCase()}. The closer to the event, the harder it gets to find another option if this one falls through.`,
+      // Sprint 60.B: generic "Open vendor" is OK here — the action is to
+      // review readiness, not address one specific field.
       primaryCta: 'Open vendor',
       primaryRoute: { tab: 'Vendors', vendorId: unconfirmed.id },
       contextLine: daysSub,
@@ -1429,10 +1432,13 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
 
   const handleCta = () => {
     if (!command.primaryRoute) return;
-    const { tab, ...rest } = command.primaryRoute;
+    const { tab, vendorSection, ...rest } = command.primaryRoute;
     // Find first non-falsy id in the route (decisionId / vendorId / commId / timelineId)
     const idKey = Object.keys(rest)[0];
-    onTabChange && onTabChange(tab, rest[idKey] || null);
+    // Sprint 60.B — forward vendorSection as the third opts arg so the
+    // EventPlanner route chain can land the planner in the right section.
+    const opts = vendorSection ? { vendorSection } : undefined;
+    onTabChange && onTabChange(tab, rest[idKey] || null, opts);
   };
 
   return (
@@ -1627,7 +1633,7 @@ function MobileCommandCenter({ event, data, onTabChange, onBack, backLabel, onAd
             letterSpacing: '-0.03em', lineHeight: 1.1,
           }}>{event.name || 'Untitled event'}</div>
           <div style={{ fontSize: 12.5, color: P.textSecondary }}>
-            {event.type ? `${event.type} · ` : ''}
+            {event.type ? `${event.type}${event.secondaryType ? ` + ${event.secondaryType}` : ''} · ` : ''}
             {event.date ? `${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'Date TBD'}
             {d.days !== null && ` · ${d.days > 0 ? `${d.days} days from now` : d.days === 0 ? 'Today' : `${Math.abs(d.days)} days ago`}`}
           </div>
@@ -1770,7 +1776,7 @@ function DesktopCommandCenter({ event, data, onTabChange, onBack, backLabel, onA
           }}>{backLabel || '← Studio'}</button>
           <span style={{ color: P.borderSubtle, fontSize: 16 }}>|</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: P.textPrimary }}>{event.name || 'Event'}</span>
-          {event.type && <span style={{ fontSize: 12, color: P.textSecondary }}>· {event.type}</span>}
+          {event.type && <span style={{ fontSize: 12, color: P.textSecondary }}>· {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>}
           {d.days !== null && (
             <span style={{ fontSize: 12, color: d.days <= 30 && d.days > 0 ? P.amber : P.textSecondary }}>
               {/* Figma 655:60 canonical countdown */}
@@ -1797,7 +1803,7 @@ function DesktopCommandCenter({ event, data, onTabChange, onBack, backLabel, onA
           </div>
           <div style={{ fontSize: 12.5, color: P.textSecondary }}>
             {[
-              event.type,
+              event.type && `${event.type}${event.secondaryType ? ` + ${event.secondaryType}` : ''}`,
               event.date && new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }),
               ...d.metaParts,
             ].filter(Boolean).join(' · ')}
