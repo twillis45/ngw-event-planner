@@ -9025,6 +9025,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
             const emailOn      = isEmailConfigured();
             const aiOn         = Boolean(profile?.anthropicKey);
             const sentryOn     = isSentryConfigured();
+            const stripeReady  = isStripeConfigured();
             const dsConnected  = Boolean(profile?.docusignAccessToken);
 
             const IntRow = ({ label, desc, status, detail, actionLabel, onAction, expandContent }) => {
@@ -9192,6 +9193,15 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
                     </div>
                   }
                 />
+
+                {/* Stripe — client deposits */}
+                <IntRow
+                  label="Stripe — client deposits & balances"
+                  desc={stripeReady ? 'Create payment links for client fee milestones — clients pay on Stripe\'s hosted page' : commApiOn ? 'Backend connected — add STRIPE_SECRET_KEY on Render to enable' : 'Requires communication backend first'}
+                  status={stripeReady ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
+                  detail={!stripeReady && commApiOn ? 'Set STRIPE_SECRET_KEY (sk_live_... or sk_test_...) on the Render backend. Create a restricted key at dashboard.stripe.com → Developers → API keys.' : null}
+                />
+
               </div>
             );
           })()}
@@ -9275,7 +9285,6 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers }) {
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
               { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar', phase: 'Phase 2' },
-              { label: 'Stripe — client deposits', desc: 'Collect deposits and balances without leaving the app', phase: 'Phase 3' },
               { label: 'Intake form + website embed', desc: 'Capture leads and auto-create events from your website', phase: 'Phase 3' },
             ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
@@ -12118,7 +12127,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const na = selectEventNextAction(ev);
               const days = daysUntil(ev.date);
               const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
-              const accent = hasCritical ? C.danger : totalAtt > 0 ? C.warn : C.accent2;
+              // Red only for real decision blockers; steel blue for everything else
+              const accent = hasCritical ? C.danger : C.accent;
               const label = hasCritical
                 ? 'Which event needs you today · Critical'
                 : totalAtt > 0
