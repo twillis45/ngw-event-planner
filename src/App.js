@@ -10702,11 +10702,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       border:   '#1c2026',  // borderSubtle
       text:     '#eef0f4',  // textPrimary
       muted:    '#849eb8',  // textSecondary
-      accent:   '#3a8a62',  // green (replaces teal as primary)
-      accent2:  '#3a8a62',  // green
+      accent:   '#4a90d9',  // periwinkle steel blue — primary CTA / home accent
+      accent2:  '#0891b2',  // cyan-600 — secondary accent
       warn:     '#d4904a',  // amber
       danger:   '#9a3a3a',  // red
-      success:  '#3a8a62',  // green
+      success:  '#3a8a62',  // green — kept for semantic correctness
     };
   }, [_themeCtx.C, _isDark]);
   const _childThemeCtx = useMemo(() => ({ ..._themeCtx, C }), [_themeCtx, C]);
