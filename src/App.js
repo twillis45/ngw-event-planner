@@ -113,11 +113,16 @@ const STEEL = {
   blue900: '#1D313D',  // dark accent wells (sparingly)
 };
 
+// Sprint 60.L Carbon Tier Lock — Mid Carbon is now the production default.
+// The previous Standard Carbon (#070809 / #121518 / #171B1F / #1C2026) is
+// preserved as a deep-contrast variant for day-of operational surfaces, but
+// the working app shell now uses Mid Carbon for grandmother readability +
+// breathing room between layers.
 const DARK = {
-  bg:       '#070809', // canonical matte['050']
-  surface:  '#121518', // canonical matte['150'] CARBON
-  surface2: '#171b1f', // canonical matte['200']
-  border:   '#1c2026', // canonical matte['250']
+  bg:       '#111519', // Mid Carbon page (was #070809)
+  surface:  '#1C2227', // Mid Carbon card (was #121518)
+  surface2: '#242B31', // Mid Carbon elevated (was #171B1F)
+  border:   '#2E353D', // Mid Carbon hairline (was #1C2026)
   // Accent now points at Steel Blue 500 — the silvery identity.
   // Existing `C.accent` callers (route text, links, ghost CTAs, default
   // primary buttons) inherit it automatically.
