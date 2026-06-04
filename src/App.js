@@ -11063,7 +11063,7 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
     }}>
       {tag && (
         <div style={{
-          fontSize: 11.5, fontWeight: 700, letterSpacing: '0.14em',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.14em',
           textTransform: 'uppercase', color: C.muted,
         }}>{tag}</div>
       )}
@@ -11073,20 +11073,20 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
       }}>{title}</div>
       {body && (
         <div style={{
-          fontSize: 14.5, lineHeight: 1.52, color: C.muted,
+          fontSize: 15, lineHeight: 1.52, color: C.muted,
         }}>{body}</div>
       )}
       {example && (
         <div style={{
-          fontSize: 12.5, lineHeight: 1.45, color: C.muted, opacity: 0.85,
+          fontSize: 13, lineHeight: 1.45, color: C.muted, opacity: 0.88,
           fontStyle: 'italic',
         }}>{example}</div>
       )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
         <button onClick={onPrimary} style={{
-          padding: '12px 20px', minHeight: 44, borderRadius: 8,
+          padding: '12px 20px', minHeight: 48, borderRadius: 8,
           border: 'none', background: C.accent, color: '#fff',
-          fontSize: 15, fontWeight: 700, cursor: 'pointer',
+          fontSize: 16, fontWeight: 700, cursor: 'pointer',
           fontFamily: 'inherit',
         }}>{primaryCta}</button>
         {secondaryCta && (
@@ -11155,35 +11155,34 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         opacity: command.level === 'neutral' ? 0.4 : 1,
       }} />
 
-      {/* Label — Sprint 60.I: bumped from 9.5px (ant-font) to 11.5/10 to
-          pass the grandmother typography rule. Tag still small enough to
-          read as a tag, not a heading, but no longer requires squinting. */}
+      {/* Label tag — Sprint 60.K-v2: 11.5 → 12 to meet status-pill 12px min. */}
       <div style={{
-        fontSize: isMobile ? 11.5 : 10,
+        fontSize: isMobile ? 12 : 10.5,
         fontWeight: 700, letterSpacing: isMobile ? '0.14em' : '0.18em',
         textTransform: 'uppercase', color: accent,
-        marginBottom: isMobile ? 10 : 12,
+        marginBottom: isMobile ? 12 : 12,
       }}>
         {label}
       </div>
 
-      {/* Title — editorial scale. Sprint 60.I: mobile hero h2 bumped from
-          20px to 24px to meet the addendum 22–28px target. */}
+      {/* Title — Sprint 60.K-v2: mobile hero h2 24 → 30 to hit the
+          30–36px hero target. Line-height tightened to 1.15 to keep
+          two-line headlines from breathing too wide. */}
       <h2 style={{
-        margin: 0, marginBottom: isMobile ? 12 : 10,
-        fontSize: isWide ? 26 : isMobile ? 24 : 22,
-        fontWeight: 700, letterSpacing: '-0.025em',
-        lineHeight: 1.18, color: C.text,
+        margin: 0, marginBottom: isMobile ? 14 : 10,
+        fontSize: isWide ? 30 : isMobile ? 30 : 26,
+        fontWeight: 800, letterSpacing: '-0.028em',
+        lineHeight: 1.15, color: C.text,
         fontFamily: 'inherit',
       }}>
         {command.title}
       </h2>
 
-      {/* Consequence paragraph — Sprint 60.I: mobile subtitle bumped from
-          12.5px to 14.5px so it reads without squinting. */}
+      {/* Consequence paragraph — Sprint 60.K-v2: subtitle 14.5 → 15.5
+          to hit the 15–17px helper-copy target on phone brightness. */}
       <p style={{
-        margin: 0, marginBottom: isMobile ? 20 : 18,
-        fontSize: isWide ? 13.5 : isMobile ? 14.5 : 13,
+        margin: 0, marginBottom: isMobile ? 22 : 18,
+        fontSize: isWide ? 14 : isMobile ? 15.5 : 13.5,
         lineHeight: 1.55, color: C.muted,
         maxWidth: 720,
       }}>
@@ -11202,7 +11201,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
             cursor: 'pointer',
             background: accent,
             color: command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809',
-            fontSize: isWide ? 13 : isMobile ? 15 : 13,
+            fontSize: isWide ? 13.5 : isMobile ? 16 : 13.5,
             fontWeight: 700,
             letterSpacing: '0.01em',
             fontFamily: 'inherit',
@@ -23085,9 +23084,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   <Icon name={it.icon} size={active ? 22 : 21} />
                 </span>
                 <span style={{
-                  fontSize: active ? 10 : 10,
-                  fontWeight: active ? 700 : 400,
-                  letterSpacing: active ? '0.03em' : '0.01em',
+                  fontSize: 12,
+                  fontWeight: active ? 700 : 500,
+                  letterSpacing: active ? '0.02em' : '0.01em',
                   textTransform: 'uppercase',
                   lineHeight: 1,
                 }}>{it.label}</span>
@@ -23101,7 +23100,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               color: bottomMoreActive ? color : C.muted, minHeight: 52,
             }}>
             <Icon name="menu" size={21} />
-            <span style={{ fontSize: 10, fontWeight: bottomMoreActive ? 700 : 400, letterSpacing: '0.01em', textTransform: 'uppercase', lineHeight: 1 }}>More</span>
+            <span style={{ fontSize: 12, fontWeight: bottomMoreActive ? 700 : 500, letterSpacing: '0.01em', textTransform: 'uppercase', lineHeight: 1 }}>More</span>
           </button>
         </div>
       )}
