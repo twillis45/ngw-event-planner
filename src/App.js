@@ -10411,7 +10411,8 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
             if (tab.id !== 'all' && count === 0) return null;
             return (
               <button key={tab.id} onClick={() => setFilter(tab.id)} style={{
-                padding: '3px 9px', borderRadius: 99, fontSize: 10.5,
+                padding: '7px 12px', borderRadius: 99, fontSize: 12,
+                minHeight: 32,
                 fontWeight: active ? 600 : 500, cursor: 'pointer',
                 background: active ? C.text : 'transparent',
                 color: active ? C.bg : C.muted,
@@ -11641,13 +11642,16 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
 
   // Mobile: a single lane selector chip row; desktop: 5 columns.
   const [mobileLane, setMobileLane] = useState('proposal');
+  // Sprint 60.H: plain-language subtitles next to canonical lane names. The
+  // labels are the source-of-truth funnel; subtitles are display helpers for
+  // first-time and non-technical users.
   const lanes = [
-    { id: 'inquiry',    label: 'New inquiry',  count: newInquiries.length },
-    { id: 'proposal',   label: 'Proposal',     count: byLane('proposal').length },
-    { id: 'contracted', label: 'Contracted',   count: byLane('contracted').length },
-    { id: 'deposit',    label: 'Deposit',      count: byLane('deposit').length },
-    { id: 'active',     label: 'Active',       count: byLane('active').length },
-    { id: 'complete',   label: 'Complete',     count: byLane('complete').length },
+    { id: 'inquiry',    label: 'New inquiry',  hint: 'New request — decide if it becomes an event',  count: newInquiries.length },
+    { id: 'proposal',   label: 'Proposal',     hint: 'Planning the offer or details',                count: byLane('proposal').length },
+    { id: 'contracted', label: 'Contracted',   hint: 'Booked — setup may still be needed',           count: byLane('contracted').length },
+    { id: 'deposit',    label: 'Deposit',      hint: 'Money is still due',                           count: byLane('deposit').length },
+    { id: 'active',     label: 'Active',       hint: 'Event is being planned',                       count: byLane('active').length },
+    { id: 'complete',   label: 'Complete',     hint: 'Event is finished',                            count: byLane('complete').length },
   ];
   const totalCards = newInquiries.length + cards.length;
   const isEmpty = totalCards === 0;
@@ -11871,21 +11875,30 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
           {lanes.map(ln => (
             <button key={ln.id} onClick={() => setMobileLane(ln.id)}
+              title={ln.hint}
+              aria-label={`${ln.label}: ${ln.hint || ''}`}
               style={{
-                padding: '6px 11px', borderRadius: 99, fontSize: 11,
+                padding: '10px 14px', borderRadius: 99, fontSize: 13,
+                minHeight: 38,
                 fontWeight: activeLane === ln.id ? 700 : 500,
                 background: activeLane === ln.id ? C.text : 'transparent',
                 color: activeLane === ln.id ? C.bg : C.muted,
                 border: `1px solid ${activeLane === ln.id ? C.text : C.border}`,
                 cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
               }}>
-              {ln.label} {ln.count > 0 && <span style={{ opacity: 0.7, marginLeft: 4 }}>{ln.count}</span>}
+              {ln.label} {ln.count > 0 && <span style={{ opacity: 0.7, marginLeft: 6 }}>{ln.count}</span>}
             </button>
           ))}
         </div>
+        {(() => {
+          const activeLaneObj = lanes.find(l => l.id === activeLane);
+          return activeLaneObj?.hint ? (
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.45 }}>{activeLaneObj.hint}</div>
+          ) : null;
+        })()}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {items.length > 0 ? items : (
-            <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '14px 0' }}>
+            <div style={{ fontSize: 13, color: C.muted, fontStyle: 'italic', padding: '14px 0' }}>
               Nothing in this lane right now.
             </div>
           )}
@@ -11899,14 +11912,19 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
     const items = lane.id === 'inquiry' ? newInquiries.map(renderInquiryCard) : byLane(lane.id).map(renderCard);
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px 6px', borderBottom: `1px solid ${C.border}` }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{lane.label}</span>
-          {lane.count > 0 && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{lane.count}</span>
+        <div style={{ padding: '0 4px 8px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{lane.label}</span>
+            {lane.count > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 8px' }}>{lane.count}</span>
+            )}
+          </div>
+          {lane.hint && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>{lane.hint}</div>
           )}
         </div>
         {items.length > 0 ? items : (
-          <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic', padding: '8px 4px' }}>—</div>
+          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 4px' }}>—</div>
         )}
       </div>
     );
@@ -22396,17 +22414,25 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           />
         </Suspense>
       )}
-      {tab === 'Now'      && dayMode && <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} />}
+      {tab === 'Now'      && dayMode && (
+        <>
+          <LegacyTabHeader label="Now" hint="What needs you right now — overdue tasks, late vendors, anything that can't wait." onBack={() => handleTabChange('Command')} />
+          <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} />
+        </>
+      )}
       {tab === 'Arrivals' && dayMode && (
-        <VendorArrivalView
-          vendors={event.vendors || []}
-          setVendors={wrap('vendors')}
-          event={event}
-          /* Sprint 59H — Day-of "Missing arrival times" panel routes to the
-             specific vendor. Sprint 60.B — also lands inside the arrival
-             section of the cockpit (handleTabChange tracks vendorSection). */
-          onOpenVendor={(vId, section) => handleTabChange('Vendors', vId, section ? { vendorSection: section } : undefined)}
-        />
+        <>
+          <LegacyTabHeader label="Arrivals" hint="Who's arrived, who's late, who's still missing an arrival time." onBack={() => handleTabChange('Command')} />
+          <VendorArrivalView
+            vendors={event.vendors || []}
+            setVendors={wrap('vendors')}
+            event={event}
+            /* Sprint 59H — Day-of "Missing arrival times" panel routes to the
+               specific vendor. Sprint 60.B — also lands inside the arrival
+               section of the cockpit (handleTabChange tracks vendorSection). */
+            onOpenVendor={(vId, section) => handleTabChange('Vendors', vId, section ? { vendorSection: section } : undefined)}
+          />
+        </>
       )}
     </ErrorBoundary>
   );

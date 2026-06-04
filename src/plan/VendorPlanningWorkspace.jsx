@@ -2483,7 +2483,140 @@ function EmptyLine({ text }) {
 }
 
 // ── Vendor Detail Cockpit (root of detail pane) ─────────────────────────────
-function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
+// ─── Sprint 60.H: Mobile vendor summary card ─────────────────────────────────
+// Goal: on mobile, the first thing the planner sees on a vendor detail must be
+// "what's wrong with this vendor and what to do about it" — not a wall of
+// readiness sections. This card sits above CommandHeader on mobile only.
+// Reads from existing challenges + nextAction data; no new source of truth.
+function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit }) {
+  const cat = vendor.category || 'Vendor';
+  const status = vendor.status || 'Considering';
+
+  // Top 3 challenges in plain language from the existing intelligence layer.
+  const issues = challenges
+    ? Object.values(challenges)
+        .filter(c => c && (c.level === 'critical' || c.level === 'attention') && c.note)
+        .sort((a, b) => (a.level === 'critical' ? 0 : 1) - (b.level === 'critical' ? 0 : 1))
+        .slice(0, 3)
+    : [];
+
+  // Map next-action sourceCategory → vendor cockpit section key. Falls back
+  // to "Open vendor" when no specific section applies.
+  const sectionByCategory = {
+    financial: 'payment',
+    closeout:  'payment',
+    contract:  'contract',
+    arrival:   'arrival',
+    contact:   'contact',
+    logistics: 'arrival',
+  };
+  const section = sectionByCategory[nextAction?.sourceCategory] || null;
+  const sectionCtaMap = {
+    payment:  'Open payment details →',
+    contract: 'Open contract details →',
+    arrival:  'Open arrival details →',
+    contact:  'Open contact details →',
+  };
+  const ctaLabel = section ? sectionCtaMap[section] : null;
+  const looksReady = issues.length === 0;
+  const levelColor = issues.some(i => i.level === 'critical') ? P.red : P.amber;
+
+  return (
+    <div style={{
+      background: P.card,
+      borderBottom: `1px solid ${P.borderSubtle}`,
+      padding: `${space[4]}px ${space[6]}px ${space[5]}px`,
+      fontFamily: FF,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: space[3] }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 18, fontWeight: type.weight.semibold,
+            color: P.textPrimary, lineHeight: 1.2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{vendor.name || '(unnamed vendor)'}</div>
+          <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 2 }}>
+            {cat} · {status}
+          </div>
+        </div>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            aria-label="Edit vendor details"
+            style={{
+              background: 'transparent', border: `1px solid ${P.borderSubtle}`,
+              borderRadius: radius.sm, color: P.textSecondary, fontSize: 11,
+              padding: '6px 10px', cursor: 'pointer', fontFamily: FF, flexShrink: 0,
+            }}
+          >Edit</button>
+        )}
+      </div>
+
+      {looksReady ? (
+        <div style={{
+          marginTop: space[4],
+          padding: `${space[3]}px ${space[4]}px`,
+          background: P.green + '14',
+          border: `1px solid ${P.green}44`,
+          borderRadius: radius.md,
+          fontSize: 13, color: P.green,
+          fontWeight: type.weight.semibold,
+        }}>
+          ✓ Looks ready — nothing pressing on this vendor.
+        </div>
+      ) : (
+        <>
+          <div style={{
+            marginTop: space[4],
+            fontSize: 10, fontWeight: type.weight.semibold,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: levelColor,
+          }}>Needs attention</div>
+          <ul style={{
+            margin: `${space[2]}px 0 0`,
+            padding: 0, listStyle: 'none',
+            display: 'flex', flexDirection: 'column', gap: space[2],
+          }}>
+            {issues.map((c, i) => (
+              <li key={i} style={{
+                fontSize: 13, lineHeight: 1.45,
+                color: P.textPrimary,
+                paddingLeft: 14, position: 'relative',
+              }}>
+                <span style={{
+                  position: 'absolute', left: 0, top: 8,
+                  width: 6, height: 6, borderRadius: 3,
+                  background: c.level === 'critical' ? P.red : P.amber,
+                }} />
+                {c.note}
+              </li>
+            ))}
+          </ul>
+          {ctaLabel && onPrimary && (
+            <button
+              onClick={() => onPrimary(section)}
+              style={{
+                marginTop: space[4],
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: radius.md,
+                border: 'none',
+                background: P.accent,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: type.weight.semibold,
+                fontFamily: FF,
+                cursor: 'pointer',
+              }}
+            >{ctaLabel}</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const nextAction = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
@@ -2514,13 +2647,13 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
   const hasReadinessSignal = challengesCats.some(c => c && (c.level === 'critical' || c.level === 'attention'));
   const contractHasIssue = !(vendor.contractSigned === true || vendor.contract_signed === true)
     || !(vendor.contractUrl || vendor.contractStoragePath);
-  const collapseDefaults = {
-    readinessSnapshot: hasReadinessSignal,
-    readinessCopilot: false,
-    documents: contractHasIssue,
-    notes: false,
-    activity: false,
-  };
+  // Sprint 60.H: on mobile, the new MobileVendorSummary card handles the
+  // first-look "what's wrong" signal — so all sections start closed below it.
+  // Desktop keeps the smart-default open behavior so pros see the signal-led
+  // sections without an extra tap.
+  const collapseDefaults = isMobile
+    ? { readinessSnapshot: false, readinessCopilot: false, documents: false, notes: false, activity: false }
+    : { readinessSnapshot: hasReadinessSignal, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
   const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
   const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -2545,6 +2678,20 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
       return;
     }
     if (onEdit) onEdit();
+  };
+
+  // Sprint 60.H: MobileVendorSummary primary action — same section-focus
+  // mechanism as addressRow but invoked directly by the summary card's CTA.
+  const summaryPrimary = (section) => {
+    if (section === 'contact') { if (onEdit) onEdit(); return; }
+    if (section === 'payment' || section === 'contract' || section === 'arrival') {
+      setExpandedKind(section);
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current?.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   };
 
   // Sprint 60.B — react to external section-focus requests (from Budget,
@@ -2619,6 +2766,15 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
         flex: 1, overflowY: 'auto',
         padding: `${space[2]}px ${space[6]}px ${space[7]}px`,
       }}>
+        {isMobile && (
+          <MobileVendorSummary
+            vendor={vendor}
+            nextAction={nextAction}
+            challenges={challenges}
+            onPrimary={summaryPrimary}
+            onEdit={onEdit}
+          />
+        )}
         <CatererDriftBanner vendor={vendor} event={event} onMarkCatererUpdated={onMarkCatererUpdated} />
 
         <ReadinessCopilotSection
@@ -2635,7 +2791,7 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
           onToggle={() => toggle('readinessSnapshot')}
         />
 
-        <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={true} onAddressRow={addressRow} />
+        <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={!isMobile} onAddressRow={addressRow} />
         <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} defaultOpen={false} onAddressRow={addressRow} />
         <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} defaultOpen={false} onAddressRow={addressRow} />
 
@@ -2814,6 +2970,7 @@ export default function VendorPlanningWorkspace({
             {selected ? (
               <VendorDetail
                 vendor={selected} event={event}
+                isMobile={true}
                 onEdit={onEditVendor ? () => onEditVendor(selected) : undefined}
                 onAddLog={onAddLog}
                 onMarkCatererUpdated={onMarkCatererUpdated}
