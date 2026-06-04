@@ -11125,18 +11125,26 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
         }}>{example}</div>
       )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
-        {/* Sprint 60.L Studio Matte CTA: silvery steel-blue gradient,
-            inner highlight, restrained shadow. Steel mist text on the
-            premium fill — darkroom button feel, not SaaS bright. */}
-        <button onClick={onPrimary} style={{
-          padding: '14px 22px', minHeight: 52, borderRadius: 14,
-          border: 'none',
-          background: `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`,
-          color: C.accentText,
-          fontSize: 16, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'inherit',
-          boxShadow: '0 10px 28px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 1px rgba(193,203,208,0.18)',
-        }}>{primaryCta}</button>
+        {/* Sprint 60.L Studio Matte CTA — 3D depth:
+            top highlight, bottom inner shadow, two-stop drop shadow,
+            hairline border, subtle text-shadow for tonal weight. */}
+        <button onClick={onPrimary}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.filter = 'brightness(1.06)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px rgba(193,203,208,0.18)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.04), 0 6px 14px rgba(0,0,0,0.40), 0 18px 36px rgba(0,0,0,0.30), 0 0 0 1px rgba(193,203,208,0.18)'; }}
+          style={{
+            padding: '15px 24px', minHeight: 54, borderRadius: 16,
+            border: 'none',
+            background: `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`,
+            color: C.accentText,
+            fontSize: 16, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'inherit',
+            letterSpacing: '0.01em',
+            textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.04), 0 6px 14px rgba(0,0,0,0.40), 0 18px 36px rgba(0,0,0,0.30), 0 0 0 1px rgba(193,203,208,0.18)',
+            transition: 'transform 0.16s cubic-bezier(.2,.7,.2,1), box-shadow 0.16s, filter 0.16s',
+          }}>{primaryCta}</button>
         {secondaryCta && (
           <button onClick={onSecondary} style={{
             padding: '12px 14px', minHeight: 44, borderRadius: 8,
@@ -11288,23 +11296,48 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
               confidence vs. pure white. White text reserved for the
               semantic-color tiers. */}
         {(() => {
+          // Sprint 60.L Studio Matte Button — 3D depth pass.
+          // Composite shadow:
+          //   inset 0 1px 0 rgba(255,255,255,0.14)  top highlight
+          //   inset 0 -1px 0 rgba(0,0,0,0.30)        bottom inner shadow (depth)
+          //   0 1px 0 rgba(255,255,255,0.04)         ambient top edge
+          //   0 6px 14px rgba(0,0,0,0.40)            mid drop
+          //   0 18px 36px rgba(0,0,0,0.30)           soft floor
+          //   0 0 0 1px rgba(193,203,208,0.18)       hairline border
           const useGradient = command.level === 'neutral' || command.category === 'today';
           const fillBg = useGradient
             ? `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`
-            : accent;
+            : (command.level === 'critical'
+                ? `linear-gradient(180deg, #b14a4a 0%, ${accent} 100%)`
+                : command.level === 'attention'
+                  ? `linear-gradient(180deg, #e0a35a 0%, ${accent} 100%)`
+                  : accent);
           const ctaText = useGradient
             ? C.accentText
             : (command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809');
-          const ctaShadow = useGradient
-            ? '0 10px 28px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 1px rgba(193,203,208,0.18)'
-            : (command.level === 'critical' ? `0 0 0 1px ${accent}33` : 'none');
+          const shadow3D = useGradient
+            ? [
+                'inset 0 1px 0 rgba(255,255,255,0.14)',
+                'inset 0 -1px 0 rgba(0,0,0,0.30)',
+                '0 1px 0 rgba(255,255,255,0.04)',
+                '0 6px 14px rgba(0,0,0,0.40)',
+                '0 18px 36px rgba(0,0,0,0.30)',
+                '0 0 0 1px rgba(193,203,208,0.18)',
+              ].join(', ')
+            : [
+                'inset 0 1px 0 rgba(255,255,255,0.18)',
+                'inset 0 -1px 0 rgba(0,0,0,0.28)',
+                '0 6px 14px rgba(0,0,0,0.40)',
+                '0 18px 36px rgba(0,0,0,0.26)',
+                `0 0 0 1px ${accent}55`,
+              ].join(', ');
           return (
             <button
               onClick={handlePrimary}
               style={{
-                padding: isWide ? '12px 22px' : isMobile ? '14px 22px' : '12px 20px',
-                minHeight: isMobile ? 52 : undefined,
-                borderRadius: isMobile ? 14 : 10,
+                padding: isWide ? '13px 24px' : isMobile ? '15px 24px' : '13px 22px',
+                minHeight: isMobile ? 54 : undefined,
+                borderRadius: isMobile ? 16 : 12,
                 border: 'none',
                 cursor: 'pointer',
                 background: fillBg,
@@ -11315,12 +11348,17 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
                 fontFamily: 'inherit',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                transition: 'transform 0.12s, box-shadow 0.12s, background 0.12s',
-                boxShadow: ctaShadow,
+                gap: 8,
+                transition: 'transform 0.16s cubic-bezier(.2,.7,.2,1), box-shadow 0.16s, filter 0.16s',
+                boxShadow: shadow3D,
+                textShadow: useGradient ? '0 1px 0 rgba(0,0,0,0.25)' : (ctaText === '#fff' ? '0 1px 0 rgba(0,0,0,0.25)' : '0 1px 0 rgba(255,255,255,0.10)'),
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.filter = 'brightness(1.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = useGradient
+                ? 'inset 0 2px 4px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px rgba(193,203,208,0.18)'
+                : `inset 0 2px 4px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px ${accent}55`; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = shadow3D; }}
             >
               {command.primaryCta}
               <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
@@ -23314,11 +23352,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
         }}>
-          {/* Sprint 60.L Studio Matte nav active state:
-              • active item now wears a silvery steel pill —
-                background rgba(111,135,148,0.14), top highlight
-                rgba(193,203,208,0.14), label Steel Blue 400, icon
-                Steel Mist 300.
+          {/* Sprint 60.L Studio Matte nav active state + icon illumination:
+              • silvery steel pill background + top highlight
+              • icon now has a soft drop-shadow halo (Steel Mist 300 at
+                ~38% opacity, 10px radius) — reads as "this lane is lit"
+              • subtle radial vignette under the icon via pseudo glow
               • no bright blue, no neon gradient underline. */}
           {bottomNavItems.map(it => {
             const active  = laneActive(it);
@@ -23331,15 +23369,25 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '8px 0 9px',
                   margin: '2px 4px',
-                  background: active ? 'rgba(111, 135, 148, 0.14)' : 'transparent',
+                  background: active
+                    ? 'radial-gradient(ellipse at 50% 38%, rgba(168,183,191,0.18) 0%, rgba(111,135,148,0.14) 38%, transparent 78%), rgba(111, 135, 148, 0.10)'
+                    : 'transparent',
                   border: 'none', cursor: 'pointer',
                   borderRadius: 12,
                   color: active ? (C.steel?.blue400 || C.accent) : C.muted,
                   minHeight: 52, position: 'relative',
-                  boxShadow: active ? 'inset 0 1px 0 rgba(193,203,208,0.14)' : 'none',
-                  transition: 'background 0.16s, color 0.16s, box-shadow 0.16s',
+                  boxShadow: active ? 'inset 0 1px 0 rgba(193,203,208,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)' : 'none',
+                  transition: 'background 0.18s, color 0.18s, box-shadow 0.18s',
                 }}>
-                <span style={{ transform: active ? 'scale(1.05)' : 'scale(1)', transition: 'transform 0.12s', display: 'flex', color: active ? (C.steel?.mist300 || C.accent) : C.muted }}>
+                <span style={{
+                  transform: active ? 'scale(1.05)' : 'scale(1)',
+                  transition: 'transform 0.14s, filter 0.18s',
+                  display: 'flex',
+                  color: active ? (C.steel?.mist300 || C.accent) : C.muted,
+                  filter: active
+                    ? 'drop-shadow(0 0 6px rgba(193,203,208,0.55)) drop-shadow(0 0 14px rgba(111,135,148,0.45))'
+                    : 'none',
+                }}>
                   <Icon name={it.icon} size={active ? 22 : 21} />
                 </span>
                 <span style={{
@@ -23349,6 +23397,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   textTransform: 'uppercase',
                   lineHeight: 1,
                   color: active ? (C.steel?.blue400 || C.accent) : C.muted,
+                  textShadow: active ? '0 0 6px rgba(111,135,148,0.55)' : 'none',
                 }}>{it.label}</span>
               </button>
             );
@@ -23358,18 +23407,32 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '8px 0 9px',
               margin: '2px 4px',
-              background: bottomMoreActive ? 'rgba(111, 135, 148, 0.14)' : 'transparent',
+              background: bottomMoreActive
+                ? 'radial-gradient(ellipse at 50% 38%, rgba(168,183,191,0.18) 0%, rgba(111,135,148,0.14) 38%, transparent 78%), rgba(111, 135, 148, 0.10)'
+                : 'transparent',
               border: 'none', cursor: 'pointer',
               borderRadius: 12,
               color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted,
               minHeight: 52,
-              boxShadow: bottomMoreActive ? 'inset 0 1px 0 rgba(193,203,208,0.14)' : 'none',
-              transition: 'background 0.16s, color 0.16s, box-shadow 0.16s',
+              boxShadow: bottomMoreActive ? 'inset 0 1px 0 rgba(193,203,208,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)' : 'none',
+              transition: 'background 0.18s, color 0.18s, box-shadow 0.18s',
             }}>
-            <span style={{ display: 'flex', color: bottomMoreActive ? (C.steel?.mist300 || C.accent) : C.muted }}>
+            <span style={{
+              display: 'flex',
+              color: bottomMoreActive ? (C.steel?.mist300 || C.accent) : C.muted,
+              filter: bottomMoreActive
+                ? 'drop-shadow(0 0 6px rgba(193,203,208,0.55)) drop-shadow(0 0 14px rgba(111,135,148,0.45))'
+                : 'none',
+              transition: 'filter 0.18s',
+            }}>
               <Icon name="menu" size={21} />
             </span>
-            <span style={{ fontSize: 12, fontWeight: bottomMoreActive ? 700 : 500, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted }}>More</span>
+            <span style={{
+              fontSize: 12, fontWeight: bottomMoreActive ? 700 : 500, letterSpacing: '0.04em',
+              textTransform: 'uppercase', lineHeight: 1,
+              color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted,
+              textShadow: bottomMoreActive ? '0 0 6px rgba(111,135,148,0.55)' : 'none',
+            }}>More</span>
           </button>
         </div>
       )}

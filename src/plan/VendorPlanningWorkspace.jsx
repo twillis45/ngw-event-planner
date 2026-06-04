@@ -384,17 +384,28 @@ function VendorCommandStrip({ vendors, event, onSelectVendor }) {
         </div>
 
         {topRisk && topRisk.readiness.level !== 'safe' && topRisk.readiness.level !== 'closed' && (
+          // Sprint 60.L chip readability: solid colored bg with near-black
+          // text reads as caution-tape. Convert to TINTED carbon style —
+          // bg = accent@14%, border = accent@40%, text = accent itself.
+          // The chip still carries the semantic color identity (red /
+          // amber / green) while the text reads cleanly on Carbon.
           <button
             onClick={() => onSelectVendor && onSelectVendor(topRisk.vendor)}
             style={{
               padding: '12px 18px', borderRadius: radius.sm,
               minHeight: 44,
-              border: 'none', cursor: 'pointer',
-              background: accent, color: '#070809',
-              fontSize: 14, fontWeight: type.weight.semibold,
+              border: `1px solid ${accent}66`,
+              cursor: 'pointer',
+              background: `${accent}22`,
+              color: accent,
+              fontSize: 14, fontWeight: type.weight.bold,
               fontFamily: FF, letterSpacing: '0.02em',
               flexShrink: 0, whiteSpace: 'nowrap',
+              boxShadow: `inset 0 0 0 1px ${accent}1a`,
+              transition: 'background 0.16s, border-color 0.16s',
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${accent}30`; e.currentTarget.style.borderColor = `${accent}99`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${accent}22`; e.currentTarget.style.borderColor = `${accent}66`; }}
             aria-label={`Open ${topRisk.vendor.name} to fix the highest priority issue`}
           >
             Start with {topRisk.vendor.name} →
@@ -948,8 +959,8 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
               onClick={() => copy(link.slice(6), 'zelle-dest')}
               style={{
                 padding: '8px 14px', borderRadius: radius.sm,
-                background: accent, color: '#070809', border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: type.weight.semibold,
+                background: `${accent}22`, color: accent, border: `1px solid ${accent}66`, cursor: 'pointer',
+                fontSize: 11, fontWeight: type.weight.bold,
                 letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
               }}
             >
