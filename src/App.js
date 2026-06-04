@@ -11653,13 +11653,17 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   // Sprint 60.H: plain-language subtitles next to canonical lane names. The
   // labels are the source-of-truth funnel; subtitles are display helpers for
   // first-time and non-technical users.
+  // Sprint 60.J: dual-label pattern. `label` is the canonical funnel stage
+  // (Inquiry/Proposal/Contracted/...) and remains the source-of-truth lane key.
+  // `friendly` is plain-language display copy for mobile + grandmother users.
+  // `hint` is the helper sentence under the active lane. No data taxonomy change.
   const lanes = [
-    { id: 'inquiry',    label: 'New inquiry',  hint: 'New request — decide if it becomes an event',  count: newInquiries.length },
-    { id: 'proposal',   label: 'Proposal',     hint: 'Planning the offer or details',                count: byLane('proposal').length },
-    { id: 'contracted', label: 'Contracted',   hint: 'Booked — setup may still be needed',           count: byLane('contracted').length },
-    { id: 'deposit',    label: 'Deposit',      hint: 'Money is still due',                           count: byLane('deposit').length },
-    { id: 'active',     label: 'Active',       hint: 'Event is being planned',                       count: byLane('active').length },
-    { id: 'complete',   label: 'Complete',     hint: 'Event is finished',                            count: byLane('complete').length },
+    { id: 'inquiry',    label: 'Inquiry',    friendly: 'New leads',         hint: 'New request — decide if it becomes an event',  count: newInquiries.length },
+    { id: 'proposal',   label: 'Proposal',   friendly: 'Planning offer',    hint: 'Planning the offer or details',                count: byLane('proposal').length },
+    { id: 'contracted', label: 'Contracted', friendly: 'Booked',            hint: 'Booked — setup may still be needed',           count: byLane('contracted').length },
+    { id: 'deposit',    label: 'Deposit',    friendly: 'Waiting on pay',    hint: 'Money is still due',                           count: byLane('deposit').length },
+    { id: 'active',     label: 'Active',     friendly: 'Active events',     hint: 'Event is being planned',                       count: byLane('active').length },
+    { id: 'complete',   label: 'Complete',   friendly: 'Done',              hint: 'Event is finished',                            count: byLane('complete').length },
   ];
   const totalCards = newInquiries.length + cards.length;
   const isEmpty = totalCards === 0;
@@ -11881,27 +11885,42 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       <div>
         {setupProgressCard}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
-          {lanes.map(ln => (
-            <button key={ln.id} onClick={() => setMobileLane(ln.id)}
-              title={ln.hint}
-              aria-label={`${ln.label}: ${ln.hint || ''}`}
-              style={{
-                padding: '10px 14px', borderRadius: 99, fontSize: 13,
-                minHeight: 38,
-                fontWeight: activeLane === ln.id ? 700 : 500,
-                background: activeLane === ln.id ? C.text : 'transparent',
-                color: activeLane === ln.id ? C.bg : C.muted,
-                border: `1px solid ${activeLane === ln.id ? C.text : C.border}`,
-                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
-              }}>
-              {ln.label} {ln.count > 0 && <span style={{ opacity: 0.7, marginLeft: 6 }}>{ln.count}</span>}
-            </button>
-          ))}
+          {lanes.map(ln => {
+            const isActive = activeLane === ln.id;
+            // Sprint 60.J: dual-label chip per Frame 6 design. Friendly label
+            // (plain-language) is the primary read; canonical lane name shown
+            // as a smaller tag below. Both are visible so canonical funnel
+            // language stays anchored for pros who recognize it.
+            return (
+              <button key={ln.id} onClick={() => setMobileLane(ln.id)}
+                title={ln.hint}
+                aria-label={`${ln.label}: ${ln.hint || ''}`}
+                style={{
+                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  padding: '9px 14px', borderRadius: 12,
+                  minHeight: 46,
+                  background: isActive ? C.text : 'transparent',
+                  border: `1px solid ${isActive ? C.text : C.border}`,
+                  cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+                  gap: 2,
+                }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: isActive ? C.bg : C.text }}>
+                  {ln.friendly || ln.label}
+                  {ln.count > 0 && (
+                    <span style={{ opacity: isActive ? 0.85 : 0.7, fontWeight: 700, color: isActive ? C.bg : C.muted }}>{ln.count}</span>
+                  )}
+                </span>
+                <span style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: isActive ? C.bg : C.muted, opacity: isActive ? 0.7 : 0.65 }}>
+                  {ln.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
         {(() => {
           const activeLaneObj = lanes.find(l => l.id === activeLane);
           return activeLaneObj?.hint ? (
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.45 }}>{activeLaneObj.hint}</div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>{activeLaneObj.hint}</div>
           ) : null;
         })()}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

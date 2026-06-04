@@ -1727,7 +1727,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
     : P.red;
 
   return (
-    <CollapsibleSection label="Documents" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
+    <CollapsibleSection label="Files & contract" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: `0 ${space[5]}px`,
