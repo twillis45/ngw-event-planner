@@ -4560,16 +4560,19 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             )}
           </div>
 
-          {/* ── Planner-Only Notes (collapsible, internal — never exported) ── */}
-          <div style={{ marginBottom: 16, border: `1px solid ${C.warn}44`, borderRadius: 10, overflow: 'hidden' }}>
-            <button onClick={() => setShowPNotes(v => !v)} style={{ width: '100%', background: showPNotes ? C.warn + '12' : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.warn, flex: 1 }}>Planner-Only Notes</span>
-              {((vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length) > 0 && <span style={{ fontSize: 11, color: C.muted }}>{(vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length}</span>}
+          {/* ── Planner-Only Notes (collapsible, internal — never exported) ──
+              Sprint 60.L color restraint: tag was amber as decoration. Now
+              steel — the section label is documentation chrome, not an
+              action signal. The "internal only" tooltip stays steel too. */}
+          <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button onClick={() => setShowPNotes(v => !v)} style={{ width: '100%', background: showPNotes ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, flex: 1 }}>Planner-Only Notes</span>
+              {((vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length) > 0 && <span style={{ fontSize: 12, color: C.muted }}>{(vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length}</span>}
               <span style={{ fontSize: 10, color: C.muted, transform: showPNotes ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </button>
             {showPNotes && (
               <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ fontSize: 11, color: C.warn, fontWeight: 600 }}>Internal only — never shown to the vendor, client, or in any export.</div>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>Internal only — never shown to the vendor, client, or in any export.</div>
                 {/* Private notes */}
                 <div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -12562,7 +12565,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{u.eventName} · <span style={{ color: C.muted, fontWeight: 500 }}>{u.thread === 'client' ? 'Client thread' : u.thread}</span></div>
                       <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{u.body}</div>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.warn, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
+                    {/* Sprint 60.L color restraint: hours-ago timestamp
+                        was amber as decoration. → steel; the unanswered
+                        list is already in an "attention" container which
+                        carries the action signal. */}
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
                     <span style={{ color: C.muted, fontSize: 13 }}>›</span>
                   </div>
                 ))}
@@ -16415,7 +16422,10 @@ function Guests({ guests, setGuests, event = {} }) {
               onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
               onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
               <span style={{ fontSize: 13 }}>{g.name}</span>
-              <span style={{ fontSize: 12, color: C.warn }}>{g.needs}</span>
+              {/* Sprint 60.L color restraint: guest dietary need text was
+                  amber as metadata. → steel; the wrapper card already
+                  signals "Special Needs" attention. */}
+              <span style={{ fontSize: 12, color: C.muted }}>{g.needs}</span>
             </div>
           ))}
         </div>

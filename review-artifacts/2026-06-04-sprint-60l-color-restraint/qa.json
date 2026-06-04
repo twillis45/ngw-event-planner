@@ -1,0 +1,30 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_scrollW": 390,
+      "body_bg": "rgb(7, 8, 9)",
+      "amber_text_elements_on_page": 3,
+      "total_text_elements": 119
+    },
+    "event": {
+      "body_scrollW": 390,
+      "body_bg": "rgb(7, 8, 9)",
+      "amber_text_elements_on_page": 3,
+      "total_text_elements": 58
+    }
+  },
+  "1440_desktop": {
+    "home": {
+      "body_scrollW": 1440,
+      "body_bg": "rgb(7, 8, 9)",
+      "amber_text_elements_on_page": 9,
+      "total_text_elements": 169
+    },
+    "event": {
+      "body_scrollW": 1440,
+      "body_bg": "rgb(7, 8, 9)",
+      "amber_text_elements_on_page": 5,
+      "total_text_elements": 101
+    }
+  }
+}
