@@ -4647,7 +4647,18 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <CommLogInput value={newLog} onChange={setNewLog} onAdd={addLog} />
                 </div>
                 {(vendor.log || []).length === 0 ? (
-                  <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>No notes yet — log calls, emails, and decisions here.</div>
+                  // Sprint 60.L: full empty-state copy. What belongs here +
+                  // why it matters + what to do (the input above is the CTA).
+                  <div style={{
+                    padding: '16px 14px',
+                    background: C.bg, border: `1px solid ${C.border}`,
+                    borderRadius: 8,
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Notes &amp; history</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>Keep important notes about this vendor.</div>
+                    <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>Use this for reminders, preferences, decisions, and details you don't want buried in messages. Use the input above to add a note.</div>
+                  </div>
                 ) : [...(vendor.log || [])].reverse().map(entry => (
                   <div key={entry.id} style={{ borderLeft: `2px solid ${C.accent}`, paddingLeft: 12, marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>{fmtDate(entry.date)}</div>
@@ -6280,8 +6291,11 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
             })()}
           </div>
 
-          {/* Starter Kit */}
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Starter Kit</div>
+          {/* Starter Kit — Sprint 60.L F16: friendlier framing. The header
+              moves from a tech-y "Starter Kit" label to a plain-language
+              promise: what we'll set up for you. */}
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 4 }}>What we'll set up for you</div>
+          <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 10, lineHeight: 1.45 }}>Check the parts you want. You can edit everything later.</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
 
             {/* ── Timeline ── */}
@@ -6296,8 +6310,8 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
                       style={{ accentColor: typeColor, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
                       onClick={e => e.stopPropagation()} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{form.secondaryType ? `${form.type} + ${form.secondaryType}` : form.type} Timeline</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>{enabledCt} of {tmpl.length} tasks · auto-dated from event date</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{form.secondaryType ? `${form.type} + ${form.secondaryType}` : form.type} planning timeline</div>
+                      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>We'll add {enabledCt} planning {enabledCt === 1 ? 'task' : 'tasks'} for you, auto-dated from your event date.</div>
                     </div>
                     {useTimeline && (
                       <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.timeline ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
@@ -6366,10 +6380,10 @@ function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
                       style={{ accentColor: C.success, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
                       onClick={e => e.stopPropagation()} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>Budget Categories</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>
-                        {enabledCt} of {budgetTmpl.length} categories
-                        {budgetAmt > 0 && totalAllocated > 0 ? ` · ${fmtD(totalAllocated)} allocated` : ' · enter a budget total to see amounts'}
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>Budget categories</div>
+                      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>
+                        We'll set up {enabledCt} typical {enabledCt === 1 ? 'category' : 'categories'}
+                        {budgetAmt > 0 && totalAllocated > 0 ? ` · ${fmtD(totalAllocated)} allocated` : ' · add a total to auto-allocate amounts'}.
                       </div>
                     </div>
                     {useBudget && (
@@ -11109,6 +11123,15 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const isMobile = bp === 'mobile';
   const command = useMemo(() => selectStudioCommand(events), [events]);
+  // Sprint 60.L F4: derive isTodayEvent up here so the hook is
+  // unconditional (Rules of Hooks). Falls back to false when there's no
+  // command or no eventId.
+  const isTodayEvent = useMemo(() => {
+    if (!command || !command.eventId) return false;
+    const ev = (events || []).find(e => e.id === command.eventId);
+    if (!ev || !ev.date) return false;
+    return daysUntil(ev.date) === 0;
+  }, [command, events]);
   if (!command) return null;
 
   // Visual treatment per level — Studio Matte calibrated
@@ -11116,7 +11139,14 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
     command.level === 'critical'  ? C.danger :
     command.level === 'attention' ? C.warn   :
                                     C.accent2; // neutral / quiet steel
+  // Sprint 60.L F4: LIVE badge fires whenever the resolved hero event
+  // is happening TODAY, regardless of which tier selectStudioCommand
+  // returned. Additive: a critical blocker still owns tier color/copy,
+  // the LIVE chip just confirms "yes, this is also today." isTodayEvent
+  // is hoisted above the early return for Rules of Hooks compliance.
+  const isToday = command.category === 'today' || isTodayEvent;
   const label =
+    isToday                       ? "Today's event · Live" :
     command.level === 'critical'  ? "What needs you today · Critical" :
     command.level === 'attention' ? "What needs you today · Follow up" :
                                     "What needs you today";
@@ -11155,14 +11185,36 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         opacity: command.level === 'neutral' ? 0.4 : 1,
       }} />
 
-      {/* Label tag — Sprint 60.K-v2: 11.5 → 12 to meet status-pill 12px min. */}
+      {/* Label tag row — Sprint 60.K-v2: 11.5 → 12 to meet status-pill
+          12px min. Sprint 60.L F4: when the event is happening TODAY,
+          render a paired LIVE chip so the user instantly recognizes the
+          operational moment. Amber chip; no animation, no chaos. */}
       <div style={{
-        fontSize: isMobile ? 12 : 10.5,
-        fontWeight: 700, letterSpacing: isMobile ? '0.14em' : '0.18em',
-        textTransform: 'uppercase', color: accent,
+        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         marginBottom: isMobile ? 12 : 12,
       }}>
-        {label}
+        <div style={{
+          fontSize: isMobile ? 12 : 10.5,
+          fontWeight: 700, letterSpacing: isMobile ? '0.14em' : '0.18em',
+          textTransform: 'uppercase', color: accent,
+        }}>
+          {label}
+        </div>
+        {isToday && (
+          <span aria-label="Event is happening today" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 12, fontWeight: 800, letterSpacing: '0.12em',
+            textTransform: 'uppercase', color: '#fff',
+            background: accent, padding: '3px 10px', borderRadius: 999,
+            lineHeight: 1,
+          }}>
+            <span aria-hidden="true" style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: '#fff',
+            }} />
+            LIVE
+          </span>
+        )}
       </div>
 
       {/* Title — Sprint 60.K-v2: mobile hero h2 24 → 30 to hit the
@@ -12016,7 +12068,18 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
           )}
         </div>
         {items.length > 0 ? items : (
-          <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic', padding: '8px 4px' }}>—</div>
+          <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5, padding: '12px 4px', fontStyle: 'italic' }}>
+            {/* Sprint 60.L: per-lane plain-language empty copy. Pipeline
+                lanes that are routinely empty (no leads / no payments
+                waiting) deserve a real message, not a dash. */}
+            {lane.id === 'inquiry'    ? 'No new leads yet. Inbound inquiries will land here for triage.'
+            : lane.id === 'proposal'  ? 'No proposals out. When you send a planning offer, it shows here.'
+            : lane.id === 'contracted'? 'No contracts signed yet. Booked events show here once you mark them confirmed.'
+            : lane.id === 'deposit'   ? 'No payments waiting. Vendor deposits and balance-due tracking land here.'
+            : lane.id === 'active'    ? 'No active events here right now. In-flight events appear once work begins.'
+            : lane.id === 'complete'  ? 'No completed events yet. Wrapped events archive here for reference.'
+            : '—'}
+          </div>
         )}
       </div>
     );
@@ -15474,13 +15537,15 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         </div>
 
         {budget.length === 0 && (
+          // Sprint 60.L: typography bumps to meet floors.
+          //   tag 11 → 12, title 15 → 18, body 12 → 14.5, CTA 13 → 16.
           <div style={{ padding: '28px 20px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Budget</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Track event spending</div>
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
-              Add categories like Venue, Catering, and Florals. Track budgeted vs. actual spend, monitor what's contracted, and see what's still owed at a glance.
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>Budget</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.015em', color: C.text, marginBottom: 8, lineHeight: 1.25 }}>Track what is owed and what is paid.</div>
+            <div style={{ fontSize: 14.5, color: C.muted, lineHeight: 1.55, marginBottom: 20, maxWidth: 420 }}>
+              Add vendor costs, payment due dates, and balances so nothing gets missed. Track budgeted vs. actual spend and see what's still owed at a glance.
             </div>
-            <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={add}>Add first category</button>
+            <button style={{ ...s.btn('primary'), padding: '12px 20px', fontSize: 16, minHeight: 48 }} onClick={add}>Add first category</button>
           </div>
         )}
 
@@ -20477,8 +20542,46 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {arrivals.map(v => {
+      {/* Sprint 60.L F11/DOF2: arrivals grouped by operational state with
+          counts. Late first (highest priority). Then On site / En route /
+          Coming up. The spec's 4th group ("Pending / no ETA") for vendors
+          with NO arrival time is the Missing Arrival Times panel above. */}
+      {(() => {
+        const groups = { late: [], onsite: [], enroute: [], comingup: [] };
+        arrivals.forEach(v => {
+          const st = v.arrivalStatus || 'pending';
+          const vm = parseMin(v.arrivalTime);
+          const isLate = isEvtDay && vm !== null && vm < nowMin - 10 && st !== 'arrived' && st !== 'completed';
+          if (st === 'arrived' || st === 'completed') groups.onsite.push(v);
+          else if (isLate || st === 'delayed') groups.late.push(v);
+          else if (vm !== null && vm - nowMin <= 60) groups.enroute.push(v);
+          else groups.comingup.push(v);
+        });
+        const sections = [
+          { id: 'late',     label: 'Late · needs attention', color: C.danger,  vendors: groups.late },
+          { id: 'onsite',   label: 'On site',                 color: C.success, vendors: groups.onsite },
+          { id: 'enroute',  label: 'En route',                color: C.warn,    vendors: groups.enroute },
+          { id: 'comingup', label: 'Coming up',               color: C.muted,   vendors: groups.comingup },
+        ].filter(sec => sec.vendors.length > 0);
+        return sections.map(sec => (
+          <div key={sec.id} style={{ marginBottom: 18 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginBottom: 10, paddingLeft: 4,
+            }}>
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: sec.color,
+              }}>{sec.label}</span>
+              <span style={{
+                fontSize: 12, fontWeight: 700, color: sec.color,
+                background: sec.color + '22',
+                borderRadius: 999, padding: '1px 9px', lineHeight: 1.5,
+              }}>{sec.vendors.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {sec.vendors.map(v => {
           const st     = v.arrivalStatus || 'pending';
           const vm     = parseMin(v.arrivalTime);
           const late   = isEvtDay && vm !== null && vm < nowMin - 10 && st !== 'arrived' && st !== 'completed';
@@ -20516,7 +20619,10 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
             </div>
           );
         })}
-      </div>
+            </div>
+          </div>
+        ));
+      })()}
     </div>
   );
 }
@@ -21391,11 +21497,21 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
     return C.muted;
   };
 
-  const SectionTitle = ({ label, count }) => (
+  // Sprint 60.L F13: SectionTitle tag 11 → 12 (status-pill min);
+  // count chip 10 → 12. Optional accent prop tints the section so the
+  // "Needs attention" group reads as a warning banner.
+  const SectionTitle = ({ label, count, accent }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '14px 14px 6px' : '20px 28px 8px' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{label}</span>
+      <span style={{
+        fontSize: 12, fontWeight: 700, letterSpacing: '0.14em',
+        textTransform: 'uppercase', color: accent || C.muted,
+      }}>{label}</span>
       {typeof count === 'number' && (
-        <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{count}</span>
+        <span style={{
+          fontSize: 12, fontWeight: 700, color: accent || C.muted,
+          background: (accent || C.border) + '22',
+          borderRadius: 999, padding: '1px 9px', lineHeight: 1.5,
+        }}>{count}</span>
       )}
     </div>
   );
@@ -21446,26 +21562,31 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
             feels calm. */}
         {attentionCount > 0 && (
           <>
-            <SectionTitle label="Needs attention" count={attentionCount} />
+            {/* Sprint 60.L F13: top attention section reads as a banner —
+                amber-tinted section title + count chip pop above the calm
+                rows below. */}
+            <SectionTitle label="Needs attention" count={attentionCount} accent={C.warn} />
             <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Sprint 60.L F13: attention rows readable on phone.
+                  title 12 → 14.5, metadata 10.5 → 13, button 11 → 14. */}
               {attentionEventDocs.map(d => {
                 const kindLabel = KIND_LABEL[d.kind] || (d.kind || 'File');
                 return (
-                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
                       </div>
-                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                      <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         {kindLabel} · status: {d.status}
                       </div>
                     </div>
                     {(d.url || d.signedUrl || d.fileUrl) ? (
-                      <a href={d.url || d.signedUrl || d.fileUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={d.url || d.signedUrl || d.fileUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     ) : (
-                      <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link yet</span>
+                      <span style={{ fontSize: 13, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link yet</span>
                     )}
                   </div>
                 );
@@ -21479,21 +21600,21 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                     ? 'Signed — no file on file'
                     : 'File uploaded — not marked signed';
                 return (
-                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
-                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{v.name}</div>
+                      <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         {v.category ? `${v.category} · ` : ''}{reason}
                       </div>
                     </div>
                     {v.contractUrl && (
-                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     )}
                     {onOpenVendor && (
-                      <button onClick={() => onOpenVendor(v.id, 'contract')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>
-                        Open contract details →
+                      <button onClick={() => onOpenVendor(v.id, 'contract')} style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, flexShrink: 0 }}>
+                        Open contract →
                       </button>
                     )}
                   </div>
@@ -21513,28 +21634,28 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 const sColor = statusColor(d.status);
                 const opener = d.url || d.signedUrl || d.fileUrl || null;
                 return (
-                  <div key={d.id || d.title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div key={d.id || d.title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
                       </div>
-                      <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>
+                      <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         {kindLabel}
                         {d.fileName ? ` · ${d.fileName}` : ''}
                         {d.notes ? ` · ${d.notes}` : ''}
                       </div>
                     </div>
                     {d.status && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                         {d.status}
                       </span>
                     )}
                     {opener ? (
-                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     ) : (
-                      <span style={{ fontSize: 10.5, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link on file</span>
+                      <span style={{ fontSize: 13, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link on file</span>
                     )}
                   </div>
                 );
@@ -21816,20 +21937,83 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           if (event?.coiNeeded === 'required') gaps.push('COI required — collect from vendors');
           if (gaps.length === 0) return null;
           return (
-            <div style={{ padding: '10px 12px', marginBottom: 12, borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.warn, marginBottom: 5 }}>
-                Heads up
+            // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
+            // for grandmother-readable phone brightness.
+            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.warn, marginBottom: 8 }}>
+                Heads up · Missing logistics
               </div>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {gaps.map(g => (
-                  <li key={g} style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>
-                    <span style={{ color: C.warn, marginRight: 6 }}>•</span>{g}
+                  <li key={g} style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>
+                    <span style={{ color: C.warn, marginRight: 8 }}>•</span>{g}
                   </li>
                 ))}
               </ul>
             </div>
           );
         })()}
+
+        {/* Sprint 60.L F15: quick-action chips. Restrained steel chips
+            for Call / Email / Map appear only when the underlying field
+            has a value — no fake actions. Tap targets ≥ 44px. */}
+        {(event.venuePhone || event.venueEmail || event.venueAddress) && (
+          <div style={{
+            display: 'flex', gap: 8, flexWrap: 'wrap',
+            marginBottom: 14, paddingBottom: 14,
+            borderBottom: `1px solid ${C.border}`,
+          }}>
+            {event.venuePhone && (
+              <a
+                href={`tel:${event.venuePhone.replace(/\s/g, '')}`}
+                aria-label={`Call the venue at ${event.venuePhone}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', minHeight: 44,
+                  borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: 'transparent', color: C.text,
+                  fontSize: 14, fontWeight: 600,
+                  textDecoration: 'none', fontFamily: 'inherit',
+                }}
+              >
+                <Icon name="phone" size={15} /> Call venue
+              </a>
+            )}
+            {event.venueEmail && (
+              <a
+                href={`mailto:${event.venueEmail}`}
+                aria-label={`Email the venue at ${event.venueEmail}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', minHeight: 44,
+                  borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: 'transparent', color: C.text,
+                  fontSize: 14, fontWeight: 600,
+                  textDecoration: 'none', fontFamily: 'inherit',
+                }}
+              >
+                <Icon name="mail" size={15} /> Email venue
+              </a>
+            )}
+            {event.venueAddress && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venueAddress)}`}
+                target="_blank" rel="noopener noreferrer"
+                aria-label="Open venue address in maps"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', minHeight: 44,
+                  borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: 'transparent', color: C.text,
+                  fontSize: 14, fontWeight: 600,
+                  textDecoration: 'none', fontFamily: 'inherit',
+                }}
+              >
+                <Icon name="pin" size={15} /> Open in maps
+              </a>
+            )}
+          </div>
+        )}
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder="Bluebell Venue" />
           <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
@@ -21963,8 +22147,18 @@ function CommunicationRail({ event, onOpenCommunication }) {
       )}
 
       {recent.length === 0 ? (
-        <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5, padding: '4px 0' }}>
-          No messages yet on this event.
+        // Sprint 60.L: full empty-state pattern. Honest copy — no fake
+        // "write a message" CTA here because the canonical compose surface
+        // is GlobalCompose, which is reachable from the top-right.
+        <div style={{
+          padding: '16px 14px',
+          background: C.bg, border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Messages</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>No messages yet.</div>
+          <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>When you send notes or receive updates from your client, vendors, or team, they show here. Use the compose button in the top bar to start a message.</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

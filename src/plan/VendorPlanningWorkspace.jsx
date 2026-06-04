@@ -363,18 +363,21 @@ function VendorCommandStrip({ vendors, event, onSelectVendor }) {
 
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: space[5], flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
+          {/* Sprint 60.L F8: tag bumped 9 → 12 for status-pill min;
+              headline 15 → 17 for card-title min; sub 11 → 13 for
+              helper-copy min. */}
           <div style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 12, fontWeight: type.weight.semibold,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: accent, marginBottom: 4,
           }}>
             Vendor Readiness
           </div>
-          <div style={{ fontSize: 15, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.3 }}>
+          <div style={{ fontSize: 17, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.3 }}>
             {headline}
           </div>
           {sub && (
-            <div style={{ fontSize: 11, color: P.textSecondary, marginTop: 3 }}>
+            <div style={{ fontSize: 13, color: P.textSecondary, marginTop: 4 }}>
               {sub}
             </div>
           )}
@@ -384,15 +387,17 @@ function VendorCommandStrip({ vendors, event, onSelectVendor }) {
           <button
             onClick={() => onSelectVendor && onSelectVendor(topRisk.vendor)}
             style={{
-              padding: '8px 16px', borderRadius: radius.sm,
+              padding: '12px 18px', borderRadius: radius.sm,
+              minHeight: 44,
               border: 'none', cursor: 'pointer',
               background: accent, color: '#070809',
-              fontSize: 11, fontWeight: type.weight.semibold,
-              fontFamily: FF, letterSpacing: '0.04em', textTransform: 'uppercase',
+              fontSize: 14, fontWeight: type.weight.semibold,
+              fontFamily: FF, letterSpacing: '0.02em',
               flexShrink: 0, whiteSpace: 'nowrap',
             }}
+            aria-label={`Open ${topRisk.vendor.name} to fix the highest priority issue`}
           >
-            Start with {topRisk.vendor.name}
+            Start with {topRisk.vendor.name} →
           </button>
         )}
       </div>
@@ -560,8 +565,40 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {vendors.length === 0 ? (
-          <div style={{ padding: space[7], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
-            No vendors added yet
+          // Sprint 60.L EmptyStateCard pattern (inline, using P tokens).
+          // Title / body / primary CTA so the user understands what
+          // belongs here and what to do next.
+          <div style={{ padding: `${space[5]}px ${space[5]}px ${space[6]}px`, fontFamily: FF }}>
+            <div style={{
+              padding: '20px 18px 22px',
+              background: P.base,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10,
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{
+                fontSize: 12, fontWeight: type.weight.semibold,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: P.textTertiary,
+              }}>Vendors</div>
+              <div style={{
+                fontSize: 18, fontWeight: type.weight.semibold,
+                letterSpacing: '-0.015em', lineHeight: 1.25,
+                color: P.textPrimary,
+              }}>Add the people helping with this event.</div>
+              <div style={{ fontSize: 14.5, color: P.textSecondary, lineHeight: 1.5 }}>
+                Caterers, photographers, venues, DJs, rentals, and anyone else you need to coordinate.
+              </div>
+              <button onClick={onAdd} style={{
+                marginTop: 4,
+                padding: '12px 18px', minHeight: 48,
+                borderRadius: radius.sm, border: 'none',
+                background: P.green, color: '#070809',
+                fontSize: 16, fontWeight: type.weight.semibold,
+                fontFamily: FF, cursor: 'pointer',
+                alignSelf: 'flex-start',
+              }}>Add a vendor</button>
+            </div>
           </div>
         ) : sorted.map(v => (
           <VendorRow

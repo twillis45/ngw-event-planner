@@ -881,6 +881,36 @@ export function selectStudioCommand(events = []) {
     };
   }
 
+  // Tier 6.5: event happening TODAY — operational, not critical, but
+  // distinct from Tier 7 future-upcoming. Surfaces LIVE state on Home so a
+  // non-technical user immediately understands today is event day. Sprint
+  // 60.L F4: paired with a LIVE badge in StudioCommandPanel.
+  const todayEvent = active
+    .map(ev => ({ ev, days: daysFrom(ev.date) }))
+    .filter(x => x.days === 0)
+    .sort((a, b) => (a.ev.name || '').localeCompare(b.ev.name || ''))[0];
+  if (todayEvent) {
+    const { ev } = todayEvent;
+    return {
+      level: 'attention',
+      category: 'today',
+      eventId: ev.id,
+      eventName: ev.name,
+      title: `${ev.name} is today.`,
+      consequence: `Enter Day-of mode to run arrivals, schedule, and team messages in one place. You can leave it any time.`,
+      primaryCta: 'Enter Day-of mode',
+      // dayMode auto-engages when isEventToday at the event level
+      // (App.js ~22109), so routing to Command lands the user already in
+      // Day-of mode. No extra flag needed.
+      primaryRoute: { eventId: ev.id, tab: 'Command' },
+      // Secondary intentionally routes to events list. "View full event
+      // details" was considered but conflicts with Day-of auto-engage —
+      // the same primary route would just re-open Day-of mode.
+      secondaryCta: active.length > 1 ? 'View all events' : null,
+      secondaryAction: 'events',
+    };
+  }
+
   // Tier 7: nearest upcoming event (under 30 days)
   const upcoming = active
     .map(ev => ({ ev, days: daysFrom(ev.date) }))
