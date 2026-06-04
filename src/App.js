@@ -11041,6 +11041,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   const C = useT();
   const bp = useContext(BpCtx);
   const isWide = bp === 'desktop' || bp === 'tablet-land';
+  const isMobile = bp === 'mobile';
   const command = useMemo(() => selectStudioCommand(events), [events]);
   if (!command) return null;
 
@@ -11088,30 +11089,35 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         opacity: command.level === 'neutral' ? 0.4 : 1,
       }} />
 
-      {/* Label */}
+      {/* Label — Sprint 60.I: bumped from 9.5px (ant-font) to 11.5/10 to
+          pass the grandmother typography rule. Tag still small enough to
+          read as a tag, not a heading, but no longer requires squinting. */}
       <div style={{
-        fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em',
+        fontSize: isMobile ? 11.5 : 10,
+        fontWeight: 700, letterSpacing: isMobile ? '0.14em' : '0.18em',
         textTransform: 'uppercase', color: accent,
-        marginBottom: 12,
+        marginBottom: isMobile ? 10 : 12,
       }}>
         {label}
       </div>
 
-      {/* Title — editorial scale */}
+      {/* Title — editorial scale. Sprint 60.I: mobile hero h2 bumped from
+          20px to 24px to meet the addendum 22–28px target. */}
       <h2 style={{
-        margin: 0, marginBottom: 10,
-        fontSize: isWide ? 26 : 20,
+        margin: 0, marginBottom: isMobile ? 12 : 10,
+        fontSize: isWide ? 26 : isMobile ? 24 : 22,
         fontWeight: 700, letterSpacing: '-0.025em',
-        lineHeight: 1.15, color: C.text,
+        lineHeight: 1.18, color: C.text,
         fontFamily: 'inherit',
       }}>
         {command.title}
       </h2>
 
-      {/* Consequence paragraph */}
+      {/* Consequence paragraph — Sprint 60.I: mobile subtitle bumped from
+          12.5px to 14.5px so it reads without squinting. */}
       <p style={{
-        margin: 0, marginBottom: 18,
-        fontSize: isWide ? 13.5 : 12.5,
+        margin: 0, marginBottom: isMobile ? 20 : 18,
+        fontSize: isWide ? 13.5 : isMobile ? 14.5 : 13,
         lineHeight: 1.55, color: C.muted,
         maxWidth: 720,
       }}>
@@ -11123,13 +11129,14 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         <button
           onClick={handlePrimary}
           style={{
-            padding: isWide ? '10px 22px' : '9px 18px',
+            padding: isWide ? '10px 22px' : isMobile ? '12px 22px' : '10px 20px',
+            minHeight: isMobile ? 46 : undefined,
             borderRadius: 8,
             border: 'none',
             cursor: 'pointer',
             background: accent,
             color: command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809',
-            fontSize: isWide ? 13 : 12.5,
+            fontSize: isWide ? 13 : isMobile ? 15 : 13,
             fontWeight: 700,
             letterSpacing: '0.01em',
             fontFamily: 'inherit',
@@ -11149,12 +11156,13 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
           <button
             onClick={handleSecondary}
             style={{
-              padding: isWide ? '10px 14px' : '9px 12px',
+              padding: isWide ? '10px 14px' : isMobile ? '12px 14px' : '10px 12px',
+              minHeight: isMobile ? 46 : undefined,
               borderRadius: 8,
               border: 'none',
               background: 'transparent',
               color: C.muted,
-              fontSize: isWide ? 12.5 : 12,
+              fontSize: isWide ? 12.5 : isMobile ? 14 : 12.5,
               fontWeight: 500,
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -12560,7 +12568,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                 <HomeUpcomingPanel events={events} onSelectEvent={onSelectEvent} />
-                <HomeThisWeekPanel events={events} calNotes={calNotes} onOpenCalendar={() => setDashView('calendar')} />
+                {/* Sprint 60.I: This Week mini calendar is hidden on mobile
+                    because it duplicates Upcoming Events on a phone (same
+                    information, smaller text, tight calendar grid that
+                    fails the grandmother test). Tablet/desktop keep it
+                    because the right rail has room. */}
+                {!isMobile && <HomeThisWeekPanel events={events} calNotes={calNotes} onOpenCalendar={() => setDashView('calendar')} />}
               </div>
             </div>
           )}
