@@ -99,18 +99,43 @@ const ONBOARD_DONE_KEY = 'ngw-onboard-done';
 // tokens.js source so MobileVendorSummary (already on canonical Carbon)
 // matches App.js components visually. text + muted updated to canonical
 // steel/off-white to maintain ≥4.6:1 contrast on Carbon.
+// Sprint 60.L — Studio Matte Steel Accent Polish.
+// Replaces SaaS blue #4a90d9 with the silvery steel-blue scale —
+// brushed camera metal, darkroom instrument, not generic tech blue.
+const STEEL = {
+  mist200: '#C1CBD0',  // icon glints / selected text on very dark surfaces
+  mist300: '#A8B7BF',  // CTA text on steel fills · quiet active indicators
+  blue400: '#8BA0AA',  // route hints · secondary icon accents · nav active label
+  blue500: '#6F8794',  // CORE — main silvery blue identity
+  blue600: '#566F7D',  // primary route text · ghost CTAs · selected nav labels
+  blue700: '#3F5B6A',  // primary CTA fill base
+  blue800: '#2C4452',  // pressed CTA · selected card surface
+  blue900: '#1D313D',  // dark accent wells (sparingly)
+};
+
 const DARK = {
-  bg:       '#070809', // canonical matte['050'] — page depth (was #0f0f11)
-  surface:  '#121518', // canonical matte['150'] CARBON (was #18181b)
-  surface2: '#171b1f', // canonical matte['200'] (was #1e1e22)
-  border:   '#1c2026', // canonical matte['250'] (was #2a2a2f)
-  accent:   '#4a90d9',
-  accent2:  '#14b8a6',
-  text:     '#e8edf2', // canonical text.primary (was #e8e8ec)
-  muted:    '#849eb8', // canonical steel['400'] (was #90909a)
-  danger:   '#9a3a3a', // canonical red['400'] — calibrated crimson (was #e63946)
-  success:  '#3a8a62', // canonical green['400'] — calibrated forest (was #22c55e)
-  warn:     '#d4904a', // canonical amber['400'] — honey tungsten (was #f59e0b)
+  bg:       '#070809', // canonical matte['050']
+  surface:  '#121518', // canonical matte['150'] CARBON
+  surface2: '#171b1f', // canonical matte['200']
+  border:   '#1c2026', // canonical matte['250']
+  // Accent now points at Steel Blue 500 — the silvery identity.
+  // Existing `C.accent` callers (route text, links, ghost CTAs, default
+  // primary buttons) inherit it automatically.
+  accent:   STEEL.blue500,    // #6F8794 (was #4a90d9)
+  // New accent tiers for premium controls:
+  accentDeep:    STEEL.blue700, // #3F5B6A — primary CTA gradient base
+  accentTopGrad: '#4E6877',     // gradient top stop
+  accentPressed: STEEL.blue800, // #2C4452
+  accentText:    STEEL.mist300, // #A8B7BF — CTA / link text on dark surfaces
+  accentIcon:    STEEL.blue400, // #8BA0AA — icon-default accent
+  // accent2 retired SaaS teal; aliased to steel so legacy callers still work.
+  accent2:  STEEL.blue500,
+  text:     '#e8edf2',
+  muted:    '#849eb8',
+  danger:   '#9a3a3a',
+  success:  '#3a8a62',
+  warn:     '#d4904a',
+  steel:    STEEL,
 };
 
 const LIGHT = {
@@ -11100,11 +11125,17 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
         }}>{example}</div>
       )}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+        {/* Sprint 60.L Studio Matte CTA: silvery steel-blue gradient,
+            inner highlight, restrained shadow. Steel mist text on the
+            premium fill — darkroom button feel, not SaaS bright. */}
         <button onClick={onPrimary} style={{
-          padding: '12px 20px', minHeight: 48, borderRadius: 8,
-          border: 'none', background: C.accent, color: '#fff',
+          padding: '14px 22px', minHeight: 52, borderRadius: 14,
+          border: 'none',
+          background: `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`,
+          color: C.accentText,
           fontSize: 16, fontWeight: 700, cursor: 'pointer',
           fontFamily: 'inherit',
+          boxShadow: '0 10px 28px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 1px rgba(193,203,208,0.18)',
         }}>{primaryCta}</button>
         {secondaryCta && (
           <button onClick={onSecondary} style={{
@@ -11246,32 +11277,56 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
 
       {/* Action row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <button
-          onClick={handlePrimary}
-          style={{
-            padding: isWide ? '10px 22px' : isMobile ? '12px 22px' : '10px 20px',
-            minHeight: isMobile ? 46 : undefined,
-            borderRadius: 8,
-            border: 'none',
-            cursor: 'pointer',
-            background: accent,
-            color: command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809',
-            fontSize: isWide ? 13.5 : isMobile ? 16 : 13.5,
-            fontWeight: 700,
-            letterSpacing: '0.01em',
-            fontFamily: 'inherit',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: 'transform 0.12s, box-shadow 0.12s',
-            boxShadow: command.level === 'critical' ? `0 0 0 1px ${accent}33` : 'none',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
-        >
-          {command.primaryCta}
-          <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
-        </button>
+        {/* Sprint 60.L Studio Matte Button Polish:
+            • neutral (default) tier → silvery steel-blue gradient
+              (brushed camera metal feel: #4E6877 → #3F5B6A,
+              inner top highlight, 1px steel-mist border, soft shadow).
+            • critical / attention tiers keep their semantic fill
+              (red / amber) — those are operational signals, not the
+              accent identity.
+            • text uses steel mist (#A8B7BF) on the neutral CTA — quiet
+              confidence vs. pure white. White text reserved for the
+              semantic-color tiers. */}
+        {(() => {
+          const useGradient = command.level === 'neutral' || command.category === 'today';
+          const fillBg = useGradient
+            ? `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`
+            : accent;
+          const ctaText = useGradient
+            ? C.accentText
+            : (command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809');
+          const ctaShadow = useGradient
+            ? '0 10px 28px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 1px rgba(193,203,208,0.18)'
+            : (command.level === 'critical' ? `0 0 0 1px ${accent}33` : 'none');
+          return (
+            <button
+              onClick={handlePrimary}
+              style={{
+                padding: isWide ? '12px 22px' : isMobile ? '14px 22px' : '12px 20px',
+                minHeight: isMobile ? 52 : undefined,
+                borderRadius: isMobile ? 14 : 10,
+                border: 'none',
+                cursor: 'pointer',
+                background: fillBg,
+                color: ctaText,
+                fontSize: isWide ? 14 : isMobile ? 16 : 13.5,
+                fontWeight: 700,
+                letterSpacing: '0.01em',
+                fontFamily: 'inherit',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'transform 0.12s, box-shadow 0.12s, background 0.12s',
+                boxShadow: ctaShadow,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              {command.primaryCta}
+              <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+            </button>
+          );
+        })()}
         {command.secondaryCta && (
           <button
             onClick={handleSecondary}
@@ -23259,10 +23314,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
         }}>
+          {/* Sprint 60.L Studio Matte nav active state:
+              • active item now wears a silvery steel pill —
+                background rgba(111,135,148,0.14), top highlight
+                rgba(193,203,208,0.14), label Steel Blue 400, icon
+                Steel Mist 300.
+              • no bright blue, no neon gradient underline. */}
           {bottomNavItems.map(it => {
-            // Sprint 59F: lane-aware active state. Sheet items (People,
-            // Money) light up when their child tab is active OR the sheet
-            // is open.
             const active  = laneActive(it);
             const onClick = it.sheet
               ? () => setBottomSheet(it.sheet)
@@ -23270,41 +23328,48 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             return (
               <button key={it.id} onClick={onClick} title={it.id} aria-label={it.id} aria-haspopup={it.sheet ? 'true' : undefined}
                 style={{
-                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                  padding: active ? '8px 0 11px' : '10px 0 11px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: active ? color : C.muted,
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                  padding: '8px 0 9px',
+                  margin: '2px 4px',
+                  background: active ? 'rgba(111, 135, 148, 0.14)' : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  borderRadius: 12,
+                  color: active ? (C.steel?.blue400 || C.accent) : C.muted,
                   minHeight: 52, position: 'relative',
-                  transition: 'color 0.12s',
+                  boxShadow: active ? 'inset 0 1px 0 rgba(193,203,208,0.14)' : 'none',
+                  transition: 'background 0.16s, color 0.16s, box-shadow 0.16s',
                 }}>
-                {active && (
-                  <span style={{
-                    position: 'absolute', top: 0, left: '25%', right: '25%',
-                    height: 2, borderRadius: '0 0 2px 2px',
-                    background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
-                  }} />
-                )}
-                <span style={{ transform: active ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.12s', display: 'flex' }}>
+                <span style={{ transform: active ? 'scale(1.05)' : 'scale(1)', transition: 'transform 0.12s', display: 'flex', color: active ? (C.steel?.mist300 || C.accent) : C.muted }}>
                   <Icon name={it.icon} size={active ? 22 : 21} />
                 </span>
                 <span style={{
                   fontSize: 12,
                   fontWeight: active ? 700 : 500,
-                  letterSpacing: active ? '0.02em' : '0.01em',
+                  letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   lineHeight: 1,
+                  color: active ? (C.steel?.blue400 || C.accent) : C.muted,
                 }}>{it.label}</span>
               </button>
             );
           })}
           <button aria-label="More" onClick={() => setEvtDrawerOpen(true)} title="More"
             style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-              padding: '10px 0 11px', background: 'none', border: 'none', cursor: 'pointer',
-              color: bottomMoreActive ? color : C.muted, minHeight: 52,
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              padding: '8px 0 9px',
+              margin: '2px 4px',
+              background: bottomMoreActive ? 'rgba(111, 135, 148, 0.14)' : 'transparent',
+              border: 'none', cursor: 'pointer',
+              borderRadius: 12,
+              color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted,
+              minHeight: 52,
+              boxShadow: bottomMoreActive ? 'inset 0 1px 0 rgba(193,203,208,0.14)' : 'none',
+              transition: 'background 0.16s, color 0.16s, box-shadow 0.16s',
             }}>
-            <Icon name="menu" size={21} />
-            <span style={{ fontSize: 12, fontWeight: bottomMoreActive ? 700 : 500, letterSpacing: '0.01em', textTransform: 'uppercase', lineHeight: 1 }}>More</span>
+            <span style={{ display: 'flex', color: bottomMoreActive ? (C.steel?.mist300 || C.accent) : C.muted }}>
+              <Icon name="menu" size={21} />
+            </span>
+            <span style={{ fontSize: 12, fontWeight: bottomMoreActive ? 700 : 500, letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted }}>More</span>
           </button>
         </div>
       )}

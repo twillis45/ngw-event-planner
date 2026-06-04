@@ -1,0 +1,82 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_scrollW": 390,
+      "body_bg": "rgb(7, 8, 9)",
+      "cta_background": "none",
+      "cta_color": "rgb(255, 255, 255)",
+      "cta_height": 52,
+      "cta_shadow": "rgba(154, 58, 58, 0.2) 0px 0px 0px 1px"
+    },
+    "bottom_nav": {
+      "found": true,
+      "count": 6,
+      "data": [
+        {
+          "aria": "Command",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(132, 158, 184)",
+          "borderRadius": "12px",
+          "shadow": "none",
+          "touch_w": 66.703125,
+          "touch_h": 55
+        },
+        {
+          "aria": "Planning",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(132, 158, 184)",
+          "borderRadius": "12px",
+          "shadow": "none",
+          "touch_w": 65.203125,
+          "touch_h": 55
+        },
+        {
+          "aria": "People",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(132, 158, 184)",
+          "borderRadius": "12px",
+          "shadow": "none",
+          "touch_w": 52.515625,
+          "touch_h": 55
+        },
+        {
+          "aria": "Money",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(132, 158, 184)",
+          "borderRadius": "12px",
+          "shadow": "none",
+          "touch_w": 52.53125,
+          "touch_h": 55
+        },
+        {
+          "aria": "Comms",
+          "background": "rgba(111, 135, 148, 0.14)",
+          "color": "rgb(139, 160, 170)",
+          "borderRadius": "12px",
+          "shadow": "rgba(193, 203, 208, 0.14) 0px 1px 0px 0px inset",
+          "touch_w": 52.515625,
+          "touch_h": 55
+        },
+        {
+          "aria": "More",
+          "background": "rgba(0, 0, 0, 0)",
+          "color": "rgb(132, 158, 184)",
+          "borderRadius": "12px",
+          "shadow": "none",
+          "touch_w": 52.53125,
+          "touch_h": 55
+        }
+      ]
+    }
+  },
+  "1440_desktop": {
+    "home": {
+      "body_scrollW": 1440,
+      "body_bg": "rgb(7, 8, 9)",
+      "cta_background": "none",
+      "cta_color": "rgb(255, 255, 255)",
+      "cta_height": 41,
+      "cta_shadow": "rgba(154, 58, 58, 0.2) 0px 0px 0px 1px"
+    }
+  }
+}
