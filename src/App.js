@@ -11978,6 +11978,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const evtCLR = useMemo(() => EVT_CLR(C), [C]);
   const bp = useContext(BpCtx);
   const isWide = bp === 'desktop' || bp === 'tablet-land';
+  const isMobile = bp === 'mobile';
   const [search, setSearch] = useState('');
   const [intakeRefresh, setIntakeRefresh] = useState(0); // bump to re-read localStorage after dismiss/convert
   // Sprint 49 closure (Item 6 — preserve L2 filter context): dashView and
@@ -12419,7 +12420,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               Attention Queue below, which surfaces the same data grouped by
               kind (Decisions/Approvals/Requests/Vendor Issues) instead of by
               source. Avoids the "KPI overload" the brief warned against. */}
-          {dashView === 'dashboard' && (clients.length > 0 || events.length > 0) && (() => {
+          {/* Sprint 60.H hero pass: the desktop-style stat KPI strip
+              ($ Contracted, Balance Due, Approvals, Requests) is hidden on
+              mobile. On a phone it competes with the StudioCommandPanel
+              hero and AttentionQueue, making Home feel like a report
+              dashboard. KPIs remain on tablet/desktop where there's room. */}
+          {dashView === 'dashboard' && !isMobile && (clients.length > 0 || events.length > 0) && (() => {
             const cross = getCrossEventAttention(events);
             const t = cross.totals;
             // Sprint 50 friction fix #2: route StatCard clicks by intent.
@@ -12449,8 +12455,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             );
           })()}
 
-          {/* Sprint 48: Quick Actions row — 5 inline CTAs per the brief. */}
-          {dashView === 'dashboard' && events.length > 0 && (
+          {/* Sprint 48: Quick Actions row — 5 inline CTAs per the brief.
+              Sprint 60.H hero pass: hidden on mobile so the StudioCommandPanel
+              hero and AttentionQueue own the above-the-fold space. Quick
+              actions remain reachable via the bottom nav, attention queue
+              row CTAs, the drawer, and the GlobalCompose FAB. */}
+          {dashView === 'dashboard' && !isMobile && events.length > 0 && (
             <HomeQuickActions events={events} onSelectEvent={onSelectEvent} onNew={onNew} onNewClient={onNewClient} />
           )}
 
@@ -12810,11 +12820,13 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* ═══ Zone 1: Command Header ═══════════════════════════════ */}
       <div style={{ marginBottom: isMob ? 16 : 24 }}>
-        {/* Title row */}
+        {/* Title row — on mobile the sticky top bar already shows
+            "Client Roster" so don't render a second screen title in
+            the body. Keep the back + new action on both viewports. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
           <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
           <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Portfolio</h1>
+            {!isMob && <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Portfolio</h1>}
             {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
               {allClients.length > 0 ? 'Which client relationship needs attention next?' : 'Add your first client to get started.'}
             </p>}
@@ -13427,11 +13439,13 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
             {/* ═══ Zone 1: Command Header ═══════════════════════════════ */}
             <div style={{ marginBottom: isMob ? 16 : 24 }}>
-              {/* Title row */}
+              {/* Title row — on mobile the sticky top bar already shows
+                  "Event Portfolio" so don't render a second screen title
+                  in the body. Keep the back + new action on both viewports. */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
                 <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
                 <div style={{ flex: 1 }}>
-                  <h1 style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Event Portfolio</h1>
+                  {!isMob && <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Event Portfolio</h1>}
                   {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
                     {allEvents.length > 0 ? 'Choose the event that needs work next.' : 'Create your first event to get started.'}
                   </p>}
