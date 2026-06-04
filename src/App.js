@@ -118,28 +118,39 @@ const STEEL = {
 // preserved as a deep-contrast variant for day-of operational surfaces, but
 // the working app shell now uses Mid Carbon for grandmother readability +
 // breathing room between layers.
+// Sprint 60.L Color Lock Pass — locked status palette (matches Figma
+// frame 971:7 Token Board on the NGW MOBILE 10+ LOCK page).
+// Conventions are aligned with professional event coordination tools:
+//   Today    = Steel Blue 500 #6F8794  (neutral date marker)
+//   Live     = Bright green #44CB76    (running on schedule)
+//   Attention= Muted amber  #D19A55    (watch / standby / due soon)
+//   Critical = Rose-red     #E05A63    (overdue / blocking / late)
+//   Ready    = Sage green   #4FAE7A    (paid / confirmed / done)
+//   Pending  = Steel-gray   #9AA8B3    (inactive / future / neutral)
+// CTA gradient is the gray-leaning brushed-steel #859094 → #5D6669.
 const DARK = {
-  bg:       '#111519', // Mid Carbon page (was #070809)
-  surface:  '#1C2227', // Mid Carbon card (was #121518)
-  surface2: '#242B31', // Mid Carbon elevated (was #171B1F)
-  border:   '#2E353D', // Mid Carbon hairline (was #1C2026)
-  // Accent now points at Steel Blue 500 — the silvery identity.
-  // Existing `C.accent` callers (route text, links, ghost CTAs, default
-  // primary buttons) inherit it automatically.
-  accent:   STEEL.blue500,    // #6F8794 (was #4a90d9)
-  // New accent tiers for premium controls:
-  accentDeep:    STEEL.blue700, // #3F5B6A — primary CTA gradient base
-  accentTopGrad: '#4E6877',     // gradient top stop
-  accentPressed: STEEL.blue800, // #2C4452
+  bg:       '#111519', // Mid Carbon page
+  surface:  '#1C2227', // Mid Carbon card
+  surface2: '#242B31', // Mid Carbon elevated
+  border:   '#2E353D', // Mid Carbon hairline
+  // Steel Blue 500 — silvery identity; accent for routes / links / today
+  accent:   STEEL.blue500,    // #6F8794
+  // CTA gradient — gray-leaning brushed steel (less blue than v1)
+  accentDeep:    '#5D6669',   // primary CTA gradient base (was #3F5B6A)
+  accentTopGrad: '#859094',   // gradient top stop (was #4E6877)
+  accentPressed: '#444B4F',   // pressed (was #2C4452)
   accentText:    STEEL.mist300, // #A8B7BF — CTA / link text on dark surfaces
   accentIcon:    STEEL.blue400, // #8BA0AA — icon-default accent
-  // accent2 retired SaaS teal; aliased to steel so legacy callers still work.
   accent2:  STEEL.blue500,
   text:     '#e8edf2',
   muted:    '#849eb8',
-  danger:   '#9a3a3a',
-  success:  '#3a8a62',
-  warn:     '#d4904a',
+  // Locked status palette (Color Lock Pass v3 - Live=green)
+  warn:     '#D19A55', // Attention — muted amber (was #d4904a)
+  danger:   '#E84850', // Critical — punchy red (was #E05A63 rose-red; more saturated for visibility against tinted bg)
+  success:  '#4FAE7A', // Ready — sage green (was #3a8a62)
+  live:     '#44CB76', // Live — bright green (NEW · running on schedule)
+  today:    STEEL.blue500, // Today — Steel Blue 500 (alias)
+  pending:  '#9AA8B3', // Pending — steel-gray (NEW · inactive / future)
   steel:    STEEL,
 };
 
