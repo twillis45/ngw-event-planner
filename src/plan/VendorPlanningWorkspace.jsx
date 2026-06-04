@@ -264,20 +264,20 @@ function StatusRow({ label, value, status, consequence, onAddress, addressLabel 
         {v.badge}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, marginBottom: 2 }}>
+        <div style={{ fontSize: 13, color: P.textSecondary, fontFamily: FF, marginBottom: 3 }}>
           {label}
         </div>
-        <div style={{ fontSize: 13, fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
+        <div style={{ fontSize: 14, fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
           {value}
         </div>
         {consequence && (
-          <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginTop: 3, lineHeight: 1.45, fontStyle: 'italic' }}>
+          <div style={{ fontSize: 12.5, color: P.textTertiary, fontFamily: FF, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>
             {consequence}
           </div>
         )}
       </div>
       {onAddress && (
-        <span style={{ color: P.textTertiary, fontSize: 11, flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
+        <span style={{ color: P.textTertiary, fontSize: 14, flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
       )}
     </>
   );

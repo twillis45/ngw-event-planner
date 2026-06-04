@@ -90,18 +90,27 @@ const ONBOARD_DONE_KEY = 'ngw-onboard-done';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
+// Sprint 60.K Carbon reconciliation — DARK theme hex aligned to canonical
+// Studio Matte palette from src/design/tokens.js. `bg` = matte['050']
+// (matte black page atmosphere). `surface` = matte['150'] (canonical
+// Carbon — the operational card surface). `surface2` = matte['200']
+// (elevated card). `border` = matte['250'] (subtle separator). Steel
+// secondary text + calibrated semantic colors imported 1:1 from the
+// tokens.js source so MobileVendorSummary (already on canonical Carbon)
+// matches App.js components visually. text + muted updated to canonical
+// steel/off-white to maintain ≥4.6:1 contrast on Carbon.
 const DARK = {
-  bg:       '#0f0f11',
-  surface:  '#18181b',
-  surface2: '#1e1e22',
-  border:   '#2a2a2f',
+  bg:       '#070809', // canonical matte['050'] — page depth (was #0f0f11)
+  surface:  '#121518', // canonical matte['150'] CARBON (was #18181b)
+  surface2: '#171b1f', // canonical matte['200'] (was #1e1e22)
+  border:   '#1c2026', // canonical matte['250'] (was #2a2a2f)
   accent:   '#4a90d9',
   accent2:  '#14b8a6',
-  text:     '#e8e8ec',
-  muted:    '#90909a',
-  danger:   '#e63946',
-  success:  '#22c55e',
-  warn:     '#f59e0b',
+  text:     '#e8edf2', // canonical text.primary (was #e8e8ec)
+  muted:    '#849eb8', // canonical steel['400'] (was #90909a)
+  danger:   '#9a3a3a', // canonical red['400'] — calibrated crimson (was #e63946)
+  success:  '#3a8a62', // canonical green['400'] — calibrated forest (was #22c55e)
+  warn:     '#d4904a', // canonical amber['400'] — honey tungsten (was #f59e0b)
 };
 
 const LIGHT = {
@@ -11037,6 +11046,63 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
 // Sprint 55 tone audit found "Top of Book" read as trading-floor jargon for
 // first-time planners; plain English wins on accessibility without losing
 // any signal for pros.)
+// Sprint 60.K: Reusable EmptyStateCard. Every empty surface should answer:
+// "What belongs here?", "Why does it matter?", and "What should I do next?".
+// One primary CTA required (route, modal, or honest light-handoff). Secondary
+// CTA optional. No fake send/pay/notify CTAs — every action must do exactly
+// what it says (UX_07). Carbon surface, generous spacing, ≥44px CTA.
+function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta, onSecondary, example }) {
+  const C = useT();
+  return (
+    <div style={{
+      padding: '22px 22px 24px',
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 12,
+      display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      {tag && (
+        <div style={{
+          fontSize: 11.5, fontWeight: 700, letterSpacing: '0.14em',
+          textTransform: 'uppercase', color: C.muted,
+        }}>{tag}</div>
+      )}
+      <div style={{
+        fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em',
+        lineHeight: 1.22, color: C.text,
+      }}>{title}</div>
+      {body && (
+        <div style={{
+          fontSize: 14.5, lineHeight: 1.52, color: C.muted,
+        }}>{body}</div>
+      )}
+      {example && (
+        <div style={{
+          fontSize: 12.5, lineHeight: 1.45, color: C.muted, opacity: 0.85,
+          fontStyle: 'italic',
+        }}>{example}</div>
+      )}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
+        <button onClick={onPrimary} style={{
+          padding: '12px 20px', minHeight: 44, borderRadius: 8,
+          border: 'none', background: C.accent, color: '#fff',
+          fontSize: 15, fontWeight: 700, cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>{primaryCta}</button>
+        {secondaryCta && (
+          <button onClick={onSecondary} style={{
+            padding: '12px 14px', minHeight: 44, borderRadius: 8,
+            border: 'none', background: 'transparent', color: C.muted,
+            fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            textDecoration: 'underline', textDecorationColor: C.border,
+            textUnderlineOffset: 3, fontFamily: 'inherit',
+          }}>{secondaryCta}</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention, onJumpToEvents, onNew, profile }) {
   const C = useT();
   const bp = useContext(BpCtx);
@@ -16450,18 +16516,16 @@ function Guests({ guests, setGuests, event = {} }) {
           </select>
         )}
         {guests.length === 0 && (
-          <div style={{ padding: '28px 20px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Guest List</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Build your guest list</div>
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
-              Track RSVPs, meal selections, dietary needs, and seating. Import from The Knot, Zola, or Paperless Post — or add manually.
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={add}>Add first guest</button>
-              <button style={{ ...s.btn(), padding: '9px 18px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
-                <Icon name="import" size={14} /> Import CSV
-              </button>
-            </div>
+          <div style={{ padding: '16px 14px 8px' }}>
+            <EmptyStateCard
+              tag="Guest list"
+              title="Add invited guests."
+              body="Track RSVPs, meal selections, dietary needs, and seating. Add them by name or import from The Knot, Zola, or Paperless Post."
+              primaryCta="Add a guest"
+              onPrimary={add}
+              secondaryCta="Import a CSV"
+              onSecondary={() => setShowImport(true)}
+            />
           </div>
         )}
         {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet') ? (
@@ -21366,12 +21430,14 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
           on desktop. */}
       <div style={{ padding: isMobile ? '4px 0 24px' : '4px 0 32px', maxWidth: 960, margin: '0 auto' }}>
         {empty && (
-          <div style={{ padding: isMobile ? '20px 14px' : '24px 28px' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 6 }}>No documents on this event yet</div>
-            <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, maxWidth: 460 }}>
-              Contracts, floor plans, mood boards, menus, and final packets all live here.
-              Vendor contracts attach on the vendor record and appear here automatically.
-            </div>
+          <div style={{ padding: isMobile ? '14px 14px 6px' : '20px 28px 6px' }}>
+            <EmptyStateCard
+              tag="Nothing here yet"
+              title="Add files for this event."
+              body="Contracts, menus, floor plans, and final packets show up here. Vendor contracts attach on the vendor record and appear here automatically."
+              primaryCta="Open a vendor →"
+              onPrimary={() => onOpenVendor && onOpenVendor()}
+            />
           </div>
         )}
 
