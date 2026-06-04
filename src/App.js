@@ -22515,6 +22515,18 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       </>}
       {tab === 'Communication' && (
         <Suspense fallback={<SpecialistFallback />}>
+          {/* Sprint 60.K (Figma 882:189): on Day-of mode, the Communication
+              tab renders with a plain-language "Messages" screen header per
+              the Figma DOF4 frame. Non-Day-of Communication uses its own
+              header inside EventCommTab. No nav restructure, no new
+              taxonomy — copy only. */}
+          {dayMode && (
+            <LegacyTabHeader
+              label="Messages"
+              hint="Updates and notes from your team — vendor coordination, client questions, day-of escalations."
+              onBack={() => handleTabChange('Command')}
+            />
+          )}
           <EventCommTab
             event={event}
             setEvent={setEvent}

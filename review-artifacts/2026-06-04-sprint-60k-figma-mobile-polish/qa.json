@@ -1,0 +1,58 @@
+{
+  "viewports": {
+    "390_mobile": {
+      "home": {
+        "body_scrollW": 390,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 16,
+        "small_touch_targets": 18
+      }
+    },
+    "430_phone": {
+      "home": {
+        "body_scrollW": 430,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 18,
+        "small_touch_targets": 13
+      }
+    },
+    "768_tablet_port": {
+      "home": {
+        "body_scrollW": 768,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 31,
+        "small_touch_targets": 16
+      }
+    },
+    "1024_tablet_l": {
+      "home": {
+        "body_scrollW": 1024,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 21,
+        "small_touch_targets": 16
+      }
+    },
+    "1440_desktop": {
+      "home": {
+        "body_scrollW": 1440,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 31,
+        "small_touch_targets": 17
+      }
+    },
+    "1728_wide": {
+      "home": {
+        "body_scrollW": 1728,
+        "body_bg": "rgb(7, 8, 9)",
+        "sub12_above_fold": 45,
+        "small_touch_targets": 17
+      }
+    }
+  },
+  "day_of_messages": {
+    "dayof_messages_header_present": {
+      "has_messages_label": true,
+      "has_updates_hint": true
+    }
+  }
+}
