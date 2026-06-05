@@ -15653,15 +15653,16 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
         </div>
 
         {budget.length === 0 && (
-          // Sprint 60.L: typography bumps to meet floors.
-          //   tag 11 → 12, title 15 → 18, body 12 → 14.5, CTA 13 → 16.
-          <div style={{ padding: '28px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>Budget</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.015em', color: C.text, marginBottom: 8, lineHeight: 1.25 }}>Track what is owed and what is paid.</div>
-            <div style={{ fontSize: 14.5, color: C.muted, lineHeight: 1.55, marginBottom: 20, maxWidth: 420 }}>
-              Add vendor costs, payment due dates, and balances so nothing gets missed. Track budgeted vs. actual spend and see what's still owed at a glance.
-            </div>
-            <button style={{ ...s.btn('primary'), padding: '12px 20px', fontSize: 16, minHeight: 48 }} onClick={add}>Add first category</button>
+          // Sprint 60.L Phase 7: use the locked EmptyStateCard component
+          // so this surface matches the Documents + Guests treatment.
+          <div style={{ padding: '20px 20px 0' }}>
+            <EmptyStateCard
+              tag="Budget"
+              title="Start tracking money."
+              body="Add vendor costs, payment due dates, and balances so nothing gets missed. Track budgeted vs. actual spend and see what's still owed at a glance."
+              primaryCta="Add first category"
+              onPrimary={add}
+            />
           </div>
         )}
 
@@ -20593,11 +20594,16 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
   // confirmed vendors missing arrival times, we want to render the
   // "Missing arrival times" panel even when no arrivals are scheduled.
   if (arrivals.length === 0 && missingArrivalTime.length === 0) {
+    // Sprint 60.L Phase 7: use locked EmptyStateCard component for
+    // consistency with Documents / Guests / Budget empty surfaces.
     return (
-      <div style={{ ...s.card, textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No vendor arrivals set</div>
-        <div style={{ fontSize: 12, color: C.muted }}>Add arrival times to confirmed vendors in the Vendors tab to track them here.</div>
-      </div>
+      <EmptyStateCard
+        tag="Arrivals"
+        title="No vendor arrivals set."
+        body="Add arrival times to confirmed vendors in the Vendors tab. Vendors with an arrival time will show here on event day so you can track who's on site, en route, or running late."
+        primaryCta="Open vendors"
+        onPrimary={() => onOpenVendor && onOpenVendor()}
+      />
     );
   }
 
