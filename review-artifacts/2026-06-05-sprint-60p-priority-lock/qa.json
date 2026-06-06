@@ -1,0 +1,28 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 390,
+      "fabVisible": false,
+      "practiceCardVisible": true,
+      "practiceText": "Skip to main content\nSession resumed \u00b7 last saved Jun 5, 8:44 AM\nDismiss\nNGW EVENT BOSS\nHome\nP\nFinish studio setup \u00b7 0/3\nOpen \u2192\nDEMO\nExploring sample data.\nClear\nSAMPLE \u00b7 NOT A REAL EVENT\nExplore the ",
+      "collapsedAttentionVisible": false,
+      "collapsedAttentionText": null,
+      "filterChipCount": 0
+    },
+    "errors": []
+  },
+  "1440_desktop": {
+    "home": {
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 1440,
+      "fabVisible": true,
+      "practiceCardVisible": false,
+      "practiceText": null,
+      "collapsedAttentionVisible": false,
+      "collapsedAttentionText": null,
+      "filterChipCount": 3
+    },
+    "errors": []
+  }
+}

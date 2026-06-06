@@ -1,0 +1,32 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "ctas": {
+    "open_contact_details": {
+      "surface": "Home AttentionQueue",
+      "trigger": "vendor-stale City Catering @ 30d event",
+      "count": 0,
+      "cta_visible": false
+    },
+    "open_payment_details": {
+      "surface": "BudgetModal",
+      "trigger": "click vendor-linked Venue row",
+      "count": 2,
+      "cta_visible": true,
+      "clicked": true,
+      "flash_before": 0,
+      "flash_at_600ms": 0,
+      "flash_at_1500ms": 0,
+      "amber_flash_active": false,
+      "landing_signal": true
+    }
+  },
+  "mutation": {
+    "mutated": [
+      "Skyline Event Center: attention",
+      "Premier AV Solutions: contractUrl",
+      "City Catering Co: stale 49d"
+    ],
+    "event_date": "2026-07-03"
+  }
+}

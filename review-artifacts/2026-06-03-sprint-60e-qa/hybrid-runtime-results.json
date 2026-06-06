@@ -1,0 +1,103 @@
+{
+  "create_step": {
+    "found": true,
+    "primary": "Wedding",
+    "secondary": "Anniversary",
+    "vendor_categories": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Transport"
+    ],
+    "budget_categories": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Cake",
+      "Invitations",
+      "Transport",
+      "Misc",
+      "Decor"
+    ],
+    "budget_count": 11,
+    "timeline_count": 18,
+    "vendor_count": 7
+  },
+  "secondary_change": "Conference",
+  "merge_callout_visible": true,
+  "before_merge": {
+    "primary": "Wedding",
+    "secondary": "Conference",
+    "vendor_count": 7,
+    "budget_count": 11,
+    "timeline_count": 18,
+    "vendor_cats": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Transport"
+    ],
+    "budget_cats": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Cake",
+      "Invitations",
+      "Transport",
+      "Misc",
+      "Decor"
+    ]
+  },
+  "merge_persisted": true,
+  "merge_clicked": true,
+  "after_merge": {
+    "primary": "Wedding",
+    "secondary": "Conference",
+    "vendor_count": 8,
+    "budget_count": 13,
+    "timeline_count": 30,
+    "vendor_cats": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Transport",
+      "AV / Tech"
+    ],
+    "budget_cats": [
+      "Venue",
+      "Catering",
+      "Photography",
+      "Florals",
+      "Entertainment",
+      "Hair & Makeup",
+      "Cake",
+      "Invitations",
+      "Transport",
+      "Misc",
+      "Decor",
+      "AV / Tech",
+      "Printing / Signage"
+    ]
+  },
+  "existing_vendor_ids_preserved": true,
+  "new_vendor_ids_added": 1,
+  "existing_budget_ids_preserved": true,
+  "existing_timeline_ids_preserved": true,
+  "console_errors": [],
+  "page_errors": []
+}

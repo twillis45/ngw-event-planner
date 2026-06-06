@@ -1,0 +1,50 @@
+{
+  "new_event_390": {
+    "truth_line_present": false,
+    "cta_present": false,
+    "cancel_present": false,
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "errors": 0
+  },
+  "new_event_430": {
+    "truth_line_present": false,
+    "cta_present": false,
+    "cancel_present": false,
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "errors": 0
+  },
+  "new_event_768": {
+    "truth_line_present": false,
+    "cta_present": false,
+    "cancel_present": false,
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "errors": 0
+  },
+  "new_event_1024": {
+    "truth_line_present": true,
+    "cta_present": true,
+    "cancel_present": true,
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "errors": 0
+  },
+  "new_event_1440": {
+    "truth_line_present": true,
+    "cta_present": true,
+    "cancel_present": true,
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "errors": 0
+  },
+  "destructive_confirms": {
+    "prompts_intercepted": []
+  }
+}

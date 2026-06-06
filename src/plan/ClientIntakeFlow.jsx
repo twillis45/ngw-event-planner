@@ -15,6 +15,8 @@
 
 import { useState } from 'react';
 import { color, space, type, radius } from '../design/tokens';
+// Sprint 61.G — shared budget hint
+import BudgetEstimateHint from '../lib/budgetEstimator/BudgetEstimateHint';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -287,6 +289,28 @@ function Step4({ data, onChange }) {
 
   return (
     <div>
+      {/* Sprint 61.G — Budget estimate hint above OVERALL BUDGET. Anchors
+          the total budget input against a typical range so the planner
+          (and client) aren't writing into a void. Renders only when type
+          and guests are both known. */}
+      {data.type && (data.guestEstimate || data.guests?.length) && (
+        <div style={{ marginBottom: space[6] }}>
+          <BudgetEstimateHint
+            type={data.type}
+            guestCount={data.guestEstimate || (data.guests || []).length}
+            date={data.date}
+            timeOfDay={data.timeOfDay || 'afternoon'}
+            profile={null}
+            userBudget={Number(data.total_budget) || null}
+            palette={{
+              bg: P.canvas, card: P.card, border: P.borderSubtle,
+              text: P.textPrimary, muted: P.textSecondary,
+              accent: '#4E6877',
+              success: P.green, warn: P.amber, danger: P.red,
+            }}
+          />
+        </div>
+      )}
       <SectionHeading>OVERALL BUDGET</SectionHeading>
       <TwoCol>
         <Field label="TOTAL BUDGET">
@@ -841,6 +865,88 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
 
         {/* Step content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? `${space[6]}px ${space[5]}px` : `${space[7]}px ${space[9]}px` }}>
+          {/* Sprint 60.W — Intake Confidence card. Tells the planner whether
+              this event is ready to start planning, what's missing, and one
+              concrete next action. Lives above the step body so it's always
+              the first thing the planner reads when opening Client Intake. */}
+          {(() => {
+            const steelBlueIC = '#4E6877';
+            const amberIC = '#ECA13F';
+            const greenIC = '#4FAE7A';
+            const has = {
+              name:    !!(draft.name || '').trim(),
+              type:    !!(draft.type || '').trim(),
+              date:    !!(draft.date || '').trim(),
+              venue:   !!(draft.venue || '').trim(),
+              guests:  !!(draft.guestEstimate && Number(draft.guestEstimate) > 0),
+              budget:  Array.isArray(draft.budget) && draft.budget.some(b => Number(b.budgeted) > 0),
+              contact: !!((draft.clients?.[0]?.email || '').trim() || (draft.clients?.[0]?.phone || '').trim()),
+              prio:    !!(draft.priorities?.length || draft.mustHaves?.length),
+            };
+            let state;
+            // Priority cascade — surface the most-blocking gap first.
+            if (!has.name || !has.type || !has.date) {
+              state = { label: 'Basics needed', color: amberIC, missing: ['Name', 'Type', 'Date'].filter((_, i) => ![has.name, has.type, has.date][i]), explain: 'Add the event name, type, and date before anything else can be planned.', nextAction: 'Start with Event Basics', nextStep: 1 };
+            } else if (!has.contact) {
+              state = { label: 'Missing client contact', color: amberIC, missing: ['Email or phone'], explain: 'Add email or phone before sending approvals or reminders.', nextAction: 'Go to Client Contact', nextStep: 2 };
+            } else if (!has.venue) {
+              state = { label: 'Venue unknown', color: amberIC, missing: ['Venue'], explain: 'A venue anchors arrival times and the run of show. You can plan without one for a while.', nextAction: 'Back to Event Basics', nextStep: 1 };
+            } else if (!has.guests) {
+              state = { label: 'Guest count missing', color: amberIC, missing: ['Guest estimate'], explain: 'Caterer, seating, and budget estimates all depend on this. A rough number is enough.', nextAction: 'Go to Guest List', nextStep: 3 };
+            } else if (!has.budget) {
+              state = { label: 'Budget unknown', color: amberIC, missing: ['Budget'], explain: 'You can still plan, but vendor estimates and payment milestones will be less useful.', nextAction: 'Go to Budget Overview', nextStep: 4 };
+            } else if (!has.prio) {
+              state = { label: 'Vendor priorities incomplete', color: amberIC, missing: ['What matters most'], explain: 'Ask what matters most: food, music, photo/video, decor, venue, or schedule.', nextAction: 'Go to Vendor Priorities', nextStep: 6 };
+            } else {
+              state = { label: 'Enough to start planning', color: greenIC, missing: [], explain: 'You have enough to build the first plan. Budget and venue details can be refined later.', nextAction: 'Review & Confirm', nextStep: 7 };
+            }
+            return (
+              <div style={{
+                marginBottom: space[6],
+                background: `linear-gradient(180deg, ${steelBlueIC}14 0%, ${steelBlueIC}07 100%)`,
+                border: `1px solid ${steelBlueIC}33`,
+                borderLeft: `3px solid ${state.color}`,
+                borderRadius: 12,
+                padding: isMobile ? '14px 14px' : '16px 20px',
+                display: 'flex', gap: 14, alignItems: 'flex-start',
+                fontFamily: FF,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                  background: `${state.color}22`, color: state.color,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 800, marginTop: 1,
+                }}>{state.color === greenIC ? '✓' : '◐'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelBlueIC, textTransform: 'uppercase' }}>Intake Confidence</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: P.textPrimary, marginTop: 2 }}>{state.label}</div>
+                  <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 5, lineHeight: 1.5 }}>{state.explain}</div>
+                  {state.missing.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {state.missing.map(m => (
+                        <span key={m} style={{ fontSize: 10.5, fontWeight: 700, color: amberIC, background: `${amberIC}14`, border: `1px solid ${amberIC}44`, padding: '2px 8px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{m}</span>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { if (state.nextStep && state.nextStep !== step) setStep(state.nextStep); }}
+                    style={{
+                      marginTop: 12,
+                      background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
+                      color: '#fff', border: 'none', cursor: 'pointer',
+                      borderRadius: 8, padding: '8px 14px',
+                      fontSize: 12, fontWeight: 700, fontFamily: FF,
+                      letterSpacing: '0.01em',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.3)',
+                    }}>
+                    {state.nextAction} →
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
           <div style={{
             fontSize: 18, fontWeight: type.weight.semibold,
             color: P.textPrimary, fontFamily: FF, marginBottom: space[2],

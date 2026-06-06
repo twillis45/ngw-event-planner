@@ -1,0 +1,162 @@
+{
+  "home_empty": {
+    "applied": {
+      "events": 0
+    },
+    "probe": {
+      "eyebrows": [
+        "NGW EVENT BOSS",
+        "WELCOME TO NGW EVENT BOSS",
+        "WELCOME",
+        "JUST EXPLORING?",
+        "OR"
+      ],
+      "headlines": [],
+      "ctas": [
+        "WELCOME\nPlan your first event\nWedding, birthday, b",
+        "JUST EXPLORING?\nTry a sample event\nLoads a populat",
+        "OR\nAdd your first client\nConnects the RSVP page, t"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "home_all_clear": {
+    "applied": {
+      "events": 1
+    },
+    "probe": {
+      "eyebrows": [
+        "NGW EVENT BOSS",
+        "START HERE",
+        "EVENT READINESS \u2014 NEXT 60 DAYS"
+      ],
+      "headlines": [
+        "Allen Anniversary is slipping on vendors."
+      ],
+      "ctas": [
+        "Handle this first\n\u2192",
+        "View all events",
+        "JUL\n20\nAllen Anniversary\nAnniversary\n45d"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "home_multi_upcoming": {
+    "applied": {
+      "events": 3
+    },
+    "probe": {
+      "eyebrows": [
+        "NGW EVENT BOSS",
+        "DEMO",
+        "START HERE",
+        "EVENT READINESS \u2014 NEXT 60 DAYS"
+      ],
+      "headlines": [
+        "Kim Wedding is slipping on vendors."
+      ],
+      "ctas": [
+        "Handle this first\n\u2192",
+        "View all events",
+        "JUN\n20\nKim Wedding\nWedding\n15d",
+        "JUL\n5\nSmith Quince\nQuinceanera\n30d",
+        "JUL\n30\nCorp Gala\nCorporate\n55d"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "home_today_live": {
+    "applied": {
+      "events": 1,
+      "today": "2026-06-05"
+    },
+    "probe": {
+      "eyebrows": [
+        "NGW EVENT BOSS",
+        "DEMO",
+        "TODAY \u00b7 LIVE",
+        "EVENT READINESS \u2014 NEXT 60 DAYS"
+      ],
+      "headlines": [
+        "Riverside Reception is slipping on vendors."
+      ],
+      "ctas": [
+        "Handle this first\n\u2192",
+        "View all events",
+        "JUN\n5\nRiverside Reception\nWedding\nToday"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "dayof_now": {
+    "applied": {
+      "ok": true
+    },
+    "probe": {
+      "eyebrows": [
+        "EVENT DAY",
+        "NOW",
+        "NOW \u00b7 ACT IMMEDIATELY",
+        "NOW",
+        "NEXT",
+        "LATER",
+        "DONE",
+        "NOW \u2014 ACT IMMEDIATELY"
+      ],
+      "headlines": [
+        "7 tasks need you right now."
+      ],
+      "ctas": [],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "dayof_messages": {
+    "applied": {
+      "ok": true
+    },
+    "probe": {
+      "eyebrows": [
+        "EVENT DAY",
+        "MESSAGES",
+        "APPROVAL PENDING",
+        "NOW",
+        "ARRIVALS",
+        "SCHEDULE",
+        "COMMS",
+        "MORE"
+      ],
+      "headlines": [],
+      "ctas": [
+        "Save to thread"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  },
+  "vendor_detail": {
+    "applied": {
+      "ok": true
+    },
+    "probe": {
+      "eyebrows": [
+        "APPROVAL PENDING",
+        "BACKEND",
+        "COMMAND",
+        "PLANNING",
+        "PEOPLE",
+        "MONEY",
+        "COMMS",
+        "MORE"
+      ],
+      "headlines": [],
+      "ctas": [],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors_count": 0
+  }
+}

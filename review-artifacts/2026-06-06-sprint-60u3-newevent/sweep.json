@@ -1,0 +1,1452 @@
+{
+  "s1_empty_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 255,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true,
+      "Basics": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_validation_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 255,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 967,
+    "expected_phrases_present": {
+      "Event name is required": true,
+      "Event date is required": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_enabled_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 255,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s2_selected_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Simple event\nA starter timelin",
+        "bg": "none",
+        "w": 350,
+        "h": 88
+      },
+      {
+        "text": "Wedding \u00b7 ceremony + reception",
+        "bg": "none",
+        "w": 350,
+        "h": 213
+      },
+      {
+        "text": "Corporate event\nA timeline, ve",
+        "bg": "none",
+        "w": 350,
+        "h": 88
+      },
+      {
+        "text": "Private celebration\nA timeline",
+        "bg": "none",
+        "w": 350,
+        "h": 88
+      },
+      {
+        "text": "Start blank\nJust the event wor",
+        "bg": "none",
+        "w": 350,
+        "h": 88
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 269,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 797,
+    "expected_phrases_present": {
+      "CREATES FOR YOU": true,
+      "Planning timeline": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s3_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Create event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 269,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 420,
+    "expected_phrases_present": {
+      "Add what you know": true,
+      "Anything you skip can be added later": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "success_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "viewportH": 844,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 390,
+      "h": 844,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Open event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 350,
+        "h": 44
+      },
+      {
+        "text": "Add another event",
+        "bg": "none",
+        "w": 350,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 247,
+    "expected_phrases_present": {
+      "Event created": true,
+      "CREATED FOR YOU": true,
+      "Open event": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_empty_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 295,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true,
+      "Basics": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_validation_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 295,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 967,
+    "expected_phrases_present": {
+      "Event name is required": true,
+      "Event date is required": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_enabled_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 295,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s2_selected_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Simple event\nA starter timelin",
+        "bg": "none",
+        "w": 390,
+        "h": 69
+      },
+      {
+        "text": "Wedding \u00b7 ceremony + reception",
+        "bg": "none",
+        "w": 390,
+        "h": 213
+      },
+      {
+        "text": "Corporate event\nA timeline, ve",
+        "bg": "none",
+        "w": 390,
+        "h": 88
+      },
+      {
+        "text": "Private celebration\nA timeline",
+        "bg": "none",
+        "w": 390,
+        "h": 88
+      },
+      {
+        "text": "Start blank\nJust the event wor",
+        "bg": "none",
+        "w": 390,
+        "h": 88
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 309,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 797,
+    "expected_phrases_present": {
+      "CREATES FOR YOU": true,
+      "Planning timeline": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s3_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Create event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 309,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 420,
+    "expected_phrases_present": {
+      "Add what you know": true,
+      "Anything you skip can be added later": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "success_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "viewportH": 932,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 430,
+      "h": 932,
+      "x": 0,
+      "y": 0
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Open event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 390,
+        "h": 44
+      },
+      {
+        "text": "Add another event",
+        "bg": "none",
+        "w": 390,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 247,
+    "expected_phrases_present": {
+      "Event created": true,
+      "CREATED FOR YOU": true,
+      "Open event": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_empty_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 642,
+      "h": 587,
+      "x": 63,
+      "y": 219
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true,
+      "Basics": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_validation_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 642,
+      "h": 629,
+      "x": 63,
+      "y": 198
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 967,
+    "expected_phrases_present": {
+      "Event name is required": true,
+      "Event date is required": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_enabled_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 642,
+      "h": 587,
+      "x": 63,
+      "y": 219
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s2_selected_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 642,
+      "h": 870,
+      "x": 63,
+      "y": 77
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Simple event\nA starter timelin",
+        "bg": "none",
+        "w": 584,
+        "h": 70
+      },
+      {
+        "text": "Wedding \u00b7 ceremony + reception",
+        "bg": "none",
+        "w": 584,
+        "h": 195
+      },
+      {
+        "text": "Corporate event\nA timeline, ve",
+        "bg": "none",
+        "w": 584,
+        "h": 70
+      },
+      {
+        "text": "Private celebration\nA timeline",
+        "bg": "none",
+        "w": 584,
+        "h": 70
+      },
+      {
+        "text": "Start blank\nJust the event wor",
+        "bg": "none",
+        "w": 584,
+        "h": 70
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 797,
+    "expected_phrases_present": {
+      "CREATES FOR YOU": true,
+      "Planning timeline": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s3_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 642,
+      "h": 462,
+      "x": 63,
+      "y": 281
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Create event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 131,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 420,
+    "expected_phrases_present": {
+      "Add what you know": true,
+      "Anything you skip can be added later": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "success_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "viewportH": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 562,
+      "h": 569,
+      "x": 103,
+      "y": 228
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Open event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 504,
+        "h": 44
+      },
+      {
+        "text": "Add another event",
+        "bg": "none",
+        "w": 504,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 247,
+    "expected_phrases_present": {
+      "Event created": true,
+      "CREATED FOR YOU": true,
+      "Open event": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_empty_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 587,
+      "x": 151,
+      "y": 390
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true,
+      "Basics": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_validation_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 629,
+      "x": 151,
+      "y": 369
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 967,
+    "expected_phrases_present": {
+      "Event name is required": true,
+      "Event date is required": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_enabled_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 587,
+      "x": 151,
+      "y": 390
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s2_selected_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 870,
+      "x": 151,
+      "y": 248
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Simple event\nA starter timelin",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Wedding \u00b7 ceremony + reception",
+        "bg": "none",
+        "w": 664,
+        "h": 195
+      },
+      {
+        "text": "Corporate event\nA timeline, ve",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Private celebration\nA timeline",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Start blank\nJust the event wor",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 797,
+    "expected_phrases_present": {
+      "CREATES FOR YOU": true,
+      "Planning timeline": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s3_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 462,
+      "x": 151,
+      "y": 452
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Create event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 131,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 420,
+    "expected_phrases_present": {
+      "Add what you know": true,
+      "Anything you skip can be added later": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "success_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "viewportH": 1366,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 569,
+      "x": 211,
+      "y": 399
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Open event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 544,
+        "h": 44
+      },
+      {
+        "text": "Add another event",
+        "bg": "none",
+        "w": 544,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 247,
+    "expected_phrases_present": {
+      "Event created": true,
+      "CREATED FOR YOU": true,
+      "Open event": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_empty_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 587,
+      "x": 359,
+      "y": 157
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true,
+      "Basics": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_validation_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 629,
+      "x": 359,
+      "y": 136
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 967,
+    "expected_phrases_present": {
+      "Event name is required": true,
+      "Event date is required": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s1_enabled_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 587,
+      "x": 359,
+      "y": 157
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 85,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 919,
+    "expected_phrases_present": {
+      "Add the basics": true,
+      "NO GUESSWORK YET": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s2_selected_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 812,
+      "x": 359,
+      "y": 44
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Simple event\nA starter timelin",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Wedding \u00b7 ceremony + reception",
+        "bg": "none",
+        "w": 664,
+        "h": 195
+      },
+      {
+        "text": "Corporate event\nA timeline, ve",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Private celebration\nA timeline",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Start blank\nJust the event wor",
+        "bg": "none",
+        "w": 664,
+        "h": 70
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Continue",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 130,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 797,
+    "expected_phrases_present": {
+      "CREATES FOR YOU": true,
+      "Planning timeline": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "s3_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 722,
+      "h": 462,
+      "x": 359,
+      "y": 219
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Back",
+        "bg": "none",
+        "w": 71,
+        "h": 44
+      },
+      {
+        "text": "Create event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 131,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 420,
+    "expected_phrases_present": {
+      "Add what you know": true,
+      "Anything you skip can be added later": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  },
+  "success_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "viewportH": 900,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 569,
+      "x": 419,
+      "y": 166
+    },
+    "dlgBg": "rgb(28, 34, 39)",
+    "footerBtns": [
+      {
+        "text": "\u00d7",
+        "bg": "none",
+        "w": 44,
+        "h": 44
+      },
+      {
+        "text": "Open event",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 544,
+        "h": 44
+      },
+      {
+        "text": "Add another event",
+        "bg": "none",
+        "w": 544,
+        "h": 44
+      }
+    ],
+    "dlg_text_length": 247,
+    "expected_phrases_present": {
+      "Event created": true,
+      "CREATED FOR YOU": true,
+      "Open event": true
+    },
+    "blue_ctas": 1,
+    "gray_ctas": 0,
+    "errors": 0,
+    "opened": true
+  }
+}

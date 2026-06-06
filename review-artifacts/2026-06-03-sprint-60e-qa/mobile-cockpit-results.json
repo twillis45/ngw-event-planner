@@ -1,0 +1,28 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "bottom_nav_labels": [
+    "COMMAND",
+    "PLANNING",
+    "PEOPLE",
+    "MONEY",
+    "COMMS",
+    "MORE"
+  ],
+  "people_tapped": true,
+  "bottom_sheet_options": {
+    "vendors_visible": true,
+    "guests_visible": true,
+    "seating_visible": true
+  },
+  "vendors_tapped": true,
+  "cockpit_on_mobile": {
+    "readiness_visible": true,
+    "documents_visible": false,
+    "planning_visible": true,
+    "chevron_count": 0,
+    "section_chevron_count": 0
+  },
+  "mobile_toggle_changed": false,
+  "back_to_command": true
+}

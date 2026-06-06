@@ -1,0 +1,9 @@
+{
+  "hero": {
+    "eyebrows": 0,
+    "eyebrowTexts": [],
+    "contactShortcuts": false,
+    "bodyBg": "rgb(17, 21, 25)"
+  },
+  "errors": []
+}

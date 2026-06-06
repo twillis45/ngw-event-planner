@@ -15,6 +15,7 @@ from .routers import docusign
 from .routers import ai
 from .routers import webhooks
 from .routers import stripe_payments
+from .routers import admin
 from .emailer import is_email_configured
 from .config import STRIPE_SECRET_KEY, RESEND_WEBHOOK_SECRET
 
@@ -179,3 +180,4 @@ app.include_router(docusign.router)
 app.include_router(ai.router)
 app.include_router(webhooks.router)
 app.include_router(stripe_payments.router)
+app.include_router(admin.router)

@@ -48,6 +48,10 @@ const P = {
   green:         color.status.confirmed,
   amber:         color.status.warning,
   red:           color.status.risk,
+  // Sprint 60.U.3 10+ — steel-blue accent matches App.js accentTopGrad
+  // (#4E6877) so CommandCenter section eyebrows read in the same voice
+  // as modal NO GUESSWORK rails.
+  steelBlue:     '#4E6877',
 };
 const FF = type.family;
 
@@ -514,9 +518,9 @@ export function getCrossEventAttentionItems(events = []) {
         meta: `${t.week} · ${t.owner || 'You'}`,
         // Sprint 49: Figma H vocabulary
         statusLabel: od > 14 ? 'URGENT' : 'AWAITING',
-        statusColor: '#9a3a3a', // red
+        statusColor: '#E84036', // red
         dueLabel: `Overdue ${od}d`,
-        dueColor: '#9a3a3a',
+        dueColor: '#E84036',
         sortKey: 1000 + od, // higher = more urgent
         // Sprint 49: decisions now route to the canonical Decisions tab,
         // carrying a `decisionId` (= timeline task id) per EventPlanner's
@@ -605,7 +609,7 @@ export function getCrossEventAttentionItems(events = []) {
     {
       if (compression && compression.significant) {
         const tone =
-            compression.level === 'rush'       ? '#9a3a3a'
+            compression.level === 'rush'       ? '#E84036'
           : compression.level === 'compressed' ? '#d4904a'
           :                                      '#3a8a62'; // tight
         items.push({
@@ -655,11 +659,11 @@ export function getCrossEventAttentionItems(events = []) {
           : (v.status === 'Considering' || v.status === 'Not Started' || !v.status)              ? 'NOT STARTED'
           : (v.status === 'Unconfirmed' || v.status === 'Needs Action')                           ? 'UNCONFIRMED'
           : 'NOT STARTED',
-        statusColor: overdueP ? '#9a3a3a' : '#d4904a',
+        statusColor: overdueP ? '#E84036' : '#d4904a',
         dueLabel: v.payDueDate
           ? (overdueP ? `Overdue ${-daysFrom(v.payDueDate)}d` : `In ${daysFrom(v.payDueDate)}d`)
           : 'Open',
-        dueColor: overdueP ? '#9a3a3a' : '#d4904a',
+        dueColor: overdueP ? '#E84036' : '#d4904a',
         sortKey: overdueP ? 900 : 200,
         // Sprint 49: emit `vendorId` to match EventPlanner's initialNav shape
         clickTarget: { tab: 'Vendors', vendorId: v.id },
@@ -744,20 +748,69 @@ const daysWord = (d) => d === 1 ? '1 day' : `${d} days`;
 export function selectStudioCommand(events = []) {
   const active = (events || []).filter(e => !e.archived);
   if (active.length === 0) {
+    // Sprint 60.O Addendum: single command voice — locked copy from spec.
     return {
       level: 'neutral',
       category: 'empty',
-      title: 'Start by adding your first event.',
-      consequence: 'Your studio command center activates when you have events to orchestrate.',
-      primaryCta: 'Add an event',
+      title: 'Plan your first event.',
+      consequence: 'Start with the basics. Add people, money, and timing later.',
+      primaryCta: 'Plan your first event',
       primaryAction: 'new-event',
-      secondaryCta: null,
+      secondaryCta: 'Try a sample event',
+      secondaryAction: 'sample',
     };
   }
 
   const items = getCrossEventAttentionItems(active);
 
-  // Tier 1: critical blockers — URGENT-labeled items or AT RISK vendors
+  // Sprint 60.P Addendum — state priority truth lock.
+  // Today/live event ALWAYS wins over generic future planning language.
+  // We split into two sub-tiers up here, BEFORE the critical/attention
+  // ladder, so a today event with empty vendors no longer renders as
+  // "slipping on vendors" — it renders as TODAY · LIVE (or LIVE · ACT
+  // NOW if there really are day-of items to handle).
+  const todayActive = active
+    .map(ev => ({ ev, days: daysFrom(ev.date) }))
+    .filter(x => x.days === 0)
+    .sort((a, b) => (a.ev.name || '').localeCompare(b.ev.name || ''))[0];
+  if (todayActive) {
+    const { ev: todayEv } = todayActive;
+    // Are there any URGENT/AT_RISK items tied to the today event?
+    const todayCritical = items.filter(it => it.eventId === todayEv.id && (it.statusLabel === 'URGENT' || it.statusLabel === 'AT RISK'));
+    const todayAttention = items.filter(it => it.eventId === todayEv.id);
+    if (todayCritical.length > 0 || todayAttention.length > 0) {
+      // Tier 1a: LIVE · ACT NOW — live event with active day-of issues
+      const count = todayAttention.length;
+      const top = todayCritical[0] || todayAttention[0];
+      return {
+        level: 'critical',
+        category: 'today-act',
+        eventId: todayEv.id,
+        eventName: todayEv.name,
+        title: `${count} thing${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} attention right now.`,
+        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open Day-of Mode to triage.',
+        primaryCta: 'Open Day-of Mode',
+        primaryRoute: { eventId: todayEv.id, tab: 'Command' },
+        secondaryCta: 'View messages',
+        secondaryRoute: { eventId: todayEv.id, tab: 'Communication' },
+      };
+    }
+    // Tier 1b: TODAY · LIVE — live event, clean
+    return {
+      level: 'attention',
+      category: 'today',
+      eventId: todayEv.id,
+      eventName: todayEv.name,
+      title: 'Your event is today.',
+      consequence: 'Day-of Mode gives you arrivals, messages, guest check-in, and the run-of-show in one place.',
+      primaryCta: 'Enter Day-of Mode',
+      primaryRoute: { eventId: todayEv.id, tab: 'Command' },
+      secondaryCta: 'View full event details',
+      secondaryRoute: { eventId: todayEv.id, tab: 'Planning' },
+    };
+  }
+
+  // Tier 2: critical blockers — URGENT-labeled items or AT RISK vendors
   const critical = items.find(it => it.statusLabel === 'URGENT' || it.statusLabel === 'AT RISK');
   if (critical) {
     const sameEventCount = items.filter(it => it.eventId === critical.eventId &&
@@ -767,11 +820,13 @@ export function selectStudioCommand(events = []) {
       category: 'blocker',
       eventId: critical.eventId,
       eventName: critical.eventName,
-      title: `Start here: ${critical.eventName} has ${sameEventCount > 1 ? `${sameEventCount} unresolved blockers` : 'an unresolved blocker'} before event day.`,
+      // Sprint 60.O Addendum: drop "Start here:" prefix — eyebrow carries
+      // the framing. Headline is now the plain truth: who has how many.
+      title: `${critical.eventName} has ${sameEventCount > 1 ? `${sameEventCount} blockers` : 'a blocker'}.`,
       consequence: `"${critical.title}" — ${critical.dueLabel || 'awaiting your action'}. Other tasks are stuck until this is handled.`,
-      primaryCta: `Open ${critical.eventName.length > 22 ? critical.eventName.slice(0, 20) + '…' : critical.eventName}`,
+      primaryCta: 'Handle this first',
       primaryRoute: { eventId: critical.eventId, ...critical.clickTarget },
-      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,
+      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
     };
   }
@@ -784,11 +839,12 @@ export function selectStudioCommand(events = []) {
       category: 'decision',
       eventId: awaiting.eventId,
       eventName: awaiting.eventName,
-      title: `Start here: ${awaiting.eventName} is waiting on client approval.`,
+      // Sprint 60.O Addendum: dropped "Start here:" prefix.
+      title: `${awaiting.eventName} is waiting on client approval.`,
       consequence: `"${(awaiting.title || '').slice(0, 100)}" — sent, awaiting reply. Decisions downstream are paused.`,
-      primaryCta: `Open ${awaiting.eventName.length > 22 ? awaiting.eventName.slice(0, 20) + '…' : awaiting.eventName}`,
+      primaryCta: 'Handle this first',
       primaryRoute: { eventId: awaiting.eventId, ...awaiting.clickTarget },
-      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,
+      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
     };
   }
@@ -801,11 +857,11 @@ export function selectStudioCommand(events = []) {
       category: 'decision',
       eventId: pending.eventId,
       eventName: pending.eventName,
-      title: `Start here: An approval for ${pending.eventName} is drafted but not sent.`,
+      title: `An approval for ${pending.eventName} is drafted but not sent.`,
       consequence: `"${(pending.title || '').slice(0, 100)}" is sitting in your queue. Send it so the client clock can start.`,
-      primaryCta: `Open ${pending.eventName.length > 22 ? pending.eventName.slice(0, 20) + '…' : pending.eventName}`,
+      primaryCta: 'Handle this first',
       primaryRoute: { eventId: pending.eventId, ...pending.clickTarget },
-      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,
+      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
     };
   }
@@ -818,11 +874,11 @@ export function selectStudioCommand(events = []) {
       category: 'vendor',
       eventId: vendor.eventId,
       eventName: vendor.eventName,
-      title: `Start here: ${vendor.title.replace(/^[A-Z][a-z]+ — /, '')} still needs confirmation for ${vendor.eventName}.`,
+      title: `${vendor.title.replace(/^[A-Z][a-z]+ — /, '')} still needs confirmation for ${vendor.eventName}.`,
       consequence: `Currently ${vendor.statusLabel.toLowerCase().replace('_', ' ')}. The longer it sits, the tighter your fallback window.`,
-      primaryCta: `Open ${vendor.eventName.length > 22 ? vendor.eventName.slice(0, 20) + '…' : vendor.eventName}`,
+      primaryCta: 'Handle this first',
       primaryRoute: { eventId: vendor.eventId, ...vendor.clickTarget },
-      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,
+      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
     };
   }
@@ -848,19 +904,22 @@ export function selectStudioCommand(events = []) {
     const worst = ['decision','vendor','timeline','document']
       .find(k => r[k] && r[k].status === 'AT_RISK') ||
       ['decision','vendor','timeline','document'].find(k => r[k] && r[k].status === 'ATTENTION');
-    const worstLabel = worst === 'decision' ? 'decisions' : worst === 'vendor' ? 'vendors' : worst === 'timeline' ? 'timeline' : 'documents';
     const worstNote = (r[worst] && r[worst].note) || '';
+    // Sprint 60.P Addendum — locked NEEDS FOLLOW-UP copy for the attention
+    // tier. "Slipping on vendors" was the source of the truth conflict
+    // with EventReadinessPanel; the new copy reflects the work to do
+    // without implying the readiness panel is wrong.
     return {
       level: riskCount > 0 ? 'attention' : 'neutral',
       category: 'readiness',
       eventId: ev.id,
       eventName: ev.name,
-      title: `Start here: ${ev.name} is slipping on ${worstLabel}.`,
-      consequence: `${worstNote}${days !== null && days > 0 ? ` · ${daysWord(days)} until event` : ''}. Closing the gap now keeps later surfaces from spiraling.`,
-      primaryCta: `Open ${ev.name.length > 22 ? ev.name.slice(0, 20) + '…' : ev.name}`,
+      title: `${ev.name} needs follow-up.`,
+      consequence: `${worstNote ? worstNote + '. ' : ''}Handle this before it becomes urgent${days !== null && days > 0 ? ` — ${daysWord(days)} until event` : ''}.`,
+      primaryCta: 'Open event',
       primaryRoute: { eventId: ev.id, tab: 'Command' },
-      secondaryCta: 'View all events',
-      secondaryAction: 'events',
+      secondaryCta: 'View all attention items',
+      secondaryAction: 'attention',
     };
   }
 
@@ -872,72 +931,68 @@ export function selectStudioCommand(events = []) {
       category: 'comm',
       eventId: req.eventId,
       eventName: req.eventName,
-      title: `Start here: ${req.owner || 'Someone'} is waiting on a reply for ${req.eventName}.`,
+      title: `${req.owner || 'Someone'} is waiting on a reply for ${req.eventName}.`,
       consequence: `"${(req.title || '').slice(0, 100)}" came in ${req.dueLabel || 'recently'}. A short reply keeps trust intact.`,
-      primaryCta: `Open ${req.eventName.length > 22 ? req.eventName.slice(0, 20) + '…' : req.eventName}`,
+      primaryCta: 'Handle this first',
       primaryRoute: { eventId: req.eventId, ...req.clickTarget },
-      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : null,
+      secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
     };
   }
 
-  // Tier 6.5: event happening TODAY — operational, not critical, but
-  // distinct from Tier 7 future-upcoming. Surfaces LIVE state on Home so a
-  // non-technical user immediately understands today is event day. Sprint
-  // 60.L F4: paired with a LIVE badge in StudioCommandPanel.
-  const todayEvent = active
+  // Tier 6.5 (TODAY/LIVE) was hoisted to the top of the ladder in
+  // Sprint 60.P Addendum so live event days always win over generic
+  // future-planning language. See the LIVE · ACT NOW / TODAY · LIVE
+  // branches at the start of this function.
+
+  // Tier 7: upcoming events. Sprint 60.O Addendum: split single vs. multi.
+  // 2+ events in next 60 days → summary headline. Single → "next event on track".
+  const upcomingIn60 = active
     .map(ev => ({ ev, days: daysFrom(ev.date) }))
-    .filter(x => x.days === 0)
-    .sort((a, b) => (a.ev.name || '').localeCompare(b.ev.name || ''))[0];
-  if (todayEvent) {
-    const { ev } = todayEvent;
+    .filter(x => x.days !== null && x.days > 0 && x.days <= 60)
+    .sort((a, b) => a.days - b.days);
+  if (upcomingIn60.length >= 2) {
+    const nextEv = upcomingIn60[0].ev;
+    // Sprint 60.O Addendum: secondary "Open today's event" ONLY shows
+    // when a today/live event exists. Otherwise no secondary (per spec).
+    const todayUpcoming = upcomingIn60.find(x => x.days === 0);
     return {
-      level: 'attention',
-      category: 'today',
-      eventId: ev.id,
-      eventName: ev.name,
-      title: `${ev.name} is today.`,
-      consequence: `Enter Day-of mode to run arrivals, schedule, and team messages in one place. You can leave it any time.`,
-      primaryCta: 'Enter Day-of mode',
-      // dayMode auto-engages when isEventToday at the event level
-      // (App.js ~22109), so routing to Command lands the user already in
-      // Day-of mode. No extra flag needed.
-      primaryRoute: { eventId: ev.id, tab: 'Command' },
-      // Secondary intentionally routes to events list. "View full event
-      // details" was considered but conflicts with Day-of auto-engage —
-      // the same primary route would just re-open Day-of mode.
-      secondaryCta: active.length > 1 ? 'View all events' : null,
-      secondaryAction: 'events',
+      level: 'neutral',
+      category: 'multiple-upcoming',
+      eventId: nextEv.id,
+      eventName: nextEv.name,
+      title: `${upcomingIn60.length} events in the next 60 days.`,
+      consequence: 'Start with the event that needs attention first.',
+      primaryCta: 'View all events',
+      primaryAction: 'events',
+      secondaryCta: todayUpcoming ? "Open today's event" : null,
+      secondaryRoute: todayUpcoming ? { eventId: todayUpcoming.ev.id, tab: 'Command' } : undefined,
     };
   }
-
-  // Tier 7: nearest upcoming event (under 30 days)
-  const upcoming = active
-    .map(ev => ({ ev, days: daysFrom(ev.date) }))
-    .filter(x => x.days !== null && x.days > 0 && x.days <= 30)
-    .sort((a, b) => a.days - b.days)[0];
+  const upcoming = upcomingIn60.find(x => x.days <= 30) || upcomingIn60[0];
   if (upcoming) {
     return {
       level: 'neutral',
       category: 'calendar',
       eventId: upcoming.ev.id,
       eventName: upcoming.ev.name,
-      title: `Start here: ${upcoming.ev.name} is ${daysWord(upcoming.days)} away.`,
-      consequence: `No critical blockers right now. A quick readiness sweep tends to surface what was about to slip.`,
-      primaryCta: `Open ${upcoming.ev.name.length > 22 ? upcoming.ev.name.slice(0, 20) + '…' : upcoming.ev.name}`,
+      title: 'Your next event is on track.',
+      // Sprint 60.O Addendum: locked all-clear body copy.
+      consequence: 'No overdue tasks. No pending payments. Your next event is organized.',
+      primaryCta: 'Open your event',
       primaryRoute: { eventId: upcoming.ev.id, tab: 'Command' },
       secondaryCta: 'View all events',
       secondaryAction: 'events',
     };
   }
 
-  // Tier 8: neutral fallback
+  // Tier 8: all-clear fallback (no events upcoming).
   return {
     level: 'neutral',
-    category: 'neutral',
-    title: 'No critical blockers across your events.',
-    consequence: 'Start by reviewing event readiness. The events list will surface anything that needs attention.',
-    primaryCta: 'Browse events',
+    category: 'all-clear',
+    title: 'Your next event is on track.',
+    consequence: 'No overdue tasks. No pending payments. Your next event is organized.',
+    primaryCta: 'View all events',
     primaryAction: 'events',
     secondaryCta: null,
   };
@@ -1194,8 +1249,9 @@ function SectionHeader({ label, count, countColor, action, onAction }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches modal hierarchy */}
         <span style={{
-          fontSize: 9, fontWeight: 700, color: P.textTertiary, fontFamily: FF,
+          fontSize: 10.5, fontWeight: 800, color: P.steelBlue, fontFamily: FF,
           letterSpacing: '0.16em', textTransform: 'uppercase',
         }}>{label}</span>
         {count !== undefined && count > 0 && (
@@ -1658,6 +1714,25 @@ function MobileCommandCenter({ event, data, onTabChange, onBack, backLabel, onAd
       }}>
         {/* Event banner — intimate, not corporate */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {/* Sprint 60.U.3 10+ — EVENT BOSS PULSE pill, same as desktop. */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '3px 9px 3px 7px', borderRadius: 99,
+            background: `${P.steelBlue}14`,
+            border: `1px solid ${P.steelBlue}33`,
+            alignSelf: 'flex-start', marginBottom: 4,
+          }}>
+            <span aria-hidden style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: `${P.steelBlue}33`, color: P.steelBlue,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 7, fontWeight: 800, fontFamily: FF,
+            }}>✓</span>
+            <span style={{
+              fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em',
+              textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
+            }}>Event Boss Pulse</span>
+          </div>
           <div style={{
             fontSize: 26, fontWeight: 600, color: P.textPrimary,
             letterSpacing: '-0.03em', lineHeight: 1.1,
@@ -1820,6 +1895,27 @@ function DesktopCommandCenter({ event, data, onTabChange, onBack, backLabel, onA
 
         {/* Event banner */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {/* Sprint 60.U.3 10+ — EVENT BOSS PULSE pill. Mirrors HomeHero.
+              Anchors the cockpit in product personality before the event
+              name and metadata. */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '3px 9px 3px 7px', borderRadius: 99,
+            background: `${P.steelBlue}14`,
+            border: `1px solid ${P.steelBlue}33`,
+            alignSelf: 'flex-start',
+          }}>
+            <span aria-hidden style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: `${P.steelBlue}33`, color: P.steelBlue,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 7, fontWeight: 800, fontFamily: FF,
+            }}>✓</span>
+            <span style={{
+              fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em',
+              textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
+            }}>Event Boss Pulse</span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <span style={{
               fontSize: 30, fontWeight: 600, color: P.textPrimary,

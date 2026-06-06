@@ -46,6 +46,23 @@ import {
   SERVICE_TAX_DEFAULT_ON,
   CONTINGENCY_DEFAULT_ON,
 } from './lib/estimatorFactors';
+// Sprint 61.D — budget estimator extensions (per-category shares, confidence)
+import {
+  estimatorConfidence,
+  breakdownByCategory,
+  NOT_INCLUDED,
+} from './lib/budgetEstimator';
+// Sprint 61.G — shared budget hint component
+import BudgetEstimateHint from './lib/budgetEstimator/BudgetEstimateHint';
+// Sprint 61.H — Vendor Accountability Phase B helpers for VendorModal
+import {
+  inferPromisesFromVendor,
+  quickAccountabilityForVendor,
+  deriveVendorNextAccountabilityAction,
+  deriveVendorBriefReadiness,
+  accountabilityLabel,
+  PROMISE_STATUS_LABEL,
+} from './lib/vendorAccountability';
 
 // Sprint 51 perf: lazy-load xlsx (~700KB) + qrcode (~50KB). Both are only
 // needed when the user explicitly exports / imports a sheet or generates a QR
@@ -127,7 +144,9 @@ const STEEL = {
 //   Critical = Rose-red     #E05A63    (overdue / blocking / late)
 //   Ready    = Sage green   #4FAE7A    (paid / confirmed / done)
 //   Pending  = Steel-gray   #9AA8B3    (inactive / future / neutral)
-// CTA gradient is the gray-leaning brushed-steel #859094 → #5D6669.
+// CTA gradient is the steel-BLUE brushed-metal #4E6877 → #3F5B6A — the
+// New Task button's color. Every primary CTA (incl. marquee New Event)
+// inherits this blue; the gray-leaning detour was reverted in Sprint 60.V.
 const DARK = {
   bg:       '#111519', // Mid Carbon page
   surface:  '#1C2227', // Mid Carbon card
@@ -135,22 +154,29 @@ const DARK = {
   border:   '#2E353D', // Mid Carbon hairline
   // Steel Blue 500 — silvery identity; accent for routes / links / today
   accent:   STEEL.blue500,    // #6F8794
-  // CTA gradient — gray-leaning brushed steel (less blue than v1)
-  accentDeep:    '#5D6669',   // primary CTA gradient base (was #3F5B6A)
-  accentTopGrad: '#859094',   // gradient top stop (was #4E6877)
+  // Sprint 60.V correction — restore steel-BLUE CTA gradient. The brief
+  // gray-leaning detour (#859094 → #5D6669) inverted the polarity: it made
+  // the New Task button (and every primary CTA) match a desaturated gray
+  // when the actual lock direction is the other way around — CTAs adopt the
+  // New Task button's STEEL BLUE. Anchored back to STEEL.blue700/`#4E6877`.
+  accentDeep:    STEEL.blue700, // #3F5B6A — primary CTA gradient base
+  accentTopGrad: '#4E6877',     // gradient top stop
   accentPressed: '#444B4F',   // pressed (was #2C4452)
   accentText:    STEEL.mist300, // #A8B7BF — CTA / link text on dark surfaces
   accentIcon:    STEEL.blue400, // #8BA0AA — icon-default accent
   accent2:  STEEL.blue500,
   text:     '#e8edf2',
   muted:    '#849eb8',
-  // Locked status palette (Color Lock Pass v3 - Live=green)
-  warn:     '#D19A55', // Attention — muted amber (was #d4904a)
-  danger:   '#E84850', // Critical — punchy red (was #E05A63 rose-red; more saturated for visibility against tinted bg)
-  success:  '#4FAE7A', // Ready — sage green (was #3a8a62)
-  live:     '#44CB76', // Live — bright green (NEW · running on schedule)
+  // Sprint 60.U.3 10+ crisp — amber/red bumped for readability on Mid Carbon.
+  // Danger correction pass: #F25A63 read as pink because B=99 carried too
+  // much rose tilt. Pulled B way down to land on a clean fire-red — strong
+  // R, modest G, low B = unambiguous "critical" without scarlet-pink lean.
+  warn:     '#ECA13F', // Attention — crisp honey amber (was #D19A55)
+  danger:   '#E84036', // Critical — clean fire red (was #F25A63 pink-leaning, #E84850 prior)
+  success:  '#4FAE7A', // Ready — sage green
+  live:     '#44CB76', // Live — bright green (running on schedule)
   today:    STEEL.blue500, // Today — Steel Blue 500 (alias)
-  pending:  '#9AA8B3', // Pending — steel-gray (NEW · inactive / future)
+  pending:  '#9AA8B3', // Pending — steel-gray (inactive / future)
   steel:    STEEL,
 };
 
@@ -214,18 +240,42 @@ const makeS = (C) => {
         ? '0 0 0 0.5px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06), 0 14px 32px rgba(0,0,0,0.04)'
         : 'none',
     },
-    cardTitle: { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, margin: '0 0 14px' },
+    // Sprint 60.U.3 10+ — global section eyebrow. Steel-blue + 800 weight
+    // + slightly wider letterspacing matches the modal NO GUESSWORK rail,
+    // CommandCenter section eyebrows, and Vendor Cockpit collapsible
+    // headers — so every "section start" in the app reads in one voice.
+    cardTitle: { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, margin: '0 0 14px' },
     input: { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: "'Inter', system-ui, sans-serif" },
-    btn: (v = 'default') => ({
-      padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Inter', system-ui, sans-serif",
-      background: v === 'primary' ? C.accent
-        : v === 'danger'  ? (isLight ? C.danger  : C.danger  + '1e')   // light: solid red; dark: tinted
-        : v === 'teal'    ? (isLight ? C.accent2 + '59' : C.accent2 + '1e')
-        : v === 'success' ? (isLight ? C.success + '59' : C.success + '1e')
-        : v === 'ghost'   ? 'transparent'
-        : (isLight ? C.surface2 : C.border),
-      color: v === 'primary' ? '#fff' : v === 'danger' ? (isLight ? '#fff' : C.danger) : v === 'teal' ? C.accent2 : v === 'success' ? C.success : v === 'ghost' ? C.muted : C.text,
-    }),
+    btn: (v = 'default') => {
+      const baseBtn = { padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: "'Inter', system-ui, sans-serif" };
+      if (v === 'primary') {
+        // Sprint 60.U — promote the marquee new-event CTA's brushed-steel gradient
+        // to the standard primary CTA so every primary action shares one premium
+        // color. Light theme (no gradient tokens) falls back to flat accent.
+        const top  = C.accentTopGrad || C.accent;
+        const deep = C.accentDeep    || C.accent;
+        return {
+          ...baseBtn,
+          background: `linear-gradient(180deg, ${top} 0%, ${deep} 100%)`,
+          // White text (not the hero's mist) so the gradient reads as the most
+          // legible/prominent element even on small 12px CTAs.
+          color: '#fff',
+          textShadow: isLight ? 'none' : '0 1px 0 rgba(0,0,0,0.30)',
+          boxShadow: isLight
+            ? 'none'
+            : 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.28), 0 1px 2px rgba(0,0,0,0.30), 0 0 0 1px rgba(193,203,208,0.16)',
+        };
+      }
+      return {
+        ...baseBtn,
+        background: v === 'danger'  ? (isLight ? C.danger  : C.danger  + '1e')   // light: solid red; dark: tinted
+          : v === 'teal'    ? (isLight ? C.accent2 + '59' : C.accent2 + '1e')
+          : v === 'success' ? (isLight ? C.success + '59' : C.success + '1e')
+          : v === 'ghost'   ? 'transparent'
+          : (isLight ? C.surface2 : C.border),
+        color: v === 'danger' ? (isLight ? '#fff' : C.danger) : v === 'teal' ? C.accent2 : v === 'success' ? C.success : v === 'ghost' ? C.muted : C.text,
+      };
+    },
     pill: (color) => ({
       display: 'inline-block', padding: '2px 9px', borderRadius: 99,
       fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', lineHeight: '18px',
@@ -3662,6 +3712,16 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   const [showLog,        setShowLog]        = useState(false);
   const [logSumm,        setLogSumm]        = useState('');
   const [logSummLoad,    setLogSummLoad]    = useState(false);
+  // Sprint 60.U.3 cont. — body scroll lock parity.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  // Sprint 60.U.3 10+ — steel-blue section eyebrow style for VendorModal.
+  // Replaces the muted-gray s.cardTitle in section headers so the modal
+  // reads as one cohesive hierarchy with the NO GUESSWORK rail.
+  const vendorSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: 800, letterSpacing: '0.14em', fontSize: 10.5 };
   const [notesDraftLoad, setNotesDraftLoad] = useState(false);
   const [showOps,        setShowOps]        = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
@@ -3772,7 +3832,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
     <>
       {showBrief && <VendorBriefModal vendor={vendor} event={event} ros={ros} profile={profile} onClose={() => setShowBrief(false)} />}
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(440px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(480px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -3814,17 +3874,242 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             </div>
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Replaces the bare truth
+              line. Stays compact (the modal is dense) but earns its space by
+              explaining what Event Boss is autosaving + tracking so the
+              planner doesn't have to think about it. */}
+          {(() => {
+            const steelTopV = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', marginTop: 4, marginBottom: 8,
+                background: `linear-gradient(180deg, ${steelTopV}14 0%, ${steelTopV}07 100%)`,
+                border: `1px solid ${steelTopV}33`,
+                borderLeft: `3px solid ${steelTopV}`,
+                borderRadius: 8,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                  background: `${steelTopV}22`, color: steelTopV,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopV }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                    Edits autosave. Event Boss tracks payment status, deposit/balance, and decision log.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <select style={{ ...s.input, fontSize: 12 }} value={vendor.category} onChange={e => {
             onChange('category', e.target.value);
             if (!vendor.budgetCategory || vendor.budgetCategory === vendor.category) onChange('budgetCategory', e.target.value);
           }}>
             {CATS.map(c => <option key={c}>{c}</option>)}
           </select>
+
+          {/* Sprint 61.I — Per-category budget hint. Renders when both
+              vendor.category and event.type+guests are set so the planner
+              has a typical dollar range while quoting this vendor. Reads
+              total event estimate × category share. Tag-only — no detail
+              tray, since the VendorModal is already dense. */}
+          {event && event.type && vendor.category && (event.guestEstimate || (event.guests || []).length) && (() => {
+            const guests = Number(event.guestEstimate) || (event.guests || []).length;
+            if (guests < 1) return null;
+            const PER_HEAD_BY_TYPE = {
+              Wedding:             { low: 200, high: 500 },
+              'Vow Renewal':       { low: 150, high: 400 },
+              Quinceañera:         { low: 150, high: 400 },
+              'Engagement Party':  { low: 100, high: 300 },
+              'Bridal Shower':     { low:  80, high: 250 },
+              'Baby Shower':       { low:  50, high: 180 },
+              Birthday:            { low:  60, high: 250 },
+              'Sweet 16':          { low: 100, high: 350 },
+              'Retirement Party':  { low:  80, high: 250 },
+              Reunion:             { low:  60, high: 200 },
+              Graduation:          { low:  50, high: 180 },
+              Conference:          { low: 150, high: 400 },
+              'Corporate Retreat': { low: 200, high: 500 },
+              'Corporate Event':   { low: 150, high: 400 },
+              Gala:                { low: 250, high: 600 },
+              'Fundraiser / Gala': { low: 250, high: 600 },
+              'Networking Event':  { low:  60, high: 200 },
+            };
+            const ph = PER_HEAD_BY_TYPE[event.type] || { low: 100, high: 250 };
+            const totalLow  = ph.low  * guests;
+            const totalHigh = ph.high * guests;
+            const cats = breakdownByCategory(totalLow, totalHigh, event.type);
+            // Find the category share that matches this vendor's category.
+            const catLower = (vendor.category || '').toLowerCase();
+            const match = cats.find(c =>
+              c.key === catLower ||
+              c.label.toLowerCase().includes(catLower) ||
+              catLower.includes(c.key.replace(/_/g, ' ')) ||
+              catLower.includes(c.key.split('_')[0])
+            );
+            if (!match) return null;
+            const steelTopVB = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                marginTop: 8,
+                padding: '6px 10px',
+                background: `${steelTopVB}10`,
+                border: `1px solid ${steelTopVB}33`,
+                borderLeft: `3px solid ${steelTopVB}`,
+                borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTopVB, textTransform: 'uppercase' }}>
+                  Typical range
+                </span>
+                <span style={{ fontSize: 11.5, color: C.text, fontWeight: 600 }}>
+                  ${match.low.toLocaleString()}–${match.high.toLocaleString()}
+                </span>
+                <span style={{ fontSize: 10.5, color: C.muted }}>
+                  for {match.label.toLowerCase()} · {guests} guests
+                </span>
+              </div>
+            );
+          })()}
         </div>
+
+        {/* Sprint 61.H — Promise Tracker section (Vendor Accountability Phase B).
+            Pure derivation — promises are inferred from existing vendor fields
+            via Phase A helpers; no new persistence layer yet. */}
+        {event && (() => {
+          const promises = inferPromisesFromVendor(vendor, event);
+          if (promises.length === 0) return null;
+          const acc = quickAccountabilityForVendor(vendor, event);
+          const next = deriveVendorNextAccountabilityAction(vendor, event, promises);
+          const brief = deriveVendorBriefReadiness(vendor, event, promises);
+          const steelTopPT = C.accentTopGrad || C.accent;
+          const tierColor =
+            acc.tier === 'missed_promise' ? C.danger
+            : acc.tier === 'at_risk'      ? C.danger
+            : acc.tier === 'needs_follow_up' ? C.warn
+            : acc.tier === 'needs_proof'  ? steelTopPT
+            : C.success;
+          // Group promises by status — top 3 most-actionable lift to the surface
+          const byStatus = {
+            overdue:        promises.filter(p => p.status === 'overdue' || (p.dueDate && new Date(p.dueDate) < new Date() && p.status !== 'confirmed' && p.status !== 'completed')),
+            evidence:       promises.filter(p => p.evidenceRequired && p.evidenceStatus !== 'attached' && p.evidenceStatus !== 'confirmed' && p.status !== 'confirmed' && p.status !== 'completed'),
+            confirmed:      promises.filter(p => p.status === 'confirmed' || p.status === 'completed'),
+          };
+          return (
+            <div style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+              {/* Header row — tier chip + accountability label + brief readiness */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={vendorSectionTitle}>Promise Tracker</div>
+                <span style={{
+                  fontSize: 9.5, fontWeight: 800, color: tierColor,
+                  background: `${tierColor}14`, border: `1px solid ${tierColor}44`,
+                  padding: '2px 8px', borderRadius: 999,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                }}>
+                  {accountabilityLabel(acc.tier)}
+                </span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 10.5, color: C.muted }}>
+                  Brief {brief.readyCount}/{brief.totalCount} ready
+                </span>
+              </div>
+
+              {/* Top issue line — one human sentence */}
+              {acc.reasons && acc.reasons.length > 0 && acc.tier !== 'on_track' && (
+                <div style={{ fontSize: 11.5, color: C.text, marginBottom: 8, lineHeight: 1.45 }}>
+                  {acc.reasons[0]}
+                </div>
+              )}
+
+              {/* Next action — steel-blue label, no fake CTA */}
+              {next && next.kind && next.kind !== 'none' && (
+                <div style={{ fontSize: 11, color: steelTopPT, marginBottom: 10, fontWeight: 700 }}>
+                  Next: {next.label.replace(/^.*?:\s/, '')}
+                </div>
+              )}
+
+              {/* Grouped counts */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {byStatus.overdue.length > 0 && (
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, color: C.danger,
+                    background: `${C.danger}14`, border: `1px solid ${C.danger}44`,
+                    padding: '3px 9px', borderRadius: 999,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>
+                    {byStatus.overdue.length} · Overdue
+                  </span>
+                )}
+                {byStatus.evidence.length > 0 && (
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, color: C.warn,
+                    background: `${C.warn}14`, border: `1px solid ${C.warn}44`,
+                    padding: '3px 9px', borderRadius: 999,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>
+                    {byStatus.evidence.length} · Evidence needed
+                  </span>
+                )}
+                {byStatus.confirmed.length > 0 && (
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, color: C.success,
+                    background: `${C.success}14`, border: `1px solid ${C.success}44`,
+                    padding: '3px 9px', borderRadius: 999,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>
+                    {byStatus.confirmed.length} · Confirmed
+                  </span>
+                )}
+                {brief.missingItems.length > 0 && (
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, color: C.muted,
+                    background: `${C.muted}14`, border: `1px solid ${C.border}`,
+                    padding: '3px 9px', borderRadius: 999,
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                  }}>
+                    {brief.missingItems.length} · Brief missing
+                  </span>
+                )}
+              </div>
+
+              {/* Most-actionable rows — show first 3 needing attention */}
+              {(() => {
+                const actionable = [...byStatus.overdue, ...byStatus.evidence].slice(0, 3);
+                if (actionable.length === 0) return null;
+                return (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {actionable.map(p => (
+                      <div key={p.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 10px', borderRadius: 7,
+                        background: C.bg, border: `1px solid ${C.border}`,
+                        borderLeft: `3px solid ${p.status === 'overdue' ? C.danger : C.warn}`,
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                            {p.promiseText}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
+                            {PROMISE_STATUS_LABEL[p.status] || p.status}
+                            {p.dueDate ? ` · due ${p.dueDate}` : ''}
+                            {p.whyItMatters ? ` · ${p.whyItMatters}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
 
         {/* Pipeline */}
         <div style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={s.cardTitle}>Pipeline</div>
+          <div style={vendorSectionTitle}>Pipeline</div>
           <div style={{ display: 'flex', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 11, left: '10%', right: '10%', height: 2, background: C.border, zIndex: 0 }} />
             {STAGES.map((stage, i) => {
@@ -3847,7 +4132,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 
           {/* Contact */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Contact</div>
+            <div style={vendorSectionTitle}>Contact</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
 
               {/* ── Contact person name ── */}
@@ -4056,7 +4341,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 
           {/* Pricing Structure */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Pricing Structure</div>
+            <div style={vendorSectionTitle}>Pricing Structure</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* Per-head pricing — caterers + venues */}
               {['Catering', 'Venue'].includes(vendor.category) && (
@@ -4165,7 +4450,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 
           {/* Payment */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Payment</div>
+            <div style={vendorSectionTitle}>Payment</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Budget Category</label>
@@ -4650,7 +4935,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           {/* Notes + Backup vendor */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <div style={s.cardTitle}>Notes</div>
+              <div style={vendorSectionTitle}>Notes</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <AIBtn onClick={genNotesDraft} loading={notesDraftLoad} label="Draft from log" />
                 <VoiceButton onResult={t => onChange('notes', (vendor.notes ? vendor.notes + ' ' : '') + t)} />
@@ -5058,7 +5343,12 @@ function InviteComposer({ event, guests, onClose }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(480px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Send Invitations</div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Invite guests</div>
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+              Opens your email or text app with a draft. Nothing is sent until you tap send there.
+            </div>
+          </div>
           <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
         </div>
 
@@ -5098,7 +5388,7 @@ function InviteComposer({ event, guests, onClose }) {
                         <div style={{ fontSize: 11, color: C.muted }}>{g.group}{g.rsvp === 'Maybe' ? ' · Maybe' : ' · No response'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                        {sent && <span style={{ fontSize: 11, color: C.success }}>Sent ✓</span>}
+                        {sent && <span style={{ fontSize: 11, color: C.success }} title="You opened a draft. Send it from your email or text app to actually deliver.">Draft opened</span>}
                         {emailLink && (
                           <a href={emailLink} onClick={() => markSent(g.id)} style={{ ...s.btn(), fontSize: 11, padding: '4px 10px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <IconEmail size={12} /> Email
@@ -5157,6 +5447,14 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
   const rsvpCLR    = RSVP_CLR(C);
   const showToast  = useToast();
   const [confirmDel, setConfirmDel] = useState(false);
+  // Sprint 60.U.3 cont. — body scroll lock parity.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  // Sprint 60.U.3 10+ — steel-blue section eyebrow for GuestModal.
+  const guestSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: 800, letterSpacing: '0.14em', fontSize: 10.5 };
   const rsvpColor = rsvpCLR[guest.rsvp] || C.text;
   const mealOpts  = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free', '—'];
   // Field validation
@@ -5191,6 +5489,35 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
               {['Yes', 'No', 'Maybe'].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Emphasizes that no
+              outbound notification will go to the guest, so the planner can
+              edit RSVPs / meal preferences confidently. */}
+          {(() => {
+            const steelTopG = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', marginTop: 10,
+                background: `linear-gradient(180deg, ${steelTopG}14 0%, ${steelTopG}07 100%)`,
+                border: `1px solid ${steelTopG}33`,
+                borderLeft: `3px solid ${steelTopG}`,
+                borderRadius: 8,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                  background: `${steelTopG}22`, color: steelTopG,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopG }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                    Edits autosave. No emails or texts are sent — Event Boss only records the RSVP.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Scrollable body */}
@@ -5198,7 +5525,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
 
           {/* Meal */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Meal Preference</div>
+            <div style={guestSectionTitle}>Meal Preference</div>
             <select style={s.input} value={guest.meal} onChange={e => onChange('meal', e.target.value)}>
               {mealOpts.map(o => <option key={o}>{o}</option>)}
             </select>
@@ -5207,7 +5534,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
           {/* Special needs — collapsed by default, auto-opens when guest has needs */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showNeeds ? 8 : 0 }}>
-              <div style={s.cardTitle}>Special Needs / Accessibility</div>
+              <div style={guestSectionTitle}>Special Needs / Accessibility</div>
               <button onClick={() => setShowNeeds(v => !v)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '2px 8px' }}>
                 {showNeeds ? 'hide' : (guest.needs ? `${guest.needs.split(',').filter(Boolean).length} set ▸` : '+ Add')}
               </button>
@@ -5256,7 +5583,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
 
           {/* Plus-one / party */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Plus-One / Party</div>
+            <div style={guestSectionTitle}>Plus-One / Party</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Plus-One Name</label>
@@ -5279,7 +5606,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
 
           {/* Seating */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Seating</div>
+            <div style={guestSectionTitle}>Seating</div>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Table Number</label>
             <input style={{ ...s.input, width: 100, opacity: guest.rsvp === 'Yes' ? 1 : 0.4 }}
               type="number" min="1" max={tables || undefined}
@@ -5292,7 +5619,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
 
           {/* Contact */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Contact</div>
+            <div style={guestSectionTitle}>Contact</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Email</label>
@@ -5335,7 +5662,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
 
           {/* Post-event */}
           <div style={{ marginBottom: 20 }}>
-            <div style={s.cardTitle}>Post-Event</div>
+            <div style={guestSectionTitle}>Post-Event</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[['giftReceived', 'Gift received'], ['thankYouSent', 'Thank-you note sent']].map(([key, label]) => (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
@@ -5349,7 +5676,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
           {/* Party notes */}
           <div style={{ marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <div style={s.cardTitle}>Party Notes</div>
+              <div style={guestSectionTitle}>Party Notes</div>
               <VoiceButton onResult={t => onChange('partyNotes', (guest.partyNotes ? guest.partyNotes + ' ' : '') + t)} />
             </div>
             <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={guest.partyNotes || ''} placeholder="Relationship context, gift notes, special considerations..." onChange={e => onChange('partyNotes', e.target.value)} />
@@ -5387,7 +5714,14 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    // Sprint 60.U.3 cont. — body scroll lock parity. Edit-modal users
+    // should not see the page behind scroll while typing inside the modal.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
   const genTaskNotes = async () => {
     if (!aiKey) return;
@@ -5410,6 +5744,34 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           {task.done && <div style={{ fontSize: 11, color: C.success, fontWeight: 600, paddingLeft: 34 }}>Completed ✓</div>}
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Replaces the bare truth
+              line. Explains what Event Boss auto-tracks for this task. */}
+          {(() => {
+            const steelTopT = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', marginTop: 8,
+                background: `linear-gradient(180deg, ${steelTopT}14 0%, ${steelTopT}07 100%)`,
+                border: `1px solid ${steelTopT}33`,
+                borderLeft: `3px solid ${steelTopT}`,
+                borderRadius: 8,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                  background: `${steelTopT}22`, color: steelTopT,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopT }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                    Edits autosave to this event's planning timeline. Event Boss tracks owner, due date, and phase.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
           <div style={{ marginBottom: 16 }}>
@@ -5463,6 +5825,12 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
   const cameraRef  = useRef(null);
   const isPaid     = !!row.paid;
   const [confirmDel, setConfirmDel] = useState(false);
+  // Sprint 60.U.3 cont. — body scroll lock parity.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
   const [synced, setSynced] = useState(false);
 
   // ─── Sprint 59C: Vendor payment source-of-truth lock ─────────────────────
@@ -5560,6 +5928,37 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               )}
             </div>
           </div>
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Same dual-mode message
+              preserved (vendor-linked vs unlinked) but elevated to the
+              premium steel-blue rail style. */}
+          {(() => {
+            const steelTopB = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', marginTop: 12,
+                background: `linear-gradient(180deg, ${steelTopB}14 0%, ${steelTopB}07 100%)`,
+                border: `1px solid ${steelTopB}33`,
+                borderLeft: `3px solid ${steelTopB}`,
+                borderRadius: 8,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                  background: `${steelTopB}22`, color: steelTopB,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopB }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                    {isVendorLinked
+                      ? 'Edits autosave. Payment status is owned by the vendor record — Event Boss keeps them in sync.'
+                      : 'Edits autosave to this budget line. Event Boss tracks budget vs. actual.'}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
@@ -5733,6 +6132,12 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
   const showToast  = useToast();
   const typeClr    = rosCLR[entry.type] || C.muted;
   const [confirmDel, setConfirmDel] = useState(false);
+  // Sprint 60.U.3 cont. — body scroll lock parity.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
@@ -5744,6 +6149,33 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
             <input style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1 }} value={entry.segment} placeholder="Segment name" onChange={e => onChange('segment', e.target.value)} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. */}
+          {(() => {
+            const steelTopR = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                padding: '8px 10px', marginTop: 8,
+                background: `linear-gradient(180deg, ${steelTopR}14 0%, ${steelTopR}07 100%)`,
+                border: `1px solid ${steelTopR}33`,
+                borderLeft: `3px solid ${steelTopR}`,
+                borderRadius: 8,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                  background: `${steelTopR}22`, color: steelTopR,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopR }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                    Edits autosave to the run of show. Event Boss orders segments and flags conflicts.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
@@ -5796,726 +6228,522 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
   );
 }
 
-function NewEventModal({ onClose, onCreate, clients = [], profile = null }) {
-  const C      = useT();
-  const s      = makeS(C);
-  const evtCLR = EVT_CLR(C);
-  const isMobile = useContext(BpCtx) === 'mobile';
-  const [form,             setForm]            = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
-  const [useTimeline,      setUseTimeline]     = useState(true);
-  const [useBudget,        setUseBudget]       = useState(true);
-  const [useVendors,       setUseVendors]      = useState(true);
+function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = [], profile = null }) {
+  const C        = useT();
+  const s        = makeS(C);
+  const evtCLR   = EVT_CLR(C);
+  const bp       = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const isTablet = bp === 'tablet';
+
+  // ── Sprint 60.U.3 — premium guided 3-step flow rebuild.
+  //   Basics → Setup → Details → Success
+  // Each step proves WHAT NGW is about to build. Step 2's "Creates for you"
+  // checklist is the No-Guesswork payoff: the planner sees, before pressing
+  // Create event, the exact records (timeline, vendor cats, budget, etc.)
+  // that the chosen archetype will materialize. The Success screen mirrors
+  // that list as the receipt.
+  // Honesty: only checklist items that map to actual template seeding are
+  // shown. The KITS table below is the single source of truth for both
+  // Step 2's expanded selected-card AND the Success "Created for you" panel.
+  const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
+  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
+  const [kit,     setKit]     = useState('wedding');
+  const [showErr, setShowErr] = useState(false);
+  const [touched, setTouched] = useState({ name: false, date: false });
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [activeCat,        setActiveCat]       = useState('Weddings & Celebrations');
-  // Hybrid: when secondaryType is set, layer its templates in on top of the
-  // primary's. Primary's templates are always present; secondary only adds
-  // missing rows/tasks/categories (see mergeBudgetTemplate dedupe rules).
-  const _types     = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
-  const tmpl       = mergeTimelineTemplate(..._types);
-  const budgetTmpl = _types.length ? mergeBudgetTemplate(..._types) : BUDGET_TEMPLATES.Other;
-  const vendorCats = _types.length ? mergeVendorStubs(..._types)    : VENDOR_STUBS.Other;
-
-  const venueInputRef = useRef(null);
-  useEffect(() => {
-    if (!isMapsConfigured()) return;
-    let cleanup = () => {};
-    loadMapsScript().then(ok => {
-      if (!ok || !venueInputRef.current) return;
-      cleanup = attachAutocomplete(venueInputRef.current, (place) => {
-        upd('venue', place.name || place.address);
-        if (place.lat && place.lon) upd('venueLat', place.lat) || upd('venueLon', place.lon);
-      }, ['establishment']);
-    });
-    return () => cleanup();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [kitExpanded,      setKitExpanded]     = useState({ timeline: false, budget: false, vendors: false });
-  const [timelineChecked,  setTimelineChecked] = useState(() => tmpl ? tmpl.map(() => true) : []);
-  const [budgetChecked,    setBudgetChecked]   = useState(() => budgetTmpl.map(() => true));
-  const [budgetAmounts,    setBudgetAmounts]   = useState({});
-  const [vendorChecked,    setVendorChecked]   = useState(() => vendorCats.map(() => true));
-  // Sprint 57g: estimator factor state. Service+Tax defaults ON since most
-  // invoices add them. Contingency defaults OFF — recommended for tight
-  // timelines but planner opts in.
-  // Sprint 57g.2: time-of-day moved into `form.timeOfDay` so it persists on
-  // the event when the planner submits — single source of truth that the
-  // Budget tab will hydrate from on next open.
-  const [estServiceTax,  setEstServiceTax]  = useState(SERVICE_TAX_DEFAULT_ON);
-  const [estContingency, setEstContingency] = useState(CONTINGENCY_DEFAULT_ON);
-  const [estBreakdownOpen, setEstBreakdownOpen] = useState(false);
-  const estTimeOfDay = form.timeOfDay || 'afternoon';
-  const setEstTimeOfDay = (v) => upd('timeOfDay', v);
-
-  // Reset item-level state whenever event type OR secondary type changes
-  useEffect(() => {
-    const ts         = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
-    const newTmpl    = mergeTimelineTemplate(...ts);
-    const newBudget  = ts.length ? mergeBudgetTemplate(...ts) : BUDGET_TEMPLATES.Other;
-    const newVendors = ts.length ? mergeVendorStubs(...ts)    : VENDOR_STUBS.Other;
-    setTimelineChecked(newTmpl.map(() => true));
-    setBudgetChecked(newBudget.map(() => true));
-    setBudgetAmounts({});
-    setVendorChecked(newVendors.map(() => true));
-    setKitExpanded({ timeline: false, budget: false, vendors: false });
-  }, [form.type, form.secondaryType]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const toggleKit = (key) => setKitExpanded(p => ({ ...p, [key]: !p[key] }));
+  const [createdId, setCreatedId] = useState(null);
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const budgetAmt  = Number(form.totalBudget) || 0;
-  const guestCt    = Number(form.guestCount)  || 0;
-  const tableCount = guestCt ? Math.max(1, Math.ceil(guestCt / (TABLE_SIZE[form.type] || 8))) : 5;
-  const typeColor  = evtCLR[form.type] || C.muted;
 
-  const submit = () => {
-    if (!form.name.trim()) return;
+  // KITS — title, one-line summary, per-archetype "Creates for you" list,
+  // and the t/v/b flags that drive actual template seeding.
+  const KITS = [
+    { id: 'simple',    title: 'Simple event',                   creates: 'A starter timeline of tasks. No vendors or budget yet.',
+      checklist: ['Starter timeline'],
+      t: true,  v: false, b: false },
+    { id: 'wedding',   title: 'Wedding · ceremony + reception', creates: 'A timeline, vendor categories, a budget outline, and planning checkpoints.',
+      checklist: ['Planning timeline', 'Vendor categories', 'Budget outline', 'Planning checkpoints'],
+      t: true,  v: true,  b: true  },
+    { id: 'corporate', title: 'Corporate event',                creates: 'A timeline, vendor categories, a budget outline, and approval checkpoints.',
+      checklist: ['Planning timeline', 'Vendor categories', 'Budget outline', 'Approval checkpoints'],
+      t: true,  v: true,  b: true  },
+    { id: 'private',   title: 'Private celebration',            creates: 'A timeline, vendor categories, and a simple budget outline.',
+      checklist: ['Planning timeline', 'Vendor categories', 'Simple budget outline'],
+      t: true,  v: true,  b: true  },
+    { id: 'blank',     title: 'Start blank',                    creates: 'Just the event workspace. Add a timeline, vendors, or budget anytime.',
+      checklist: ['Event workspace only'],
+      t: false, v: false, b: false },
+  ];
 
-    // Sprint 57f: when the event is compressed, classify each generated task
-    // so the Planning Tasks tab can show "Do now / Fits plan / Consider swap /
-    // Can skip" tags instead of a wall of overdue badges. We compute `daysUntil`
-    // once here; downstream surfaces can re-derive if the date later changes.
-    const _daysAtCreate = daysUntil(form.date);
-    const timeline = useTimeline && tmpl
-      ? tmpl.filter((_, i) => timelineChecked[i] !== false).map(t => {
-          const u = classifyTemplateTaskUrgency(t, _daysAtCreate, form.type, PHASE_OFFSET);
+  const reqName    = !form.name.trim();
+  const reqDate    = !form.date;
+  const step1Valid = !reqName && !reqDate && !!form.type;
+  const dirty      = Boolean(form.name.trim() || form.date || form.venue || form.guestCount || form.totalBudget);
+  const kitCfg     = KITS.find(k => k.id === kit) || KITS[0];
+
+  const attemptClose = () => { if (dirty && step !== 'success') setConfirmDiscard(true); else onClose(); };
+  const continue1    = () => { if (!step1Valid) { setShowErr(true); return; } setShowErr(false); setStep(2); };
+
+  const createNow = () => {
+    const types  = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
+    const days   = daysUntil(form.date);
+    const timeline = kitCfg.t
+      ? (mergeTimelineTemplate(...types) || []).map(t => {
+          const u = classifyTemplateTaskUrgency(t, days, form.type, PHASE_OFFSET);
           return { ...t, id: uid(), done: false, urgency: u.urgency };
         })
       : [];
-
-    const budget = useBudget && budgetAmt > 0
-      ? budgetTmpl
-          .filter((_, i) => budgetChecked[i] !== false)
-          .map(item => ({
-            id: uid(), category: item.c, actual: 0, notes: '',
-            budgeted: budgetAmounts[item.c] !== undefined
-              ? Number(budgetAmounts[item.c])
-              : Math.round(budgetAmt * item.pct),
-          }))
+    const budgetAmt  = Number(form.totalBudget) || 0;
+    const budgetTmpl = types.length ? mergeBudgetTemplate(...types) : BUDGET_TEMPLATES.Other;
+    const budget = kitCfg.b
+      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, actual: 0, notes: '', budgeted: budgetAmt > 0 ? Math.round(budgetAmt * item.pct) : 0 }))
       : [];
-
-    const vendors = useVendors
-      ? vendorCats
-          .filter((_, i) => vendorChecked[i] !== false)
-          .map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '', notes: '', log: [] }))
+    const vendorCats = types.length ? mergeVendorStubs(...types) : VENDOR_STUBS.Other;
+    const vendors = kitCfg.v
+      ? vendorCats.map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '', notes: '', log: [] }))
       : [];
-
-    // Sprint 57g.2: persist timeOfDay on the event so the Budget tab and any
-    // future surface read from one canonical source. Falls back to 'afternoon'
-    // when the form lost it for any reason — matches the default the
-    // estimator displays in the chip row.
-    onCreate({ id: uid(), rsvpCode: uid(), name: form.name, type: form.type, secondaryType: form.secondaryType || '', date: form.date, venue: form.venue, tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon', budget, guests: [], vendors, timeline, ros: [] }, selectedClientId || null);
-    onClose();
+    const guestCt    = Number(form.guestCount) || 0;
+    const tableCount = guestCt ? Math.max(1, Math.ceil(guestCt / (TABLE_SIZE[form.type] || 8))) : 0;
+    const newId = uid();
+    // navigate=false: create the event for real, but stay here so the success
+    // state can show. Navigation happens when the planner taps "Open event".
+    onCreate({
+      id: newId, rsvpCode: uid(), name: form.name.trim(), type: form.type,
+      secondaryType: form.secondaryType || '', date: form.date, venue: form.venue,
+      tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon',
+      guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline, ros: [],
+    }, selectedClientId || null, false);
+    setCreatedId(newId);
+    setStep('success');
   };
 
-  const TemplateRow = ({ checked, onChange, title, sub, color }) => (
-    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${checked ? (color || C.accent) : C.border}`, transition: 'border-color 0.15s' }}>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ accentColor: color || C.accent, cursor: 'pointer', width: 14, height: 14, marginTop: 2, flexShrink: 0 }} />
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{title}</div>
-        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
-      </div>
-    </label>
-  );
+  const resetForAnother = () => {
+    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
+    setKit('wedding'); setSelectedClientId(''); setShowErr(false); setCreatedId(null); setStep(1);
+  };
+
+  // Sprint 60.U.3 — Success payoff copy. The "Created for you" checklist
+  // beneath this line is the same array Step 2's selected card showed.
+  const createdSummary = 'Event Boss created your starting structure. Open it now or add another event.';
+
+  // Body scroll lock while the modal is mounted.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // ── Studio Matte Carbon styles; inputs ≥44px; font sizes preserved/raised ──
+  const ui = {
+    label: { display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 7, letterSpacing: '0.01em' },
+    req:   { color: C.accentText || C.accent, fontWeight: 600 },
+    opt:   { color: C.muted, fontWeight: 400 },
+    field: (bad) => ({ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '11px 13px', fontSize: 15, color: C.text, background: C.bg, border: `1px solid ${bad ? C.danger : C.border}`, borderRadius: 10, outline: 'none', fontFamily: 'inherit' }),
+    hint:  { fontSize: 12, color: C.danger, marginTop: 6 },
+    truth: { fontSize: 12.5, color: C.muted, lineHeight: 1.5 },
+  };
+  const primaryBtn = { ...s.btn('primary'), minHeight: 44, padding: '12px 20px', fontSize: 15, borderRadius: 10 };
+  const ghostBtn   = { ...s.btn(), minHeight: 44, padding: '12px 18px', fontSize: 15, borderRadius: 10 };
+  const dangerBtn  = { ...s.btn('danger'), minHeight: 44, padding: '12px 18px', fontSize: 15, borderRadius: 10 };
+
+  // Sprint 60.U.3 — responsive modal sizing. Mobile keeps the full-screen
+  // drawer; tablet steps up to 640px; desktop to 720px (success: 560/600px).
+  // No floating-phone-modal on desktop.
+  const isSuccess = step === 'success';
+  let desktopWidth;
+  if (isSuccess) {
+    desktopWidth = isTablet ? 'min(560px, calc(100vw - 48px))' : 'min(600px, calc(100vw - 64px))';
+  } else {
+    desktopWidth = isTablet ? 'min(640px, calc(100vw - 48px))' : 'min(720px, calc(100vw - 64px))';
+  }
+  const shell = isMobile
+    ? { position: 'fixed', inset: 0, zIndex: 50, background: C.surface, display: 'flex', flexDirection: 'column' }
+    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: desktopWidth, maxHeight: '90vh', zIndex: 50, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.55)' };
+  const footerPad = isMobile ? { padding: '14px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' } : { padding: '18px 28px' };
+
+  // Sprint 60.U.3 — Steel-blue selection ring + helper rail use the same
+  // gradient stops as the primary CTA (C.accentTopGrad/C.accentDeep) so the
+  // visual language is consistent: every interactive surface that signals
+  // "active/selected" speaks the same blue.
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+
+  // Step header copy — different per step so the modal proves what it is.
+  const stepCopy = step === 1 || step === 2
+    ? { title: 'Create a new event', sub: 'Add the basics. Event Boss builds the planning structure next.' }
+    : step === 3
+      ? { title: 'Create a new event', sub: 'Add what you know. Skip what you don’t.' }
+      : { title: 'Event created', sub: '' };
+
+  const PROGRESS_LABELS = ['Basics', 'Setup', 'Details'];
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 460), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
-        <SheetGrip isMobile={isMobile} />
+      <div onClick={attemptClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 49 }} />
+      <div role="dialog" aria-modal="true" aria-label="Create a new event"
+        onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); attemptClose(); } }}
+        style={shell}>
 
         {/* Header */}
-        <div style={{ padding: '24px 28px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>New Event</h2>
-            {form.type && <span style={{ ...s.pill(typeColor), fontSize: 12 }}>{form.type}</span>}
+        <div style={{ padding: isMobile ? '18px 20px 14px' : '24px 28px 18px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>
+                {stepCopy.title}
+              </h2>
+              {stepCopy.sub && (
+                <div style={{ ...ui.truth, marginTop: 5, fontSize: isMobile ? 12.5 : 13.5 }}>{stepCopy.sub}</div>
+              )}
+            </div>
+            <button aria-label="Close" onClick={attemptClose}
+              style={{ flexShrink: 0, width: 44, height: 44, marginRight: -10, marginTop: -8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: C.muted, fontSize: 24, lineHeight: 1, cursor: 'pointer', borderRadius: 10 }}>×</button>
           </div>
+          {step !== 'success' && (
+            <>
+              {/* Progress bars + per-step labels (Basics · Setup · Details) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                  {[1, 2, 3].map(n => (
+                    <div key={n} style={{ height: 4, flex: 1, borderRadius: 2, background: n <= step ? steelTop : C.border, transition: 'background 180ms ease' }} />
+                  ))}
+                </div>
+                <span style={{ fontSize: 12, color: C.muted, whiteSpace: 'nowrap' }}>Step {step} of 3</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                {PROGRESS_LABELS.map((label, i) => {
+                  const n = i + 1;
+                  const active = n === step;
+                  const done   = n < step;
+                  return (
+                    <div key={label} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: active ? 700 : 600,
+                      letterSpacing: '0.02em', color: active ? C.text : done ? C.muted : C.muted, opacity: done ? 0.7 : 1 }}>
+                      {label}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '20px' : '24px 28px' }}>
 
-          {/* ── Event Type — category tabs + subtype grid ── */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 8 }}>Event Type</label>
-
-            {/* Category tab row */}
-            {(() => {
-              const CAT_META = {
-                'Weddings & Celebrations': { icon: '🎊', color: C.accent },
-                'Corporate':               { icon: '🏢', color: C.accent2 },
-                'Social & Fundraising':    { icon: '🤝', color: C.success },
-              };
-              return (
-                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                  {Object.keys(EVT_CATEGORIES).map(cat => {
-                    const meta   = CAT_META[cat];
-                    const active = activeCat === cat;
-                    return (
-                      <button key={cat} onClick={() => setActiveCat(cat)}
-                        style={{
-                          flex: 1, padding: '8px 6px', borderRadius: 10, cursor: 'pointer',
-                          border: `1.5px solid ${active ? meta.color : C.border}`,
-                          background: active ? meta.color + '18' : C.bg,
-                          transition: 'all 0.15s',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                        }}>
-                        <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? meta.color : C.muted, lineHeight: 1.2, textAlign: 'center' }}>
-                          {cat === 'Weddings & Celebrations' ? 'Celebrations' : cat === 'Social & Fundraising' ? 'Social' : cat}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            {/* Subtype pills for active category */}
-            <div style={{
-              padding: '10px 12px', borderRadius: 10,
-              border: `1px solid ${C.border}`, background: C.bg,
-              display: 'flex', flexWrap: 'wrap', gap: 6,
-            }}>
-              {(EVT_CATEGORIES[activeCat] || []).map(t => {
-                const clr     = evtCLR[t] || C.accent;
-                const selected = form.type === t;
-                return (
-                  <button key={t} onClick={() => upd('type', t)}
-                    style={{
-                      padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
-                      border: `1.5px solid ${selected ? clr : C.border}`,
-                      background: selected ? clr + '20' : 'transparent',
-                      color: selected ? clr : C.muted,
-                      fontSize: 12, fontWeight: selected ? 700 : 400,
-                      transition: 'all 0.12s', whiteSpace: 'nowrap',
-                    }}>
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* If selected type is in a different category, show a note */}
-            {EVT_PARENT[form.type] && EVT_PARENT[form.type] !== activeCat && (
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>
-                Selected: <span style={{ color: evtCLR[form.type] || C.accent, fontWeight: 600 }}>{form.type}</span>
-              </div>
-            )}
-
-            {/* Optional hybrid / secondary event type */}
-            <div style={{ marginTop: 10 }}>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>
-                Secondary type <span style={{ color: C.muted }}>(optional — for hybrids like "Wedding + Brunch")</span>
-              </label>
-              <select
-                style={s.input}
-                value={form.secondaryType || ''}
-                onChange={e => upd('secondaryType', e.target.value)}
-              >
-                <option value="">— none —</option>
-                {EVT_TYPES.filter(t => t !== form.type).map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Core details */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-            <div>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Event Name</label>
-              <input style={s.input} value={form.name} placeholder={
-                form.type === 'Wedding' ? "e.g. Sarah & Todd's Wedding" :
-                form.type === 'Birthday' || form.type === 'Sweet 16' ? "e.g. Maria's 40th" :
-                isCorporateType(form.type) ? `e.g. ${form.type} — Company Name` :
-                form.type === 'Quinceañera' ? "e.g. Isabella's Quinceañera" :
-                'Event name'
-              } autoFocus onChange={e => upd('name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Date</label>
-                <input style={s.input} type="date" value={form.date} onChange={e => upd('date', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Venue</label>
-                <input ref={venueInputRef} style={s.input} value={form.venue} placeholder={isMapsConfigured() ? 'Search venues…' : 'Venue name'} onChange={e => upd('venue', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Est. Guest Count</label>
-                <input style={s.input} type="number" min="0" value={form.guestCount} placeholder="e.g. 120" onChange={e => upd('guestCount', e.target.value)} />
-                {guestCt > 0 && <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>→ {tableCount} tables @ {TABLE_SIZE[form.type] || 8}/table</div>}
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Total Budget</label>
-                <input style={s.input} type="number" min="0" value={form.totalBudget} placeholder="e.g. 25000" onChange={e => upd('totalBudget', e.target.value)} />
-                {budgetAmt > 0 && <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>→ distributed across {budgetTmpl.length} categories</div>}
-              </div>
-            </div>
-
-            {/* Sprint 57f: Compression banner — shows when the date the planner
-                entered is shorter than this event type's standard lead. Tone is
-                friendly (never shaming): we explain what compression means and
-                tell the planner we'll adjust the workflow rather than dumping
-                "6 Months Out" tasks onto a 60-day event. Aligns vocabulary with
-                Sprint 57e budget rush (TIGHT / COMPRESSED / RUSH). */}
-            {form.date && form.type && (() => {
-              const summary = getCompressedWorkflowSummary(
-                { type: form.type, date: form.date },
-                daysUntil(form.date),
-                WORKFLOW_FOCUS,
-                PHASE_OFFSET,
-              );
-              if (!summary || summary.level === 'standard') return null;
-              const toneColor =
-                  summary.meta.tone === 'danger' ? C.danger
-                : summary.meta.tone === 'warn'   ? C.warn
-                : summary.meta.tone === 'accent' ? C.accent2
-                : C.muted;
-              return (
-                <div style={{
-                  border: `1px solid ${toneColor}55`,
-                  background: toneColor + '12',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  marginTop: 4,
-                  marginBottom: 4,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: toneColor, background: toneColor + '20', border: `1px solid ${toneColor}55`, borderRadius: 10, padding: '1px 7px', letterSpacing: '0.06em' }}>
-                      {summary.meta.badge || summary.meta.label}
-                    </span>
-                    <span style={{ fontSize: 11, color: C.muted }}>
-                      {summary.daysUntil} days out · usually {summary.standardLeadDays}
-                    </span>
+          {step === 1 && (
+            <>
+              {/* Sprint 60.U.3 10+ — NO GUESSWORK YET premium rail. Same
+                  elevated treatment as NewClientModal so the concept reads
+                  consistently across the workspace. */}
+              <div style={{
+                display: 'flex', gap: 14, alignItems: 'flex-start',
+                padding: isMobile ? '14px 14px' : '16px 18px',
+                marginBottom: 18,
+                background: `linear-gradient(180deg, ${steelTop}14 0%, ${steelTop}07 100%)`,
+                border: `1px solid ${steelTop}33`,
+                borderLeft: `3px solid ${steelTop}`,
+                borderRadius: 10,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                  background: `${steelTop}22`, color: steelTop,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: 600, marginBottom: 6 }}>
+                    Name it, date it, pick the type.
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.text, lineHeight: 1.35 }}>
-                    {summary.meta.headline}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
-                    {summary.meta.sub}
-                    {summary.droppedPhaseCount > 0 && ` We'll hide ${summary.droppedPhaseCount} phase${summary.droppedPhaseCount > 1 ? 's' : ''} that already passed.`}
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                    Event Boss chooses the setup structure next — timeline, vendor categories, budget, checkpoints — based on the event type you picked.
                   </div>
                 </div>
-              );
-            })()}
+              </div>
 
-            {/* Budget estimator — shows when guest count is set. Sprint 57e:
-                rush factor folded into per-tier totals. Sprint 57g: date
-                premium (DOW + holiday + peak season), time-of-day chips,
-                Service+Tax toggle, Contingency toggle. Every factor surfaces
-                in the transparent breakdown panel below the tier cards. */}
-            {guestCt > 0 && (() => {
-              const ph         = PER_HEAD[form.type] || PER_HEAD.Other;
-              const mFactor    = getMetroFactor(profile);
-              const rushFactor = getRushFactor(form.date);
-              const rFactor    = rushFactor.multiplier;
-              const mkt        = profile?.metroMarket ? METRO_MARKETS.find(m => m.id === profile.metroMarket) : null;
-              const mktTier    = mkt ? METRO_TIER_LABEL[mkt.tier] : null;
-              const tierMeta   = TIER_META[form.type] || TIER_META.Other;
-              // Sprint 57g factor stack
-              const datePrem   = getDatePremium(form.date, form.type);
-              const todFactor  = getTimeOfDayFactor(estTimeOfDay);
-              // Sprint 57h: pass studio defaults from profile. Helper falls back
-              // to SERVICE_CHARGE_DEFAULT / TAX_DEFAULT when these are null.
-              const stxFactor  = getServiceTaxFactor(estServiceTax, profile?.defaultServiceRate, profile?.defaultTaxRate);
-              const ctgFactor  = getContingencyFactor(estContingency);
-              // Composite multiplier so tier totals reflect ALL active factors.
-              const compositeMult = mFactor * rFactor * datePrem.multiplier
-                                  * todFactor.multiplier * stxFactor.multiplier * ctgFactor.multiplier;
-              const tiers = [
-                { key: 'good',   label: tierMeta.good.label,   color: C.success },
-                { key: 'better', label: tierMeta.better.label, color: C.accent2 },
-                { key: 'best',   label: tierMeta.best.label,   color: C.accent },
-              ];
-              const rushColor = rushFactor.label === 'RUSH' ? C.danger
-                              : rushFactor.label === 'COMPRESSED' ? C.warn
-                              : rushFactor.label === 'TIGHT' ? C.accent2
-                              : C.muted;
-              return (
+              <div style={{ marginBottom: 16 }}>
+                <label style={ui.label}>Event name <span style={ui.req}>· required</span></label>
+                <input autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Sarah &amp; James Wedding"
+                  value={form.name}
+                  onChange={e => upd('name', e.target.value)}
+                  onBlur={() => setTouched(t => ({ ...t, name: true }))} />
+                {(showErr || touched.name) && reqName && <div style={ui.hint}>Event name is required.</div>}
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={ui.label}>Event date <span style={ui.req}>· required</span></label>
+                <input type="date" style={ui.field((showErr || touched.date) && reqDate)}
+                  value={form.date}
+                  onChange={e => upd('date', e.target.value)}
+                  onBlur={() => setTouched(t => ({ ...t, date: true }))} />
+                {(showErr || touched.date) && reqDate && <div style={ui.hint}>Event date is required.</div>}
+              </div>
+              {/* On tablet/desktop, group type + secondary side-by-side so the
+                  form uses its width instead of stacking like a phone modal. */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16 }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Budget Estimator — {guestCt} guests</div>
-                    {mkt && <span style={{ fontSize: 10, fontWeight: 700, color: mktTier?.color || C.muted, background: (mktTier?.color || C.muted) + '15', border: `1px solid ${(mktTier?.color || C.muted) + '40'}`, borderRadius: 10, padding: '1px 7px' }}>{mktTier?.icon} {mkt.label}{mFactor !== 1.0 ? ` · ${mFactor > 1 ? '+' : ''}${Math.round((mFactor - 1) * 100)}%` : ''}</span>}
-                    {rushFactor.badge && (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: rushColor, background: rushColor + '18', border: `1px solid ${rushColor}44`, borderRadius: 10, padding: '1px 7px', letterSpacing: '0.06em' }}>
-                        {rushFactor.badge} · +{Math.round((rFactor - 1) * 100)}%
-                      </span>
-                    )}
-                    {/* Sprint 57g: date-premium badge. Only renders when at
-                        least one date factor is active. Tooltip carries the
-                        full prose ("Saturday + Peak wedding season + …"). */}
-                    {datePrem.label && (
-                      <span title={datePrem.explanation || ''} style={{
-                        fontSize: 10, fontWeight: 700, color: C.warn,
-                        background: C.warn + '18', border: `1px solid ${C.warn}44`,
-                        borderRadius: 10, padding: '1px 7px', letterSpacing: '0.06em',
+                  <label style={ui.label}>Event type <span style={ui.req}>· required</span></label>
+                  <select style={ui.field(false)} value={form.type} onChange={e => upd('type', e.target.value)}>
+                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
+                      <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={ui.label}>Secondary type <span style={ui.opt}>· optional</span></label>
+                  <select style={ui.field(false)} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
+                    <option value="">None</option>
+                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
+                      <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div style={{ fontSize: isMobile ? 14 : 15.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>What should Event Boss set up for you?</div>
+              <div style={{ ...ui.truth, marginBottom: 16, fontSize: isMobile ? 12.5 : 13 }}>Pick a starting point. The selected card shows exactly what Event Boss will create. You can add or remove anything afterward.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {KITS.map(k => {
+                  const on = kit === k.id;
+                  return (
+                    <button key={k.id} onClick={() => setKit(k.id)}
+                      style={{
+                        textAlign: 'left',
+                        display: 'flex', flexDirection: 'column', gap: 0,
+                        padding: 0, minHeight: 44,
+                        background: on ? C.surface2 : C.bg,
+                        border: `1px solid ${on ? steelTop : C.border}`,
+                        borderRadius: 12, cursor: 'pointer',
+                        boxShadow: on ? `0 0 0 1px ${steelTop}, 0 6px 18px rgba(0,0,0,0.30)` : 'none',
+                        transition: 'background 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                       }}>
-                        ☀ {datePrem.label} · +{Math.round((datePrem.multiplier - 1) * 100)}%
+                      <span style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 16px' }}>
+                        <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: `2px solid ${on ? steelTop : C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2, background: on ? steelTop : 'transparent' }}>
+                          {on && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+                        </span>
+                        <span style={{ flex: 1 }}>
+                          <span style={{ display: 'block', fontSize: isMobile ? 15 : 16, fontWeight: 700, color: C.text, letterSpacing: '-0.005em' }}>{k.title}</span>
+                          <span style={{ display: 'block', fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{k.creates}</span>
+                        </span>
                       </span>
-                    )}
-                  </div>
-                  {rushFactor.explanation && (
-                    <div style={{ fontSize: 10, color: C.muted, fontStyle: 'italic', marginBottom: 6, lineHeight: 1.45 }}>
-                      {rushFactor.explanation}
-                    </div>
-                  )}
-
-                  {/* Sprint 57g: time-of-day quick-pick chips. Local-only —
-                      not persisted on the event yet (event-level persistence
-                      deferred). Estimator-only adjustment makes the budget
-                      truthful without forcing a new schema. */}
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-                      Time of day
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {TIME_OF_DAY_SLOTS.map(slot => {
-                        const active = estTimeOfDay === slot.key;
-                        const delta = Math.round((slot.multiplier - 1) * 100);
-                        return (
-                          <button key={slot.key} title={slot.explanation}
-                            onClick={() => setEstTimeOfDay(slot.key)}
-                            style={{
-                              padding: '4px 9px', borderRadius: 999,
-                              border: `1px solid ${active ? C.accent2 : C.border}`,
-                              background: active ? C.accent2 + '20' : 'transparent',
-                              color: active ? C.accent2 : C.muted,
-                              fontSize: 10.5, fontWeight: active ? 700 : 500,
-                              cursor: 'pointer', whiteSpace: 'nowrap',
-                            }}>
-                            {slot.shortLabel}{delta !== 0 ? ` ${delta > 0 ? '+' : ''}${delta}%` : ''}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Sprint 57g: Service+Tax + Contingency toggles. Compact
-                      pair of checkbox rows, each with a one-line rationale. */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                    <label style={{
-                      flex: 1, minWidth: 200, display: 'flex', alignItems: 'flex-start', gap: 6,
-                      padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
-                      border: `1px solid ${estServiceTax ? C.accent2 + '55' : C.border}`,
-                      background: estServiceTax ? C.accent2 + '08' : C.bg,
-                    }}>
-                      <input type="checkbox" checked={estServiceTax}
-                        onChange={e => setEstServiceTax(e.target.checked)}
-                        style={{ accentColor: C.accent2, marginTop: 2, flexShrink: 0 }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
-                          Include service charge + tax
-                        </div>
-                        <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.35 }}>
-                          {stxFactor.source === 'studio'
-                            ? `Using studio defaults: ${Math.round(stxFactor.serviceRate * 100)}% service · ${Math.round(stxFactor.taxRate * 100)}% tax.`
-                            : stxFactor.source === 'mixed'
-                              ? `Using studio defaults (partial): ${Math.round(stxFactor.serviceRate * 100)}% service · ${Math.round(stxFactor.taxRate * 100)}% tax.`
-                              : `Using default planning rates: ${Math.round(stxFactor.serviceRate * 100)}% service · ${Math.round(stxFactor.taxRate * 100)}% tax. Set studio defaults in Profile.`}
-                        </div>
-                      </div>
-                    </label>
-                    <label style={{
-                      flex: 1, minWidth: 200, display: 'flex', alignItems: 'flex-start', gap: 6,
-                      padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
-                      border: `1px solid ${estContingency ? C.warn + '55' : C.border}`,
-                      background: estContingency ? C.warn + '08' : C.bg,
-                    }}>
-                      <input type="checkbox" checked={estContingency}
-                        onChange={e => setEstContingency(e.target.checked)}
-                        style={{ accentColor: C.warn, marginTop: 2, flexShrink: 0 }} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
-                          Add 10% planning contingency
-                        </div>
-                        <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.35 }}>
-                          Buffer for last-minute changes and small misses. Recommended on tight timelines.
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {tiers.map(({ key, label, color }) => {
-                      const total = Math.round(ph[key] * compositeMult * guestCt / 100) * 100;
-                      const active = Number(form.totalBudget) === total;
-                      return (
-                        <button key={key} onClick={() => upd('totalBudget', String(total))}
-                          style={{ flex: 1, padding: '8px 6px', borderRadius: 8, border: `1px solid ${active ? color : C.border}`, background: active ? color + '1a' : 'transparent', cursor: 'pointer', textAlign: 'center', transition: 'all 0.12s' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: active ? color : C.muted }}>{label}</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: active ? color : C.text, marginTop: 2 }}>{fmtD(total)}</div>
-                          <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{fmtD(Math.round(ph[key] * compositeMult))}/head</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Sprint 57g: transparent adjustment breakdown. Collapsed
-                      by default. Selected tier expands per-factor lines so
-                      the planner can see WHY the total moved. No black-box. */}
-                  {(() => {
-                    const selectedKey = ['good','better','best'].find(k => Number(form.totalBudget) === Math.round(ph[k] * compositeMult * guestCt / 100) * 100);
-                    if (!selectedKey) return null;
-                    const breakdown = computeEstimatorBreakdown({
-                      basePerHead: ph[selectedKey],
-                      guests:      guestCt,
-                      metroFactor: mFactor,
-                      rushFactor:  rFactor,
-                      datePremium: datePrem,
-                      timeOfDay:   todFactor,
-                      serviceTax:  stxFactor,
-                      contingency: ctgFactor,
-                      metroLabel:  mkt ? `Metro · ${mkt.label}` : null,
-                      rushLabel:   rushFactor.badge ? `Timeline · ${rushFactor.label}` : null,
-                    });
-                    return (
-                      <div style={{ marginTop: 8 }}>
-                        <button onClick={() => setEstBreakdownOpen(o => !o)} style={{
-                          width: '100%', textAlign: 'left', padding: '6px 10px',
-                          background: 'transparent', border: `1px dashed ${C.border}`,
-                          borderRadius: 8, cursor: 'pointer',
-                          fontSize: 10.5, color: C.muted, fontWeight: 600,
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      {/* Sprint 60.U.3 — "Creates for you" expansion inside the
+                          selected card. Lists the exact records NGW seeds for
+                          the chosen archetype. Mirrors Success "Created for
+                          you" payoff exactly so the user sees the same list
+                          twice: promise → delivery. */}
+                      {on && (
+                        <div style={{
+                          padding: '12px 16px 14px 46px',
+                          borderTop: `1px solid ${C.border}`,
+                          background: 'transparent',
                         }}>
-                          <span>{estBreakdownOpen ? '▾' : '▸'} How we got to {fmtD(breakdown.total)}</span>
-                          <span style={{ color: C.text, fontWeight: 700 }}>{fmtD(breakdown.perHead)}/person</span>
-                        </button>
-                        {estBreakdownOpen && (
-                          <div style={{ marginTop: 6, padding: '8px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
-                            {breakdown.breakdown.map((line, i) => {
-                              const isTotal = line.kind === 'total';
-                              const isBase = line.kind === 'base';
-                              const sign = line.amount < 0 ? '−' : (isTotal || isBase ? '' : '+');
-                              const amt = Math.abs(line.amount);
-                              return (
-                                <div key={line.key} title={line.explanation || ''}
-                                  style={{
-                                    display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                                    gap: 8, padding: '4px 0',
-                                    borderTop: i > 0 && isTotal ? `1px solid ${C.border}` : 'none',
-                                    fontSize: isTotal ? 13 : 11,
-                                    fontWeight: isTotal ? 700 : 500,
-                                    color: isTotal ? C.text : C.muted,
-                                  }}>
-                                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {line.label}
-                                  </span>
-                                  <span style={{ flexShrink: 0, color: isTotal ? C.accent : C.text, fontWeight: isTotal ? 700 : 600 }}>
-                                    {sign}{fmtD(amt)}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            <div style={{ fontSize: 10, color: C.muted, fontStyle: 'italic', marginTop: 6, lineHeight: 1.45 }}>
-                              Planning estimate — not a binding quote. Service charge and tax rates vary by region.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 7 }}>CREATES FOR YOU</div>
+                          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {k.checklist.map(item => (
+                              <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text }}>
+                                <span aria-hidden style={{ width: 16, height: 16, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-                  {TIER_WHY[form.type] && form.totalBudget && PER_HEAD[form.type] && (() => {
-                    const selectedKey = ['good','better','best'].find(k => Number(form.totalBudget) === Math.round(ph[k] * compositeMult * guestCt / 100) * 100);
-                    if (!selectedKey) return null;
-                    return (
-                      <div style={{ marginTop: 8, padding: '8px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
-                        <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>What this typically includes:</div>
-                        {TIER_WHY[form.type][selectedKey].slice(0, 3).map((item, i) => (
-                          <div key={i} style={{ fontSize: 11, color: C.text, display: 'flex', gap: 6, marginBottom: 2 }}>
-                            <span style={{ color: C.accent2 }}>·</span>{item}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+          {step === 3 && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16, marginBottom: 16 }}>
+                <div>
+                  <label style={ui.label}>Venue <span style={ui.opt}>· optional</span></label>
+                  <input style={ui.field(false)} placeholder="Where is it being held?" value={form.venue} onChange={e => upd('venue', e.target.value)} />
                 </div>
-              );
-            })()}
-          </div>
-
-          {/* Starter Kit — Sprint 60.L F16: friendlier framing. The header
-              moves from a tech-y "Starter Kit" label to a plain-language
-              promise: what we'll set up for you. */}
-          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 4 }}>What we'll set up for you</div>
-          <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 10, lineHeight: 1.45 }}>Check the parts you want. You can edit everything later.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-
-            {/* ── Timeline ── */}
-            {tmpl && (() => {
-              const enabledCt = timelineChecked.filter(Boolean).length;
-              return (
-                <div style={{ border: `1px solid ${useTimeline ? typeColor : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
-                  {/* Header row */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
-                    onClick={() => useTimeline && toggleKit('timeline')}>
-                    <input type="checkbox" checked={useTimeline} onChange={e => { setUseTimeline(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, timeline: false })); }}
-                      style={{ accentColor: typeColor, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
-                      onClick={e => e.stopPropagation()} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{form.secondaryType ? `${form.type} + ${form.secondaryType}` : form.type} planning timeline</div>
-                      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>We'll add {enabledCt} planning {enabledCt === 1 ? 'task' : 'tasks'} for you, auto-dated from your event date.</div>
-                    </div>
-                    {useTimeline && (
-                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.timeline ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
-                    )}
+                <div>
+                  <label style={ui.label}>Estimated guest count <span style={ui.opt}>· optional</span></label>
+                  <input type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="e.g. 120" value={form.guestCount} onChange={e => upd('guestCount', e.target.value)} />
+                </div>
+                <div>
+                  <label style={ui.label}>Budget <span style={ui.opt}>· optional</span></label>
+                  <input type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="Total budget in dollars" value={form.totalBudget} onChange={e => upd('totalBudget', e.target.value)} />
+                </div>
+                {clients.length > 0 && (
+                  <div>
+                    <label style={ui.label}>Link to client <span style={ui.opt}>· optional</span></label>
+                    <select style={ui.field(false)} value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
+                      <option value="">No client — standalone event</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </div>
-                  {/* Expanded items. Sprint 57f: each row now carries an urgency
-                      chip when the event is compressed so the planner sees up
-                      front which tasks are still in-window vs. need replacing. */}
-                  {useTimeline && kitExpanded.timeline && (() => {
-                    const _days = daysUntil(form.date);
-                    return (
-                      <div style={{ borderTop: `1px solid ${C.border}`, maxHeight: 220, overflowY: 'auto' }}>
-                        {tmpl.map((task, i) => {
-                          const u = form.date
-                            ? classifyTemplateTaskUrgency(task, _days, form.type, PHASE_OFFSET)
-                            : null;
-                          const showChip = u && u.urgency !== 'standard';
-                          const chipColor =
-                              !showChip            ? null
-                            : u.tone === 'danger'  ? C.danger
-                            : u.tone === 'warn'    ? C.warn
-                            : u.tone === 'accent'  ? C.accent2
-                            : C.muted;
-                          return (
-                            <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 12px', borderBottom: i < tmpl.length - 1 ? `1px solid ${C.border}` : 'none', cursor: 'pointer', background: timelineChecked[i] ? 'transparent' : C.bg + '88' }}>
-                              <input type="checkbox" checked={!!timelineChecked[i]} style={{ accentColor: typeColor, cursor: 'pointer', marginTop: 2, flexShrink: 0 }}
-                                onChange={e => setTimelineChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontSize: 12, color: timelineChecked[i] ? C.text : C.muted, lineHeight: 1.3 }}>{task.task}</div>
-                                <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{task.week}{task.owner ? ` · ${task.owner}` : ''}</div>
-                              </div>
-                              {showChip && (
-                                <span style={{
-                                  fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
-                                  color: chipColor, background: chipColor + '18',
-                                  border: `1px solid ${chipColor}44`, borderRadius: 8,
-                                  padding: '1px 6px', whiteSpace: 'nowrap', flexShrink: 0,
-                                  marginTop: 2, textTransform: 'uppercase',
-                                }} title={u.explanation}>
-                                  {u.short}
-                                </span>
-                              )}
-                            </label>
-                          );
-                        })}
+                )}
+              </div>
+
+              {/* Sprint 61.D — Budget estimate hint. Renders when type +
+                  guests are both set so the planner has an anchor before
+                  writing the Budget field. Honest about confidence + what
+                  the range excludes. */}
+              {(() => {
+                const guests = Number(form.guestCount) || 0;
+                if (!form.type || guests < 1) return null;
+                const PER_HEAD_BY_TYPE = {
+                  Wedding:           { low: 200, high: 500 },
+                  'Vow Renewal':     { low: 150, high: 400 },
+                  Quinceañera:       { low: 150, high: 400 },
+                  'Engagement Party': { low: 100, high: 300 },
+                  'Bridal Shower':   { low:  80, high: 250 },
+                  'Baby Shower':     { low:  50, high: 180 },
+                  Birthday:          { low:  60, high: 250 },
+                  'Sweet 16':        { low: 100, high: 350 },
+                  'Retirement Party': { low:  80, high: 250 },
+                  Reunion:           { low:  60, high: 200 },
+                  Graduation:        { low:  50, high: 180 },
+                  Conference:        { low: 150, high: 400 },
+                  'Corporate Retreat': { low: 200, high: 500 },
+                  'Corporate Event': { low: 150, high: 400 },
+                  Gala:              { low: 250, high: 600 },
+                  'Fundraiser / Gala': { low: 250, high: 600 },
+                  'Networking Event': { low:  60, high: 200 },
+                };
+                const ph = PER_HEAD_BY_TYPE[form.type] || { low: 100, high: 250 };
+                const metroFactor = getMetroFactor(profile);
+                const tod = getTimeOfDayFactor(form.timeOfDay);
+                const datePremium = getDatePremium(form.date, form.type);
+                const factor = metroFactor * (tod.multiplier || 1) * (datePremium.multiplier || 1);
+                const lowTotal  = Math.round(ph.low  * guests * factor / 100) * 100;
+                const highTotal = Math.round(ph.high * guests * factor / 100) * 100;
+                const conf = estimatorConfidence({
+                  hasType: !!form.type, hasDate: !!form.date,
+                  hasGuestCount: guests > 0, hasMarket: !!profile?.metroMarket,
+                  hasTimeOfDay: !!form.timeOfDay, hasHistory: false,
+                });
+                const confColor = conf.level === 'high' ? C.success : conf.level === 'medium' ? C.warn : C.muted;
+                const steelTopBE = C.accentTopGrad || C.accent;
+                const userBudget = Number(form.totalBudget) || 0;
+                const overEst = userBudget > 0 && userBudget < lowTotal ? 'tight' : userBudget > highTotal ? 'generous' : 'in range';
+                return (
+                  <div style={{
+                    background: `linear-gradient(180deg, ${steelTopBE}14 0%, ${steelTopBE}07 100%)`,
+                    border: `1px solid ${steelTopBE}33`,
+                    borderLeft: `3px solid ${steelTopBE}`,
+                    borderRadius: 10,
+                    padding: '12px 14px', marginBottom: 14,
+                    fontFamily: 'inherit',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopBE, textTransform: 'uppercase' }}>
+                        Budget estimate
+                      </span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        {conf.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: '-0.005em' }}>
+                      {form.type} · {guests} guests typically runs ${lowTotal.toLocaleString()}–${highTotal.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+                      Anchored to per-head averages, market{profile?.metroMarket ? `, your saved metro` : ''}{form.date ? `, date factors` : ''}.
+                      {' '}{conf.level === 'low' && 'Adding date and metro will tighten the range.'}
+                    </div>
+                    {userBudget > 0 && (
+                      <div style={{ fontSize: 11.5, color: overEst === 'tight' ? C.warn : overEst === 'generous' ? C.success : C.text, marginTop: 6, fontWeight: 600 }}>
+                        Your ${userBudget.toLocaleString()} budget is {overEst === 'tight' ? 'tight for this scope' : overEst === 'generous' ? 'generous for this scope' : 'within typical range'}.
                       </div>
-                    );
-                  })()}
-                </div>
-              );
-            })()}
-
-            {/* ── Budget ── */}
-            {(() => {
-              const enabledCt = budgetChecked.filter(Boolean).length;
-              const totalAllocated = budgetTmpl.reduce((sum, item, i) => {
-                if (!budgetChecked[i]) return sum;
-                const amt = budgetAmounts[item.c] !== undefined ? Number(budgetAmounts[item.c]) : Math.round(budgetAmt * item.pct);
-                return sum + amt;
-              }, 0);
-              return (
-                <div style={{ border: `1px solid ${useBudget ? C.success : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
-                    onClick={() => useBudget && toggleKit('budget')}>
-                    <input type="checkbox" checked={useBudget} onChange={e => { setUseBudget(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, budget: false })); }}
-                      style={{ accentColor: C.success, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
-                      onClick={e => e.stopPropagation()} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>Budget categories</div>
-                      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>
-                        We'll set up {enabledCt} typical {enabledCt === 1 ? 'category' : 'categories'}
-                        {budgetAmt > 0 && totalAllocated > 0 ? ` · ${fmtD(totalAllocated)} allocated` : ' · add a total to auto-allocate amounts'}.
-                      </div>
-                    </div>
-                    {useBudget && (
-                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.budget ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
                     )}
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ fontSize: 11, color: steelTopBE, cursor: 'pointer', fontWeight: 700 }}>
+                        Not included in this estimate
+                      </summary>
+                      <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
+                        {NOT_INCLUDED.slice(0, 5).map(item => <li key={item}>{item}</li>)}
+                      </ul>
+                    </details>
                   </div>
-                  {useBudget && kitExpanded.budget && (
-                    <div style={{ borderTop: `1px solid ${C.border}`, maxHeight: 240, overflowY: 'auto' }}>
-                      {budgetTmpl.map((item, i) => {
-                        const defaultAmt = Math.round(budgetAmt * item.pct);
-                        const amt = budgetAmounts[item.c] !== undefined ? budgetAmounts[item.c] : (budgetAmt > 0 ? defaultAmt : '');
-                        return (
-                          <div key={item.c} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: i < budgetTmpl.length - 1 ? `1px solid ${C.border}` : 'none', background: budgetChecked[i] ? 'transparent' : C.bg + '88' }}>
-                            <input type="checkbox" checked={!!budgetChecked[i]} style={{ accentColor: C.success, cursor: 'pointer', flexShrink: 0 }}
-                              onChange={e => setBudgetChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
-                            <span style={{ fontSize: 12, flex: 1, color: budgetChecked[i] ? C.text : C.muted }}>{item.c}</span>
-                            <span style={{ fontSize: 10, color: C.muted, width: 32, textAlign: 'right' }}>{Math.round(item.pct * 100)}%</span>
-                            <input
-                              type="number" min="0"
-                              value={amt}
-                              placeholder={budgetAmt > 0 ? String(defaultAmt) : '—'}
-                              disabled={!budgetChecked[i]}
-                              onChange={e => setBudgetAmounts(m => ({ ...m, [item.c]: e.target.value }))}
-                              style={{ ...s.input, width: 80, fontSize: 12, padding: '3px 6px', textAlign: 'right', opacity: budgetChecked[i] ? 1 : 0.4 }}
-                              onClick={e => e.stopPropagation()}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+                );
+              })()}
 
-            {/* ── Vendor Slots ── */}
-            {(() => {
-              const enabledCt = vendorChecked.filter(Boolean).length;
-              return (
-                <div style={{ border: `1px solid ${useVendors ? C.accent2 : C.border}`, borderRadius: 8, overflow: 'hidden', transition: 'border-color 0.15s' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: C.bg, cursor: 'pointer' }}
-                    onClick={() => useVendors && toggleKit('vendors')}>
-                    <input type="checkbox" checked={useVendors} onChange={e => { setUseVendors(e.target.checked); if (!e.target.checked) setKitExpanded(p => ({ ...p, vendors: false })); }}
-                      style={{ accentColor: C.accent2, cursor: 'pointer', width: 14, height: 14, flexShrink: 0 }}
-                      onClick={e => e.stopPropagation()} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>Vendor Slots</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>{enabledCt} empty vendor records to fill in later</div>
-                    </div>
-                    {useVendors && (
-                      <span style={{ fontSize: 10, color: C.muted, transform: kitExpanded.vendors ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
-                    )}
-                  </div>
-                  {useVendors && kitExpanded.vendors && (
-                    <div style={{ borderTop: `1px solid ${C.border}`, display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 12px' }}>
-                      {vendorCats.map((cat, i) => (
-                        <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 16, border: `1px solid ${vendorChecked[i] ? C.accent2 : C.border}`, background: vendorChecked[i] ? C.accent2 + '15' : 'transparent', cursor: 'pointer', fontSize: 11, color: vendorChecked[i] ? C.accent2 : C.muted, transition: 'all 0.12s' }}>
-                          <input type="checkbox" checked={!!vendorChecked[i]} style={{ accentColor: C.accent2, cursor: 'pointer' }}
-                            onChange={e => setVendorChecked(arr => arr.map((v, j) => j === i ? e.target.checked : v))} />
-                          {cat}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
+              <div style={ui.truth}>Anything you skip can be added later.</div>
+            </>
+          )}
 
-          {/* Client link */}
-          {clients.length > 0 && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 6 }}>
-                Link to Client <span style={{ fontWeight: 400 }}>(optional)</span>
-              </label>
-              <select style={s.input} value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
-                <option value="">No client — standalone event</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+          {step === 'success' && (
+            <div style={{ padding: isMobile ? '12px 4px' : '8px 8px 4px' }}>
+              <div style={{ textAlign: 'center', marginBottom: 22 }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.success}22`, border: `1px solid ${C.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: C.success, fontSize: 28 }}>✓</div>
+                <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 700, color: C.text, marginBottom: 6, letterSpacing: '-0.01em' }}>“{form.name.trim()}” is ready.</div>
+                <div style={{ ...ui.truth, maxWidth: 420, margin: '0 auto' }}>{createdSummary}</div>
+              </div>
+              {/* Sprint 60.U.3 — "Created for you" payoff: same checklist the
+                  Step 2 selected card promised. The visible receipt closes
+                  the No-Guesswork loop. */}
+              <div style={{
+                background: C.bg, border: `1px solid ${C.border}`,
+                borderLeft: `3px solid ${steelTop}`,
+                borderRadius: 10,
+                padding: isMobile ? '14px 16px' : '16px 20px',
+                maxWidth: 460, margin: '0 auto',
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 10 }}>CREATED FOR YOU</div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {kitCfg.checklist.map(item => (
+                    <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
+                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 28px', borderTop: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button style={s.btn()} onClick={onClose}>Cancel</button>
-          <button style={{ ...s.btn('primary'), opacity: form.name.trim() ? 1 : 0.5 }} onClick={submit}>Create Event</button>
+        <div style={{ ...footerPad, borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+          {step === 1 && (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+              <button style={ghostBtn} onClick={attemptClose}>Cancel</button>
+              <button onClick={continue1} aria-disabled={!step1Valid}
+                style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130, ...(step1Valid ? {} : { opacity: 0.5, cursor: 'default' }) }}>Continue</button>
+            </div>
+          )}
+          {step === 2 && (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+              <button style={ghostBtn} onClick={() => setStep(1)}>Back</button>
+              <button style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130 }} onClick={() => setStep(3)}>Continue</button>
+            </div>
+          )}
+          {step === 3 && (
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+              <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
+              <button style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130 }} onClick={createNow}>Create event</button>
+            </div>
+          )}
+          {step === 'success' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button style={{ ...primaryBtn, width: '100%' }} onClick={() => { onOpenEvent(createdId); onClose(); }}>Open event</button>
+              <button style={{ ...ghostBtn, width: '100%' }} onClick={resetForAnother}>Add another event</button>
+            </div>
+          )}
         </div>
+
+        {/* Discard confirm — never lose entered data silently */}
+        {confirmDiscard && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 5 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, maxWidth: 320, boxShadow: '0 18px 60px rgba(0,0,0,0.5)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Discard this event?</div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5, marginBottom: 16 }}>Your entries will be lost.</div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button style={ghostBtn} onClick={() => setConfirmDiscard(false)}>Keep editing</button>
+                <button style={dangerBtn} onClick={onClose}>Discard</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -7719,12 +7947,15 @@ function ClientPortalPublicView({ token, events }) {
     return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  const bg     = '#0f1117';
-  const card   = '#1a1d27';
-  const border = '#2a2d3a';
+  // Sprint 61.E — palette aligned to Studio Matte + Event Boss steel-blue.
+  // Accent shifts from bright #1a6fba to steel-blue #4E6877 so the portal
+  // reads as part of the Event Boss product, not generic SaaS.
+  const bg     = '#111519'; // Mid Carbon
+  const card   = '#1C2227'; // Lifted Carbon
+  const border = '#2E353D';
   const text   = '#eef0f4';
   const muted  = '#9098b0';
-  const accent = '#1a6fba';
+  const accent = '#4E6877'; // Steel blue (was #1a6fba)
   const green  = '#22c55e';
   const amber  = '#f59e0b';
   const red    = '#ef4444';
@@ -7797,12 +8028,12 @@ function ClientPortalPublicView({ token, events }) {
 
   return (
     <div style={{ minHeight: '100vh', background: bg, fontFamily: "'Inter', system-ui, sans-serif", color: text }}>
-      {/* Header */}
+      {/* Header — Sprint 61.E: Event Boss branding, steel-blue accent */}
       <div style={{ background: card, borderBottom: `1px solid ${border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>✦</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(180deg, ${accent} 0%, #3F5B6A 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)' }}>✓</div>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Client Portal</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: text }}>NGW Event Planner</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: accent, textTransform: 'uppercase', letterSpacing: '0.16em' }}>Event Boss · Client Portal</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: text }}>{event.name}</div>
         </div>
       </div>
 
@@ -7840,6 +8071,36 @@ function ClientPortalPublicView({ token, events }) {
                 <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{event.guestEstimate || event.guests?.length}</div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Sprint 61.E — NO GUESSWORK rail for the client. Sets expectations
+            about what an approval means + that it goes to the planner. */}
+        <div style={{
+          marginBottom: 24,
+          background: `linear-gradient(180deg, ${accent}1f 0%, ${accent}0a 100%)`,
+          border: `1px solid ${accent}3d`,
+          borderLeft: `3px solid ${accent}`,
+          borderRadius: 10,
+          padding: '14px 16px',
+          display: 'flex', gap: 12, alignItems: 'flex-start',
+        }}>
+          <span aria-hidden style={{
+            flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+            background: `${accent}30`, color: accent,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 800, marginTop: 1,
+          }}>✓</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: accent, textTransform: 'uppercase', marginBottom: 3 }}>
+              No Guesswork
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 4 }}>
+              This is your event portal.
+            </div>
+            <div style={{ fontSize: 12, color: muted, lineHeight: 1.5 }}>
+              Approvals you submit go straight to your planner. We never send anything to vendors on your behalf unless your planner explicitly does.
+            </div>
           </div>
         </div>
 
@@ -7929,7 +8190,7 @@ function ClientPortalPublicView({ token, events }) {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: `1px solid ${border}` }}>
-          <div style={{ fontSize: 11, color: muted }}>Powered by NGW Event Planner · This link is private — do not share</div>
+          <div style={{ fontSize: 11, color: muted }}>Powered by NGW Event Boss · This link is private — do not share</div>
         </div>
       </div>
     </div>
@@ -8014,7 +8275,7 @@ function PublicIntakeForm({ token }) {
           <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: isEmbed ? 0 : 32 }}>
             Thanks, {form.name.split(' ')[0]}! We'll be in touch shortly to discuss your {form.eventType || 'event'}.
           </div>
-          {!isEmbed && <div style={{ fontSize: 12, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 32 }}>Powered by NGW Event Planner</div>}
+          {!isEmbed && <div style={{ fontSize: 12, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 20, marginTop: 32 }}>Powered by NGW Event Boss</div>}
         </div>
       </div>
     );
@@ -8109,7 +8370,7 @@ function PublicIntakeForm({ token }) {
           </button>
         </div>
 
-        {!isEmbed && <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: C.muted }}>Powered by NGW Event Planner</div>}
+        {!isEmbed && <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: C.muted }}>Powered by NGW Event Boss</div>}
       </div>
     </div>
   );
@@ -8603,14 +8864,39 @@ const defaultFeeSchedule = (total, structure) => {
 function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const C = useT();
   const s = makeS(C);
-  const isMobile = useContext(BpCtx) === 'mobile';
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const isTablet = bp === 'tablet';
   const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
   const [referralChoice,   setReferralChoice]   = useState('');
   const [touched,          setTouch]            = useState({});
+  const [showErr,          setShowErr]          = useState(false);
   const [selectedEventId,  setSelectedEventId]  = useState('');
+  // Sprint 60.U.3 10+ — success payoff state. After plain "Create Client"
+  // (NOT the "Create & Start Intake" fast path) we keep the modal mounted
+  // and show a "Created for you" receipt so the user sees exactly what NGW
+  // saved before closing. Mirrors NewEventModal's success payoff.
+  const [submitted, setSubmitted] = useState(null);  // { name, summary, payoff: [] }
+  // Sprint 60.U.4 — Planner Fee collapsed by default on every viewport so
+  // the modal opens light. Open it when the planner is ready to think about
+  // pricing — required identity + contact + intake all fit above the fold.
+  const [feeOpen, setFeeOpen] = useState(false);
   const set   = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const touch = (k)    => setTouch(t => ({ ...t, [k]: true }));
   const isOtherReferral = referralChoice === 'Other';
+  // Steel-blue gradient stops — for the No-Guesswork rail and section eyebrows.
+  const steelTop = C.accentTopGrad || C.accent;
+
+  // Sprint 60.U.3 — body scroll lock + responsive shell width.
+  // Mobile keeps the bottom sheet; tablet steps up to 600px, desktop to 680px
+  // so it doesn't look like a phone modal floating in the middle of a 1440
+  // screen.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  const desktopMaxW = isTablet ? 600 : 680;
 
   const linkedEvent  = events.find(ev => ev.id === selectedEventId) || null;
   const linkedType   = linkedEvent?.type || null;
@@ -8636,12 +8922,14 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
     ? Math.round(evtBudget * 0.15)
     : 0;
 
-  const errEmail = touched.email && !isEmail(form.email)  ? 'Enter a valid email address' : null;
-  const errPhone = touched.phone && !isPhone(form.phone)  ? 'Enter a valid phone number (10–15 digits)' : null;
-  const canSubmit = form.name.trim() && !errEmail && !errPhone;
+  const reqName  = !form.name.trim();
+  const errName  = (showErr || touched.name) && reqName ? 'Client name is required.' : null;
+  const errEmail = touched.email && !isEmail(form.email)  ? 'Enter a valid email address.' : null;
+  const errPhone = touched.phone && !isPhone(form.phone)  ? 'Enter a valid phone number.' : null;
+  const canSubmit = !reqName && !errEmail && !errPhone;
 
   const submit = (openIntake = false) => {
-    if (!canSubmit) return;
+    if (!canSubmit) { setShowErr(true); return; }
     const finalFee = form.feeStructure === 'none' ? 0
       : form.feeStructure === 'percentage' && computedPctFee ? computedPctFee
       : feeAmt;
@@ -8650,6 +8938,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
     if (form.guestEstimate) initLogLines.push(`Est. guest count: ${form.guestEstimate}.`);
     if (form.venueStatus)   initLogLines.push(`Venue status: ${form.venueStatus}.`);
     if (form.initNotes)     initLogLines.push(form.initNotes.trim());
+    const feeSchedule = defaultFeeSchedule(finalFee, form.feeStructure);
     onCreate({
       id: 'cl-' + uid(),
       name: form.name.trim(),
@@ -8662,34 +8951,123 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
       venueStatus: form.venueStatus,
       plannerFee: finalFee,
       feeStructure: form.feeStructure,
-      feeSchedule: defaultFeeSchedule(finalFee, form.feeStructure),
+      feeSchedule,
       style: form.styleNotes.trim(),
       notes: '',
       log: [{ id: uid(), date: today8601(), text: initLogLines.join(' ') }],
       eventIds: selectedEventId ? [selectedEventId] : [],
-    }, selectedEventId || null, openIntake);
-    onClose();
+    // Sprint 60.U.3 10+ — pass navigate=!openIntake. Plain "Create Client"
+    // skips parent navigation so this modal can paint its success payoff in
+    // place. "Create & Start Intake" keeps the immediate-route fast path.
+    }, selectedEventId || null, openIntake, /* navigate */ !!openIntake);
+    if (openIntake) {
+      onClose();
+    } else {
+      const payoff = ['Contact saved to roster'];
+      if (feeSchedule.length) payoff.push(`Fee schedule (${feeSchedule.length} payment${feeSchedule.length === 1 ? '' : 's'})`);
+      payoff.push('Planner log started');
+      if (form.status) payoff.push(`Status: ${form.status}`);
+      if (linkedEvent) payoff.push(`Linked to ${linkedEvent.name}`);
+      setSubmitted({ name: form.name.trim(), payoff });
+    }
   };
 
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, 460), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, overflow: 'hidden' }}>
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ ...sheetShell(isMobile, desktopMaxW), background: C.surface, border: `1px solid ${C.border}`, zIndex: 50, overflow: 'hidden' }}>
         <SheetGrip isMobile={isMobile} />
 
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>New Client</div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>Add to your roster</h2>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
+                {submitted ? 'Roster updated' : 'New Client'}
+              </div>
+              <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>
+                {submitted ? `${submitted.name} is ready` : 'Add to your roster'}
+              </h2>
+              {!submitted && (
+                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5 }}>
+                  Add the basics. Event Boss saves the contact, fee schedule, and opens a planner log.
+                </div>
+              )}
             </div>
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
           </div>
         </div>
 
+        {/* Sprint 60.U.3 10+ — Success payoff. Replaces form+footer after a
+            successful plain Create Client. Mirrors NewEventModal's payoff. */}
+        {submitted ? (
+          <>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', maxHeight: 'calc(90vh - 130px)' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.success}22`, border: `1px solid ${C.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', color: C.success, fontSize: 28 }}>✓</div>
+                <div style={{ fontSize: 13, color: C.muted, maxWidth: 400, margin: '0 auto' }}>
+                  Event Boss saved the contact and opened a planner log. Add another or close to keep working.
+                </div>
+              </div>
+              <div style={{
+                background: C.bg, border: `1px solid ${C.border}`,
+                borderLeft: `3px solid ${steelTop}`,
+                borderRadius: 10, padding: '16px 20px', maxWidth: 440, margin: '0 auto', width: '100%',
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 10 }}>CREATED FOR YOU</div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {submitted.payoff.map(item => (
+                    <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
+                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10 }}>
+              <button style={{ ...s.btn(), flex: 1 }} onClick={() => {
+                // Reset to add another client
+                setForm({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
+                setReferralChoice(''); setTouch({}); setShowErr(false); setSelectedEventId(''); setSubmitted(null);
+              }}>Add another</button>
+              <button style={{ ...s.btn('primary'), flex: 1 }} onClick={onClose}>Done</button>
+            </div>
+          </>
+        ) : (
+        <>
         {/* Body — scrollable */}
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: 'calc(90vh - 130px)' }}>
+
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK YET premium rail.
+              Elevated to 10+ on its own: stronger eyebrow weight, glyph
+              affordance, brief 3-bullet "what NGW does" summary, deeper
+              steel-blue treatment so it reads as the modal's anchor, not a
+              decorative chip. */}
+          <div style={{
+            display: 'flex', gap: 14, alignItems: 'flex-start',
+            padding: isMobile ? '14px 14px' : '16px 18px',
+            background: `linear-gradient(180deg, ${steelTop}14 0%, ${steelTop}07 100%)`,
+            border: `1px solid ${steelTop}33`,
+            borderLeft: `3px solid ${steelTop}`,
+            borderRadius: 10,
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+              background: `${steelTop}22`, color: steelTop,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 800, marginTop: 1,
+            }}>✓</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
+              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: 600, marginBottom: 6 }}>
+                Add the basics. Event Boss handles the rest.
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                We open the planner log, draft a fee schedule, and prep the intake — so you can move on instead of writing boilerplate.
+              </div>
+            </div>
+          </div>
 
           {/* ── Link to Event first — drives fee logic ── */}
           {events.length > 0 && (
@@ -8736,9 +9114,10 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           {/* ── Client Name ── */}
           <div>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Client / Couple Name *</label>
-            <input style={s.input} value={form.name}
+            <input style={{ ...s.input, borderColor: errName ? C.danger : undefined }} value={form.name}
               placeholder={isInternal ? 'e.g. Acme Corp — Events Team' : 'e.g. Sarah & Todd Chen'}
-              autoFocus onChange={e => set('name', e.target.value)} />
+              autoFocus onChange={e => set('name', e.target.value)} onBlur={() => touch('name')} />
+            {errName && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errName}</div>}
           </div>
 
           {/* ── Email + Phone ── */}
@@ -8788,7 +9167,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
 
           {/* ── Intake details ── */}
           <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Quick Intake</div>
+            <div style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: steelTop, marginBottom: 12 }}>Quick Intake</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Row: contact pref + guest estimate */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -8831,11 +9210,56 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             </div>
           </div>
 
-          {/* ── Planner Fee section ── */}
+          {/* Sprint 61.G — Budget estimate hint above Planner Fee section.
+              Renders only when a linked event provides type+guests+date so
+              the planner sees the total event scope before setting their
+              fee. Pure read-only context, no logic change. */}
+          {linkedEvent && (linkedEvent.type) && (
+            <div style={{ marginTop: 4 }}>
+              <BudgetEstimateHint
+                type={linkedEvent.type}
+                guestCount={linkedEvent.guestEstimate || (linkedEvent.guests || []).length}
+                date={linkedEvent.date}
+                timeOfDay={linkedEvent.timeOfDay || 'afternoon'}
+                profile={profile}
+                userBudget={evtBudget || null}
+                palette={{
+                  bg: C.bg, card: C.surface, border: C.border,
+                  text: C.text, muted: C.muted,
+                  accent: C.accentTopGrad || C.accent,
+                  success: C.success, warn: C.warn, danger: C.danger,
+                }}
+                compact
+              />
+            </div>
+          )}
+
+          {/* Sprint 60.U.4 — Planner Fee collapsed by default. Many planners
+              don't set fee on create — they confirm a number after the
+              consult. Hiding it until the user explicitly opens it cuts the
+              modal's perceived weight in half without losing functionality. */}
           <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Planner Fee</label>
-              {feeRange && !isInternal && (
+            <button
+              type="button"
+              onClick={() => setFeeOpen(o => !o)}
+              aria-expanded={feeOpen}
+              style={{
+                width: '100%', background: 'none', border: 'none',
+                cursor: 'pointer', padding: 0,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                marginBottom: feeOpen ? 10 : 0,
+                fontFamily: 'inherit', textAlign: 'left',
+              }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: steelTop, fontSize: 11 }}>{feeOpen ? '▾' : '▸'}</span>
+                <label style={{ fontSize: 10.5, color: steelTop, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', cursor: 'pointer' }}>Planner Fee</label>
+                {!feeOpen && (
+                  <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>
+                    {form.plannerFee ? `${fmtD(feeAmt)} · ${form.feeStructure}` : 'Optional — open to set'}
+                  </span>
+                )}
+              </span>
+              {feeOpen && feeRange && !isInternal && (
                 <span style={{ fontSize: 10, color: C.muted }}>
                   {metroMkt ? <>{metroTier?.icon} {metroMkt.label}: </> : 'Industry range: '}
                   <span style={{ color: C.accent2, fontWeight: 600 }}>{fmtD(adjLow)}–{fmtD(adjHigh)}</span>
@@ -8844,7 +9268,9 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                   )}
                 </span>
               )}
-            </div>
+            </button>
+
+            {feeOpen && (<>
 
             {/* Internal corporate banner */}
             {isInternal ? (
@@ -8935,6 +9361,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                 )}
               </>
             )}
+            </>)}
           </div>
         </div>
 
@@ -8943,20 +9370,22 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           <button style={{ ...s.btn(), flex: 1, minWidth: 90 }} onClick={onClose}>Cancel</button>
           {selectedEventId ? (
             <>
-              <button style={{ ...s.btn(), flex: 1, minWidth: 110 }} onClick={() => submit(false)} disabled={!canSubmit}>Create Client</button>
-              <button aria-label="Create the client and open the linked event's intake questionnaire" style={{ ...s.btn('primary'), flex: '1 1 100%' }} onClick={() => submit(true)} disabled={!canSubmit} title="Create the client and open the linked event's intake questionnaire">
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>Create Client</button>
+              <button aria-label="Create the client and open the linked event's intake questionnaire" style={{ ...s.btn('primary'), flex: '1 1 100%', ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(true)} aria-disabled={!canSubmit} title="Create the client and open the linked event's intake questionnaire">
                 Create & Start Event Intake →
               </button>
             </>
           ) : (
             <>
-              <button style={{ ...s.btn(), flex: 1, minWidth: 110 }} onClick={() => submit(false)} disabled={!canSubmit}>Create Client</button>
-              <button aria-label="Create the prospect and open the discovery questionnaire + inquiry checklist" style={{ ...s.btn('primary'), flex: '1 1 100%' }} onClick={() => submit(true)} disabled={!canSubmit} title="Create the prospect and open the discovery questionnaire + inquiry checklist">
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>Create Client</button>
+              <button aria-label="Create the prospect and open the discovery questionnaire + inquiry checklist" style={{ ...s.btn('primary'), flex: '1 1 100%', ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(true)} aria-disabled={!canSubmit} title="Create the prospect and open the discovery questionnaire + inquiry checklist">
                 Create & Start Intake →
               </button>
             </>
           )}
         </div>
+        </>
+        )}
       </div>
     </>
   );
@@ -9191,25 +9620,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   // mode only; light mode preserved.
   const showToast  = useToast(); // Sprint 68: needed for webhook test button
   const _themeCtx = useContext(ThemeCtx);
-  const _isDark = _themeCtx.theme === 'dark';
-  const C = useMemo(() => {
-    if (!_isDark) return _themeCtx.C;
-    return {
-      ..._themeCtx.C,
-      bg:       '#070809',
-      surface:  '#0d0f12',
-      surface2: '#121518',
-      border:   '#1c2026',
-      text:     '#eef0f4',
-      muted:    '#849eb8',
-      accent:   '#3a8a62',
-      accent2:  '#3a8a62',
-      warn:     '#d4904a',
-      danger:   '#9a3a3a',
-      success:  '#3a8a62',
-    };
-  }, [_themeCtx.C, _isDark]);
-  const _childThemeCtx = useMemo(() => ({ ..._themeCtx, C }), [_themeCtx, C]);
+  // Sprint 60.N: removed the local Studio Matte palette override (Sprint 46
+  // PLAN architecture artifact — deeper canvas + green accent + old crimson).
+  // Now inherits the locked outer DARK theme: Mid Carbon #111519 page,
+  // steel-blue accent, punched #E84850 critical, amber #D19A55 attention.
+  const C = _themeCtx.C;
+  const _childThemeCtx = _themeCtx;
   const s = useMemo(() => makeS(C), [C]);
   const auth = useContext(AuthCtx);
   const [copied,       setCopied]       = useState(false);
@@ -9258,13 +9674,36 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     reader.readAsDataURL(file);
   };
 
-  // Section header helper
-  const SectionHead = ({ label }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
-      <div style={{ flex: 1, height: 1, background: C.border }} />
-    </div>
-  );
+  // Section header helper.
+  // Sprint 60.U Phase 5 — ownership chip clarifies whether the section
+  // affects the account (just this user), workspace (all events in the
+  // studio), or a single event. Removes "do I affect self / workspace
+  // / event" guesswork per the No Guesswork rule.
+  const ownershipChipStyle = (color) => ({
+    fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
+    textTransform: 'uppercase', color,
+    padding: '2px 6px', borderRadius: 3,
+    border: `1px solid ${color}55`,
+    flexShrink: 0,
+  });
+  const SectionHead = ({ label, ownership = 'workspace' }) => {
+    const chip =
+      ownership === 'account'   ? { label: 'Account',   color: C.muted } :
+      ownership === 'event'     ? { label: 'Per event', color: C.warn } :
+                                  { label: 'Workspace', color: C.accent2 };
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
+        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches global hierarchy */}
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: C.accentTopGrad || C.accent, letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
+        <span style={ownershipChipStyle(chip.color)} title={
+          ownership === 'account' ? 'Affects only your user account.' :
+          ownership === 'event' ? 'Set on each event individually.' :
+                                  'Affects every event in this workspace.'
+        }>{chip.label}</span>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+      </div>
+    );
+  };
 
   const copyContact = () => {
     const lines = [];
@@ -9285,6 +9724,32 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   // doesn't see a new component type each keystroke. Pass C / s / profile /
   // onChange explicitly to keep them pure.
 
+  // Sprint 60.U.4 — Setup Health derivation. 8 dimensions the planner needs
+  // before the studio is "ready for real events". Each row knows: state
+  // (done / partial / needs setup) + one specific next action.
+  const setupHealth = (() => {
+    const supabaseOn = isSupabaseConfigured();
+    const commApiOn  = isCommApiConfigured();
+    const emailOn    = isEmailConfigured();
+    const aiOn       = !!profile?.anthropicKey;
+    const intakeLinkSet = !!(profile?.intakeUrl || profile?.businessName);
+    const vendorBankSet = !!(profile?.vendorBankSeeded || profile?.savedVendors?.length);
+    const hasPay     = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck);
+    const sigOn      = !!profile?.docusignAccessToken;
+    return [
+      { key: 'studio',  label: 'Studio name',       state: profile?.businessName?.trim() ? 'done' : 'needs', next: 'Add a studio name in Studio · Workspace' },
+      { key: 'planner', label: 'Planner name',      state: profile?.name?.trim()         ? 'done' : 'needs', next: 'Add your name in Planner · Account' },
+      { key: 'email',   label: 'Email delivery',    state: emailOn ? 'done' : commApiOn ? 'partial' : 'needs', next: emailOn ? null : commApiOn ? 'Finish email delivery setup in Connections' : 'Connect shared message history first' },
+      { key: 'intake',  label: 'Client intake link', state: intakeLinkSet ? 'done' : 'needs', next: 'Add intake link in Client Intake' },
+      { key: 'vendor',  label: 'Vendor bank',       state: vendorBankSet ? 'done' : 'needs', next: 'Add your saved vendors in Vendor Bank' },
+      { key: 'pay',     label: 'Payment setup',     state: hasPay ? 'done' : 'needs', next: 'Add how clients pay you in How Clients Pay' },
+      { key: 'sig',     label: 'Signature setup',   state: sigOn ? 'done' : 'needs', next: 'Connect signing account in Connections' },
+      { key: 'ai',      label: 'AI assistant',      state: aiOn ? 'done' : 'partial', next: aiOn ? null : 'Add your Anthropic key or use the shared assistant' },
+    ];
+  })();
+  const setupDone = setupHealth.filter(x => x.state === 'done').length;
+  const [setupHealthOpen, setSetupHealthOpen] = useState(true);
+
   return (
     <ThemeCtx.Provider value={_childThemeCtx}>
     <>
@@ -9292,12 +9757,131 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(420px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
 
         {/* ── Header ── */}
-        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Studio Settings</div>
-          <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
+        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            {/* Sprint 60.U.3 10+ — Event Boss eyebrow on Studio Settings. */}
+            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 3 }}>
+              Event Boss
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>Studio Settings</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              Account, workspace, and per-event settings. Ownership chips show what each section affects.
+            </div>
+          </div>
+          <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', marginTop: -4 }}>✕</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 32px' }}>
+
+          {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. The ownership chip
+              system (Account / Workspace / Per event) is the modal's
+              quietly important UX — making the autosave + scope explicit
+              here means the planner doesn't have to discover it via
+              tooltip. */}
+          {(() => {
+            const steelTopP = C.accentTopGrad || C.accent;
+            return (
+              <div style={{
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+                padding: '12px 14px', marginBottom: 14,
+                background: `linear-gradient(180deg, ${steelTopP}14 0%, ${steelTopP}07 100%)`,
+                border: `1px solid ${steelTopP}33`,
+                borderLeft: `3px solid ${steelTopP}`,
+                borderRadius: 10,
+              }}>
+                <span aria-hidden style={{
+                  flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+                  background: `${steelTopP}22`, color: steelTopP,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 800, marginTop: 1,
+                }}>✓</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopP, marginBottom: 3 }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5, fontWeight: 600, marginBottom: 4 }}>
+                    Settings autosave. Event Boss tracks scope for you.
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                    <span style={{ fontWeight: 700, color: C.muted }}>Account</span> = only you ·
+                    {' '}<span style={{ fontWeight: 700, color: C.accent2 || C.accent }}>Workspace</span> = every event ·
+                    {' '}<span style={{ fontWeight: 700, color: C.warn }}>Per event</span> = one event at a time.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Sprint 60.U.4 — Setup Health card. Tells the planner exactly
+              what they still need to do to make the studio fully ready. */}
+          {(() => {
+            const steelTopSH = C.accentTopGrad || C.accent;
+            const stateColor = (st) => st === 'done' ? C.success : st === 'partial' ? C.warn : C.muted;
+            const stateLabel = (st) => st === 'done' ? 'Done' : st === 'partial' ? 'Partial' : 'Needs setup';
+            const stateGlyph = (st) => st === 'done' ? '✓' : st === 'partial' ? '◐' : '○';
+            return (
+              <div style={{
+                marginBottom: 16,
+                background: C.bg,
+                border: `1px solid ${C.border}`,
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setSetupHealthOpen(o => !o)}
+                  aria-expanded={setupHealthOpen}
+                  style={{
+                    width: '100%', background: 'none', border: 'none',
+                    cursor: 'pointer', padding: '12px 14px',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontFamily: 'inherit', textAlign: 'left',
+                  }}>
+                  <span aria-hidden style={{
+                    flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+                    background: setupDone === setupHealth.length ? `${C.success}22` : `${steelTopSH}22`,
+                    color: setupDone === setupHealth.length ? C.success : steelTopSH,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 800,
+                  }}>{setupDone === setupHealth.length ? '✓' : '⚐'}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopSH, textTransform: 'uppercase' }}>Setup Health</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 1 }}>
+                      {setupDone}/{setupHealth.length} ready
+                    </div>
+                  </div>
+                  <span aria-hidden style={{ color: C.muted, fontSize: 13 }}>{setupHealthOpen ? '▾' : '▸'}</span>
+                </button>
+                {setupHealthOpen && (
+                  <div style={{ borderTop: `1px solid ${C.border}` }}>
+                    {setupHealth.map((row, idx) => (
+                      <div key={row.key} style={{
+                        padding: '10px 14px',
+                        borderBottom: idx < setupHealth.length - 1 ? `1px solid ${C.border}` : 'none',
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                      }}>
+                        <span aria-hidden style={{
+                          flexShrink: 0, width: 16, height: 16, borderRadius: '50%',
+                          color: stateColor(row.state),
+                          border: row.state === 'done' ? `1.5px solid ${C.success}` : `1.5px solid ${row.state === 'partial' ? C.warn : C.muted}`,
+                          background: row.state === 'done' ? `${C.success}22` : 'transparent',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 800, marginTop: 2,
+                        }}>{stateGlyph(row.state)}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{row.label}</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: stateColor(row.state) }}>{stateLabel(row.state)}</span>
+                          </div>
+                          {row.next && row.state !== 'done' && (
+                            <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{row.next}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Account (Supabase Auth) ── */}
           {auth?.configured && auth?.session && (
@@ -9351,7 +9935,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           )}
 
           {/* ── STUDIO IDENTITY ── */}
-          <SectionHead label="Studio" />
+          <SectionHead label="Studio" ownership="workspace" />
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
             <div>
@@ -9363,7 +9947,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           </PMRow2>
 
           {/* ── PLANNER IDENTITY ── */}
-          <SectionHead label="Planner" />
+          <SectionHead label="Planner" ownership="account" />
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="name"         label="Your Name"      ph="Jane Planner" />
           </PMRow2>
@@ -9709,29 +10293,31 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             return (
               <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
                 <ConnGroupHeader label="Core platform" />
-                {/* Supabase */}
+                {/* Sprint 60.U.4 — planner-friendly labels. Provider names
+                    (Supabase, Resend, etc.) live only inside the expandable
+                    `detail` slot, never in the planner-facing label/desc. */}
                 <IntRow
-                  label="Cloud sync (Supabase)"
+                  label="Cloud sync"
                   desc={supabaseOn ? 'Events and clients sync across devices' : 'Running on local device storage only'}
                   status={supabaseOn ? 'connected' : 'disconnected'}
-                  detail={supabaseOn ? null : 'Set REACT_APP_SUPABASE_URL + REACT_APP_SUPABASE_ANON_KEY to enable cloud sync.'}
+                  detail={supabaseOn ? 'Provider: Supabase' : 'Set REACT_APP_SUPABASE_URL + REACT_APP_SUPABASE_ANON_KEY to enable cloud sync.'}
                 />
 
-                {/* Communication backend */}
+                {/* Shared message history (was "Communication backend") */}
                 <IntRow
-                  label="Communication backend"
+                  label="Shared message history"
                   desc={commApiOn ? 'Messages post to shared event threads' : 'Messages save locally — not shared'}
                   status={commApiOn ? 'connected' : 'disconnected'}
-                  detail={commApiOn ? null : 'Set REACT_APP_API_BASE_URL to connect the FastAPI comms backend.'}
+                  detail={commApiOn ? null : 'Set REACT_APP_API_BASE_URL to connect the shared message backend.'}
                 />
 
                 <ConnGroupHeader label="Communication" />
-                {/* Email sending */}
+                {/* Email delivery (was "Email sending (Resend)") */}
                 <IntRow
-                  label="Email sending (Resend)"
-                  desc={emailOn ? 'Outbound email delivery active' : commApiOn ? 'Backend connected — email not configured' : 'Requires communication backend first'}
+                  label="Email delivery"
+                  desc={emailOn ? 'Outbound email delivery active' : commApiOn ? 'Setup partially complete — finish email setup' : 'Requires shared message history first'}
                   status={emailOn ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
-                  detail={!emailOn && commApiOn ? 'Configure Resend + custom domain on the backend. Set RESEND_API_KEY + RESEND_FROM_EMAIL server-side (never in the browser).' : null}
+                  detail={!emailOn && commApiOn ? 'Provider: Resend. Configure custom domain on the backend (RESEND_API_KEY + RESEND_FROM_EMAIL server-side).' : null}
                 />
 
                 {/* Email delivery health — last 24h, derived from loaded events */}
@@ -9761,63 +10347,63 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                 />
 
                 <ConnGroupHeader label="AI" />
-                {/* Claude AI */}
+                {/* Claude drafting assistant (was "Claude AI — drafting & suggestions") */}
                 <IntRow
-                  label="Claude AI — drafting & suggestions"
-                  desc={aiOn ? 'AI drafting active for vendor follow-ups and readiness summaries' : 'Add your Anthropic API key to enable AI drafting'}
+                  label="Claude drafting assistant"
+                  desc={aiOn ? 'Drafting active for vendor follow-ups and readiness summaries' : 'Add your Anthropic key to enable drafting'}
                   status={aiOn ? 'connected' : 'disconnected'}
                   expandContent={
                     <div>
-                      <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Anthropic API Key (BYOK)</label>
+                      <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Anthropic API Key (your own key)</label>
                       <input style={s.input} type="password" value={profile?.anthropicKey || ''} placeholder="sk-ant-…" onChange={e => onChange('anthropicKey', e.target.value)} />
-                      <div style={{ fontSize: 10, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>Stored in your browser only. Calls go directly to api.anthropic.com — never through our servers.</div>
+                      <div style={{ fontSize: 10, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>Stored in your browser only. Calls go directly to Anthropic — never through our servers.</div>
                     </div>
                   }
                 />
 
-                {/* Backend AI proxy — surfaced after Claude AI so the two AI rows sit together visually. */}
+                {/* AI writing assistant (was "AI proxy (server-side ChatGPT)") */}
                 <IntRow
-                  label="AI proxy (server-side ChatGPT)"
-                  desc={commApiOn ? 'AI calls route through backend via OpenAI GPT-4o — key stays server-side' : 'AI uses your BYOK key directly from the browser'}
+                  label="AI writing assistant"
+                  desc={commApiOn ? 'Drafting runs server-side so your key stays private' : 'Drafting uses your own key directly from the browser'}
                   status={commApiOn ? 'connected' : 'partial'}
-                  detail={!commApiOn ? 'Connect the backend and set OPENAI_API_KEY on Render to enable server-side AI (GPT-4o).' : null}
+                  detail={!commApiOn ? 'Provider: OpenAI GPT-4o via shared message history backend. Set OPENAI_API_KEY on the backend.' : 'Provider: OpenAI GPT-4o (server-side).'}
                 />
 
                 <ConnGroupHeader label="Money" />
                 {/* Stripe — client deposits */}
                 <IntRow
-                  label="Stripe — client deposits & balances"
-                  desc={stripeReady ? 'Create payment links for client fee milestones — clients pay on Stripe\'s hosted page' : commApiOn ? 'Backend connected — add STRIPE_SECRET_KEY on Render to enable' : 'Requires communication backend first'}
+                  label="Client deposits &amp; balances"
+                  desc={stripeReady ? 'Create payment links — clients pay on a secure hosted page' : commApiOn ? 'Setup partially complete — finish payments setup' : 'Requires shared message history first'}
                   status={stripeReady ? 'connected' : commApiOn ? 'partial' : 'disconnected'}
-                  detail={!stripeReady && commApiOn ? 'Set STRIPE_SECRET_KEY (sk_live_... or sk_test_...) on the Render backend. Create a restricted key at dashboard.stripe.com → Developers → API keys.' : null}
+                  detail={!stripeReady && commApiOn ? 'Provider: Stripe. Set STRIPE_SECRET_KEY on the backend; create a restricted key in your Stripe dashboard.' : stripeReady ? 'Provider: Stripe.' : null}
                 />
 
                 <ConnGroupHeader label="Signatures" />
                 {/* DocuSign */}
                 <IntRow
-                  label="DocuSign — e-signatures"
-                  desc={dsConnected ? `Connected as ${profile?.docusignAccountName || 'DocuSign account'}` : dsBackend?.configured ? 'Backend configured — connect your DocuSign account' : 'Send contracts for legal e-signature'}
+                  label="E-signatures"
+                  desc={dsConnected ? `Connected as ${profile?.docusignAccountName || 'signing account'}` : dsBackend?.configured ? 'Setup partially complete — connect your signing account' : 'Send contracts for legal signature'}
                   status={dsConnected ? 'connected' : dsBackend?.configured ? 'partial' : 'disconnected'}
-                  detail={!dsBackend?.configured ? 'Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend (Render).' : null}
-                  actionLabel={dsBackend?.configured && !dsConnected ? 'Connect DocuSign' : null}
+                  detail={!dsBackend?.configured ? 'Provider: DocuSign. Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend.' : dsConnected ? 'Provider: DocuSign.' : 'Provider: DocuSign.'}
+                  actionLabel={dsBackend?.configured && !dsConnected ? 'Connect signing account' : null}
                   onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
                 />
 
                 <ConnGroupHeader label="Logistics" />
-                {/* Google Maps */}
+                {/* Venue address suggestions (was "Google Maps — venue autocomplete") */}
                 <IntRow
-                  label="Google Maps — venue autocomplete"
-                  desc={isMapsConfigured() ? 'Venue search active on event create and edit' : 'Venue fields are plain text — no address suggestions'}
+                  label="Venue address suggestions"
+                  desc={isMapsConfigured() ? 'Address autocomplete active on event create and edit' : 'Venue fields are plain text — no address suggestions'}
                   status={isMapsConfigured() ? 'connected' : 'disconnected'}
                   detail={!isMapsConfigured() ? 'Set REACT_APP_GOOGLE_MAPS_KEY to enable. Free tier at console.cloud.google.com (Places API).' : null}
                 />
 
                 {/* Weather */}
                 <IntRow
-                  label="Weather risk (OpenWeather)"
+                  label="Weather risk"
                   desc={isWeatherConfigured() ? 'Outdoor event forecasts active — alerts appear on Command tab' : 'No weather forecasts for outdoor events'}
                   status={isWeatherConfigured() ? 'connected' : 'disconnected'}
-                  detail={!isWeatherConfigured() ? 'Set REACT_APP_OPENWEATHER_KEY to enable. Free tier: 1,000 calls/day at openweathermap.org.' : null}
+                  detail={isWeatherConfigured() ? 'Provider: OpenWeather.' : 'Provider: OpenWeather. Set REACT_APP_OPENWEATHER_KEY to enable (free tier: 1,000 calls/day).'}
                 />
 
                 <ConnGroupHeader label="Automation" />
@@ -10282,6 +10868,16 @@ function EventReadinessPanel({ events, onSelectEvent }) {
       return diff >= -1 && diff <= 60;
     })
     .map(ev => {
+      // Sprint 60.Q 10+ Lock Phase 1 — single source of truth.
+      // EventReadinessPanel was computing status from overdueTaskCount /
+      // overduePayCount / unconfirmedCount independently of selectStudio
+      // Command. Result: hero said "needs follow-up" while this panel
+      // said "On track" for the same event. Fixed by deriving status
+      // from getEventReadiness — the same signal the hero uses. The
+      // legacy per-axis counts are kept for the inline chip routing
+      // (Decisions / Vendors / Vendors / Guests) so each axis still
+      // routes to its own surface.
+      const r = getEventReadiness(ev);
       const overdueTaskCount = (ev.timeline || []).filter(t => !t.done && isTaskOverdue(t, ev.date)).length;
       const vendors = ev.vendors || [];
       const unconfirmedCount = vendors.filter(v => ['Contracted'].includes(v.status)).length;
@@ -10294,10 +10890,19 @@ function EventReadinessPanel({ events, onSelectEvent }) {
       const guests = ev.guests || [];
       const confirmedGuests = guests.filter(g => g.rsvp === 'Yes').length;
       const days = daysUntil(ev.date);
-      const critical = overdueTaskCount > 0 || overduePayCount > 0;
-      const caution = unconfirmedCount > 0 || (guests.length > 0 && confirmedGuests / guests.length < 0.5 && days !== null && days <= 14);
-      const statusColor = critical ? C.danger : caution ? C.warn : C.success;
-      const statusLabel = critical ? 'Needs attention' : caution ? 'Review needed' : 'On track';
+      const axisStatuses = [r.decision, r.vendor, r.timeline, r.document];
+      const atRiskCount    = axisStatuses.filter(a => a && a.status === 'AT_RISK').length;
+      const attentionCount = axisStatuses.filter(a => a && a.status === 'ATTENTION').length;
+      const critical = atRiskCount > 0;
+      const caution  = !critical && attentionCount > 0;
+      // Sprint 60.Q 10+ Lock — label aligned to the hero vocabulary.
+      // Hero's tier 5 (attention-level with riskCount>0) shows NEEDS
+      // FOLLOW-UP. The readiness panel now uses the same words so the
+      // two never disagree by phrasing. Critical-tier vocabulary
+      // (Needs attention) is reserved for URGENT items that the hero's
+      // tier 2 surfaces — those bypass this panel anyway on mobile.
+      const statusColor = critical ? C.warn : caution ? C.warn : C.success;
+      const statusLabel = (critical || caution) ? 'Needs follow-up' : 'On track';
       return { ev, days, overdueTaskCount, unconfirmedCount, overduePayCount, confirmedGuests, totalGuests: guests.length, statusColor, statusLabel, critical, caution };
     })
   , [events]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -10328,7 +10933,7 @@ function EventReadinessPanel({ events, onSelectEvent }) {
           });
           const stopAnd = (fn) => (e) => { e.stopPropagation(); fn(); };
           return (
-            <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={ev.id} onClick={() => onSelectEvent(ev.id, { tab: primaryTab })} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', borderLeft: `3px solid ${statusColor}` }}
+            <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={ev.id} onClick={() => onSelectEvent(ev.id, { tab: primaryTab })} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 14px', cursor: 'pointer', borderLeft: `3px solid ${statusColor}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.02), 0 4px 10px rgba(0,0,0,0.30), 0 14px 28px rgba(0,0,0,0.22)' }}
               onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
               onMouseLeave={e => { e.currentTarget.style.background = C.surface; }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -10378,6 +10983,8 @@ function EventReadinessPanel({ events, onSelectEvent }) {
 function SetupBanner({ profile, onOpenProfile }) {
   const C = useT();
   const s = makeS(C);
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
   const steps = [
     { label: 'Studio name',   done: !!(profile?.businessName || '').trim() },
     { label: 'Your name',     done: !!(profile?.name || '').trim() },
@@ -10387,11 +10994,51 @@ function SetupBanner({ profile, onOpenProfile }) {
   const allDone = doneCt === steps.length;
   if (allDone) return null;
 
+  // Sprint 60.M Phase 2c: mobile gets a single-line setup chip. Steps and
+  // checkmarks compress out — the count alone signals progress, and the
+  // tap target opens Settings where the full list lives anyway.
+  if (isMobile) {
+    return (
+      <button
+        onClick={onOpenProfile}
+        style={{
+          width: '100%',
+          padding: '8px 14px',
+          background: C.surface2,
+          borderTop: 'none',
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+          Finish studio setup · {doneCt}/{steps.length}
+        </span>
+        <span style={{ fontSize: 12, color: C.muted }}>Open →</span>
+      </button>
+    );
+  }
+
+  // Sprint 60.U.3 10+ — Event Boss eyebrow on the setup banner. Lands
+  // product personality in the first thing a new planner sees.
+  const steelTopSB = C.accentTopGrad || C.accent;
   return (
     <div style={{ padding: '10px 16px', background: C.surface2, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 4 }}>
-          Complete your studio setup — {doneCt}/{steps.length}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopSB }}>
+            Event Boss
+          </span>
+          <span style={{ width: 3, height: 3, borderRadius: '50%', background: C.border }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+            Complete your studio setup — {doneCt}/{steps.length}
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {steps.map(st => (
@@ -10413,7 +11060,7 @@ function SetupBanner({ profile, onOpenProfile }) {
 // decisions, approvals, requests, and vendor issues across every event into a
 // single sorted list. Each row is independently actionable — clicking opens
 // the event and routes to the right tab.
-function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
+function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact, heroIsUrgent = false, heroEventName = null }) {
   const C  = useT();
   const [filter, setFilter] = useState('all');
   const allItems = useMemo(() => getCrossEventAttentionItems(events), [events]);
@@ -10456,10 +11103,17 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
   ];
 
   return (
+    // Sprint 60.P polish: AttentionQueue joins the raise family.
     <div style={{
       marginBottom: 20,
-      background: C.surface2 || C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+      background: C.surface2 || C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
       padding: '16px 18px 4px',
+      boxShadow: [
+        'inset 0 1px 0 rgba(255,255,255,0.05)',
+        '0 1px 0 rgba(255,255,255,0.02)',
+        '0 4px 10px rgba(0,0,0,0.30)',
+        '0 14px 28px rgba(0,0,0,0.22)',
+      ].join(', '),
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -10502,7 +11156,13 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
           padding: '24px 0', textAlign: 'center', fontSize: 12, color: C.muted,
           borderTop: `1px solid ${C.border}`,
         }}>
-          {counts.all === 0 ? 'All quiet — nothing needs you right now.' : 'No items in this filter.'}
+          {counts.all === 0
+            ? (heroIsUrgent
+                ? (heroEventName
+                    ? `${heroEventName} is in the hero above — nothing else flagged here.`
+                    : 'Everything else is quiet — see the hero above.')
+                : 'All quiet — nothing needs you right now.')
+            : 'No items in this filter.'}
         </div>
       ) : (
         <div>
@@ -10699,8 +11359,16 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
 
   return (
     <div style={{
-      background: C.surface2 || C.surface, border: `1px solid ${C.border}`, borderRadius: 10,
+      background: C.surface2 || C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
       padding: '16px 18px 6px',
+      // Sprint 60.P refinement: Studio Matte raise so this panel sits in
+      // the same elevation family as the hero + supporting cards above.
+      boxShadow: [
+        'inset 0 1px 0 rgba(255,255,255,0.05)',
+        '0 1px 0 rgba(255,255,255,0.02)',
+        '0 4px 10px rgba(0,0,0,0.30)',
+        '0 14px 28px rgba(0,0,0,0.22)',
+      ].join(', '),
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Upcoming Events</span>
@@ -11049,6 +11717,10 @@ function HomeQuickActions({ events, onSelectEvent, onNew, onNewClient }) {
 function HomeHero({ profile, events, clients, onSelectEvent }) {
   const C = useT();
   const summary = useMemo(() => getCrossEventAttention(events), [events]);
+  // Sprint 60.P Addendum — derive the summary line from the SAME command
+  // state the hero uses, so the header line can't contradict the hero
+  // ("all quiet" while hero shows urgent was the prior failure mode).
+  const command = useMemo(() => selectStudioCommand(events), [events]);
   const firstItem = useMemo(() => {
     const items = getCrossEventAttentionItems(events);
     return items[0] || null;
@@ -11058,14 +11730,66 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const name = profile?.name?.split(' ')[0] || profile?.businessName?.split(' ')[0] || null;
 
+  // Locked truth-table summaries — every line provably agrees with the hero.
   const need = summary.totals.total;
-  const status = need === 0
-    ? `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · all quiet`
-    : `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · ${need} item${need === 1 ? '' : 's'} need your attention`;
-  const actionable = need > 0 && firstItem && typeof onSelectEvent === 'function';
+  const upcoming60 = events.filter(e => !e.archived && e.date)
+    .map(e => ({ ev: e, days: Math.round((new Date(e.date) - new Date()) / 86_400_000) }))
+    .filter(x => x.days >= 0 && x.days <= 60).length;
+  let status;
+  let summaryColor = C.muted;
+  if (command?.category === 'today-act') {
+    status = 'Event day · needs attention right now';
+    summaryColor = C.danger;
+  } else if (command?.category === 'today') {
+    status = 'Event day is active';
+    summaryColor = C.warn;
+  } else if (command?.level === 'critical') {
+    status = `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · needs attention`;
+    summaryColor = C.danger;
+  } else if (command?.level === 'attention') {
+    status = `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · needs follow-up`;
+    summaryColor = C.warn;
+  } else if (command?.category === 'multiple-upcoming') {
+    status = `${upcoming60} events in the next 60 days`;
+  } else if (command?.category === 'calendar' || command?.category === 'all-clear') {
+    status = `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · all quiet`;
+    summaryColor = C.success;
+  } else if (activeEvents === 0) {
+    status = '0 active events';
+  } else {
+    // Fall-through: count-based fallback (legacy behavior) so we never
+    // silently render an empty line.
+    status = need === 0
+      ? `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · all quiet`
+      : `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · ${need} item${need === 1 ? '' : 's'} need your attention`;
+  }
+  const actionable = need > 0 && firstItem && typeof onSelectEvent === 'function' && command?.level !== 'neutral';
 
+  // Sprint 60.U.3 10+ — Event Boss Pulse eyebrow. Anchors the page in
+  // product personality at first glance. Steel-blue + steady ✓ glyph =
+  // "Event Boss is watching your pipeline; you don't have to think about
+  // everything at once."
+  const steelTopH = C.accentTopGrad || C.accent;
   return (
     <div style={{ marginBottom: 18 }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '4px 10px 4px 8px', borderRadius: 99,
+        background: `${steelTopH}14`,
+        border: `1px solid ${steelTopH}33`,
+        marginBottom: 10,
+      }}>
+        <span aria-hidden style={{
+          width: 14, height: 14, borderRadius: '50%',
+          background: `${steelTopH}33`, color: steelTopH,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 8, fontWeight: 800,
+        }}>✓</span>
+        <span style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
+          textTransform: 'uppercase', color: steelTopH, lineHeight: 1,
+        }}>Event Boss Pulse</span>
+      </div>
       <h1 style={{
         fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em',
         color: C.text, margin: 0, lineHeight: 1.1,
@@ -11087,8 +11811,8 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
         </button>
       ) : (
         <p style={{
-          fontSize: 13, color: need > 0 ? C.warn : C.muted, margin: '6px 0 0',
-          fontWeight: need > 0 ? 500 : 400,
+          fontSize: 13, color: summaryColor, margin: '6px 0 0',
+          fontWeight: summaryColor !== C.muted ? 500 : 400,
         }}>{status}</p>
       )}
     </div>
@@ -11175,12 +11899,42 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
   );
 }
 
-function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention, onJumpToEvents, onNew, profile }) {
+function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention, onJumpToEvents, onNew, onLoadSampleData, profile }) {
   const C = useT();
   const bp = useContext(BpCtx);
   const isWide = bp === 'desktop' || bp === 'tablet-land';
   const isMobile = bp === 'mobile';
-  const command = useMemo(() => selectStudioCommand(events), [events]);
+  const rawCommand = useMemo(() => selectStudioCommand(events), [events]);
+  // Sprint 60.O Addendum: when only sample data is loaded, override the
+  // hero into "explore first" onboarding mode. Showing real urgency
+  // ("2 blockers") on data the user knows isn't theirs is dishonest and
+  // fails the grandmother test ("panic about fake events"). The override
+  // names the data identity and offers a calm, instructive next step.
+  const hasSampleData = useMemo(() =>
+    (events || []).some(e => SEED_EVENT_IDS.has(e.id)),
+    [events]);
+  const hasOnlySample = useMemo(() =>
+    hasSampleData && !(events || []).some(e => !SEED_EVENT_IDS.has(e.id)),
+    [events, hasSampleData]);
+  const command = useMemo(() => {
+    if (!hasOnlySample || !rawCommand) return rawCommand;
+    // Pick the first sample event so the primary CTA can route into it.
+    const firstSample = (events || []).find(e => SEED_EVENT_IDS.has(e.id));
+    return {
+      level: 'neutral',
+      category: 'sample',
+      eventId: firstSample?.id,
+      eventName: firstSample?.name,
+      title: 'Explore the app first.',
+      // Sprint 60.O Addendum: locked sample-mode body copy.
+      consequence: 'Tap around to see how planning works before adding your own event.',
+      primaryCta: firstSample ? 'Open sample event' : 'Plan your own event',
+      primaryRoute: firstSample ? { eventId: firstSample.id, tab: 'Command' } : undefined,
+      primaryAction: firstSample ? undefined : 'new-event',
+      secondaryCta: 'Plan your own event',
+      secondaryAction: 'new-event',
+    };
+  }, [rawCommand, hasOnlySample, events]);
   // Sprint 60.L F4: derive isTodayEvent up here so the hook is
   // unconditional (Rules of Hooks). Falls back to false when there's no
   // command or no eventId.
@@ -11203,11 +11957,22 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   // the LIVE chip just confirms "yes, this is also today." isTodayEvent
   // is hoisted above the early return for Rules of Hooks compliance.
   const isToday = command.category === 'today' || isTodayEvent;
+  // Sprint 60.O Addendum + 60.P Addendum: single-voice state-aware
+  // eyebrow system. Split critical (START HERE) from attention
+  // (NEEDS FOLLOW-UP) per the 60.P locked copy. The today-active
+  // (LIVE · ACT NOW) variant fires when the today event has urgent
+  // day-of items; plain today (TODAY · LIVE) fires when it's clean.
   const label =
-    isToday                       ? "Today's event · Live" :
-    command.level === 'critical'  ? "What needs you today · Critical" :
-    command.level === 'attention' ? "What needs you today · Follow up" :
-                                    "What needs you today";
+    command.category === 'empty'             ? 'WELCOME' :
+    hasOnlySample                            ? 'SAMPLE · NOT A REAL EVENT' :
+    command.category === 'today-act'         ? 'LIVE · ACT NOW' :
+    command.category === 'today' || isToday  ? 'TODAY · LIVE' :
+    command.level === 'critical'             ? 'START HERE' :
+    command.level === 'attention'            ? 'NEEDS FOLLOW-UP' :
+    command.category === 'multiple-upcoming' ? 'UPCOMING EVENTS' :
+    command.category === 'calendar'          ? 'UPCOMING EVENT' :
+    command.category === 'all-clear'         ? 'ALL CLEAR' :
+                                               'ALL CLEAR';
 
   const handlePrimary = () => {
     if (command.primaryAction === 'new-event') { onNew && onNew(); return; }
@@ -11220,19 +11985,38 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   const handleSecondary = () => {
     if (command.secondaryAction === 'attention') { onJumpToAttention && onJumpToAttention(); return; }
     if (command.secondaryAction === 'events')    { onJumpToEvents && onJumpToEvents(); return; }
+    if (command.secondaryAction === 'sample')    { onLoadSampleData && onLoadSampleData(); return; }
+    if (command.secondaryAction === 'new-event') { onNew && onNew(); return; }
+    // Sprint 60.O Addendum: tiers with a concrete secondary route (today
+    // → View full event details, multi-upcoming → Open today's event)
+    // navigate via the route object directly.
+    if (command.secondaryRoute && command.secondaryRoute.eventId) {
+      const { eventId, ...nav } = command.secondaryRoute;
+      onSelectEvent(eventId, nav);
+    }
   };
 
   return (
     <div
       role="region"
-      aria-label="What needs you today"
+      aria-label="Studio command"
       style={{
         position: 'relative',
         marginBottom: isWide ? 28 : 22,
         padding: isWide ? '24px 28px 24px 32px' : '20px 18px 20px 22px',
         background: C.surface,
         border: `1px solid ${C.border}`,
-        borderRadius: 12,
+        borderRadius: 14,
+        // Sprint 60.P refinement: subtle Studio Matte 3D raise — panel
+        // lifts off the Mid Carbon page with a faint top-edge highlight,
+        // a soft mid drop, and a deeper floor shadow. Lighter intensity
+        // than the CTA stack so a large panel doesn't feel heavy.
+        boxShadow: [
+          'inset 0 1px 0 rgba(255,255,255,0.05)',
+          '0 1px 0 rgba(255,255,255,0.02)',
+          '0 4px 10px rgba(0,0,0,0.30)',
+          '0 14px 28px rgba(0,0,0,0.22)',
+        ].join(', '),
         overflow: 'hidden',
       }}
     >
@@ -11299,8 +12083,30 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         {command.consequence}
       </p>
 
-      {/* Action row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      {/* Action well + row.
+          Sprint 60.P refinement: a small recessed well anchors the CTAs.
+          Inset shadow + slightly deeper Carbon background sets the well
+          *into* the panel surface, so the steel-blue gradient reads as a
+          physical button sitting in a tray rather than floating on top.
+          Action row stays stacked on mobile (full-width), inline on
+          desktop. */}
+      <div style={{
+        background: C.bg,
+        borderRadius: isMobile ? 14 : 12,
+        padding: isMobile ? '12px 12px' : '12px 14px',
+        boxShadow: [
+          'inset 0 2px 4px rgba(0,0,0,0.35)',
+          'inset 0 1px 0 rgba(0,0,0,0.40)',
+          'inset 0 -1px 0 rgba(255,255,255,0.03)',
+        ].join(', '),
+      }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? 10 : 12,
+        flexWrap: isMobile ? 'nowrap' : 'wrap',
+      }}>
         {/* Sprint 60.L Studio Matte Button Polish:
             • neutral (default) tier → silvery steel-blue gradient
               (brushed camera metal feel: #4E6877 → #3F5B6A,
@@ -11312,48 +12118,31 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
               confidence vs. pure white. White text reserved for the
               semantic-color tiers. */}
         {(() => {
-          // Sprint 60.L Studio Matte Button — 3D depth pass.
-          // Composite shadow:
-          //   inset 0 1px 0 rgba(255,255,255,0.14)  top highlight
-          //   inset 0 -1px 0 rgba(0,0,0,0.30)        bottom inner shadow (depth)
-          //   0 1px 0 rgba(255,255,255,0.04)         ambient top edge
-          //   0 6px 14px rgba(0,0,0,0.40)            mid drop
-          //   0 18px 36px rgba(0,0,0,0.30)           soft floor
-          //   0 0 0 1px rgba(193,203,208,0.18)       hairline border
-          const useGradient = command.level === 'neutral' || command.category === 'today';
-          const fillBg = useGradient
-            ? `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`
-            : (command.level === 'critical'
-                ? `linear-gradient(180deg, #b14a4a 0%, ${accent} 100%)`
-                : command.level === 'attention'
-                  ? `linear-gradient(180deg, #e0a35a 0%, ${accent} 100%)`
-                  : accent);
-          const ctaText = useGradient
-            ? C.accentText
-            : (command.level === 'critical' || command.level === 'attention' ? '#fff' : '#070809');
-          const shadow3D = useGradient
-            ? [
-                'inset 0 1px 0 rgba(255,255,255,0.14)',
-                'inset 0 -1px 0 rgba(0,0,0,0.30)',
-                '0 1px 0 rgba(255,255,255,0.04)',
-                '0 6px 14px rgba(0,0,0,0.40)',
-                '0 18px 36px rgba(0,0,0,0.30)',
-                '0 0 0 1px rgba(193,203,208,0.18)',
-              ].join(', ')
-            : [
-                'inset 0 1px 0 rgba(255,255,255,0.18)',
-                'inset 0 -1px 0 rgba(0,0,0,0.28)',
-                '0 6px 14px rgba(0,0,0,0.40)',
-                '0 18px 36px rgba(0,0,0,0.26)',
-                `0 0 0 1px ${accent}55`,
-              ].join(', ');
+          // Sprint 60.M Phase 2a: primary CTA is steel-blue across ALL tiers.
+          // The accent rail (left strip) + the tier label/chip carry the
+          // semantic signal — critical doesn't need a red button fighting
+          // the gradient hierarchy. One CTA voice; tier tells you what kind.
+          const fillBg = `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`;
+          const ctaText = C.accentText;
+          const shadow3D = [
+            'inset 0 1px 0 rgba(255,255,255,0.14)',
+            'inset 0 -1px 0 rgba(0,0,0,0.30)',
+            '0 1px 0 rgba(255,255,255,0.04)',
+            '0 6px 14px rgba(0,0,0,0.40)',
+            '0 18px 36px rgba(0,0,0,0.30)',
+            '0 0 0 1px rgba(193,203,208,0.18)',
+          ].join(', ');
           return (
             <button
               onClick={handlePrimary}
               style={{
+                // Sprint 60.P fix: full-width on mobile so the gradient
+                // commands the hero edge. Justify-content: center keeps
+                // the label + arrow visually balanced on the wide button.
+                width: isMobile ? '100%' : undefined,
                 padding: isWide ? '13px 24px' : isMobile ? '15px 24px' : '13px 22px',
                 minHeight: isMobile ? 54 : undefined,
-                borderRadius: isMobile ? 16 : 12,
+                borderRadius: isMobile ? 14 : 12,
                 border: 'none',
                 cursor: 'pointer',
                 background: fillBg,
@@ -11362,18 +12151,17 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
                 fontWeight: 700,
                 letterSpacing: '0.01em',
                 fontFamily: 'inherit',
-                display: 'inline-flex',
+                display: isMobile ? 'flex' : 'inline-flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 8,
                 transition: 'transform 0.16s cubic-bezier(.2,.7,.2,1), box-shadow 0.16s, filter 0.16s',
                 boxShadow: shadow3D,
-                textShadow: useGradient ? '0 1px 0 rgba(0,0,0,0.25)' : (ctaText === '#fff' ? '0 1px 0 rgba(0,0,0,0.25)' : '0 1px 0 rgba(255,255,255,0.10)'),
+                textShadow: '0 1px 0 rgba(0,0,0,0.25)',
               }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.filter = 'brightness(1.06)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.filter = 'brightness(1)'; }}
-              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = useGradient
-                ? 'inset 0 2px 4px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px rgba(193,203,208,0.18)'
-                : `inset 0 2px 4px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px ${accent}55`; }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(1px)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.30), 0 2px 6px rgba(0,0,0,0.40), 0 0 0 1px rgba(193,203,208,0.18)'; }}
               onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = shadow3D; }}
             >
               {command.primaryCta}
@@ -11385,6 +12173,11 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
           <button
             onClick={handleSecondary}
             style={{
+              // Sprint 60.P fix: full-width centered link on mobile so it
+              // visually pairs with the primary stack. Underline kept on
+              // desktop for inline-row context; dropped on mobile because
+              // the stacked block alignment already reads as "tap me".
+              width: isMobile ? '100%' : undefined,
               padding: isWide ? '10px 14px' : isMobile ? '12px 14px' : '10px 12px',
               minHeight: isMobile ? 46 : undefined,
               borderRadius: 8,
@@ -11395,9 +12188,10 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
               fontWeight: 500,
               cursor: 'pointer',
               fontFamily: 'inherit',
-              textDecoration: 'underline',
+              textDecoration: isMobile ? 'none' : 'underline',
               textUnderlineOffset: 3,
               textDecorationColor: C.border,
+              textAlign: 'center',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.color = C.muted; }}
@@ -11406,6 +12200,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
           </button>
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -11413,10 +12208,16 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
 // ─── Global Compose — full communications hub, accessible from every screen ─────
 // Sprint 66+: Message · Approval request · Follow-up · Internal note ·
 // 📞 Call · 💬 WhatsApp · 📧 Email client — all one click from anywhere.
-function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnections }) {
+function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnections, hideFabOn = 'none' }) {
   const C    = useT();
   const s    = makeS(C);
   const bp   = useContext(BpCtx);
+  // Sprint 60.P Phase 6: hide the floating compose FAB on mobile Home so
+  // it stops competing visually with the hero. The FAB still mounts and
+  // the modal still opens via in-event entry points; on dashboard mobile
+  // the GlobalCompose is reachable via the bottom nav / settings instead.
+  const isMob = bp === 'mobile';
+  const hideFab = hideFabOn === 'mobile-home' && isMob;
   const [open,            setOpen]            = useState(false);
   const [selectedEventId, setSelectedEventId] = useState('');
   const [channel,         setChannel]         = useState('client');
@@ -11562,7 +12363,6 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
     window.open(`mailto:${recipient?.email}?subject=${sub}&body=${bod}`, '_blank');
   };
 
-  const isMob = bp === 'mobile';
   const qBtnBase = {
     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
     padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
@@ -11571,19 +12371,29 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
 
   return (
     <>
-      {/* FAB */}
-      {!open && (
+      {/* FAB — Sprint 60.O: demoted on mobile (was a 52×52 glowing
+          steel-blue disc that competed with hero). Now 48×48 Carbon
+          surface with steel border on mobile — discoverable but not
+          dominant. Desktop keeps the original size + glow.
+          Sprint 60.P: hidden entirely on mobile Home when hideFabOn
+          === "mobile-home" so the hero owns the screen unchallenged. */}
+      {!open && !hideFab && (
         <button
           onClick={() => setOpen(true)}
           aria-label="Compose message"
           title="Communications hub — message, call, WhatsApp from anywhere"
           style={{
-            position: 'fixed', bottom: isMob ? 80 : 28, right: 20, zIndex: 200,
-            width: 52, height: 52, borderRadius: '50%',
-            background: C.accent, color: '#fff', border: 'none', cursor: 'pointer',
+            position: 'fixed', bottom: isMob ? 80 : 28, right: isMob ? 16 : 20, zIndex: 200,
+            width: isMob ? 48 : 52, height: isMob ? 48 : 52, borderRadius: '50%',
+            background: isMob ? C.surface2 : C.accent,
+            color: isMob ? C.text : '#fff',
+            border: isMob ? `1px solid ${C.border}` : 'none',
+            cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 4px 16px ${C.accent}55, 0 2px 8px rgba(0,0,0,0.3)`,
-            transition: 'transform 0.15s', fontSize: 20,
+            boxShadow: isMob
+              ? '0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(193,203,208,0.10)'
+              : `0 4px 16px ${C.accent}55, 0 2px 8px rgba(0,0,0,0.3)`,
+            transition: 'transform 0.15s', fontSize: 18,
           }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -12217,30 +13027,31 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // stable strings only used by the seed objects.
   const hasSampleData = (events || []).some(e => SEED_EVENT_IDS.has(e.id))
                      || (clients || []).some(c => SEED_CLIENT_IDS.has(c.id));
-  // Studio Matte palette — Figma B (Sprint 46 PLAN architecture). Applied only
-  // in dark mode; light mode keeps the standard LIGHT palette. Pushed via a
-  // local ThemeCtx.Provider so StatCard/KpiInboxPanel/etc. inherit it without
-  // needing prop drilling.
+  // Sprint 60.P Phase 4: sample-only mode = sample data is present AND
+  // there is no real (non-seed) event in the workspace. The mobile Home
+  // hierarchy switches to PRACTICE SIGNALS learning mode when this is
+  // true, so a non-technical user isn't shown urgent-looking attention
+  // surfaces over fake data.
+  const hasOnlyDemoData = hasSampleData
+                       && !(events || []).some(e => !SEED_EVENT_IDS.has(e.id));
+  // Sprint 60.P Phase 3: full mobile AttentionQueue is collapsed by
+  // default behind a one-line row. Tapping the row (or the hero's
+  // "View all attention items" secondary) expands it. Desktop never
+  // collapses — the full triage view is a pro feature there.
+  const [attentionExpanded, setAttentionExpanded] = useState(false);
+  // Sprint 60.P Addendum — compute the StudioCommand at MainDashboard
+  // level so supporting modules can hide when the hero is urgent. This
+  // is the single source of truth that fixes the "hero says slipping /
+  // readiness panel says On track" contradiction.
+  const dashboardCommand = useMemo(() => selectStudioCommand(events), [events]);
+  const heroIsUrgent = dashboardCommand?.level === 'critical' || dashboardCommand?.level === 'attention'
+                    || dashboardCommand?.category === 'today-act';
+  // Sprint 60.N: removed the local Sprint 46 Studio Matte override —
+  // dashboard now inherits the locked outer DARK theme (Mid Carbon
+  // #111519 page, steel-blue accent, punched #E84850 critical).
   const _themeCtx = useContext(ThemeCtx);
-  const _isDark = _themeCtx.theme === 'dark';
-  const C = useMemo(() => {
-    if (!_isDark) return _themeCtx.C;
-    return {
-      ..._themeCtx.C,
-      bg:       '#070809',  // canvas
-      surface:  '#0d0f12',  // base
-      surface2: '#121518',  // card
-      border:   '#1c2026',  // borderSubtle
-      text:     '#eef0f4',  // textPrimary
-      muted:    '#849eb8',  // textSecondary
-      accent:   '#3a8a62',  // green (replaces teal as primary)
-      accent2:  '#3a8a62',  // green
-      warn:     '#d4904a',  // amber
-      danger:   '#9a3a3a',  // red
-      success:  '#3a8a62',  // green — kept for semantic correctness
-    };
-  }, [_themeCtx.C, _isDark]);
-  const _childThemeCtx = useMemo(() => ({ ..._themeCtx, C }), [_themeCtx, C]);
+  const C = _themeCtx.C;
+  const _childThemeCtx = _themeCtx;
   const s      = useMemo(() => makeS(C), [C]);
   const evtCLR = useMemo(() => EVT_CLR(C), [C]);
   const bp = useContext(BpCtx);
@@ -12580,17 +13391,19 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           to clear the demo and start their real workspace. */}
       {hasSampleData && dashView === 'dashboard' && onClearSampleData && (
         <div role="status" style={{
-          padding: '8px 16px',
+          padding: isMobile ? '6px 14px' : '8px 16px',
           background: C.accent2 + '12', borderBottom: `1px solid ${C.accent2}44`,
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap',
         }}>
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
             textTransform: 'uppercase', color: C.accent2,
             padding: '2px 8px', borderRadius: 4, border: `1px solid ${C.accent2}66`,
           }}>Demo</span>
-          <span style={{ fontSize: 12, color: C.text, flex: 1, minWidth: 200 }}>
-            You're exploring with sample data. Clear it when you're ready to start your real workspace.
+          <span style={{ fontSize: isMobile ? 11 : 12, color: C.text, flex: 1, minWidth: 140 }}>
+            {isMobile
+              ? 'Exploring sample data.'
+              : "You're exploring with sample data. Clear it when you're ready to start your real workspace."}
           </span>
           <button
             onClick={() => {
@@ -12600,7 +13413,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             }}
             style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 12px', flexShrink: 0 }}
           >
-            Clear sample data
+            {isMobile ? 'Clear' : 'Clear sample data'}
           </button>
         </div>
       )}
@@ -12636,22 +13449,85 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               clients={clients}
               onSelectEvent={onSelectEvent}
               onJumpToAttention={() => {
+                // Sprint 60.P: tapping the hero's secondary CTA expands the
+                // collapsed mobile AttentionQueue + scrolls it into view.
+                setAttentionExpanded(true);
                 if (eventsRef.current && typeof eventsRef.current.scrollIntoView === 'function') {
-                  eventsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  setTimeout(() => eventsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
                 }
               }}
               onJumpToEvents={() => setDashView('events')}
               onNew={onNew}
+              onLoadSampleData={onLoadSampleData}
               profile={profile}
             />
           )}
 
           {/* ── Waiting for reply tracker ───────────────────────────── */}
+          {/* Sprint 60.O Phase 2: on mobile, collapse to a one-line signal
+              below the hero so it doesn't become a competing second card.
+              Full preview list remains on tablet/desktop. Tap routes to
+              the first unanswered thread's Communication tab.
+              Sprint 60.P Phase 4: in sample-only mode, hide entirely —
+              PRACTICE SIGNALS card below carries the learning message and
+              showing urgent-looking waiting data on sample events panics
+              non-technical users. */}
           {(() => {
+            if (isMobile && hasOnlyDemoData) return null;
             const unanswered = getUnansweredMessages(events);
             if (!unanswered.length) return null;
+            if (isMobile) {
+              const first = unanswered[0];
+              return (
+                <button
+                  onClick={() => onSelectEvent(first.eventId, { tab: 'Communication' })}
+                  style={{
+                    width: '100%', marginBottom: 14,
+                    position: 'relative',
+                    padding: '12px 16px 12px 19px',
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 14,
+                    // Sprint 60.P: matches the hero panel raise family.
+                    boxShadow: [
+                      'inset 0 1px 0 rgba(255,255,255,0.05)',
+                      '0 1px 0 rgba(255,255,255,0.02)',
+                      '0 4px 10px rgba(0,0,0,0.30)',
+                      '0 14px 28px rgba(0,0,0,0.22)',
+                    ].join(', '),
+                    cursor: 'pointer', textAlign: 'left',
+                    fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}
+                >
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.warn, borderRadius: 2 }} />
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: C.warn,
+                    padding: '2px 7px', borderRadius: 4,
+                    border: `1px solid ${C.warn}55`, flexShrink: 0,
+                  }}>Waiting</span>
+                  <span style={{ fontSize: 13.5, color: C.text, flex: 1, lineHeight: 1.35 }}>
+                    {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
+                  </span>
+                  <span style={{ color: C.muted, fontSize: 14 }}>›</span>
+                </button>
+              );
+            }
             return (
-              <div style={{ ...s.card, marginBottom: 20, padding: 0, overflow: 'hidden', borderColor: C.warn + '55' }}>
+              // Sprint 60.P polish: desktop waiting card joins the Studio
+              // Matte raise family so the messages surface reads with the
+              // same elevation as the hero panel above.
+              <div style={{
+                ...s.card, marginBottom: 20, padding: 0, overflow: 'hidden',
+                borderColor: C.warn + '55', borderRadius: 14,
+                boxShadow: [
+                  'inset 0 1px 0 rgba(255,255,255,0.05)',
+                  '0 1px 0 rgba(255,255,255,0.02)',
+                  '0 4px 10px rgba(0,0,0,0.30)',
+                  '0 14px 28px rgba(0,0,0,0.22)',
+                ].join(', '),
+              }}>
                 <div style={{ padding: '12px 18px 10px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>
                     ⏱ {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
@@ -12674,10 +13550,6 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{u.eventName} · <span style={{ color: C.muted, fontWeight: 500 }}>{u.thread === 'client' ? 'Client thread' : u.thread}</span></div>
                       <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{u.body}</div>
                     </div>
-                    {/* Sprint 60.L color restraint: hours-ago timestamp
-                        was amber as decoration. → steel; the unanswered
-                        list is already in an "attention" container which
-                        carries the action signal. */}
                     <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
                     <span style={{ color: C.muted, fontSize: 13 }}>›</span>
                   </div>
@@ -12814,21 +13686,104 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
           {/* Sprint 48 / Figma I: two-column body — AttentionQueue (left, wider)
               and Upcoming Events + This Week panels stacked (right rail). On
-              mobile everything stacks. */}
+              mobile everything stacks.
+              Sprint 60.P Phase 3+4: on mobile, AttentionQueue is replaced by:
+                · PRACTICE SIGNALS calm card (sample-only mode), OR
+                · single-line "N attention items · View all" row that expands
+                  the full queue on tap, OR
+                · the full queue if user already tapped to expand.
+              Desktop is unchanged so professionals keep the full triage view. */}
           {dashView === 'dashboard' && events.length > 0 && (
             <div style={{
               display: 'grid',
               gridTemplateColumns: isWide ? 'minmax(0, 1.6fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
               gap: 16, alignItems: 'start', marginBottom: 20,
             }} ref={eventsRef}>
-              <AttentionQueue
-                events={events}
-                onSelectEvent={onSelectEvent}
-                /* Sprint 59H — inline quick actions for decision/request/vendor-stale rows */
-                onMarkTaskDone={onMarkTaskDone}
-                onMarkMsgHandled={onMarkMsgHandled}
-                onLogVendorContact={onLogVendorContact}
-              />
+              {isMobile && hasOnlyDemoData ? (
+                // PRACTICE SIGNALS — sample-only learning card. No urgency.
+                // Sprint 60.P refinement: Studio Matte 3D raise so the
+                // card lifts off the Mid Carbon page in the same family
+                // as the hero panel above.
+                <div style={{
+                  position: 'relative',
+                  padding: '14px 16px 16px 19px',
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 14,
+                  boxShadow: [
+                    'inset 0 1px 0 rgba(255,255,255,0.05)',
+                    '0 1px 0 rgba(255,255,255,0.02)',
+                    '0 4px 10px rgba(0,0,0,0.30)',
+                    '0 14px 28px rgba(0,0,0,0.22)',
+                  ].join(', '),
+                }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.accent2, borderRadius: 2 }} />
+                  <div style={{
+                    fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+                    textTransform: 'uppercase', color: C.muted, marginBottom: 6,
+                  }}>
+                    Practice signals
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.35, marginBottom: 4 }}>
+                    Sample tasks, vendors, and messages appear here so you can see how the app works.
+                  </div>
+                  <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.45 }}>
+                    Clear sample data anytime — nothing here is yours.
+                  </div>
+                </div>
+              ) : isMobile && !attentionExpanded ? (
+                // Compact mobile row — full queue hidden until user opts in.
+                (() => {
+                  const itemCount = getCrossEventAttentionItems(events).length;
+                  if (itemCount === 0) return null;
+                  return (
+                    <button
+                      onClick={() => setAttentionExpanded(true)}
+                      style={{
+                        width: '100%',
+                        position: 'relative',
+                        padding: '14px 16px 14px 19px',
+                        background: C.surface,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 14,
+                        // Sprint 60.P refinement: same Studio Matte raise
+                        // as the hero panel above so the supporting card
+                        // sits in the same elevation family.
+                        boxShadow: [
+                          'inset 0 1px 0 rgba(255,255,255,0.05)',
+                          '0 1px 0 rgba(255,255,255,0.02)',
+                          '0 4px 10px rgba(0,0,0,0.30)',
+                          '0 14px 28px rgba(0,0,0,0.22)',
+                        ].join(', '),
+                        cursor: 'pointer', textAlign: 'left',
+                        fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                      }}
+                    >
+                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.warn, borderRadius: 2 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.warn, marginBottom: 2 }}>
+                          Attention
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
+                          {itemCount} attention item{itemCount !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>View all ›</span>
+                    </button>
+                  );
+                })()
+              ) : (
+                <AttentionQueue
+                  events={events}
+                  onSelectEvent={onSelectEvent}
+                  onMarkTaskDone={onMarkTaskDone}
+                  onMarkMsgHandled={onMarkMsgHandled}
+                  onLogVendorContact={onLogVendorContact}
+                  heroIsUrgent={heroIsUrgent}
+                  heroEventName={dashboardCommand?.eventName || null}
+                />
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
                 <HomeUpcomingPanel events={events} onSelectEvent={onSelectEvent} />
                 {/* Sprint 60.I: This Week mini calendar is hidden on mobile
@@ -12841,7 +13796,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             </div>
           )}
 
-          {dashView === 'dashboard' && events.length > 0 && (
+          {/* Sprint 60.P Addendum — hide EventReadinessPanel on mobile
+              when the hero is urgent. The two were producing contradictory
+              signals (hero "slipping on vendors" / readiness "On track")
+              for the same event. On desktop the panel still renders since
+              there's room and it has its own visual hierarchy. */}
+          {dashView === 'dashboard' && events.length > 0 && !(isMobile && heroIsUrgent) && (
             <EventReadinessPanel events={events} onSelectEvent={onSelectEvent} />
           )}
 
@@ -12909,7 +13869,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 onMouseEnter={e => { e.currentTarget.style.background = C.accent + '12'; e.currentTarget.style.borderColor = C.accent; }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.accent + '88'; }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Start here</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Welcome</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Plan your first event</div>
                 <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
                   Wedding, birthday, baby shower, fundraiser, corporate event — pick a type, set a date, and start. You can link a client now or later.
@@ -13162,7 +14122,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         const parts = [];
         if (outstanding > 0) parts.push(`${fmtD(outstanding)} outstanding`);
         if (nextEvt && nextDays !== null) parts.push(`${nextDays} days to ${nextEvt.name}`);
-        const headline = `Start here: ${c.name}${parts.length ? ' — ' + parts[0] : '.'}`;
+        const headline = `${c.name}${parts.length ? ' — ' + parts[0] : '.'}`;
         const consequence = parts.length > 1
           ? parts.slice(1).join(' · ') + (c.status ? ` · ${c.status} client` : '')
           : nextEvt
@@ -13803,7 +14763,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 ? `${att.approvals} approval${att.approvals !== 1 ? 's' : ''} waiting`
                 : totalAtt > 0 ? `${totalAtt} items need attention` : null;
 
-              const headline = `Start here: ${ev.name}${attPart ? ' — ' + attPart + '.' : '.'}`;
+              const headline = `${ev.name}${attPart ? ' — ' + attPart + '.' : '.'}`;
               const consequence = [
                 ev.client?.name,
                 days !== null ? countdownLabel(days) : null,
@@ -14083,8 +15043,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       const days = daysUntil(previewEv.date);
                       return days !== null ? (
                         <div style={{
+                          position: 'relative',
                           padding: '12px 16px', borderRadius: 8,
-                          background: days <= 14 ? C.danger + '12' : days <= 30 ? C.warn + '12' : C.surface2,
+                          background: C.surface2,
+                          borderLeft: days <= 14 ? `3px solid ${C.danger}` : days <= 30 ? `3px solid ${C.warn}` : `3px solid ${C.border}`,
                           marginBottom: 14, textAlign: 'center',
                         }}>
                           <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: days <= 14 ? C.danger : days <= 30 ? C.warn : C.text }}>{days}</div>
@@ -15324,7 +16286,7 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
 
       {/* Upcoming Payment Alerts */}
       {upcomingPayments.length > 0 && (
-        <div style={{ ...s.card, marginBottom: 16, borderColor: upcomingPayments[0].daysUntilDue <= 14 ? C.danger + '88' : C.warn + '88', background: upcomingPayments[0].daysUntilDue <= 14 ? C.danger + '0d' : C.warn + '0d' }}>
+        <div style={{ ...s.card, marginBottom: 16, position: 'relative', borderLeft: upcomingPayments[0].daysUntilDue <= 14 ? `3px solid ${C.danger}` : `3px solid ${C.warn}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: upcomingPayments[0].daysUntilDue <= 14 ? C.danger : C.warn }}>
               Upcoming Payments — {upcomingPayments.length} due within 30 days
@@ -16471,7 +17433,7 @@ function Guests({ guests, setGuests, event = {} }) {
             {[
               { icon: 'import',  label: 'Import CSV',      onClick: () => { setShowImport(true);        setGuestActionsOpen(false); } },
               { icon: 'history', label: `Import History${importBatches.length > 0 ? ` (${importBatches.length})` : ''}`, onClick: () => { setShowGuestHistory(true); setGuestActionsOpen(false); } },
-              { icon: 'send',    label: 'Send Invitations', onClick: () => { setShowInvite(true);        setGuestActionsOpen(false); } },
+              { icon: 'send',    label: 'Invite guests',    onClick: () => { setShowInvite(true);        setGuestActionsOpen(false); } },
               importBatches.length > 0 && { icon: 'arrowLeft', label: 'Undo Last Import', onClick: () => { handleUndo(); setGuestActionsOpen(false); } },
             ].filter(Boolean).map(a => (
               <button key={a.label} onClick={a.onClick}
@@ -16648,7 +17610,7 @@ function Guests({ guests, setGuests, event = {} }) {
           ) : (
             /* Desktop/tablet: full toolbar */
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button style={s.btn()} onClick={() => setShowInvite(true)}>✉ Send Invitations</button>
+              <button style={s.btn()} onClick={() => setShowInvite(true)}>✉ Invite guests</button>
               <button style={{ ...s.btn(), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowImport(true)}>
                 <Icon name="import" size={14} /> Import CSV
               </button>
@@ -17544,8 +18506,25 @@ function VendorScriptsPanel({ profile, event }) {
         </div>
       </div>
       {!profile?.name && (
-        <div style={{ padding: '10px 14px', background: C.warn + '18', border: `1px solid ${C.warn}55`, borderRadius: 8, marginBottom: 14, fontSize: 12, color: C.warn }}>
-          ⚡ Set your name and business info in your Profile to auto-fill these scripts.
+        // Sprint 60.N Phase 4: was amber+18 wash. Now Carbon body +
+        // amber chip + steel-gray copy. No background blend.
+        <div style={{
+          position: 'relative',
+          padding: '10px 14px 10px 17px',
+          background: C.surface,
+          borderRadius: 8, marginBottom: 14,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, background: C.warn, borderRadius: 2 }} />
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+            textTransform: 'uppercase', color: C.warn,
+            padding: '2px 7px', borderRadius: 4,
+            border: `1px solid ${C.warn}55`, flexShrink: 0,
+          }}>Heads up</span>
+          <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.45 }}>
+            Set your name and business info in your Profile to auto-fill these scripts.
+          </span>
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -18039,7 +19018,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
+function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, isDayOf = false }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -18093,6 +19072,52 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const emergencyContacts = vendors.filter(v => v.phone).sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
   const unconfirmed = sorted.filter(r => r.type === 'vendor' && !r.confirmed).length;
+
+  // Sprint 60.W — operational phase grouping. Each row gets a phase label
+  // (Prep / Arrivals / Ceremony / Reception / Wrap for weddings; the same
+  // bucketing reads sensibly for any event type via keyword + time fallback).
+  const phaseOf = (entry) => {
+    if (!entry) return 'prep';
+    const seg = (entry.segment || '').toLowerCase();
+    const own = (entry.owner   || '').toLowerCase();
+    const text = `${seg} ${own}`;
+    const min = entry.time ? parseMin(entry.time) : null;
+    // Wrap / ceremony / reception keywords win regardless of time.
+    if (/wrap|breakdown|load[ -]?out|departure|teardown|cleanup/.test(text))                    return 'wrap';
+    if (/ceremony|vows|processional|recessional|officiant|first look/.test(text))               return 'ceremony';
+    if (/cocktail|dinner|reception|toast|dance|cake|bar opens|appetizer|hors/.test(text))       return 'reception';
+    // Sprint 60.W tweak — morning setup/load-in (before 12pm) reads as Prep,
+    // even if it's a vendor doing it. Afternoon vendor arrivals are Arrivals.
+    if (min !== null && min < 12 * 60)                                                          return 'prep';
+    if (entry.type === 'prep')                                                                  return 'prep';
+    if (entry.type === 'vendor' || /arriv|load[ -]?in|setup begins|setup|venue opens/.test(text)) return 'arrivals';
+    if (min === null) return 'prep';
+    if (min < 14 * 60) return 'arrivals';
+    if (min < 17 * 60) return 'ceremony';
+    if (min < 22 * 60) return 'reception';
+    return 'wrap';
+  };
+  const PHASE_LABEL = { prep: 'Prep', arrivals: 'Arrivals', ceremony: 'Ceremony', reception: 'Reception', wrap: 'Wrap' };
+  const PHASE_ORDER = ['prep', 'arrivals', 'ceremony', 'reception', 'wrap'];
+
+  // Sprint 60.W — readiness derivation. Surfaces the rows the planner most
+  // needs to fix before Day-of: missing owner / missing time / missing
+  // location / vendor unconfirmed / time overlap.
+  const readiness = (() => {
+    const out = { missingOwner: 0, missingTime: 0, missingLocation: 0, vendorUnconfirmed: 0, overlaps: 0, total: sorted.length };
+    sorted.forEach((r, i) => {
+      if (!(r.owner || '').trim())    out.missingOwner++;
+      if (!(r.time  || '').trim())    out.missingTime++;
+      if (!(r.location || '').trim()) out.missingLocation++;
+      if (r.type === 'vendor' && !r.confirmed) out.vendorUnconfirmed++;
+      const next = sorted[i + 1];
+      if (r.time && next?.time) {
+        const a = parseMin(r.time), b = parseMin(next.time);
+        if (a !== null && b !== null && a >= b) out.overlaps++;
+      }
+    });
+    return out;
+  })();
 
   const fmtTime12 = (t) => {
     if (!t) return '—';
@@ -18148,6 +19173,118 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
     win.focus();
   };
 
+  // Sprint 60.T Phase 2 — Day-of Schedule timeline lock.
+  // When event is in dayMode, render the operational NOW / NEXT / LATER /
+  // DONE bucketing instead of the full planning layout. Buckets derive
+  // from current time vs r.time; "Now" = current item (last started
+  // within 60 min and no later item yet); "Next" = next 2 upcoming;
+  // "Later" = remaining future; "Done" = completed/past collapsed.
+  if (isDayOf) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const items = [...ros]
+      .filter(r => r.time)
+      .map(r => ({ ...r, _min: parseMin(r.time) }))
+      .filter(r => r._min !== null)
+      .sort((a, b) => a._min - b._min);
+    // Find current item: latest item whose time <= now and either marked
+    // confirmed/done or the next item is in the future.
+    let nowIdx = -1;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i]._min <= nowMin) { nowIdx = i; break; }
+    }
+    const nowItem  = nowIdx >= 0 ? items[nowIdx] : null;
+    const doneItems = nowIdx >= 0 ? items.slice(0, nowIdx) : [];
+    const futureItems = nowIdx >= 0 ? items.slice(nowIdx + 1) : items;
+    const nextItems = futureItems.slice(0, 2);
+    const laterItems = futureItems.slice(2);
+
+    const panelRaise = [
+      'inset 0 1px 0 rgba(255,255,255,0.05)',
+      '0 1px 0 rgba(255,255,255,0.02)',
+      '0 4px 10px rgba(0,0,0,0.30)',
+      '0 14px 28px rgba(0,0,0,0.22)',
+    ].join(', ');
+
+    const Section = ({ label, color, items: secItems, dim = false }) => {
+      if (secItems.length === 0) return null;
+      return (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color, marginBottom: 8, paddingLeft: 4,
+          }}>{label}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {secItems.map(r => (
+              <div key={r.id} style={{
+                ...s.card,
+                padding: '14px 16px 14px 19px',
+                borderRadius: 14,
+                borderLeft: `3px solid ${color}`,
+                boxShadow: dim ? 'none' : panelRaise,
+                opacity: dim ? 0.6 : 1,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: dim ? C.muted : C.text, minWidth: 80, flexShrink: 0 }}>
+                    {fmtTime12(r.time)}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: dim ? C.muted : C.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {r.segment || '(untitled)'}
+                    </div>
+                    {(r.owner || r.location) && (
+                      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+                        {[r.owner, r.location].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div style={{ paddingBottom: 80 }}>
+        {/* Header */}
+        <div style={{ marginBottom: 16, paddingLeft: 4 }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '0.18em',
+            textTransform: 'uppercase', color: C.warn, marginBottom: 4,
+          }}>Today's schedule</div>
+          <div style={{ fontSize: 15, color: C.muted }}>
+            What happens now, next, and later.
+          </div>
+        </div>
+        {items.length === 0 ? (
+          <div style={{ ...s.card, padding: '24px 16px', textAlign: 'center', borderRadius: 14 }}>
+            <div style={{ fontSize: 14, color: C.muted }}>
+              No schedule yet. Add segments in planning to surface them on event day.
+            </div>
+          </div>
+        ) : (
+          <>
+            {nowItem && (
+              <Section label="Now" color={C.warn} items={[nowItem]} />
+            )}
+            {nextItems.length > 0 && (
+              <Section label="Next up" color={C.accent2} items={nextItems} />
+            )}
+            {laterItems.length > 0 && (
+              <Section label="Later" color={C.muted} items={laterItems} />
+            )}
+            {doneItems.length > 0 && (
+              <Section label={`Done · ${doneItems.length}`} color={C.success} items={doneItems} dim />
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       {modalEntry && (
@@ -18192,6 +19329,52 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
         <StatCard label="Unconfirmed"     value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub="vendor slots" />
       </div>
 
+      {/* Sprint 60.W — Readiness strip. Surfaces the rows the planner needs
+          to fix before Day-of: missing owner / time / location / vendor
+          unconfirmed / overlap. Hidden when everything is clean. */}
+      {sorted.length > 0 && (() => {
+        const steelTopROS = C.accentTopGrad || C.accent;
+        const issues = [
+          { key: 'overlaps',          n: readiness.overlaps,          label: 'Time overlap',       color: C.danger },
+          { key: 'vendorUnconfirmed', n: readiness.vendorUnconfirmed, label: 'Vendor unconfirmed', color: C.warn   },
+          { key: 'missingTime',       n: readiness.missingTime,       label: 'Missing time',       color: C.warn   },
+          { key: 'missingOwner',      n: readiness.missingOwner,      label: 'Missing owner',      color: C.warn   },
+          { key: 'missingLocation',   n: readiness.missingLocation,   label: 'Missing location',   color: C.muted  },
+        ].filter(i => i.n > 0);
+        const allClear = issues.length === 0;
+        return (
+          <div style={{
+            marginBottom: 16,
+            background: `linear-gradient(180deg, ${steelTopROS}14 0%, ${steelTopROS}07 100%)`,
+            border: `1px solid ${steelTopROS}33`,
+            borderLeft: `3px solid ${allClear ? C.success : steelTopROS}`,
+            borderRadius: 10,
+            padding: '10px 14px',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 22, height: 22, borderRadius: '50%',
+              background: allClear ? `${C.success}22` : `${steelTopROS}22`,
+              color: allClear ? C.success : steelTopROS,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800,
+            }}>{allClear ? '✓' : '◐'}</span>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steelTopROS }}>Readiness</span>
+            {allClear ? (
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>All segments have owner, time, location, and confirmed vendors.</span>
+            ) : (
+              <>
+                {issues.map(i => (
+                  <span key={i.key} style={{ fontSize: 11, fontWeight: 700, color: i.color, background: `${i.color}14`, border: `1px solid ${i.color}44`, padding: '3px 9px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {i.n} · {i.label}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={s.cardTitle}>Day-of Schedule</div>
@@ -18235,8 +19418,24 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
               const next      = sorted[i + 1];
               const gapMin    = (entry.time && next?.time) ? parseMin(next.time) - parseMin(entry.time) : null;
               const gapLabel  = gapMin !== null && gapMin > 0 ? fmtDur(gapMin) : null;
+              const phase     = phaseOf(entry);
+              const prevPhase = i > 0 ? phaseOf(sorted[i - 1]) : null;
+              const showPhase = phase !== prevPhase;
+              const steelTopROS = C.accentTopGrad || C.accent;
               return (
                 <div key={entry.id}>
+                  {showPhase && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '14px 4px 6px',
+                      borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
+                      marginTop: i === 0 ? 0 : 4,
+                    }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                        {PHASE_LABEL[phase]}
+                      </span>
+                    </div>
+                  )}
                   <div onClick={() => setModalId(entry.id)}
                     style={{ display: 'flex', gap: 10, padding: bp === 'mobile' ? '14px 4px' : '12px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer', alignItems: 'flex-start' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
@@ -18284,9 +19483,30 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue }) {
               const gapMin    = (entry.time && next?.time) ? parseMin(next.time) - parseMin(entry.time) : null;
               const gapLabel  = gapMin !== null && gapMin > 0 ? fmtDur(gapMin) : null;
               const isVendor  = entry.type === 'vendor';
+              const phase     = phaseOf(entry);
+              const prevPhase = i > 0 ? phaseOf(sorted[i - 1]) : null;
+              const showPhase = phase !== prevPhase;
+              const steelTopROS = C.accentTopGrad || C.accent;
 
               return (
                 <Fragment key={entry.id}>
+                  {showPhase && (
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      marginTop: i === 0 ? 4 : 16,
+                      marginBottom: 6,
+                      paddingBottom: 4,
+                      borderBottom: `1px solid ${C.border}`,
+                    }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                        {PHASE_LABEL[phase]}
+                      </span>
+                      <span style={{ fontSize: 11, color: C.muted }}>
+                        {sorted.filter(e => phaseOf(e) === phase).length} segment{sorted.filter(e => phaseOf(e) === phase).length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  )}
                   <div>
                   <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
                     <input style={{ ...s.input, padding: '6px 8px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} value={entry.time} placeholder="09:00" onChange={e => upd(entry.id, 'time', e.target.value)} />
@@ -18702,7 +19922,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
               {dayPayments.map(v => {
                 const bal = vendorBalance(v);
                 return (
-                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: C.warn + '15', borderRadius: 6, border: `1px solid ${C.warn}33` }}>
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.warn}` }}>
                     <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{v.name}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>{fmtD(bal)}</span>
@@ -18803,29 +20023,12 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
 // ─── Master Calendar ──────────────────────────────────────────────────────────
 
 function MasterCalendarView({ events, onSelectEvent }) {
-  // Studio Matte palette — Figma B/I (Sprint 46/48). Applied only in dark mode;
-  // light mode keeps the standard LIGHT palette. Pushed via a local
-  // ThemeCtx.Provider so every child (day cells, legend, modals) inherits it.
+  // Sprint 60.N: removed the local Sprint 46/48 Studio Matte override —
+  // master calendar now inherits the locked outer DARK theme (Mid Carbon
+  // #111519 page, steel-blue accent, punched #E84850 critical).
   const _themeCtx = useContext(ThemeCtx);
-  const _isDark = _themeCtx.theme === 'dark';
-  const C = useMemo(() => {
-    if (!_isDark) return _themeCtx.C;
-    return {
-      ..._themeCtx.C,
-      bg:       '#070809',  // canvas
-      surface:  '#0d0f12',  // base
-      surface2: '#121518',  // card
-      border:   '#1c2026',  // borderSubtle
-      text:     '#eef0f4',  // textPrimary
-      muted:    '#849eb8',  // textSecondary
-      accent:   '#3a8a62',  // green (replaces teal as primary)
-      accent2:  '#3a8a62',  // green
-      warn:     '#d4904a',  // amber
-      danger:   '#9a3a3a',  // red
-      success:  '#3a8a62',  // green
-    };
-  }, [_themeCtx.C, _isDark]);
-  const _childThemeCtx = useMemo(() => ({ ..._themeCtx, C }), [_themeCtx, C]);
+  const C = _themeCtx.C;
+  const _childThemeCtx = _themeCtx;
   const s      = useMemo(() => makeS(C), [C]);
   const evtCLR = useMemo(() => EVT_CLR(C), [C]);
   const rosCLR = useMemo(() => ROS_CLR(C), [C]);
@@ -18939,6 +20142,37 @@ function MasterCalendarView({ events, onSelectEvent }) {
   return (
     <ThemeCtx.Provider value={_childThemeCtx}>
     <div style={{ background: C.bg, minHeight: '100%', color: C.text }}>
+      {/* Sprint 61.L — NO GUESSWORK rail for Master Calendar.
+          Explains what's on the calendar so the planner doesn't have to
+          guess which chip means which kind of work. */}
+      {(() => {
+        const steelTopMC = C.accentTopGrad || C.accent;
+        return (
+          <div style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            background: `linear-gradient(180deg, ${steelTopMC}14 0%, ${steelTopMC}07 100%)`,
+            border: `1px solid ${steelTopMC}33`,
+            borderLeft: `3px solid ${steelTopMC}`,
+            borderRadius: 8,
+            display: 'flex', gap: 10, alignItems: 'flex-start',
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 22, height: 22, borderRadius: '50%',
+              background: `${steelTopMC}22`, color: steelTopMC,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800, marginTop: 1,
+            }}>✓</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopMC, textTransform: 'uppercase' }}>No Guesswork</div>
+              <div style={{ fontSize: 12, color: C.text, lineHeight: 1.45, marginTop: 2 }}>
+                One calendar across every event. Event days, planning milestones, and payment due dates all show up here. Tap a chip to jump straight into the event.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Nav */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -19316,7 +20550,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 const v = item.vendor;
                 const bal = v ? vendorBalance(v) : 0;
                 return (
-                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: C.warn + '15', borderRadius: 6, border: `1px solid ${C.warn}33`, cursor: 'pointer' }}>
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.warn}`, cursor: 'pointer' }}>
                     <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label} · <span style={{ color: C.muted }}>{item.eventName}</span></span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>{fmtD(bal)}</span>
@@ -19382,7 +20616,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
   );
 }
 
-// ─── Send to Client ───────────────────────────────────────────────────────────
+// ─── Share with client ───────────────────────────────────────────────────────────
 
 const CLIENT_PKG_SECTIONS = [
   { id: 'summary',  label: 'Event Summary',  icon: '📋' },
@@ -19780,7 +21014,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
       action: handleDownload,
     },
     {
-      id: 'email',    label: 'Email to Client', sub: client?.email ? client.email : 'No email on file', variant: 'ghost',
+      id: 'email',    label: 'Open email draft', sub: client?.email ? client.email : 'No email on file', variant: 'ghost',
       action: handleEmail, disabled: !client?.email,
     },
     {
@@ -19800,8 +21034,11 @@ function SendToClientModal({ event, client, profile, onClose }) {
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="send" size={16} /> Send to Client</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="send" size={16} /> Share with client</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{event.name || 'Event'}{client?.name ? ` · ${client.name}` : ''}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontStyle: 'italic' }}>
+              Download, copy, or open an email draft. Nothing is sent until you send it from your email app.
+            </div>
           </div>
           <button aria-label="Close" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted, lineHeight: 1, padding: 4 }}>✕</button>
         </div>
@@ -20509,6 +21746,11 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
   const C = useT();
   const isMobile = bp === 'mobile';
   const [now, setNow] = useState(() => new Date());
+  // Sprint 60.R Day-of calm — collapse non-critical alerts on mobile so
+  // the calm command station (DayTaskView hero + sections) lands first.
+  // The alarm wall only expands when the user opts in. Critical alerts
+  // still render up top because they need immediate visibility.
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
   const days    = daysUntil(event.date);
@@ -20521,13 +21763,21 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
   const timeStr   = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
   const isEvtDay  = days === 0;
   const visible   = alerts.filter(a => !dismissed.has(a.id));
+  // Split critical from non-critical so the calm pass keeps true emergencies visible.
+  const criticalAlerts = visible.filter(a => a.sev === 'critical');
+  const otherAlerts    = visible.filter(a => a.sev !== 'critical');
+  // On mobile: always show critical rows; collapse the others behind a
+  // single "N more · View" affordance. Desktop unchanged.
+  const renderRows = isMobile
+    ? (alertsExpanded ? visible : criticalAlerts)
+    : visible;
 
   return (
     <div>
       {/* Clock / context strip */}
       <div style={{ background: C.surface2, borderBottom: `1px solid ${C.border}`, padding: isMobile ? '9px 14px' : '10px 28px', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 18, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 14 : 16, fontWeight: 700, color: C.text, letterSpacing: '0.04em', flexShrink: 0 }}>{timeStr}</span>
-        {isEvtDay && <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44` }}>Event Day</span>}
+        {isEvtDay && <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${C.accent}66` }}>Event Day</span>}
         {days !== null && !isEvtDay && <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{days > 0 ? `${days}d to event` : `${Math.abs(days)}d post`}</span>}
         {nextSeg && !isMobile && (
           <span style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
@@ -20548,17 +21798,88 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
           Next: <span style={{ color: C.text, fontWeight: 600 }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
         </div>
       )}
-      {/* Alert rows */}
-      {visible.map(a => (
-        <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px' : '8px 28px', background: a.sev === 'critical' ? C.danger + '0e' : C.warn + '0d', borderBottom: `1px solid ${a.sev === 'critical' ? C.danger : C.warn}30` }}>
-          <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.warn, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
-          <span style={{ flex: 1, fontSize: 13, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
-          {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 32, fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
-          <button onClick={() => onDismiss(a.id)} style={{ width: 32, height: 32, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Icon name="x" size={13} />
-          </button>
+      {/* Sprint 60.V — Day-of command station structure. Alert rows are
+          now labeled "NEEDS ACTION NOW" so the planner reads a structured
+          command station, not a raw panic stack. Steel-blue eyebrow over
+          the critical rows; muted eyebrow over the collapsed/non-critical
+          group when expanded. */}
+      {criticalAlerts.length > 0 && (
+        <div style={{
+          padding: isMobile ? '8px 14px 4px 17px' : '8px 28px 4px 31px',
+          background: C.surface,
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent }}>
+            Needs action now
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.danger }}>{criticalAlerts.length}</span>
         </div>
-      ))}
+      )}
+      {/* Alert rows — critical first, then non-critical (when expanded on mobile). */}
+      {renderRows.map((a, idx) => {
+        const showWaitHeader = isMobile && alertsExpanded && a.sev !== 'critical'
+          && idx > 0 && renderRows[idx - 1]?.sev === 'critical';
+        return (
+          <Fragment key={a.id}>
+            {showWaitHeader && (
+              <div style={{
+                padding: '8px 14px 4px 17px',
+                background: C.surface,
+                borderBottom: `1px solid ${C.border}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>
+                  What can wait
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>{otherAlerts.length}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px 8px 17px' : '8px 28px 8px 31px', background: C.surface, borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${a.sev === 'critical' ? C.danger : C.warn}` }}>
+              <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.warn, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
+              <span style={{ flex: 1, fontSize: 13, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
+              {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 32, fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
+              <button onClick={() => onDismiss(a.id)} style={{ width: 32, height: 32, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="x" size={13} />
+              </button>
+            </div>
+          </Fragment>
+        );
+      })}
+      {/* Mobile collapse affordance — only renders when non-critical alerts exist and aren't already shown. */}
+      {isMobile && !alertsExpanded && otherAlerts.length > 0 && (
+        <button
+          onClick={() => setAlertsExpanded(true)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '10px 14px 10px 17px',
+            background: C.surface, borderBottom: `1px solid ${C.border}`,
+            borderLeft: `3px solid ${C.muted}`,
+            cursor: 'pointer', textAlign: 'left',
+            border: 'none', borderRadius: 0, fontFamily: 'inherit',
+          }}
+        >
+          <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>
+            {otherAlerts.length} more alert{otherAlerts.length !== 1 ? 's' : ''} below
+          </span>
+          <span style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>View ›</span>
+        </button>
+      )}
+      {/* Collapse-back when expanded */}
+      {isMobile && alertsExpanded && otherAlerts.length > 0 && (
+        <button
+          onClick={() => setAlertsExpanded(false)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '100%', padding: '8px 14px',
+            background: 'transparent', borderBottom: `1px solid ${C.border}`,
+            cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+            fontSize: 12, color: C.muted, fontWeight: 500,
+          }}
+        >
+          Collapse alerts
+        </button>
+      )}
     </div>
   );
 }
@@ -20712,7 +22033,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           const late   = isEvtDay && vm !== null && vm < nowMin - 10 && st !== 'arrived' && st !== 'completed';
           const stColor = st === 'arrived' ? C.success : st === 'delayed' || late ? C.danger : st === 'completed' ? C.muted : C.warn;
           return (
-            <div key={v.id} style={{ ...s.card, padding: '14px 16px', borderLeft: `3px solid ${stColor}` }}>
+            <div key={v.id} style={{ ...s.card, padding: '14px 16px', borderLeft: `3px solid ${stColor}`, borderRadius: 14, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.02), 0 4px 10px rgba(0,0,0,0.30), 0 14px 28px rgba(0,0,0,0.22)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                 <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 18 : 20, fontWeight: 800, color: late ? C.danger : C.text, minWidth: 70, flexShrink: 0 }}>{fmtTime12(v.arrivalTime)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -20757,6 +22078,7 @@ function DayTaskView({ timeline, eventDate, setTimeline }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
   const [modalId, setModalId] = useState(null);
   const modalTask = timeline.find(t => t.id === modalId);
 
@@ -20768,6 +22090,48 @@ function DayTaskView({ timeline, eventDate, setTimeline }) {
   const { now, next, later } = bucketTasks(timeline, eventDate);
   const doneCount = timeline.filter(t => t.done).length;
 
+  // Sprint 60.P Day-of Now hero — live operational time + state-aware headline.
+  // Re-derives every minute so the clock stays honest. Headline + eyebrow
+  // follow the locked hero copy system from Home: state name → plain truth
+  // → one action.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const nowDate = new Date();
+  const timeStr = nowDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const dateStr = nowDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  void tick; // explicit dependency
+  const hour = nowDate.getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const heroState =
+    now.length > 0   ? 'critical' :
+    next.length > 0  ? 'attention' :
+                       'allclear';
+  const heroLabel =
+    heroState === 'critical'  ? 'NOW · ACT IMMEDIATELY' :
+    heroState === 'attention' ? 'NEXT UP' :
+                                'ALL CLEAR';
+  const heroLabelColor =
+    heroState === 'critical'  ? C.danger :
+    heroState === 'attention' ? C.warn :
+                                C.success;
+  const heroHeadline =
+    heroState === 'critical'  ? `${now.length} task${now.length !== 1 ? 's' : ''} need${now.length === 1 ? 's' : ''} you right now.` :
+    heroState === 'attention' ? `${next.length} task${next.length !== 1 ? 's' : ''} coming up this week.` :
+                                `${greet}. Day-of operations are running smoothly.`;
+  const heroBody =
+    heroState === 'critical'  ? 'These tasks are overdue or unscheduled. Knock them out before anything downstream blocks.' :
+    heroState === 'attention' ? 'No immediate blockers — but these are next in line. Keep moving while you have the time.' :
+                                doneCount > 0 ? `${doneCount} task${doneCount !== 1 ? 's' : ''} complete. Nothing outstanding right now.` : 'No outstanding tasks.';
+  const panelRaise = [
+    'inset 0 1px 0 rgba(255,255,255,0.05)',
+    '0 1px 0 rgba(255,255,255,0.02)',
+    '0 4px 10px rgba(0,0,0,0.30)',
+    '0 14px 28px rgba(0,0,0,0.22)',
+  ].join(', ');
+
   const TaskSection = ({ title, tasks, color }) => {
     if (tasks.length === 0) return null;
     return (
@@ -20777,7 +22141,9 @@ function DayTaskView({ timeline, eventDate, setTimeline }) {
           <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color }}>{title}</span>
           <span style={{ fontSize: 10, color: C.muted }}>({tasks.length})</span>
         </div>
-        <div style={s.card}>
+        {/* Sprint 60.P Day-of: TaskSection cards join the Studio Matte
+            raise family. Border-radius bumped to match the hero. */}
+        <div style={{ ...s.card, borderRadius: 14, boxShadow: panelRaise }}>
           {tasks.map(t => <TaskRow key={t.id} t={t} C={C} s={s} bp={bp} isOverdue={isOverdue} toggle={toggle} setModalId={setModalId} />)}
         </div>
       </div>
@@ -20786,18 +22152,73 @@ function DayTaskView({ timeline, eventDate, setTimeline }) {
 
   return (
     <div>
+      {/* Sprint 60.P Day-of Now hero — big live clock + state-aware
+          locked hero copy. Single command voice (NOW / NEXT UP / ALL
+          CLEAR eyebrow), plain truth headline, body explains, the rail
+          color signals urgency. Carbon panel + Studio Matte raise. */}
+      <div style={{
+        position: 'relative',
+        marginBottom: 18,
+        padding: isMobile ? '18px 18px 18px 21px' : '22px 26px 22px 29px',
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderLeft: `3px solid ${heroLabelColor}`,
+        borderRadius: 14,
+        boxShadow: panelRaise,
+      }}>
+        {/* Top row: live time + locked-state eyebrow */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 10, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{
+              fontSize: isMobile ? 9.5 : 10.5,
+              fontWeight: 700,
+              letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: heroLabelColor,
+              padding: '2px 7px', borderRadius: 4,
+              border: `1px solid ${heroLabelColor}55`,
+              display: 'inline-block',
+              marginBottom: 8,
+            }}>
+              {heroLabel}
+            </div>
+            <h2 style={{
+              margin: 0,
+              fontSize: isMobile ? 22 : 26,
+              fontWeight: 800, letterSpacing: '-0.025em',
+              lineHeight: 1.2, color: C.text,
+            }}>
+              {heroHeadline}
+            </h2>
+          </div>
+          {/* Live clock — operational weight */}
+          <div style={{ textAlign: isMobile ? 'left' : 'right', flexShrink: 0 }}>
+            <div style={{
+              fontSize: isMobile ? 36 : 44,
+              fontWeight: 800, color: C.text,
+              letterSpacing: '-0.03em', lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {timeStr}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4, letterSpacing: '0.04em' }}>
+              {dateStr}
+            </div>
+          </div>
+        </div>
+        <p style={{
+          margin: 0, fontSize: isMobile ? 14 : 13.5,
+          color: C.muted, lineHeight: 1.5, maxWidth: 720,
+        }}>
+          {heroBody}
+        </p>
+      </div>
+
       <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
         <StatCard label="Now"   value={now.length}   color={now.length   > 0 ? C.danger  : C.muted} />
         <StatCard label="Next"  value={next.length}  color={next.length  > 0 ? C.warn    : C.muted} />
         <StatCard label="Later" value={later.length} color={later.length > 0 ? C.muted   : C.muted} />
         <StatCard label="Done"  value={doneCount}    color={doneCount    > 0 ? C.success : C.muted} />
       </div>
-      {now.length === 0 && next.length === 0 && later.length === 0 && (
-        <div style={{ ...s.card, textAlign: 'center', padding: '32px 20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.success, marginBottom: 6 }}>All clear</div>
-          <div style={{ fontSize: 12, color: C.muted }}>{doneCount > 0 ? `${doneCount} task${doneCount !== 1 ? 's' : ''} complete.` : 'No outstanding tasks.'}</div>
-        </div>
-      )}
       <TaskSection title="Now — Act Immediately" tasks={now}   color={C.danger} />
       <TaskSection title="Next — Within 7 Days"  tasks={next}  color={C.warn}   />
       <TaskSection title="Later"                 tasks={later} color={C.muted}  />
@@ -20968,6 +22389,13 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
           budgetCategories={budgetCategories}
           onClose={() => setEditingVendor(null)}
           onChange={(updated) => {
+            // Sprint 61.J fix — VendorModal autosaves every keystroke and
+            // expects the SAME vendor object to come back so the input
+            // reflects what the user just typed. Previously only `vendors`
+            // updated; the locally-tracked `editingVendor` stayed stale and
+            // the field "reverted" on every keystroke. Sync both so the
+            // round-trip is honest.
+            setEditingVendor(updated);
             setVendors(prev => {
               const exists = (prev || []).some(v => v.id === updated.id);
               if (exists) return prev.map(v => v.id === updated.id ? updated : v);
@@ -21115,13 +22543,40 @@ function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clie
     }));
     return { ok: true, status: 'logged', fallback: true };
   };
+  // Sprint 60.T Phase 4 — canonical approval handler.
+  // Writes approval_status to the message in event.commClient, records
+  // resolvedAt timestamp + resolvedBy (planner name when available).
+  // No fake notification, no duplicate state — single source of truth
+  // is the message.approval_status field on the existing message in
+  // event.commClient (same field the bubble already reads in
+  // CommunicationHub for the isApproved / isRejected branches).
+  const onApprove = (messageId, verdict) => {
+    if (!messageId || !verdict) return;
+    if (!['approved', 'rejected'].includes(verdict)) return;
+    const now = new Date().toISOString();
+    const actor = profile?.name || 'Planner';
+    setEvent(e => ({
+      ...e,
+      commClient: (e.commClient || []).map(m => m.id === messageId
+        ? { ...m, approval_status: verdict, resolvedAt: now, resolvedBy: actor }
+        : m),
+    }));
+  };
+  // Sprint 60.Q Comms #2: day-of detection mirrors the Event Command
+  // Center logic (explicit dayMode overrides date-based auto-engage).
+  // CommunicationHub uses this to scale up bubbles + simplify the
+  // composer for live operational use.
+  const isDayOf = event?.dayMode === true
+              || (event?.dayMode !== false && event?.date === today8601());
   return (
     <CommunicationHub
       event={event}
       isMobile={isMobile}
+      isDayOf={isDayOf}
       openId={openId}
       onBack={onBack}
       onSend={onSend}
+      onApprove={onApprove}
       commLive={commLive}
       emailEnabled={emailEnabled}
       resolveEmail={resolveEmail}
@@ -21286,6 +22741,34 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Sprint 61.F — Decisions NO GUESSWORK rail. */}
+      {(() => {
+        const steelTopD = C.accentTopGrad || C.accent;
+        return (
+          <div style={{
+            margin: '10px 14px 12px',
+            padding: '10px 12px',
+            background: `linear-gradient(180deg, ${steelTopD}14 0%, ${steelTopD}07 100%)`,
+            border: `1px solid ${steelTopD}33`,
+            borderLeft: `3px solid ${steelTopD}`,
+            borderRadius: 8,
+            display: 'flex', gap: 10, alignItems: 'flex-start',
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+              background: `${steelTopD}22`, color: steelTopD,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 800, marginTop: 1,
+            }}>✓</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopD, textTransform: 'uppercase' }}>No Guesswork</div>
+              <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                Decisions block downstream work. Each row shows who owns it, what's blocking, and the next action. Approvals you send via the client portal show up here as soon as the client responds.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {/* Sprint 59D: legacy decisions bridge banner. Renders only when the
           event has decisions that haven't been moved into the backend
           approval history. Backend-unavailable state is honestly labeled —
@@ -21293,10 +22776,13 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
           sprint; on success the decision row is marked with
           `migratedToMessageId` so the banner stops showing. */}
       {showLegacyBanner && (
+        // Sprint 60.N Phase 4: was amber wash + amber border. Now Carbon
+        // surface + amber left rail. No background blend.
         <div style={{
-          padding: '10px 16px',
-          background: C.warn + '0d',
-          borderBottom: `1px solid ${C.warn}33`,
+          padding: '10px 16px 10px 19px',
+          background: C.surface,
+          borderBottom: `1px solid ${C.border}`,
+          borderLeft: `3px solid ${C.warn}`,
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -21347,9 +22833,10 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack }) {
           the planner sees what happened — no silent success. */}
       {migrationResult && (
         <div style={{
-          padding: '10px 16px',
-          background: migrationResult.ok ? C.success + '14' : C.warn + '0d',
-          borderBottom: `1px solid ${migrationResult.ok ? C.success + '44' : C.warn + '33'}`,
+          padding: '10px 16px 10px 19px',
+          background: C.surface,
+          borderBottom: `1px solid ${C.border}`,
+          borderLeft: `3px solid ${migrationResult.ok ? C.success : C.warn}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
@@ -21476,10 +22963,13 @@ function LegacyTabHeader({ label, hint, onBack }) {
         >
           ← Command Center
         </button>
+        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches modal + cockpit
+            + s.cardTitle hierarchy. Single edit propagates across every
+            L4 tab header (Calendar / Budget / Guests / Documents / etc.). */}
         <span style={{
-          fontSize: 9, fontWeight: 700,
+          fontSize: 10.5, fontWeight: 800,
           letterSpacing: '0.16em', textTransform: 'uppercase',
-          color: C.muted,
+          color: C.accentTopGrad || C.accent,
         }}>
           {label}
         </span>
@@ -21554,6 +23044,34 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
   return (
     <>
       <LegacyTabHeader label="Planning" hint="What's left to do and by when. Tap a task to open it." onBack={onBack} />
+      {/* Sprint 61.F — NO GUESSWORK rail explaining what the Planning tab is. */}
+      {(() => {
+        const steelTopPT = C.accentTopGrad || C.accent;
+        return (
+          <div style={{
+            margin: isMobile ? '0 14px 12px' : '0 28px 14px',
+            padding: '10px 12px',
+            background: `linear-gradient(180deg, ${steelTopPT}14 0%, ${steelTopPT}07 100%)`,
+            border: `1px solid ${steelTopPT}33`,
+            borderLeft: `3px solid ${steelTopPT}`,
+            borderRadius: 8,
+            display: 'flex', gap: 10, alignItems: 'flex-start',
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+              background: `${steelTopPT}22`, color: steelTopPT,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 800, marginTop: 1,
+            }}>✓</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopPT, textTransform: 'uppercase' }}>No Guesswork</div>
+              <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
+                Edits autosave. Event Boss tracks owner, deadline, and phase across List, Timeline, and Checklist.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 14px 10px' : '0 28px 12px', flexWrap: 'wrap' }}>
         {tabPill('list',      'List',      'Edit planning tasks as a list')}
         {tabPill('timeline',  'Timeline',  'Visual timeline by phase')}
@@ -21620,6 +23138,38 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
     if (st === 'signed' || st === 'approved' || st === 'final') return C.success;
     if (st === 'pending' || st === 'draft' || st === 'sent')    return C.warn;
     return C.muted;
+  };
+
+  // Sprint 60.W — operational vocabulary lock. Each doc row gets ONE
+  // operational status chip + ONE next action so the planner doesn't read
+  // passive "No link yet" copy.
+  // Vocabulary: Needs upload / Needs signature / Needs client review /
+  //             Needs vendor review / Linked / Signed / Draft / Pending /
+  //             Not required.
+  const eventDocOperationalStatus = (d) => {
+    const hasLink = !!(d.url || d.signedUrl || d.fileUrl);
+    if (d.status === 'signed' || d.status === 'approved' || d.status === 'final') {
+      return { label: 'Signed', color: C.success, action: hasLink ? 'Open file' : null };
+    }
+    if (d.kind === 'contract' && !hasLink) {
+      return { label: 'Needs upload', color: C.warn, action: 'Upload' };
+    }
+    if (d.status === 'draft')   return { label: 'Draft',                color: C.muted, action: hasLink ? 'Open file' : 'Upload' };
+    if (d.status === 'pending') return { label: 'Needs client review',  color: C.warn,  action: hasLink ? 'Open file' : 'Upload' };
+    if (d.status === 'sent')    return { label: 'Pending',              color: C.warn,  action: hasLink ? 'Open file' : null };
+    if (hasLink)                return { label: 'Linked',               color: C.success, action: 'Open file' };
+    return                              { label: 'Needs upload',        color: C.warn,  action: 'Upload' };
+  };
+
+  const vendorDocOperationalStatus = (v) => {
+    const signed     = v.contractSigned === true || v.contract_signed === true;
+    const hasFile    = Boolean(v.contractUrl || v.contractFileName || v.contractStoragePath);
+    const dsInFlight = v.docusignEnvelopeId && v.docusignStatus !== 'completed';
+    if (signed && hasFile)        return { label: 'Signed',          color: C.success, action: v.contractUrl ? 'Open file' : null };
+    if (signed && !hasFile)       return { label: 'Needs upload',    color: C.warn,    action: 'Upload signed contract' };
+    if (dsInFlight)               return { label: 'Pending signature', color: C.warn,  action: 'Open contract' };
+    if (hasFile && !signed)       return { label: 'Needs signature', color: C.warn,    action: 'Request signature' };
+    return                                { label: 'Needs upload',    color: C.warn,    action: 'Upload contract' };
   };
 
   // Sprint 60.L F13: SectionTitle tag 11 → 12 (status-pill min);
@@ -21696,42 +23246,46 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                   title 12 → 14.5, metadata 10.5 → 13, button 11 → 14. */}
               {attentionEventDocs.map(d => {
                 const kindLabel = KIND_LABEL[d.kind] || (d.kind || 'File');
+                const op = eventDocOperationalStatus(d);
+                const opener = d.url || d.signedUrl || d.fileUrl || null;
                 return (
-                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
                       </div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
-                        {kindLabel} · status: {d.status}
+                        {kindLabel} · Owner: Planner
                       </div>
                     </div>
-                    {(d.url || d.signedUrl || d.fileUrl) ? (
-                      <a href={d.url || d.signedUrl || d.fileUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
+                    {/* Sprint 60.W — operational status chip + honest action verb */}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                      {op.label}
+                    </span>
+                    {opener && (
+                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
-                    ) : (
-                      <span style={{ fontSize: 13, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link yet</span>
+                    )}
+                    {!opener && op.action === 'Upload' && (
+                      <span style={{ fontSize: 13, color: C.muted, flexShrink: 0, fontStyle: 'normal' }}>Upload to attach</span>
                     )}
                   </div>
                 );
               })}
               {attentionVendorDocs.map(v => {
-                const signed = v.contractSigned === true || v.contract_signed === true;
-                const hasFile = Boolean(v.contractUrl || v.contractFileName || v.contractStoragePath);
-                const reason = v.docusignEnvelopeId && v.docusignStatus !== 'completed'
-                  ? `DocuSign · ${v.docusignStatus || 'pending'}`
-                  : signed && !hasFile
-                    ? 'Signed — no file on file'
-                    : 'File uploaded — not marked signed';
+                const op = vendorDocOperationalStatus(v);
                 return (
-                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
+                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{v.name}</div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
-                        {v.category ? `${v.category} · ` : ''}{reason}
+                        {v.category ? `${v.category} · ` : ''}Owner: Vendor
                       </div>
                     </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                      {op.label}
+                    </span>
                     {v.contractUrl && (
                       <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
@@ -21756,7 +23310,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
             <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {eventDocs.map(d => {
                 const kindLabel = KIND_LABEL[d.kind] || (d.kind || 'File');
-                const sColor = statusColor(d.status);
+                const op = eventDocOperationalStatus(d);
                 const opener = d.url || d.signedUrl || d.fileUrl || null;
                 return (
                   <div key={d.id || d.title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
@@ -21765,22 +23319,19 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                         {d.title || d.fileName || '(untitled)'}
                       </div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
-                        {kindLabel}
+                        {kindLabel} · Owner: Planner
                         {d.fileName ? ` · ${d.fileName}` : ''}
                         {d.notes ? ` · ${d.notes}` : ''}
                       </div>
                     </div>
-                    {d.status && (
-                      <span style={{ fontSize: 12, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
-                        {d.status}
-                      </span>
-                    )}
-                    {opener ? (
+                    {/* Sprint 60.W operational chip */}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                      {op.label}
+                    </span>
+                    {opener && (
                       <a href={opener} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 14, padding: '8px 12px', minHeight: 40, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
-                    ) : (
-                      <span style={{ fontSize: 13, color: C.muted, fontStyle: 'italic', flexShrink: 0 }}>No link on file</span>
                     )}
                   </div>
                 );
@@ -21801,20 +23352,18 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                     ? 'Contract link'
                     : v.contractStoragePath
                       ? 'Contract uploaded'
-                      : 'DocuSign envelope';
-                const signed = v.contractSigned === true || v.contract_signed === true;
-                const sColor = signed ? C.success : v.docusignStatus === 'completed' ? C.success : C.warn;
-                const sLabel = signed ? 'Signed' : v.docusignEnvelopeId ? `DocuSign · ${v.docusignStatus || 'pending'}` : 'Unsigned';
+                      : 'No file attached';
+                const op = vendorDocOperationalStatus(v);
                 return (
                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
                       <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
-                        {v.category ? `${v.category} · ` : ''}{fileLabel}
+                        {v.category ? `${v.category} · ` : ''}Owner: Vendor · {fileLabel}
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: sColor, background: sColor + '14', border: `1px solid ${sColor}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
-                      {sLabel}
+                    <span style={{ fontSize: 10, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                      {op.label}
                     </span>
                     {v.contractUrl && (
                       <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', textDecoration: 'none', flexShrink: 0 }}>
@@ -21968,8 +23517,8 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
 
   return (
     <div style={{
-      margin: '0 0 12px', padding: '10px 12px', borderRadius: 8,
-      background: C.warn + '10', border: `1px solid ${C.warn}33`,
+      margin: '0 0 12px', padding: '10px 12px 10px 15px', borderRadius: 8,
+      background: C.surface2, borderLeft: `3px solid ${C.warn}`,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.warn, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
@@ -22064,7 +23613,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           return (
             // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
             // for grandmother-readable phone brightness.
-            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.warn + '0d', border: `1px solid ${C.warn}33`, borderLeft: `3px solid ${C.warn}` }}>
+            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}` }}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.warn, marginBottom: 8 }}>
                 Heads up · Missing logistics
               </div>
@@ -22233,13 +23782,13 @@ function CommunicationRail({ event, onOpenCommunication }) {
   };
   // Status label kept honest per the Sprint 58P / 59C semantic map.
   const statusLabel = (m) => {
-    if (m.deliveryStatus === 'email-delivered') return 'Delivered';
-    if (m.deliveryStatus === 'email-accepted' || m.deliveryStatus === 'email-sent') return 'Accepted by Resend';
-    if (m.deliveryStatus === 'email-bounced')   return 'Bounced';
-    if (m.deliveryStatus === 'email-complained') return 'Marked as spam';
-    if (m.deliveryStatus === 'email-failed')    return 'Failed';
-    if (m.deliveryStatus === 'email-deferred')  return 'Provider deferred';
-    if (m.deliveryStatus === 'local-only')      return 'Local only';
+    if (m.deliveryStatus === 'email-delivered') return 'Sent via email';
+    if (m.deliveryStatus === 'email-accepted' || m.deliveryStatus === 'email-sent') return 'Delivery pending';
+    if (m.deliveryStatus === 'email-bounced')   return 'Delivery failed';
+    if (m.deliveryStatus === 'email-complained') return 'Provider blocked';
+    if (m.deliveryStatus === 'email-failed')    return 'Delivery failed';
+    if (m.deliveryStatus === 'email-deferred')  return 'Delivery pending';
+    if (m.deliveryStatus === 'local-only')      return 'Saved to thread';
     if (m.deliveryStatus === 'sent-via-app')    return 'Logged to thread';
     if (m.deliveryStatus === 'note')            return 'Internal note';
     return null;
@@ -22257,7 +23806,8 @@ function CommunicationRail({ event, onOpenCommunication }) {
       }}
     >
       <div>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
+        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches global hierarchy */}
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 6 }}>
           Communication
         </div>
         <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
@@ -22817,7 +24367,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} />
+          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} isDayOf={dayMode} />
         </>
       )}
       {tab === 'Agenda'      && <>
@@ -22986,7 +24536,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 </button>
               )}
               <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Icon name="send" size={13} /> Send to Client
+                <Icon name="send" size={13} /> Share with client
               </button>
               {/* Sprint 49 closure: 'Manage Event' surface — labeled
                   entry-point for secondary + destructive actions. Replaces
@@ -23264,7 +24814,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               { icon: 'zap',      label: dayMode ? 'Full event view' : 'Day-of view', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
               // Sprint 51 follow-up: ConsultScriptModal trigger restored after Overview retirement.
               { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
-              { icon: 'send',     label: 'Send to Client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
+              { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
               client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
               { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
               { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
@@ -23935,7 +25485,7 @@ export default function App() {
     ));
   };
 
-  const createEvent = (ev, explicitClientId) => {
+  const createEvent = (ev, explicitClientId, navigate = true) => {
     setEvents(evts => [...evts, ev]);
     // Sprint 68: fire event.created webhook if planner has configured a URL
     if (profile?.webhookUrl) {
@@ -23955,9 +25505,11 @@ export default function App() {
       setClients(cs => cs.map(c => c.id === linkId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), ev.id])] } : c));
       if (!activeClientId) setActiveClientId(linkId);
     }
-    setActiveId(ev.id);
+    // navigate=false lets the New Event flow show its success state in place
+    // (the event is really created; navigation waits for "Open event").
+    if (navigate) setActiveId(ev.id);
   };
-  const createClient = (cl, linkedEventId, openIntake) => {
+  const createClient = (cl, linkedEventId, openIntake, navigate = true) => {
     setClients(cs => [...cs, cl]);
     // Sprint 60.A: first-client-created signal. Records onboarding path
     // only if no event was created first.
@@ -23979,6 +25531,9 @@ export default function App() {
     }
     // Open the linked event's intake, or land on the client (and, for a pure
     // prospect, auto-open the discovery intake).
+    // Sprint 60.U.3 10+ — navigate=false lets NewClientModal show its success
+    // payoff in place. Navigation waits until the user clicks Done.
+    if (!navigate) return;
     if (openIntake && linkedEventId) {
       setInitialNav({ openConsult: true });
       setActiveId(linkedEventId);
@@ -23999,9 +25554,21 @@ export default function App() {
   const linkEventToClient = (evId) => {
     setClients(cs => cs.map(c => c.id === activeClientId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), evId])] } : c));
   };
-  const deleteClient = ()     => { setClients(cs => cs.filter(c => c.id !== activeClientId)); setActiveClientId(null); };
-  const deleteEvent  = ()     => {
+  // Sprint 60.U/V destructive safety — explicit confirm gates so a stray
+  // tap can't lose an event or client. Per spec: "destructive action
+  // without clear confirmation" is an automatic 10+ fail.
+  const deleteClient = () => {
+    const client = clients.find(c => c.id === activeClientId);
+    const name = client?.name || 'this client';
+    if (!window.confirm(`Delete ${name}? This permanently removes the client record. Events linked to this client stay; only the link is removed. This cannot be undone.`)) return;
+    setClients(cs => cs.filter(c => c.id !== activeClientId));
+    setActiveClientId(null);
+  };
+  const deleteEvent  = () => {
     const evId = activeId;
+    const event = events.find(e => e.id === evId);
+    const name = event?.name || 'this event';
+    if (!window.confirm(`Delete ${name}? This permanently removes the event and all of its tasks, vendors, budget, guests, and messages. This cannot be undone.`)) return;
     setEvents(evts => evts.filter(e => e.id !== evId));
     // unlink from any client that referenced this event
     setClients(cs => cs.map(c => ({ ...c, eventIds: (c.eventIds || []).filter(id => id !== evId) })));
@@ -24250,7 +25817,7 @@ export default function App() {
           autoIntake={clientAutoIntake}
           onIntakeOpened={() => setClientAutoIntake(false)}
         />
-        {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} clients={clients} />}
+        {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} onOpenEvent={(id) => setActiveId(id)} clients={clients} />}
       </>
     );
   }
@@ -24282,7 +25849,7 @@ export default function App() {
         onMarkMsgHandled={markMsgHandled}
         onLogVendorContact={logVendorContact}
       />
-      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  clients={clients} profile={profile} />}
+      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id) => setActiveId(id)} clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events} />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
@@ -24290,6 +25857,10 @@ export default function App() {
           onOpenConnections gives the in-compose delivery hint a route to
           fix when email isn't configured. */}
       <GlobalCompose events={events} profile={profile} clients={clients}
+        // Sprint 60.P Phase 6: this render path is the MainDashboard (Home)
+        // surface — hide the FAB on mobile so the hero owns the screen.
+        // Event-detail screens have their own composer entries.
+        hideFabOn="mobile-home"
         onOpenConnections={() => setShowProfile(true)}
         onMessageSent={(eventId, msg) => {
           setEvents(prev => prev.map(e => e.id === eventId

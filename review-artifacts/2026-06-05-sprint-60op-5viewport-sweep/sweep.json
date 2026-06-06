@@ -1,0 +1,122 @@
+{
+  "home_critical_390": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "home_critical_430": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "home_critical_768": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "home_critical_1024": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "home_critical_1440": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "dayof_now_390": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "dayof_now_430": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "dayof_now_768": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "dayof_now_1024": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "dayof_now_1440": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "comms_thread_390": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "comms_thread_430": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "comms_thread_768": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "comms_thread_1024": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  },
+  "comms_thread_1440": {
+    "body_bg": "rgb(17, 21, 25)",
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "console_errors": 0,
+    "page_errors": 0
+  }
+}

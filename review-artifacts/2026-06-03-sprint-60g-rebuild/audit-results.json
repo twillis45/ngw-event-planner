@@ -1,0 +1,1078 @@
+{
+  "01_home": {
+    "body_chars": 3077,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nHome\nP\nComplete your studio setup \u2014 0/3\n\u00b7\nStudio name\n\u00b7\nYour name\n\u00b7\nContact info\nOpen Settings\nDEMO\nYou're exploring with sample data. Clear it when you're ready to start your real workspace.\nClear sample data\nWHAT NEEDS YOU TODAY \u00b7 CRITICAL\nStart here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.\n\n\"Send formal invitations\" \u2014 Overdue 20d. Other tasks are stuck until this is handled.\n\nOpen Todd & Sarah's Wedding\n\u2192\nView all 41 attention items\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n583h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n541h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & Flower Catering\nFinal headcount update: 118 guests confirmed. 4 vegetarian, 1 vegan, 2 gluten-fr\n469h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Bluebell Venue\nFollowing up on the rain contingency question from May 18. Also confirming our v\n225h ago\n\u203a\nCONTRACTED VALUE\n$462,025\ncommitted to vendors\nOpen \u2197\nBALANCE DUE\n$265,950\nowed to vendors\nOpen \u2197\nOPEN APPROVALS\n3\n3 awaiting response\nOpen \u2197\nPENDING REQUESTS\n15\n15 need a reply\nOpen \u2197\nQUICK ACTIONS\nDecisions\nApprovals\nCommunication\n+ Event\n+ Client\nWhat needs attention\n41\nAll\nTight timeline1\nDecisions1\nApprovals3\nRequests15\nVendor issues21\nRUSH\nTi",
+    "font_sizes_distribution": {
+      "8": 7,
+      "9": 19,
+      "10": 11,
+      "11": 55,
+      "12": 16,
+      "13": 31,
+      "14": 7,
+      "16": 4,
+      "18": 5,
+      "20": 2,
+      "32": 4
+    },
+    "button_count": 45,
+    "small_touch_targets": 16,
+    "headings": [
+      {
+        "tag": "H2",
+        "text": "Start here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.",
+        "fontSize": 20
+      }
+    ],
+    "primary_visible_buttons": [
+      {
+        "text": "Menu",
+        "area": 1444
+      },
+      {
+        "text": "P",
+        "area": 1156
+      },
+      {
+        "text": "Open Settings",
+        "area": 3026.109375
+      },
+      {
+        "text": "Clear sample data",
+        "area": 2575.453125
+      },
+      {
+        "text": "Open Todd & Sarah's Wedding\n\u2192",
+        "area": 8097.375
+      },
+      {
+        "text": "View all 41 attention items",
+        "area": 5792.53125
+      },
+      {
+        "text": "Decisions",
+        "area": 6549
+      },
+      {
+        "text": "Approvals",
+        "area": 6549
+      },
+      {
+        "text": "Communication",
+        "area": 6549
+      },
+      {
+        "text": "+ Event",
+        "area": 6549
+      },
+      {
+        "text": "+ Client",
+        "area": 6549
+      },
+      {
+        "text": "All",
+        "area": 673.4375
+      },
+      {
+        "text": "Tight timeline1",
+        "area": 2012.5
+      },
+      {
+        "text": "Decisions1",
+        "area": 1601.875
+      },
+      {
+        "text": "Approvals3",
+        "area": 1663.4375
+      },
+      {
+        "text": "Requests15",
+        "area": 1692.5
+      },
+      {
+        "text": "Vendor issues21",
+        "area": 2177.5
+      },
+      {
+        "text": "Tight timeline \u2014 1 to do now, 2 to consider swapping.\nTodd & Sarah's Wedding \u00b7 1",
+        "area": 12243.890625
+      },
+      {
+        "text": "\u203a",
+        "area": 425.25
+      },
+      {
+        "text": "Send formal invitations\n4 Months Out \u00b7 Todd",
+        "area": 9500.21875
+      }
+    ],
+    "jargon_hits": [
+      "BLOCKER"
+    ],
+    "pro_shorthand_hits": [],
+    "screenshot": "01_home.png"
+  },
+  "02_drawer": {
+    "body_chars": 3188,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nHome\nP\nComplete your studio setup \u2014 0/3\n\u00b7\nStudio name\n\u00b7\nYour name\n\u00b7\nContact info\nOpen Settings\nDEMO\nYou're exploring with sample data. Clear it when you're ready to start your real workspace.\nClear sample data\nWHAT NEEDS YOU TODAY \u00b7 CRITICAL\nStart here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.\n\n\"Send formal invitations\" \u2014 Overdue 20d. Other tasks are stuck until this is handled.\n\nOpen Todd & Sarah's Wedding\n\u2192\nView all 41 attention items\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n583h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n541h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & Flower Catering\nFinal headcount update: 118 guests confirmed. 4 vegetarian, 1 vegan, 2 gluten-fr\n469h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Bluebell Venue\nFollowing up on the rain contingency question from May 18. Also confirming our v\n225h ago\n\u203a\nCONTRACTED VALUE\n$462,025\ncommitted to vendors\nOpen \u2197\nBALANCE DUE\n$265,950\nowed to vendors\nOpen \u2197\nOPEN APPROVALS\n3\n3 awaiting response\nOpen \u2197\nPENDING REQUESTS\n15\n15 need a reply\nOpen \u2197\nQUICK ACTIONS\nDecisions\nApprovals\nCommunication\n+ Event\n+ Client\nWhat needs attention\n41\nAll\nTight timeline1\nDecisions1\nApprovals3\nRequests15\nVendor issues21\nRUSH\nTi",
+    "font_sizes_distribution": {
+      "8": 7,
+      "9": 19,
+      "10": 12,
+      "11": 55,
+      "12": 21,
+      "13": 33,
+      "14": 7,
+      "15": 1,
+      "16": 4,
+      "18": 5,
+      "20": 2,
+      "32": 4
+    },
+    "button_count": 56,
+    "small_touch_targets": 19,
+    "headings": [
+      {
+        "tag": "H2",
+        "text": "Start here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.",
+        "fontSize": 20
+      }
+    ],
+    "primary_visible_buttons": [
+      {
+        "text": "Menu",
+        "area": 1444
+      },
+      {
+        "text": "P",
+        "area": 1156
+      },
+      {
+        "text": "Open Settings",
+        "area": 3026.109375
+      },
+      {
+        "text": "Clear sample data",
+        "area": 2575.453125
+      },
+      {
+        "text": "Open Todd & Sarah's Wedding\n\u2192",
+        "area": 8097.375
+      },
+      {
+        "text": "View all 41 attention items",
+        "area": 5792.53125
+      },
+      {
+        "text": "Decisions",
+        "area": 6327
+      },
+      {
+        "text": "Approvals",
+        "area": 6327
+      },
+      {
+        "text": "Communication",
+        "area": 6327
+      },
+      {
+        "text": "+ Event",
+        "area": 6327
+      },
+      {
+        "text": "+ Client",
+        "area": 6327
+      },
+      {
+        "text": "All",
+        "area": 673.4375
+      },
+      {
+        "text": "Tight timeline1",
+        "area": 2012.5
+      },
+      {
+        "text": "Decisions1",
+        "area": 1601.875
+      },
+      {
+        "text": "Approvals3",
+        "area": 1663.4375
+      },
+      {
+        "text": "Requests15",
+        "area": 1692.5
+      },
+      {
+        "text": "Vendor issues21",
+        "area": 2177.5
+      },
+      {
+        "text": "Tight timeline \u2014 1 to do now, 2 to consider swapping.\nTodd & Sarah's Wedding \u00b7 1",
+        "area": 12243.890625
+      },
+      {
+        "text": "\u203a",
+        "area": 425.25
+      },
+      {
+        "text": "Send formal invitations\n4 Months Out \u00b7 Todd",
+        "area": 9500.21875
+      }
+    ],
+    "jargon_hits": [
+      "BLOCKER"
+    ],
+    "pro_shorthand_hits": [],
+    "screenshot": "02_drawer.png"
+  },
+  "03_pipeline": {
+    "body_chars": 1885,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nPipeline\nP\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n583h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n541h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & Flower Catering\nFinal headcount update: 118 guests confirmed. 4 vegetarian, 1 vegan, 2 gluten-fr\n469h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Bluebell Venue\nFollowing up on the rain contingency question from May 18. Also confirming our v\n225h ago\n\u203a\nSETUP PROGRESS\n3 of 5 setup steps recorded\n\u2713 App opened\n\u25cb First event created\n\u25cb First client added\n\u2713 Pipeline viewed\n\u2713 Sample event loaded\nNext:\nPlan your first event \u2192\nNEW INQUIRY\n\u2014\nPROPOSAL\n\u2014\nCONTRACTED\n\u2014\nDEPOSIT\n\u2014\nACTIVE\n9\nSarah & Todd Chen\nTodd & Sarah's Wedding \u00b7 Sep 12, 2026\nActive \u00b7 101d to event\nOpen event \u2192\nOpen event \u2192\nRivera & Okafor\nRivera & Okafor Wedding \u00b7 Oct 25, 2026\nActive \u00b7 144d to event\nOpen event \u2192\nOpen event \u2192\nTechCorp Inc.\nTechCorp Holiday Party \u00b7 Dec 18, 2026\nActive \u00b7 199d to event\nOpen event \u2192\nOpen event \u2192\nHartwell Legal Aid Society\nAnnual Strategic Planning Session \u00b7 Aug 14, 2026\nActive \u00b7 72d to event\nOpen event \u2192\nOpen event \u2192\nMar\u00eda & Eduardo Vega\nIsabella Vega's Quincea\u00f1era \u00b7 Apr 17, 2027\nActive \u00b7 318d to event\nOpen event \u2192\nOpen event \u2192\nHope Foundation\nHope Foundation A",
+    "font_sizes_distribution": {
+      "10": 9,
+      "11": 59,
+      "12": 4,
+      "13": 16,
+      "16": 4,
+      "18": 1,
+      "20": 1
+    },
+    "button_count": 22,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "Menu",
+        "area": 1444
+      },
+      {
+        "text": "P",
+        "area": 1156
+      },
+      {
+        "text": "Plan your first event \u2192",
+        "area": 2721.15625
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      },
+      {
+        "text": "Open event \u2192",
+        "area": 2200.09375
+      }
+    ],
+    "jargon_hits": [
+      "PIPELINE"
+    ],
+    "pro_shorthand_hits": [],
+    "screenshot": "03_pipeline.png"
+  },
+  "04_event_command": {
+    "body_chars": 810,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved just now\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nCOMMUNICATION\nLIVE\nClient1\nVendors4\nTeam\nLIVE\n\u2014 Messages send via email\n\u2315\nJane Planner\n2 days ago\nMenu approval needed \u2014 deadline June 20\nRequesting approval: We need to confirm the Holiday Buffet menu with City Catering by June 20 to lock in pricing. Please approve so we can proceed.\nAPPROVAL NEEDED\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "9": 5,
+      "10": 14,
+      "11": 30,
+      "12": 3,
+      "13": 1,
+      "16": 4,
+      "18": 1
+    },
+    "button_count": 15,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "Client1",
+        "area": 2199.84375
+      },
+      {
+        "text": "Vendors4",
+        "area": 2200.3125
+      },
+      {
+        "text": "Team",
+        "area": 2199.84375
+      },
+      {
+        "text": "Jane Planner\n2 days ago\nMenu approval needed \u2014 deadline June 20\nRequesting appro",
+        "area": 20880
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      },
+      {
+        "text": "PLANNING",
+        "area": 3575
+      },
+      {
+        "text": "PEOPLE",
+        "area": 3575
+      },
+      {
+        "text": "MONEY",
+        "area": 3575
+      },
+      {
+        "text": "COMMS",
+        "area": 3575
+      },
+      {
+        "text": "MORE",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [],
+    "screenshot": "04_event_command.png"
+  },
+  "05_people_sheet": {
+    "body_chars": 876,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 11s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nCOMMUNICATION\nLIVE\nClient1\nVendors4\nTeam\nLIVE\n\u2014 Messages send via email\n\u2315\nJane Planner\n2 days ago\nMenu approval needed \u2014 deadline June 20\nRequesting approval: We need to confirm the Holiday Buffet menu with City Catering by June 20 to lock in pricing. Please approve so we can proceed.\nAPPROVAL NEEDED\nPEOPLE\nVendors\n4 on event\nGuests\n5 confirmed of 7\nSeating\n5 tables\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "9": 5,
+      "10": 15,
+      "11": 33,
+      "12": 3,
+      "13": 4,
+      "16": 4,
+      "18": 1
+    },
+    "button_count": 18,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "Client1",
+        "area": 2199.84375
+      },
+      {
+        "text": "Vendors4",
+        "area": 2200.3125
+      },
+      {
+        "text": "Team",
+        "area": 2199.84375
+      },
+      {
+        "text": "Jane Planner\n2 days ago\nMenu approval needed \u2014 deadline June 20\nRequesting appro",
+        "area": 20880
+      },
+      {
+        "text": "Vendors\n4 on event",
+        "area": 19615.3125
+      },
+      {
+        "text": "Guests\n5 confirmed of 7",
+        "area": 19615.3125
+      },
+      {
+        "text": "Seating\n5 tables",
+        "area": 19615.3125
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      },
+      {
+        "text": "PLANNING",
+        "area": 3575
+      },
+      {
+        "text": "PEOPLE",
+        "area": 3575
+      },
+      {
+        "text": "MONEY",
+        "area": 3575
+      },
+      {
+        "text": "COMMS",
+        "area": 3575
+      },
+      {
+        "text": "MORE",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [],
+    "screenshot": "05_people_sheet.png"
+  },
+  "06_vendor_list": {
+    "body_chars": 1067,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 11s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nVENDORS\nVENDOR READINESS\n4 vendors need follow-up\n4 need attention\nSTART WITH SKYLINE EVENT CENTER\n4 VENDORS \u00b7 Ranked by risk\n+ Add\nSkyline Event Center\nVenue\n\u00b7\nPlanning\n\u00b7\ncontacted 2d ago\n\u2192 Get the signed contract from Skyline Event Center.\nFOLLOW UP\nPremier AV Solutions\nAV / Tech\n\u00b7\nContracting\n\u00b7\ncontacted 24d ago\n\u2192 Confirm deposit paid to Premier AV Solutions.\nFOLLOW UP\nCity Catering Co\nCatering\n\u00b7\nPlanning\n\u2192 Get the signed contract from City Catering Co.\nFOLLOW UP\nDJ Night Moves\nEntertainment\n\u00b7\nSelected\n\u2192 Review readiness for DJ Night Moves.\nFOLLOW UP\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "8": 4,
+      "9": 2,
+      "10": 32,
+      "11": 30,
+      "12": 5,
+      "13": 1,
+      "15": 1,
+      "16": 4,
+      "18": 1
+    },
+    "button_count": 17,
+    "small_touch_targets": 3,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "START WITH SKYLINE EVENT CENTER",
+        "area": 7366.453125
+      },
+      {
+        "text": "+ Add",
+        "area": 818.15625
+      },
+      {
+        "text": "Skyline Event Center\nVenue\n\u00b7\nPlanning\n\u00b7\ncontacted 2d ago\n\u2192 Get the signed contra",
+        "area": 30408
+      },
+      {
+        "text": "Premier AV Solutions\nAV / Tech\n\u00b7\nContracting\n\u00b7\ncontacted 24d ago\n\u2192 Confirm depos",
+        "area": 25521
+      },
+      {
+        "text": "City Catering Co\nCatering\n\u00b7\nPlanning\n\u2192 Get the signed contract from City Caterin",
+        "area": 25521
+      },
+      {
+        "text": "DJ Night Moves\nEntertainment\n\u00b7\nSelected\n\u2192 Review readiness for DJ Night Moves.\nF",
+        "area": 25521
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      },
+      {
+        "text": "PLANNING",
+        "area": 3575
+      },
+      {
+        "text": "PEOPLE",
+        "area": 3575
+      },
+      {
+        "text": "MONEY",
+        "area": 3575
+      },
+      {
+        "text": "COMMS",
+        "area": 3575
+      },
+      {
+        "text": "MORE",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [],
+    "screenshot": "06_vendor_list.png"
+  },
+  "07_vendor_detail": {
+    "body_chars": 3149,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 11s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nVENDORS\nVENDOR READINESS\n4 vendors need follow-up\n4 need attention\nSTART WITH SKYLINE EVENT CENTER\n\u2190 All vendors\nVENDOR DETAILS \u00b7 FOLLOW UP\nSkyline Event Center\nVenue\n\u00b7\nNEEDS FOLLOW-UP\n\u00b7\nPlanning\nCall\nEmail\nEdit details \u2192\nNEXT ACTION\nGet the signed contract from Skyline Event Center.\nVendor is confirmed but no contract is on file \u2014 booking record is incomplete and protection is thin.\nHANDLE CONTRACT\n\u25b8\nQUICK READ\nRule-based preview\n\u25be\nWHERE THIS VENDOR STANDS\n2 need attention\nBOOKING\nConfirmed but no contract on file.\nCOMMUNICATION\nContact channels available.\nLOGISTICS\nArrival time set.\nSCOPE\nVenue scope agreed via booking.\nTIMELINE\n1 run-of-show entry linked.\nPAYMENT\nDeposit paid; balance pending.\nDOCUMENTS\nContract not on file.\nDAY OF\nDay-of activates closer to the event.\nWRAP-UP\nCloseout activates after the event.\n\u25be\nPLANNING\nBefore the event\n\u2713\nVendor selected\nConfirmed\n\u2192\n\u2713\nScope confirmed\nVenue scope\n\u2192\n!\nContract signed\nNot attached\nBooking record is incomplete without a signed contract.\n\u2192\n\u2713\nDeposit paid\nPaid\n\u2192\n\u00b7\nFin",
+    "font_sizes_distribution": {
+      "9": 23,
+      "10": 30,
+      "11": 101,
+      "12": 35,
+      "13": 22,
+      "14": 1,
+      "15": 1,
+      "16": 4,
+      "18": 1,
+      "22": 1
+    },
+    "button_count": 42,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "START WITH SKYLINE EVENT CENTER",
+        "area": 7366.453125
+      },
+      {
+        "text": "\u2190 All vendors",
+        "area": 13756
+      },
+      {
+        "text": "Edit details \u2192",
+        "area": 2375
+      },
+      {
+        "text": "HANDLE CONTRACT",
+        "area": 4049.15625
+      },
+      {
+        "text": "\u25b8\nQUICK READ\nRule-based preview",
+        "area": 4186
+      },
+      {
+        "text": "\u25be\nWHERE THIS VENDOR STANDS\n2 need attention",
+        "area": 4186
+      },
+      {
+        "text": "\u25be\nPLANNING\nBefore the event",
+        "area": 4186
+      },
+      {
+        "text": "\u2713\nVendor selected\nConfirmed\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nScope confirmed\nVenue scope\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "!\nContract signed\nNot attached\nBooking record is incomplete without a signed con",
+        "area": 24156
+      },
+      {
+        "text": "\u2713\nDeposit paid\nPaid\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u00b7\nFinal payment\nDue 2026-10-01\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nPrimary contact\nevents@skyline.com\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nArrival / setup time\n14:00\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u25b8\nTHE DAY OF\nWhen the event is live",
+        "area": 4186
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [
+      "Day-of"
+    ],
+    "screenshot": "07_vendor_detail.png"
+  },
+  "08_money_sheet": {
+    "body_chars": 3206,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 16s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nVENDORS\nVENDOR READINESS\n4 vendors need follow-up\n4 need attention\nSTART WITH SKYLINE EVENT CENTER\n\u2190 All vendors\nVENDOR DETAILS \u00b7 FOLLOW UP\nSkyline Event Center\nVenue\n\u00b7\nNEEDS FOLLOW-UP\n\u00b7\nPlanning\nCall\nEmail\nEdit details \u2192\nNEXT ACTION\nGet the signed contract from Skyline Event Center.\nVendor is confirmed but no contract is on file \u2014 booking record is incomplete and protection is thin.\nHANDLE CONTRACT\n\u25b8\nQUICK READ\nRule-based preview\n\u25be\nWHERE THIS VENDOR STANDS\n2 need attention\nBOOKING\nConfirmed but no contract on file.\nCOMMUNICATION\nContact channels available.\nLOGISTICS\nArrival time set.\nSCOPE\nVenue scope agreed via booking.\nTIMELINE\n1 run-of-show entry linked.\nPAYMENT\nDeposit paid; balance pending.\nDOCUMENTS\nContract not on file.\nDAY OF\nDay-of activates closer to the event.\nWRAP-UP\nCloseout activates after the event.\n\u25be\nPLANNING\nBefore the event\n\u2713\nVendor selected\nConfirmed\n\u2192\n\u2713\nScope confirmed\nVenue scope\n\u2192\n!\nContract signed\nNot attached\nBooking record is incomplete without a signed contract.\n\u2192\n\u2713\nDeposit paid\nPaid\n\u2192\n\u00b7\nFin",
+    "font_sizes_distribution": {
+      "9": 23,
+      "10": 31,
+      "11": 103,
+      "12": 35,
+      "13": 24,
+      "14": 1,
+      "15": 1,
+      "16": 4,
+      "18": 1,
+      "22": 1
+    },
+    "button_count": 44,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "START WITH SKYLINE EVENT CENTER",
+        "area": 7366.453125
+      },
+      {
+        "text": "\u2190 All vendors",
+        "area": 13756
+      },
+      {
+        "text": "Edit details \u2192",
+        "area": 2375
+      },
+      {
+        "text": "HANDLE CONTRACT",
+        "area": 4049.15625
+      },
+      {
+        "text": "\u25b8\nQUICK READ\nRule-based preview",
+        "area": 4186
+      },
+      {
+        "text": "\u25be\nWHERE THIS VENDOR STANDS\n2 need attention",
+        "area": 4186
+      },
+      {
+        "text": "\u25be\nPLANNING\nBefore the event",
+        "area": 4186
+      },
+      {
+        "text": "\u2713\nVendor selected\nConfirmed\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nScope confirmed\nVenue scope\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "!\nContract signed\nNot attached\nBooking record is incomplete without a signed con",
+        "area": 24156
+      },
+      {
+        "text": "\u2713\nDeposit paid\nPaid\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u00b7\nFinal payment\nDue 2026-10-01\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nPrimary contact\nevents@skyline.com\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u2713\nArrival / setup time\n14:00\n\u2192",
+        "area": 14112
+      },
+      {
+        "text": "\u25b8\nTHE DAY OF\nWhen the event is live",
+        "area": 4186
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [
+      "Day-of"
+    ],
+    "screenshot": "08_money_sheet.png"
+  },
+  "09_budget": {
+    "body_chars": 1335,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 17s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nBUDGET\nON TRACK\nBudget on track\n$3,500 spent \u00b7 $16,000 committed \u00b7 $20,000 total\nBUDGET\n$3,500\nof $20,000 \u00b7 18%\nCOMMITTED\n$16,000\nOn contract or deposit\nBALANCE DUE\n$12,500\nCommitted not yet paid\nUNCONTRACTED\n$4,000\nBudget not yet committed\nBUDGET ESTIMATOR\n\u2600 Friday premium \u00b7 +10%\n\u25b8 expand\nBUDGET\n$20,000total budget\n+ Add Row\nON TRACK\n$3,500 spent\n$16,000 committed\n$12,500 balance due\n$4,000 uncontracted\n18% spent \u00b7 80% committed\nBY CATEGORY (5)\nPAYMENT SCHEDULE \u2014 CASH OUT BY MONTH\nOctober 2026\n$6,000\nSkyline Event Center \u2014 due Oct 1, 2026\n$6,000\nNovember 2026\n$6,500\nCity Catering Co \u2014 due Nov 1, 2026\n$3,500\nPremier AV Solutions \u2014 due Nov 15, 2026\n$3,000\nCLIENT PAYMENTS \u2014 TECHCORP INC.\n+ Milestone\nTOTAL FEE\n$3,500\nCOLLECTED\n$1,750\nOUTSTANDING\n$1,750\n$1,750\nPaid \u2713\n\u2713 Paid\n\u2715\n$1,750\nDue in 151d\n$ Create Link\nMark Paid\n\u2715\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "9": 9,
+      "10": 11,
+      "11": 40,
+      "12": 20,
+      "13": 6,
+      "14": 3,
+      "16": 4,
+      "18": 1,
+      "32": 6,
+      "36": 1
+    },
+    "button_count": 19,
+    "small_touch_targets": 6,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "+ Add Row",
+        "area": 2936.765625
+      },
+      {
+        "text": "BY CATEGORY (5)",
+        "area": 8736
+      },
+      {
+        "text": "+ Milestone",
+        "area": 3119.375
+      },
+      {
+        "text": "\u2713 Paid",
+        "area": 1188.796875
+      },
+      {
+        "text": "\u2715",
+        "area": 512.203125
+      },
+      {
+        "text": "$ Create Link",
+        "area": 2131.8125
+      },
+      {
+        "text": "Mark Paid",
+        "area": 1556.953125
+      },
+      {
+        "text": "\u2715",
+        "area": 512.203125
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      },
+      {
+        "text": "PLANNING",
+        "area": 3575
+      },
+      {
+        "text": "PEOPLE",
+        "area": 3575
+      },
+      {
+        "text": "MONEY",
+        "area": 3575
+      },
+      {
+        "text": "COMMS",
+        "area": 3575
+      },
+      {
+        "text": "MORE",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [],
+    "screenshot": "09_budget.png"
+  },
+  "10_documents": {
+    "body_chars": 1133,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 20s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nDOCUMENTS\nNEEDS ATTENTION\n2\nSkyline Event Center contract\nContract \u00b7 status: pending\nNo link yet\nDinner + dessert tasting menu\nMenu \u00b7 status: draft\nNo link yet\nEVENT FILES\n5\nSkyline Event Center contract\nContract \u00b7 Awaiting countersign\nPENDING\nNo link on file\nPremier AV Solutions\nContract\nSIGNED\nNo link on file\nHoliday theme \u2014 Velvet Noir\nMood board\nAPPROVED\nNo link on file\nDinner + dessert tasting menu\nMenu\nDRAFT\nNo link on file\nStaff briefing packet\nFinal packet\nNOT_STARTED\nNo link on file\nVendor documents live on the vendor record. Use \"Open vendor\" to edit contract status, send for signature, or attach a new file.\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "9": 1,
+      "10": 17,
+      "11": 45,
+      "12": 8,
+      "13": 1,
+      "16": 4,
+      "18": 1
+    },
+    "button_count": 11,
+    "small_touch_targets": 2,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      },
+      {
+        "text": "PLANNING",
+        "area": 3575
+      },
+      {
+        "text": "PEOPLE",
+        "area": 3575
+      },
+      {
+        "text": "MONEY",
+        "area": 3575
+      },
+      {
+        "text": "COMMS",
+        "area": 3575
+      },
+      {
+        "text": "MORE",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [],
+    "screenshot": "10_documents.png"
+  },
+  "11_more_drawer": {
+    "body_chars": 1341,
+    "body_first_500": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\n\u2190 TechCorp Inc.\n|\nHoliday Party\n199 days from now\nDAY-OF VIEW\n\u25cf Saved 22s ago\n\u00b7\n\u00b7\nWedding\nEngagement Party\nVow Renewal\nAnniversary\nBridal Shower\nBaby Shower\nBirthday\nSweet 16\nQuincea\u00f1era\nGraduation\nRetirement Party\nReunion\nHoliday Party\nBoard Meeting\nConference\nProduct Launch\nTeam Retreat\nTown Hall\nTraining / Workshop\nAward Ceremony\nClient Dinner\nFundraiser / Gala\nNetworking Event\nOther\n\u00b7\nTechCorp Inc.\n\u2190 Command Center\nDOCUMENTS\nNEEDS ATTENTION\n2\nSkyline Event Center contract\nContract \u00b7 status: pending\nNo link yet\nDinner + dessert tasting menu\nMenu \u00b7 status: draft\nNo link yet\nEVENT FILES\n5\nSkyline Event Center contract\nContract \u00b7 Awaiting countersign\nPENDING\nNo link on file\nPremier AV Solutions\nContract\nSIGNED\nNo link on file\nHoliday theme \u2014 Velvet Noir\nMood board\nAPPROVED\nNo link on file\nDinner + dessert tasting menu\nMenu\nDRAFT\nNo link on file\nStaff briefing packet\nFinal packet\nNOT_STARTED\nNo link on file\nVendor documents live on the vendor record. Use \"Open vendor\" to edit contract status, send for signature, or attach a new file.\nTechCorp Holiday Party\nCommand\nMESSAGES\nMessages\nPLAN\nBudget\nPlanning\n3/8\nDecisions\n1\nPEOPLE\nClient Intake\nVendors\n4\nGuests\n7\nSeating\n5 conf\nDAY OF\nCalendar\nRun of Show\n10\nFILES\nDocuments\nEVENT\nEvent Details\nCOMMAND\nPLANNING\nPEOPLE\nMONEY\nCOMMS\nMORE",
+    "font_sizes_distribution": {
+      "9": 7,
+      "10": 23,
+      "11": 45,
+      "12": 20,
+      "13": 2,
+      "15": 1,
+      "16": 4,
+      "18": 1
+    },
+    "button_count": 25,
+    "small_touch_targets": 3,
+    "headings": [],
+    "primary_visible_buttons": [
+      {
+        "text": "\u2190 TechCorp Inc.",
+        "area": 2676.265625
+      },
+      {
+        "text": "DAY-OF VIEW",
+        "area": 2263.75
+      },
+      {
+        "text": "Actions",
+        "area": 1444
+      },
+      {
+        "text": "Remove",
+        "area": 192
+      },
+      {
+        "text": "\u2190 Command Center",
+        "area": 2963.046875
+      },
+      {
+        "text": "Close menu",
+        "area": 900
+      },
+      {
+        "text": "Command",
+        "area": 9088
+      },
+      {
+        "text": "Messages",
+        "area": 9088
+      },
+      {
+        "text": "Budget",
+        "area": 9088
+      },
+      {
+        "text": "Planning\n3/8",
+        "area": 9088
+      },
+      {
+        "text": "Decisions\n1",
+        "area": 9088
+      },
+      {
+        "text": "Client Intake",
+        "area": 9088
+      },
+      {
+        "text": "Vendors\n4",
+        "area": 9088
+      },
+      {
+        "text": "Guests\n7",
+        "area": 9088
+      },
+      {
+        "text": "Seating\n5 conf",
+        "area": 9088
+      },
+      {
+        "text": "Calendar",
+        "area": 9088
+      },
+      {
+        "text": "Run of Show\n10",
+        "area": 9088
+      },
+      {
+        "text": "Documents",
+        "area": 9940
+      },
+      {
+        "text": "Event Details",
+        "area": 9088
+      },
+      {
+        "text": "COMMAND",
+        "area": 3575
+      }
+    ],
+    "jargon_hits": [],
+    "pro_shorthand_hits": [
+      "Run of Show"
+    ],
+    "screenshot": "11_more_drawer.png"
+  }
+}

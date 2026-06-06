@@ -1,0 +1,66 @@
+{
+  "empty": {
+    "label": "Empty \u2014 no events",
+    "hero": {
+      "found": true,
+      "eyebrow": "SAMPLE \u00b7 NOT A REAL EVENT",
+      "headline": "Explore the app first.",
+      "body": "These are sample events so you can see what a real workspace feels like. Nothing here is yours \u2014 open one to look around.",
+      "primaryCTA": "Open sample event",
+      "secondaryCTA": "Plan your own event",
+      "violations": {
+        "startHere": false,
+        "whatNeedsYouToday": false
+      }
+    },
+    "errors": []
+  },
+  "all_clear": {
+    "label": "All clear \u2014 one real event, no attention",
+    "hero": {
+      "found": true,
+      "eyebrow": "START HERE",
+      "headline": "Todd & Sarah's Wedding has 2 blockers.",
+      "body": "\"Send formal invitations\" \u2014 Overdue 22d. Other tasks are stuck until this is handled.",
+      "primaryCTA": "Handle this first",
+      "secondaryCTA": "View all 41 attention items",
+      "violations": {
+        "startHere": false,
+        "whatNeedsYouToday": false
+      }
+    },
+    "errors": []
+  },
+  "today_live": {
+    "label": "Today \u2014 live event",
+    "hero": {
+      "found": true,
+      "eyebrow": "START HERE",
+      "headline": "Todd & Sarah's Wedding has 2 blockers.",
+      "body": "\"Send formal invitations\" \u2014 Overdue 22d. Other tasks are stuck until this is handled.",
+      "primaryCTA": "Handle this first",
+      "secondaryCTA": "View all 41 attention items",
+      "violations": {
+        "startHere": false,
+        "whatNeedsYouToday": false
+      }
+    },
+    "errors": []
+  },
+  "multiple_upcoming": {
+    "label": "Multiple upcoming \u2014 3 events in 60d",
+    "hero": {
+      "found": true,
+      "eyebrow": "START HERE",
+      "headline": "Todd & Sarah's Wedding has 2 blockers.",
+      "body": "\"Send formal invitations\" \u2014 Overdue 22d. Other tasks are stuck until this is handled.",
+      "primaryCTA": "Handle this first",
+      "secondaryCTA": "View all 41 attention items",
+      "violations": {
+        "startHere": false,
+        "whatNeedsYouToday": false
+      }
+    },
+    "errors": []
+  }
+}

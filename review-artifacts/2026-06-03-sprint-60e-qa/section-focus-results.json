@@ -1,0 +1,17 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "docs_reached": true,
+  "cta_inventory": {
+    "Open payment details": 0,
+    "Open contract details": 0,
+    "Open arrival details": 0,
+    "Open contact details": 0
+  },
+  "chosen_cta": null,
+  "open_payment_cta_count": 0,
+  "cta_clicked": false,
+  "vendors_tab_bg": "rgba(0, 0, 0, 0)",
+  "expanded_signals_found": [],
+  "amber_flash_divs": 0
+}

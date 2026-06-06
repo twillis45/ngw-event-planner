@@ -1,0 +1,27 @@
+{
+  "hero": {
+    "eyebrows": 0,
+    "eyebrowTexts": [],
+    "contactShortcuts": false,
+    "bodyBg": "rgb(17, 21, 25)"
+  },
+  "errors": [],
+  "candidates": [
+    {
+      "text": "JANE PLANNER\nMay 18\nHi Bluebell \u2014 quick question on the ceremony garden. If it r",
+      "h": 90
+    },
+    {
+      "text": "Jane Planner\nMay 18\n\"Hi Bluebell \u2014 quick question on the ceremony garden. If it ",
+      "h": 75
+    },
+    {
+      "text": "Venue\nBluebell Venue\nCONFIRMED",
+      "h": 48
+    },
+    {
+      "text": "Catering\nFork & Flower Catering\nCONFIRMED",
+      "h": 49
+    }
+  ]
+}

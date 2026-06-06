@@ -61,6 +61,16 @@ import {
   fmtFileSize,
   inferCategory,
 } from '../lib/storage';
+// Sprint 61.B — Vendor Accountability Phase C
+// Sprint 61.C — Phase D adds conflict rendering
+import {
+  quickAccountabilityForVendor,
+  inferPromisesFromVendor,
+  deriveVendorNextAccountabilityAction,
+  accountabilityLabel,
+  deriveVendorPromiseConflicts,
+  conflictsForVendor,
+} from '../lib/vendorAccountability';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -75,6 +85,9 @@ const P = {
   green:  color.status.confirmed,
   amber:  color.status.warning,
   red:    color.status.risk,
+  // Sprint 60.U.3 10+ — steel-blue accent for non-semantic section
+  // eyebrows. Matches App.js accentTopGrad + CommandCenter P.steelBlue.
+  steelBlue: '#4E6877',
 };
 const FF = type.family;
 
@@ -171,11 +184,11 @@ function CollapsibleSection({ label, summary, hintColor, isOpen, onToggle, child
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 10.5, fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.textSecondary, fontFamily: FF,
+            color: P.steelBlue, fontFamily: FF,
           }}>{label}</span>
         </span>
         {summary && (
@@ -316,6 +329,95 @@ function StatusRow({ label, value, status, consequence, onAddress, addressLabel 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Conflicts Strip (Phase D) ───────────────────────────────────────────────
+// Surfaces the highest-severity cross-vendor conflicts above the workspace
+// command strip. Each row is a plain-language explanation + steel-blue
+// route CTA. Hidden when no conflicts detected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConflictsStrip({ conflicts, vendors, onSelectVendor }) {
+  if (!conflicts || conflicts.length === 0) return null;
+  const top = conflicts.slice(0, 3);
+  const vendorById = new Map((vendors || []).map(v => [v.id, v]));
+  const sevColor = (s) =>
+    s === 'critical' ? P.red
+    : s === 'high'   ? P.red
+    : s === 'attention' ? P.amber
+    : P.steelBlue;
+  return (
+    <div style={{
+      flexShrink: 0,
+      background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0a 100%)`,
+      borderBottom: `1px solid ${P.borderSubtle}`,
+      padding: `${space[3]}px ${space[5]}px`,
+      display: 'flex', flexDirection: 'column', gap: 8,
+      fontFamily: FF,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span aria-hidden style={{
+          width: 22, height: 22, borderRadius: '50%',
+          background: `${P.steelBlue}26`, color: P.steelBlue,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 800,
+        }}>⚠</span>
+        <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
+          Conflicts found
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: P.red }}>{conflicts.length}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {top.map(c => {
+          const target = vendorById.get(c.affectedVendorId);
+          const color = sevColor(c.severity);
+          return (
+            <div key={c.id} style={{
+              padding: '10px 12px',
+              background: P.card,
+              border: `1px solid ${color}3d`,
+              borderLeft: `3px solid ${color}`,
+              borderRadius: 8,
+              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
+                  {c.title}
+                </div>
+                <div style={{ fontSize: 11.5, color: P.textSecondary, marginTop: 2, lineHeight: 1.45 }}>
+                  {c.explanation}
+                </div>
+                <div style={{ fontSize: 11, color: P.steelBlue, marginTop: 4, fontWeight: 600 }}>
+                  → {c.recommendedAction}
+                </div>
+              </div>
+              {target && (
+                <button
+                  onClick={() => onSelectVendor && onSelectVendor(target)}
+                  style={{
+                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    borderRadius: 8, padding: '7px 12px',
+                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
+                    letterSpacing: '0.02em',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
+                  }}>
+                  Open {target.name.split(' ')[0]} →
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {conflicts.length > top.length && (
+          <div style={{ fontSize: 11, color: P.textTertiary, marginTop: 2 }}>
+            +{conflicts.length - top.length} more conflict{conflicts.length - top.length === 1 ? '' : 's'} — open each vendor to review.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ── Vendor Command Strip (top of workspace) ─────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -439,17 +541,28 @@ function getVendorLastContacted(vendor, event) {
   return daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
 }
 
-function VendorRow({ vendor, event, isSelected, onSelect }) {
+function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSelect }) {
+  // Sprint 61.B — Accountability tier is now the primary signal. Readiness
+  // stays as a secondary chip so the existing vendor-cockpit semantics still
+  // flow through. If the parent doesn't pass an accountability prop, we
+  // compute it locally (keeps the component testable in isolation).
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
-  const next = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
-  const isCritical = readiness.level === 'critical';
-  const isAttention = readiness.level === 'attention';
+  const acc = accountability || useMemo(() => quickAccountabilityForVendor(vendor, event), [vendor, event]); // eslint-disable-line react-hooks/rules-of-hooks
+  const next = nextAction || null;
   const lastContacted = useMemo(() => getVendorLastContacted(vendor, event), [vendor, event]);
 
-  // Highest-risk vendor gets an extra emphasis line — but no neon, no glow.
-  const emphasis = isCritical;
-  const leftStrip = isCritical ? P.red : (isAttention ? P.amber : (isSelected ? P.green : 'transparent'));
+  const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
+  const tierLabel = accountabilityLabel(acc.tier);
+  const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
+  const leftStrip = emphasis ? P.red
+    : acc.tier === 'needs_follow_up' ? P.amber
+    : acc.tier === 'needs_proof'     ? P.steelBlue
+    : isSelected ? P.green
+    : 'transparent';
+
+  // Top issue — first reason if any, otherwise stage + readiness label.
+  const topIssue = (acc.reasons && acc.reasons[0]) || null;
 
   return (
     <button
@@ -487,40 +600,128 @@ function VendorRow({ vendor, event, isSelected, onSelect }) {
             </>
           )}
         </div>
-        {next && (isCritical || isAttention) && (
+        {/* Top issue — only renders when there's a real reason to say it. */}
+        {topIssue && acc.tier !== 'on_track' && (
           <div style={{
-            fontSize: 10, color: levelColor(readiness.level),
+            fontSize: 10.5, color: tierColor,
             marginTop: 4, lineHeight: 1.35,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}>
-            → {next.title}
+            {topIssue}
+          </div>
+        )}
+        {/* Next action — short. Steel-blue when actionable. */}
+        {next && next.kind && next.kind !== 'none' && (
+          <div style={{
+            fontSize: 10, color: P.steelBlue,
+            marginTop: 3, fontWeight: 600, letterSpacing: '0.01em',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            Next: {next.label.replace(/^.*?:\s/, '')}
           </div>
         )}
       </div>
-      <div style={{ flexShrink: 0, paddingTop: 1 }}>
+      <div style={{ flexShrink: 0, paddingTop: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+        {/* Accountability chip — primary signal */}
         <span style={{
-          fontSize: 8, fontWeight: type.weight.semibold,
-          letterSpacing: '0.10em', color: levelColor(readiness.level),
-          textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
+          fontSize: 9, fontWeight: 800,
+          letterSpacing: '0.10em', color: tierColor,
+          background: `${tierColor}14`, border: `1px solid ${tierColor}44`,
+          padding: '2px 6px', borderRadius: 999,
+          textTransform: 'uppercase', whiteSpace: 'nowrap',
         }}>
-          {readiness.label.replace('Ready for day-of', 'Ready').replace('Needs follow-up', 'Follow up').replace('Day-of follow-up', 'Day-of')}
+          {tierLabel}
         </span>
+        {/* Readiness label — secondary, only when different from on_track */}
+        {readiness.level !== 'safe' && (
+          <span style={{
+            fontSize: 8, fontWeight: type.weight.semibold,
+            letterSpacing: '0.10em', color: levelColor(readiness.level),
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>
+            {readiness.label.replace('Ready for day-of', 'Ready').replace('Needs follow-up', 'Follow up').replace('Day-of follow-up', 'Day-of')}
+          </span>
+        )}
       </div>
     </button>
   );
 }
 
+// Sprint 61.B — accountability tier priority. Drives VendorList default sort.
+const ACCOUNTABILITY_RANK = {
+  missed_promise:  0,
+  at_risk:         1,
+  needs_follow_up: 2,
+  needs_proof:     3,
+  on_track:        4,
+};
+const ACCOUNTABILITY_COLOR = {
+  missed_promise:  P.red,
+  at_risk:         P.red,
+  needs_follow_up: P.amber,
+  needs_proof:     P.steelBlue,
+  on_track:        P.green,
+};
+
+// Phase C filter set. Filter keys match the spec Part 4 list.
+const FILTERS = [
+  { key: 'attention', label: 'Needs attention' },
+  { key: 'evidence',  label: 'Evidence missing' },
+  { key: 'conflicts', label: 'Conflicts' },
+  { key: 'ready',     label: 'Ready' },
+  { key: 'all',       label: 'All' },
+];
+
 function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, onAdd }) {
-  // Sort: critical first, then attention, then safe, then not_started/closed
-  const sorted = useMemo(() => {
-    const rank = { critical: 0, attention: 1, not_started: 2, safe: 3, closed: 4 };
-    return [...vendors]
-      .map(v => ({ v, r: getVendorReadiness(v, event) }))
-      .sort((a, b) => (rank[a.r.level] ?? 9) - (rank[b.r.level] ?? 9))
-      .map(x => x.v);
+  const [filter, setFilter] = useState('attention');
+
+  // Compute accountability for every vendor once. Stable across filter changes.
+  const enriched = useMemo(() => {
+    return (vendors || []).map(v => {
+      const promises = inferPromisesFromVendor(v, event);
+      const acc = quickAccountabilityForVendor(v, event);
+      const next = deriveVendorNextAccountabilityAction(v, event, promises);
+      const readiness = getVendorReadiness(v, event);
+      return { v, promises, acc, next, readiness };
+    });
   }, [vendors, event]);
+
+  // Sort by accountability tier first, then by event-day proximity + issue count.
+  const sortedAll = useMemo(() => {
+    return [...enriched].sort((a, b) => {
+      const tA = ACCOUNTABILITY_RANK[a.acc.tier] ?? 9;
+      const tB = ACCOUNTABILITY_RANK[b.acc.tier] ?? 9;
+      if (tA !== tB) return tA - tB;
+      // Higher open-issue count wins among same tier
+      if ((b.acc.openIssues || 0) !== (a.acc.openIssues || 0)) return (b.acc.openIssues || 0) - (a.acc.openIssues || 0);
+      // More evidence missing wins
+      if ((b.acc.missingProof || 0) !== (a.acc.missingProof || 0)) return (b.acc.missingProof || 0) - (a.acc.missingProof || 0);
+      // Otherwise alphabetic by name
+      return (a.v.name || '').localeCompare(b.v.name || '');
+    });
+  }, [enriched]);
+
+  // Apply current filter.
+  const sorted = useMemo(() => {
+    if (filter === 'all') return sortedAll;
+    if (filter === 'attention') return sortedAll.filter(x => x.acc.tier !== 'on_track');
+    if (filter === 'ready')     return sortedAll.filter(x => x.acc.tier === 'on_track');
+    if (filter === 'evidence')  return sortedAll.filter(x => (x.acc.missingProof || 0) > 0);
+    if (filter === 'conflicts') return sortedAll.filter(x => (x.acc.tier === 'at_risk' || x.acc.tier === 'missed_promise'));
+    return sortedAll;
+  }, [sortedAll, filter]);
+
+  // Top-of-list "Start with this vendor" — surfaces the single highest
+  // priority vendor when anyone is not on_track. Visible only on the
+  // "Needs attention" filter so it doesn't distract from Ready/All views.
+  const startWith = useMemo(() => {
+    if (filter !== 'attention') return null;
+    const top = sortedAll.find(x => x.acc.tier !== 'on_track');
+    if (!top) return null;
+    return top;
+  }, [filter, sortedAll]);
 
   return (
     <div style={{
@@ -541,7 +742,7 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
           fontSize: 10, fontWeight: type.weight.medium,
           letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF,
         }}>
-          {vendors.length} VENDORS · Ranked by risk
+          {vendors.length} VENDORS · Ranked by accountability
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           {onAdd && (
@@ -558,21 +759,36 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
               + Add
             </button>
           )}
-          {onFilter && (
-            <button
-              onClick={onFilter}
-              style={{
-                background: 'none', border: `1px solid ${P.borderSubtle}`,
-                borderRadius: radius.sm, cursor: 'pointer',
-                fontSize: 10, fontWeight: type.weight.medium,
-                color: P.textSecondary, fontFamily: FF,
-                padding: '2px 8px',
-              }}
-            >
-              Filter
-            </button>
-          )}
         </div>
+      </div>
+      {/* Sprint 61.B — filter chips. 44px touch targets on mobile. */}
+      <div style={{
+        flexShrink: 0, display: 'flex', gap: 6, padding: '8px 10px',
+        borderBottom: `1px solid ${P.borderSubtle}`, flexWrap: 'wrap',
+        background: P.base,
+      }}>
+        {FILTERS.map(f => {
+          const active = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              aria-pressed={active}
+              style={{
+                background: active ? `${P.steelBlue}26` : 'transparent',
+                border: `1px solid ${active ? P.steelBlue : P.borderSubtle}`,
+                borderRadius: 999, cursor: 'pointer',
+                color: active ? P.textPrimary : P.textSecondary,
+                fontFamily: FF, fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em',
+                padding: isMobile ? '10px 12px' : '4px 10px',
+                minHeight: isMobile ? 44 : 28,
+                lineHeight: 1,
+              }}>
+              {f.label}
+            </button>
+          );
+        })}
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {vendors.length === 0 ? (
@@ -611,15 +827,69 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
               }}>Add a vendor</button>
             </div>
           </div>
-        ) : sorted.map(v => (
-          <VendorRow
-            key={v.id || v.name}
-            vendor={v}
-            event={event}
-            isSelected={selected?.id === v.id || (selected && !v.id && selected.name === v.name)}
-            onSelect={onSelect}
-          />
-        ))}
+        ) : (
+          <>
+            {/* Sprint 61.B — Start with this vendor card. Steel-blue rail,
+                states the top vendor by name, the top reason, and a
+                steel-blue Open vendor CTA. Only when something is below
+                on_track AND the user is on the Needs attention filter. */}
+            {startWith && (
+              <div style={{
+                margin: '10px 10px 4px',
+                padding: '12px 14px',
+                background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0d 100%)`,
+                border: `1px solid ${P.steelBlue}3d`,
+                borderLeft: `3px solid ${P.steelBlue}`,
+                borderRadius: 10,
+                display: 'flex', flexDirection: 'column', gap: 6,
+                fontFamily: FF,
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
+                  Start with this vendor
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
+                  {startWith.v.name}
+                </div>
+                <div style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.45 }}>
+                  {startWith.acc.reasons[0] || `${accountabilityLabel(startWith.acc.tier)} — open the vendor to review.`}
+                </div>
+                <button
+                  onClick={() => onSelect(startWith.v)}
+                  style={{
+                    alignSelf: 'flex-start', marginTop: 2,
+                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    borderRadius: 8, padding: '8px 14px',
+                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
+                    letterSpacing: '0.02em',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
+                  }}>
+                  {startWith.next?.kind === 'resolve' || startWith.next?.kind === 'follow_up' ? 'Open follow-up →' : 'Open vendor →'}
+                </button>
+              </div>
+            )}
+            {sorted.length === 0 ? (
+              <div style={{
+                padding: '20px 16px', textAlign: 'center',
+                color: P.textTertiary, fontSize: 13, fontFamily: FF,
+              }}>
+                {filter === 'attention' ? 'Nothing needs attention right now — every vendor is on track.'
+                  : filter === 'ready' ? 'No vendors on track yet — start by confirming the highest-priority promise.'
+                  : 'No vendors match this filter.'}
+              </div>
+            ) : sorted.map(x => (
+              <VendorRow
+                key={x.v.id || x.v.name}
+                vendor={x.v}
+                event={event}
+                accountability={x.acc}
+                nextAction={x.next}
+                isSelected={selected?.id === x.v.id || (selected && !x.v.id && selected.name === x.v.name)}
+                onSelect={onSelect}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -834,7 +1104,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
             flashDone('Marked received');
           }}
           onLogSentForSignature={() => {
-            if (onAddLog) onAddLog(vendor.id, `Contract sent to ${vendor.contact || vendor.name} for signature.`);
+            if (onAddLog) onAddLog(vendor.id, `Emailed ${vendor.contact || vendor.name} to request the signed contract.`);
             flashDone('Logged');
           }}
           onUploadFile={({ storagePath, fileName, fileSize, signedUrl }) => {
@@ -1125,11 +1395,11 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
         background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
       }}>
         <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
-          Send for signature
+          Email vendor about contract
         </div>
         <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
           {mailtoHref
-            ? 'Opens your mail client with a templated message to the vendor contact.'
+            ? 'Opens your mail client with a templated request for the signed contract. This is an email, not an e-signature flow.'
             : `No email on file for ${vendor.name} — add one in the editor to use this option.`}
         </div>
         <div style={{ display: 'flex', gap: space[2] }}>
@@ -1488,11 +1758,11 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 10.5, fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.textSecondary, fontFamily: FF,
+            color: P.steelBlue, fontFamily: FF,
           }}>{label}</span>
         </span>
         {collapsedHint && (
@@ -1556,11 +1826,11 @@ function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.textSecondary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 10.5, fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.textSecondary, fontFamily: FF,
+            color: P.steelBlue, fontFamily: FF,
           }}>{`Required Questions · ${cat}`}</span>
         </span>
         <span style={{
@@ -2548,8 +2818,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
         .slice(0, 3)
     : [];
 
-  // Map next-action sourceCategory → vendor cockpit section key. Falls back
-  // to "Open vendor" when no specific section applies.
+  // Map next-action sourceCategory → vendor cockpit section key.
   const sectionByCategory = {
     financial: 'payment',
     closeout:  'payment',
@@ -2559,34 +2828,71 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
     logistics: 'arrival',
   };
   const section = sectionByCategory[nextAction?.sourceCategory] || null;
-  const sectionCtaMap = {
-    payment:  'Open payment details →',
-    contract: 'Open contract details →',
-    arrival:  'Open arrival details →',
-    contact:  'Open contact details →',
-  };
-  const ctaLabel = section ? sectionCtaMap[section] : null;
+  const ctaLabel = issues.length > 0 ? 'Fix this first' : null;
   const looksReady = issues.length === 0;
-  const levelColor = issues.some(i => i.level === 'critical') ? P.red : P.amber;
+  const hasCritical = issues.some(i => i.level === 'critical');
+  const railColor = hasCritical ? P.red : P.amber;
+  const headIssue = issues[0];
+
+  // Sprint 60.Q Vendor mobile fix-first: hero copy matches the locked
+  // system on Home — eyebrow names the state, headline is the plain
+  // truth, body explains why, CTA tells the user what to do, contact
+  // shortcuts sit beneath as quiet honest affordances.
+  const eyebrow = looksReady ? 'LOOKS READY' : hasCritical ? 'FIX FIRST · CRITICAL' : 'FIX FIRST';
+  const headline = looksReady
+    ? `${vendor.name || 'This vendor'} is on track.`
+    : `${vendor.name || 'This vendor'} ${headIssue?.note?.replace(/^[A-Z]/, c => c.toLowerCase()) || 'needs your attention.'}`;
+  const body = looksReady
+    ? 'No critical blockers. Payments are current, contract is in place, arrival is set.'
+    : (issues.length > 1
+        ? `${issues.length} issues found — fix the top item first; the others may resolve downstream.`
+        : 'Other tasks are stuck until this is handled.');
+
+  const telHref  = vendor.phone   ? `tel:${vendor.phone.replace(/\s/g, '')}` : null;
+  const mailHref = vendor.contact ? `mailto:${vendor.contact}` : null;
+  const smsHref  = vendor.phone   ? `sms:${vendor.phone.replace(/\s/g, '')}` : null;
+
+  // Steel-blue gradient stack — mirrors StudioCommandPanel hero in App.js
+  const ctaFill = 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)';
+  const ctaShadow = [
+    'inset 0 1px 0 rgba(255,255,255,0.14)',
+    'inset 0 -1px 0 rgba(0,0,0,0.30)',
+    '0 1px 0 rgba(255,255,255,0.04)',
+    '0 6px 14px rgba(0,0,0,0.40)',
+    '0 18px 36px rgba(0,0,0,0.30)',
+    '0 0 0 1px rgba(193,203,208,0.18)',
+  ].join(', ');
+  const panelRaise = [
+    'inset 0 1px 0 rgba(255,255,255,0.05)',
+    '0 1px 0 rgba(255,255,255,0.02)',
+    '0 4px 10px rgba(0,0,0,0.30)',
+    '0 14px 28px rgba(0,0,0,0.22)',
+  ].join(', ');
 
   return (
     <div style={{
+      position: 'relative',
+      margin: `${space[4]}px ${space[5]}px 0`,
+      padding: `${space[4]}px ${space[5]}px ${space[5]}px`,
+      paddingLeft: space[5] + 3, // visual lead for the rail
       background: P.card,
-      borderBottom: `1px solid ${P.borderSubtle}`,
-      padding: `${space[4]}px ${space[6]}px ${space[5]}px`,
+      border: `1px solid ${P.borderSubtle}`,
+      borderLeft: `3px solid ${looksReady ? P.green : railColor}`,
+      borderRadius: 14,
+      boxShadow: panelRaise,
       fontFamily: FF,
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: space[3] }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 18, fontWeight: type.weight.semibold,
-            color: P.textPrimary, lineHeight: 1.2,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>{vendor.name || '(unnamed vendor)'}</div>
-          <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 2 }}>
-            {cat} · {status}
-          </div>
-        </div>
+      {/* Top row — eyebrow chip + edit affordance */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
+        <span style={{
+          fontSize: 9.5, fontWeight: type.weight.semibold,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: looksReady ? P.green : railColor,
+          padding: '2px 7px', borderRadius: 4,
+          border: `1px solid ${(looksReady ? P.green : railColor)}55`,
+        }}>
+          {eyebrow}
+        </span>
         {onEdit && (
           <button
             onClick={onEdit}
@@ -2594,71 +2900,109 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             style={{
               background: 'transparent', border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.sm, color: P.textSecondary, fontSize: 11,
-              padding: '6px 10px', cursor: 'pointer', fontFamily: FF, flexShrink: 0,
+              padding: '4px 10px', cursor: 'pointer', fontFamily: FF, flexShrink: 0,
             }}
           >Edit</button>
         )}
       </div>
 
-      {looksReady ? (
+      {/* Headline */}
+      <h2 style={{
+        margin: `${space[3]}px 0 ${space[2]}px`,
+        fontSize: 22, fontWeight: type.weight.bold,
+        letterSpacing: '-0.02em', lineHeight: 1.2,
+        color: P.textPrimary,
+      }}>
+        {headline}
+      </h2>
+
+      {/* Category / status meta */}
+      <div style={{ fontSize: 12, color: P.textTertiary, marginBottom: space[3] }}>
+        {cat} · {status}
+      </div>
+
+      {/* Body — why it matters */}
+      <p style={{
+        margin: `0 0 ${space[4]}px`,
+        fontSize: 14, lineHeight: 1.5,
+        color: P.textSecondary,
+      }}>
+        {body}
+      </p>
+
+      {/* Primary CTA — steel-blue gradient, full-width */}
+      {ctaLabel && onPrimary && (
+        <button
+          onClick={() => onPrimary(section)}
+          style={{
+            width: '100%',
+            minHeight: 54,
+            padding: '14px 18px',
+            borderRadius: 14,
+            border: 'none',
+            cursor: 'pointer',
+            background: ctaFill,
+            color: '#e8edf2',
+            fontSize: 16,
+            fontWeight: type.weight.semibold,
+            fontFamily: FF,
+            letterSpacing: '0.01em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: ctaShadow,
+            textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+          }}
+        >
+          {ctaLabel} <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+        </button>
+      )}
+
+      {/* Contact shortcuts row — small honest icon affordances. Each is a
+          real route (tel:, sms:, mailto:) — disabled state when contact
+          field is missing, never a fake send. */}
+      {(telHref || smsHref || mailHref) && (
         <div style={{
+          display: 'flex', gap: space[2],
           marginTop: space[4],
-          padding: `${space[3]}px ${space[4]}px`,
-          background: P.green + '14',
-          border: `1px solid ${P.green}44`,
-          borderRadius: radius.md,
-          fontSize: 13, color: P.green,
-          fontWeight: type.weight.semibold,
+          paddingTop: space[4],
+          borderTop: `1px solid ${P.borderSubtle}`,
         }}>
-          ✓ Looks ready — nothing pressing on this vendor.
-        </div>
-      ) : (
-        <>
-          <div style={{
-            marginTop: space[4],
-            fontSize: 10, fontWeight: type.weight.semibold,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: levelColor,
-          }}>Needs attention</div>
-          <ul style={{
-            margin: `${space[2]}px 0 0`,
-            padding: 0, listStyle: 'none',
-            display: 'flex', flexDirection: 'column', gap: space[2],
-          }}>
-            {issues.map((c, i) => (
-              <li key={i} style={{
-                fontSize: 13, lineHeight: 1.45,
-                color: P.textPrimary,
-                paddingLeft: 14, position: 'relative',
-              }}>
-                <span style={{
-                  position: 'absolute', left: 0, top: 8,
-                  width: 6, height: 6, borderRadius: 3,
-                  background: c.level === 'critical' ? P.red : P.amber,
-                }} />
-                {c.note}
-              </li>
-            ))}
-          </ul>
-          {ctaLabel && onPrimary && (
-            <button
-              onClick={() => onPrimary(section)}
-              style={{
-                marginTop: space[4],
-                width: '100%',
-                padding: '10px 14px',
-                borderRadius: radius.md,
-                border: 'none',
-                background: P.accent,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: type.weight.semibold,
-                fontFamily: FF,
-                cursor: 'pointer',
-              }}
-            >{ctaLabel}</button>
+          {telHref && (
+            <a href={telHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>📞 Call</a>
           )}
-        </>
+          {smsHref && (
+            <a href={smsHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>💬 Text</a>
+          )}
+          {mailHref && (
+            <a href={mailHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>📧 Email</a>
+          )}
+        </div>
       )}
     </div>
   );
@@ -2916,6 +3260,9 @@ export default function VendorPlanningWorkspace({
   const auth = useContext(AuthCtx);
   const userId = auth?.user?.id || 'anon';
   const vendors = useMemo(() => event.vendors || [], [event.vendors]);
+  // Sprint 61.C Phase D — event-level conflict detection. Pure function;
+  // recomputes whenever vendors/ros/guests/budget change.
+  const eventConflicts = useMemo(() => deriveVendorPromiseConflicts(event, []), [event]);
 
   const initialSelected = useMemo(() => {
     if (openId) {
@@ -2990,6 +3337,7 @@ export default function VendorPlanningWorkspace({
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         {workspaceHeader}
         <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
+        <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
         {mobileView === 'list' ? (
           <VendorList
             vendors={vendors}
@@ -3043,6 +3391,7 @@ export default function VendorPlanningWorkspace({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {workspaceHeader}
       <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
+      <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <VendorList
           vendors={vendors}
