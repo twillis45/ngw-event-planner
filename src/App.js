@@ -13,6 +13,15 @@ import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import { isAnalyticsConfigured, identifyStudio, track, trackPageView, EVENTS } from './lib/analytics';
+// Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
+// source of truth lives in ./theme/palette.js. DARK references these tokens
+// so the shell has one source; legacy raw-hex callsites migrate as touched.
+import {
+  carbonBody, carbonPanel, carbonSurface2, carbonBorder, carbonStrong,
+  steelBlueGradientTop, steelBlueGradientBottom,
+  dangerRed, amber, successGreen, textPrimary, textSecondary,
+  brandPresets, defaultBrandColor,
+} from './theme/palette';
 import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -62,7 +71,10 @@ import {
   deriveVendorBriefReadiness,
   accountabilityLabel,
   PROMISE_STATUS_LABEL,
+  getVendorPlaybook,
 } from './lib/vendorAccountability';
+// Sprint Add Vendor 10+ — follow-up generator used by VendorCreatedSuccess.
+import { generateVendorFollowUpDraft } from './lib/vendorAccountability/followUpDrafts';
 
 // Sprint 51 perf: lazy-load xlsx (~700KB) + qrcode (~50KB). Both are only
 // needed when the user explicitly exports / imports a sheet or generates a QR
@@ -148,32 +160,26 @@ const STEEL = {
 // New Task button's color. Every primary CTA (incl. marquee New Event)
 // inherits this blue; the gray-leaning detour was reverted in Sprint 60.V.
 const DARK = {
-  bg:       '#111519', // Mid Carbon page
-  surface:  '#1C2227', // Mid Carbon card
-  surface2: '#242B31', // Mid Carbon elevated
-  border:   '#2E353D', // Mid Carbon hairline
+  bg:       carbonBody,     // Mid Carbon page (palette token)
+  surface:  carbonPanel,    // Lifted Carbon card (palette token)
+  surface2: carbonSurface2, // Elevated banner (palette token)
+  border:   carbonBorder,   // Hairline (palette token)
   // Steel Blue 500 — silvery identity; accent for routes / links / today
   accent:   STEEL.blue500,    // #6F8794
-  // Sprint 60.V correction — restore steel-BLUE CTA gradient. The brief
-  // gray-leaning detour (#859094 → #5D6669) inverted the polarity: it made
-  // the New Task button (and every primary CTA) match a desaturated gray
-  // when the actual lock direction is the other way around — CTAs adopt the
-  // New Task button's STEEL BLUE. Anchored back to STEEL.blue700/`#4E6877`.
-  accentDeep:    STEEL.blue700, // #3F5B6A — primary CTA gradient base
-  accentTopGrad: '#4E6877',     // gradient top stop
+  // Sprint 60.V correction — restore steel-BLUE CTA gradient. Bound to the
+  // palette token so a future hue shift moves through one source.
+  accentDeep:    steelBlueGradientBottom, // #3F5B6A — primary CTA base
+  accentTopGrad: steelBlueGradientTop,    // #4E6877 — gradient top stop
   accentPressed: '#444B4F',   // pressed (was #2C4452)
   accentText:    STEEL.mist300, // #A8B7BF — CTA / link text on dark surfaces
   accentIcon:    STEEL.blue400, // #8BA0AA — icon-default accent
   accent2:  STEEL.blue500,
-  text:     '#e8edf2',
-  muted:    '#849eb8',
-  // Sprint 60.U.3 10+ crisp — amber/red bumped for readability on Mid Carbon.
-  // Danger correction pass: #F25A63 read as pink because B=99 carried too
-  // much rose tilt. Pulled B way down to land on a clean fire-red — strong
-  // R, modest G, low B = unambiguous "critical" without scarlet-pink lean.
-  warn:     '#ECA13F', // Attention — crisp honey amber (was #D19A55)
-  danger:   '#E84036', // Critical — clean fire red (was #F25A63 pink-leaning, #E84850 prior)
-  success:  '#4FAE7A', // Ready — sage green
+  text:     textPrimary,
+  muted:    textSecondary,
+  // Status anchors — bound to palette tokens (sprint-profile pass).
+  warn:     amber,        // Attention — honey amber
+  danger:   dangerRed,    // Critical — fire red
+  success:  successGreen, // Ready — sage green
   live:     '#44CB76', // Live — bright green (running on schedule)
   today:    STEEL.blue500, // Today — Steel Blue 500 (alias)
   pending:  '#9AA8B3', // Pending — steel-gray (inactive / future)
@@ -9686,14 +9692,25 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     border: `1px solid ${color}55`,
     flexShrink: 0,
   });
-  const SectionHead = ({ label, ownership = 'workspace' }) => {
+  const SectionHead = ({ label, ownership = 'workspace', anchor }) => {
     const chip =
       ownership === 'account'   ? { label: 'Account',   color: C.muted } :
       ownership === 'event'     ? { label: 'Per event', color: C.warn } :
                                   { label: 'Workspace', color: C.accent2 };
+    const isFlashing = anchor && flashAnchor === anchor;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
-        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches global hierarchy */}
+      <div
+        data-setup-anchor={anchor || undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          margin: '22px 0 14px',
+          padding: anchor ? '6px 8px' : 0,
+          marginLeft: anchor ? -8 : 0,
+          marginRight: anchor ? -8 : 0,
+          borderRadius: anchor ? 6 : 0,
+          background: isFlashing ? `${C.accentTopGrad || C.accent}22` : 'transparent',
+          transition: 'background 220ms ease',
+        }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, color: C.accentTopGrad || C.accent, letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
         <span style={ownershipChipStyle(chip.color)} title={
           ownership === 'account' ? 'Affects only your user account.' :
@@ -9724,11 +9741,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   // doesn't see a new component type each keystroke. Pass C / s / profile /
   // onChange explicitly to keep them pure.
 
-  // Sprint 60.U.4 — Setup Health derivation. 8 dimensions the planner needs
-  // before the studio is "ready for real events". Each row knows: state
-  // (done / partial / needs setup) + one specific next action.
+  // Sprint Profile Settings Review (hardening) — Setup Health derivation.
+  // Each row carries: state (done / partial / needs), a one-line action
+  // headline (what to do), a where-it-applies clause (the section it
+  // belongs to + its scope), and an anchor key so "Continue setup" can
+  // scroll the planner straight there.
   const setupHealth = (() => {
-    const supabaseOn = isSupabaseConfigured();
     const commApiOn  = isCommApiConfigured();
     const emailOn    = isEmailConfigured();
     const aiOn       = !!profile?.anthropicKey;
@@ -9737,41 +9755,122 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     const hasPay     = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck);
     const sigOn      = !!profile?.docusignAccessToken;
     return [
-      { key: 'studio',  label: 'Studio name',       state: profile?.businessName?.trim() ? 'done' : 'needs', next: 'Add a studio name in Studio · Workspace' },
-      { key: 'planner', label: 'Planner name',      state: profile?.name?.trim()         ? 'done' : 'needs', next: 'Add your name in Planner · Account' },
-      { key: 'email',   label: 'Email delivery',    state: emailOn ? 'done' : commApiOn ? 'partial' : 'needs', next: emailOn ? null : commApiOn ? 'Finish email delivery setup in Connections' : 'Connect shared message history first' },
-      { key: 'intake',  label: 'Client intake link', state: intakeLinkSet ? 'done' : 'needs', next: 'Add intake link in Client Intake' },
-      { key: 'vendor',  label: 'Vendor bank',       state: vendorBankSet ? 'done' : 'needs', next: 'Add your saved vendors in Vendor Bank' },
-      { key: 'pay',     label: 'Payment setup',     state: hasPay ? 'done' : 'needs', next: 'Add how clients pay you in How Clients Pay' },
-      { key: 'sig',     label: 'Signature setup',   state: sigOn ? 'done' : 'needs', next: 'Connect signing account in Connections' },
-      { key: 'ai',      label: 'AI assistant',      state: aiOn ? 'done' : 'partial', next: aiOn ? null : 'Add your Anthropic key or use the shared assistant' },
+      { key: 'studio',  label: 'Name your studio',       where: 'Studio · Workspace',          anchor: 'studio',        state: profile?.businessName?.trim() ? 'done' : 'needs', next: 'Adds your studio name to every brief and client page.' },
+      { key: 'planner', label: 'Add your name',          where: 'Planner · Account',           anchor: 'planner',       state: profile?.name?.trim() ? 'done' : 'needs',         next: 'Lets clients and vendors see who they’re working with.' },
+      { key: 'email',   label: 'Turn on email delivery', where: 'Connections · Workspace',     anchor: 'connections',   state: emailOn ? 'done' : commApiOn ? 'partial' : 'needs', next: emailOn ? null : commApiOn ? 'One more step — verify the sending address.' : 'Set up shared message history, then email delivery.' },
+      { key: 'intake',  label: 'Set your client intake link', where: 'Lead Intake · Workspace', anchor: 'lead-intake',  state: intakeLinkSet ? 'done' : 'needs', next: 'A link new clients can use to share event details.' },
+      { key: 'vendor',  label: 'Stock your vendor bank', where: 'My Vendor Bank · Workspace',  anchor: 'vendor-bank',   state: vendorBankSet ? 'done' : 'needs', next: 'Your trusted vendors, ready to pull into any event.' },
+      { key: 'pay',     label: 'Tell clients how to pay you', where: 'How Clients Pay · Workspace', anchor: 'how-clients-pay', state: hasPay ? 'done' : 'needs',     next: 'Venmo, Zelle, PayPal, cash, or check — your choice.' },
+      { key: 'sig',     label: 'Connect e-signing',      where: 'Connections · Workspace',     anchor: 'connections',   state: sigOn ? 'done' : 'needs',         next: 'Send contracts and watch them get signed in one place.' },
+      { key: 'ai',      label: 'Set up the AI assistant', where: 'Connections · Workspace',    anchor: 'connections',   state: aiOn ? 'done' : 'partial',         next: aiOn ? null : 'Use the shared assistant, or add your Anthropic key.' },
     ];
   })();
-  const setupDone = setupHealth.filter(x => x.state === 'done').length;
-  const [setupHealthOpen, setSetupHealthOpen] = useState(true);
+  const setupDone   = setupHealth.filter(x => x.state === 'done').length;
+  const setupTotal  = setupHealth.length;
+  const setupNeeds  = setupHealth.filter(x => x.state === 'needs');
+  const setupPartial = setupHealth.filter(x => x.state === 'partial');
+  const setupDoneRows = setupHealth.filter(x => x.state === 'done');
+  // First incomplete row — drives the collapsed-state "Next: …" and the
+  // Continue setup CTA target. Needs setup wins over Partial.
+  const setupNext = setupNeeds[0] || setupPartial[0] || null;
+  // Default collapsed. Studios usually open Settings to do one thing —
+  // we don't shove eight rows in their face.
+  const [setupHealthOpen, setSetupHealthOpen] = useState(false);
+  const bodyRef = useRef(null);
+  const [flashAnchor, setFlashAnchor] = useState(null);
+  const scrollToAnchor = (anchor) => {
+    const root = bodyRef.current;
+    if (!root || !anchor) return;
+    const el = root.querySelector(`[data-setup-anchor="${anchor}"]`);
+    if (!el) return;
+    const top = el.offsetTop - 12;
+    root.scrollTo({ top, behavior: 'smooth' });
+    setFlashAnchor(anchor);
+    setTimeout(() => setFlashAnchor(null), 1400);
+    // Focus the first declared field for this anchor (no autocomplete
+    // surprises — we only focus inputs explicitly tagged for this).
+    setTimeout(() => {
+      const field = root.querySelector(`[data-setup-anchor="${anchor}"] [data-setup-field]`);
+      if (field && typeof field.focus === 'function') field.focus({ preventScroll: true });
+    }, 320);
+  };
+  // Mobile bottom-sheet detection — drives the wrapper layout. We track
+  // viewport width with a resize listener so the sheet swaps cleanly on
+  // device rotation.
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 700
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onResize = () => setIsNarrow(window.innerWidth < 700);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Wrapper geometry — locked to the Figma Studio Matte drawer spec
+  // (file CYlmJqDCXEaacCuz9wW3bd, pages 31_Components_Bottom_Sheet +
+  // 99 — M: Settings Modal). Mobile = bottom sheet (top radius 16,
+  // grabber 36×4 carbonStrong, env safe-area bottom). Desktop = right
+  // drawer (kept from current app convention; Figma actually specs a
+  // 720w centered modal — a desktop-only pattern lift flagged in
+  // docs/token-debt.md for the next sprint).
+  const sheetStyle = isNarrow
+    ? {
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'auto',
+        height: '92dvh', maxHeight: '92dvh',
+        background: C.surface,
+        borderTopLeftRadius: 16, borderTopRightRadius: 16,
+        boxShadow: '0 -20px 60px rgba(0,0,0,0.50)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        zIndex: 50, display: 'flex', flexDirection: 'column',
+      }
+    : {
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: 'min(480px, 100vw)',
+        background: C.surface,
+        borderLeft: `1px solid ${C.border}`,
+        boxShadow: '-20px 0 60px rgba(0,0,0,0.50)',
+        zIndex: 50, display: 'flex', flexDirection: 'column',
+      };
 
   return (
     <ThemeCtx.Provider value={_childThemeCtx}>
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 40 }} />
-      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(420px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0,
+        // Figma drawer backdrop spec: rgba(0,0,0,0.55) + soft blur for
+        // premium recede. The blur is what makes 0.55 feel premium —
+        // going darker is unnecessary.
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 40,
+      }} />
+      <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={sheetStyle}>
+
+        {/* Mobile grabber — Figma drawer spec: 36×4 fill carbonStrong,
+            radius 2, hosted in a 28-tall row above the header chrome. */}
+        {isNarrow && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 28, flexShrink: 0 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: carbonStrong }} />
+          </div>
+        )}
 
         {/* ── Header ── */}
-        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ padding: isNarrow ? '10px 20px 12px' : '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            {/* Sprint 60.U.3 10+ — Event Boss eyebrow on Studio Settings. */}
             <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 3 }}>
               Event Boss
             </div>
             <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>Studio Settings</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-              Account, workspace, and per-event settings. Ownership chips show what each section affects.
+              Account, workspace, and per-event settings. Scope chips show what each section affects.
             </div>
           </div>
           <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', marginTop: -4 }}>✕</button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 32px' }}>
+        <div ref={bodyRef} style={{ flex: 1, overflowY: 'auto', padding: isNarrow ? '14px 18px 28px' : '18px 22px 32px' }}>
 
           {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. The ownership chip
               system (Account / Workspace / Per event) is the modal's
@@ -9810,13 +9909,66 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             );
           })()}
 
-          {/* Sprint 60.U.4 — Setup Health card. Tells the planner exactly
-              what they still need to do to make the studio fully ready. */}
+          {/* Sprint Profile Settings Review (hardening) — Setup Health.
+              Collapsed-first guide, not a diagnostic wall. Shows the
+              single next action + a steel-blue "Continue setup" CTA
+              that scrolls to the relevant section and focuses the first
+              missing field. Expanded view groups rows by status so the
+              planner sees "what's missing / partial / done" without a
+              wall of red. */}
           {(() => {
-            const steelTopSH = C.accentTopGrad || C.accent;
+            const steelTopSH  = C.accentTopGrad || C.accent;
+            const steelDeepSH = C.accentDeep    || C.accent;
             const stateColor = (st) => st === 'done' ? C.success : st === 'partial' ? C.warn : C.muted;
-            const stateLabel = (st) => st === 'done' ? 'Done' : st === 'partial' ? 'Partial' : 'Needs setup';
             const stateGlyph = (st) => st === 'done' ? '✓' : st === 'partial' ? '◐' : '○';
+            const allDone = setupDone === setupTotal;
+            const progressPct = Math.round((setupDone / setupTotal) * 100);
+            const renderGroup = (rows, heading, subHeading) => {
+              if (!rows.length) return null;
+              return (
+                <div style={{ borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ padding: '10px 14px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>{heading}</span>
+                    <span style={{ fontSize: 10, color: C.muted }}>· {rows.length}</span>
+                  </div>
+                  {rows.map((row, idx) => (
+                    <button
+                      key={row.key}
+                      type="button"
+                      onClick={() => scrollToAnchor(row.anchor)}
+                      disabled={row.state === 'done'}
+                      title={row.state === 'done' ? 'Done · tap to review' : `Go to ${row.where}`}
+                      style={{
+                        width: '100%', background: 'none', border: 'none',
+                        cursor: row.state === 'done' ? 'default' : 'pointer',
+                        padding: '10px 14px',
+                        borderBottom: idx < rows.length - 1 ? `1px solid ${C.border}` : 'none',
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                        fontFamily: 'inherit', textAlign: 'left',
+                        opacity: row.state === 'done' ? 0.85 : 1,
+                      }}>
+                      <span aria-hidden style={{
+                        flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                        color: stateColor(row.state),
+                        border: `1.5px solid ${stateColor(row.state)}`,
+                        background: row.state === 'done' ? `${C.success}22` : 'transparent',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 800, marginTop: 1,
+                      }}>{stateGlyph(row.state)}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                        <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2, lineHeight: 1.5 }}>
+                          {row.where}{row.next ? ` · ${row.next}` : ''}
+                        </div>
+                      </div>
+                      {row.state !== 'done' && (
+                        <span aria-hidden style={{ color: steelTopSH, fontSize: 13, marginTop: 1 }}>›</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              );
+            };
             return (
               <div style={{
                 marginBottom: 16,
@@ -9825,59 +9977,89 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                 borderRadius: 12,
                 overflow: 'hidden',
               }}>
-                <button
-                  type="button"
-                  onClick={() => setSetupHealthOpen(o => !o)}
-                  aria-expanded={setupHealthOpen}
-                  style={{
-                    width: '100%', background: 'none', border: 'none',
-                    cursor: 'pointer', padding: '12px 14px',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    fontFamily: 'inherit', textAlign: 'left',
-                  }}>
-                  <span aria-hidden style={{
-                    flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
-                    background: setupDone === setupHealth.length ? `${C.success}22` : `${steelTopSH}22`,
-                    color: setupDone === setupHealth.length ? C.success : steelTopSH,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 800,
-                  }}>{setupDone === setupHealth.length ? '✓' : '⚐'}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopSH, textTransform: 'uppercase' }}>Setup Health</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 1 }}>
-                      {setupDone}/{setupHealth.length} ready
-                    </div>
-                  </div>
-                  <span aria-hidden style={{ color: C.muted, fontSize: 13 }}>{setupHealthOpen ? '▾' : '▸'}</span>
-                </button>
-                {setupHealthOpen && (
-                  <div style={{ borderTop: `1px solid ${C.border}` }}>
-                    {setupHealth.map((row, idx) => (
-                      <div key={row.key} style={{
-                        padding: '10px 14px',
-                        borderBottom: idx < setupHealth.length - 1 ? `1px solid ${C.border}` : 'none',
-                        display: 'flex', alignItems: 'flex-start', gap: 10,
-                      }}>
-                        <span aria-hidden style={{
-                          flexShrink: 0, width: 16, height: 16, borderRadius: '50%',
-                          color: stateColor(row.state),
-                          border: row.state === 'done' ? `1.5px solid ${C.success}` : `1.5px solid ${row.state === 'partial' ? C.warn : C.muted}`,
-                          background: row.state === 'done' ? `${C.success}22` : 'transparent',
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 800, marginTop: 2,
-                        }}>{stateGlyph(row.state)}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{row.label}</span>
-                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: stateColor(row.state) }}>{stateLabel(row.state)}</span>
-                          </div>
-                          {row.next && row.state !== 'done' && (
-                            <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{row.next}</div>
-                          )}
-                        </div>
+                {/* Compact summary row — always visible. */}
+                <div style={{
+                  padding: '14px 14px 12px',
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span aria-hidden style={{
+                      flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
+                      background: allDone ? `${C.success}22` : `${steelTopSH}22`,
+                      color: allDone ? C.success : steelTopSH,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 800,
+                    }}>{allDone ? '✓' : '⚐'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: steelTopSH, textTransform: 'uppercase' }}>Setup Health</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 1 }}>
+                        {allDone ? 'Your studio is ready' : `${setupDone} of ${setupTotal} ready`}
                       </div>
-                    ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSetupHealthOpen(o => !o)}
+                      aria-expanded={setupHealthOpen}
+                      title={setupHealthOpen ? 'Collapse checklist' : 'See full checklist'}
+                      style={{
+                        ...s.btn('ghost'),
+                        fontSize: 11, padding: '5px 10px',
+                        flexShrink: 0,
+                      }}>
+                      {setupHealthOpen ? 'Hide' : 'See all'}
+                    </button>
                   </div>
+
+                  {/* Progress bar — calm, not panic. */}
+                  <div style={{ height: 4, borderRadius: 2, background: `${C.border}`, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${progressPct}%`, height: '100%',
+                      background: allDone ? C.success : steelTopSH,
+                      transition: 'width 320ms ease',
+                    }} />
+                  </div>
+
+                  {/* Next action — only when there IS a next action. */}
+                  {!allDone && setupNext && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Next</div>
+                        <div style={{ fontSize: 12.5, color: C.text, marginTop: 1, fontWeight: 600 }}>{setupNext.label}</div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{setupNext.where}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => scrollToAnchor(setupNext.anchor)}
+                        style={{
+                          flexShrink: 0,
+                          background: `linear-gradient(180deg, ${steelTopSH} 0%, ${steelDeepSH} 100%)`,
+                          color: C.accentText || '#fff',
+                          border: 'none', borderRadius: 8,
+                          padding: '8px 14px',
+                          fontSize: 12.5, fontWeight: 700, letterSpacing: '0.01em',
+                          cursor: 'pointer',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+                        }}>
+                        Continue setup
+                      </button>
+                    </div>
+                  )}
+
+                  {/* All-done state — calm green confirmation. */}
+                  {allDone && (
+                    <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
+                      Every section has what it needs. You can still change anything below — autosaved.
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded checklist — grouped by status. */}
+                {setupHealthOpen && (
+                  <>
+                    {renderGroup(setupNeeds,    'Needs setup')}
+                    {renderGroup(setupPartial,  'Partial')}
+                    {renderGroup(setupDoneRows, 'Done')}
+                  </>
                 )}
               </div>
             );
@@ -9935,7 +10117,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           )}
 
           {/* ── STUDIO IDENTITY ── */}
-          <SectionHead label="Studio" ownership="workspace" />
+          <SectionHead label="Studio" ownership="workspace" anchor="studio" />
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
             <div>
@@ -9947,7 +10129,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           </PMRow2>
 
           {/* ── PLANNER IDENTITY ── */}
-          <SectionHead label="Planner" ownership="account" />
+          <SectionHead label="Planner" ownership="account" anchor="planner" />
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="name"         label="Your Name"      ph="Jane Planner" />
           </PMRow2>
@@ -9994,20 +10176,25 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             <textarea style={{ ...s.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} value={profile?.bio || ''} placeholder="Your planning style, specialties, and what makes you different…" onChange={e => onChange('bio', e.target.value)} />
           </div>
           <div style={{ marginTop: 12 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Brand Color <span style={{ fontWeight: 400 }}>— accents your vendor briefs & shared pages</span></label>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Brand Color <span style={{ fontWeight: 400 }}>— accents your vendor briefs & shared pages · Studio Matte palette</span></label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <input type="color" value={profile?.brandColor || '#1a6fba'} onChange={e => onChange('brandColor', e.target.value)}
+              <input type="color" value={profile?.brandColor || defaultBrandColor} onChange={e => onChange('brandColor', e.target.value)}
                 style={{ width: 44, height: 36, padding: 2, borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer', flexShrink: 0 }} />
-              <input value={profile?.brandColor || ''} placeholder="#1a6fba" onChange={e => onChange('brandColor', e.target.value)}
+              <input value={profile?.brandColor || ''} placeholder={defaultBrandColor} onChange={e => onChange('brandColor', e.target.value)}
                 style={{ ...s.input, width: 120, fontFamily: 'monospace', fontSize: 13 }} />
-              {['#1a6fba', '#14b8a6', '#b45309', '#9333ea', '#db2777', '#0f766e', '#1e293b'].map(c => (
-                <button key={c} onClick={() => onChange('brandColor', c)} title={c}
-                  style={{ width: 24, height: 24, borderRadius: '50%', background: c, border: profile?.brandColor === c ? `2px solid ${C.text}` : `1px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }} />
+              {brandPresets.map(({ value, label }) => (
+                <button key={value} onClick={() => onChange('brandColor', value)} title={`${label} · ${value}`}
+                  style={{ width: 24, height: 24, borderRadius: '50%', background: value, border: profile?.brandColor === value ? `2px solid ${C.text}` : `1px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }} />
               ))}
               {profile?.brandColor && (
                 <button onClick={() => onChange('brandColor', '')} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 8px' }}>Reset</button>
               )}
             </div>
+            {profile?.brandColor && !brandPresets.some(p => p.value.toLowerCase() === (profile.brandColor || '').toLowerCase()) && (
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 6, fontStyle: 'italic' }}>
+                Custom color — the app shell stays Studio Matte; this color accents your vendor briefs and client-shared pages only.
+              </div>
+            )}
           </div>
 
           {/* ── CONTACT & REACH ── */}
@@ -10177,7 +10364,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           )}
 
           {/* ── HOW CLIENTS PAY ── collapsible */}
-          <SectionHead label="How Clients Pay" />
+          <SectionHead label="How Clients Pay" anchor="how-clients-pay" />
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowPay(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
               <span style={{ fontSize: 12, fontWeight: 500 }}>Payment methods you accept</span>
@@ -10216,7 +10403,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
               59A audit. Provider statuses already truthful (configured-state
               aware via isXConfigured() helpers); only the section header
               changes here. */}
-          <SectionHead label="Connections" />
+          <SectionHead label="Connections" anchor="connections" />
           {(() => {
             const supabaseOn   = isSupabaseConfigured();
             const commApiOn    = isCommApiConfigured();
@@ -10512,8 +10699,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           </div>
 
-          {/* ── NOTIFICATION PREFERENCES ── */}
-          <SectionHead label="Notifications" />
+          {/* ── NOTIFICATION PREFERENCES ── per-user, not workspace-shared */}
+          <SectionHead label="Notifications" ownership="account" />
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
               { key: 'notifEventDay',    label: 'Event day alerts',        desc: 'Overdue tasks and vendor arrivals on event day' },
@@ -10540,11 +10727,11 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           {/* Sprint 59B: renamed "Preferred Vendor Directory" / "Preferred
               Vendors" → "My Vendor Bank" to distinguish it from event-scoped
               Vendors. Studio-private asset bank, not event-committed work. */}
-          <SectionHead label="My Vendor Bank" />
+          <SectionHead label="My Vendor Bank" anchor="vendor-bank" />
           <PreferredVendorDirectory C={C} s={s} />
 
           {/* ── Sprint 67: Lead Intake ── */}
-          <SectionHead label="Lead Intake" />
+          <SectionHead label="Lead Intake" anchor="lead-intake" />
           {(() => {
             const getOrCreateIntakeToken = () => {
               if (profile?.intakeToken) return profile.intakeToken;
@@ -11800,7 +11987,7 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
           title={`Open: ${firstItem.title}`}
           style={{
             background: 'none', border: 'none', padding: '6px 0 0', margin: 0,
-            fontFamily: 'inherit', fontSize: 13, color: C.warn,
+            fontFamily: 'inherit', fontSize: 13, color: C.accent,
             fontWeight: 500, cursor: 'pointer', display: 'inline-flex',
             alignItems: 'center', gap: 6, textAlign: 'left',
           }}
@@ -22317,8 +22504,15 @@ const normalizeEventTabRoute = (rawTab, itemId) => {
 // from Command Center routing. This is the single source of truth for vendor
 // work — the PLAN-overlay Vendors sidebar entry is being deprecated in the
 // same sprint.
-function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSection, sectionPing, ros, profile, allEvents, isMobile, onBack, onRouteToLinked }) {
+function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSection, sectionPing, ros, profile, allEvents, isMobile, onBack, onRouteToLinked, onSaveVendorToBank }) {
   const [editingVendor, setEditingVendor] = useState(null);
+  // Sprint Add Vendor 10+ — wizard state. Replaces the single-shot
+  // Add → VendorModal path with a 3-step flow that previews the
+  // category playbook before the user creates anything.
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [lastAdded, setLastAdded] = useState(null);
+  const themeC = useT();
+  const themeS = makeS(themeC);
   const budgetCategories = (budget || []).map(b => b.category).filter(Boolean);
   // Sprint 54: AI Readiness Copilot wiring. Pulls the planner's BYOK Anthropic
   // key from AICtx — if absent, aiAvailable is false and the cockpit shows the
@@ -22357,25 +22551,47 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
     if (!vendorId || !patch) return;
     setVendors(prev => (prev || []).map(v => v.id === vendorId ? { ...v, ...patch } : v));
   };
+  // Sprint Add Vendor 10+ — Create handler. Runs once at the end of
+  // Step 3. Persists the vendor + selected promise tracker, optionally
+  // saves a snapshot to the workspace vendor bank, and surfaces the
+  // success state. No keystroke-autosave for the wizard flow — the
+  // record exists only after Create.
+  const handleCreate = ({ identity, selectedPromiseKeys, saveToBank }) => {
+    const newVendor = {
+      id: uid(),
+      name: identity.name.trim(),
+      category: identity.category,
+      status: 'Unconfirmed',
+      contact_name: (identity.contactName || '').trim(),
+      contact: (identity.email || '').trim(), // VendorModal uses `contact` for email
+      email: (identity.email || '').trim(),
+      phone: (identity.phone || '').trim(),
+      // Persist the wizard's playbook selection so VendorModal can
+      // hydrate the Promise Tracker view without re-deriving.
+      selectedPromiseKeys: Array.isArray(selectedPromiseKeys) ? [...selectedPromiseKeys] : [],
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    setVendors(prev => [...(prev || []), newVendor]);
+    let savedToBank = false;
+    if (saveToBank && typeof onSaveVendorToBank === 'function') {
+      try { onSaveVendorToBank(newVendor); savedToBank = true; }
+      catch { savedToBank = false; }
+    }
+    setLastAdded({ ...newVendor, savedToBank });
+    setWizardOpen(false);
+  };
+
   return (
     <>
       <VendorPlanningWorkspace
         event={event}
         isMobile={isMobile}
         openId={openId}
-        /* Sprint 60.B — section focus. openSection is the target section
-           key (contact / payment / arrival / contract / documents / notes
-           / activity). sectionPing increments on each new request so the
-           focus side-effect re-fires when the same section is requested
-           twice in a row. */
         openSection={openSection}
         sectionPing={sectionPing}
         onBack={onBack}
         onEditVendor={(v) => setEditingVendor(v)}
-        onAddVendor={() => setEditingVendor({
-          id: uid(), name: '', category: '', status: 'Unconfirmed',
-          contact_name: '', email: '', phone: '',
-        })}
+        onAddVendor={() => setWizardOpen(true)}
         onAddLog={onAddLog}
         onMarkCatererUpdated={onMarkCatererUpdated}
         onPatchVendor={onPatchVendor}
@@ -22383,18 +22599,22 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
         onAskAi={onAskAi}
         onRouteToLinked={onRouteToLinked}
       />
+      {wizardOpen && (
+        <AddVendorWizard
+          C={themeC} s={themeS}
+          event={event}
+          bankAvailable={typeof onSaveVendorToBank === 'function'}
+          alreadyInBank={(profile?.savedVendors) || []}
+          onCancel={() => setWizardOpen(false)}
+          onCreate={handleCreate}
+        />
+      )}
       {editingVendor && (
         <VendorModal
           vendor={editingVendor}
           budgetCategories={budgetCategories}
           onClose={() => setEditingVendor(null)}
           onChange={(updated) => {
-            // Sprint 61.J fix — VendorModal autosaves every keystroke and
-            // expects the SAME vendor object to come back so the input
-            // reflects what the user just typed. Previously only `vendors`
-            // updated; the locally-tracked `editingVendor` stayed stale and
-            // the field "reverted" on every keystroke. Sync both so the
-            // round-trip is honest.
             setEditingVendor(updated);
             setVendors(prev => {
               const exists = (prev || []).some(v => v.id === updated.id);
@@ -22411,9 +22631,531 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
           profile={profile}
         />
       )}
+      {lastAdded && (
+        <VendorCreatedSuccess
+          C={themeC} s={themeS}
+          vendor={lastAdded}
+          eventName={event?.name || 'this event'}
+          savedToBank={!!lastAdded.savedToBank}
+          promiseCount={(lastAdded.selectedPromiseKeys || []).length}
+          evidenceCount={(() => {
+            try {
+              const pb = getVendorPlaybook(lastAdded.category);
+              const need = new Set(pb?.evidenceNeeded || []);
+              return (lastAdded.selectedPromiseKeys || []).filter(k => need.has(k)).length;
+            } catch { return 0; }
+          })()}
+          onClose={() => setLastAdded(null)}
+          onOpen={() => { setEditingVendor(lastAdded); setLastAdded(null); }}
+          onAddAnother={() => { setLastAdded(null); setWizardOpen(true); }}
+          onCopyFollowUp={() => {
+            try {
+              const promises = inferPromisesFromVendor(lastAdded, event);
+              const draft = generateVendorFollowUpDraft(lastAdded, event, promises, { commLive: false, emailEnabled: false });
+              const text = `Subject: ${draft.subject}\n\n${draft.body}`;
+              if (navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(text);
+              } else {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                try { document.execCommand('copy'); } catch {}
+                document.body.removeChild(el);
+              }
+              return true;
+            } catch { return false; }
+          }}
+        />
+      )}
     </>
   );
 }
+
+// ─── Sprint Add Vendor 10+ — 3-step wizard ─────────────────────────────
+// Replaces the single-shot Add → VendorModal path. The wizard answers
+// the 8 No-Guesswork questions before any record is written:
+//   Step 1 (Who):    Identity + bank toggle + "no messages will be sent"
+//   Step 2 (Track):  Category playbook preview with editable promise checklist
+//                    and one-line why-it-matters per item. Evidence-needed
+//                    items are labeled.
+//   Step 3 (Review): Itemized summary + Create.
+// Nothing is persisted until Create is tapped on Step 3.
+function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCancel, onCreate }) {
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+  // Lock background scroll behind the wizard.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  const [step, setStep] = useState(1);
+  const [identity, setIdentity] = useState({
+    name: '', category: '', contactName: '', email: '', phone: '',
+  });
+  const [saveToBank, setSaveToBank] = useState(false);
+  // Playbook for the chosen category, derived live.
+  const playbook = useMemo(() => identity.category ? getVendorPlaybook(identity.category) : null, [identity.category]);
+  const evidenceSet = useMemo(() => new Set(playbook?.evidenceNeeded || []), [playbook]);
+  const whyMap = playbook?.whyItMattersByField || {};
+  // Default: all common promises selected. User can uncheck on Step 2.
+  // Reset whenever the category changes.
+  const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+  useEffect(() => {
+    if (!playbook) { setSelectedKeys(new Set()); return; }
+    setSelectedKeys(new Set((playbook.commonPromises || []).map(p => p.key)));
+  }, [playbook]);
+
+  const VENDOR_CATS_W = ['Venue', 'Catering', 'Florals', 'Photography', 'Entertainment', 'AV / Tech', 'Hair & Makeup', 'Transportation', 'Lighting', 'Décor', 'Officiant', 'Other'];
+
+  const canContinue1 = identity.name.trim().length > 0 && identity.category.length > 0;
+  const dedupeKey = `${identity.name.toLowerCase().trim()}|${identity.category.toLowerCase().trim()}`;
+  const alreadyInBankHit = (alreadyInBank || []).some(v => `${(v.name || '').toLowerCase().trim()}|${(v.category || '').toLowerCase().trim()}` === dedupeKey);
+
+  const togglePromise = (key) => {
+    setSelectedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const selectedCount = selectedKeys.size;
+  const evidenceCount = useMemo(() => {
+    let n = 0;
+    for (const k of selectedKeys) if (evidenceSet.has(k)) n++;
+    return n;
+  }, [selectedKeys, evidenceSet]);
+
+  const sheetStyle = {
+    position: 'fixed', left: '50%', top: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 'min(520px, calc(100vw - 24px))',
+    maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column',
+    background: C.surface, border: `1px solid ${C.border}`,
+    borderRadius: 16,
+    boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
+    zIndex: 71,
+  };
+
+  const StepDots = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {[1, 2, 3].map(n => (
+        <span key={n} aria-current={n === step ? 'step' : undefined} style={{
+          width: n === step ? 24 : 8, height: 8, borderRadius: 4,
+          background: n <= step ? steelTop : C.border,
+          transition: 'all 200ms ease',
+        }} />
+      ))}
+      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginLeft: 6 }}>
+        Step {step} of 3
+      </span>
+    </div>
+  );
+
+  const PrimaryButton = ({ children, onClick, disabled, testId }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      data-testid={testId}
+      style={{
+        background: disabled
+          ? `${C.border}`
+          : `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+        color: disabled ? C.muted : (C.accentText || '#fff'),
+        border: 'none', borderRadius: 8,
+        padding: '9px 18px', fontSize: 13, fontWeight: 700,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        boxShadow: disabled ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+      }}>
+      {children}
+    </button>
+  );
+
+  return (
+    <>
+      <div onClick={onCancel} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 70,
+      }} />
+      <div role="dialog" aria-label={`Add vendor — step ${step} of 3`} data-testid="add-vendor-wizard" style={sheetStyle}>
+        {/* Header */}
+        <div style={{ padding: '18px 22px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Add Vendor</div>
+            <button type="button" aria-label="Close wizard" onClick={onCancel} style={{ ...s.btn('ghost'), fontSize: 16, padding: '2px 8px', marginTop: -2 }}>✕</button>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.text, lineHeight: 1.25, marginBottom: 10 }}>
+            {step === 1 && <>Who is this vendor?</>}
+            {step === 2 && <>What should Event Boss track?</>}
+            {step === 3 && <>Review and create</>}
+          </div>
+          <StepDots />
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 18px' }}>
+          {step === 1 && (
+            <>
+              <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase' }}>Linked event</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 1 }}>{event?.name || 'this event'}</div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label htmlFor="av-name" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                  Vendor name <span style={{ color: steelTop }}>*</span>
+                </label>
+                <input
+                  id="av-name"
+                  data-testid="av-name"
+                  value={identity.name}
+                  onChange={e => setIdentity(d => ({ ...d, name: e.target.value }))}
+                  placeholder="Bluebell Venue"
+                  style={s.input}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label htmlFor="av-category" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                  Category <span style={{ color: steelTop }}>*</span>
+                </label>
+                <select
+                  id="av-category"
+                  data-testid="av-category"
+                  value={identity.category}
+                  onChange={e => setIdentity(d => ({ ...d, category: e.target.value }))}
+                  style={{ ...s.input, cursor: 'pointer' }}>
+                  <option value="">Choose one…</option>
+                  {VENDOR_CATS_W.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {identity.category && playbook && (
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{playbook.plainDescription}</div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Optional · add later</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <input value={identity.contactName} onChange={e => setIdentity(d => ({ ...d, contactName: e.target.value }))} placeholder="Contact name" style={s.input} />
+                  <input value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: e.target.value }))} placeholder="Phone" style={s.input} />
+                  <input value={identity.email} onChange={e => setIdentity(d => ({ ...d, email: e.target.value }))} placeholder="Email" type="email" style={{ ...s.input, gridColumn: '1 / -1' }} />
+                </div>
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, marginBottom: 10, cursor: bankAvailable ? 'pointer' : 'not-allowed', opacity: bankAvailable ? 1 : 0.6 }}>
+                <input
+                  type="checkbox"
+                  data-testid="av-bank-toggle"
+                  checked={saveToBank}
+                  onChange={e => setSaveToBank(e.target.checked)}
+                  disabled={!bankAvailable}
+                  style={{ marginTop: 3, accentColor: steelTop }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>Save to my vendor bank</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>
+                    {bankAvailable
+                      ? alreadyInBankHit
+                        ? 'Already in your bank — toggling this won\'t duplicate.'
+                        : 'Reuse this vendor on future events without re-typing details.'
+                      : 'Vendor bank wiring not available in this view.'}
+                  </div>
+                </div>
+              </label>
+
+              <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, padding: '8px 0' }}>
+                ✓ No messages will be sent. · ✓ No notifications will be sent.
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              {!playbook && (
+                <div style={{ fontSize: 12.5, color: C.muted, padding: 20, textAlign: 'center' }}>Pick a category in Step 1 to see the playbook.</div>
+              )}
+              {playbook && (
+                <>
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.55, marginBottom: 12 }}>
+                    For a <span style={{ color: C.text, fontWeight: 700 }}>{playbook.displayName}</span>, Event Boss usually tracks these. Uncheck anything that doesn't fit — you can change later.
+                  </div>
+                  <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+                    {(playbook.commonPromises || []).map((p, idx, arr) => {
+                      const checked = selectedKeys.has(p.key);
+                      const evi = evidenceSet.has(p.key);
+                      return (
+                        <label key={p.key} data-testid={`av-promise-${p.key}`} style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 10,
+                          padding: '12px 14px',
+                          borderBottom: idx < arr.length - 1 ? `1px solid ${C.border}` : 'none',
+                          cursor: 'pointer',
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => togglePromise(p.key)}
+                            style={{ marginTop: 3, accentColor: steelTop }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{p.label}</span>
+                              {evi && (
+                                <span style={{
+                                  fontSize: 9, fontWeight: 800, letterSpacing: '0.12em',
+                                  textTransform: 'uppercase', color: steelTop,
+                                  padding: '2px 6px', borderRadius: 3,
+                                  border: `1px solid ${steelTop}55`,
+                                }}>Evidence needed</span>
+                              )}
+                            </div>
+                            {whyMap[p.key] && (
+                              <div style={{ fontSize: 11, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{whyMap[p.key]}</div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div data-testid="av-promise-summary" style={{ fontSize: 11.5, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
+                    <span data-testid="av-promise-count" style={{ color: C.text, fontWeight: 700 }}>{selectedCount}</span> tracked · <span data-testid="av-evidence-count" style={{ color: C.text, fontWeight: 700 }}>{evidenceCount}</span> need evidence.
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Review</div>
+                {[
+                  { label: 'Vendor added to',     value: event?.name || 'this event' },
+                  { label: 'Vendor name',         value: identity.name.trim() || '—' },
+                  { label: 'Category',            value: identity.category || '—' },
+                  { label: 'Saved to vendor bank', value: saveToBank && bankAvailable ? (alreadyInBankHit ? 'Already in bank — no duplicate' : 'Yes') : 'No' },
+                  { label: 'Promise tracker',     value: `${selectedCount} selected item${selectedCount === 1 ? '' : 's'}` },
+                  { label: 'Evidence needed',     value: `${evidenceCount} item${evidenceCount === 1 ? '' : 's'}` },
+                  { label: 'Messages sent',       value: 'None' },
+                  { label: 'Notifications sent',  value: 'None' },
+                ].map((row, i, arr) => (
+                  <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: i ? 8 : 0, paddingBottom: i === arr.length - 1 ? 0 : 8, borderBottom: i === arr.length - 1 ? 'none' : `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{row.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55 }}>
+                Tapping Create saves this vendor to the event. You can still edit anything later — and Event Boss only sends messages when you explicitly ask it to.
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
+          <button type="button" onClick={step === 1 ? onCancel : () => setStep(s => s - 1)} style={{ ...s.btn('ghost'), fontSize: 13, padding: '8px 14px' }}>
+            {step === 1 ? 'Cancel' : 'Back'}
+          </button>
+          {step < 3 && (
+            <PrimaryButton
+              testId="av-continue"
+              onClick={() => setStep(s => s + 1)}
+              disabled={step === 1 ? !canContinue1 : false}>
+              Continue
+            </PrimaryButton>
+          )}
+          {step === 3 && (
+            <PrimaryButton
+              testId="av-create"
+              onClick={() => onCreate({
+                identity,
+                selectedPromiseKeys: Array.from(selectedKeys),
+                saveToBank: saveToBank && bankAvailable && !alreadyInBankHit,
+              })}>
+              Create vendor
+            </PrimaryButton>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Legacy intro retained for any caller that imports it (none in this
+// build) — kept as a thin alias so a partial migration doesn't break.
+function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  return (
+    <>
+      <div onClick={onCancel} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 70,
+      }} />
+      <div role="dialog" aria-label="Add a vendor" style={{
+        position: 'fixed', left: '50%', top: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 'min(440px, calc(100vw - 32px))',
+        maxHeight: 'calc(100vh - 64px)', overflowY: 'auto',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
+        zIndex: 71, padding: 22,
+      }}>
+        <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase', marginBottom: 4 }}>Add Vendor</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 4, lineHeight: 1.25 }}>
+          Add a vendor to <span style={{ color: steelTop }}>{eventName}</span>
+        </div>
+        <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 16 }}>
+          You'll set a name and category. Event Boss will draft a few category-based things to track (deposit, contract, arrival window) — nothing is sent and nothing is shared.
+        </div>
+
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>What happens when you save</div>
+          {[
+            { label: 'Added to event',         value: eventName },
+            { label: 'Saved to vendor bank',   value: 'No (workspace bank is separate — coming soon)' },
+            { label: 'Promise tracker',        value: 'Drafted from category playbook · you can edit' },
+            { label: 'Messages sent',          value: 'None' },
+            { label: 'Notifications sent',     value: 'None' },
+          ].map((row) => (
+            <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 6 }}>
+              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${steelTop}`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, marginTop: 1 }}>·</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 1, lineHeight: 1.45 }}>{row.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 16, lineHeight: 1.5 }}>
+          Required: <span style={{ color: C.text, fontWeight: 600 }}>name</span> and <span style={{ color: C.text, fontWeight: 600 }}>category</span>. Contact info, deposit, contract — you can add later.
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onCancel} style={{ ...s.btn('ghost'), fontSize: 13, padding: '8px 14px' }}>Cancel</button>
+          <button type="button" onClick={onContinue} style={{
+            background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+            color: C.accentText || '#fff',
+            border: 'none', borderRadius: 8,
+            padding: '9px 18px', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+          }}>Continue</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Sprint Add Vendor 10+ — Success state ─────────────────────────────
+// Itemized post-create confirmation. No fake send — "Draft follow-up"
+// uses the generator and copies to clipboard. Sending stays gated by
+// the comms 6-state contract and the deeper Communication workflow.
+function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCount, evidenceCount, onClose, onOpen, onAddAnother, onCopyFollowUp }) {
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  const handleCopy = () => {
+    const ok = onCopyFollowUp ? onCopyFollowUp() : false;
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2200); }
+  };
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 70,
+      }} />
+      <div role="status" aria-live="polite" data-testid="vendor-created-success" style={{
+        position: 'fixed', left: '50%', top: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 'min(460px, calc(100vw - 24px))',
+        maxHeight: 'calc(100vh - 48px)', overflowY: 'auto',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
+        zIndex: 71, padding: 22,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <span aria-hidden style={{ width: 32, height: 32, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800 }}>✓</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: C.success, textTransform: 'uppercase' }}>Vendor added</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 1, lineHeight: 1.25 }}>{vendor?.name || 'New vendor'}</div>
+            {vendor?.category && (
+              <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{vendor.category}</div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          {[
+            { label: 'Added to event',         value: eventName },
+            { label: 'Saved to vendor bank',   value: savedToBank ? 'Yes' : 'No' },
+            { label: 'Promise tracker created', value: `${promiseCount} item${promiseCount === 1 ? '' : 's'}` },
+            { label: 'Evidence needed',        value: `${evidenceCount} item${evidenceCount === 1 ? '' : 's'}` },
+            { label: 'Messages sent',          value: 'None' },
+            { label: 'Notifications sent',     value: 'None' },
+          ].map((row, idx, arr) => (
+            <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingTop: idx ? 8 : 0, paddingBottom: idx === arr.length - 1 ? 0 : 8, borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${C.border}` }}>
+              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', background: `${C.success}22`, color: C.success, border: `1.5px solid ${C.success}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, marginTop: 1 }}>✓</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 1, lineHeight: 1.45 }}>{row.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Next best action</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button type="button" data-testid="vcs-open" onClick={onOpen} style={{
+            background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+            color: C.accentText || '#fff',
+            border: 'none', borderRadius: 8,
+            padding: '8px 14px', fontSize: 12.5, fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+          }}>Open vendor</button>
+          <button type="button" data-testid="vcs-copy-followup" onClick={handleCopy} title="Copies a category-aware draft to your clipboard. Nothing is sent." style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px' }}>
+            {copied ? 'Copied' : 'Copy follow-up'}
+          </button>
+          <button type="button" data-testid="vcs-add-another" onClick={onAddAnother} style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px' }}>Add another</button>
+          <button type="button" data-testid="vcs-done" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px', marginLeft: 'auto' }}>Done</button>
+        </div>
+        <div style={{ fontSize: 10.5, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
+          "Copy follow-up" puts a category-aware draft on your clipboard. Sending stays manual — Event Boss never reaches out to a vendor without you.
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Retained for backward compatibility — earlier audit pass used these names.
+function VendorAddedToast(props) { return <VendorCreatedSuccess {...props} savedToBank={false} evidenceCount={0} />; }
 
 // ─── Sprint 49: EventDecisionsTab — canonical Decisions L4 specialist ────────
 // Wraps DecisionApprovalCenter with persistence hooks. Decisions resolve by
@@ -23880,7 +24622,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
   );
 }
 
-function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections }) {
+function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
@@ -24040,22 +24782,31 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const approvalCt   = comms.filter(m => m.message_type === 'approval_request' && !['approved','rejected'].includes(m.approval_status)).length;
   const decisionsOpen = decisionCt + approvalCt;
   const unreadCommCt = comms.filter(m => m.direction === 'inbound' && !m.handled && !m.answered).length;
+  // Sprint Add Vendor 10+ amber-fix — drop the ⚠ glyph from badge
+  // strings. U+26A0 renders as the system orange emoji regardless of
+  // CSS color, which painted the sidebar amber. Severity is now carried
+  // by the badge text COLOR via `tabBadgeOverdue` below.
   const tabBadge = {
-    'Guests':         guestCount > 0   ? String(guestCount)                                      : null,
-    'Vendors':        vendorCount > 0  ? String(vendorCount)                                     : null,
-    'Decisions':      decisionsOpen > 0 ? `${decisionsOpen}${decisionCt > 0 ? ' ⚠' : ''}`        : null,
-    // Sprint 59B: single badge for the merged Planning surface — inherits
-    // the Planning Tasks done/total + overdue marker that surfaced before
-    // the merge. Legacy keys ('Timeline', 'Checklist', 'Planning Tasks')
-    // kept for any badge consumer that may still read by old name.
-    'Planning':       taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
-    'Timeline':       taskTotal > 0    ? `${Math.round((taskDone / taskTotal) * 100)}%${overdueCount > 0 ? ' ⚠' : ''}` : null,
-    'Checklist':      taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
-    'Planning Tasks': taskTotal > 0    ? `${taskDone}/${taskTotal}${overdueCount > 0 ? ' ⚠' : ''}` : null,
-    'Run of Show':    rosCount > 0     ? String(rosCount)                                        : null,
-    'Seating':        confirmedG > 0   ? `${confirmedG} conf`                                    : null,
-    'Agenda':         agendaCount > 0  ? String(agendaCount)                                     : null,
-    'Communication':  unreadCommCt > 0 ? `${unreadCommCt} new`                                   : null,
+    'Guests':         guestCount > 0    ? String(guestCount)                                : null,
+    'Vendors':        vendorCount > 0   ? String(vendorCount)                                : null,
+    'Decisions':      decisionsOpen > 0 ? String(decisionsOpen)                              : null,
+    'Planning':       taskTotal > 0     ? `${taskDone}/${taskTotal}`                         : null,
+    'Timeline':       taskTotal > 0     ? `${Math.round((taskDone / taskTotal) * 100)}%`     : null,
+    'Checklist':      taskTotal > 0     ? `${taskDone}/${taskTotal}`                         : null,
+    'Planning Tasks': taskTotal > 0     ? `${taskDone}/${taskTotal}`                         : null,
+    'Run of Show':    rosCount > 0      ? String(rosCount)                                   : null,
+    'Seating':        confirmedG > 0    ? `${confirmedG} conf`                               : null,
+    'Agenda':         agendaCount > 0   ? String(agendaCount)                                : null,
+    'Communication':  unreadCommCt > 0  ? `${unreadCommCt} new`                              : null,
+  };
+  // Per-tab overdue flag — drives the badge text color so the nav can
+  // signal severity without orange emoji glyphs.
+  const tabBadgeOverdue = {
+    'Planning':       overdueCount > 0,
+    'Timeline':       overdueCount > 0,
+    'Checklist':      overdueCount > 0,
+    'Planning Tasks': overdueCount > 0,
+    'Decisions':      decisionCt   > 0,
   };
 
   // Board Meeting gets specialized ordering. Sprint 59B: same Planning merge
@@ -24128,7 +24879,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         {!collapsed && badge != null && (
           <span style={{
             fontSize: 9.5, fontWeight: 700,
-            color: t === 'Planning Tasks' && overdueCount > 0 ? C.danger : C.muted,
+            color: tabBadgeOverdue[t] ? C.danger : C.muted,
             background: active ? color + '22' : C.border + '66',
             borderRadius: 5, padding: '1px 5px', flexShrink: 0,
             letterSpacing: '0.03em',
@@ -24278,7 +25029,6 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             setVendors={wrap('vendors')}
             budget={event.budget}
             openId={openVendorId}
-            /* Sprint 60.B: section focus inside the vendor cockpit. */
             openSection={openVendorSection}
             sectionPing={vendorSectionPing}
             ros={event.ros}
@@ -24286,9 +25036,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             allEvents={allEvents}
             isMobile={isMobile}
             onBack={() => handleTabChange('Command')}
-            /* Vendor Readiness Pass: lets the cockpit route to a linked
-               item on another L4 tab. Maps category → canonical tab. */
             onRouteToLinked={(targetTab, itemId) => handleTabChange(targetTab, itemId)}
+            onSaveVendorToBank={onSaveVendorToBank}
           />
         </Suspense>
       )}
@@ -24878,19 +25627,20 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {(bottomSheet === 'people'
                 ? [
-                    { id: 'Vendors', icon: 'store',   label: 'Vendors', sub: `${vendorCount} on event` },
-                    { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}` },
-                    { id: 'Seating', icon: 'seating', label: 'Seating', sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables' },
+                    { id: 'Vendors', icon: 'store',   label: 'Vendors', sub: `${vendorCount} on event`, testId: 'people-sheet-vendors' },
+                    { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}`, testId: 'people-sheet-guests' },
+                    { id: 'Seating', icon: 'seating', label: 'Seating', sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables', testId: 'people-sheet-seating' },
                   ]
                 : [
-                    { id: 'Budget',    icon: 'dollar', label: 'Budget',    sub: 'Plan + actuals' },
-                    { id: 'Documents', icon: 'file',   label: 'Documents', sub: `${(event.documents || []).length} on event` },
+                    { id: 'Budget',    icon: 'dollar', label: 'Budget',    sub: 'Plan + actuals', testId: 'money-sheet-budget' },
+                    { id: 'Documents', icon: 'file',   label: 'Documents', sub: `${(event.documents || []).length} on event`, testId: 'money-sheet-documents' },
                   ]
               ).map(opt => {
                 const isActive = tab === opt.id;
                 return (
                   <button
                     key={opt.id}
+                    data-testid={opt.testId}
                     onClick={() => { handleTabChange(opt.id); setBottomSheet(null); }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12,
@@ -24936,7 +25686,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               ? () => setBottomSheet(it.sheet)
               : () => { setBottomSheet(null); handleTabChange(it.target || it.id); };
             return (
-              <button key={it.id} onClick={onClick} title={it.id} aria-label={it.id} aria-haspopup={it.sheet ? 'true' : undefined}
+              <button key={it.id} data-testid={`bottomnav-${it.id.toLowerCase()}`} onClick={onClick} title={it.id} aria-label={it.id} aria-haspopup={it.sheet ? 'true' : undefined}
                 style={{
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '8px 0 9px',
@@ -25772,6 +26522,25 @@ export default function App() {
         backLabel={activeClient ? `← ${activeClient.name}` : '← Home'}
         initialNav={initialNav}
         profile={profile}
+        /* Sprint Add Vendor 10+ — bank-save callback. Dedupes by
+           lowercased name+category so the same vendor isn't appended
+           twice. Writes a snapshot, not a live reference. */
+        onSaveVendorToBank={(snap) => setProfile(p => {
+          const existing = (p?.savedVendors) || [];
+          const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
+          const newKey = k(snap);
+          if (!newKey || newKey === '|') return p;
+          if (existing.some(v => k(v) === newKey)) return p;
+          return { ...p, savedVendors: [...existing, {
+            id: snap.id || uid(),
+            name: snap.name || '',
+            category: snap.category || '',
+            contact_name: snap.contact_name || '',
+            email: snap.email || '',
+            phone: snap.phone || '',
+            savedAt: new Date().toISOString().slice(0, 10),
+          }] };
+        })}
         /* Sprint 60: opens the Studio Setup profile modal so interior
            "Open Connections →" chips have a destination. */
         onOpenConnections={() => setShowProfile(true)}

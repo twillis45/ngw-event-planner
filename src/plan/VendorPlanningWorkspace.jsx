@@ -747,6 +747,8 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
         <div style={{ display: 'flex', gap: 6 }}>
           {onAdd && (
             <button
+              data-testid="add-vendor-btn"
+              aria-label="Add vendor"
               onClick={onAdd}
               style={{
                 background: P.green, border: 'none',

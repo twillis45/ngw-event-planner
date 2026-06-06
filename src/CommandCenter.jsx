@@ -1507,10 +1507,15 @@ function EmptyState({ children }) {
 // Salesforce-speak was undermining the planner-native voice elsewhere.)
 function NextBestActionPanel({ command, onTabChange, isMobile }) {
   if (!command) return null;
+  // Severity color drives the left accent strip and the eyebrow label
+  // only. The primary CTA must remain steel-blue (locked: amber/red are
+  // status colors, never primary action colors).
   const accent =
     command.level === 'critical'  ? P.red :
     command.level === 'attention' ? P.amber :
                                     P.textSecondary;
+  const ctaTop  = P.steelBlue;            // #4E6877
+  const ctaBase = '#3F5B6A';              // matches palette steelBlueDark
   const label =
     command.level === 'critical'  ? 'Up Next · Critical' :
     command.level === 'attention' ? 'Up Next · Needs you' :
@@ -1588,7 +1593,9 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
         {command.consequence}
       </div>
 
-      {/* CTA */}
+      {/* CTA — steel-blue, regardless of severity. Severity is signaled
+          by the left accent strip + eyebrow label above, never the
+          primary action color. */}
       <button
         onClick={handleCta}
         style={{
@@ -1596,14 +1603,15 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
           borderRadius: radius.sm,
           border: 'none',
           cursor: 'pointer',
-          background: accent,
-          color: command.level === 'critical' || command.level === 'attention' ? '#fff' : P.canvas,
+          background: `linear-gradient(180deg, ${ctaTop} 0%, ${ctaBase} 100%)`,
+          color: '#eef0f4',
           fontSize: isMobile ? 12.5 : 13,
           fontWeight: type.weight.semibold,
           letterSpacing: '0.01em',
           fontFamily: FF,
           display: 'inline-flex', alignItems: 'center', gap: 6,
           transition: 'transform 0.12s',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
         }}
         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
