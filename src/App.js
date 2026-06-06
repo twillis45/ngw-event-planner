@@ -22566,6 +22566,7 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
       contact: (identity.email || '').trim(), // VendorModal uses `contact` for email
       email: (identity.email || '').trim(),
       phone: (identity.phone || '').trim(),
+      website: (identity.website || '').trim(),
       // Persist the wizard's playbook selection so VendorModal can
       // hydrate the Promise Tracker view without re-deriving.
       selectedPromiseKeys: Array.isArray(selectedPromiseKeys) ? [...selectedPromiseKeys] : [],
@@ -22648,11 +22649,15 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
           onClose={() => setLastAdded(null)}
           onOpen={() => { setEditingVendor(lastAdded); setLastAdded(null); }}
           onAddAnother={() => { setLastAdded(null); setWizardOpen(true); }}
-          onCopyFollowUp={() => {
+          onDraftFollowUp={() => {
             try {
               const promises = inferPromisesFromVendor(lastAdded, event);
               const draft = generateVendorFollowUpDraft(lastAdded, event, promises, { commLive: false, emailEnabled: false });
               const text = `Subject: ${draft.subject}\n\n${draft.body}`;
+              // Two honest actions per the 6-state comms contract:
+              //   1. Copy to clipboard (always allowed)
+              //   2. Open mailto draft if vendor has an email (always
+              //      allowed — opens the user's mail client, no send).
               if (navigator?.clipboard?.writeText) {
                 navigator.clipboard.writeText(text);
               } else {
@@ -22663,8 +22668,15 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
                 try { document.execCommand('copy'); } catch {}
                 document.body.removeChild(el);
               }
-              return true;
-            } catch { return false; }
+              const to = (lastAdded.email || '').trim();
+              if (to) {
+                const mailto = `mailto:${encodeURIComponent(to)}`
+                  + `?subject=${encodeURIComponent(draft.subject || '')}`
+                  + `&body=${encodeURIComponent(draft.body || '')}`;
+                try { window.open(mailto, '_blank'); } catch {}
+              }
+              return { copied: true, mailtoOpened: !!to };
+            } catch { return { copied: false, mailtoOpened: false }; }
           }}
         />
       )}
@@ -22692,7 +22704,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
   }, []);
   const [step, setStep] = useState(1);
   const [identity, setIdentity] = useState({
-    name: '', category: '', contactName: '', email: '', phone: '',
+    name: '', category: '', contactName: '', email: '', phone: '', website: '',
   });
   const [saveToBank, setSaveToBank] = useState(false);
   // Playbook for the chosen category, derived live.
@@ -22845,9 +22857,10 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Optional · add later</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <input value={identity.contactName} onChange={e => setIdentity(d => ({ ...d, contactName: e.target.value }))} placeholder="Contact name" style={s.input} />
-                  <input value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: e.target.value }))} placeholder="Phone" style={s.input} />
-                  <input value={identity.email} onChange={e => setIdentity(d => ({ ...d, email: e.target.value }))} placeholder="Email" type="email" style={{ ...s.input, gridColumn: '1 / -1' }} />
+                  <input data-testid="av-contact-name" value={identity.contactName} onChange={e => setIdentity(d => ({ ...d, contactName: e.target.value }))} placeholder="Contact name" style={s.input} />
+                  <input data-testid="av-phone" value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: e.target.value }))} placeholder="Phone" style={s.input} />
+                  <input data-testid="av-email" value={identity.email} onChange={e => setIdentity(d => ({ ...d, email: e.target.value }))} placeholder="Email" type="email" style={{ ...s.input, gridColumn: '1 / -1' }} />
+                  <input data-testid="av-website" value={identity.website} onChange={e => setIdentity(d => ({ ...d, website: e.target.value }))} placeholder="Website (https://…)" type="url" style={{ ...s.input, gridColumn: '1 / -1' }} />
                 </div>
               </div>
 
@@ -22872,8 +22885,20 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 </div>
               </label>
 
-              <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.55, padding: '8px 0' }}>
-                ✓ No messages will be sent. · ✓ No notifications will be sent.
+              {/* Sprint Add Vendor 10+ — explicit 4-line trust block per
+                  spec. No tooltip, no ambiguity. */}
+              <div data-testid="av-trust-block" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginTop: 10 }}>
+                {[
+                  'Messages sent: None',
+                  'Notifications sent: None',
+                  'Client/vendor will not be contacted',
+                  'Vendor is not created until final review',
+                ].map((line, i) => (
+                  <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 11, fontWeight: 800 }}>✓</span>
+                    <span style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>{line}</span>
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -23069,18 +23094,21 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
 // Itemized post-create confirmation. No fake send — "Draft follow-up"
 // uses the generator and copies to clipboard. Sending stays gated by
 // the comms 6-state contract and the deeper Communication workflow.
-function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCount, evidenceCount, onClose, onOpen, onAddAnother, onCopyFollowUp }) {
+function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCount, evidenceCount, onClose, onOpen, onAddAnother, onDraftFollowUp }) {
   const steelTop  = C.accentTopGrad || C.accent;
   const steelDeep = C.accentDeep    || C.accent;
-  const [copied, setCopied] = useState(false);
+  const [draftStatus, setDraftStatus] = useState(null);
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, []);
-  const handleCopy = () => {
-    const ok = onCopyFollowUp ? onCopyFollowUp() : false;
-    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2200); }
+  const handleDraft = () => {
+    const res = onDraftFollowUp ? onDraftFollowUp() : { copied: false, mailtoOpened: false };
+    if (res && (res.copied || res.mailtoOpened)) {
+      setDraftStatus(res);
+      setTimeout(() => setDraftStatus(null), 3200);
+    }
   };
   return (
     <>
@@ -23140,14 +23168,14 @@ function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCou
             cursor: 'pointer',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
           }}>Open vendor</button>
-          <button type="button" data-testid="vcs-copy-followup" onClick={handleCopy} title="Copies a category-aware draft to your clipboard. Nothing is sent." style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px' }}>
-            {copied ? 'Copied' : 'Copy follow-up'}
+          <button type="button" data-testid="vcs-draft-followup" onClick={handleDraft} title="Opens a category-aware draft in your mail client (when an email is set) and copies it to the clipboard. Nothing is sent." style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px' }}>
+            {draftStatus ? (draftStatus.mailtoOpened ? 'Draft opened' : 'Copied') : 'Draft follow-up'}
           </button>
           <button type="button" data-testid="vcs-add-another" onClick={onAddAnother} style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px' }}>Add another</button>
           <button type="button" data-testid="vcs-done" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 12.5, padding: '8px 14px', marginLeft: 'auto' }}>Done</button>
         </div>
         <div style={{ fontSize: 10.5, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
-          "Copy follow-up" puts a category-aware draft on your clipboard. Sending stays manual — Event Boss never reaches out to a vendor without you.
+          "Draft follow-up" prepares a category-aware draft in your mail client (when an email is set) and copies the same text to your clipboard. Sending stays manual — Event Boss never reaches out to a vendor without you.
         </div>
       </div>
     </>
