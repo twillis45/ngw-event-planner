@@ -1,0 +1,716 @@
+{
+  "390": {
+    "viewport": "390",
+    "map_check": {
+      "Wedding": {
+        "expected_kit": "wedding",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": "true",
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Board Meeting": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Conference": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Birthday": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Quincea\u00f1era": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Holiday Party": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Fundraiser / Gala": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Other": {
+        "expected_kit": "simple",
+        "aria_pressed_states": {
+          "simple": "true",
+          "wedding": null,
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      }
+    },
+    "rail_says_suggests": true,
+    "rail_avoids_chooses": true,
+    "rail_says_change_it": true,
+    "override_blank_pressed": true,
+    "override_wedding_unpressed": true,
+    "override_line_says_you_picked": true,
+    "override_line_avoids_suggested_for": true,
+    "override_persists_blank_still_pressed": true,
+    "override_persists_private_NOT_pressed": true,
+    "step3_review_setup_choice": "Setup choice\nStart blank",
+    "step3_says_start_blank": true,
+    "step3_no_messages": true,
+    "step3_no_notifications": true,
+    "date_chips_still_render": false,
+    "error": "Locator.click: Timeout 2500ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='ce-date-chip-plus-3-months']\")\n"
+  },
+  "430": {
+    "viewport": "430",
+    "map_check": {
+      "Wedding": {
+        "expected_kit": "wedding",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": "true",
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Board Meeting": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Conference": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Birthday": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Quincea\u00f1era": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Holiday Party": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Fundraiser / Gala": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Other": {
+        "expected_kit": "simple",
+        "aria_pressed_states": {
+          "simple": "true",
+          "wedding": null,
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      }
+    },
+    "rail_says_suggests": true,
+    "rail_avoids_chooses": true,
+    "rail_says_change_it": true,
+    "override_blank_pressed": true,
+    "override_wedding_unpressed": true,
+    "override_line_says_you_picked": true,
+    "override_line_avoids_suggested_for": true,
+    "override_persists_blank_still_pressed": true,
+    "override_persists_private_NOT_pressed": true,
+    "step3_review_setup_choice": "Setup choice\nStart blank",
+    "step3_says_start_blank": true,
+    "step3_no_messages": true,
+    "step3_no_notifications": true,
+    "date_chips_still_render": false,
+    "error": "Locator.click: Timeout 2500ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='ce-date-chip-plus-3-months']\")\n"
+  },
+  "768": {
+    "viewport": "768",
+    "map_check": {
+      "Wedding": {
+        "expected_kit": "wedding",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": "true",
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Board Meeting": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Conference": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Birthday": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Quincea\u00f1era": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Holiday Party": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Fundraiser / Gala": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Other": {
+        "expected_kit": "simple",
+        "aria_pressed_states": {
+          "simple": "true",
+          "wedding": null,
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      }
+    },
+    "rail_says_suggests": true,
+    "rail_avoids_chooses": true,
+    "rail_says_change_it": true,
+    "override_blank_pressed": true,
+    "override_wedding_unpressed": true,
+    "override_line_says_you_picked": true,
+    "override_line_avoids_suggested_for": true,
+    "override_persists_blank_still_pressed": true,
+    "override_persists_private_NOT_pressed": true,
+    "step3_review_setup_choice": "Setup choice\nStart blank",
+    "step3_says_start_blank": true,
+    "step3_no_messages": true,
+    "step3_no_notifications": true,
+    "date_chips_still_render": false,
+    "error": "Locator.click: Timeout 2500ms exceeded.\nCall log:\n  - waiting for locator(\"[data-testid='ce-date-chip-plus-3-months']\")\n"
+  },
+  "1024": {
+    "viewport": "1024",
+    "map_check": {
+      "Wedding": {
+        "expected_kit": "wedding",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": "true",
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Board Meeting": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Conference": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Birthday": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Quincea\u00f1era": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Holiday Party": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Fundraiser / Gala": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Other": {
+        "expected_kit": "simple",
+        "aria_pressed_states": {
+          "simple": "true",
+          "wedding": null,
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      }
+    },
+    "rail_says_suggests": true,
+    "rail_avoids_chooses": true,
+    "rail_says_change_it": true,
+    "override_blank_pressed": true,
+    "override_wedding_unpressed": true,
+    "override_line_says_you_picked": true,
+    "override_line_avoids_suggested_for": true,
+    "override_persists_blank_still_pressed": true,
+    "override_persists_private_NOT_pressed": true,
+    "step3_review_setup_choice": "Setup choice\nStart blank",
+    "step3_says_start_blank": true,
+    "step3_no_messages": true,
+    "step3_no_notifications": true,
+    "date_chips_still_render": true,
+    "date_chip_selected_state_works": true,
+    "banned": {
+      "ban1a6fba": 0,
+      "rgbSaaSBlue": 0,
+      "overflow": false
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "map_check": {
+      "Wedding": {
+        "expected_kit": "wedding",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": "true",
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Board Meeting": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Conference": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Birthday": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Quincea\u00f1era": {
+        "expected_kit": "private",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": null,
+          "private": "true",
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Holiday Party": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Fundraiser / Gala": {
+        "expected_kit": "corporate",
+        "aria_pressed_states": {
+          "simple": null,
+          "wedding": null,
+          "corporate": "true",
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      },
+      "Other": {
+        "expected_kit": "simple",
+        "aria_pressed_states": {
+          "simple": "true",
+          "wedding": null,
+          "corporate": null,
+          "private": null,
+          "blank": null
+        },
+        "expected_kit_pressed": true,
+        "only_expected_pressed": true,
+        "suggest_line_starts_with_suggested": true,
+        "suggest_line_contains_type": true,
+        "events_count_unchanged": true
+      }
+    },
+    "rail_says_suggests": true,
+    "rail_avoids_chooses": true,
+    "rail_says_change_it": true,
+    "override_blank_pressed": true,
+    "override_wedding_unpressed": true,
+    "override_line_says_you_picked": true,
+    "override_line_avoids_suggested_for": true,
+    "override_persists_blank_still_pressed": true,
+    "override_persists_private_NOT_pressed": true,
+    "step3_review_setup_choice": "Setup choice\nStart blank",
+    "step3_says_start_blank": true,
+    "step3_no_messages": true,
+    "step3_no_notifications": true,
+    "date_chips_still_render": true,
+    "date_chip_selected_state_works": true,
+    "banned": {
+      "ban1a6fba": 0,
+      "rgbSaaSBlue": 0,
+      "overflow": false
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}
