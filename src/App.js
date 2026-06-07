@@ -18,7 +18,7 @@ import { isAnalyticsConfigured, identifyStudio, track, trackPageView, EVENTS } f
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
 import {
   carbonBody, carbonPanel, carbonSurface2, carbonBorder, carbonStrong,
-  steelBlueGradientTop, steelBlueGradientBottom,
+  steelBlue, steelBlueGradientTop, steelBlueGradientBottom,
   dangerRed, amber, successGreen, textPrimary, textSecondary,
   brandPresets, defaultBrandColor,
 } from './theme/palette';
@@ -191,7 +191,7 @@ const LIGHT = {
   surface:  '#ffffff',   // pure white cards
   surface2: '#f1f1f5',   // neutral hover/secondary surface
   border:   '#e2e2ea',   // light neutral gray — NOT purple; lets accent pop
-  accent:   '#1a6fba',   // steel blue — the primary accent
+  accent:   steelBlue,   // Studio Steel #4E6877 — banned #1a6fba removed (palette.js source)
   accent2:  '#0891b2',   // cyan-600 — blue-leaning teal, clearly distinct from green and amber
   text:     '#111118',   // near-black
   muted:    '#71707e',   // neutral gray — clearly secondary, not competing with accent
@@ -1199,7 +1199,7 @@ const b64decode = (b64) => {
 };
 
 // ─── Branded letterhead / footer for printed & exported client materials ──────
-const brandAccent = (profile) => (profile?.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(profile.brandColor)) ? profile.brandColor : '#1a6fba';
+const brandAccent = (profile) => (profile?.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(profile.brandColor)) ? profile.brandColor : defaultBrandColor;
 const brandLetterheadHTML = (profile) => {
   if (!profile) return '';
   const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -5424,7 +5424,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 function VendorBriefView({ brief }) {
   const [copied, setCopied] = useState(false);
   // Brand accent — planner's brandColor drives the whole page, falls back to steel blue
-  const accent = (brief.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brief.brandColor)) ? brief.brandColor : '#1a6fba';
+  const accent = (brief.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brief.brandColor)) ? brief.brandColor : defaultBrandColor;
   const LC = { bg: '#f6f6f9', surface: '#ffffff', border: '#e7e7ef', accent, text: '#18181c', muted: '#6b6b80', success: '#16a34a' };
   const brandName = brief.plannerBusiness || brief.plannerName || '';
   const initials  = (brandName || 'P').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
