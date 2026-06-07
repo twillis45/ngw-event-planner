@@ -6630,7 +6630,7 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
   );
 }
 
-function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = [], profile = null }) {
+function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddClient, clients = [], profile = null }) {
   const C        = useT();
   const s        = makeS(C);
   const evtCLR   = EVT_CLR(C);
@@ -6772,13 +6772,13 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
   const steelDeep = C.accentDeep    || C.accent;
 
   // Step header copy — different per step so the modal proves what it is.
-  const stepCopy = step === 1 || step === 2
-    ? { title: 'Create a new event', sub: 'Add the basics. Event Boss builds the planning structure next.' }
-    : step === 3
-      ? { title: 'Create a new event', sub: 'Add what you know. Skip what you don’t.' }
-      : { title: 'Event created', sub: '' };
+  const stepCopy =
+    step === 1 ? { title: 'Create a new event', sub: 'Name, date, type. Event Boss builds the planning structure next.' } :
+    step === 2 ? { title: 'Create a new event', sub: 'Pick a starting point — Event Boss shows exactly what it will create.' } :
+    step === 3 ? { title: 'Review and create', sub: 'Confirm what Event Boss will set up. Nothing has been created yet.' } :
+                 { title: 'Event created', sub: '' };
 
-  const PROGRESS_LABELS = ['Basics', 'Setup', 'Details'];
+  const PROGRESS_LABELS = ['Basics', 'Setup', 'Review'];
 
   return (
     <>
@@ -6864,41 +6864,60 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={ui.label}>Event name <span style={ui.req}>· required</span></label>
-                <input autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Sarah &amp; James Wedding"
+                <label style={ui.label} htmlFor="ce-name">Event name <span style={ui.req}>· required</span></label>
+                <input id="ce-name" data-testid="ce-name" autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Sarah & James Wedding"
                   value={form.name}
                   onChange={e => upd('name', e.target.value)}
                   onBlur={() => setTouched(t => ({ ...t, name: true }))} />
                 {(showErr || touched.name) && reqName && <div style={ui.hint}>Event name is required.</div>}
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={ui.label}>Event date <span style={ui.req}>· required</span></label>
-                <input type="date" style={ui.field((showErr || touched.date) && reqDate)}
+                <label style={ui.label} htmlFor="ce-date">Event date <span style={ui.req}>· required</span></label>
+                <input id="ce-date" data-testid="ce-date" type="date" style={ui.field((showErr || touched.date) && reqDate)}
                   value={form.date}
                   onChange={e => upd('date', e.target.value)}
                   onBlur={() => setTouched(t => ({ ...t, date: true }))} />
                 {(showErr || touched.date) && reqDate && <div style={ui.hint}>Event date is required.</div>}
               </div>
-              {/* On tablet/desktop, group type + secondary side-by-side so the
-                  form uses its width instead of stacking like a phone modal. */}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16 }}>
                 <div>
-                  <label style={ui.label}>Event type <span style={ui.req}>· required</span></label>
-                  <select style={ui.field(false)} value={form.type} onChange={e => upd('type', e.target.value)}>
+                  <label style={ui.label} htmlFor="ce-type">Event type <span style={ui.req}>· required</span></label>
+                  <select id="ce-type" data-testid="ce-type" style={ui.field(false)} value={form.type} onChange={e => upd('type', e.target.value)}>
                     {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
                       <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label style={ui.label}>Secondary type <span style={ui.opt}>· optional</span></label>
-                  <select style={ui.field(false)} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
+                  <label style={ui.label} htmlFor="ce-secondary-type">Secondary type <span style={ui.opt}>· optional</span></label>
+                  <select id="ce-secondary-type" data-testid="ce-secondary-type" style={ui.field(false)} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
                     <option value="">None</option>
                     {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
                       <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Sprint Create Event P0 — explicit 4-line trust block.
+                  Same locked pattern as Add Vendor and Budget/Payments.
+                  Visible at the bottom of Step 1 so the planner sees the
+                  contract before tapping Continue. */}
+              <div data-testid="ce-trust-block-step1" style={{
+                marginTop: 18, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px',
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>You can add details later</div>
+                {[
+                  'Client/vendor will not be contacted',
+                  'Messages sent: None',
+                  'Notifications sent: None',
+                  'Event is not created until final review',
+                ].map((line, i) => (
+                  <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800 }}>✓</span>
+                    <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -6911,7 +6930,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
                 {KITS.map(k => {
                   const on = kit === k.id;
                   return (
-                    <button key={k.id} onClick={() => setKit(k.id)}
+                    <button key={k.id} data-testid={`ce-kit-${k.id}`} onClick={() => setKit(k.id)}
                       style={{
                         textAlign: 'left',
                         display: 'flex', flexDirection: 'column', gap: 0,
@@ -6962,23 +6981,83 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
 
           {step === 3 && (
             <>
+              {/* Sprint Create Event P0 — itemized review block at the top.
+                  Shows exactly what will happen before the user taps Create. */}
+              <div data-testid="ce-review-card" style={{
+                background: C.bg, border: `1px solid ${C.border}`,
+                borderLeft: `3px solid ${steelTop}`,
+                borderRadius: 10,
+                padding: isMobile ? '14px 16px' : '16px 20px',
+                marginBottom: 18,
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 10 }}>Will happen</div>
+                {(() => {
+                  const dateLabel = form.date
+                    ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                    : '—';
+                  const willCreate = (label, predicate) => ({ label, value: predicate ? 'Yes' : 'No' });
+                  const reviewRows = [
+                    { label: 'Event',              value: form.name.trim() || '—' },
+                    { label: 'Date',               value: dateLabel },
+                    { label: 'Type',               value: form.type + (form.secondaryType ? ` + ${form.secondaryType}` : '') },
+                    { label: 'Setup choice',       value: kitCfg.title },
+                    willCreate('Planning checklist', kitCfg.t),
+                    willCreate('Vendor categories',  kitCfg.v),
+                    willCreate('Budget outline',     kitCfg.b),
+                    { label: 'Run of show',        value: 'Available next — not created yet' },
+                  ];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {reviewRows.map((row, i) => (
+                        <div key={row.label} data-testid={`ce-review-row-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', paddingTop: i ? 6 : 0, borderTop: i ? `1px solid ${C.border}` : 'none' }}>
+                          <span style={{ fontSize: 12.5, color: C.muted, flexShrink: 0 }}>{row.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: row.value === 'Yes' ? C.success : C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Will NOT happen — explicit trust contract restated. */}
+              <div data-testid="ce-trust-block-review" style={{
+                background: C.bg, border: `1px solid ${C.border}`,
+                borderRadius: 10,
+                padding: '12px 14px',
+                marginBottom: 18,
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>Will NOT happen</div>
+                {[
+                  'Client contacted: No',
+                  'Messages sent: None',
+                  'Notifications sent: None',
+                  'No money is moved or charged',
+                ].map((line, i) => (
+                  <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800 }}>✓</span>
+                    <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Optional details</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={ui.label}>Venue <span style={ui.opt}>· optional</span></label>
-                  <input style={ui.field(false)} placeholder="Where is it being held?" value={form.venue} onChange={e => upd('venue', e.target.value)} />
+                  <label style={ui.label} htmlFor="ce-venue">Venue <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-venue" data-testid="ce-venue" style={ui.field(false)} placeholder="Where is it being held?" value={form.venue} onChange={e => upd('venue', e.target.value)} />
                 </div>
                 <div>
-                  <label style={ui.label}>Estimated guest count <span style={ui.opt}>· optional</span></label>
-                  <input type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="e.g. 120" value={form.guestCount} onChange={e => upd('guestCount', e.target.value)} />
+                  <label style={ui.label} htmlFor="ce-guests">Estimated guest count <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-guests" data-testid="ce-guests" type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="e.g. 120" value={form.guestCount} onChange={e => upd('guestCount', e.target.value)} />
                 </div>
                 <div>
-                  <label style={ui.label}>Budget <span style={ui.opt}>· optional</span></label>
-                  <input type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="Total budget in dollars" value={form.totalBudget} onChange={e => upd('totalBudget', e.target.value)} />
+                  <label style={ui.label} htmlFor="ce-budget">Budget <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-budget" data-testid="ce-budget" type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="Total budget in dollars" value={form.totalBudget} onChange={e => upd('totalBudget', e.target.value)} />
                 </div>
                 {clients.length > 0 && (
                   <div>
-                    <label style={ui.label}>Link to client <span style={ui.opt}>· optional</span></label>
-                    <select style={ui.field(false)} value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
+                    <label style={ui.label} htmlFor="ce-link-client">Link to client <span style={ui.opt}>· optional</span></label>
+                    <select id="ce-link-client" data-testid="ce-link-client" style={ui.field(false)} value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
                       <option value="">No client — standalone event</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -7074,25 +7153,29 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
           )}
 
           {step === 'success' && (
-            <div style={{ padding: isMobile ? '12px 4px' : '8px 8px 4px' }}>
-              <div style={{ textAlign: 'center', marginBottom: 22 }}>
+            <div data-testid="ce-success" style={{ padding: isMobile ? '12px 4px' : '8px 8px 4px' }}>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.success}22`, border: `1px solid ${C.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: C.success, fontSize: 28 }}>✓</div>
-                <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 700, color: C.text, marginBottom: 6, letterSpacing: '-0.01em' }}>“{form.name.trim()}” is ready.</div>
+                <div data-testid="ce-success-title" style={{ fontSize: isMobile ? 17 : 19, fontWeight: 700, color: C.text, marginBottom: 6, letterSpacing: '-0.01em' }}>{`“${form.name.trim()}” created.`}</div>
                 <div style={{ ...ui.truth, maxWidth: 420, margin: '0 auto' }}>{createdSummary}</div>
               </div>
-              {/* Sprint 60.U.3 — "Created for you" payoff: same checklist the
-                  Step 2 selected card promised. The visible receipt closes
-                  the No-Guesswork loop. */}
-              <div style={{
+
+              {/* CREATED FOR YOU — itemized list mirrors what the Step 2
+                  selected card promised. */}
+              <div data-testid="ce-success-created" style={{
                 background: C.bg, border: `1px solid ${C.border}`,
-                borderLeft: `3px solid ${steelTop}`,
+                borderLeft: `3px solid ${C.success}`,
                 borderRadius: 10,
                 padding: isMobile ? '14px 16px' : '16px 20px',
-                maxWidth: 460, margin: '0 auto',
+                maxWidth: 460, margin: '0 auto 12px',
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 10 }}>CREATED FOR YOU</div>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.success, marginBottom: 10 }}>CREATED</div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {kitCfg.checklist.map(item => (
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
+                    <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    Event workspace
+                  </li>
+                  {kitCfg.checklist.filter(item => item !== 'Event workspace only').map(item => (
                     <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
                       <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
                       {item}
@@ -7100,35 +7183,142 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, clients = []
                   ))}
                 </ul>
               </div>
+
+              {/* NOT DONE — honest disclosure of what was NOT triggered. */}
+              <div data-testid="ce-success-not-done" style={{
+                background: C.bg, border: `1px solid ${C.border}`,
+                borderRadius: 10,
+                padding: isMobile ? '12px 16px' : '14px 20px',
+                maxWidth: 460, margin: '0 auto',
+              }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.muted, marginBottom: 8 }}>NOT DONE</div>
+                {[
+                  'Client contacted: No',
+                  'Messages sent: None',
+                  'Notifications sent: None',
+                ].map((line, i) => (
+                  <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
+                    <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 12, fontWeight: 800 }}>·</span>
+                    <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>{line}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer.
+            Sprint Create Event P0 — Cancel/Back buttons explicitly styled
+            so the secondary affordance is unambiguously a button (matches
+            the post-regression Budget/Payments pattern). Border + text
+            color readable on dialog surface, 44px min-height. */}
         <div style={{ ...footerPad, borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
           {step === 1 && (
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-              <button style={ghostBtn} onClick={attemptClose}>Cancel</button>
-              <button onClick={continue1} aria-disabled={!step1Valid}
+              <button
+                data-testid="ce-cancel"
+                onClick={attemptClose}
+                style={{
+                  background: 'transparent', color: C.text,
+                  border: `1px solid ${C.muted}66`, borderRadius: 10,
+                  padding: '12px 18px', minHeight: 44, minWidth: 96,
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>Cancel</button>
+              <button
+                data-testid="ce-continue"
+                onClick={continue1}
+                aria-disabled={!step1Valid}
                 style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130, ...(step1Valid ? {} : { opacity: 0.5, cursor: 'default' }) }}>Continue</button>
             </div>
           )}
           {step === 2 && (
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-              <button style={ghostBtn} onClick={() => setStep(1)}>Back</button>
-              <button style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130 }} onClick={() => setStep(3)}>Continue</button>
+              <button
+                data-testid="ce-back"
+                onClick={() => setStep(1)}
+                style={{
+                  background: 'transparent', color: C.text,
+                  border: `1px solid ${C.muted}66`, borderRadius: 10,
+                  padding: '12px 18px', minHeight: 44, minWidth: 96,
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>Back</button>
+              <button
+                data-testid="ce-continue"
+                onClick={() => setStep(3)}
+                style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130 }}>Continue</button>
             </div>
           )}
           {step === 3 && (
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-              <button style={ghostBtn} onClick={() => setStep(2)}>Back</button>
-              <button style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130 }} onClick={createNow}>Create event</button>
+              <button
+                data-testid="ce-back"
+                onClick={() => setStep(2)}
+                style={{
+                  background: 'transparent', color: C.text,
+                  border: `1px solid ${C.muted}66`, borderRadius: 10,
+                  padding: '12px 18px', minHeight: 44, minWidth: 96,
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}>Back</button>
+              <button
+                data-testid="ce-create"
+                onClick={createNow}
+                style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 150 }}>Create event</button>
             </div>
           )}
           {step === 'success' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button style={{ ...primaryBtn, width: '100%' }} onClick={() => { onOpenEvent(createdId); onClose(); }}>Open event</button>
-              <button style={{ ...ghostBtn, width: '100%' }} onClick={resetForAnother}>Add another event</button>
+              <button
+                data-testid="ce-open-event"
+                style={{ ...primaryBtn, width: '100%' }}
+                onClick={() => { onOpenEvent(createdId); onClose(); }}>
+                Open event
+              </button>
+              <div style={{ display: 'flex', gap: 10, flexDirection: isMobile ? 'column' : 'row' }}>
+                <button
+                  data-testid="ce-add-vendor"
+                  style={{
+                    flex: 1, background: 'transparent', color: C.text,
+                    border: `1px solid ${C.muted}66`, borderRadius: 10,
+                    padding: '12px 18px', minHeight: 44,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                  onClick={() => { onOpenEvent(createdId, { tab: 'Vendors' }); onClose(); }}>
+                  Add vendor
+                </button>
+                <button
+                  data-testid="ce-add-client"
+                  disabled={!onOpenAddClient}
+                  title={onOpenAddClient ? 'Close this and open the Add Client flow' : 'Add Client is not available from this view'}
+                  style={{
+                    flex: 1, background: 'transparent',
+                    color: onOpenAddClient ? C.text : C.muted,
+                    border: `1px solid ${C.muted}66`, borderRadius: 10,
+                    padding: '12px 18px', minHeight: 44,
+                    fontSize: 14, fontWeight: 600,
+                    cursor: onOpenAddClient ? 'pointer' : 'not-allowed',
+                    opacity: onOpenAddClient ? 1 : 0.6,
+                    fontFamily: 'inherit',
+                  }}
+                  onClick={() => { if (onOpenAddClient) onOpenAddClient(); }}>
+                  Add client
+                </button>
+              </div>
+              <button
+                data-testid="ce-add-another"
+                style={{
+                  width: '100%', background: 'transparent', color: C.text,
+                  border: `1px solid ${C.muted}66`, borderRadius: 10,
+                  padding: '12px 18px', minHeight: 44,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+                onClick={resetForAnother}>
+                Add another event
+              </button>
             </div>
           )}
         </div>
@@ -27291,7 +27481,14 @@ export default function App() {
           autoIntake={clientAutoIntake}
           onIntakeOpened={() => setClientAutoIntake(false)}
         />
-        {showNew && <NewEventModal onClose={() => setShowNew(false)} onCreate={createEvent} onOpenEvent={(id) => setActiveId(id)} clients={clients} />}
+        {showNew && <NewEventModal
+          onClose={() => setShowNew(false)}
+          onCreate={createEvent}
+          onOpenEvent={(id, opts) => { setActiveId(id); if (opts?.tab) setInitialNav({ tab: opts.tab }); }}
+          onOpenAddClient={() => { setShowNew(false); setShowNewClient(true); }}
+          clients={clients}
+          profile={profile}
+        />}
       </>
     );
   }
@@ -27323,7 +27520,7 @@ export default function App() {
         onMarkMsgHandled={markMsgHandled}
         onLogVendorContact={logVendorContact}
       />
-      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id) => setActiveId(id)} clients={clients} profile={profile} />}
+      {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id, opts) => { setActiveId(id); if (opts?.tab) setInitialNav({ tab: opts.tab }); }} onOpenAddClient={() => { setShowNew(false); setShowNewClient(true); }} clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events} />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
