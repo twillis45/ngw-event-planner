@@ -6868,6 +6868,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // so the subtext can render the resolved date + relationship line.
   // Cleared when the user types manually or picks via native picker.
   const [ceDateChipMeta, setCeDateChipMeta] = useState(null);
+  // Sprint 60.U P0 — "Estimate my budget" expander state. Collapsed by default.
+  // estServiceTax/estContingency mirror the Budget tab defaults so the modal
+  // estimate matches the Budget tab for identical inputs (parity).
+  const [estimatorOpen,  setEstimatorOpen]  = useState(false);
+  const [estServiceTax,  setEstServiceTax]  = useState(SERVICE_TAX_DEFAULT_ON);
+  const [estContingency, setEstContingency] = useState(CONTINGENCY_DEFAULT_ON);
+  const [budgetSource,   setBudgetSource]   = useState('none'); // none | manual | estimate
+  const [replaceConfirm, setReplaceConfirm] = useState(false);
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Intelligence Gap PR #1 — auto-suggest kit + timeOfDay from event type
@@ -6949,6 +6957,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     setKit(kitForEventType('Wedding'));
     setKitTouched(false);
     setSelectedClientId(''); setShowErr(false); setCreatedId(null); setStep(1);
+    setEstimatorOpen(false); setEstServiceTax(SERVICE_TAX_DEFAULT_ON);
+    setEstContingency(CONTINGENCY_DEFAULT_ON); setBudgetSource('none'); setReplaceConfirm(false);
   };
 
   // Sprint 60.U.3 — Success payoff copy. The "Created for you" checklist
@@ -7268,6 +7278,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     willCreate('Planning checklist', kitCfg.t),
                     willCreate('Vendor categories',  kitCfg.v),
                     willCreate('Budget outline',     kitCfg.b),
+                    { label: 'Budget entered',     value: form.totalBudget.trim() ? `Yes — $${(Number(form.totalBudget) || 0).toLocaleString()}` : 'No' },
+                    willCreate('Estimate used',      budgetSource === 'estimate'),
+                    { label: 'Budget source',      value: budgetSource === 'estimate' ? 'Estimate applied' : budgetSource === 'manual' ? 'Manual' : 'None' },
+                    { label: 'Payment created',    value: 'No' },
+                    { label: 'Money moved',        value: 'No' },
                     { label: 'Run of show',        value: 'Available next — not created yet' },
                   ];
                   return (
@@ -7316,7 +7331,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 </div>
                 <div>
                   <label style={ui.label} htmlFor="ce-budget">Budget <span style={ui.opt}>· optional</span></label>
-                  <input id="ce-budget" data-testid="ce-budget" type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="Total budget in dollars" value={form.totalBudget} onChange={e => upd('totalBudget', e.target.value)} />
+                  <input id="ce-budget" data-testid="ce-budget" type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="Total budget in dollars" value={form.totalBudget} onChange={e => { upd('totalBudget', e.target.value); setBudgetSource(e.target.value.trim() ? 'manual' : 'none'); }} />
                 </div>
                 {clients.length > 0 && (
                   <div>
@@ -7329,85 +7344,160 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 )}
               </div>
 
-              {/* Sprint 61.D — Budget estimate hint. Renders when type +
-                  guests are both set so the planner has an anchor before
-                  writing the Budget field. Honest about confidence + what
-                  the range excludes. */}
+              {/* Sprint 60.U P0 — "Estimate my budget" expander (collapsed by
+                  default). Uses the SAME engine + factors as the Budget tab
+                  (PER_HEAD tiers × full composite via computeEstimatorBreakdown)
+                  so the modal estimate matches the Budget tab for identical
+                  inputs. Derived guidance only — never a quote; applying it only
+                  fills the budget field (no money moved, no payment created). */}
               {(() => {
                 const guests = Number(form.guestCount) || 0;
-                if (!form.type || guests < 1) return null;
-                const PER_HEAD_BY_TYPE = {
-                  Wedding:           { low: 200, high: 500 },
-                  'Vow Renewal':     { low: 150, high: 400 },
-                  Quinceañera:       { low: 150, high: 400 },
-                  'Engagement Party': { low: 100, high: 300 },
-                  'Bridal Shower':   { low:  80, high: 250 },
-                  'Baby Shower':     { low:  50, high: 180 },
-                  Birthday:          { low:  60, high: 250 },
-                  'Sweet 16':        { low: 100, high: 350 },
-                  'Retirement Party': { low:  80, high: 250 },
-                  Reunion:           { low:  60, high: 200 },
-                  Graduation:        { low:  50, high: 180 },
-                  Conference:        { low: 150, high: 400 },
-                  'Corporate Retreat': { low: 200, high: 500 },
-                  'Corporate Event': { low: 150, high: 400 },
-                  Gala:              { low: 250, high: 600 },
-                  'Fundraiser / Gala': { low: 250, high: 600 },
-                  'Networking Event': { low:  60, high: 200 },
-                };
-                const ph = PER_HEAD_BY_TYPE[form.type] || { low: 100, high: 250 };
+                const ph = PER_HEAD[form.type] || PER_HEAD.Other;
                 const metroFactor = getMetroFactor(profile);
-                const tod = getTimeOfDayFactor(form.timeOfDay);
-                const datePremium = getDatePremium(form.date, form.type);
-                const factor = metroFactor * (tod.multiplier || 1) * (datePremium.multiplier || 1);
-                const lowTotal  = Math.round(ph.low  * guests * factor / 100) * 100;
-                const highTotal = Math.round(ph.high * guests * factor / 100) * 100;
+                const rush  = getRushFactor(form.date);
+                const datePrem = getDatePremium(form.date, form.type);
+                const tod   = getTimeOfDayFactor(form.timeOfDay);
+                const stx   = getServiceTaxFactor(estServiceTax, profile?.defaultServiceRate, profile?.defaultTaxRate);
+                const ctg   = getContingencyFactor(estContingency);
+                const tierTotal = (tier) => computeEstimatorBreakdown({
+                  basePerHead: ph[tier], guests, metroFactor, rushFactor: rush.multiplier,
+                  datePremium: datePrem, timeOfDay: tod, serviceTax: stx, contingency: ctg,
+                }).total;
+                const canEstimate = guests >= 1 && !!form.type && !!ph;
+                const lowT  = canEstimate ? tierTotal('good')   : 0;
+                const midT  = canEstimate ? tierTotal('better') : 0;
+                const highT = canEstimate ? tierTotal('best')   : 0;
                 const conf = estimatorConfidence({
-                  hasType: !!form.type, hasDate: !!form.date,
-                  hasGuestCount: guests > 0, hasMarket: !!profile?.metroMarket,
-                  hasTimeOfDay: !!form.timeOfDay, hasHistory: false,
+                  hasType: !!form.type, hasDate: !!form.date, hasGuestCount: guests > 0,
+                  hasMarket: !!profile?.metroMarket, hasTimeOfDay: !!form.timeOfDay, hasHistory: false,
                 });
                 const confColor = conf.level === 'high' ? C.success : conf.level === 'medium' ? C.warn : C.muted;
-                const steelTopBE = C.accentTopGrad || C.accent;
-                const userBudget = Number(form.totalBudget) || 0;
-                const overEst = userBudget > 0 && userBudget < lowTotal ? 'tight' : userBudget > highTotal ? 'generous' : 'in range';
+                const money = (n) => '$' + Math.round(n).toLocaleString();
+                const todLabel = (TIME_OF_DAY_SLOTS.find(s => s.key === form.timeOfDay) || {}).shortLabel || form.timeOfDay;
+                const missing = [];
+                if (guests < 1)             missing.push('Estimated guest count');
+                if (!form.date)             missing.push('Event date');
+                if (!profile?.metroMarket)  missing.push('Your metro market (Studio Setup)');
+                const flags = [];
+                if (!estServiceTax)         flags.push('Service & tax are not included in this estimate.');
+                if (rush.multiplier > 1)    flags.push(`${rush.label || 'Rush timeline'} — short-notice costs may run higher.`);
+                if (guests < 1)             flags.push('No guest count yet — the estimate cannot run.');
+
+                const applyEstimate = () => {
+                  if (form.totalBudget.trim() && budgetSource === 'manual') { setReplaceConfirm(true); return; }
+                  upd('totalBudget', String(midT)); setBudgetSource('estimate'); setReplaceConfirm(false);
+                };
+
                 return (
-                  <div style={{
-                    background: `linear-gradient(180deg, ${steelTopBE}14 0%, ${steelTopBE}07 100%)`,
-                    border: `1px solid ${steelTopBE}33`,
-                    borderLeft: `3px solid ${steelTopBE}`,
-                    borderRadius: 10,
-                    padding: '12px 14px', marginBottom: 14,
-                    fontFamily: 'inherit',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTopBE, textTransform: 'uppercase' }}>
-                        Budget estimate
+                  <div data-testid="ce-estimator" style={{ marginBottom: 14 }}>
+                    <button type="button" data-testid="ce-estimator-toggle" aria-expanded={estimatorOpen}
+                      onClick={() => setEstimatorOpen(o => !o)}
+                      style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10,
+                        background: `linear-gradient(180deg, ${steelTop}14 0%, ${steelTop}07 100%)`,
+                        border: `1px solid ${steelTop}33`, borderLeft: `3px solid ${steelTop}`,
+                        borderRadius: estimatorOpen ? '10px 10px 0 0' : 10, padding: '12px 14px',
+                        cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
+                      <span aria-hidden style={{ color: steelTop, fontSize: 13, marginTop: 1 }}>{estimatorOpen ? '▾' : '▸'}</span>
+                      <span>
+                        <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>Estimate my budget</span>
+                        <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
+                          Use event details to create a starting range before you commit a budget.
+                        </span>
+                        <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
+                          This is not a quote. Your budget only changes if you apply the estimate.
+                        </span>
                       </span>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                        {conf.label}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: '-0.005em' }}>
-                      {form.type} · {guests} guests typically runs ${lowTotal.toLocaleString()}–${highTotal.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-                      Anchored to per-head averages, market{profile?.metroMarket ? `, your saved metro` : ''}{form.date ? `, date factors` : ''}.
-                      {' '}{conf.level === 'low' && 'Adding date and metro will tighten the range.'}
-                    </div>
-                    {userBudget > 0 && (
-                      <div style={{ fontSize: 11.5, color: overEst === 'tight' ? C.warn : overEst === 'generous' ? C.success : C.text, marginTop: 6, fontWeight: 600 }}>
-                        Your ${userBudget.toLocaleString()} budget is {overEst === 'tight' ? 'tight for this scope' : overEst === 'generous' ? 'generous for this scope' : 'within typical range'}.
+                    </button>
+
+                    {estimatorOpen && (
+                      <div data-testid="ce-estimator-body" style={{ border: `1px solid ${steelTop}33`, borderTop: 'none', borderRadius: '0 0 10px 10px', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div>
+                          <div style={{ ...ui.label, marginBottom: 6 }}>Time of day</div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {TIME_OF_DAY_SLOTS.map(slot => {
+                              const on = form.timeOfDay === slot.key;
+                              return (
+                                <button type="button" key={slot.key} onClick={() => upd('timeOfDay', slot.key)}
+                                  style={{ minHeight: 44, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
+                                    border: `1px solid ${on ? steelTop : C.border}`, background: on ? `${steelTop}1e` : C.bg, color: C.text, fontWeight: on ? 600 : 400 }}>
+                                  {slot.shortLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minHeight: 44 }}>
+                          <input type="checkbox" data-testid="ce-est-servicetax" checked={estServiceTax} onChange={e => setEstServiceTax(e.target.checked)} style={{ width: 18, height: 18 }} />
+                          <span style={{ fontSize: 13, color: C.text }}>Include service &amp; tax{stx.label ? ` (${stx.label})` : ''}</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minHeight: 44 }}>
+                          <input type="checkbox" data-testid="ce-est-contingency" checked={estContingency} onChange={e => setEstContingency(e.target.checked)} style={{ width: 18, height: 18 }} />
+                          <span style={{ fontSize: 13, color: C.text }}>Add a contingency buffer{ctg.label ? ` (${ctg.label})` : ''}</span>
+                        </label>
+
+                        {canEstimate ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Estimated planning range</span>
+                              <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
+                            </div>
+                            <div data-testid="ce-estimator-range" style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{money(lowT)} – {money(highT)}</div>
+                            <div style={{ fontSize: 12, color: C.muted }}>Midpoint {money(midT)} · {guests} guests · {form.type}</div>
+
+                            <div data-testid="ce-estimator-assumptions" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
+                              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Based on</div>
+                              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                                {guests} guests · {form.type}{form.date ? ` · ${new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · {todLabel} · service+tax {estServiceTax ? 'on' : 'off'} · contingency {estContingency ? 'on' : 'off'} · metro {profile?.metroMarket ? 'set' : 'not set'}
+                              </div>
+                            </div>
+
+                            {missing.length > 0 && (
+                              <div data-testid="ce-estimator-missing" style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                                <div style={{ fontWeight: 700, color: C.text, marginBottom: 3 }}>Improve this estimate</div>
+                                {missing.map((m, i) => (
+                                  <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'baseline' }}>
+                                    <span aria-hidden style={{ color: C.muted }}>•</span><span>{m}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {flags.map((f, i) => (
+                              <div key={i} data-testid="ce-estimator-flag" style={{ fontSize: 12, color: C.warn, lineHeight: 1.5 }}>⚠ {f}</div>
+                            ))}
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: 11.5, color: C.muted }}>
+                              <span>Not a quote</span><span aria-hidden>·</span>
+                              <span>Use as a starting point</span><span aria-hidden>·</span>
+                              <span>Money moved: No</span><span aria-hidden>·</span>
+                              <span>Payment created: No</span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
+                              <button type="button" data-testid="ce-estimator-apply" onClick={applyEstimate}
+                                style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use estimate as budget</button>
+                              <span data-testid="ce-estimator-apply-sub" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>Fills the budget field. Does not create a payment or move money.</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div data-testid="ce-estimator-needs-input" style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
+                            Add an <strong style={{ color: C.text }}>estimated guest count</strong> above to see your range.
+                          </div>
+                        )}
                       </div>
                     )}
-                    <details style={{ marginTop: 8 }}>
-                      <summary style={{ fontSize: 11, color: steelTopBE, cursor: 'pointer', fontWeight: 700 }}>
-                        Not included in this estimate
-                      </summary>
-                      <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
-                        {NOT_INCLUDED.slice(0, 5).map(item => <li key={item}>{item}</li>)}
-                      </ul>
-                    </details>
+
+                    {replaceConfirm && (
+                      <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.warn}55`, borderRadius: 10, padding: '12px 14px' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
+                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(midT)}. No payment is created.</div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                          <button type="button" data-testid="ce-replace-cancel" onClick={() => setReplaceConfirm(false)}
+                            style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                          <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(midT)); setBudgetSource('estimate'); setReplaceConfirm(false); }}
+                            style={{ ...primaryBtn }}>Replace budget</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -7446,6 +7536,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     </li>
                   ))}
                 </ul>
+                <div data-testid="ce-success-budget-source" style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 13, color: C.muted }}>
+                  Budget source: <span style={{ color: C.text, fontWeight: 600 }}>{budgetSource === 'estimate' ? 'Estimate applied' : budgetSource === 'manual' ? 'Manual' : 'None'}</span>
+                </div>
               </div>
 
               {/* NOT DONE — honest disclosure of what was NOT triggered. */}
@@ -7460,6 +7553,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   'Client contacted: No',
                   'Messages sent: None',
                   'Notifications sent: None',
+                  'Payment created: No',
+                  'Money moved: None',
                 ].map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
                     <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 12, fontWeight: 800 }}>·</span>
