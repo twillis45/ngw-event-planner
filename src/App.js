@@ -1627,6 +1627,48 @@ const isCorporateType = (t) => EVT_PARENT[t] === 'Corporate' || t === 'Corporate
 // eslint-disable-next-line no-unused-vars
 const isCelebration   = (t) => EVT_PARENT[t] === 'Weddings & Celebrations';
 
+// Intelligence Gap PR #1 — map Step 1 event type → suggested Step 2 kit.
+// This is the source for the "Suggested for <type>" pre-selection in
+// NewEventModal Step 2. Returns one of the KIT ids the modal already
+// renders. User can override the suggestion in Step 2 and the override
+// is preserved across step navigation via the modal's `kitTouched`
+// state — this function is only consulted when no override is active.
+const kitForEventType = (type) => {
+  if (!type) return 'simple';
+  if (type === 'Wedding') return 'wedding';
+  if (isCorporateType(type)) return 'corporate';
+  // Vendor-heavy social archetypes that benefit from the corporate kit
+  // (vendor categories + budget outline + checkpoints).
+  if (type === 'Fundraiser / Gala' || type === 'Networking Event') return 'corporate';
+  // Everything else inside Weddings & Celebrations defaults to the
+  // private celebration kit (Bridal/Baby Shower, Birthday, Anniversary,
+  // Sweet 16, Quinceañera, Engagement Party, Vow Renewal, Graduation,
+  // Retirement Party, Reunion).
+  if (EVT_PARENT[type] === 'Weddings & Celebrations') return 'private';
+  return 'simple';
+};
+
+// Intelligence Gap PR #1 — type-driven timeOfDay default. NewEventModal
+// does not expose a timeOfDay picker today; the planner edits this on
+// Event Details after creation. Defaulting it here just makes the
+// stored seed honest to the event type instead of universally afternoon.
+const timeOfDayForEventType = (type) => {
+  if (!type) return 'afternoon';
+  const eveningTypes = new Set([
+    'Wedding', 'Anniversary', 'Birthday', 'Sweet 16', 'Quinceañera',
+    'Retirement Party', 'Holiday Party', 'Award Ceremony',
+    'Client Dinner', 'Fundraiser / Gala', 'Engagement Party',
+    'Vow Renewal',
+  ]);
+  const morningTypes = new Set([
+    'Board Meeting', 'Conference', 'Training / Workshop',
+    'Town Hall', 'Team Retreat',
+  ]);
+  if (eveningTypes.has(type)) return 'evening';
+  if (morningTypes.has(type)) return 'morning';
+  return 'afternoon';
+};
+
 // ─── Hybrid (primary + optional secondary) event-type helpers ────────────────
 // Primary remains canonical for color, category, compression, isCorporateType.
 // Secondary layers in additive templates (vendors / budget / timeline) at create
@@ -6810,8 +6852,13 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // shown. The KITS table below is the single source of truth for both
   // Step 2's expanded selected-card AND the Success "Created for you" panel.
   const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
-  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
-  const [kit,     setKit]     = useState('wedding');
+  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: timeOfDayForEventType('Wedding') });
+  const [kit,     setKit]     = useState(() => kitForEventType('Wedding'));
+  // Intelligence Gap PR #1 — kit auto-suggestion is gated on whether the
+  // user has manually picked a card. Once they do, the suggestion stops
+  // overwriting their choice (override survives Back-and-forth between
+  // Step 1 and Step 2). Reset to false in resetForAnother.
+  const [kitTouched, setKitTouched] = useState(false);
   const [showErr, setShowErr] = useState(false);
   const [touched, setTouched] = useState({ name: false, date: false });
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -6822,6 +6869,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // Cleared when the user types manually or picks via native picker.
   const [ceDateChipMeta, setCeDateChipMeta] = useState(null);
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Intelligence Gap PR #1 — auto-suggest kit + timeOfDay from event type
+  // when the user has NOT overridden the kit. The type-driven default
+  // becomes the seed used at Step 3 → Create. The planner can still
+  // change either downstream (kit via Step 2 click, timeOfDay via Event
+  // Details after creation). React effect: deps are the type and the
+  // override flag — when type changes and override is off, recompute.
+  useEffect(() => {
+    if (!kitTouched) setKit(kitForEventType(form.type));
+    upd('timeOfDay', timeOfDayForEventType(form.type));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.type, kitTouched]);
 
   // KITS — title, one-line summary, per-archetype "Creates for you" list,
   // and the t/v/b flags that drive actual template seeding.
@@ -6886,8 +6945,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   };
 
   const resetForAnother = () => {
-    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: 'afternoon' });
-    setKit('wedding'); setSelectedClientId(''); setShowErr(false); setCreatedId(null); setStep(1);
+    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: timeOfDayForEventType('Wedding') });
+    setKit(kitForEventType('Wedding'));
+    setKitTouched(false);
+    setSelectedClientId(''); setShowErr(false); setCreatedId(null); setStep(1);
   };
 
   // Sprint 60.U.3 — Success payoff copy. The "Created for you" checklist
@@ -7023,7 +7084,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     Name it, date it, pick the type.
                   </div>
                   <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                    Event Boss chooses the setup structure next — timeline, vendor categories, budget, checkpoints — based on the event type you picked.
+                    Event Boss suggests a setup structure next — timeline, vendor categories, budget, checkpoints — based on your event type. You can change it before creating.
                   </div>
                 </div>
               </div>
@@ -7117,12 +7178,23 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           {step === 2 && (
             <>
               <div style={{ fontSize: isMobile ? 14 : 15.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>What should Event Boss set up for you?</div>
-              <div style={{ ...ui.truth, marginBottom: 16, fontSize: isMobile ? 12.5 : 13 }}>Pick a starting point. The selected card shows exactly what Event Boss will create. You can add or remove anything afterward.</div>
+              {/* Intelligence Gap PR #1 — truthful "Suggested for X" /
+                  "You picked X" copy. Switches state-by-state on
+                  whether the planner has manually clicked a card. */}
+              <div data-testid="ce-kit-suggest-line" style={{ ...ui.truth, marginBottom: 10, fontSize: isMobile ? 12.5 : 13 }}>
+                {kitTouched
+                  ? <>You picked <strong style={{ color: C.text, fontWeight: 700 }}>{kitCfg.title}</strong>. Tap a different card to change.</>
+                  : <>Suggested for <strong style={{ color: C.text, fontWeight: 700 }}>{form.type}</strong>: <strong style={{ color: C.text, fontWeight: 700 }}>{kitCfg.title}</strong>. Tap a different card to change.</>}
+              </div>
+              <div style={{ ...ui.truth, marginBottom: 16, fontSize: isMobile ? 12 : 12.5, color: C.muted }}>The selected card shows exactly what Event Boss will create. You can add or remove anything afterward.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {KITS.map(k => {
                   const on = kit === k.id;
                   return (
-                    <button key={k.id} data-testid={`ce-kit-${k.id}`} onClick={() => setKit(k.id)}
+                    <button key={k.id} data-testid={`ce-kit-${k.id}`}
+                      aria-pressed={on || undefined}
+                      data-suggested={!kitTouched && on || undefined}
+                      onClick={() => { setKit(k.id); setKitTouched(true); }}
                       style={{
                         textAlign: 'left',
                         display: 'flex', flexDirection: 'column', gap: 0,
