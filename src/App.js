@@ -754,12 +754,30 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
+          {/* Sprint Budget/Payments — Cancel must read as a real button.
+              Prior styling used s.btn('ghost') which renders borderless
+              transparent text and visually disappeared next to the strong
+              primary CTA. Now: explicit border + readable text + 44px
+              touch target. Still secondary to the primary (no fill, no
+              shadow) but unambiguously interactive. */}
           <button
             type="button"
             data-testid="bp-confirm-cancel"
+            aria-label={cancelLabel || 'Cancel'}
             onClick={onCancel}
-            style={{ ...s.btn('ghost'), fontSize: 13, padding: '12px 18px', minHeight: 44 }}>
+            style={{
+              background: 'transparent',
+              color: C.text,
+              border: `1px solid ${C.muted}66`,
+              borderRadius: 8,
+              padding: '12px 18px',
+              minHeight: 44, minWidth: 88,
+              fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: '0.01em',
+            }}>
             {cancelLabel}
           </button>
           <button
@@ -17305,31 +17323,18 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                     <button
                       type="button"
                       data-testid={`bp-reconcile-apply-${row.id}`}
-                      onClick={() => {
-                        const prior = row.actual || 0;
-                        setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: derived } : x));
-                        showUndoToast({
-                          title: `${row.category} reconciled to vendor record`,
-                          detail: `Budget actual updated to ${fmtD(derived)}`,
-                          summary: [
-                            'Recorded in: Budget line actual',
-                            'Source: Vendor records (depositPaid + balancePaid math)',
-                            'Money moved: None',
-                            'No notifications sent',
-                          ],
-                          onUndo: () => setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: prior } : x)),
-                        });
-                      }}
+                      onClick={() => setPendingConfirm({ kind: 'reconcile', row, derived })}
                       style={{
                         flexShrink: 0,
                         background: `linear-gradient(180deg, ${C.accentTopGrad || C.accent} 0%, ${C.accentDeep || C.accent} 100%)`,
                         color: C.accentText || '#fff',
-                        border: 'none', borderRadius: 7,
-                        padding: '6px 12px', fontSize: 11.5, fontWeight: 700,
+                        border: 'none', borderRadius: 8,
+                        padding: '10px 14px', minHeight: 44,
+                        fontSize: 12.5, fontWeight: 700,
                         cursor: 'pointer',
                         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
                       }}>
-                      Reconcile to vendor
+                      Reconcile to vendor…
                     </button>
                   </div>
                 ))}
@@ -17795,6 +17800,40 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
           primaryLabel="Create payment link"
           onCancel={() => setPendingConfirm(null)}
           onConfirm={() => doCreateStripeLink(pendingConfirm.fee)}
+        />
+      )}
+      {pendingConfirm?.kind === 'reconcile' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-reconcile"
+          title={`Reconcile ${pendingConfirm.row.category} to vendor record`}
+          summary={`Budget actual will update from ${fmtD(pendingConfirm.row.actual || 0)} to ${fmtD(pendingConfirm.derived)} so it matches the vendor-derived total. Vendor records remain the source of truth.`}
+          trustLines={[
+            'This updates the Budget line actual only',
+            'Vendor records are not modified',
+            'Money moved: None — record-only reconciliation',
+            'Client and vendor will not be notified',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Reconcile"
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => {
+            const { row, derived } = pendingConfirm;
+            const prior = row.actual || 0;
+            setPendingConfirm(null);
+            setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: derived } : x));
+            showUndoToast({
+              title: `${row.category} reconciled to vendor record`,
+              detail: `Budget actual updated to ${fmtD(derived)}`,
+              summary: [
+                'Recorded in: Budget line actual',
+                'Source: Vendor records (depositPaid + balancePaid math)',
+                'Money moved: None',
+                'No notifications sent',
+              ],
+              onUndo: () => setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: prior } : x)),
+            });
+          }}
         />
       )}
     </div>
