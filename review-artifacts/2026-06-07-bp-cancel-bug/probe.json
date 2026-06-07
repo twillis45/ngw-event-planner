@@ -1,0 +1,252 @@
+{
+  "390": {
+    "viewport": "390",
+    "probe": {
+      "dialogPresent": true,
+      "cancelInDom": true,
+      "primaryInDom": true,
+      "cancel": {
+        "rect": {
+          "x": 143,
+          "y": 534,
+          "w": 88,
+          "h": 44
+        },
+        "inViewport": true,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "color": "rgb(232, 237, 242)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Cancel",
+        "disabled": false,
+        "overflowedByDialog": false
+      },
+      "dialog": {
+        "rect": {
+          "x": -11,
+          "y": 243,
+          "w": 412,
+          "h": 358
+        },
+        "scrollTop": 0,
+        "scrollHeight": 356,
+        "clientHeight": 356
+      },
+      "primary": {
+        "rect": {
+          "x": 241,
+          "y": 534,
+          "w": 137,
+          "h": 44
+        },
+        "inViewport": true,
+        "color": "rgb(168, 183, 191)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Record as paid"
+      }
+    }
+  },
+  "430": {
+    "viewport": "430",
+    "probe": {
+      "dialogPresent": true,
+      "cancelInDom": true,
+      "primaryInDom": true,
+      "cancel": {
+        "rect": {
+          "x": 183,
+          "y": 578,
+          "w": 88,
+          "h": 44
+        },
+        "inViewport": true,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "color": "rgb(232, 237, 242)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Cancel",
+        "disabled": false,
+        "overflowedByDialog": false
+      },
+      "dialog": {
+        "rect": {
+          "x": -11,
+          "y": 287,
+          "w": 452,
+          "h": 358
+        },
+        "scrollTop": 0,
+        "scrollHeight": 356,
+        "clientHeight": 356
+      },
+      "primary": {
+        "rect": {
+          "x": 281,
+          "y": 578,
+          "w": 137,
+          "h": 44
+        },
+        "inViewport": true,
+        "color": "rgb(168, 183, 191)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Record as paid"
+      }
+    }
+  },
+  "768": {
+    "viewport": "768",
+    "probe": {
+      "dialogPresent": true,
+      "cancelInDom": true,
+      "primaryInDom": true,
+      "cancel": {
+        "rect": {
+          "x": 379,
+          "y": 624,
+          "w": 88,
+          "h": 44
+        },
+        "inViewport": true,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "color": "rgb(232, 237, 242)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Cancel",
+        "disabled": false,
+        "overflowedByDialog": false
+      },
+      "dialog": {
+        "rect": {
+          "x": 131,
+          "y": 333,
+          "w": 506,
+          "h": 358
+        },
+        "scrollTop": 0,
+        "scrollHeight": 356,
+        "clientHeight": 356
+      },
+      "primary": {
+        "rect": {
+          "x": 477,
+          "y": 624,
+          "w": 137,
+          "h": 44
+        },
+        "inViewport": true,
+        "color": "rgb(168, 183, 191)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Record as paid"
+      }
+    }
+  },
+  "1024": {
+    "viewport": "1024",
+    "probe": {
+      "dialogPresent": true,
+      "cancelInDom": true,
+      "primaryInDom": true,
+      "cancel": {
+        "rect": {
+          "x": 507,
+          "y": 795,
+          "w": 88,
+          "h": 44
+        },
+        "inViewport": true,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "color": "rgb(232, 237, 242)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Cancel",
+        "disabled": false,
+        "overflowedByDialog": false
+      },
+      "dialog": {
+        "rect": {
+          "x": 259,
+          "y": 504,
+          "w": 506,
+          "h": 358
+        },
+        "scrollTop": 0,
+        "scrollHeight": 356,
+        "clientHeight": 356
+      },
+      "primary": {
+        "rect": {
+          "x": 605,
+          "y": 795,
+          "w": 137,
+          "h": 44
+        },
+        "inViewport": true,
+        "color": "rgb(168, 183, 191)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Record as paid"
+      }
+    }
+  },
+  "1440": {
+    "viewport": "1440",
+    "probe": {
+      "dialogPresent": true,
+      "cancelInDom": true,
+      "primaryInDom": true,
+      "cancel": {
+        "rect": {
+          "x": 715,
+          "y": 562,
+          "w": 88,
+          "h": 44
+        },
+        "inViewport": true,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1",
+        "color": "rgb(232, 237, 242)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Cancel",
+        "disabled": false,
+        "overflowedByDialog": false
+      },
+      "dialog": {
+        "rect": {
+          "x": 467,
+          "y": 271,
+          "w": 506,
+          "h": 358
+        },
+        "scrollTop": 0,
+        "scrollHeight": 356,
+        "clientHeight": 356
+      },
+      "primary": {
+        "rect": {
+          "x": 813,
+          "y": 562,
+          "w": 137,
+          "h": 44
+        },
+        "inViewport": true,
+        "color": "rgb(168, 183, 191)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fontSize": "13px",
+        "text": "Record as paid"
+      }
+    }
+  }
+}

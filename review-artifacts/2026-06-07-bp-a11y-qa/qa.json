@@ -20,11 +20,12 @@
           "h": 44
         },
         "dialogCancelSize": {
-          "w": 79,
+          "w": 88,
           "h": 44
         },
         "undoBtnSize": null,
-        "smallTextCount": 0
+        "smallTextCount": 0,
+        "cancelHasBorder": true
       },
       "tab_inside_dialog": true,
       "shift_tab_loops": true,
@@ -71,11 +72,12 @@
           "h": 44
         },
         "dialogCancelSize": {
-          "w": 79,
+          "w": 88,
           "h": 44
         },
         "undoBtnSize": null,
-        "smallTextCount": 0
+        "smallTextCount": 0,
+        "cancelHasBorder": true
       },
       "undo_btn_size": {
         "w": 67,
@@ -117,11 +119,12 @@
           "h": 44
         },
         "dialogCancelSize": {
-          "w": 79,
+          "w": 88,
           "h": 44
         },
         "undoBtnSize": null,
-        "smallTextCount": 0
+        "smallTextCount": 0,
+        "cancelHasBorder": true
       },
       "undo_btn_size": {
         "w": 67,
@@ -163,11 +166,12 @@
           "h": 44
         },
         "dialogCancelSize": {
-          "w": 79,
+          "w": 88,
           "h": 44
         },
         "undoBtnSize": null,
-        "smallTextCount": 0
+        "smallTextCount": 0,
+        "cancelHasBorder": true
       },
       "tab_inside_dialog": true,
       "shift_tab_loops": true,
@@ -214,11 +218,12 @@
           "h": 44
         },
         "dialogCancelSize": {
-          "w": 79,
+          "w": 88,
           "h": 44
         },
         "undoBtnSize": null,
-        "smallTextCount": 0
+        "smallTextCount": 0,
+        "cancelHasBorder": true
       },
       "undo_btn_size": {
         "w": 67,
