@@ -7401,7 +7401,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                       <span>
                         <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>Estimate my budget</span>
                         <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
-                          Not sure what to enter? Event Boss can estimate a starting range from event type, guest count, date, time of day, service/tax, and contingency.
+                          Use event details to create a starting range before you commit a budget.
+                        </span>
+                        <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
+                          This is not a quote. Your budget only changes if you apply the estimate.
                         </span>
                       </span>
                     </button>
@@ -7450,7 +7453,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
                             {missing.length > 0 && (
                               <div data-testid="ce-estimator-missing" style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                                <span style={{ fontWeight: 700, color: C.text }}>Improve this estimate:</span> {missing.join(' · ')}
+                                <div style={{ fontWeight: 700, color: C.text, marginBottom: 3 }}>Improve this estimate</div>
+                                {missing.map((m, i) => (
+                                  <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'baseline' }}>
+                                    <span aria-hidden style={{ color: C.muted }}>•</span><span>{m}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                             {flags.map((f, i) => (
@@ -7464,8 +7472,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               <span>Payment created: No</span>
                             </div>
 
-                            <button type="button" data-testid="ce-estimator-apply" onClick={applyEstimate}
-                              style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use estimate as budget</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
+                              <button type="button" data-testid="ce-estimator-apply" onClick={applyEstimate}
+                                style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use estimate as budget</button>
+                              <span data-testid="ce-estimator-apply-sub" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>Fills the budget field. Does not create a payment or move money.</span>
+                            </div>
                           </>
                         ) : (
                           <div data-testid="ce-estimator-needs-input" style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
@@ -7478,7 +7489,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     {replaceConfirm && (
                       <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.warn}55`, borderRadius: 10, padding: '12px 14px' }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
-                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Your entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(midT)}.</div>
+                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(midT)}. No payment is created.</div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                           <button type="button" data-testid="ce-replace-cancel" onClick={() => setReplaceConfirm(false)}
                             style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
