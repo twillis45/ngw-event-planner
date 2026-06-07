@@ -1,0 +1,97 @@
+{
+  "390": {
+    "viewport": "390",
+    "scenarios": {
+      "cancel_unmark_deposit": true,
+      "trust_block_on_unmark": true,
+      "mark_balance_paid_dialog": true,
+      "undo_toast_visible": true,
+      "undo_restored_state": true,
+      "glossary_visible": true,
+      "reconcile_card_present": true,
+      "reconcile_undo_appears": true
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "scenarios": {
+      "cancel_unmark_deposit": true,
+      "trust_block_on_unmark": true,
+      "mark_balance_paid_dialog": true,
+      "undo_toast_visible": true,
+      "undo_restored_state": true,
+      "glossary_visible": true,
+      "reconcile_card_present": true,
+      "reconcile_undo_appears": true
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "scenarios": {
+      "cancel_unmark_deposit": true,
+      "trust_block_on_unmark": true,
+      "mark_balance_paid_dialog": true,
+      "undo_toast_visible": true,
+      "undo_restored_state": true,
+      "glossary_visible": true,
+      "reconcile_card_present": true,
+      "reconcile_undo_appears": true
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "scenarios": {
+      "cancel_unmark_deposit": true,
+      "trust_block_on_unmark": true,
+      "mark_balance_paid_dialog": true,
+      "undo_toast_visible": true,
+      "undo_restored_state": true,
+      "glossary_visible": true,
+      "reconcile_card_present": true,
+      "reconcile_undo_appears": true
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "scenarios": {
+      "cancel_unmark_deposit": true,
+      "trust_block_on_unmark": true,
+      "mark_balance_paid_dialog": true,
+      "undo_toast_visible": true,
+      "undo_restored_state": true,
+      "glossary_visible": true,
+      "reconcile_card_present": true,
+      "reconcile_undo_appears": true
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}

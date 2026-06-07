@@ -400,6 +400,20 @@ const SaveCtx  = createContext({ savedAt: null, online: true, syncState: 'idle',
 const ToastCtx  = createContext({ showToast: () => {} });
 const useToast  = () => useContext(ToastCtx).showToast;
 
+// ─── Sprint Budget/Payments — Undo toast (financial state actions) ─────────
+// Usage: const showUndoToast = useUndoToast();
+// showUndoToast({
+//   title: 'Balance recorded as paid',
+//   detail: '$3,200 marked paid for Lena Kim Photography',
+//   summary: ['Recorded in: Vendor record', 'Money moved: None', ...],
+//   undoLabel: 'Undo',
+//   onUndo: () => onChange('balancePaid', false),
+// });
+// 5-second timer; tapping Undo cancels it. Distinct from useToast: always
+// success-color, supports itemized summary, exposes Undo as primary affordance.
+const UndoToastCtx = createContext({ showUndoToast: () => {} });
+const useUndoToast = () => useContext(UndoToastCtx).showUndoToast;
+
 // ─── Claude AI ────────────────────────────────────────────────────────────────
 const AICtx = createContext(''); // stores the planner's Anthropic API key
 const useAIKey = () => useContext(AICtx);
@@ -543,6 +557,229 @@ function Toast({ msg, variant = 'success', onDone }) {
       </span>
       {msg}
     </div>
+  );
+}
+
+// ─── Sprint Budget/Payments — Undo toast for financial-state actions ──────
+// Shape: { title, detail?, summary?: string[], undoLabel?, onUndo }
+// 5-second auto-dismiss. Undo button is steel-blue. Summary surfaces the
+// itemized "what changed / what did not happen" so the planner can verify.
+//
+// A11y contract:
+//   • role=status + aria-live=polite (announces to screen readers
+//     without stealing focus).
+//   • Undo button is a real <button>, in tab order, with aria-label
+//     describing what gets undone.
+//   • Touch target ≥44px; all text ≥12px.
+//   • Pressing Escape while focused on Undo also fires Undo (keyboard
+//     shortcut for the most common recovery action).
+function UndoToast({ toast, C, onDismiss }) {
+  if (!toast) return null;
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+  const handleUndo = () => {
+    try { toast.onUndo && toast.onUndo(); } catch {}
+    onDismiss();
+  };
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-testid="bp-undo-toast"
+      style={{
+        position: 'fixed', bottom: 24, right: 24, zIndex: 320,
+        padding: '16px 18px', borderRadius: 12,
+        background: C.surface, border: `1px solid ${C.success}55`,
+        boxShadow: '0 12px 32px rgba(0,0,0,0.40)',
+        maxWidth: 'min(420px, calc(100vw - 24px))',
+        display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <span aria-hidden style={{
+          flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+          background: `${C.success}22`, color: C.success,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 800,
+        }}>✓</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{toast.title}</div>
+          {toast.detail && (
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{toast.detail}</div>
+          )}
+        </div>
+        <button
+          type="button"
+          data-testid="bp-undo-btn"
+          aria-label={toast.undoAriaLabel || `${toast.undoLabel || 'Undo'} — ${toast.title || 'last action'}`}
+          onClick={handleUndo}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); handleUndo(); } }}
+          style={{
+            flexShrink: 0,
+            background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+            color: C.accentText || '#fff',
+            border: 'none', borderRadius: 8,
+            padding: '10px 16px',
+            minHeight: 44, minWidth: 64,
+            fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
+            cursor: 'pointer',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+          }}>
+          {toast.undoLabel || 'Undo'}
+        </button>
+      </div>
+      {Array.isArray(toast.summary) && toast.summary.length > 0 && (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {toast.summary.map((line, i) => (
+            <div key={i} style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, display: 'flex', gap: 8 }}>
+              <span aria-hidden style={{ color: C.success, flexShrink: 0, fontSize: 12 }}>✓</span>
+              <span style={{ flex: 1 }}>{line}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sprint Budget/Payments — Trust-block confirmation dialog ─────────────
+// Used before any financial-state write or payment-link create. The trust
+// block enumerates what WILL happen and what will NOT (no charge, no
+// notification, no client/vendor contact). Steel-blue primary CTA only.
+//
+// A11y contract:
+//   • role=dialog, aria-modal=true
+//   • aria-labelledby points to the title; aria-describedby points to
+//     summary + trust block so screen readers read the contract.
+//   • Focus moves to primary CTA on open; trapped inside the dialog
+//     while open; Escape cancels; focus returns to the triggering
+//     element after close.
+//   • Buttons are ≥44px tall touch targets; text ≥12px.
+function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabel = 'Confirm', cancelLabel = 'Cancel', onCancel, onConfirm, testId }) {
+  const steelTop  = C.accentTopGrad || C.accent;
+  const steelDeep = C.accentDeep    || C.accent;
+  // Stable ids for aria-labelledby + aria-describedby.
+  const titleId   = useMemo(() => `bp-dialog-title-${Math.random().toString(36).slice(2, 9)}`, []);
+  const descId    = useMemo(() => `bp-dialog-desc-${Math.random().toString(36).slice(2, 9)}`, []);
+  const dialogRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Capture the element that had focus before the dialog opened so we
+    // can return focus to it on close. Falls back to body if nothing.
+    previouslyFocusedRef.current = document.activeElement;
+    // Move focus into the dialog — start at primary CTA so confirming
+    // the contract is one Enter press away.
+    const focusTimer = setTimeout(() => {
+      const primary = dialogRef.current?.querySelector('[data-testid="bp-confirm-primary"]');
+      if (primary) {
+        try { primary.focus({ preventScroll: true }); } catch { primary.focus(); }
+      }
+    }, 60);
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (typeof onCancel === 'function') onCancel();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last  = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          try { last.focus(); } catch {}
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          try { first.focus(); } catch {}
+        }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKey);
+      // Return focus to the triggering element so keyboard users don't
+      // get dropped at the top of the page.
+      const back = previouslyFocusedRef.current;
+      if (back && typeof back.focus === 'function') {
+        try { back.focus({ preventScroll: true }); } catch { try { back.focus(); } catch {} }
+      }
+    };
+  }, [onCancel]);
+  return (
+    <>
+      <div onClick={onCancel} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 80,
+      }} />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        data-testid={testId || 'bp-confirm-dialog'}
+        style={{
+        position: 'fixed', left: '50%', top: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 'min(460px, calc(100vw - 24px))',
+        maxHeight: 'calc(100vh - 48px)', overflowY: 'auto',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
+        zIndex: 81, padding: 22,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTop, marginBottom: 4 }}>Confirm</div>
+        <div id={titleId} style={{ fontSize: 18, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 8 }}>{title}</div>
+        <div id={descId}>
+          {summary && (
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>{summary}</div>
+          )}
+          {trustLines.length > 0 && (
+            <div data-testid="bp-trust-block" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+              {trustLines.map((line, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, paddingTop: i ? 6 : 0 }}>
+                  <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800, marginTop: 1 }}>✓</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            data-testid="bp-confirm-cancel"
+            onClick={onCancel}
+            style={{ ...s.btn('ghost'), fontSize: 13, padding: '12px 18px', minHeight: 44 }}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            data-testid="bp-confirm-primary"
+            onClick={onConfirm}
+            style={{
+              background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+              color: C.accentText || '#fff',
+              border: 'none', borderRadius: 8,
+              padding: '12px 22px', minHeight: 44,
+              fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+            }}>
+            {primaryLabel}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -3698,7 +3935,11 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   const s          = makeS(C);
   const stageCLR   = STAGE_CLR(C);
   const showToast  = useToast();
+  const showUndoToast = useUndoToast();
   const aiKey      = useAIKey();
+  // Sprint Budget/Payments — confirm gate for one-tap financial state changes.
+  // confirmKind: null | 'mark-balance-paid' | 'mark-deposit-paid' | 'unmark-deposit'
+  const [confirmKind, setConfirmKind] = useState(null);
 
   // Autosave: every field change immediately persists to the vendor list.
   // The parent's onSave expects a full updated vendor object. This wrapper
@@ -3807,11 +4048,66 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
     setNewLog('');
   };
 
-  const markPaid = () => {
-    const entry = { id: uid(), date: today8601(), text: `Balance of ${fmtD(balance)} marked as paid.` };
-    onChange('balancePaid', true);
-    onChange('log', [...(vendor.log || []), entry]);
+  // Sprint Budget/Payments — replace one-tap markPaid with confirm+Undo.
+  // openMarkBalancePaid: shows the trust-block dialog.
+  // doMarkBalancePaid: actually writes after confirm + shows Undo toast.
+  // The log entry is the recoverable signal (Undo also strips it).
+  const openMarkBalancePaid = () => setConfirmKind('mark-balance-paid');
+  const doMarkBalancePaid = () => {
+    setConfirmKind(null);
+    const entryId = uid();
+    const entry = { id: entryId, date: today8601(), text: `Balance of ${fmtD(balance)} recorded as paid in Event Boss.` };
+    const prior = { balancePaid: vendor.balancePaid, log: vendor.log || [] };
+    onSave({ ...vendor, balancePaid: true, log: [...(vendor.log || []), entry] });
+    showUndoToast({
+      title: `${fmtD(balance)} balance recorded as paid`,
+      detail: `${vendor.name || 'Vendor'} — vendor record updated`,
+      summary: [
+        'Recorded in: Vendor record (single source of truth for vendor payments)',
+        'Money moved: None — this is a record, not a charge',
+        'Vendor notification: None',
+        'Client notification: None',
+      ],
+      onUndo: () => onSave({ ...vendor, ...prior }),
+    });
   };
+  const openMarkDepositPaid = () => setConfirmKind('mark-deposit-paid');
+  const doMarkDepositPaid = () => {
+    setConfirmKind(null);
+    const entryId = uid();
+    const entry = { id: entryId, date: today8601(), text: `Deposit of ${fmtD(vendor.depositAmt || 0)} recorded as paid in Event Boss.` };
+    const prior = { depositPaid: vendor.depositPaid, log: vendor.log || [] };
+    onSave({ ...vendor, depositPaid: true, log: [...(vendor.log || []), entry] });
+    showUndoToast({
+      title: `${fmtD(vendor.depositAmt || 0)} deposit recorded as paid`,
+      detail: `${vendor.name || 'Vendor'} — vendor record updated`,
+      summary: [
+        'Recorded in: Vendor record',
+        'Money moved: None — this is a record, not a charge',
+        'Vendor notification: None',
+        'Client notification: None',
+      ],
+      onUndo: () => onSave({ ...vendor, ...prior }),
+    });
+  };
+  const doUnmarkDepositPaid = () => {
+    setConfirmKind(null);
+    const prior = { depositPaid: vendor.depositPaid };
+    onChange('depositPaid', false);
+    showUndoToast({
+      title: 'Deposit unmarked as paid',
+      detail: `${vendor.name || 'Vendor'} — vendor record updated`,
+      summary: [
+        'Recorded in: Vendor record',
+        'Money moved: None',
+        'No notifications sent',
+      ],
+      onUndo: () => onChange('depositPaid', prior.depositPaid),
+    });
+  };
+  // Legacy alias retained because the cancel-discard pattern in this file
+  // references markPaid by name in a few spots. Now safely calls the new flow.
+  const markPaid = openMarkBalancePaid;
 
   const genLogSumm = async () => {
     if (!aiKey) return;
@@ -4478,10 +4774,39 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-                  <input type="checkbox" checked={vendor.depositPaid} onChange={e => onChange('depositPaid', e.target.checked)} style={{ accentColor: C.success, cursor: 'pointer', width: 14, height: 14 }} />
+                {/* Sprint Budget/Payments — replace direct checkbox toggle
+                    with confirm-gated button. The checkbox stayed visually
+                    as a status indicator only (read-only); the button is
+                    where the write actually happens. */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    data-testid="vm-deposit-paid-indicator"
+                    checked={!!vendor.depositPaid}
+                    readOnly
+                    aria-readonly="true"
+                    style={{ accentColor: C.success, width: 14, height: 14, opacity: 0.85 }} />
                   Deposit paid
                 </label>
+                {!vendor.depositPaid && (
+                  <button
+                    type="button"
+                    data-testid="vm-mark-deposit-paid"
+                    onClick={openMarkDepositPaid}
+                    style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }}>
+                    Mark deposit paid…
+                  </button>
+                )}
+                {vendor.depositPaid && (
+                  <button
+                    type="button"
+                    data-testid="vm-unmark-deposit-paid"
+                    onClick={() => setConfirmKind('unmark-deposit')}
+                    title="Reverse the deposit-paid record"
+                    style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', color: C.muted }}>
+                    Unmark
+                  </button>
+                )}
                 {vendor.depositPaid && (
                   <select style={{ ...s.input, fontSize: 12, flex: 1, minWidth: 120 }} value={vendor.depositMethod || ''} onChange={e => onChange('depositMethod', e.target.value)}>
                     <option value="">Method…</option>
@@ -4515,7 +4840,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         </div>
                       )}
                     </div>
-                    <button style={s.btn('success')} onClick={markPaid}>Mark Paid</button>
+                    <button data-testid="vm-mark-balance-paid" style={s.btn('success')} onClick={openMarkBalancePaid}>Mark Paid…</button>
                   </div>
                   <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 130 }}>
@@ -5019,6 +5344,59 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           <button style={{ ...s.btn('primary'), marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setShowBrief(true)}><Icon name="link" size={14} /> Share Brief</button>
         </div>
       </div>
+      {confirmKind === 'mark-balance-paid' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-mark-balance-paid"
+          title={`Record ${fmtD(balance)} balance as paid`}
+          summary={`${vendor.name || 'This vendor'} — Event Boss will update the vendor record only. Use Undo if you tap by mistake.`}
+          trustLines={[
+            'This records the payment in Event Boss',
+            'It does not charge a card or move money',
+            'Vendor will not be notified',
+            'Client will not be notified',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Record as paid"
+          onCancel={() => setConfirmKind(null)}
+          onConfirm={doMarkBalancePaid}
+        />
+      )}
+      {confirmKind === 'mark-deposit-paid' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-mark-deposit-paid"
+          title={`Record ${fmtD(vendor.depositAmt || 0)} deposit as paid`}
+          summary={`${vendor.name || 'This vendor'} — Event Boss will update the vendor record only.`}
+          trustLines={[
+            'This records the payment in Event Boss',
+            'It does not charge a card or move money',
+            'Vendor will not be notified',
+            'Client will not be notified',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Record as paid"
+          onCancel={() => setConfirmKind(null)}
+          onConfirm={doMarkDepositPaid}
+        />
+      )}
+      {confirmKind === 'unmark-deposit' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-unmark-deposit"
+          title="Reverse the deposit-paid record"
+          summary={`${vendor.name || 'This vendor'} — the deposit will show as unpaid again on the vendor record.`}
+          trustLines={[
+            'This only updates Event Boss',
+            'No money is refunded',
+            'No notifications sent',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Mark unpaid"
+          onCancel={() => setConfirmKind(null)}
+          onConfirm={doUnmarkDepositPaid}
+        />
+      )}
     </>
   );
 }
@@ -16207,9 +16585,14 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
   const s  = makeS(C);
   const bp = useContext(BpCtx);
   const aiKey = useAIKey();
+  const showUndoToast = useUndoToast();
   const [modalId, setModalId] = useState(null);
   const [pendingTier, setPendingTier] = useState(null);
   const [budgetAILoad, setBudgetAILoad] = useState(false);
+  // Sprint Budget/Payments — confirm gate for fee mark-paid + Stripe link.
+  // pendingConfirm: null | { kind: 'mark-fee-paid' | 'unmark-fee-paid' | 'create-stripe-link', fee }
+  const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [showSotGlossary, setShowSotGlossary] = useState(false);
   const suggestBudget = async () => {
     if (!aiKey) return;
     setBudgetAILoad(true);
@@ -16291,6 +16674,49 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
     navigator.clipboard.writeText(f.stripeUrl).catch(() => {});
     setStripeCopied(prev => ({ ...prev, [f.id]: true }));
     setTimeout(() => setStripeCopied(prev => ({ ...prev, [f.id]: false })), 2000);
+  };
+
+  // Sprint Budget/Payments — fee mark-paid + Undo. Toggles client.feeSchedule
+  // entry's `paid` flag with itemized confirmation + 5s Undo restoring prior.
+  const doMarkFeePaid = (fee, nextPaid) => {
+    const prior = client?.feeSchedule || [];
+    setPendingConfirm(null);
+    if (!setClient) return;
+    setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === fee.id ? { ...x, paid: nextPaid } : x) }));
+    showUndoToast({
+      title: nextPaid
+        ? `${fmtD(fee.amount || 0)} recorded as paid`
+        : 'Payment unmarked',
+      detail: `${fee.label || 'Installment'} — client fee schedule updated`,
+      summary: [
+        'Recorded in: Client fee schedule (single source of truth for planner fees)',
+        'Money moved: None — this is a record, not a charge',
+        'Client notification: None',
+        'Stripe link: unchanged',
+      ],
+      onUndo: () => setClient(c => ({ ...c, feeSchedule: prior })),
+    });
+  };
+  // Sprint Budget/Payments — Stripe payment-link create with trust block.
+  const doCreateStripeLink = (fee) => {
+    setPendingConfirm(null);
+    handleCreateStripeLink(fee, eventId);
+    // Itemized confirmation appears as a separate toast once the link is
+    // received (handled by the createCheckoutSession success path). We
+    // surface the trust contract again here so the planner sees what's
+    // pending while the API call is in flight.
+    showUndoToast({
+      title: 'Creating Stripe payment link…',
+      detail: `${fee.label || 'Installment'} — ${fmtD(fee.amount || 0)}`,
+      summary: [
+        'Creates a hosted Stripe payment URL',
+        'No charge is made yet',
+        'Client is NOT notified — copy and share the link manually',
+        'Payment status updates only after Stripe confirms a payment',
+      ],
+      undoLabel: 'Dismiss',
+      onUndo: () => {}, // Stripe call already in flight; this is informational
+    });
   };
 
   const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
@@ -16799,6 +17225,117 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
           {bp !== 'mobile' && budget.length > 0 && (
             <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Click any row to edit</div>
           )}
+
+          {/* Sprint Budget/Payments — SoT glossary trigger + Reconcile drift card. */}
+          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              data-testid="bp-sot-glossary-toggle"
+              onClick={() => setShowSotGlossary(o => !o)}
+              style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 9px' }}>
+              {showSotGlossary ? 'Hide money glossary' : 'What do these terms mean?'}
+            </button>
+            <span style={{ fontSize: 10.5, color: C.muted }}>
+              Estimate · Planned · Committed · Paid · Due · Stripe link
+            </span>
+          </div>
+          {showSotGlossary && (
+            <div data-testid="bp-sot-glossary" style={{ marginTop: 10, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Money glossary — single source of truth</div>
+              {[
+                ['Estimate',     'A planning guide. Not committed money. Comes from the budget estimator or your manual entry.'],
+                ['Planned',      'The budgeted amount for a category. What you intend to spend.'],
+                ['Committed',    'Vendor cost on confirmed/contracted vendors. Money you have agreed to spend.'],
+                ['Paid',         'Recorded payment in Event Boss. We do not move money — this is your record.'],
+                ['Due',          'Remaining balance on a vendor or installment. Committed minus paid.'],
+                ['Stripe link',  'A hosted payment URL. Creating it does NOT charge the client; only when they pay through it.'],
+              ].map(([term, def]) => (
+                <div key={term} style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.text, minWidth: 90 }}>{term}</span>
+                  <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>{def}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Sprint Budget/Payments — Reconcile drift card. Detects per-category
+              mismatch between budget.actual and the vendor-derived amount paid
+              (depositPaid * depositAmt + balancePaid * (cost - depositAmt)).
+              Vendor record wins as source of truth. Shows a steel-blue
+              "Reconcile to vendor" CTA per drifted row. No auto-fix. */}
+          {(() => {
+            const drifts = budget
+              .map(r => {
+                const matching = (vendors || []).filter(v => (v.budgetCategory || v.category) === r.category);
+                const derived = matching.reduce((sum, v) => sum
+                  + (v.depositPaid ? (v.depositAmt || 0) : 0)
+                  + (v.balancePaid ? Math.max(0, (v.cost || 0) - (v.depositAmt || 0)) : 0)
+                , 0);
+                return { row: r, derived, diff: Math.round((r.actual || 0) - derived) };
+              })
+              .filter(d => Math.abs(d.diff) >= 1); // ignore sub-dollar rounding
+            if (!drifts.length) return null;
+            return (
+              <div data-testid="bp-reconcile-card" style={{
+                marginTop: 14, padding: '12px 14px',
+                background: C.bg, border: `1px solid ${C.accentTopGrad || C.accent}66`,
+                borderLeft: `3px solid ${C.accentTopGrad || C.accent}`,
+                borderRadius: 10,
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 4 }}>Reconcile</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 4 }}>
+                  Vendor payment records and budget actuals disagree
+                </div>
+                <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5, marginBottom: 10 }}>
+                  Vendor records are the source of truth for vendor payments. Review each mismatch — we don&apos;t auto-fix.
+                </div>
+                {drifts.map(({ row, derived, diff }) => (
+                  <div key={row.id} data-testid={`bp-reconcile-row-${row.id}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    paddingTop: 8, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{row.category}</div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                        Budget actual: <span style={{ color: C.text, fontWeight: 600 }}>{fmtD(row.actual || 0)}</span>
+                        {' · '}Vendor-derived: <span style={{ color: C.text, fontWeight: 600 }}>{fmtD(derived)}</span>
+                        {' · '}Diff: <span style={{ color: diff > 0 ? C.warn : C.muted, fontWeight: 600 }}>{diff > 0 ? '+' : ''}{fmtD(diff)}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid={`bp-reconcile-apply-${row.id}`}
+                      onClick={() => {
+                        const prior = row.actual || 0;
+                        setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: derived } : x));
+                        showUndoToast({
+                          title: `${row.category} reconciled to vendor record`,
+                          detail: `Budget actual updated to ${fmtD(derived)}`,
+                          summary: [
+                            'Recorded in: Budget line actual',
+                            'Source: Vendor records (depositPaid + balancePaid math)',
+                            'Money moved: None',
+                            'No notifications sent',
+                          ],
+                          onUndo: () => setBudget(b => b.map(x => x.id === row.id ? { ...x, actual: prior } : x)),
+                        });
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        background: `linear-gradient(180deg, ${C.accentTopGrad || C.accent} 0%, ${C.accentDeep || C.accent} 100%)`,
+                        color: C.accentText || '#fff',
+                        border: 'none', borderRadius: 7,
+                        padding: '6px 12px', fontSize: 11.5, fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+                      }}>
+                      Reconcile to vendor
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {budget.length === 0 && (
@@ -17118,22 +17655,24 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                                 )}
                               </div>
                             </div>
-                            {/* Sprint 64: Create Stripe link (unpaid, has amount, Stripe configured, no link yet) */}
+                            {/* Sprint 64 + B/P P0: Create Stripe link gated by trust block. */}
                             {setClient && !f.paid && f.amount > 0 && stripeOn && !hasStripeLink && (
                               <button
                                 disabled={isLoading}
+                                data-testid={`bp-create-stripe-link-${f.id}`}
                                 style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 9px', color: C.accent, border: `1px solid ${C.accent}55` }}
                                 title="Create Stripe payment link — client pays on Stripe's hosted page"
-                                onClick={() => handleCreateStripeLink(f, eventId)}>
+                                onClick={() => setPendingConfirm({ kind: 'create-stripe-link', fee: f })}>
                                 {isLoading ? '…' : '$ Create Link'}
                               </button>
                             )}
                             {setClient && (
                               <button
+                                data-testid={`bp-fee-mark-paid-${f.id}`}
                                 style={{ ...s.btn(f.paid ? 'success' : 'default'), fontSize: 11, padding: '4px 10px' }}
-                                title={f.paid ? 'Click to mark unpaid' : 'Mark as paid'}
-                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, paid: !x.paid } : x) }))}>
-                                {f.paid ? '✓ Paid' : 'Mark Paid'}
+                                title={f.paid ? 'Reverse the paid record' : 'Record as paid (with confirm + Undo)'}
+                                onClick={() => setPendingConfirm({ kind: f.paid ? 'unmark-fee-paid' : 'mark-fee-paid', fee: f })}>
+                                {f.paid ? '✓ Paid' : 'Mark Paid…'}
                               </button>
                             )}
                             {setClient && (
@@ -17141,31 +17680,59 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                                 onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.filter(x => x.id !== f.id) }))}>✕</button>
                             )}
                           </div>
-                          {/* Stripe link row — shown once a checkout session exists and not yet paid */}
+                          {/* Sprint Budget/Payments — Stripe status row with
+                              honest 4-state labeling. The link being live does
+                              NOT mean payment moved. Verification is manual
+                              until the planner taps "Check on Stripe". */}
                           {setClient && !f.paid && hasStripeLink && (
-                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Stripe Link Ready</span>
-                              <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
-                              <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }} onClick={() => handleCopyStripeLink(f)}>
-                                {isCopied ? '✓ Copied' : 'Copy Link'}
-                              </button>
-                              <button
-                                disabled={isChecking}
-                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }}
-                                title="Check if client has paid on Stripe"
-                                onClick={() => handleCheckStripePayment(f)}>
-                                {isChecking ? 'Checking…' : 'Check Payment'}
-                              </button>
-                              <button
-                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', color: C.muted, flexShrink: 0 }}
-                                title="Remove this Stripe link"
-                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
-                                Remove
-                              </button>
+                            <div data-testid={`bp-stripe-status-row-${f.id}`} style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span data-testid={`bp-stripe-status-pill-${f.id}`} style={{ fontSize: 10, fontWeight: 800, color: C.accent, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 6px', border: `1px solid ${C.accent}55`, borderRadius: 4 }}>
+                                  Link created · Awaiting Stripe confirmation
+                                </span>
+                                <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
+                                <button
+                                  data-testid={`bp-stripe-copy-${f.id}`}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, flexShrink: 0 }}
+                                  onClick={() => handleCopyStripeLink(f)}>
+                                  {isCopied ? '✓ Copied' : 'Copy link'}
+                                </button>
+                                <button
+                                  data-testid={`bp-stripe-check-${f.id}`}
+                                  disabled={isChecking}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, flexShrink: 0 }}
+                                  title="Query Stripe to see whether the client has paid through this link"
+                                  onClick={() => handleCheckStripePayment(f)}>
+                                  {isChecking ? 'Checking Stripe…' : 'Check on Stripe'}
+                                </button>
+                                <button
+                                  data-testid={`bp-stripe-remove-${f.id}`}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, color: C.muted, flexShrink: 0 }}
+                                  title="Remove the link from Event Boss. Does not cancel the link on Stripe."
+                                  onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
+                                  Remove
+                                </button>
+                              </div>
+                              {/* Honest explanation of what "Link created" means. */}
+                              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: 600 }}>Check on Stripe</span> to query now — Event Boss does not auto-poll Stripe.
+                              </div>
+                            </div>
+                          )}
+                          {/* Sprint Budget/Payments — explicit verification
+                              provenance on a paid installment so the planner
+                              can tell Stripe-confirmed from manually-recorded. */}
+                          {setClient && f.paid && (
+                            <div data-testid={`bp-fee-paid-source-${f.id}`} style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                              {f.paymentMethod === 'Stripe' ? (
+                                <span>✓ <span style={{ color: C.success, fontWeight: 600 }}>Stripe-confirmed paid</span> — verified via Stripe session.</span>
+                              ) : (
+                                <span>✓ <span style={{ color: C.text, fontWeight: 600 }}>Manually recorded paid</span> in Event Boss — not verified by Stripe.</span>
+                              )}
                             </div>
                           )}
                           {stripeErr && (
-                            <div style={{ marginTop: 6, fontSize: 11, color: C.danger }}>{stripeErr}</div>
+                            <div role="alert" data-testid={`bp-stripe-error-${f.id}`} style={{ marginTop: 6, fontSize: 12, color: C.danger }}>{stripeErr}</div>
                           )}
                         </div>
                       );
@@ -17176,6 +17743,59 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
             );
           })()}
         </div>
+      )}
+      {pendingConfirm?.kind === 'mark-fee-paid' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-mark-fee-paid"
+          title={`Record ${fmtD(pendingConfirm.fee.amount || 0)} as paid`}
+          summary={`${pendingConfirm.fee.label || 'Installment'} — Event Boss will update your fee schedule only.`}
+          trustLines={[
+            'This records the payment in Event Boss',
+            'It does not charge a card or move money',
+            'Client will not be notified',
+            'Stripe link (if any) will remain available',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Record as paid"
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => doMarkFeePaid(pendingConfirm.fee, true)}
+        />
+      )}
+      {pendingConfirm?.kind === 'unmark-fee-paid' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-unmark-fee-paid"
+          title="Reverse the paid record"
+          summary={`${pendingConfirm.fee.label || 'Installment'} — the installment will show as unpaid again.`}
+          trustLines={[
+            'This only updates Event Boss',
+            'No money is refunded',
+            'No notifications sent',
+            'Undo is available for 5 seconds',
+          ]}
+          primaryLabel="Mark unpaid"
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => doMarkFeePaid(pendingConfirm.fee, false)}
+        />
+      )}
+      {pendingConfirm?.kind === 'create-stripe-link' && (
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-create-stripe-link"
+          title={`Create Stripe payment link for ${fmtD(pendingConfirm.fee.amount || 0)}`}
+          summary={`${pendingConfirm.fee.label || 'Installment'} — Stripe will generate a hosted URL your client can use to pay.`}
+          trustLines={[
+            'This creates a payment link',
+            'It does not charge the client',
+            'Client is not notified unless you send or share the link',
+            'Payment status updates only after Stripe confirms a payment',
+            'Use Cancel to abort — nothing happens',
+          ]}
+          primaryLabel="Create payment link"
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => doCreateStripeLink(pendingConfirm.fee)}
+        />
       )}
     </div>
   );
@@ -25965,6 +26585,21 @@ export default function App() {
   const showToast = (msg, variant = 'success') => setToast({ msg, variant });
   const toastCtxVal = { showToast };
 
+  // Sprint Budget/Payments — Undo toast for financial-state actions.
+  // Auto-dismisses after 5000ms. Tapping Undo cancels timer + fires onUndo.
+  const [undoToast, setUndoToast] = useState(null);
+  const undoTimerRef = useRef(null);
+  const showUndoToast = (cfg) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoToast({ ...cfg, id: Date.now() });
+    undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
+  };
+  const dismissUndoToast = () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoToast(null);
+  };
+  const undoToastCtxVal = { showUndoToast };
+
   const [savedAt,          setSavedAt]          = useState(null);
   const [online,           setOnline]           = useState(() => navigator.onLine !== false);
   const [sessionResumedAt] = useState(() => {
@@ -26384,6 +27019,7 @@ export default function App() {
   const providers = (children) => (
     <ThemeCtx.Provider value={themeCtxVal}>
       <ToastCtx.Provider value={toastCtxVal}>
+        <UndoToastCtx.Provider value={undoToastCtxVal}>
         <AICtx.Provider value={profile?.anthropicKey || ''}>
           <BpCtx.Provider value={bp}>
             <SaveCtx.Provider value={saveCtxVal}>
@@ -26458,10 +27094,12 @@ export default function App() {
                   />
                 )}
                 <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />
+                <UndoToast toast={undoToast} C={themeC} onDismiss={dismissUndoToast} />
               </div>
             </SaveCtx.Provider>
           </BpCtx.Provider>
         </AICtx.Provider>
+        </UndoToastCtx.Provider>
       </ToastCtx.Provider>
     </ThemeCtx.Provider>
   );
