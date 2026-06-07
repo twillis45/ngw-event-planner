@@ -1,0 +1,492 @@
+{
+  "390": {
+    "viewport": "390",
+    "scenarios": {
+      "opened": true,
+      "step1_visible": true,
+      "step1_trust_block_visible": true,
+      "cancel_no_record": true,
+      "step2_visible": true,
+      "step3_visible": true,
+      "step3_trust_block_visible": true,
+      "blank_review_shows_no_planning": true,
+      "wedding_review_shows_yes": true,
+      "create_wrote_exactly_one": true,
+      "success_visible": true,
+      "success_created_visible": true,
+      "success_not_done_visible": true,
+      "add_another_resets": true
+    },
+    "baseline_events": 10,
+    "cancel_affordance": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Cancel"
+    },
+    "back_affordance_step3": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Back"
+    },
+    "create_affordance": {
+      "present": true,
+      "rect": {
+        "w": 244,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Create event"
+    },
+    "success_open_affordance": {
+      "present": true,
+      "rect": {
+        "w": 350,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Open event"
+    },
+    "success_add_vendor_affordance": {
+      "present": true,
+      "rect": {
+        "w": 350,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add vendor"
+    },
+    "success_add_client_affordance": {
+      "present": true,
+      "rect": {
+        "w": 350,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add client"
+    },
+    "success_add_another_affordance": {
+      "present": true,
+      "rect": {
+        "w": 350,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add another event"
+    },
+    "docW": 390,
+    "viewW": 390,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "scenarios": {
+      "opened": true,
+      "step1_visible": true,
+      "step1_trust_block_visible": true,
+      "cancel_no_record": true,
+      "step2_visible": true,
+      "step3_visible": true,
+      "step3_trust_block_visible": true,
+      "blank_review_shows_no_planning": true,
+      "wedding_review_shows_yes": true,
+      "create_wrote_exactly_one": true,
+      "success_visible": true,
+      "success_created_visible": true,
+      "success_not_done_visible": true,
+      "add_another_resets": true
+    },
+    "baseline_events": 10,
+    "cancel_affordance": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Cancel"
+    },
+    "back_affordance_step3": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Back"
+    },
+    "create_affordance": {
+      "present": true,
+      "rect": {
+        "w": 284,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Create event"
+    },
+    "success_open_affordance": {
+      "present": true,
+      "rect": {
+        "w": 390,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Open event"
+    },
+    "success_add_vendor_affordance": {
+      "present": true,
+      "rect": {
+        "w": 390,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add vendor"
+    },
+    "success_add_client_affordance": {
+      "present": true,
+      "rect": {
+        "w": 390,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add client"
+    },
+    "success_add_another_affordance": {
+      "present": true,
+      "rect": {
+        "w": 390,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add another event"
+    },
+    "docW": 430,
+    "viewW": 430,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "scenarios": {
+      "opened": true,
+      "step1_visible": true,
+      "step1_trust_block_visible": true,
+      "cancel_no_record": true,
+      "step2_visible": true,
+      "step3_visible": true,
+      "step3_trust_block_visible": true,
+      "blank_review_shows_no_planning": true,
+      "wedding_review_shows_yes": true,
+      "create_wrote_exactly_one": true,
+      "success_visible": true,
+      "success_created_visible": true,
+      "success_not_done_visible": true,
+      "add_another_resets": true
+    },
+    "baseline_events": 10,
+    "cancel_affordance": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Cancel"
+    },
+    "back_affordance_step3": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Back"
+    },
+    "create_affordance": {
+      "present": true,
+      "rect": {
+        "w": 150,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Create event"
+    },
+    "success_open_affordance": {
+      "present": true,
+      "rect": {
+        "w": 504,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Open event"
+    },
+    "success_add_vendor_affordance": {
+      "present": true,
+      "rect": {
+        "w": 247,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add vendor"
+    },
+    "success_add_client_affordance": {
+      "present": true,
+      "rect": {
+        "w": 247,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add client"
+    },
+    "success_add_another_affordance": {
+      "present": true,
+      "rect": {
+        "w": 504,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add another event"
+    },
+    "docW": 768,
+    "viewW": 768,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "scenarios": {
+      "opened": true,
+      "step1_visible": true,
+      "step1_trust_block_visible": true,
+      "cancel_no_record": true,
+      "step2_visible": true,
+      "step3_visible": true,
+      "step3_trust_block_visible": true,
+      "blank_review_shows_no_planning": true,
+      "wedding_review_shows_yes": true,
+      "create_wrote_exactly_one": true,
+      "success_visible": true,
+      "success_created_visible": true,
+      "success_not_done_visible": true,
+      "add_another_resets": true
+    },
+    "baseline_events": 10,
+    "cancel_affordance": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Cancel"
+    },
+    "back_affordance_step3": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Back"
+    },
+    "create_affordance": {
+      "present": true,
+      "rect": {
+        "w": 150,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Create event"
+    },
+    "success_open_affordance": {
+      "present": true,
+      "rect": {
+        "w": 544,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Open event"
+    },
+    "success_add_vendor_affordance": {
+      "present": true,
+      "rect": {
+        "w": 267,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add vendor"
+    },
+    "success_add_client_affordance": {
+      "present": true,
+      "rect": {
+        "w": 267,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add client"
+    },
+    "success_add_another_affordance": {
+      "present": true,
+      "rect": {
+        "w": 544,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add another event"
+    },
+    "docW": 1024,
+    "viewW": 1024,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "scenarios": {
+      "opened": true,
+      "step1_visible": true,
+      "step1_trust_block_visible": true,
+      "cancel_no_record": true,
+      "step2_visible": true,
+      "step3_visible": true,
+      "step3_trust_block_visible": true,
+      "blank_review_shows_no_planning": true,
+      "wedding_review_shows_yes": true,
+      "create_wrote_exactly_one": true,
+      "success_visible": true,
+      "success_created_visible": true,
+      "success_not_done_visible": true,
+      "add_another_resets": true
+    },
+    "baseline_events": 10,
+    "cancel_affordance": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Cancel"
+    },
+    "back_affordance_step3": {
+      "present": true,
+      "rect": {
+        "w": 96,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Back"
+    },
+    "create_affordance": {
+      "present": true,
+      "rect": {
+        "w": 150,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Create event"
+    },
+    "success_open_affordance": {
+      "present": true,
+      "rect": {
+        "w": 544,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": false,
+      "text": "Open event"
+    },
+    "success_add_vendor_affordance": {
+      "present": true,
+      "rect": {
+        "w": 267,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add vendor"
+    },
+    "success_add_client_affordance": {
+      "present": true,
+      "rect": {
+        "w": 267,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add client"
+    },
+    "success_add_another_affordance": {
+      "present": true,
+      "rect": {
+        "w": 544,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "text": "Add another event"
+    },
+    "docW": 1440,
+    "viewW": 1440,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}
