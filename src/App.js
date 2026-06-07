@@ -662,8 +662,12 @@ function UndoToast({ toast, C, onDismiss }) {
 // After a relative chip taps, the parent shows a subtext with the
 // resolved date AND the relationship — the parent reads that label from
 // `chips[i].label` to render "Saturday, Aug 1, 2027 · 14 days before event".
-function DateChipRow({ chips = [], onPick, eventDate, C, testId }) {
+function DateChipRow({ chips = [], onPick, eventDate, C, testId, selectedId = null }) {
   if (!chips.length) return null;
+  // Studio Matte palette references — steel-blue gradient top is the canonical
+  // active-affordance accent across the app (same family as primary CTAs but
+  // tinted, not filled, so chips read as secondary).
+  const steelTop = C.accentTopGrad || C.accent;
   return (
     <div data-testid={testId} style={{
       display: 'flex', flexWrap: 'wrap', gap: 8,
@@ -672,34 +676,49 @@ function DateChipRow({ chips = [], onPick, eventDate, C, testId }) {
       {chips.map((chip) => {
         const needsEvent = chip.relativeTo === 'event';
         const disabled   = needsEvent && !eventDate;
+        const selected   = !disabled && selectedId === chip.id;
         const handle = () => {
           if (disabled) return;
           const iso = chip.compute?.();
           if (iso && typeof onPick === 'function') onPick(iso, chip);
         };
+        // Studio Matte: hairline border by default (C.border), promoted to a
+        // solid steel-blue band when this chip drove the current field value.
+        // Selected chips also pick up a subtle steel-tinted fill — same family
+        // as primary CTAs but lower amplitude (1A alpha) so they read as
+        // "still secondary, just active" rather than as a competing CTA.
+        const borderColor =
+          disabled ? C.border
+          : selected ? steelTop
+          : C.border;
+        const bgColor =
+          selected ? `${steelTop}1A` : 'transparent';
         return (
           <button
             key={chip.id}
             type="button"
             data-testid={`${testId || 'date-chip'}-${chip.id}`}
+            data-selected={selected || undefined}
             onClick={handle}
             disabled={disabled}
             aria-disabled={disabled || undefined}
+            aria-pressed={selected || undefined}
             title={disabled ? 'Set event date first.' : (chip.tooltip || chip.label)}
             style={{
-              background: 'transparent',
+              background: bgColor,
               color: disabled ? C.muted : C.text,
-              border: `1px solid ${disabled ? `${C.muted}33` : `${C.muted}66`}`,
+              border: `1px solid ${borderColor}`,
               borderRadius: 8,
               padding: '8px 12px',
               minHeight: 44,
               fontSize: 12.5,
-              fontWeight: 600,
+              fontWeight: selected ? 700 : 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
               letterSpacing: '0.01em',
               opacity: disabled ? 0.55 : 1,
               whiteSpace: 'nowrap',
+              transition: 'background-color 0.12s ease, border-color 0.12s ease',
             }}>
             {chip.label}
           </button>
@@ -4986,7 +5005,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         C={C}
                         testId="vm-balance-chip"
                         eventDate={event?.date}
-                        onPick={(iso, chip) => { onChange('payDueDate', iso); setVmBalanceChipMeta({ resolved: iso, label: chip.label, at: Date.now() }); }}
+                        selectedId={vmBalanceChipMeta && vmBalanceChipMeta.resolved === vendor.payDueDate ? vmBalanceChipMeta.id : null}
+                        onPick={(iso, chip) => { onChange('payDueDate', iso); setVmBalanceChipMeta({ id: chip.id, resolved: iso, label: chip.label, at: Date.now() }); }}
                         chips={[
                           { id: '30-before',  label: '30 days before event', relativeTo: 'event', compute: () => event?.date ? addDaysISO(event.date, -30) : null },
                           { id: '14-before',  label: '14 days before event', relativeTo: 'event', compute: () => event?.date ? addDaysISO(event.date, -14) : null },
@@ -7026,7 +7046,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 <DateChipRow
                   C={C}
                   testId="ce-date-chip"
-                  onPick={(iso, chip) => { upd('date', iso); setCeDateChipMeta({ resolved: iso, label: chip.label, at: Date.now() }); setTouched(t => ({ ...t, date: true })); }}
+                  selectedId={ceDateChipMeta && ceDateChipMeta.resolved === form.date ? ceDateChipMeta.id : null}
+                  onPick={(iso, chip) => { upd('date', iso); setCeDateChipMeta({ id: chip.id, resolved: iso, label: chip.label, at: Date.now() }); setTouched(t => ({ ...t, date: true })); }}
                   chips={[
                     { id: 'this-weekend',  label: 'This weekend',  compute: () => nextWeekendISO() },
                     { id: 'next-weekend',  label: 'Next weekend',  compute: () => followingWeekendISO() },
@@ -8516,7 +8537,8 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
                   C={C}
                   testId={`cm-fee-due-chip-${f.id}`}
                   eventDate={linkedEventDate}
-                  onPick={(iso, chip) => { updateInstallment(f.id, 'due', iso); setFeeDueChipMeta(m => ({ ...m, [f.id]: { resolved: iso, label: chip.label, at: Date.now() } })); }}
+                  selectedId={feeDueChipMeta[f.id] && feeDueChipMeta[f.id].resolved === f.due ? feeDueChipMeta[f.id].id : null}
+                  onPick={(iso, chip) => { updateInstallment(f.id, 'due', iso); setFeeDueChipMeta(m => ({ ...m, [f.id]: { id: chip.id, resolved: iso, label: chip.label, at: Date.now() } })); }}
                   chips={[
                     { id: 'today',      label: 'Today',                                       compute: () => today8601() },
                     { id: 'plus-7',     label: '+7 days',                                     compute: () => addDaysISO(null, 7) },

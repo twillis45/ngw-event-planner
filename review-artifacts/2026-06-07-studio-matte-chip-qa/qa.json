@@ -1,0 +1,342 @@
+{
+  "390": {
+    "viewport": "390",
+    "ce_chip_before_tap": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_chip_after_tap": {
+      "present": true,
+      "ariaPressed": "true",
+      "dataSelected": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_other_chip_unaffected": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual_edit": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "calendar_indicator_filter": {
+      "present": true,
+      "hasFilterRule": true
+    },
+    "overflow": false,
+    "ban1a6fba": 0,
+    "rgbSaaSBlue": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "ce_chip_before_tap": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_chip_after_tap": {
+      "present": true,
+      "ariaPressed": "true",
+      "dataSelected": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_other_chip_unaffected": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual_edit": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "calendar_indicator_filter": {
+      "present": true,
+      "hasFilterRule": true
+    },
+    "overflow": false,
+    "ban1a6fba": 0,
+    "rgbSaaSBlue": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "ce_chip_before_tap": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_chip_after_tap": {
+      "present": true,
+      "ariaPressed": "true",
+      "dataSelected": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_other_chip_unaffected": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual_edit": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "calendar_indicator_filter": {
+      "present": true,
+      "hasFilterRule": true
+    },
+    "overflow": false,
+    "ban1a6fba": 0,
+    "rgbSaaSBlue": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "ce_chip_before_tap": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_chip_after_tap": {
+      "present": true,
+      "ariaPressed": "true",
+      "dataSelected": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_other_chip_unaffected": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual_edit": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "calendar_indicator_filter": {
+      "present": true,
+      "hasFilterRule": true
+    },
+    "overflow": false,
+    "ban1a6fba": 0,
+    "rgbSaaSBlue": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "ce_chip_before_tap": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_chip_after_tap": {
+      "present": true,
+      "ariaPressed": "true",
+      "dataSelected": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_other_chip_unaffected": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual_edit": {
+      "present": true,
+      "ariaPressed": null,
+      "dataSelected": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "borderWidth": "1px",
+      "color": "rgb(232, 237, 242)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "calendar_indicator_filter": {
+      "present": true,
+      "hasFilterRule": true
+    },
+    "overflow": false,
+    "ban1a6fba": 0,
+    "rgbSaaSBlue": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}

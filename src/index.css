@@ -12,3 +12,18 @@ html, body {
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Studio Matte: native <input type="date"> calendar icon is dark-gray by
+   default and invisible on Mid Carbon surfaces. Lift to a steel-tinted
+   glyph that reads on dark backgrounds without competing with primary
+   CTAs. Inversion-based so it stays close to icon-default tone without
+   adding color noise. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.62) sepia(0.08) saturate(0.6) brightness(1.05);
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.12s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
