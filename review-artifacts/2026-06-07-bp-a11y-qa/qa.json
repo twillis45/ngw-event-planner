@@ -1,0 +1,242 @@
+{
+  "390": {
+    "viewport": "390",
+    "scenarios": {
+      "mark_balance_dialog": true,
+      "undo_toast": true,
+      "glossary": true,
+      "reconcile": true
+    },
+    "a11y": {
+      "focus_on_primary_after_open": true,
+      "dialog_aria": {
+        "ariaModal": "true",
+        "ariaLabelledby": true,
+        "ariaDescribedby": true
+      },
+      "sizes": {
+        "dialogPrimarySize": {
+          "w": 137,
+          "h": 44
+        },
+        "dialogCancelSize": {
+          "w": 79,
+          "h": 44
+        },
+        "undoBtnSize": null,
+        "smallTextCount": 0
+      },
+      "tab_inside_dialog": true,
+      "shift_tab_loops": true,
+      "escape_closes_dialog": true,
+      "focus_returned_to_trigger": true,
+      "undo_btn_size": {
+        "w": 67,
+        "h": 44
+      },
+      "undo_reachable_by_tab": true
+    },
+    "stripe": {
+      "pill_present": true,
+      "link_created_copy": true,
+      "awaiting_explainer": true,
+      "manually_recorded_copy": true,
+      "stripe_confirmed_copy": false
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "scenarios": {
+      "mark_balance_dialog": true,
+      "undo_toast": true,
+      "glossary": true,
+      "reconcile": true
+    },
+    "a11y": {
+      "focus_on_primary_after_open": true,
+      "dialog_aria": {
+        "ariaModal": "true",
+        "ariaLabelledby": true,
+        "ariaDescribedby": true
+      },
+      "sizes": {
+        "dialogPrimarySize": {
+          "w": 137,
+          "h": 44
+        },
+        "dialogCancelSize": {
+          "w": 79,
+          "h": 44
+        },
+        "undoBtnSize": null,
+        "smallTextCount": 0
+      },
+      "undo_btn_size": {
+        "w": 67,
+        "h": 44
+      }
+    },
+    "stripe": {
+      "pill_present": true,
+      "link_created_copy": true,
+      "awaiting_explainer": true,
+      "manually_recorded_copy": true,
+      "stripe_confirmed_copy": false
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "scenarios": {
+      "mark_balance_dialog": true,
+      "undo_toast": true,
+      "glossary": true,
+      "reconcile": true
+    },
+    "a11y": {
+      "focus_on_primary_after_open": true,
+      "dialog_aria": {
+        "ariaModal": "true",
+        "ariaLabelledby": true,
+        "ariaDescribedby": true
+      },
+      "sizes": {
+        "dialogPrimarySize": {
+          "w": 137,
+          "h": 44
+        },
+        "dialogCancelSize": {
+          "w": 79,
+          "h": 44
+        },
+        "undoBtnSize": null,
+        "smallTextCount": 0
+      },
+      "undo_btn_size": {
+        "w": 67,
+        "h": 44
+      }
+    },
+    "stripe": {
+      "pill_present": true,
+      "link_created_copy": true,
+      "awaiting_explainer": true,
+      "manually_recorded_copy": true,
+      "stripe_confirmed_copy": false
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "scenarios": {
+      "mark_balance_dialog": true,
+      "undo_toast": true,
+      "glossary": true,
+      "reconcile": true
+    },
+    "a11y": {
+      "focus_on_primary_after_open": true,
+      "dialog_aria": {
+        "ariaModal": "true",
+        "ariaLabelledby": true,
+        "ariaDescribedby": true
+      },
+      "sizes": {
+        "dialogPrimarySize": {
+          "w": 137,
+          "h": 44
+        },
+        "dialogCancelSize": {
+          "w": 79,
+          "h": 44
+        },
+        "undoBtnSize": null,
+        "smallTextCount": 0
+      },
+      "tab_inside_dialog": true,
+      "shift_tab_loops": true,
+      "escape_closes_dialog": true,
+      "focus_returned_to_trigger": true,
+      "undo_btn_size": {
+        "w": 67,
+        "h": 44
+      },
+      "undo_reachable_by_tab": true
+    },
+    "stripe": {
+      "pill_present": true,
+      "link_created_copy": true,
+      "awaiting_explainer": true,
+      "manually_recorded_copy": true,
+      "stripe_confirmed_copy": false
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "scenarios": {
+      "mark_balance_dialog": true,
+      "undo_toast": true,
+      "glossary": true,
+      "reconcile": true
+    },
+    "a11y": {
+      "focus_on_primary_after_open": true,
+      "dialog_aria": {
+        "ariaModal": "true",
+        "ariaLabelledby": true,
+        "ariaDescribedby": true
+      },
+      "sizes": {
+        "dialogPrimarySize": {
+          "w": 137,
+          "h": 44
+        },
+        "dialogCancelSize": {
+          "w": 79,
+          "h": 44
+        },
+        "undoBtnSize": null,
+        "smallTextCount": 0
+      },
+      "undo_btn_size": {
+        "w": 67,
+        "h": 44
+      }
+    },
+    "stripe": {
+      "pill_present": true,
+      "link_created_copy": true,
+      "awaiting_explainer": true,
+      "manually_recorded_copy": true,
+      "stripe_confirmed_copy": false
+    },
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "amberPrimary": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}

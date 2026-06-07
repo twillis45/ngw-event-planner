@@ -564,6 +564,15 @@ function Toast({ msg, variant = 'success', onDone }) {
 // Shape: { title, detail?, summary?: string[], undoLabel?, onUndo }
 // 5-second auto-dismiss. Undo button is steel-blue. Summary surfaces the
 // itemized "what changed / what did not happen" so the planner can verify.
+//
+// A11y contract:
+//   • role=status + aria-live=polite (announces to screen readers
+//     without stealing focus).
+//   • Undo button is a real <button>, in tab order, with aria-label
+//     describing what gets undone.
+//   • Touch target ≥44px; all text ≥12px.
+//   • Pressing Escape while focused on Undo also fires Undo (keyboard
+//     shortcut for the most common recovery action).
 function UndoToast({ toast, C, onDismiss }) {
   if (!toast) return null;
   const steelTop  = C.accentTopGrad || C.accent;
@@ -580,36 +589,39 @@ function UndoToast({ toast, C, onDismiss }) {
       data-testid="bp-undo-toast"
       style={{
         position: 'fixed', bottom: 24, right: 24, zIndex: 320,
-        padding: '14px 16px', borderRadius: 12,
+        padding: '16px 18px', borderRadius: 12,
         background: C.surface, border: `1px solid ${C.success}55`,
         boxShadow: '0 12px 32px rgba(0,0,0,0.40)',
-        maxWidth: 'min(380px, calc(100vw - 24px))',
-        display: 'flex', flexDirection: 'column', gap: 10,
+        maxWidth: 'min(420px, calc(100vw - 24px))',
+        display: 'flex', flexDirection: 'column', gap: 12,
       }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <span aria-hidden style={{
-          flexShrink: 0, width: 22, height: 22, borderRadius: '50%',
+          flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
           background: `${C.success}22`, color: C.success,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 800,
+          fontSize: 13, fontWeight: 800,
         }}>✓</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{toast.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{toast.title}</div>
           {toast.detail && (
-            <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{toast.detail}</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{toast.detail}</div>
           )}
         </div>
         <button
           type="button"
           data-testid="bp-undo-btn"
+          aria-label={toast.undoAriaLabel || `${toast.undoLabel || 'Undo'} — ${toast.title || 'last action'}`}
           onClick={handleUndo}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); handleUndo(); } }}
           style={{
             flexShrink: 0,
             background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
             color: C.accentText || '#fff',
-            border: 'none', borderRadius: 7,
-            padding: '6px 12px',
-            fontSize: 11.5, fontWeight: 700, letterSpacing: '0.03em',
+            border: 'none', borderRadius: 8,
+            padding: '10px 16px',
+            minHeight: 44, minWidth: 64,
+            fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
             cursor: 'pointer',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
           }}>
@@ -617,10 +629,10 @@ function UndoToast({ toast, C, onDismiss }) {
         </button>
       </div>
       {Array.isArray(toast.summary) && toast.summary.length > 0 && (
-        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {toast.summary.map((line, i) => (
-            <div key={i} style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, display: 'flex', gap: 6 }}>
-              <span aria-hidden style={{ color: C.success, flexShrink: 0 }}>✓</span>
+            <div key={i} style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, display: 'flex', gap: 8 }}>
+              <span aria-hidden style={{ color: C.success, flexShrink: 0, fontSize: 12 }}>✓</span>
               <span style={{ flex: 1 }}>{line}</span>
             </div>
           ))}
@@ -634,14 +646,72 @@ function UndoToast({ toast, C, onDismiss }) {
 // Used before any financial-state write or payment-link create. The trust
 // block enumerates what WILL happen and what will NOT (no charge, no
 // notification, no client/vendor contact). Steel-blue primary CTA only.
+//
+// A11y contract:
+//   • role=dialog, aria-modal=true
+//   • aria-labelledby points to the title; aria-describedby points to
+//     summary + trust block so screen readers read the contract.
+//   • Focus moves to primary CTA on open; trapped inside the dialog
+//     while open; Escape cancels; focus returns to the triggering
+//     element after close.
+//   • Buttons are ≥44px tall touch targets; text ≥12px.
 function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabel = 'Confirm', cancelLabel = 'Cancel', onCancel, onConfirm, testId }) {
   const steelTop  = C.accentTopGrad || C.accent;
   const steelDeep = C.accentDeep    || C.accent;
+  // Stable ids for aria-labelledby + aria-describedby.
+  const titleId   = useMemo(() => `bp-dialog-title-${Math.random().toString(36).slice(2, 9)}`, []);
+  const descId    = useMemo(() => `bp-dialog-desc-${Math.random().toString(36).slice(2, 9)}`, []);
+  const dialogRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+    // Capture the element that had focus before the dialog opened so we
+    // can return focus to it on close. Falls back to body if nothing.
+    previouslyFocusedRef.current = document.activeElement;
+    // Move focus into the dialog — start at primary CTA so confirming
+    // the contract is one Enter press away.
+    const focusTimer = setTimeout(() => {
+      const primary = dialogRef.current?.querySelector('[data-testid="bp-confirm-primary"]');
+      if (primary) {
+        try { primary.focus({ preventScroll: true }); } catch { primary.focus(); }
+      }
+    }, 60);
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (typeof onCancel === 'function') onCancel();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last  = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          try { last.focus(); } catch {}
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          try { first.focus(); } catch {}
+        }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKey);
+      // Return focus to the triggering element so keyboard users don't
+      // get dropped at the top of the page.
+      const back = previouslyFocusedRef.current;
+      if (back && typeof back.focus === 'function') {
+        try { back.focus({ preventScroll: true }); } catch { try { back.focus(); } catch {} }
+      }
+    };
+  }, [onCancel]);
   return (
     <>
       <div onClick={onCancel} style={{
@@ -650,41 +720,63 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         zIndex: 80,
       }} />
-      <div role="dialog" aria-label={title} data-testid={testId || 'bp-confirm-dialog'} style={{
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        data-testid={testId || 'bp-confirm-dialog'}
+        style={{
         position: 'fixed', left: '50%', top: '50%',
         transform: 'translate(-50%, -50%)',
-        width: 'min(440px, calc(100vw - 24px))',
+        width: 'min(460px, calc(100vw - 24px))',
         maxHeight: 'calc(100vh - 48px)', overflowY: 'auto',
         background: C.surface, border: `1px solid ${C.border}`,
         borderRadius: 16,
         boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
         zIndex: 81, padding: 22,
       }}>
-        <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTop, marginBottom: 4 }}>Confirm</div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 6 }}>{title}</div>
-        {summary && (
-          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>{summary}</div>
-        )}
-        {trustLines.length > 0 && (
-          <div data-testid="bp-trust-block" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
-            {trustLines.map((line, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
-                <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 11, fontWeight: 800 }}>✓</span>
-                <span style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>{line}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTop, marginBottom: 4 }}>Confirm</div>
+        <div id={titleId} style={{ fontSize: 18, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 8 }}>{title}</div>
+        <div id={descId}>
+          {summary && (
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>{summary}</div>
+          )}
+          {trustLines.length > 0 && (
+            <div data-testid="bp-trust-block" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+              {trustLines.map((line, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, paddingTop: i ? 6 : 0 }}>
+                  <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800, marginTop: 1 }}>✓</span>
+                  <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" data-testid="bp-confirm-cancel" onClick={onCancel} style={{ ...s.btn('ghost'), fontSize: 13, padding: '8px 14px' }}>{cancelLabel}</button>
-          <button type="button" data-testid="bp-confirm-primary" onClick={onConfirm} style={{
-            background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
-            color: C.accentText || '#fff',
-            border: 'none', borderRadius: 8,
-            padding: '9px 18px', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
-          }}>{primaryLabel}</button>
+          <button
+            type="button"
+            data-testid="bp-confirm-cancel"
+            onClick={onCancel}
+            style={{ ...s.btn('ghost'), fontSize: 13, padding: '12px 18px', minHeight: 44 }}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            data-testid="bp-confirm-primary"
+            onClick={onConfirm}
+            style={{
+              background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
+              color: C.accentText || '#fff',
+              border: 'none', borderRadius: 8,
+              padding: '12px 22px', minHeight: 44,
+              fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
+            }}>
+            {primaryLabel}
+          </button>
         </div>
       </div>
     </>
@@ -17588,31 +17680,59 @@ function Budget({ budget, setBudget, vendors, client, setClient, eventType, conf
                                 onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.filter(x => x.id !== f.id) }))}>✕</button>
                             )}
                           </div>
-                          {/* Stripe link row — shown once a checkout session exists and not yet paid */}
+                          {/* Sprint Budget/Payments — Stripe status row with
+                              honest 4-state labeling. The link being live does
+                              NOT mean payment moved. Verification is manual
+                              until the planner taps "Check on Stripe". */}
                           {setClient && !f.paid && hasStripeLink && (
-                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Stripe Link Ready</span>
-                              <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
-                              <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }} onClick={() => handleCopyStripeLink(f)}>
-                                {isCopied ? '✓ Copied' : 'Copy Link'}
-                              </button>
-                              <button
-                                disabled={isChecking}
-                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', flexShrink: 0 }}
-                                title="Check if client has paid on Stripe"
-                                onClick={() => handleCheckStripePayment(f)}>
-                                {isChecking ? 'Checking…' : 'Check Payment'}
-                              </button>
-                              <button
-                                style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 9px', color: C.muted, flexShrink: 0 }}
-                                title="Remove this Stripe link"
-                                onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
-                                Remove
-                              </button>
+                            <div data-testid={`bp-stripe-status-row-${f.id}`} style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span data-testid={`bp-stripe-status-pill-${f.id}`} style={{ fontSize: 10, fontWeight: 800, color: C.accent, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 6px', border: `1px solid ${C.accent}55`, borderRadius: 4 }}>
+                                  Link created · Awaiting Stripe confirmation
+                                </span>
+                                <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
+                                <button
+                                  data-testid={`bp-stripe-copy-${f.id}`}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, flexShrink: 0 }}
+                                  onClick={() => handleCopyStripeLink(f)}>
+                                  {isCopied ? '✓ Copied' : 'Copy link'}
+                                </button>
+                                <button
+                                  data-testid={`bp-stripe-check-${f.id}`}
+                                  disabled={isChecking}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, flexShrink: 0 }}
+                                  title="Query Stripe to see whether the client has paid through this link"
+                                  onClick={() => handleCheckStripePayment(f)}>
+                                  {isChecking ? 'Checking Stripe…' : 'Check on Stripe'}
+                                </button>
+                                <button
+                                  data-testid={`bp-stripe-remove-${f.id}`}
+                                  style={{ ...s.btn('ghost'), fontSize: 12, padding: '8px 12px', minHeight: 44, color: C.muted, flexShrink: 0 }}
+                                  title="Remove the link from Event Boss. Does not cancel the link on Stripe."
+                                  onClick={() => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, stripeSessionId: undefined, stripeUrl: undefined } : x) }))}>
+                                  Remove
+                                </button>
+                              </div>
+                              {/* Honest explanation of what "Link created" means. */}
+                              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: 600 }}>Check on Stripe</span> to query now — Event Boss does not auto-poll Stripe.
+                              </div>
+                            </div>
+                          )}
+                          {/* Sprint Budget/Payments — explicit verification
+                              provenance on a paid installment so the planner
+                              can tell Stripe-confirmed from manually-recorded. */}
+                          {setClient && f.paid && (
+                            <div data-testid={`bp-fee-paid-source-${f.id}`} style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                              {f.paymentMethod === 'Stripe' ? (
+                                <span>✓ <span style={{ color: C.success, fontWeight: 600 }}>Stripe-confirmed paid</span> — verified via Stripe session.</span>
+                              ) : (
+                                <span>✓ <span style={{ color: C.text, fontWeight: 600 }}>Manually recorded paid</span> in Event Boss — not verified by Stripe.</span>
+                              )}
                             </div>
                           )}
                           {stripeErr && (
-                            <div style={{ marginTop: 6, fontSize: 11, color: C.danger }}>{stripeErr}</div>
+                            <div role="alert" data-testid={`bp-stripe-error-${f.id}`} style={{ marginTop: 6, fontSize: 12, color: C.danger }}>{stripeErr}</div>
                           )}
                         </div>
                       );
