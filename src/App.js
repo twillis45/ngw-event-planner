@@ -642,6 +642,92 @@ function UndoToast({ toast, C, onDismiss }) {
   );
 }
 
+// ─── Sprint Date Friction Phase C — DateChipRow ──────────────────────────
+// Renders a row of quick-pick chips above a date input. Tapping a chip
+// COMPUTES a resolved ISO date string and calls onPick(iso). Storage is
+// unchanged — chips are an input convenience, not a metadata layer.
+//
+// Props:
+//   chips: [{ id, label, compute: () => 'YYYY-MM-DD' | null, relativeTo?: 'event', tooltip? }]
+//   onPick(iso)             — fires with the resolved string
+//   eventDate               — optional; required for chips with relativeTo='event'
+//   C, s                    — theme + styles
+//   testId                  — optional data-testid prefix
+//
+// Disabled-when-no-event rule: any chip with relativeTo='event' is
+// disabled with the explanation "Set event date first." when eventDate
+// is falsy. Disabled chips render with reduced opacity + cursor:not-allowed
+// + aria-disabled="true".
+//
+// After a relative chip taps, the parent shows a subtext with the
+// resolved date AND the relationship — the parent reads that label from
+// `chips[i].label` to render "Saturday, Aug 1, 2027 · 14 days before event".
+function DateChipRow({ chips = [], onPick, eventDate, C, testId, selectedId = null }) {
+  if (!chips.length) return null;
+  // Studio Matte palette references — steel-blue gradient top is the canonical
+  // active-affordance accent across the app (same family as primary CTAs but
+  // tinted, not filled, so chips read as secondary).
+  const steelTop = C.accentTopGrad || C.accent;
+  return (
+    <div data-testid={testId} style={{
+      display: 'flex', flexWrap: 'wrap', gap: 8,
+      marginBottom: 8,
+    }}>
+      {chips.map((chip) => {
+        const needsEvent = chip.relativeTo === 'event';
+        const disabled   = needsEvent && !eventDate;
+        const selected   = !disabled && selectedId === chip.id;
+        const handle = () => {
+          if (disabled) return;
+          const iso = chip.compute?.();
+          if (iso && typeof onPick === 'function') onPick(iso, chip);
+        };
+        // Studio Matte: hairline border by default (C.border), promoted to a
+        // solid steel-blue band when this chip drove the current field value.
+        // Selected chips also pick up a subtle steel-tinted fill — same family
+        // as primary CTAs but lower amplitude (1A alpha) so they read as
+        // "still secondary, just active" rather than as a competing CTA.
+        const borderColor =
+          disabled ? C.border
+          : selected ? steelTop
+          : C.border;
+        const bgColor =
+          selected ? `${steelTop}1A` : 'transparent';
+        return (
+          <button
+            key={chip.id}
+            type="button"
+            data-testid={`${testId || 'date-chip'}-${chip.id}`}
+            data-selected={selected || undefined}
+            onClick={handle}
+            disabled={disabled}
+            aria-disabled={disabled || undefined}
+            aria-pressed={selected || undefined}
+            title={disabled ? 'Set event date first.' : (chip.tooltip || chip.label)}
+            style={{
+              background: bgColor,
+              color: disabled ? C.muted : C.text,
+              border: `1px solid ${borderColor}`,
+              borderRadius: 8,
+              padding: '8px 12px',
+              minHeight: 44,
+              fontSize: 12.5,
+              fontWeight: selected ? 700 : 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: '0.01em',
+              opacity: disabled ? 0.55 : 1,
+              whiteSpace: 'nowrap',
+              transition: 'background-color 0.12s ease, border-color 0.12s ease',
+            }}>
+            {chip.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Sprint Budget/Payments — Trust-block confirmation dialog ─────────────
 // Used before any financial-state write or payment-link create. The trust
 // block enumerates what WILL happen and what will NOT (no charge, no
@@ -938,6 +1024,51 @@ const fmtTime12 = (t) => { if (!t) return '—'; const [h, m] = t.split(':').map
 const fmtDate   = (d) => { if (!d) return '—'; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 const fmtMon    = (ym) => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
 const today8601 = () => new Date().toISOString().slice(0, 10);
+
+// Sprint Date Friction Phase B — universal one-tap native picker helper.
+// Spread {...dateInputProps} onto any <input type="date"> to:
+//   • show the native picker on first tap (no need to focus, then tap again)
+//   • surface the numeric keyboard on mobile for direct typing
+// No storage model change. No new UI. Native picker remains the only picker.
+const dateInputProps = {
+  type: 'date',
+  inputMode: 'numeric',
+  onFocus: (e) => { try { e.target.showPicker?.(); } catch {} },
+  onClick: (e) => { try { e.target.showPicker?.(); } catch {} },
+};
+
+// Sprint Date Friction Phase C — chip-date helpers. Compute resolved ISO
+// strings only. No relative-storage metadata is introduced; the chip's
+// output is a plain string equivalent to what the picker would produce.
+//
+// addDaysISO(base, n): add n calendar days to an ISO date string (or to
+// today when base is empty).
+const addDaysISO = (baseIso, n) => {
+  const base = baseIso ? new Date(baseIso + 'T00:00:00') : getToday();
+  const out = new Date(base);
+  out.setDate(out.getDate() + n);
+  return out.toISOString().slice(0, 10);
+};
+// nextWeekendISO(): nearest upcoming Saturday from today. If today IS
+// Saturday, returns today; if Sunday, returns next Saturday (6 days).
+const nextWeekendISO = () => {
+  const d = getToday();
+  const day = d.getDay(); // 0 Sun ... 6 Sat
+  const add = day === 6 ? 0 : (6 - day + 7) % 7;
+  return addDaysISO(today8601(), add);
+};
+// weekendAfter(): the Saturday after the one returned by nextWeekendISO.
+const followingWeekendISO = () => addDaysISO(nextWeekendISO(), 7);
+// addMonthsISO(n): nearest-real-day add. Handles end-of-month rollover.
+const addMonthsISO = (n) => {
+  const d = getToday();
+  const m = d.getMonth();
+  const target = new Date(d);
+  target.setMonth(m + n);
+  // Guard end-of-month overflow (e.g., Mar 31 + 1 month → May 1 in JS)
+  if (target.getMonth() !== ((m + n) % 12 + 12) % 12) target.setDate(0);
+  return target.toISOString().slice(0, 10);
+};
 
 // Phase → days-before-event offset
 const PHASE_OFFSET = {
@@ -3958,6 +4089,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   // Sprint Budget/Payments — confirm gate for one-tap financial state changes.
   // confirmKind: null | 'mark-balance-paid' | 'mark-deposit-paid' | 'unmark-deposit'
   const [confirmKind, setConfirmKind] = useState(null);
+  // Sprint Date Friction Phase C — remembers the last balance-due chip
+  // applied so the subtext can render the resolved date + relationship.
+  const [vmBalanceChipMeta, setVmBalanceChipMeta] = useState(null);
 
   // Autosave: every field change immediately persists to the vendor list.
   // The parent's onSave expects a full updated vendor object. This wrapper
@@ -4863,7 +4997,34 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 130 }}>
                       <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Balance Due Date</label>
-                      <input style={s.input} type="date" value={vendor.payDueDate || ''} onChange={e => onChange('payDueDate', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                      {/* Sprint Date Friction Phase C — Vendor balance due
+                          chips. Event-relative chips disable when the
+                          event lacks a date; chips resolve to ISO strings
+                          before write. */}
+                      <DateChipRow
+                        C={C}
+                        testId="vm-balance-chip"
+                        eventDate={event?.date}
+                        selectedId={vmBalanceChipMeta && vmBalanceChipMeta.resolved === vendor.payDueDate ? vmBalanceChipMeta.id : null}
+                        onPick={(iso, chip) => { onChange('payDueDate', iso); setVmBalanceChipMeta({ id: chip.id, resolved: iso, label: chip.label, at: Date.now() }); }}
+                        chips={[
+                          { id: '30-before',  label: '30 days before event', relativeTo: 'event', compute: () => event?.date ? addDaysISO(event.date, -30) : null },
+                          { id: '14-before',  label: '14 days before event', relativeTo: 'event', compute: () => event?.date ? addDaysISO(event.date, -14) : null },
+                          { id: '7-before',   label: '7 days before event',  relativeTo: 'event', compute: () => event?.date ? addDaysISO(event.date, -7)  : null },
+                          { id: 'event-day',  label: 'Event day',            relativeTo: 'event', compute: () => event?.date || null },
+                        ]}
+                      />
+                      <input {...dateInputProps} style={s.input} value={vendor.payDueDate || ''} onChange={e => { onChange('payDueDate', e.target.value); setVmBalanceChipMeta(null); }} />
+                      {vmBalanceChipMeta && vmBalanceChipMeta.resolved === vendor.payDueDate && (
+                        <div data-testid="vm-balance-chip-subtext" style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.45 }}>
+                          {fmtDate(vmBalanceChipMeta.resolved)} · {vmBalanceChipMeta.label}
+                        </div>
+                      )}
+                      {!event?.date && (
+                        <div data-testid="vm-balance-chip-missing-event" style={{ fontSize: 11, color: C.muted, marginTop: 4, fontStyle: 'italic' }}>
+                          Set event date first.
+                        </div>
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 130 }}>
                       <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Payment Method</label>
@@ -6656,6 +6817,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [createdId, setCreatedId] = useState(null);
+  // Sprint Date Friction Phase C — remembers the last date-chip applied
+  // so the subtext can render the resolved date + relationship line.
+  // Cleared when the user types manually or picks via native picker.
+  const [ceDateChipMeta, setCeDateChipMeta] = useState(null);
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // KITS — title, one-line summary, per-archetype "Creates for you" list,
@@ -6873,10 +7038,37 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={ui.label} htmlFor="ce-date">Event date <span style={ui.req}>· required</span></label>
-                <input id="ce-date" data-testid="ce-date" type="date" style={ui.field((showErr || touched.date) && reqDate)}
+                {/* Sprint Date Friction Phase C — Create Event chips.
+                    All five chips compute and store a resolved exact ISO
+                    string; none use relative storage. Subtext beneath
+                    shows the resolved date so the planner can confirm
+                    what the chip picked. */}
+                <DateChipRow
+                  C={C}
+                  testId="ce-date-chip"
+                  selectedId={ceDateChipMeta && ceDateChipMeta.resolved === form.date ? ceDateChipMeta.id : null}
+                  onPick={(iso, chip) => { upd('date', iso); setCeDateChipMeta({ id: chip.id, resolved: iso, label: chip.label, at: Date.now() }); setTouched(t => ({ ...t, date: true })); }}
+                  chips={[
+                    { id: 'this-weekend',  label: 'This weekend',  compute: () => nextWeekendISO() },
+                    { id: 'next-weekend',  label: 'Next weekend',  compute: () => followingWeekendISO() },
+                    { id: 'plus-1-month',  label: '+1 month',      compute: () => addMonthsISO(1) },
+                    { id: 'plus-3-months', label: '+3 months',     compute: () => addMonthsISO(3) },
+                    { id: 'plus-6-months', label: '+6 months',     compute: () => addMonthsISO(6) },
+                  ]}
+                />
+                <input
+                  id="ce-date"
+                  data-testid="ce-date"
+                  {...dateInputProps}
+                  style={ui.field((showErr || touched.date) && reqDate)}
                   value={form.date}
-                  onChange={e => upd('date', e.target.value)}
+                  onChange={e => { upd('date', e.target.value); setCeDateChipMeta(null); }}
                   onBlur={() => setTouched(t => ({ ...t, date: true }))} />
+                {ceDateChipMeta && ceDateChipMeta.resolved === form.date && (
+                  <div data-testid="ce-date-chip-subtext" style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>
+                    {fmtDate(ceDateChipMeta.resolved)} · {ceDateChipMeta.label}
+                  </div>
+                )}
                 {(showErr || touched.date) && reqDate && <div style={ui.hint}>Event date is required.</div>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16 }}>
@@ -7996,7 +8188,7 @@ function CMRow({ children }) {
   );
 }
 
-function ClientModal({ client, onClose, onChange, onDelete }) {
+function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
   const C         = useT();
   const s         = makeS(C);
   const clientCLR = CLIENT_CLR(C);
@@ -8006,6 +8198,20 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
   const [showCommsCheck, setShowCommsCheck] = useState(true);
   const [showLog,        setShowLog]        = useState(false);
   const [confirmClientDel, setConfirmClientDel] = useState(false);
+  // Sprint Date Friction Phase C — per-fee-installment chip meta, keyed by
+  // installment id. Captures { resolved, label } so the resolved-date
+  // subtext can render the relationship line beneath the input. Cleared
+  // when the user types or picks via native picker.
+  const [feeDueChipMeta, setFeeDueChipMeta] = useState({});
+  // Linked event date for fee installment chips ("30 days before event").
+  // Uses the first linked event; rare 1-client-N-events case takes
+  // event[0]. Chips disable when this is null.
+  const linkedEventDate = useMemo(() => {
+    const ids = client?.eventIds || [];
+    if (!ids.length) return null;
+    const ev = (events || []).find(e => e.id === ids[0]);
+    return ev?.date || null;
+  }, [client?.eventIds, events]);
   // Section expand/collapse state — default open only if has data
   const hasData = (keys) => keys.some(k => {
     const v = client[k];
@@ -8249,13 +8455,13 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
           <Sec skey="personal" label="Personal Details">
             <CMRow>
               <CMField C={C} label="Birthday (client)">
-                <input style={s.input} type="date" value={client.birthday1 || ''} onChange={e => onChange('birthday1', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                <input {...dateInputProps} style={s.input} value={client.birthday1 || ''} onChange={e => onChange('birthday1', e.target.value)} />
               </CMField>
               <CMField C={C} label="Birthday (partner)">
-                <input style={s.input} type="date" value={client.birthday2 || ''} onChange={e => onChange('birthday2', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                <input {...dateInputProps} style={s.input} value={client.birthday2 || ''} onChange={e => onChange('birthday2', e.target.value)} />
               </CMField>
               <CMField C={C} label="Anniversary">
-                <input style={s.input} type="date" value={client.anniversary || ''} onChange={e => onChange('anniversary', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                <input {...dateInputProps} style={s.input} value={client.anniversary || ''} onChange={e => onChange('anniversary', e.target.value)} />
               </CMField>
             </CMRow>
             <CMField C={C} label="Cultural / religious considerations">
@@ -8316,14 +8522,33 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
                 <div style={{ fontSize: 16, fontWeight: 700, color: outstanding > 0 ? C.warn : C.muted }}>{fmtD(outstanding)}</div>
               </div>
             </div>
-            {(client.feeSchedule || []).map(f => (
+            {(client.feeSchedule || []).map(f => {
+              const chipMeta = feeDueChipMeta[f.id];
+              return (
               <div key={f.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
                   <input style={{ ...s.input, flex: 2 }} value={f.label} placeholder="Label (e.g. Deposit)" onChange={e => updateInstallment(f.id, 'label', e.target.value)} />
                   <input style={{ ...s.input, flex: 1 }} type="number" value={f.amount} placeholder="0" onChange={e => updateInstallment(f.id, 'amount', Number(e.target.value) || 0)} />
                 </div>
+                {/* Sprint Date Friction Phase C — Fee installment due
+                    chips. Today / +7 / +30 always available; the two
+                    event-relative chips disable when no event is linked. */}
+                <DateChipRow
+                  C={C}
+                  testId={`cm-fee-due-chip-${f.id}`}
+                  eventDate={linkedEventDate}
+                  selectedId={feeDueChipMeta[f.id] && feeDueChipMeta[f.id].resolved === f.due ? feeDueChipMeta[f.id].id : null}
+                  onPick={(iso, chip) => { updateInstallment(f.id, 'due', iso); setFeeDueChipMeta(m => ({ ...m, [f.id]: { id: chip.id, resolved: iso, label: chip.label, at: Date.now() } })); }}
+                  chips={[
+                    { id: 'today',      label: 'Today',                                       compute: () => today8601() },
+                    { id: 'plus-7',     label: '+7 days',                                     compute: () => addDaysISO(null, 7) },
+                    { id: 'plus-30',    label: '+30 days',                                    compute: () => addDaysISO(null, 30) },
+                    { id: '30-before',  label: '30 days before event', relativeTo: 'event',   compute: () => linkedEventDate ? addDaysISO(linkedEventDate, -30) : null },
+                    { id: '14-before',  label: '14 days before event', relativeTo: 'event',   compute: () => linkedEventDate ? addDaysISO(linkedEventDate, -14) : null },
+                  ]}
+                />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input style={{ ...s.input, flex: 1, minWidth: 110 }} type="date" value={f.due || ''} onChange={e => updateInstallment(f.id, 'due', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />
+                  <input {...dateInputProps} style={{ ...s.input, flex: 1, minWidth: 110 }} value={f.due || ''} onChange={e => { updateInstallment(f.id, 'due', e.target.value); setFeeDueChipMeta(m => ({ ...m, [f.id]: null })); }} data-testid={`cm-fee-due-${f.id}`} />
                   <select style={{ ...s.input, flex: 1, minWidth: 100, fontSize: 12 }} value={f.paymentMethod || ''} onChange={e => updateInstallment(f.id, 'paymentMethod', e.target.value)}>
                     <option value="">Method…</option>
                     {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
@@ -8334,8 +8559,19 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
                   </label>
                   <button aria-label="Remove installment" style={{ ...s.btn('danger'), padding: '4px 8px', fontSize: 11 }} onClick={() => removeInstallment(f.id)}>✕</button>
                 </div>
+                {chipMeta && chipMeta.resolved === f.due && (
+                  <div data-testid={`cm-fee-due-chip-subtext-${f.id}`} style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.45 }}>
+                    {fmtDate(chipMeta.resolved)} · {chipMeta.label}
+                  </div>
+                )}
+                {!linkedEventDate && (
+                  <div data-testid={`cm-fee-due-chip-missing-event-${f.id}`} style={{ fontSize: 11, color: C.muted, marginTop: 4, fontStyle: 'italic' }}>
+                    Set event date first.
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
             <button style={{ ...s.btn(), fontSize: 11 }} onClick={addInstallment}>+ Add Installment</button>
           </Sec>
 
@@ -8345,7 +8581,7 @@ function ClientModal({ client, onClose, onChange, onDelete }) {
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
                 <input type="checkbox" checked={!!client.thankYouSent} onChange={e => onChange('thankYouSent', e.target.checked)} style={{ accentColor: C.success, width: 15, height: 15 }} />
                 <span style={{ color: client.thankYouSent ? C.success : C.text }}>Thank-you note sent</span>
-                {client.thankYouSent && <input style={{ ...s.input, fontSize: 11, padding: '3px 8px', marginLeft: 8, width: 140 }} type="date" value={client.thankYouDate || ''} onChange={e => onChange('thankYouDate', e.target.value)} onClick={e => { try { e.target.showPicker(); } catch {} }} />}
+                {client.thankYouSent && <input {...dateInputProps} style={{ ...s.input, fontSize: 11, padding: '3px 8px', marginLeft: 8, width: 140 }} value={client.thankYouDate || ''} onChange={e => onChange('thankYouDate', e.target.value)} />}
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
                 <input type="checkbox" checked={!!client.reviewRequested} onChange={e => onChange('reviewRequested', e.target.checked)} style={{ accentColor: C.success, width: 15, height: 15 }} />
@@ -8914,7 +9150,7 @@ function PublicIntakeForm({ token }) {
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 180px' }}>
               <label style={labelStyle}>Event date</label>
-              <input style={fieldStyle} type="date" value={form.eventDate} onChange={e => upd('eventDate', e.target.value)} />
+              <input {...dateInputProps} style={fieldStyle} value={form.eventDate} onChange={e => upd('eventDate', e.target.value)} />
             </div>
             <div style={{ flex: '1 1 180px' }}>
               <label style={labelStyle}>Guest count (approx)</label>
@@ -16627,7 +16863,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         <ClientIntakeModal client={client} onClose={() => setShowIntake(false)} onChange={onChange} />
       )}
       {showModal && (
-        <ClientModal client={client} onClose={() => setShowModal(false)} onChange={onChange} onDelete={() => { setShowModal(false); onDelete(); }} />
+        <ClientModal client={client} onClose={() => setShowModal(false)} onChange={onChange} onDelete={() => { setShowModal(false); onDelete(); }} events={events} />
       )}
       {showPortal && (
         <ClientPortal client={client} events={events} onClose={() => setShowPortal(false)} onUpdateGuests={onUpdateEventGuests} />
@@ -25054,6 +25290,7 @@ function EDTField({ C, s, label, value, placeholder, onChange, type = 'text', te
       ) : (
         <input
           type={type}
+          {...(type === 'date' ? dateInputProps : {})}
           style={{ ...s.input, fontSize: 12 }}
           value={value || ''}
           placeholder={placeholder || ''}
@@ -26259,12 +26496,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           />
           <span style={{ color: C.border }}>·</span>
           <input
-            type="date"
+            {...dateInputProps}
             style={{ background: 'none', border: `1px solid transparent`, borderRadius: 6, fontSize: isMobile ? 11 : 12, color: C.muted, padding: '3px 7px', outline: 'none', transition: 'border-color 0.15s', fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer', flex: isMobile ? '0 1 auto' : undefined }}
             value={event.date || ''}
             onChange={e => setEvent(ev => ({ ...ev, date: e.target.value }))}
-            onClick={e => { try { e.target.showPicker(); } catch {} }}
-            onFocus={e => { e.target.style.borderColor = C.border; }}
+            onFocus={e => { try { e.target.showPicker?.(); } catch {} ; e.target.style.borderColor = C.border; }}
             onBlur={e => { e.target.style.borderColor = 'transparent'; }}
           />
           <span style={{ color: C.border }}>·</span>

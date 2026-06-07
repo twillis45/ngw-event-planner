@@ -1,0 +1,307 @@
+{
+  "390": {
+    "viewport": "390",
+    "date_inputs_on_step1": [
+      {
+        "testid": "ce-date",
+        "hasOnFocus": false,
+        "hasOnClick": true,
+        "inputMode": "numeric"
+      }
+    ],
+    "ce_chip_this_weekend": {
+      "present": true,
+      "rect": {
+        "w": 111,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "This weekend"
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "rect": {
+        "w": 93,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "+3 months"
+    },
+    "ce_chip_set_date": true,
+    "ce_chip_subtext_visible": true,
+    "ce_chip_subtext_text": "Sep 7, 2026 \u00b7 +3 months",
+    "vm_chip_14_before": {
+      "present": true,
+      "rect": {
+        "w": 155,
+        "h": 44
+      },
+      "inViewport": false,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "14 days before event"
+    },
+    "vm_chip_14_disabled_when_event_present": false,
+    "vm_balance_subtext_visible": true,
+    "docW": 390,
+    "viewW": 390,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "smallTextInChips": 0,
+    "amberChips": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "date_inputs_on_step1": [
+      {
+        "testid": "ce-date",
+        "hasOnFocus": false,
+        "hasOnClick": true,
+        "inputMode": "numeric"
+      }
+    ],
+    "ce_chip_this_weekend": {
+      "present": true,
+      "rect": {
+        "w": 111,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "This weekend"
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "rect": {
+        "w": 93,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "+3 months"
+    },
+    "ce_chip_set_date": true,
+    "ce_chip_subtext_visible": true,
+    "ce_chip_subtext_text": "Sep 7, 2026 \u00b7 +3 months",
+    "vm_chip_14_before": {
+      "present": true,
+      "rect": {
+        "w": 155,
+        "h": 44
+      },
+      "inViewport": false,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "14 days before event"
+    },
+    "vm_chip_14_disabled_when_event_present": false,
+    "vm_balance_subtext_visible": true,
+    "docW": 430,
+    "viewW": 430,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "smallTextInChips": 0,
+    "amberChips": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "date_inputs_on_step1": [
+      {
+        "testid": "ce-date",
+        "hasOnFocus": false,
+        "hasOnClick": true,
+        "inputMode": "numeric"
+      }
+    ],
+    "ce_chip_this_weekend": {
+      "present": true,
+      "rect": {
+        "w": 111,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "This weekend"
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "rect": {
+        "w": 93,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "+3 months"
+    },
+    "ce_chip_set_date": true,
+    "ce_chip_subtext_visible": true,
+    "ce_chip_subtext_text": "Sep 7, 2026 \u00b7 +3 months",
+    "vm_chip_14_before": {
+      "present": true,
+      "rect": {
+        "w": 155,
+        "h": 44
+      },
+      "inViewport": false,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "14 days before event"
+    },
+    "vm_chip_14_disabled_when_event_present": false,
+    "vm_balance_subtext_visible": true,
+    "docW": 768,
+    "viewW": 768,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "smallTextInChips": 0,
+    "amberChips": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "date_inputs_on_step1": [
+      {
+        "testid": "ce-date",
+        "hasOnFocus": false,
+        "hasOnClick": true,
+        "inputMode": "numeric"
+      }
+    ],
+    "ce_chip_this_weekend": {
+      "present": true,
+      "rect": {
+        "w": 111,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "This weekend"
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "rect": {
+        "w": 93,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "+3 months"
+    },
+    "ce_chip_set_date": true,
+    "ce_chip_subtext_visible": true,
+    "ce_chip_subtext_text": "Sep 7, 2026 \u00b7 +3 months",
+    "vm_chip_14_before": {
+      "present": true,
+      "rect": {
+        "w": 155,
+        "h": 44
+      },
+      "inViewport": false,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "14 days before event"
+    },
+    "vm_chip_14_disabled_when_event_present": false,
+    "vm_balance_subtext_visible": true,
+    "docW": 1024,
+    "viewW": 1024,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "smallTextInChips": 0,
+    "amberChips": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "date_inputs_on_step1": [
+      {
+        "testid": "ce-date",
+        "hasOnFocus": false,
+        "hasOnClick": true,
+        "inputMode": "numeric"
+      }
+    ],
+    "ce_chip_this_weekend": {
+      "present": true,
+      "rect": {
+        "w": 111,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "This weekend"
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "rect": {
+        "w": 93,
+        "h": 44
+      },
+      "inViewport": true,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "+3 months"
+    },
+    "ce_chip_set_date": true,
+    "ce_chip_subtext_visible": true,
+    "ce_chip_subtext_text": "Sep 7, 2026 \u00b7 +3 months",
+    "vm_chip_14_before": {
+      "present": true,
+      "rect": {
+        "w": 155,
+        "h": 44
+      },
+      "inViewport": false,
+      "hasBorder": true,
+      "disabled": false,
+      "ariaDisabled": null,
+      "text": "14 days before event"
+    },
+    "vm_chip_14_disabled_when_event_present": false,
+    "vm_balance_subtext_visible": true,
+    "docW": 1440,
+    "viewW": 1440,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "smallTextInChips": 0,
+    "amberChips": 0,
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}
