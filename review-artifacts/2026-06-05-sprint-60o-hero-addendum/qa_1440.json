@@ -1,0 +1,16 @@
+{
+  "hero": {
+    "eyebrow": "SAMPLE \u00b7 NOT A REAL EVENT",
+    "headline": "Explore the app first.",
+    "body": "Tap around to see how planning works before adding your own event.",
+    "primaryCTA": "Open sample event",
+    "secondaryCTA": "Plan your own event",
+    "primaryBg": "linear-gradient(rgb(133, 144, 148) 0%, rgb(93, 102, 105) 100%)",
+    "scrollW": 1440,
+    "violations": {
+      "startHereInHeadline": false,
+      "wnytInEyebrow": false
+    }
+  },
+  "errors": []
+}

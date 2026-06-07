@@ -1,0 +1,122 @@
+{
+  "mobile": {
+    "01_home": {
+      "body_chars": 3129,
+      "font_sizes": {
+        "8": 7,
+        "9": 11,
+        "10": 19,
+        "11": 34,
+        "12": 39,
+        "13": 31,
+        "14": 7,
+        "16": 4,
+        "18": 5,
+        "20": 2,
+        "32": 4
+      },
+      "small_touch_targets": 25,
+      "button_count": 50,
+      "screenshot": "after_01_home.png"
+    },
+    "03_pipeline": {
+      "body_chars": 1001,
+      "font_sizes": {
+        "10": 2,
+        "11": 20,
+        "12": 11,
+        "13": 7,
+        "16": 4,
+        "18": 1,
+        "20": 1
+      },
+      "small_touch_targets": 5,
+      "button_count": 11,
+      "screenshot": "after_03_pipeline.png"
+    },
+    "04_event_command": {
+      "body_chars": 862,
+      "font_sizes": {
+        "9": 5,
+        "10": 14,
+        "11": 31,
+        "12": 4,
+        "13": 1,
+        "16": 4,
+        "18": 1
+      },
+      "small_touch_targets": 3,
+      "button_count": 16,
+      "screenshot": "after_04_event_command.png"
+    },
+    "06_vendor_list": {
+      "body_chars": 1119,
+      "font_sizes": {
+        "8": 4,
+        "9": 2,
+        "10": 32,
+        "11": 31,
+        "12": 6,
+        "13": 1,
+        "15": 1,
+        "16": 4,
+        "18": 1
+      },
+      "small_touch_targets": 4,
+      "button_count": 18,
+      "screenshot": "after_06_vendor_list.png"
+    },
+    "07_vendor_detail": {
+      "body_chars": 3201,
+      "font_sizes": {
+        "9": 23,
+        "10": 30,
+        "11": 102,
+        "12": 36,
+        "13": 22,
+        "14": 1,
+        "15": 1,
+        "16": 4,
+        "18": 1,
+        "22": 1
+      },
+      "small_touch_targets": 3,
+      "button_count": 43,
+      "screenshot": "after_07_vendor_detail.png"
+    },
+    "09_budget": {
+      "body_chars": 1471,
+      "font_sizes": {
+        "9": 9,
+        "10": 11,
+        "11": 41,
+        "12": 21,
+        "13": 7,
+        "14": 3,
+        "16": 4,
+        "18": 1,
+        "32": 6,
+        "36": 1
+      },
+      "small_touch_targets": 7,
+      "button_count": 20,
+      "screenshot": "after_09_budget.png"
+    },
+    "10_documents": {
+      "body_chars": 1261,
+      "font_sizes": {
+        "9": 1,
+        "10": 17,
+        "11": 46,
+        "12": 9,
+        "13": 2,
+        "16": 4,
+        "18": 1
+      },
+      "small_touch_targets": 3,
+      "button_count": 12,
+      "screenshot": "after_10_documents.png"
+    }
+  },
+  "desktop": {}
+}

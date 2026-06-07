@@ -1,0 +1,82 @@
+{
+  "today_live_390_mobile": {
+    "probe": {
+      "eyebrow": "TODAY \u00b7 LIVE",
+      "headline": "Your event is today.",
+      "summaryLine": null,
+      "readinessVisible": false,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "today_live_1440_desktop": {
+    "probe": {
+      "eyebrow": "TODAY \u00b7 LIVE",
+      "headline": "Your event is today.",
+      "summaryLine": "Event day is active",
+      "readinessVisible": true,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "today_act_now_390_mobile": {
+    "probe": {
+      "eyebrow": "LIVE \u00b7 ACT NOW",
+      "headline": "1 thing needs attention right now.",
+      "summaryLine": null,
+      "readinessVisible": false,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "today_act_now_1440_desktop": {
+    "probe": {
+      "eyebrow": "LIVE \u00b7 ACT NOW",
+      "headline": "1 thing needs attention right now.",
+      "summaryLine": null,
+      "readinessVisible": true,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "multi_upcoming_390_mobile": {
+    "probe": {
+      "eyebrow": "NEEDS FOLLOW-UP",
+      "headline": "Kim Wedding needs follow-up.",
+      "summaryLine": null,
+      "readinessVisible": false,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "multi_upcoming_1440_desktop": {
+    "probe": {
+      "eyebrow": "NEEDS FOLLOW-UP",
+      "headline": "Kim Wedding needs follow-up.",
+      "summaryLine": "3 active events \u00b7 needs follow-up",
+      "readinessVisible": true,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "empty_390_mobile": {
+    "probe": {
+      "eyebrow": null,
+      "headline": null,
+      "summaryLine": null,
+      "readinessVisible": false,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "empty_1440_desktop": {
+    "probe": {
+      "eyebrow": null,
+      "headline": null,
+      "summaryLine": "0 active events",
+      "readinessVisible": false,
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  }
+}

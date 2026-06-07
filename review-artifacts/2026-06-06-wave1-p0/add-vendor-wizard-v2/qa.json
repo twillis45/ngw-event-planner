@@ -1,0 +1,142 @@
+{
+  "390": {
+    "viewport": "390",
+    "nav_to_vendors": true,
+    "step1": {
+      "has_website_field": true,
+      "trust_block_visible": true,
+      "trust_line_count": 4,
+      "messages_none_line": true,
+      "notifs_none_line": true,
+      "client_vendor_line": true,
+      "not_created_until_review_line": true
+    },
+    "success": {
+      "has_draft_followup_button": true,
+      "label_is_draft_followup": true,
+      "old_copy_label_present": false
+    },
+    "colors": {
+      "docW": 390,
+      "viewW": 390,
+      "overflow": false,
+      "banSaaSBlue": 0,
+      "banNeonTeal": 0,
+      "amberPrimary": 0
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "430": {
+    "viewport": "430",
+    "nav_to_vendors": true,
+    "step1": {
+      "has_website_field": true,
+      "trust_block_visible": true,
+      "trust_line_count": 4,
+      "messages_none_line": true,
+      "notifs_none_line": true,
+      "client_vendor_line": true,
+      "not_created_until_review_line": true
+    },
+    "success": {
+      "has_draft_followup_button": true,
+      "label_is_draft_followup": true,
+      "old_copy_label_present": false
+    },
+    "colors": {
+      "docW": 430,
+      "viewW": 430,
+      "overflow": false,
+      "banSaaSBlue": 0,
+      "banNeonTeal": 0,
+      "amberPrimary": 0
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "768": {
+    "viewport": "768",
+    "nav_to_vendors": true,
+    "step1": {
+      "has_website_field": true,
+      "trust_block_visible": true,
+      "trust_line_count": 4,
+      "messages_none_line": true,
+      "notifs_none_line": true,
+      "client_vendor_line": true,
+      "not_created_until_review_line": true
+    },
+    "success": {
+      "has_draft_followup_button": true,
+      "label_is_draft_followup": true,
+      "old_copy_label_present": false
+    },
+    "colors": {
+      "docW": 768,
+      "viewW": 768,
+      "overflow": false,
+      "banSaaSBlue": 0,
+      "banNeonTeal": 0,
+      "amberPrimary": 0
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "nav_to_vendors": true,
+    "step1": {
+      "has_website_field": true,
+      "trust_block_visible": true,
+      "trust_line_count": 4,
+      "messages_none_line": true,
+      "notifs_none_line": true,
+      "client_vendor_line": true,
+      "not_created_until_review_line": true
+    },
+    "success": {
+      "has_draft_followup_button": true,
+      "label_is_draft_followup": true,
+      "old_copy_label_present": false
+    },
+    "colors": {
+      "docW": 1024,
+      "viewW": 1024,
+      "overflow": false,
+      "banSaaSBlue": 0,
+      "banNeonTeal": 0,
+      "amberPrimary": 0
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "nav_to_vendors": true,
+    "step1": {
+      "has_website_field": true,
+      "trust_block_visible": true,
+      "trust_line_count": 4,
+      "messages_none_line": true,
+      "notifs_none_line": true,
+      "client_vendor_line": true,
+      "not_created_until_review_line": true
+    },
+    "success": {
+      "has_draft_followup_button": true,
+      "label_is_draft_followup": true,
+      "old_copy_label_present": false
+    },
+    "colors": {
+      "docW": 1440,
+      "viewW": 1440,
+      "overflow": false,
+      "banSaaSBlue": 0,
+      "banNeonTeal": 0,
+      "amberPrimary": 0
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}

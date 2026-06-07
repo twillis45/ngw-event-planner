@@ -1,0 +1,17 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "mutation": {
+    "events_replaced": true
+  },
+  "cta_visible": true,
+  "count": 1,
+  "clicked": true,
+  "modal_shows_vendor": true,
+  "modal_visible_signals": {
+    "edit_vendor": false,
+    "vendor_details": false,
+    "quiet_vendor": true,
+    "contact_field": true
+  }
+}

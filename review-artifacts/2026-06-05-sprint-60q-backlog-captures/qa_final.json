@@ -1,0 +1,32 @@
+{
+  "vendor_detail_390": {
+    "probe": {
+      "eyebrows": [
+        "FIX FIRST \u00b7 CRITICAL"
+      ],
+      "cta": "Fix this first\n\u2192",
+      "shortcuts": [
+        "\ud83d\udcde Call",
+        "\ud83d\udcac Text",
+        "\ud83d\udce7 Email"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "home_empty_1440": {
+    "errors": 0
+  },
+  "home_today_live_1440": {
+    "errors": 0
+  },
+  "home_multi_upcoming_1440": {
+    "errors": 0
+  },
+  "dayof_now_1440": {
+    "errors": 0
+  },
+  "dayof_messages_1440": {
+    "errors": 0
+  }
+}

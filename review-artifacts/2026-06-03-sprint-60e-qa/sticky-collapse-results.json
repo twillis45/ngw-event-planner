@@ -1,0 +1,20 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "collapse_keys_before": {},
+  "cockpit_chevron_count": 6,
+  "all_aria_expanded_count": 16,
+  "clicked_section_label": "\u25b8\nREADINESS COPILOT\nRule-based preview",
+  "initial_aria_expanded": "false",
+  "post_click_aria_expanded": "true",
+  "toggle_changed": true,
+  "collapse_keys_after": {
+    "ngw-vendor-collapse-cv1": "{\"readinessSnapshot\":true,\"readinessCopilot\":true,\"documents\":true,\"notes\":false,\"activity\":false}"
+  },
+  "all_values_boolean": true,
+  "new_keys_count": 1,
+  "collapse_keys_after_reload": {
+    "ngw-vendor-collapse-cv1": "{\"readinessSnapshot\":true,\"readinessCopilot\":true,\"documents\":true,\"notes\":false,\"activity\":false}"
+  },
+  "state_persisted": true
+}

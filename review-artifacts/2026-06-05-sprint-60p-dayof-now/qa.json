@@ -1,0 +1,22 @@
+{
+  "390_mobile": {
+    "hero": {
+      "eyebrow": null,
+      "clockText": null,
+      "clockSize": null,
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 390
+    },
+    "errors": []
+  },
+  "1440_desktop": {
+    "hero": {
+      "eyebrow": null,
+      "clockText": null,
+      "clockSize": null,
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 1440
+    },
+    "errors": []
+  }
+}

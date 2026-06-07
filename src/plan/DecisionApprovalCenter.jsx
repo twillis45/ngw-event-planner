@@ -527,8 +527,8 @@ function ItemDetail({ item, onAction }) {
                 color: '#fff', fontFamily: FF, textAlign: 'center',
               }}
             >
-              {item.type === 'DECISION' ? 'Mark Resolved' : 'Approve'}
-              {item.budgetImpact != null && ` — Accept ${fmtMoney(item.budgetImpact)} increase`}
+              {item.type === 'DECISION' ? 'Mark Resolved' : 'Mark Approved'}
+              {item.budgetImpact != null && ` — accept ${fmtMoney(item.budgetImpact)} increase`}
             </button>
 
             {/* Request Revision */}
@@ -543,7 +543,7 @@ function ItemDetail({ item, onAction }) {
                 color: P.amber, fontFamily: FF, textAlign: 'center',
               }}
             >
-              Request Revision — Counter offer
+              Mark Needs Revision
             </button>
 
             {/* Reject */}
@@ -557,8 +557,8 @@ function ItemDetail({ item, onAction }) {
                 color: P.red, fontFamily: FF, textAlign: 'center',
               }}
             >
-              Reject — Hold at current
-              {item.budgetImpact != null ? ' budget' : ''}
+              Mark Rejected
+              {item.budgetImpact != null ? ' — hold current budget' : ''}
             </button>
 
             {/* Note field */}
@@ -571,7 +571,18 @@ function ItemDetail({ item, onAction }) {
               fontSize: 12, color: P.textTertiary, fontFamily: FF,
               minHeight: 60,
             }}>
-              Add note to client with decision...
+              Internal note (stays on your board)…
+            </div>
+
+            {/* Honesty microcopy — these verdicts record on the planner's board.
+                The client is NOT notified from here; the real client-facing path is
+                the Communication tab's approval request (commApi + portal). */}
+            <div style={{
+              marginTop: space[3],
+              fontSize: 11, color: P.textTertiary, fontFamily: FF, lineHeight: 1.5,
+            }}>
+              Recorded on your board — the client isn't notified here. To ask the client,
+              use <strong style={{ color: P.textSecondary, fontWeight: type.weight.semibold }}>Communication → request approval</strong>.
             </div>
           </div>
         )}

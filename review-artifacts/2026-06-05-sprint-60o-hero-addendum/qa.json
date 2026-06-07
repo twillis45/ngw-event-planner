@@ -1,0 +1,15 @@
+{
+  "hero": {
+    "found": true,
+    "eyebrow": "SAMPLE \u00b7 NOT A REAL EVENT",
+    "headline": "Explore the app first.",
+    "body": "Tap around to see how planning works before adding your own event.",
+    "primaryCTA": "Open sample event\n\u2192",
+    "secondaryCTA": "Plan your own event",
+    "containsRedundant": {
+      "startHereInHeadline": false,
+      "whatNeedsYouTodayInEyebrow": false
+    }
+  },
+  "errors": []
+}

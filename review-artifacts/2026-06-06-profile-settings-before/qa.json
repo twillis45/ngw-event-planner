@@ -1,0 +1,87 @@
+{
+  "390": {
+    "docW": 390,
+    "viewW": 390,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "chipCounts": {
+      "Account": 3,
+      "Workspace": 13,
+      "Per event": 1
+    },
+    "brandPresetCount": 6,
+    "hasStudioSettingsTitle": true,
+    "page_errors": 0,
+    "console_errors": 0,
+    "opened_settings": true
+  },
+  "430": {
+    "docW": 430,
+    "viewW": 430,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "chipCounts": {
+      "Account": 3,
+      "Workspace": 13,
+      "Per event": 1
+    },
+    "brandPresetCount": 6,
+    "hasStudioSettingsTitle": true,
+    "page_errors": 0,
+    "console_errors": 0,
+    "opened_settings": true
+  },
+  "768": {
+    "docW": 768,
+    "viewW": 768,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "chipCounts": {
+      "Account": 3,
+      "Workspace": 13,
+      "Per event": 1
+    },
+    "brandPresetCount": 6,
+    "hasStudioSettingsTitle": true,
+    "page_errors": 0,
+    "console_errors": 0,
+    "opened_settings": true
+  },
+  "1024": {
+    "docW": 1024,
+    "viewW": 1024,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "chipCounts": {
+      "Account": 3,
+      "Workspace": 13,
+      "Per event": 1
+    },
+    "brandPresetCount": 6,
+    "hasStudioSettingsTitle": true,
+    "page_errors": 0,
+    "console_errors": 0,
+    "opened_settings": true
+  },
+  "1440": {
+    "docW": 1440,
+    "viewW": 1440,
+    "overflow": false,
+    "banSaaSBlue": 0,
+    "banNeonTeal": 0,
+    "chipCounts": {
+      "Account": 3,
+      "Workspace": 13,
+      "Per event": 1
+    },
+    "brandPresetCount": 6,
+    "hasStudioSettingsTitle": true,
+    "page_errors": 0,
+    "console_errors": 0,
+    "opened_settings": true
+  }
+}

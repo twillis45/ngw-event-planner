@@ -1,0 +1,63 @@
+{
+  "sample_only_390_mobile": {
+    "probe": {
+      "eyebrow": "SAMPLE \u00b7 NOT A REAL EVENT",
+      "headline": "Explore the app first.",
+      "readinessAxisLabels": [],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "sample_only_1440_desktop": {
+    "probe": {
+      "eyebrow": "SAMPLE \u00b7 NOT A REAL EVENT",
+      "headline": "Explore the app first.",
+      "readinessAxisLabels": [],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "all_clear_one_upcoming_390_mobile": {
+    "probe": {
+      "eyebrow": "NEEDS FOLLOW-UP",
+      "headline": "Allen Anniversary needs follow-up.",
+      "readinessAxisLabels": [
+        "NEEDS FOLLOW-UP"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "all_clear_one_upcoming_1440_desktop": {
+    "probe": {
+      "eyebrow": "NEEDS FOLLOW-UP",
+      "headline": "Allen Anniversary needs follow-up.",
+      "readinessAxisLabels": [
+        "NEEDS FOLLOW-UP",
+        "Needs follow-up"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "critical_blocker_390_mobile": {
+    "probe": {
+      "eyebrow": "START HERE",
+      "headline": "Hawthorne Gala has a blocker.",
+      "readinessAxisLabels": [],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  },
+  "critical_blocker_1440_desktop": {
+    "probe": {
+      "eyebrow": "START HERE",
+      "headline": "Hawthorne Gala has a blocker.",
+      "readinessAxisLabels": [
+        "Needs follow-up"
+      ],
+      "body_bg": "rgb(17, 21, 25)"
+    },
+    "errors": 0
+  }
+}

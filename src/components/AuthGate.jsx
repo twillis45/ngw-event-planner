@@ -7,16 +7,19 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabaseClient';
 import { AuthCtx } from '../contexts/AuthContext';
 
-// Hardcoded DARK palette — login/splash appear before the user can change theme.
+// Sprint 61.M — palette aligned to Studio Matte + Event Boss steel-blue.
+// Login is the first surface a new user sees; bright SaaS blue + neon teal
+// (the prior accent/accent2 values) read as generic SaaS and conflict with
+// the locked product voice. Switched to Mid Carbon + steel-blue.
 const D = {
-  bg:      '#0f0f11',
-  surface: '#18181c',
-  border:  '#2a2a32',
-  accent:  '#4a90d9',
-  accent2: '#14b8a6',
-  text:    '#e8e8f0',
-  muted:   '#9090a8',
-  danger:  '#e63946',
+  bg:      '#111519', // Mid Carbon page
+  surface: '#1C2227', // Lifted Carbon card
+  border:  '#2E353D',
+  accent:  '#4E6877', // Steel blue (was #4a90d9 SaaS blue)
+  accent2: '#4FAE7A', // Sage green (was banned #14b8a6 neon teal)
+  text:    '#eef0f4',
+  muted:   '#9098b0',
+  danger:  '#E84036', // Fire red (was #e63946 stop-sign red)
 };
 
 // Minimal style helpers scoped to login screen needs.
@@ -48,12 +51,20 @@ const ls = {
     fontWeight: 600,
     whiteSpace: 'nowrap',
     fontFamily: "'Inter', system-ui, sans-serif",
-    background: v === 'primary' ? D.accent
+    // Sprint 61.M — steel-blue gradient on primary matches every other
+    // primary CTA across the app. Inset highlight + shadow for the same
+    // brushed-metal feel as App.js s.btn('primary').
+    background: v === 'primary'
+        ? 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)'
       : v === 'ghost'   ? 'transparent'
       : D.border,
     color: v === 'primary' ? '#fff'
       : v === 'ghost'   ? D.muted
       : D.text,
+    boxShadow: v === 'primary'
+      ? 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.30)'
+      : 'none',
+    textShadow: v === 'primary' ? '0 1px 0 rgba(0,0,0,0.25)' : 'none',
   }),
 };
 
@@ -94,7 +105,7 @@ function LoginScreen() {
         e2?.status === 422;
       setStatus('error');
       setErr(notAllowed
-        ? "That email isn't on the access list. Ask your admin to add you in Supabase."
+        ? "That email isn't on the access list. Ask your admin to add you."
         : (e2?.message || 'Could not send the sign-in link.'));
     }
   };
@@ -217,6 +228,42 @@ const BYPASS_SESSION = {
 };
 
 function BypassBadge() {
+  // Sprint 60.M Phase 2b: collapse to a tiny dev-only dot on mobile so the
+  // pill never dominates the product UI. Full pill still shows on tablet/
+  // desktop where pixel budget allows. Honesty preserved — it never
+  // disappears; the dot still signals "bypass is on" to a watching dev.
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = e => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  if (isMobile) {
+    return (
+      <div
+        role="status"
+        aria-label="Auth bypass active — development only"
+        title="Auth bypass · dev only"
+        style={{
+          position: 'fixed',
+          top: 6, right: 6,
+          zIndex: 100000,
+          width: 8, height: 8,
+          borderRadius: '50%',
+          background: '#7a2a2a',
+          border: '1px solid #b06060',
+          pointerEvents: 'none',
+          opacity: 0.7,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+        }}
+      />
+    );
+  }
   return (
     <div
       role="status"

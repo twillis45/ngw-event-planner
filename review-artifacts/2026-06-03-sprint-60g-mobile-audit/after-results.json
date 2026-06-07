@@ -1,0 +1,20 @@
+{
+  "console_errors": [
+    "error: %s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, "
+  ],
+  "page_errors": [],
+  "home_has_new_copy": true,
+  "home_has_old_copy": false,
+  "new_labels_present": {
+    "Where this vendor stands": true,
+    "Quick read": true,
+    "Linked files": true,
+    "Recent activity": true
+  },
+  "old_labels_gone": {
+    "Readiness Snapshot": true,
+    "Readiness Copilot": true,
+    "Linked Documents": true,
+    "Activity Log (cockpit section)": true
+  }
+}

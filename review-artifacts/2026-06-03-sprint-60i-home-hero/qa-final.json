@@ -1,0 +1,55 @@
+{
+  "mobile_sample_state": {
+    "present": true,
+    "body_scrollW": 390,
+    "sub12_above_fold": 16,
+    "hero": {
+      "panel_top": 241,
+      "panel_height": 331,
+      "tag_text": "WHAT NEEDS YOU TODAY \u00b7 CRITICAL",
+      "tag_fontSize": 11.5,
+      "h2_text": "Start here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.",
+      "h2_fontSize": 24,
+      "p_text": "\"Send formal invitations\" \u2014 Overdue 20d. Other tasks are stuck until this is handled.",
+      "p_fontSize": 14.5,
+      "primary_label": "Open Todd & Sarah's Wedding\n\u2192",
+      "primary_fontSize": 15,
+      "primary_height": 46,
+      "secondary_label": "View all 41 attention items",
+      "secondary_fontSize": 14
+    },
+    "thisweek_present": false,
+    "screenshot": "home_hero_sample.png"
+  },
+  "mobile_empty_state": {
+    "present": false,
+    "body_scrollW": 390,
+    "sub12_above_fold": 14,
+    "thisweek_present": false,
+    "screenshot": "home_hero_empty.png"
+  },
+  "desktop_state": {
+    "present": true,
+    "body_scrollW": 1440,
+    "sub12_above_fold": 31,
+    "hero": {
+      "panel_top": 188,
+      "panel_height": 190,
+      "tag_text": "WHAT NEEDS YOU TODAY \u00b7 CRITICAL",
+      "tag_fontSize": 10,
+      "h2_text": "Start here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.",
+      "h2_fontSize": 26,
+      "p_text": "\"Send formal invitations\" \u2014 Overdue 20d. Other tasks are stuck until this is handled.",
+      "p_fontSize": 13.5,
+      "primary_label": "Open Todd & Sarah's Wedding\n\u2192",
+      "primary_fontSize": 13,
+      "primary_height": 36,
+      "secondary_label": "View all 41 attention items",
+      "secondary_fontSize": 12.5
+    },
+    "thisweek_present": true,
+    "kpi_strip_visible": false,
+    "this_week_panel": true,
+    "screenshot": "desktop_home_regression.png"
+  }
+}

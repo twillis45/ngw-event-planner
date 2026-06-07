@@ -12,9 +12,22 @@
 
 // ── Primitives (raw ramps) ──────────────────────────────────────────────
 const primitive = {
+  // Sprint 60.N: matte ramp realigned to mirror the locked App.js DARK
+  // theme tiers (Mid Carbon doctrine). Previously the L4 specialist
+  // surfaces (CommandCenter / CommunicationHub / Checklist / Timeline /
+  // Client Intake / Vendor Planning) consumed color.surface.base = #0d0f12,
+  // one tier deeper than the dashboard's Mid Carbon #111519 — a real
+  // palette drift visible to the eye when moving Home → an event.
+  // Mirror map:
+  //   100 #111519 ← App.js DARK bg       (Mid Carbon page)
+  //   150 #1c2227 ← App.js DARK surface  (Lifted Carbon card)
+  //   200 #242b31 ← App.js DARK surface2 (banner / prominent card)
+  //   250 #2e353d ← App.js DARK border   (interactive edge)
+  // 050 stays at #070809 — deepest ambient ("entered the operating room").
+  // 300/350/400 retain their ~12-lum-per-step ramp above 250.
   matte: {
-    '050': '#070809', '100': '#0d0f12', '150': '#121518', '200': '#171b1f',
-    '250': '#1c2026', '300': '#232830', '350': '#2b3039', '400': '#343b45',
+    '050': '#070809', '100': '#111519', '150': '#1c2227', '200': '#242b31',
+    '250': '#2e353d', '300': '#3a4250', '350': '#424b59', '400': '#4e5867',
   },
   steel: {
     '050': '#e4ecf3', '100': '#d0dce8', '200': '#b9cedf', '300': '#9eb3c4',
@@ -25,9 +38,12 @@ const primitive = {
   // against it. Semantic meaning preserved; visual weight matched.
   amber: { '300': '#d99a59', '400': '#d4904a', '500': '#b87a38' }, // honey tungsten — was #f3a449/#ef962e/#df8116
   green: { '200': '#8fbf9f', '300': '#5aa478', '400': '#3a8a62', '500': '#28704e' }, // calmer forest — was #7dcca0/#3eab6c/#298c52/#1b7040
-  // Deeper crimson — Sprint 49+: lightness dropped from L=48% → L=42% to
-  // restore visual depth lost when saturation dropped. Same hue/sat, deeper.
-  red:   { '200': '#c25a5a', '300': '#ad4646', '400': '#9a3a3a', '500': '#7c2828', 'bright': '#b03842' },
+  // Sprint 60.U.3 10+ red correction — pull the whole ramp toward fire-red.
+  // Old values had B ≈ G (dusty crimson) and the 'bright' tier had B>G which
+  // read as pink against the cool Mid Carbon surface. New ramp keeps R far
+  // ahead of G, G ahead of B, so every tier reads as alarm/critical — no
+  // rose-pink lean. Aligns with App.js DARK.danger = #E84036.
+  red:   { '200': '#F08274', '300': '#E2604F', '400': '#E84036', '500': '#B82F26', 'bright': '#FF3525' },
   // Smoked graphite-teal atmosphere (Sprint 6 — environment only, never CTA)
   teal:  { '400': '#6ea6aa', '500': '#4b878b', '600': '#283639', '700': '#1d282a', '800': '#141d1f', '900': '#0c1213' },
 };

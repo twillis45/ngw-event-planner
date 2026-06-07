@@ -1,0 +1,30 @@
+{
+  "1024_typing": {
+    "size": "1024x768",
+    "console_errors": [
+      "warning: Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading",
+      "warning: As of March 1st, 2025, google.maps.places.Autocomplete is not available to new customers. Please use google.maps.places.PlaceAutocompleteElement instead. At this time, google.maps.places.Autocomplete is not scheduled to be discontinued, but google.maps.places.PlaceAutocompleteElement is recommended ",
+      "warning: As of March 1st, 2025, google.maps.places.Autocomplete is not available to new customers. Please use google.maps.places.PlaceAutocompleteElement instead. At this time, google.maps.places.Autocomplete is not scheduled to be discontinued, but google.maps.places.PlaceAutocompleteElement is recommended "
+    ],
+    "page_errors": [],
+    "input_count_in_modal": 9,
+    "typed_value": "Hybrid Test Event 60E",
+    "expected": "Hybrid Test Event 60E",
+    "typing_passes": true,
+    "screenshot": "07_1024_typing_modal_typed.png"
+  },
+  "1440_typing": {
+    "size": "1440x900",
+    "console_errors": [
+      "warning: Google Maps JavaScript API has been loaded directly without loading=async. This can result in suboptimal performance. For best-practice loading patterns please see https://goo.gle/js-api-loading",
+      "warning: As of March 1st, 2025, google.maps.places.Autocomplete is not available to new customers. Please use google.maps.places.PlaceAutocompleteElement instead. At this time, google.maps.places.Autocomplete is not scheduled to be discontinued, but google.maps.places.PlaceAutocompleteElement is recommended ",
+      "warning: As of March 1st, 2025, google.maps.places.Autocomplete is not available to new customers. Please use google.maps.places.PlaceAutocompleteElement instead. At this time, google.maps.places.Autocomplete is not scheduled to be discontinued, but google.maps.places.PlaceAutocompleteElement is recommended "
+    ],
+    "page_errors": [],
+    "input_count_in_modal": 9,
+    "typed_value": "Hybrid Test Event 60E",
+    "expected": "Hybrid Test Event 60E",
+    "typing_passes": true,
+    "screenshot": "07_1440_typing_modal_typed.png"
+  }
+}

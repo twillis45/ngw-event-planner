@@ -1,0 +1,22 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_scrollW": 390,
+      "body_bg": "rgb(17, 21, 25)",
+      "sub12_above_fold": 13,
+      "small_touch_targets": 18
+    },
+    "errors": 0,
+    "error_samples": []
+  },
+  "1440_desktop": {
+    "home": {
+      "body_scrollW": 1440,
+      "body_bg": "rgb(17, 21, 25)",
+      "sub12_above_fold": 31,
+      "small_touch_targets": 17
+    },
+    "errors": 0,
+    "error_samples": []
+  }
+}

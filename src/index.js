@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
+import AuthGate from './components/AuthGate';
 import { initSentry } from './lib/sentry';
 
 initSentry(); // no-op unless REACT_APP_SENTRY_DSN is set
@@ -25,6 +26,14 @@ const SliceHarness =
   : sliceParam === 'orchestration'   ? React.lazy(() => import('./slices/OrchestrationSlice'))
   : null;
 
+// Admin / Support console — additive, gated by ?admin=1. Wrapped in AuthGate so it
+// has the Supabase session; AdminConsole itself enforces app_metadata.role. App.js
+// is untouched, mirroring the slice-harness pattern.
+const AdminConsole =
+  params.get('admin') === '1'
+    ? React.lazy(() => import('./admin/AdminConsole'))
+    : null;
+
 // Sprint 11C observation harness — activate ONLY when URL has observe=1.
 // Records clicks + hesitation, copies transcript on Ctrl/Cmd+Shift+L.
 // Zero behavior change to the slice; operators don't see it. Lazy so it never
@@ -43,7 +52,13 @@ const AlphaTesterGate =
 const root = createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    {SliceHarness ? (
+    {AdminConsole ? (
+      <React.Suspense fallback={null}>
+        <AuthGate>
+          <AdminConsole />
+        </AuthGate>
+      </React.Suspense>
+    ) : SliceHarness ? (
       <React.Suspense fallback={null}>
         {AlphaTesterGate ? (
           <AlphaTesterGate>

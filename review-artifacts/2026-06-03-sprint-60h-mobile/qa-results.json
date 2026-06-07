@@ -1,0 +1,109 @@
+{
+  "mobile": {
+    "01_home": {
+      "font_sizes": {
+        "8": 7,
+        "9": 11,
+        "10": 19,
+        "11": 27,
+        "12": 44,
+        "13": 31,
+        "14": 7,
+        "16": 4,
+        "18": 5,
+        "20": 2,
+        "32": 4
+      },
+      "small_touch_targets": 21,
+      "screenshot": "01_home.png"
+    },
+    "02_pipeline_with_subtitles": {
+      "font_sizes": {
+        "10": 2,
+        "11": 13,
+        "12": 10,
+        "13": 14,
+        "16": 4,
+        "18": 1,
+        "20": 1
+      },
+      "small_touch_targets": 2,
+      "screenshot": "02_pipeline_with_subtitles.png"
+    },
+    "pipeline_subtitles_present": {
+      "has_new_request_hint": false,
+      "has_planning_hint": true,
+      "has_money_due_hint": false
+    },
+    "03_event_command": {
+      "font_sizes": {
+        "9": 5,
+        "10": 14,
+        "11": 30,
+        "12": 3,
+        "13": 1,
+        "16": 4,
+        "18": 1
+      },
+      "small_touch_targets": 2,
+      "screenshot": "03_event_command.png"
+    },
+    "04_vendor_detail_mobile_summary": {
+      "font_sizes": {
+        "9": 14,
+        "10": 27,
+        "11": 70,
+        "12": 22,
+        "13": 12,
+        "14": 1,
+        "15": 1,
+        "16": 4,
+        "18": 2,
+        "22": 1
+      },
+      "small_touch_targets": 3,
+      "screenshot": "04_vendor_detail_mobile_summary.png"
+    },
+    "vendor_summary_signals": {
+      "has_needs_attention": false,
+      "has_looks_ready": false,
+      "has_open_contract": false,
+      "has_open_payment": false,
+      "has_open_arrival": false,
+      "body_chars": 2152
+    },
+    "cockpit_section_states_mobile": [
+      {
+        "label": "\u25b8\nQUICK READ\nRule-based preview",
+        "expanded": "false"
+      },
+      {
+        "label": "\u25b8\nWHERE THIS VENDOR STANDS\n2 need attention",
+        "expanded": "false"
+      },
+      {
+        "label": "\u25be\nLINKED FILES \u00b7 1",
+        "expanded": "true"
+      },
+      {
+        "label": "\u25b8\nDOCUMENTS\nMissing",
+        "expanded": "false"
+      },
+      {
+        "label": "\u25b8\nNOTES\nNotes on file",
+        "expanded": "false"
+      },
+      {
+        "label": "\u25b8\nRECENT ACTIVITY\n3 entries \u00b7 last 2026-06-15",
+        "expanded": "false"
+      }
+    ]
+  },
+  "desktop": {
+    "pipeline_lane_hint_on_desktop": true,
+    "desktop_vendor_check": {
+      "readiness_snapshot_open": true,
+      "body_has_attention_count": 0
+    }
+  }
+}

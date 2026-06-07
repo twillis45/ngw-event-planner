@@ -1,0 +1,68 @@
+{
+  "mobile": {
+    "home_mobile": {
+      "body_scrollW": 390,
+      "body_bg_rgb": "rgb(7, 8, 9)",
+      "font_sizes": {
+        "9": 5,
+        "10": 14,
+        "11": 20,
+        "12": 38,
+        "13": 29,
+        "14": 1,
+        "15": 1,
+        "16": 4,
+        "18": 5,
+        "20": 1,
+        "24": 1
+      },
+      "sub12_above_fold": 16,
+      "small_touch_targets": 18,
+      "button_count": 41,
+      "screenshot": "01_home_mobile_390_hero.png"
+    },
+    "vendor_summary": {
+      "body_scrollW": 390,
+      "body_bg_rgb": "rgb(7, 8, 9)",
+      "font_sizes": {
+        "9": 14,
+        "10": 27,
+        "11": 66,
+        "12": 11,
+        "13": 14,
+        "14": 14,
+        "15": 1,
+        "16": 4,
+        "18": 2,
+        "22": 1
+      },
+      "sub12_above_fold": 25,
+      "small_touch_targets": 3,
+      "button_count": 36
+    },
+    "vendor_open_section": {
+      "body_scrollW": 390,
+      "body_bg_rgb": "rgb(7, 8, 9)",
+      "font_sizes": {
+        "9": 23,
+        "10": 27,
+        "11": 75,
+        "12": 11,
+        "13": 14,
+        "14": 14,
+        "15": 1,
+        "16": 4,
+        "18": 2,
+        "22": 1
+      },
+      "sub12_above_fold": 32,
+      "small_touch_targets": 3,
+      "button_count": 36
+    }
+  },
+  "desktop": {
+    "home_desktop": {
+      "body_bg": "rgb(7, 8, 9)"
+    }
+  }
+}

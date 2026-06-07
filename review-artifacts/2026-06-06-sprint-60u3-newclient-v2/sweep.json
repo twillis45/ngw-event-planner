@@ -1,0 +1,1252 @@
+{
+  "empty_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 392,
+      "h": 795,
+      "x": 0,
+      "y": 49
+    },
+    "phrases_present": {
+      "New Client": false,
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true,
+      "Quick Intake": false,
+      "Planner Fee": false
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 342,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 342,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "validation_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 392,
+      "h": 795,
+      "x": 0,
+      "y": 49
+    },
+    "phrases_present": {
+      "Client name is required.": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 342,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 342,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "filled_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 392,
+      "h": 795,
+      "x": 0,
+      "y": 49
+    },
+    "phrases_present": {
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 342,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 342,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "success_390": {
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 392,
+      "h": 442,
+      "x": 0,
+      "y": 402
+    },
+    "phrases_present": {
+      "Roster updated": false,
+      "CREATED FOR YOU": true,
+      "Contact saved to roster": true,
+      "Planner log started": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "Add another",
+        "bg": "none",
+        "w": 166,
+        "h": 31
+      },
+      {
+        "text": "Done",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 166,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "empty_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 432,
+      "h": 878,
+      "x": 0,
+      "y": 54
+    },
+    "phrases_present": {
+      "New Client": false,
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true,
+      "Quick Intake": false,
+      "Planner Fee": false
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 382,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 382,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "validation_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 432,
+      "h": 878,
+      "x": 0,
+      "y": 54
+    },
+    "phrases_present": {
+      "Client name is required.": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 382,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 382,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "filled_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 432,
+      "h": 878,
+      "x": 0,
+      "y": 54
+    },
+    "phrases_present": {
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 382,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 382,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "success_430": {
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 432,
+      "h": 442,
+      "x": 0,
+      "y": 490
+    },
+    "phrases_present": {
+      "Roster updated": false,
+      "CREATED FOR YOU": true,
+      "Contact saved to roster": true,
+      "Planner log started": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "Add another",
+        "bg": "none",
+        "w": 186,
+        "h": 31
+      },
+      {
+        "text": "Done",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 186,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "empty_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 924,
+      "x": 83,
+      "y": 50
+    },
+    "phrases_present": {
+      "New Client": false,
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true,
+      "Quick Intake": false,
+      "Planner Fee": false
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 552,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 552,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "validation_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 924,
+      "x": 83,
+      "y": 50
+    },
+    "phrases_present": {
+      "Client name is required.": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 552,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 552,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "filled_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 924,
+      "x": 83,
+      "y": 50
+    },
+    "phrases_present": {
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 552,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 552,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "success_768": {
+    "scrollW": 768,
+    "viewportW": 768,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 602,
+      "h": 431,
+      "x": 83,
+      "y": 297
+    },
+    "phrases_present": {
+      "Roster updated": false,
+      "CREATED FOR YOU": true,
+      "Contact saved to roster": true,
+      "Planner log started": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "Add another",
+        "bg": "none",
+        "w": 271,
+        "h": 31
+      },
+      {
+        "text": "Done",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 271,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "empty_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 955,
+      "x": 171,
+      "y": 206
+    },
+    "phrases_present": {
+      "New Client": false,
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true,
+      "Quick Intake": false,
+      "Planner Fee": false
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "validation_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 971,
+      "x": 171,
+      "y": 198
+    },
+    "phrases_present": {
+      "Client name is required.": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "filled_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 955,
+      "x": 171,
+      "y": 206
+    },
+    "phrases_present": {
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "success_1024": {
+    "scrollW": 1024,
+    "viewportW": 1024,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 431,
+      "x": 171,
+      "y": 468
+    },
+    "phrases_present": {
+      "Roster updated": false,
+      "CREATED FOR YOU": true,
+      "Contact saved to roster": true,
+      "Planner log started": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "Add another",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Done",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 311,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "empty_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 812,
+      "x": 379,
+      "y": 44
+    },
+    "phrases_present": {
+      "New Client": false,
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true,
+      "Quick Intake": false,
+      "Planner Fee": false
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "validation_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 812,
+      "x": 379,
+      "y": 44
+    },
+    "phrases_present": {
+      "Client name is required.": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "filled_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 812,
+      "x": 379,
+      "y": 44
+    },
+    "phrases_present": {
+      "NO GUESSWORK": true,
+      "Event Boss handles the rest": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "No venue yet",
+        "bg": "none",
+        "w": 108,
+        "h": 22
+      },
+      {
+        "text": "In talks with venue",
+        "bg": "none",
+        "w": 134,
+        "h": 22
+      },
+      {
+        "text": "Venue booked",
+        "bg": "none",
+        "w": 113,
+        "h": 22
+      },
+      {
+        "text": "\u25b8\nPLANNER FEE\nOptional \u2014 open to",
+        "bg": "none",
+        "w": 632,
+        "h": 13
+      },
+      {
+        "text": "Cancel",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create Client",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Create & Start Intake \u2192",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 632,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  },
+  "success_1440": {
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "bodyOverflowLocked": true,
+    "dlgRect": {
+      "w": 682,
+      "h": 431,
+      "x": 379,
+      "y": 235
+    },
+    "phrases_present": {
+      "Roster updated": false,
+      "CREATED FOR YOU": true,
+      "Contact saved to roster": true,
+      "Planner log started": true
+    },
+    "footerBtns": [
+      {
+        "text": "\u2715",
+        "bg": "none",
+        "w": 34,
+        "h": 29
+      },
+      {
+        "text": "Add another",
+        "bg": "none",
+        "w": 311,
+        "h": 31
+      },
+      {
+        "text": "Done",
+        "bg": "linear-gradient(rgb(78, 104, 119) 0%, rgb(63, 91, 106) 100%)",
+        "w": 311,
+        "h": 31
+      }
+    ],
+    "blue_ctas": 1,
+    "errors": 0,
+    "opened": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "vendor_detail_mobile": {
+    "readiness_copilot": true,
+    "readiness_snapshot": true,
+    "documents": true,
+    "notes": true,
+    "activity_log": true,
+    "all_aria_expanded": 15,
+    "section_chevrons": [
+      "\u25b8\nREADINESS COPILOT\nRule-based preview",
+      "\u25be\nREADINESS SNAPSHOT\n2 need attention",
+      "\u25be\nLINKED DOCUMENTS \u00b7 1",
+      "\u25be\nDOCUMENTS\nMissing",
+      "\u25b8\nNOTES\nNotes on file",
+      "\u25b8\nACTIVITY LOG\n3 entries \u00b7 last 2026-06-15"
+    ]
+  },
+  "mobile_chevron_toggle": true,
+  "mobile_collapse_localstorage": {
+    "ngw-vendor-collapse-cv1": "{\"readinessSnapshot\":true,\"readinessCopilot\":true,\"documents\":true,\"notes\":false,\"activity\":false}"
+  },
+  "fab_visible": true,
+  "back_clicked": true,
+  "back_to_list": false
+}

@@ -50,7 +50,7 @@ const SPEEDS = [
 
 function borderColorFor(intent) {
   switch (intent) {
-    case 'fragile': return color.status.risk || '#bf5050';
+    case 'fragile': return color.status.risk || '#E84036';
     case 'urgent':  return '#b8943f';
     case 'caution': return 'rgba(184, 148, 63, 0.25)';
     case 'active':  return color.border.strong;
@@ -144,7 +144,7 @@ function SequenceItem({ item, memory, fieldEffect, vendors, reEntry }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: space[3] }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-            background: item.isFragile ? (color.status.risk || '#bf5050')
+            background: item.isFragile ? (color.status.risk || '#E84036')
               : item.isActive ? '#b8943f'
               : item.isCompleted ? color.text.disabled
               : color.status.confirmed,
@@ -184,7 +184,7 @@ function VendorRow({ vendor }) {
   const level = c.level || COMPRESSION_LEVEL.FULL;
   const dotColor = vendor.status === 'nominal' || vendor.status === 'confirmed'
     ? color.status.confirmed
-    : vendor.status === 'escalated' ? (color.status.risk || '#bf5050')
+    : vendor.status === 'escalated' ? (color.status.risk || '#E84036')
     : color.status.warning;
 
   if (level === COMPRESSION_LEVEL.GHOSTED) {
@@ -312,7 +312,7 @@ function BehavioralObservatory({
     : 'ABRUPT';
   const geoColor = maxDelta < 0.06 ? '#3d8060'
     : maxDelta < 0.14 ? '#b8943f'
-    : '#bf5050';
+    : '#E84036';
 
   // ── Sparkline ───────────────────────────────────────────────────────
   const sparkline = history.map(p => SPARK_CHARS[Math.min(7, Math.floor(p * 8))]).join('');
@@ -355,7 +355,7 @@ function BehavioralObservatory({
     val: { color: '#607888' },
     focal: { color: '#3d7855' },
     warn: { color: '#b8943f' },
-    risk: { color: '#bf5050' },
+    risk: { color: '#E84036' },
     active: { color: '#b8943f', fontWeight: 600 },
     ghosted: { color: '#202830' },
     name: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 },
@@ -446,7 +446,7 @@ function BehavioralObservatory({
           <div style={S.lbl}>FIELD CONTAMINATION ({activeFields.length})</div>
           {activeFields.slice(0, 6).map((f, i) => {
             const lvl = f.fe.treatment.level;
-            const c = lvl === 'urgent' ? '#bf5050'
+            const c = lvl === 'urgent' ? '#E84036'
               : lvl === 'concerned' ? '#b8943f'
               : lvl === 'warm' ? '#5a7a50'
               : '#2c3c48';
@@ -472,7 +472,7 @@ function BehavioralObservatory({
             const decay = topMem?.decay ?? 1;
             return (
               <div key={item.id} style={{ ...S.row, marginBottom: 2 }}>
-                <span style={{ ...S.name, color: m.isFragile ? '#bf5050' : '#3a5060' }}>
+                <span style={{ ...S.name, color: m.isFragile ? '#E84036' : '#3a5060' }}>
                   {item.label.slice(0, 14)}
                 </span>
                 <span style={{ whiteSpace: 'nowrap', color: '#2c3c48' }}>
@@ -1402,7 +1402,7 @@ function SimWorkflow({ scenarioId }) {
               style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
                 fontSize: 11, fontFamily: type.family,
-                color: observing ? (color.status.risk || '#bf5050') : color.text.tertiary,
+                color: observing ? (color.status.risk || '#E84036') : color.text.tertiary,
               }}
             >
               {observing ? '● Stop' : '○ Record'}

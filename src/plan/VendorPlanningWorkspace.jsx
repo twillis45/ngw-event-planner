@@ -23,7 +23,7 @@
 // All intelligence is deterministic — see src/lib/vendorIntelligence.js and
 // src/lib/vendorQuestions.js. No AI, no fake scoring.
 
-import { useState, useEffect, useMemo, useContext } from 'react';
+import { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthCtx } from '../contexts/AuthContext';
 import { color, space, type, radius } from '../design/tokens';
 import {
@@ -61,6 +61,16 @@ import {
   fmtFileSize,
   inferCategory,
 } from '../lib/storage';
+// Sprint 61.B — Vendor Accountability Phase C
+// Sprint 61.C — Phase D adds conflict rendering
+import {
+  quickAccountabilityForVendor,
+  inferPromisesFromVendor,
+  deriveVendorNextAccountabilityAction,
+  accountabilityLabel,
+  deriveVendorPromiseConflicts,
+  conflictsForVendor,
+} from '../lib/vendorAccountability';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -75,6 +85,9 @@ const P = {
   green:  color.status.confirmed,
   amber:  color.status.warning,
   red:    color.status.risk,
+  // Sprint 60.U.3 10+ — steel-blue accent for non-semantic section
+  // eyebrows. Matches App.js accentTopGrad + CommandCenter P.steelBlue.
+  steelBlue: '#4E6877',
 };
 const FF = type.family;
 
@@ -152,6 +165,88 @@ function SectionHeading({ label, hint }) {
   );
 }
 
+// ─── Sprint 60.C: reusable collapsible section wrapper ───────────────────────
+// Replaces ad-hoc collapse code per-section so every cockpit section uses the
+// same chevron + count + aria-expanded affordance. Caller drives isOpen so
+// the sticky localStorage hook above can persist preferences per vendor.
+function CollapsibleSection({ label, summary, hintColor, isOpen, onToggle, children }) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 800,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.steelBlue, fontFamily: FF,
+          }}>{label}</span>
+        </span>
+        {summary && (
+          <span style={{
+            fontSize: 10,
+            color: hintColor || P.textTertiary,
+            fontFamily: FF, fontStyle: 'italic',
+          }}>{summary}</span>
+        )}
+      </button>
+      {isOpen && children}
+    </div>
+  );
+}
+
+// ─── Sprint 60.C: sticky collapse state per vendor (localStorage-backed) ────
+// Stores BOOLEANS ONLY under `ngw-vendor-collapse-{vendorId}`. No vendor
+// content; no PII. Falls back to in-memory state if localStorage throws.
+// Smart defaults from the caller's `defaults` arg only apply when no saved
+// state exists.
+function useStickyVendorCollapse(vendorId, defaults) {
+  const storageKey = vendorId ? `ngw-vendor-collapse-${vendorId}` : null;
+  const [state, setState] = useState(() => {
+    if (!storageKey) return defaults;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Merge with defaults so missing keys (e.g. new sections added later)
+        // pick up their smart defaults instead of being undefined.
+        return { ...defaults, ...parsed };
+      }
+    } catch {}
+    return defaults;
+  });
+  // Re-init when switching vendors (the hook is called per-VendorDetail render).
+  // Effect keys are vendorId-scoped so changing vendor doesn't write the new
+  // defaults over the prior vendor's localStorage.
+  useEffect(() => {
+    if (!storageKey) { setState(defaults); return; }
+    try {
+      const raw = localStorage.getItem(storageKey);
+      setState(raw ? { ...defaults, ...JSON.parse(raw) } : defaults);
+    } catch { setState(defaults); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorId]);
+  const update = (patch) => {
+    setState(prev => {
+      const next = typeof patch === 'function' ? patch(prev) : { ...prev, ...patch };
+      if (storageKey) {
+        try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
+  };
+  return [state, update];
+}
+
 // Status-color → label mapping for planning/day-of/closeout rows
 function rowStatusVisual(status) {
   switch (status) {
@@ -163,14 +258,15 @@ function rowStatusVisual(status) {
   }
 }
 
-function StatusRow({ label, value, status, consequence }) {
+// Vendor Readiness Pass · v2: every actionable status row is a button that
+// addresses the issue. `onAddress` is the click handler the parent sets per
+// row. When provided, the row renders with hover affordance + → indicator.
+// When absent (e.g. status === 'not_tracked' where no field exists yet),
+// the row stays inert.
+function StatusRow({ label, value, status, consequence, onAddress, addressLabel }) {
   const v = rowStatusVisual(status);
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 12,
-      padding: `${space[3]}px 0`,
-      borderBottom: `1px solid ${P.borderSubtle}`,
-    }}>
+  const body = (
+    <>
       <span style={{
         width: 18, height: 18, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -181,15 +277,139 @@ function StatusRow({ label, value, status, consequence }) {
         {v.badge}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, marginBottom: 2 }}>
+        <div style={{ fontSize: 13, color: P.textSecondary, fontFamily: FF, marginBottom: 3 }}>
           {label}
         </div>
-        <div style={{ fontSize: 13, fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
+        <div style={{ fontSize: 14, fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
           {value}
         </div>
         {consequence && (
-          <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginTop: 3, lineHeight: 1.45, fontStyle: 'italic' }}>
+          <div style={{ fontSize: 12.5, color: P.textTertiary, fontFamily: FF, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>
             {consequence}
+          </div>
+        )}
+      </div>
+      {onAddress && (
+        <span style={{ color: P.textTertiary, fontSize: 14, flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
+      )}
+    </>
+  );
+
+  if (onAddress) {
+    return (
+      <button
+        type="button"
+        onClick={onAddress}
+        title={addressLabel || `Address: ${label}`}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: `${space[3]}px 4px`,
+          borderBottom: `1px solid ${P.borderSubtle}`,
+          background: 'none', border: 'none', borderLeft: 'none', borderRight: 'none',
+          borderTop: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: FF,
+          transition: 'background 0.1s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '33'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+      >
+        {body}
+      </button>
+    );
+  }
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: `${space[3]}px 0`,
+      borderBottom: `1px solid ${P.borderSubtle}`,
+    }}>
+      {body}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Conflicts Strip (Phase D) ───────────────────────────────────────────────
+// Surfaces the highest-severity cross-vendor conflicts above the workspace
+// command strip. Each row is a plain-language explanation + steel-blue
+// route CTA. Hidden when no conflicts detected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ConflictsStrip({ conflicts, vendors, onSelectVendor }) {
+  if (!conflicts || conflicts.length === 0) return null;
+  const top = conflicts.slice(0, 3);
+  const vendorById = new Map((vendors || []).map(v => [v.id, v]));
+  const sevColor = (s) =>
+    s === 'critical' ? P.red
+    : s === 'high'   ? P.red
+    : s === 'attention' ? P.amber
+    : P.steelBlue;
+  return (
+    <div style={{
+      flexShrink: 0,
+      background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0a 100%)`,
+      borderBottom: `1px solid ${P.borderSubtle}`,
+      padding: `${space[3]}px ${space[5]}px`,
+      display: 'flex', flexDirection: 'column', gap: 8,
+      fontFamily: FF,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span aria-hidden style={{
+          width: 22, height: 22, borderRadius: '50%',
+          background: `${P.steelBlue}26`, color: P.steelBlue,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 800,
+        }}>⚠</span>
+        <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
+          Conflicts found
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: P.red }}>{conflicts.length}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {top.map(c => {
+          const target = vendorById.get(c.affectedVendorId);
+          const color = sevColor(c.severity);
+          return (
+            <div key={c.id} style={{
+              padding: '10px 12px',
+              background: P.card,
+              border: `1px solid ${color}3d`,
+              borderLeft: `3px solid ${color}`,
+              borderRadius: 8,
+              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
+                  {c.title}
+                </div>
+                <div style={{ fontSize: 11.5, color: P.textSecondary, marginTop: 2, lineHeight: 1.45 }}>
+                  {c.explanation}
+                </div>
+                <div style={{ fontSize: 11, color: P.steelBlue, marginTop: 4, fontWeight: 600 }}>
+                  → {c.recommendedAction}
+                </div>
+              </div>
+              {target && (
+                <button
+                  onClick={() => onSelectVendor && onSelectVendor(target)}
+                  style={{
+                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    borderRadius: 8, padding: '7px 12px',
+                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
+                    letterSpacing: '0.02em',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
+                    flexShrink: 0,
+                  }}>
+                  Open {target.name.split(' ')[0]} →
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {conflicts.length > top.length && (
+          <div style={{ fontSize: 11, color: P.textTertiary, marginTop: 2 }}>
+            +{conflicts.length - top.length} more conflict{conflicts.length - top.length === 1 ? '' : 's'} — open each vendor to review.
           </div>
         )}
       </div>
@@ -245,36 +465,52 @@ function VendorCommandStrip({ vendors, event, onSelectVendor }) {
 
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: space[5], flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
+          {/* Sprint 60.L F8: tag bumped 9 → 12 for status-pill min;
+              headline 15 → 17 for card-title min; sub 11 → 13 for
+              helper-copy min. */}
           <div style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 12, fontWeight: type.weight.semibold,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: accent, marginBottom: 4,
           }}>
             Vendor Readiness
           </div>
-          <div style={{ fontSize: 15, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.3 }}>
+          <div style={{ fontSize: 17, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.3 }}>
             {headline}
           </div>
           {sub && (
-            <div style={{ fontSize: 11, color: P.textSecondary, marginTop: 3 }}>
+            <div style={{ fontSize: 13, color: P.textSecondary, marginTop: 4 }}>
               {sub}
             </div>
           )}
         </div>
 
         {topRisk && topRisk.readiness.level !== 'safe' && topRisk.readiness.level !== 'closed' && (
+          // Sprint 60.L chip readability: solid colored bg with near-black
+          // text reads as caution-tape. Convert to TINTED carbon style —
+          // bg = accent@14%, border = accent@40%, text = accent itself.
+          // The chip still carries the semantic color identity (red /
+          // amber / green) while the text reads cleanly on Carbon.
           <button
             onClick={() => onSelectVendor && onSelectVendor(topRisk.vendor)}
             style={{
-              padding: '8px 16px', borderRadius: radius.sm,
-              border: 'none', cursor: 'pointer',
-              background: accent, color: '#070809',
-              fontSize: 11, fontWeight: type.weight.semibold,
-              fontFamily: FF, letterSpacing: '0.04em', textTransform: 'uppercase',
+              padding: '12px 18px', borderRadius: radius.sm,
+              minHeight: 44,
+              border: `1px solid ${accent}66`,
+              cursor: 'pointer',
+              background: `${accent}22`,
+              color: accent,
+              fontSize: 14, fontWeight: type.weight.bold,
+              fontFamily: FF, letterSpacing: '0.02em',
               flexShrink: 0, whiteSpace: 'nowrap',
+              boxShadow: `inset 0 0 0 1px ${accent}1a`,
+              transition: 'background 0.16s, border-color 0.16s',
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${accent}30`; e.currentTarget.style.borderColor = `${accent}99`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${accent}22`; e.currentTarget.style.borderColor = `${accent}66`; }}
+            aria-label={`Open ${topRisk.vendor.name} to fix the highest priority issue`}
           >
-            Start with {topRisk.vendor.name}
+            Start with {topRisk.vendor.name} →
           </button>
         )}
       </div>
@@ -305,17 +541,28 @@ function getVendorLastContacted(vendor, event) {
   return daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
 }
 
-function VendorRow({ vendor, event, isSelected, onSelect }) {
+function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSelect }) {
+  // Sprint 61.B — Accountability tier is now the primary signal. Readiness
+  // stays as a secondary chip so the existing vendor-cockpit semantics still
+  // flow through. If the parent doesn't pass an accountability prop, we
+  // compute it locally (keeps the component testable in isolation).
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
-  const next = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
-  const isCritical = readiness.level === 'critical';
-  const isAttention = readiness.level === 'attention';
+  const acc = accountability || useMemo(() => quickAccountabilityForVendor(vendor, event), [vendor, event]); // eslint-disable-line react-hooks/rules-of-hooks
+  const next = nextAction || null;
   const lastContacted = useMemo(() => getVendorLastContacted(vendor, event), [vendor, event]);
 
-  // Highest-risk vendor gets an extra emphasis line — but no neon, no glow.
-  const emphasis = isCritical;
-  const leftStrip = isCritical ? P.red : (isAttention ? P.amber : (isSelected ? P.green : 'transparent'));
+  const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
+  const tierLabel = accountabilityLabel(acc.tier);
+  const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
+  const leftStrip = emphasis ? P.red
+    : acc.tier === 'needs_follow_up' ? P.amber
+    : acc.tier === 'needs_proof'     ? P.steelBlue
+    : isSelected ? P.green
+    : 'transparent';
+
+  // Top issue — first reason if any, otherwise stage + readiness label.
+  const topIssue = (acc.reasons && acc.reasons[0]) || null;
 
   return (
     <button
@@ -353,40 +600,128 @@ function VendorRow({ vendor, event, isSelected, onSelect }) {
             </>
           )}
         </div>
-        {next && (isCritical || isAttention) && (
+        {/* Top issue — only renders when there's a real reason to say it. */}
+        {topIssue && acc.tier !== 'on_track' && (
           <div style={{
-            fontSize: 10, color: levelColor(readiness.level),
+            fontSize: 10.5, color: tierColor,
             marginTop: 4, lineHeight: 1.35,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}>
-            → {next.title}
+            {topIssue}
+          </div>
+        )}
+        {/* Next action — short. Steel-blue when actionable. */}
+        {next && next.kind && next.kind !== 'none' && (
+          <div style={{
+            fontSize: 10, color: P.steelBlue,
+            marginTop: 3, fontWeight: 600, letterSpacing: '0.01em',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            Next: {next.label.replace(/^.*?:\s/, '')}
           </div>
         )}
       </div>
-      <div style={{ flexShrink: 0, paddingTop: 1 }}>
+      <div style={{ flexShrink: 0, paddingTop: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+        {/* Accountability chip — primary signal */}
         <span style={{
-          fontSize: 8, fontWeight: type.weight.semibold,
-          letterSpacing: '0.10em', color: levelColor(readiness.level),
-          textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
+          fontSize: 9, fontWeight: 800,
+          letterSpacing: '0.10em', color: tierColor,
+          background: `${tierColor}14`, border: `1px solid ${tierColor}44`,
+          padding: '2px 6px', borderRadius: 999,
+          textTransform: 'uppercase', whiteSpace: 'nowrap',
         }}>
-          {readiness.label.replace('Ready for day-of', 'Ready').replace('Needs follow-up', 'Follow up').replace('Day-of follow-up', 'Day-of')}
+          {tierLabel}
         </span>
+        {/* Readiness label — secondary, only when different from on_track */}
+        {readiness.level !== 'safe' && (
+          <span style={{
+            fontSize: 8, fontWeight: type.weight.semibold,
+            letterSpacing: '0.10em', color: levelColor(readiness.level),
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>
+            {readiness.label.replace('Ready for day-of', 'Ready').replace('Needs follow-up', 'Follow up').replace('Day-of follow-up', 'Day-of')}
+          </span>
+        )}
       </div>
     </button>
   );
 }
 
+// Sprint 61.B — accountability tier priority. Drives VendorList default sort.
+const ACCOUNTABILITY_RANK = {
+  missed_promise:  0,
+  at_risk:         1,
+  needs_follow_up: 2,
+  needs_proof:     3,
+  on_track:        4,
+};
+const ACCOUNTABILITY_COLOR = {
+  missed_promise:  P.red,
+  at_risk:         P.red,
+  needs_follow_up: P.amber,
+  needs_proof:     P.steelBlue,
+  on_track:        P.green,
+};
+
+// Phase C filter set. Filter keys match the spec Part 4 list.
+const FILTERS = [
+  { key: 'attention', label: 'Needs attention' },
+  { key: 'evidence',  label: 'Evidence missing' },
+  { key: 'conflicts', label: 'Conflicts' },
+  { key: 'ready',     label: 'Ready' },
+  { key: 'all',       label: 'All' },
+];
+
 function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, onAdd }) {
-  // Sort: critical first, then attention, then safe, then not_started/closed
-  const sorted = useMemo(() => {
-    const rank = { critical: 0, attention: 1, not_started: 2, safe: 3, closed: 4 };
-    return [...vendors]
-      .map(v => ({ v, r: getVendorReadiness(v, event) }))
-      .sort((a, b) => (rank[a.r.level] ?? 9) - (rank[b.r.level] ?? 9))
-      .map(x => x.v);
+  const [filter, setFilter] = useState('attention');
+
+  // Compute accountability for every vendor once. Stable across filter changes.
+  const enriched = useMemo(() => {
+    return (vendors || []).map(v => {
+      const promises = inferPromisesFromVendor(v, event);
+      const acc = quickAccountabilityForVendor(v, event);
+      const next = deriveVendorNextAccountabilityAction(v, event, promises);
+      const readiness = getVendorReadiness(v, event);
+      return { v, promises, acc, next, readiness };
+    });
   }, [vendors, event]);
+
+  // Sort by accountability tier first, then by event-day proximity + issue count.
+  const sortedAll = useMemo(() => {
+    return [...enriched].sort((a, b) => {
+      const tA = ACCOUNTABILITY_RANK[a.acc.tier] ?? 9;
+      const tB = ACCOUNTABILITY_RANK[b.acc.tier] ?? 9;
+      if (tA !== tB) return tA - tB;
+      // Higher open-issue count wins among same tier
+      if ((b.acc.openIssues || 0) !== (a.acc.openIssues || 0)) return (b.acc.openIssues || 0) - (a.acc.openIssues || 0);
+      // More evidence missing wins
+      if ((b.acc.missingProof || 0) !== (a.acc.missingProof || 0)) return (b.acc.missingProof || 0) - (a.acc.missingProof || 0);
+      // Otherwise alphabetic by name
+      return (a.v.name || '').localeCompare(b.v.name || '');
+    });
+  }, [enriched]);
+
+  // Apply current filter.
+  const sorted = useMemo(() => {
+    if (filter === 'all') return sortedAll;
+    if (filter === 'attention') return sortedAll.filter(x => x.acc.tier !== 'on_track');
+    if (filter === 'ready')     return sortedAll.filter(x => x.acc.tier === 'on_track');
+    if (filter === 'evidence')  return sortedAll.filter(x => (x.acc.missingProof || 0) > 0);
+    if (filter === 'conflicts') return sortedAll.filter(x => (x.acc.tier === 'at_risk' || x.acc.tier === 'missed_promise'));
+    return sortedAll;
+  }, [sortedAll, filter]);
+
+  // Top-of-list "Start with this vendor" — surfaces the single highest
+  // priority vendor when anyone is not on_track. Visible only on the
+  // "Needs attention" filter so it doesn't distract from Ready/All views.
+  const startWith = useMemo(() => {
+    if (filter !== 'attention') return null;
+    const top = sortedAll.find(x => x.acc.tier !== 'on_track');
+    if (!top) return null;
+    return top;
+  }, [filter, sortedAll]);
 
   return (
     <div style={{
@@ -407,11 +742,13 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
           fontSize: 10, fontWeight: type.weight.medium,
           letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF,
         }}>
-          {vendors.length} VENDORS · Ranked by risk
+          {vendors.length} VENDORS · Ranked by accountability
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           {onAdd && (
             <button
+              data-testid="add-vendor-btn"
+              aria-label="Add vendor"
               onClick={onAdd}
               style={{
                 background: P.green, border: 'none',
@@ -424,36 +761,137 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
               + Add
             </button>
           )}
-          {onFilter && (
-            <button
-              onClick={onFilter}
-              style={{
-                background: 'none', border: `1px solid ${P.borderSubtle}`,
-                borderRadius: radius.sm, cursor: 'pointer',
-                fontSize: 10, fontWeight: type.weight.medium,
-                color: P.textSecondary, fontFamily: FF,
-                padding: '2px 8px',
-              }}
-            >
-              Filter
-            </button>
-          )}
         </div>
+      </div>
+      {/* Sprint 61.B — filter chips. 44px touch targets on mobile. */}
+      <div style={{
+        flexShrink: 0, display: 'flex', gap: 6, padding: '8px 10px',
+        borderBottom: `1px solid ${P.borderSubtle}`, flexWrap: 'wrap',
+        background: P.base,
+      }}>
+        {FILTERS.map(f => {
+          const active = filter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              aria-pressed={active}
+              style={{
+                background: active ? `${P.steelBlue}26` : 'transparent',
+                border: `1px solid ${active ? P.steelBlue : P.borderSubtle}`,
+                borderRadius: 999, cursor: 'pointer',
+                color: active ? P.textPrimary : P.textSecondary,
+                fontFamily: FF, fontSize: 11, fontWeight: 700,
+                letterSpacing: '0.04em',
+                padding: isMobile ? '10px 12px' : '4px 10px',
+                minHeight: isMobile ? 44 : 28,
+                lineHeight: 1,
+              }}>
+              {f.label}
+            </button>
+          );
+        })}
       </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {vendors.length === 0 ? (
-          <div style={{ padding: space[7], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
-            No vendors added yet
+          // Sprint 60.L EmptyStateCard pattern (inline, using P tokens).
+          // Title / body / primary CTA so the user understands what
+          // belongs here and what to do next.
+          <div style={{ padding: `${space[5]}px ${space[5]}px ${space[6]}px`, fontFamily: FF }}>
+            <div style={{
+              padding: '20px 18px 22px',
+              background: P.base,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10,
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{
+                fontSize: 12, fontWeight: type.weight.semibold,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: P.textTertiary,
+              }}>Vendors</div>
+              <div style={{
+                fontSize: 18, fontWeight: type.weight.semibold,
+                letterSpacing: '-0.015em', lineHeight: 1.25,
+                color: P.textPrimary,
+              }}>Add the people helping with this event.</div>
+              <div style={{ fontSize: 14.5, color: P.textSecondary, lineHeight: 1.5 }}>
+                Caterers, photographers, venues, DJs, rentals, and anyone else you need to coordinate.
+              </div>
+              <button onClick={onAdd} style={{
+                marginTop: 4,
+                padding: '12px 18px', minHeight: 48,
+                borderRadius: radius.sm, border: 'none',
+                background: P.green, color: '#070809',
+                fontSize: 16, fontWeight: type.weight.semibold,
+                fontFamily: FF, cursor: 'pointer',
+                alignSelf: 'flex-start',
+              }}>Add a vendor</button>
+            </div>
           </div>
-        ) : sorted.map(v => (
-          <VendorRow
-            key={v.id || v.name}
-            vendor={v}
-            event={event}
-            isSelected={selected?.id === v.id || (selected && !v.id && selected.name === v.name)}
-            onSelect={onSelect}
-          />
-        ))}
+        ) : (
+          <>
+            {/* Sprint 61.B — Start with this vendor card. Steel-blue rail,
+                states the top vendor by name, the top reason, and a
+                steel-blue Open vendor CTA. Only when something is below
+                on_track AND the user is on the Needs attention filter. */}
+            {startWith && (
+              <div style={{
+                margin: '10px 10px 4px',
+                padding: '12px 14px',
+                background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0d 100%)`,
+                border: `1px solid ${P.steelBlue}3d`,
+                borderLeft: `3px solid ${P.steelBlue}`,
+                borderRadius: 10,
+                display: 'flex', flexDirection: 'column', gap: 6,
+                fontFamily: FF,
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
+                  Start with this vendor
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
+                  {startWith.v.name}
+                </div>
+                <div style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.45 }}>
+                  {startWith.acc.reasons[0] || `${accountabilityLabel(startWith.acc.tier)} — open the vendor to review.`}
+                </div>
+                <button
+                  onClick={() => onSelect(startWith.v)}
+                  style={{
+                    alignSelf: 'flex-start', marginTop: 2,
+                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                    borderRadius: 8, padding: '8px 14px',
+                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
+                    letterSpacing: '0.02em',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
+                  }}>
+                  {startWith.next?.kind === 'resolve' || startWith.next?.kind === 'follow_up' ? 'Open follow-up →' : 'Open vendor →'}
+                </button>
+              </div>
+            )}
+            {sorted.length === 0 ? (
+              <div style={{
+                padding: '20px 16px', textAlign: 'center',
+                color: P.textTertiary, fontSize: 13, fontFamily: FF,
+              }}>
+                {filter === 'attention' ? 'Nothing needs attention right now — every vendor is on track.'
+                  : filter === 'ready' ? 'No vendors on track yet — start by confirming the highest-priority promise.'
+                  : 'No vendors match this filter.'}
+              </div>
+            ) : sorted.map(x => (
+              <VendorRow
+                key={x.v.id || x.v.name}
+                vendor={x.v}
+                event={event}
+                accountability={x.acc}
+                nextAction={x.next}
+                isSelected={selected?.id === x.v.id || (selected && !x.v.id && selected.name === x.v.name)}
+                onSelect={onSelect}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -534,10 +972,16 @@ function ReachActions({ vendor }) {
 // contract handling exposes URL paste + send-for-signature, arrival time
 // shows an inline time picker. No more "mark this happened" without giving
 // the planner a real way to make it happen.
-function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId }) {
+function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId, expandedKind: extExpandedKind, setExpandedKind: extSetExpandedKind }) {
   const step = useMemo(() => getActionableNextStep(nextAction, vendor), [nextAction, vendor]);
   const [doneState, setDoneState] = useState(null);
-  const [expandedKind, setExpandedKind] = useState(null); // 'payment' | 'contract' | 'arrival'
+  // Sprint 60.B: when VendorDetail drives expandedKind from outside (e.g.
+  // section-focus route from Day-of Missing arrival), use the external
+  // state. Otherwise fall back to local state so call sites that don't
+  // pass the prop keep the pre-60.B behavior.
+  const [localExpandedKind, setLocalExpandedKind] = useState(null);
+  const expandedKind     = extSetExpandedKind ? extExpandedKind   : localExpandedKind;
+  const setExpandedKind  = extSetExpandedKind ? extSetExpandedKind : setLocalExpandedKind;
   const isDone = doneState && Date.now() < doneState.until;
 
   const flashDone = (label) => {
@@ -662,7 +1106,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
             flashDone('Marked received');
           }}
           onLogSentForSignature={() => {
-            if (onAddLog) onAddLog(vendor.id, `Contract sent to ${vendor.contact || vendor.name} for signature.`);
+            if (onAddLog) onAddLog(vendor.id, `Emailed ${vendor.contact || vendor.name} to request the signed contract.`);
             flashDone('Logged');
           }}
           onUploadFile={({ storagePath, fileName, fileSize, signedUrl }) => {
@@ -787,8 +1231,8 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
               onClick={() => copy(link.slice(6), 'zelle-dest')}
               style={{
                 padding: '8px 14px', borderRadius: radius.sm,
-                background: accent, color: '#070809', border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: type.weight.semibold,
+                background: `${accent}22`, color: accent, border: `1px solid ${accent}66`, cursor: 'pointer',
+                fontSize: 11, fontWeight: type.weight.bold,
                 letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
               }}
             >
@@ -953,11 +1397,11 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
         background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
       }}>
         <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
-          Send for signature
+          Email vendor about contract
         </div>
         <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
           {mailtoHref
-            ? 'Opens your mail client with a templated message to the vendor contact.'
+            ? 'Opens your mail client with a templated request for the signed contract. This is an email, not an e-signature flow.'
             : `No email on file for ${vendor.name} — add one in the editor to use this option.`}
         </div>
         <div style={{ display: 'flex', gap: space[2] }}>
@@ -1132,7 +1576,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
 }
 
 // 1 — Command Header
-function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId }) {
+function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId, expandedKind, setExpandedKind }) {
   const accent = levelColor(readiness.level);
   // Sprint 56 tone calm-down: "Vendor Cockpit" → "Vendor details". Internal
   // code references still call this the cockpit (the structural pattern); the
@@ -1220,6 +1664,8 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
             onEdit={onEdit}
             eventId={event?.id}
             userId={userId}
+            expandedKind={expandedKind}
+            setExpandedKind={setExpandedKind}
           />
         )}
       </div>
@@ -1240,10 +1686,18 @@ const CATEGORY_LABELS = {
   closeout: 'Wrap-up',
 };
 
-function ReadinessSnapshot({ challenges }) {
+function ReadinessSnapshot({ challenges, isOpen, onToggle }) {
+  // Sprint 60.C: collapsible. Summary shows attention/critical counts so a
+  // collapsed snapshot still surfaces signal.
+  const cats = challenges ? Object.values(challenges) : [];
+  const critical = cats.filter(c => c && c.level === 'critical').length;
+  const attention = cats.filter(c => c && c.level === 'attention').length;
+  const summary = critical > 0 ? `${critical} critical${attention > 0 ? ` · ${attention} attention` : ''}`
+    : attention > 0 ? `${attention} need${attention === 1 ? 's' : ''} attention`
+    : 'All categories OK';
+  const summaryColor = critical > 0 ? P.red : attention > 0 ? P.amber : P.green;
   return (
-    <div>
-      <SectionHeading label="Readiness Snapshot" hint="9 categories" />
+    <CollapsibleSection label="Where this vendor stands" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
@@ -1276,116 +1730,257 @@ function ReadinessSnapshot({ challenges }) {
           );
         })}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 3/4/5 — Phase sections (Planning / Day-Of / Closeout)
-function PhaseSection({ label, hint, rows }) {
+// Vendor Readiness Pass: each phase is now collapsible. Planning is open
+// by default (most relevant before event day); Day-Of + Wrap Up collapse
+// to keep the cockpit scrollable on long vendor records. Items needing
+// attention show in the collapsed-state count so the planner still sees
+// signal.
+function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const attentionCount = rows.filter(r => r.status === 'missing' || r.status === 'attention' || r.status === 'pending').length;
+  const collapsedHint = !isOpen && attentionCount > 0
+    ? `${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+    : hint;
   return (
     <div>
-      <SectionHeading label={label} hint={hint} />
-      <div style={{
-        background: P.card, border: `1px solid ${P.borderSubtle}`,
-        borderRadius: radius.md, padding: `0 ${space[5]}px`,
-      }}>
-        {rows.map((r, i) => (
-          <StatusRow
-            key={r.key}
-            label={r.label}
-            value={r.value}
-            status={r.status}
-            consequence={r.consequence}
-          />
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(o => !o)}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 800,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.steelBlue, fontFamily: FF,
+          }}>{label}</span>
+        </span>
+        {collapsedHint && (
+          <span style={{
+            fontSize: 10,
+            color: !isOpen && attentionCount > 0 ? P.amber : P.textTertiary,
+            fontFamily: FF, fontStyle: 'italic',
+          }}>
+            {collapsedHint}
+          </span>
+        )}
+      </button>
+      {isOpen && (
+        <div style={{
+          background: P.card, border: `1px solid ${P.borderSubtle}`,
+          borderRadius: radius.md, padding: `0 ${space[5]}px`,
+        }}>
+          {rows.map((r, i) => {
+            // Vendor Readiness v2: every actionable row routes via
+            // onAddressRow. The parent decides where each row.key goes
+            // (most route to onEditVendor). 'not_tracked' rows stay
+            // inert because the data model has no field to edit yet.
+            const canAddress = r.status !== 'not_tracked' && Boolean(onAddressRow);
+            return (
+              <StatusRow
+                key={r.key}
+                label={r.label}
+                value={r.value}
+                status={r.status}
+                consequence={r.consequence}
+                onAddress={canAddress ? () => onAddressRow(r) : undefined}
+                addressLabel={canAddress ? `Address: ${r.label}` : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // 6 — Required Questions
-function RequiredQuestionsSection({ vendor, questions }) {
+// Vendor Readiness Pass: collapsible. Open by default when any question is
+// unanswered (signal-first); collapses to a one-line "All answered" summary
+// once the vendor's checklist is complete.
+function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
   const cat = vendor.category || 'this vendor';
   const open = questions.filter(q => q.status !== 'answered').length;
+  const [isOpen, setIsOpen] = useState(open > 0);
   return (
     <div>
-      <SectionHeading
-        label={`Required Questions · ${cat}`}
-        hint={open > 0 ? `${open} unanswered` : 'All answered'}
-      />
-      <div style={{
-        background: P.card, border: `1px solid ${P.borderSubtle}`,
-        borderRadius: radius.md, padding: `0 ${space[5]}px`,
-      }}>
-        {questions.map(q => {
-          const status = q.status === 'answered' ? 'done' : (q.status === 'missing' ? 'missing' : 'not_tracked');
-          return (
-            <StatusRow
-              key={q.key}
-              label={q.question}
-              value={q.value || (q.status === 'answered' ? 'Confirmed' : 'Not tracked yet')}
-              status={status}
-              consequence={q.consequence}
-            />
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(o => !o)}
+        aria-expanded={isOpen}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 8, marginTop: space[5], marginBottom: space[3],
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+          textAlign: 'left', fontFamily: FF,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 800,
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            color: P.steelBlue, fontFamily: FF,
+          }}>{`Required Questions · ${cat}`}</span>
+        </span>
+        <span style={{
+          fontSize: 10,
+          color: open > 0 ? P.amber : P.textTertiary,
+          fontFamily: FF, fontStyle: 'italic',
+        }}>
+          {open > 0 ? `${open} unanswered` : 'All answered'}
+        </span>
+      </button>
+      {isOpen && (
+        <div style={{
+          background: P.card, border: `1px solid ${P.borderSubtle}`,
+          borderRadius: radius.md, padding: `0 ${space[5]}px`,
+        }}>
+          {questions.map(q => {
+            const status = q.status === 'answered' ? 'done' : (q.status === 'missing' ? 'missing' : 'not_tracked');
+            // Every required question that has a real backing field routes
+            // to the vendor edit modal where the planner can answer it.
+            const canAddress = status !== 'not_tracked' && Boolean(onAddressRow);
+            return (
+              <StatusRow
+                key={q.key}
+                label={q.question}
+                value={q.value || (q.status === 'answered' ? 'Confirmed' : 'Not tracked yet')}
+                status={status}
+                consequence={q.consequence}
+                onAddress={canAddress ? () => onAddressRow({ key: q.key, kind: 'question' }) : undefined}
+                addressLabel={canAddress ? `Answer: ${q.question}` : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // 7 — Linked Event Work
-function LinkedWorkSection({ linked }) {
+// Vendor Readiness Pass: every linked item is now a button that routes to
+// its canonical L4 tab (timeline → Run of Show, decisions → Decisions with
+// decisionId, tasks → Planning with taskId, communication → Communication
+// with commId, budget → Budget, documents → Documents). Each of the 6
+// sub-cards is collapsible so a vendor with lots of linked work doesn't
+// dominate the scroll. Defaults: any group with items is open; empty
+// groups stay collapsed.
+function LinkedWorkSection({ linked, onRouteToLinked }) {
   const groups = [
-    { key: 'timeline', label: 'Timeline / Run-of-Show', empty: 'No linked timeline items yet.' },
-    { key: 'decisions', label: 'Decisions / Approvals', empty: 'No linked decisions yet.' },
-    { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.' },
-    { key: 'communication', label: 'Communication', empty: 'No linked messages yet.' },
-    { key: 'budget', label: 'Budget Items', empty: 'No linked budget items yet.' },
-    { key: 'documents', label: 'Linked Documents', empty: 'No linked documents yet.' },
+    { key: 'timeline', label: 'Timeline / Run-of-Show', empty: 'No linked timeline items yet.', tab: 'Run of Show' },
+    { key: 'decisions', label: 'Decisions / Approvals', empty: 'No linked decisions yet.', tab: 'Decisions' },
+    { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.', tab: 'Planning Tasks' },
+    { key: 'communication', label: 'Communication', empty: 'No linked messages yet.', tab: 'Communication' },
+    { key: 'budget', label: 'Budget Items', empty: 'No linked budget items yet.', tab: 'Budget' },
+    { key: 'documents', label: 'Linked files', empty: 'No linked files yet.', tab: 'Documents' },
   ];
+  // Default collapse state — groups with items are open; empty groups are
+  // collapsed so the cockpit shows the actionable signal first.
+  const [openKeys, setOpenKeys] = useState(() => {
+    const initial = new Set();
+    groups.forEach(g => { if ((linked[g.key] || []).length > 0) initial.add(g.key); });
+    return initial;
+  });
+  const toggle = (k) => setOpenKeys(prev => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
   return (
     <div>
       <SectionHeading label="Linked Event Work" hint="What depends on this vendor" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: space[3] }}>
         {groups.map(g => {
           const items = linked[g.key] || [];
+          const isOpen = openKeys.has(g.key);
           return (
             <div key={g.key} style={{
               background: P.card, border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.md, padding: `${space[3]}px ${space[5]}px`,
               fontFamily: FF,
             }}>
-              <div style={{
-                fontSize: 10, fontWeight: type.weight.semibold,
-                letterSpacing: '0.10em', textTransform: 'uppercase',
-                color: P.textTertiary, marginBottom: 6,
-              }}>
-                {g.label} {items.length > 0 && <span style={{ color: P.textSecondary }}>· {items.length}</span>}
-              </div>
-              {items.length === 0 ? (
-                <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic' }}>
+              <button
+                type="button"
+                onClick={() => toggle(g.key)}
+                aria-expanded={isOpen}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  textAlign: 'left', fontFamily: FF,
+                  marginBottom: isOpen ? 6 : 0,
+                }}
+              >
+                <span style={{ color: P.textTertiary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: type.weight.semibold,
+                  letterSpacing: '0.10em', textTransform: 'uppercase',
+                  color: P.textTertiary,
+                }}>
+                  {g.label} {items.length > 0 && <span style={{ color: P.textSecondary }}>· {items.length}</span>}
+                </span>
+              </button>
+              {isOpen && (items.length === 0 ? (
+                <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic', paddingLeft: 18 }}>
                   {g.empty}
                 </div>
               ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-                  {items.map((it, i) => (
-                    <li key={it.id || i} style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 12,
-                      padding: '3px 0', fontSize: 12, color: P.textPrimary,
-                    }}>
-                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {it.label}
-                      </span>
-                      {it.note && (
-                        <span style={{ color: P.textTertiary, flexShrink: 0 }}>
-                          {it.note}
-                        </span>
-                      )}
-                    </li>
-                  ))}
+                <ul style={{ margin: 0, padding: '0 0 0 18px', listStyle: 'none' }}>
+                  {items.map((it, i) => {
+                    const canRoute = Boolean(onRouteToLinked);
+                    const handleRoute = () => {
+                      if (!canRoute) return;
+                      onRouteToLinked(g.tab, it.id || null);
+                    };
+                    if (!canRoute) {
+                      return (
+                        <li key={it.id || i} style={{
+                          display: 'flex', justifyContent: 'space-between', gap: 12,
+                          padding: '3px 0', fontSize: 12, color: P.textPrimary,
+                        }}>
+                          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0 }}>{it.note}</span>}
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={it.id || i} style={{ padding: 0 }}>
+                        <button
+                          type="button"
+                          onClick={handleRoute}
+                          title={`Open in ${g.tab}`}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            gap: 12, padding: '4px 6px', margin: '1px -6px',
+                            background: 'none', border: '1px solid transparent', borderRadius: radius.sm,
+                            cursor: 'pointer', fontFamily: FF, textAlign: 'left',
+                            fontSize: 12, color: P.textPrimary, transition: 'all 0.1s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '55'; e.currentTarget.style.borderColor = P.borderSubtle; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent'; }}
+                        >
+                          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
+                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0, fontSize: 11 }}>{it.note}</span>}
+                          <span style={{ color: P.textTertiary, fontSize: 11, flexShrink: 0 }}>→</span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
-              )}
+              ))}
             </div>
           );
         })}
@@ -1415,7 +2010,7 @@ async function extractDocumentAI({ contractUrl, vendorName, eventName, documentT
 }
 
 // 8 — Documents
-function DocumentsSection({ vendor, event }) {
+function DocumentsSection({ vendor, event, isOpen, onToggle }) {
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const hasContractFile = Boolean(vendor.contractUrl || vendor.contractStoragePath);
   const [extracting, setExtracting] = useState(false);
@@ -1442,9 +2037,17 @@ function DocumentsSection({ vendor, event }) {
     ? 'File attached — mark signed once you confirm both parties have signed.'
     : undefined;
 
+  // Sprint 60.C: collapsible. Summary mirrors the contract status so the
+  // collapsed header still signals "Signed" / "Pending" / "Missing".
+  const summary = contractStatus === 'done' ? 'Signed'
+    : contractStatus === 'attention' ? 'Needs attention'
+    : 'Missing';
+  const summaryColor = contractStatus === 'done' ? P.green
+    : contractStatus === 'attention' ? P.amber
+    : P.red;
+
   return (
-    <div>
-      <SectionHeading label="Documents" />
+    <CollapsibleSection label="Files & contract" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: `0 ${space[5]}px`,
@@ -1572,15 +2175,18 @@ function DocumentsSection({ vendor, event }) {
           </div>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 9 — Notes
-function NotesSection({ vendor }) {
+function NotesSection({ vendor, isOpen, onToggle }) {
+  // Sprint 60.C: collapsible. Closed by default; summary surfaces note
+  // presence so the planner sees signal without expanding.
+  const hasNotes = Boolean(vendor.notes && vendor.notes.trim());
+  const summary = hasNotes ? 'Notes on file' : 'No notes';
   return (
-    <div>
-      <SectionHeading label="Notes" />
+    <CollapsibleSection label="Notes" summary={summary} hintColor={hasNotes ? P.green : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: space[5], minHeight: 80,
@@ -1590,12 +2196,12 @@ function NotesSection({ vendor }) {
       }}>
         {vendor.notes || 'No notes for this vendor.'}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
 // 10 — Activity log (preserves Sprint 50 functionality)
-function ActivityLogSection({ vendor, onAddLog }) {
+function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
   const [draft, setDraft] = useState('');
   const log = Array.isArray(vendor.log) ? vendor.log : [];
   const entries = [...log].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -1616,9 +2222,13 @@ function ActivityLogSection({ vendor, onAddLog }) {
     setDraft('');
   };
 
+  // Sprint 60.C: collapsible. Summary surfaces latest entry's date so the
+  // collapsed header still hints at recency.
+  const latest = feed[0];
+  const summary = feed.length === 0 ? 'No activity yet'
+    : `${feed.length} entr${feed.length === 1 ? 'y' : 'ies'}${latest && latest.date && latest.date !== '—' ? ` · last ${latest.date}` : ''}`;
   return (
-    <div>
-      <SectionHeading label="Activity Log" hint={feed.length > 0 ? `${feed.length} entr${feed.length === 1 ? 'y' : 'ies'}` : undefined} />
+    <CollapsibleSection label="Recent activity" summary={summary} hintColor={feed.length > 0 ? P.textSecondary : P.textTertiary} isOpen={isOpen} onToggle={onToggle}>
       {onAddLog && (
         <div style={{
           background: P.card, border: `1px solid ${P.borderSubtle}`,
@@ -1716,7 +2326,7 @@ function ActivityLogSection({ vendor, onAddLog }) {
           </div>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -1868,7 +2478,7 @@ function CopyableDraft({ text }) {
   );
 }
 
-function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
+function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, onToggle }) {
   const context = useMemo(() => buildVendorCopilotContext(vendor, event), [vendor, event]);
   const rulePreview = useMemo(() => getRuleBasedPreview(context), [context]);
 
@@ -1943,9 +2553,19 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
     setAiLoading(false);
   };
 
+  // Sprint 60.C: collapsible. Summary surfaces preview source so a closed
+  // copilot still shows whether AI is active.
+  const summary = preview.source === 'ai' ? 'AI-enhanced brief ready' : 'Rule-based preview';
   return (
+    <CollapsibleSection
+      label="Quick read"
+      summary={summary}
+      hintColor={preview.source === 'ai' ? P.green : P.textTertiary}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
     <div style={{
-      marginTop: space[5], marginBottom: space[5],
+      marginTop: 0, marginBottom: space[5],
       background: P.card,
       border: `1px solid ${P.borderSubtle}`,
       borderLeft: `2px solid ${preview.source === 'ai' ? P.green : '#3a5a78'}`,
@@ -1964,7 +2584,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
             letterSpacing: '0.16em', textTransform: 'uppercase',
             color: sourceColor, marginBottom: 4,
           }}>
-            Readiness Copilot
+            Quick read
           </div>
           <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>
             {sourceLabel}
@@ -2158,6 +2778,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi }) {
       <CollapsibleList label="Evidence used" items={preview.evidence} />
       <CollapsibleList label="Limitations" items={preview.limitations} />
     </div>
+    </CollapsibleSection>
   );
 }
 
@@ -2182,7 +2803,214 @@ function EmptyLine({ text }) {
 }
 
 // ── Vendor Detail Cockpit (root of detail pane) ─────────────────────────────
-function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId }) {
+// ─── Sprint 60.H: Mobile vendor summary card ─────────────────────────────────
+// Goal: on mobile, the first thing the planner sees on a vendor detail must be
+// "what's wrong with this vendor and what to do about it" — not a wall of
+// readiness sections. This card sits above CommandHeader on mobile only.
+// Reads from existing challenges + nextAction data; no new source of truth.
+function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit }) {
+  const cat = vendor.category || 'Vendor';
+  const status = vendor.status || 'Considering';
+
+  // Top 3 challenges in plain language from the existing intelligence layer.
+  const issues = challenges
+    ? Object.values(challenges)
+        .filter(c => c && (c.level === 'critical' || c.level === 'attention') && c.note)
+        .sort((a, b) => (a.level === 'critical' ? 0 : 1) - (b.level === 'critical' ? 0 : 1))
+        .slice(0, 3)
+    : [];
+
+  // Map next-action sourceCategory → vendor cockpit section key.
+  const sectionByCategory = {
+    financial: 'payment',
+    closeout:  'payment',
+    contract:  'contract',
+    arrival:   'arrival',
+    contact:   'contact',
+    logistics: 'arrival',
+  };
+  const section = sectionByCategory[nextAction?.sourceCategory] || null;
+  const ctaLabel = issues.length > 0 ? 'Fix this first' : null;
+  const looksReady = issues.length === 0;
+  const hasCritical = issues.some(i => i.level === 'critical');
+  const railColor = hasCritical ? P.red : P.amber;
+  const headIssue = issues[0];
+
+  // Sprint 60.Q Vendor mobile fix-first: hero copy matches the locked
+  // system on Home — eyebrow names the state, headline is the plain
+  // truth, body explains why, CTA tells the user what to do, contact
+  // shortcuts sit beneath as quiet honest affordances.
+  const eyebrow = looksReady ? 'LOOKS READY' : hasCritical ? 'FIX FIRST · CRITICAL' : 'FIX FIRST';
+  const headline = looksReady
+    ? `${vendor.name || 'This vendor'} is on track.`
+    : `${vendor.name || 'This vendor'} ${headIssue?.note?.replace(/^[A-Z]/, c => c.toLowerCase()) || 'needs your attention.'}`;
+  const body = looksReady
+    ? 'No critical blockers. Payments are current, contract is in place, arrival is set.'
+    : (issues.length > 1
+        ? `${issues.length} issues found — fix the top item first; the others may resolve downstream.`
+        : 'Other tasks are stuck until this is handled.');
+
+  const telHref  = vendor.phone   ? `tel:${vendor.phone.replace(/\s/g, '')}` : null;
+  const mailHref = vendor.contact ? `mailto:${vendor.contact}` : null;
+  const smsHref  = vendor.phone   ? `sms:${vendor.phone.replace(/\s/g, '')}` : null;
+
+  // Steel-blue gradient stack — mirrors StudioCommandPanel hero in App.js
+  const ctaFill = 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)';
+  const ctaShadow = [
+    'inset 0 1px 0 rgba(255,255,255,0.14)',
+    'inset 0 -1px 0 rgba(0,0,0,0.30)',
+    '0 1px 0 rgba(255,255,255,0.04)',
+    '0 6px 14px rgba(0,0,0,0.40)',
+    '0 18px 36px rgba(0,0,0,0.30)',
+    '0 0 0 1px rgba(193,203,208,0.18)',
+  ].join(', ');
+  const panelRaise = [
+    'inset 0 1px 0 rgba(255,255,255,0.05)',
+    '0 1px 0 rgba(255,255,255,0.02)',
+    '0 4px 10px rgba(0,0,0,0.30)',
+    '0 14px 28px rgba(0,0,0,0.22)',
+  ].join(', ');
+
+  return (
+    <div style={{
+      position: 'relative',
+      margin: `${space[4]}px ${space[5]}px 0`,
+      padding: `${space[4]}px ${space[5]}px ${space[5]}px`,
+      paddingLeft: space[5] + 3, // visual lead for the rail
+      background: P.card,
+      border: `1px solid ${P.borderSubtle}`,
+      borderLeft: `3px solid ${looksReady ? P.green : railColor}`,
+      borderRadius: 14,
+      boxShadow: panelRaise,
+      fontFamily: FF,
+    }}>
+      {/* Top row — eyebrow chip + edit affordance */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
+        <span style={{
+          fontSize: 9.5, fontWeight: type.weight.semibold,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: looksReady ? P.green : railColor,
+          padding: '2px 7px', borderRadius: 4,
+          border: `1px solid ${(looksReady ? P.green : railColor)}55`,
+        }}>
+          {eyebrow}
+        </span>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            aria-label="Edit vendor details"
+            style={{
+              background: 'transparent', border: `1px solid ${P.borderSubtle}`,
+              borderRadius: radius.sm, color: P.textSecondary, fontSize: 11,
+              padding: '4px 10px', cursor: 'pointer', fontFamily: FF, flexShrink: 0,
+            }}
+          >Edit</button>
+        )}
+      </div>
+
+      {/* Headline */}
+      <h2 style={{
+        margin: `${space[3]}px 0 ${space[2]}px`,
+        fontSize: 22, fontWeight: type.weight.bold,
+        letterSpacing: '-0.02em', lineHeight: 1.2,
+        color: P.textPrimary,
+      }}>
+        {headline}
+      </h2>
+
+      {/* Category / status meta */}
+      <div style={{ fontSize: 12, color: P.textTertiary, marginBottom: space[3] }}>
+        {cat} · {status}
+      </div>
+
+      {/* Body — why it matters */}
+      <p style={{
+        margin: `0 0 ${space[4]}px`,
+        fontSize: 14, lineHeight: 1.5,
+        color: P.textSecondary,
+      }}>
+        {body}
+      </p>
+
+      {/* Primary CTA — steel-blue gradient, full-width */}
+      {ctaLabel && onPrimary && (
+        <button
+          onClick={() => onPrimary(section)}
+          style={{
+            width: '100%',
+            minHeight: 54,
+            padding: '14px 18px',
+            borderRadius: 14,
+            border: 'none',
+            cursor: 'pointer',
+            background: ctaFill,
+            color: '#e8edf2',
+            fontSize: 16,
+            fontWeight: type.weight.semibold,
+            fontFamily: FF,
+            letterSpacing: '0.01em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: ctaShadow,
+            textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+          }}
+        >
+          {ctaLabel} <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+        </button>
+      )}
+
+      {/* Contact shortcuts row — small honest icon affordances. Each is a
+          real route (tel:, sms:, mailto:) — disabled state when contact
+          field is missing, never a fake send. */}
+      {(telHref || smsHref || mailHref) && (
+        <div style={{
+          display: 'flex', gap: space[2],
+          marginTop: space[4],
+          paddingTop: space[4],
+          borderTop: `1px solid ${P.borderSubtle}`,
+        }}>
+          {telHref && (
+            <a href={telHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>📞 Call</a>
+          )}
+          {smsHref && (
+            <a href={smsHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>💬 Text</a>
+          )}
+          {mailHref && (
+            <a href={mailHref} style={{
+              flex: 1, textAlign: 'center',
+              padding: '10px 12px',
+              fontSize: 13, fontWeight: type.weight.medium,
+              color: P.textPrimary,
+              background: P.canvas,
+              border: `1px solid ${P.borderSubtle}`,
+              borderRadius: 10, textDecoration: 'none',
+              fontFamily: FF,
+            }}>📧 Email</a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const nextAction = useMemo(() => getVendorNextAction(vendor, event), [vendor, event]);
@@ -2193,46 +3021,187 @@ function VendorDetail({ vendor, event, onEdit, onAddLog, onMarkCatererUpdated, o
   const questions = useMemo(() => getVendorRequiredQuestions(vendor, event), [vendor, event]);
   const linked = useMemo(() => getVendorLinkedWork(vendor, event), [vendor, event]);
 
+  // Sprint 60.B — section-focus state. expandedKind is shared with
+  // NextActionCard so payment/contract/arrival routes from outside the
+  // cockpit can open the right inline panel. flashSection drives a 2-second
+  // amber outline on the target section after focus lands.
+  const [expandedKind, setExpandedKind] = useState(null);
+  const [flashSection, setFlashSection] = useState(null);
+  const scrollContainerRef = useRef(null);
+  const nextActionRef = useRef(null);
+  const documentsRef = useRef(null);
+  const notesRef = useRef(null);
+  const activityRef = useRef(null);
+  const questionsRef = useRef(null);
+
+  // Sprint 60.C — sticky per-vendor collapse state. Smart defaults reflect
+  // signal-first behavior: open the sections that have something the
+  // planner should see immediately, collapse the rest.
+  const challengesCats = challenges ? Object.values(challenges) : [];
+  const hasReadinessSignal = challengesCats.some(c => c && (c.level === 'critical' || c.level === 'attention'));
+  const contractHasIssue = !(vendor.contractSigned === true || vendor.contract_signed === true)
+    || !(vendor.contractUrl || vendor.contractStoragePath);
+  // Sprint 60.H: on mobile, the new MobileVendorSummary card handles the
+  // first-look "what's wrong" signal — so all sections start closed below it.
+  // Desktop keeps the smart-default open behavior so pros see the signal-led
+  // sections without an extra tap.
+  const collapseDefaults = isMobile
+    ? { readinessSnapshot: false, readinessCopilot: false, documents: false, notes: false, activity: false }
+    : { readinessSnapshot: hasReadinessSignal, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
+  const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
+  const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Vendor Readiness v2: address-row router. Status rows from PhaseSection
+  // and RequiredQuestionsSection route through here. For payment / contract /
+  // arrival, we drive the NextActionCard's inline expand. For contact /
+  // scope / vendor-status (no inline panel today), we fall back to the
+  // canonical vendor edit modal.
+  const addressRow = (row) => {
+    const key = row?.key;
+    const targetKind = (key === 'deposit' || key === 'balance' || key === 'payment-overdue') ? 'payment'
+      : (key === 'contract' || key === 'documents') ? 'contract'
+      : (key === 'arrival' || key === 'expectedArrival') ? 'arrival'
+      : null;
+    if (targetKind) {
+      setExpandedKind(targetKind);
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    if (onEdit) onEdit();
+  };
+
+  // Sprint 60.H: MobileVendorSummary primary action — same section-focus
+  // mechanism as addressRow but invoked directly by the summary card's CTA.
+  const summaryPrimary = (section) => {
+    if (section === 'contact') { if (onEdit) onEdit(); return; }
+    if (section === 'payment' || section === 'contract' || section === 'arrival') {
+      setExpandedKind(section);
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current?.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  // Sprint 60.B — react to external section-focus requests (from Budget,
+  // Documents, Day-of arrivals, Home AttentionQueue, CommandCenter NEXT
+  // actions). Re-fires when sectionPing increments so the same section
+  // can be requested twice in a row. Sprint 60.C — also force-open the
+  // sticky-collapse state for the target section so a planner who
+  // previously collapsed it still lands inside an expanded panel.
+  useEffect(() => {
+    if (!openSection) return;
+    if (openSection === 'contact') {
+      if (onEdit) onEdit();
+      return;
+    }
+    if (openSection === 'payment' || openSection === 'contract' || openSection === 'arrival') {
+      setExpandedKind(openSection);
+      // Contract also expands the Documents collapsible so the planner sees
+      // the contract row context after the inline panel.
+      if (openSection === 'contract') {
+        setCollapse(prev => ({ ...prev, documents: true }));
+      }
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    const refMap = { documents: documentsRef, notes: notesRef, activity: activityRef, questions: questionsRef };
+    const collapseKeyMap = { documents: 'documents', notes: 'notes', activity: 'activity' };
+    const collapseKey = collapseKeyMap[openSection];
+    if (collapseKey) setCollapse(prev => ({ ...prev, [collapseKey]: true }));
+    const targetRef = refMap[openSection];
+    if (targetRef && targetRef.current) {
+      setFlashSection(openSection);
+      setTimeout(() => setFlashSection(null), 2000);
+      if (targetRef.current.scrollIntoView) {
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [openSection, sectionPing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper: amber outline wrapper applied to the flashing section.
+  const flashStyle = (key) => flashSection === key ? {
+    boxShadow: `0 0 0 2px ${P.amber}`,
+    borderRadius: radius.md,
+    transition: 'box-shadow 0.18s ease-out',
+  } : { transition: 'box-shadow 0.4s ease-out' };
+
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       background: P.canvas, overflow: 'hidden',
     }}>
-      <CommandHeader
-        vendor={vendor}
-        event={event}
-        readiness={readiness}
-        stage={stage}
-        nextAction={nextAction}
-        onEdit={onEdit}
-        onPatchVendor={onPatchVendor}
-        onAddLog={onAddLog}
-        userId={userId}
-      />
+      <div ref={nextActionRef} style={flashStyle('nextAction')}>
+        <CommandHeader
+          vendor={vendor}
+          event={event}
+          readiness={readiness}
+          stage={stage}
+          nextAction={nextAction}
+          onEdit={onEdit}
+          onPatchVendor={onPatchVendor}
+          onAddLog={onAddLog}
+          userId={userId}
+          expandedKind={expandedKind}
+          setExpandedKind={setExpandedKind}
+        />
+      </div>
 
-      <div style={{
+      <div ref={scrollContainerRef} style={{
         flex: 1, overflowY: 'auto',
         padding: `${space[2]}px ${space[6]}px ${space[7]}px`,
       }}>
+        {isMobile && (
+          <MobileVendorSummary
+            vendor={vendor}
+            nextAction={nextAction}
+            challenges={challenges}
+            onPrimary={summaryPrimary}
+            onEdit={onEdit}
+          />
+        )}
         <CatererDriftBanner vendor={vendor} event={event} onMarkCatererUpdated={onMarkCatererUpdated} />
 
         <ReadinessCopilotSection
           vendor={vendor} event={event}
           aiAvailable={aiAvailable}
           onAskAi={onAskAi}
+          isOpen={collapse.readinessCopilot}
+          onToggle={() => toggle('readinessCopilot')}
         />
 
-        <ReadinessSnapshot challenges={challenges} />
+        <ReadinessSnapshot
+          challenges={challenges}
+          isOpen={collapse.readinessSnapshot}
+          onToggle={() => toggle('readinessSnapshot')}
+        />
 
-        <PhaseSection label="Planning" hint="Before the event" rows={planning} />
-        <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} />
-        <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} />
+        <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={!isMobile} onAddressRow={addressRow} />
+        <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} defaultOpen={false} onAddressRow={addressRow} />
+        <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} defaultOpen={false} onAddressRow={addressRow} />
 
-        <RequiredQuestionsSection vendor={vendor} questions={questions} />
-        <LinkedWorkSection linked={linked} />
-        <DocumentsSection vendor={vendor} event={event} />
-        <NotesSection vendor={vendor} />
-        <ActivityLogSection vendor={vendor} onAddLog={onAddLog} />
+        <div ref={questionsRef} style={flashStyle('questions')}>
+          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} />
+        </div>
+        <LinkedWorkSection linked={linked} onRouteToLinked={onRouteToLinked} />
+        <div ref={documentsRef} style={flashStyle('documents')}>
+          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')} />
+        </div>
+        <div ref={notesRef} style={flashStyle('notes')}>
+          <NotesSection vendor={vendor} isOpen={collapse.notes} onToggle={() => toggle('notes')} />
+        </div>
+        <div ref={activityRef} style={flashStyle('activity')}>
+          <ActivityLogSection vendor={vendor} onAddLog={onAddLog} isOpen={collapse.activity} onToggle={() => toggle('activity')} />
+        </div>
       </div>
     </div>
   );
@@ -2266,6 +3235,9 @@ function NoSelection({ count }) {
 export default function VendorPlanningWorkspace({
   event, isMobile,
   openId,
+  // Sprint 60.B: section focus inside the vendor cockpit.
+  openSection = null,
+  sectionPing = 0,
   onBack,
   onEditVendor,
   onAddVendor,
@@ -2282,10 +3254,17 @@ export default function VendorPlanningWorkspace({
   // label, deterministic output).
   aiAvailable = false,
   onAskAi = null,
+  // Vendor Readiness Pass: route a linked item (timeline/decision/task/
+  // communication/budget/document) back to its canonical L4 tab. The
+  // caller maps category → tab and forwards an optional item id.
+  onRouteToLinked = null,
 }) {
   const auth = useContext(AuthCtx);
   const userId = auth?.user?.id || 'anon';
   const vendors = useMemo(() => event.vendors || [], [event.vendors]);
+  // Sprint 61.C Phase D — event-level conflict detection. Pure function;
+  // recomputes whenever vendors/ros/guests/budget change.
+  const eventConflicts = useMemo(() => deriveVendorPromiseConflicts(event, []), [event]);
 
   const initialSelected = useMemo(() => {
     if (openId) {
@@ -2360,6 +3339,7 @@ export default function VendorPlanningWorkspace({
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         {workspaceHeader}
         <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
+        <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
         {mobileView === 'list' ? (
           <VendorList
             vendors={vendors}
@@ -2388,6 +3368,7 @@ export default function VendorPlanningWorkspace({
             {selected ? (
               <VendorDetail
                 vendor={selected} event={event}
+                isMobile={true}
                 onEdit={onEditVendor ? () => onEditVendor(selected) : undefined}
                 onAddLog={onAddLog}
                 onMarkCatererUpdated={onMarkCatererUpdated}
@@ -2395,6 +3376,9 @@ export default function VendorPlanningWorkspace({
                 aiAvailable={aiAvailable}
                 onAskAi={onAskAi}
                 userId={userId}
+                onRouteToLinked={onRouteToLinked}
+                openSection={openSection}
+                sectionPing={sectionPing}
               />
             ) : (
               <NoSelection count={vendors.length} />
@@ -2409,6 +3393,7 @@ export default function VendorPlanningWorkspace({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {workspaceHeader}
       <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
+      <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <VendorList
           vendors={vendors}
@@ -2427,6 +3412,9 @@ export default function VendorPlanningWorkspace({
             onPatchVendor={onPatchVendor}
             aiAvailable={aiAvailable}
             onAskAi={onAskAi}
+            onRouteToLinked={onRouteToLinked}
+            openSection={openSection}
+            sectionPing={sectionPing}
           />
         ) : (
           <NoSelection count={vendors.length} />

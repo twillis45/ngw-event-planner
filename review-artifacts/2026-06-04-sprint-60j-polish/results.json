@@ -1,0 +1,30 @@
+{
+  "mobile": {
+    "pipeline_mobile": {
+      "has_friendly_new_leads": true,
+      "has_friendly_planning_offer": true,
+      "has_friendly_booked": true,
+      "has_friendly_waiting_pay": true,
+      "has_friendly_active": true,
+      "has_friendly_done": true,
+      "canonical_INQUIRY": 1,
+      "canonical_PROPOSAL": 1,
+      "canonical_CONTRACTED": 1,
+      "chip_count_with_arialabel": 6,
+      "min_chip_height": 50,
+      "max_chip_height": 50
+    },
+    "vendor_section_rename": {
+      "has_files_and_contract": true,
+      "old_documents_gone": true
+    }
+  },
+  "desktop": {
+    "pipeline_desktop_canonical_columns": {
+      "has_canonical_PROPOSAL": true,
+      "has_canonical_CONTRACTED": true,
+      "has_canonical_DEPOSIT": true,
+      "has_canonical_ACTIVE": true
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "viewport": {
+    "w": 390,
+    "h": 844
+  },
+  "body_scrollW": 390,
+  "body_scrollH": 2086,
+  "above_fold_sections": [
+    {
+      "tag": "DIV",
+      "role": "",
+      "top": 0,
+      "height": 2086,
+      "text": "Skip to main content AUTH BYPASS \u00b7 DEV ONLY NGW EVENT BOSS Home P Complete your "
+    }
+  ],
+  "hero_signals": {
+    "panel_top": 241,
+    "panel_height": 279,
+    "tag_text": "WHAT NEEDS YOU TODAY \u00b7 CRITICAL",
+    "tag_fontSize": 9.5,
+    "h2_text": "Start here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.",
+    "h2_fontSize": 20,
+    "p_text": "\"Send formal invitations\" \u2014 Overdue 20d. Other tasks are stuck until this is handled.",
+    "p_fontSize": 12.5,
+    "primary_label": "Open Todd & Sarah's Wedding\n\u2192",
+    "primary_fontSize": 12.5,
+    "secondary_label": "View all 41 attention items",
+    "secondary_fontSize": 12
+  },
+  "font_sizes_above_fold": {
+    "9": 1,
+    "10": 3,
+    "11": 14,
+    "12": 8,
+    "13": 7,
+    "18": 1,
+    "20": 2
+  },
+  "sub12_count_above_fold": 18,
+  "screenshot": "01_audit_home_mobile.png"
+}

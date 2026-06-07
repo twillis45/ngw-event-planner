@@ -1,0 +1,196 @@
+{
+  "390_mobile": {
+    "bubbles": {
+      "bubbleCount": 8,
+      "samples": [
+        {
+          "text": "Hi Sarah & Todd! Wanted to loop in on the final guest count.",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 106,
+          "width": 250
+        },
+        {
+          "text": "Following up on the guest count \u2014 I need a response this wee",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 106,
+          "width": 250
+        },
+        {
+          "text": "Floral vision board approval \u2014 Wild Bloom Florals\nPlease rev",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 103,
+          "width": 253
+        },
+        {
+          "text": "One more thing \u2014 the seating chart draft is ready for your r",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 106,
+          "width": 250
+        },
+        {
+          "text": "Hi! Wanted to confirm we got your update \u2014 looks great. Quic",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 34,
+          "width": 250
+        },
+        {
+          "text": "Hi! Wanted to confirm we got your update \u2014 looks great. Quic",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 34,
+          "width": 250
+        },
+        {
+          "text": "Also \u2014 please pull the floral approval together by end of we",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 34,
+          "width": 250
+        },
+        {
+          "text": "Also \u2014 please pull the floral approval together by end of we",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 34,
+          "width": 250
+        }
+      ]
+    },
+    "errors": [
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ]
+    ]
+  },
+  "1440_desktop": {
+    "bubbles": {
+      "bubbleCount": 8,
+      "samples": [
+        {
+          "text": "Hi Sarah & Todd! Wanted to loop in on the final guest count.",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 702,
+          "width": 402
+        },
+        {
+          "text": "Following up on the guest count \u2014 I need a response this wee",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 702,
+          "width": 402
+        },
+        {
+          "text": "Floral vision board approval \u2014 Wild Bloom Florals\nPlease rev",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 699,
+          "width": 405
+        },
+        {
+          "text": "One more thing \u2014 the seating chart draft is ready for your r",
+          "parent_alignItems": "flex-end",
+          "bg": "linear-gradient(rgb(42, 56, 69) 0%, rgb(31, 42, 53) 100%)",
+          "left": 702,
+          "width": 402
+        },
+        {
+          "text": "Hi! Wanted to confirm we got your update \u2014 looks great. Quic",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 566,
+          "width": 402
+        },
+        {
+          "text": "Hi! Wanted to confirm we got your update \u2014 looks great. Quic",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 566,
+          "width": 402
+        },
+        {
+          "text": "Also \u2014 please pull the floral approval together by end of we",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 566,
+          "width": 402
+        },
+        {
+          "text": "Also \u2014 please pull the floral approval together by end of we",
+          "parent_alignItems": "flex-start",
+          "bg": "none",
+          "left": 566,
+          "width": 402
+        }
+      ]
+    },
+    "errors": [
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ],
+      [
+        "console",
+        "error: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may"
+      ]
+    ]
+  }
+}

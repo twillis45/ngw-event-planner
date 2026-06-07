@@ -1,0 +1,122 @@
+{
+  "task_modal_390": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "tab_clicked": true,
+    "row_clicked": false,
+    "errors": 0
+  },
+  "task_modal_430": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "tab_clicked": true,
+    "row_clicked": false,
+    "errors": 0
+  },
+  "task_modal_1440": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": false,
+    "errors": 0
+  },
+  "guest_modal_390": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": false,
+    "errors": 0
+  },
+  "guest_modal_430": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": false,
+    "errors": 0
+  },
+  "guest_modal_1440": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "budget_modal_390": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "tab_clicked": true,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "budget_modal_430": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "tab_clicked": true,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "budget_modal_1440": {
+    "truth_present": true,
+    "modal_visible": true,
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "tab_clicked": true,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "ros_modal_390": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 390,
+    "viewportW": 390,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "ros_modal_430": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 430,
+    "viewportW": 430,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": true,
+    "errors": 0
+  },
+  "ros_modal_1440": {
+    "truth_present": false,
+    "modal_visible": false,
+    "scrollW": 1440,
+    "viewportW": 1440,
+    "overflow": false,
+    "tab_clicked": false,
+    "row_clicked": true,
+    "errors": 0
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "390_mobile": {
+    "name": "390_mobile",
+    "size": "390x844",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_390_mobile_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_390_mobile_pipeline.png"
+    ],
+    "nav_error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3300/ngw-event-planner\", waiting until \"networkidle\"\n",
+    "pipeline_nav_items": 0,
+    "pipeline_clicked": false,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:30:49.458Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nHome\nP\nComplete your studio setup \u2014 0/3\n\u00b7\nStudio name\n\u00b7\nYour name\n\u00b7\nContact info\nOpen Settings\nDEMO\nYou're exploring with sample data. Clear it when you're ready to start your real workspace.\nClear sample data\nWHAT NEEDS YOU TODAY \u00b7 CRITICAL\nStart here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.\n\n\"Send formal invitations\" \u2014 Overdue 20d. Other surfaces won't move until this clears.\n\nOpen Todd & Sarah's Wedding\n\u2192\nView all 41 attention items\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no respons"
+  },
+  "430_phone_large": {
+    "name": "430_phone_large",
+    "size": "430x932",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_430_phone_large_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_430_phone_large_pipeline.png"
+    ],
+    "pipeline_nav_items": 0,
+    "pipeline_clicked": false,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:31:22.340Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nHome\nP\nComplete your studio setup \u2014 0/3\n\u00b7\nStudio name\n\u00b7\nYour name\n\u00b7\nContact info\nOpen Settings\nDEMO\nYou're exploring with sample data. Clear it when you're ready to start your real workspace.\nClear sample data\nWHAT NEEDS YOU TODAY \u00b7 CRITICAL\nStart here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.\n\n\"Send formal invitations\" \u2014 Overdue 20d. Other surfaces won't move until this clears.\n\nOpen Todd & Sarah's Wedding\n\u2192\nView all 41 attention items\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no respons"
+  },
+  "768_tablet_port": {
+    "name": "768_tablet_port",
+    "size": "768x1024",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_768_tablet_port_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_768_tablet_port_pipeline.png"
+    ],
+    "pipeline_nav_items": 0,
+    "pipeline_clicked": false,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:31:35.286Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW EVENT BOSS\nHome\nP\nComplete your studio setup \u2014 0/3\n\u00b7\nStudio name\n\u00b7\nYour name\n\u00b7\nContact info\nOpen Settings\nDEMO\nYou're exploring with sample data. Clear it when you're ready to start your real workspace.\nClear sample data\nWHAT NEEDS YOU TODAY \u00b7 CRITICAL\nStart here: Todd & Sarah's Wedding has 2 unresolved blockers before event day.\n\n\"Send formal invitations\" \u2014 Overdue 20d. Other surfaces won't move until this clears.\n\nOpen Todd & Sarah's Wedding\n\u2192\nView all 41 attention items\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no respons"
+  },
+  "1024_tablet_land": {
+    "name": "1024_tablet_land",
+    "size": "1024x768",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_1024_tablet_land_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_1024_tablet_land_pipeline.png"
+    ],
+    "pipeline_nav_items": 1,
+    "pipeline_clicked": true,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:31:39.793Z",
+      "firstPipelineViewedAt": "2026-06-03T20:31:43.260Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW Event Boss\nHome\nPipeline\nCalendar\nAll Events\nClients\nSettings\nNew Event\nNew Client\nP\nNGW Event Boss v1.5.0\nPipeline\n\nIntake \u2192 planning \u2192 contract \u2192 deposit \u2192 booked.\n\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n581h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n539h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & F"
+  },
+  "1440_desktop": {
+    "name": "1440_desktop",
+    "size": "1440x900",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_1440_desktop_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_1440_desktop_pipeline.png"
+    ],
+    "pipeline_nav_items": 1,
+    "pipeline_clicked": true,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:31:45.049Z",
+      "firstPipelineViewedAt": "2026-06-03T20:31:48.499Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW Event Boss\nHome\nPipeline\nCalendar\nAll Events\nClients\nSettings\nNew Event\nNew Client\nP\nNGW Event Boss v1.5.0\nPipeline\n\nIntake \u2192 planning \u2192 contract \u2192 deposit \u2192 booked.\n\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n581h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n539h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & F"
+  },
+  "1728_wide": {
+    "name": "1728_wide",
+    "size": "1728x1080",
+    "console_errors": [],
+    "page_errors": [],
+    "screenshots": [
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/01_1728_wide_studio_landing.png",
+      "/Users/toddwillis/Code/ngw-core/review-artifacts/2026-06-03-sprint-60e-qa/02_1728_wide_pipeline.png"
+    ],
+    "pipeline_nav_items": 1,
+    "pipeline_clicked": true,
+    "firstrun_signals": {
+      "firstAppOpenAt": "2026-06-03T20:31:50.307Z",
+      "firstPipelineViewedAt": "2026-06-03T20:31:54.015Z"
+    },
+    "localstorage_keys": [
+      "ngw-sidebar",
+      "ngw-dash-view",
+      "ngw-profile",
+      "ngw-cal-notes",
+      "ngw-firstrun-signals",
+      "ngw-clients",
+      "ngw-last-saved",
+      "ngw-events-filter",
+      "ngw-events",
+      "ngw-cache-pending"
+    ],
+    "title": "NGW Event Boss",
+    "body_text_sample": "Skip to main content\nAUTH BYPASS \u00b7 DEV ONLY\nNGW Event Boss\nHome\nPipeline\nCalendar\nAll Events\nClients\nSettings\nNew Event\nNew Client\nP\nNGW Event Boss v1.5.0\nPipeline\n\nIntake \u2192 planning \u2192 contract \u2192 deposit \u2192 booked.\n\n\u23f1 9 messages waiting for reply\nSent more than 48 hours ago with no response\nTechCorp Holiday Party \u00b7 Premier AV Solutions\nHi \u2014 confirming your arrival time of 3pm for soundcheck on Dec 18. Can you confi\n581h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Lena Kim Photography\nThanks for confirming! Just flagged that the engagement photos are being used on\n539h ago\n\u203a\nTodd & Sarah's Wedding \u00b7 Fork & F"
+  }
+}

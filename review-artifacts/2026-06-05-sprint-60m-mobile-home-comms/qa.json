@@ -1,0 +1,46 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 390,
+      "cta": {
+        "background": "linear-gradient(rgb(133, 144, 148) 0%, rgb(93, 102, 105) 100%)",
+        "color": "rgb(168, 183, 191)",
+        "height": 54
+      },
+      "bypass": {
+        "w": 10,
+        "h": 10,
+        "tagText": ""
+      },
+      "demoBanner": {
+        "h": 34,
+        "text": "DemoExploring sample data.Clear"
+      }
+    },
+    "comms": {
+      "needsReplyVisible": true,
+      "needsReplyText": "Needs reply \u00b7 1Client 1Client1Vendors4Team\u2315Jane Planner3 days agoMenu approval needed \u2014 deadline June 20Requesting approval: We need to confirm the Holiday Buffet menu with City Catering by June 20 to lock in pricing. Please approve so we can proceed.APPROVAL NEEDED"
+    }
+  },
+  "1440_desktop": {
+    "home": {
+      "body_bg": "rgb(17, 21, 25)",
+      "scrollW": 1440,
+      "cta": {
+        "background": "linear-gradient(rgb(133, 144, 148) 0%, rgb(93, 102, 105) 100%)",
+        "color": "rgb(168, 183, 191)",
+        "height": 43
+      },
+      "bypass": {
+        "w": 177,
+        "h": 20,
+        "tagText": "Auth bypass \u00b7 dev only"
+      },
+      "demoBanner": {
+        "h": 38,
+        "text": "DemoYou're exploring with sample data. Clear it when you're ready to start your real workspace.Clear sample data"
+      }
+    }
+  }
+}

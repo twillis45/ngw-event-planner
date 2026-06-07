@@ -1,0 +1,47 @@
+{
+  "guest_modal": {
+    "modal_visible": false,
+    "row_clicked": true,
+    "baseline_overflow": "visible",
+    "body_style_overflow": "",
+    "body_computed_overflow": "visible",
+    "scroll_lock_active": false,
+    "errors": 0
+  },
+  "task_modal": {
+    "modal_visible": false,
+    "row_clicked": true,
+    "baseline_overflow": "visible",
+    "body_style_overflow": "",
+    "body_computed_overflow": "visible",
+    "scroll_lock_active": false,
+    "errors": 0
+  },
+  "budget_modal": {
+    "modal_visible": true,
+    "row_clicked": true,
+    "baseline_overflow": "visible",
+    "body_style_overflow": "hidden",
+    "body_computed_overflow": "hidden",
+    "scroll_lock_active": true,
+    "errors": 0
+  },
+  "ros_modal": {
+    "modal_visible": true,
+    "row_clicked": false,
+    "baseline_overflow": "visible",
+    "body_style_overflow": "",
+    "body_computed_overflow": "visible",
+    "scroll_lock_active": false,
+    "errors": 0
+  },
+  "vendor_modal": {
+    "modal_visible": false,
+    "row_clicked": true,
+    "baseline_overflow": "visible",
+    "body_style_overflow": "",
+    "body_computed_overflow": "visible",
+    "scroll_lock_active": false,
+    "errors": 0
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "console_errors": [],
+  "page_errors": [],
+  "ctas": {
+    "open_contact_details": {
+      "surface": "Home AttentionQueue",
+      "trigger": "vendor-stale City Catering",
+      "cta_visible": false
+    },
+    "open_contract_details": {
+      "surface": "Documents tab \u2014 Needs attention vendor row",
+      "trigger": "Skyline contract_signed:false + contractFileName",
+      "cta_visible": true,
+      "count": 1,
+      "clicked": true,
+      "landing_signal": true,
+      "amber_flash_divs_before": 0,
+      "amber_flash_divs_after": 1,
+      "amber_flash_active": true
+    },
+    "open_arrival_details": {
+      "surface": "Documents tab \u2014 Vendor documents section",
+      "trigger": "Premier AV contractUrl set",
+      "cta_visible": true,
+      "count": 2,
+      "clicked": true,
+      "landing_signal": true,
+      "amber_flash_divs_before": 0,
+      "amber_flash_divs_after": 1,
+      "amber_flash_active": true
+    },
+    "open_payment_details": {
+      "surface": "Budget tab \u2014 vendor-linked budget modal",
+      "trigger": "click vendor-linked budget row",
+      "cta_visible": true,
+      "count": 2,
+      "clicked": true,
+      "landing_signal": true,
+      "amber_flash_divs_before": 0,
+      "amber_flash_divs_after": 0,
+      "amber_flash_active": false
+    }
+  },
+  "mutation": {
+    "mutated": [
+      "Skyline Event Center: contract attention state",
+      "Premier AV Solutions: contractUrl set for vendor-docs section",
+      "City Catering Co: status Confirmed + 49d-old log entry"
+    ],
+    "event_date": "2026-12-18"
+  }
+}

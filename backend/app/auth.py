@@ -86,3 +86,40 @@ async def require_planner(
         return {"id": "dev-token", "via": "dev_token"}
 
     raise HTTPException(status_code=401, detail="Planner authentication required")
+
+
+async def require_admin(
+    authorization: Optional[str] = None,
+    x_planner_token: Optional[str] = None,
+) -> dict:
+    """Authorize an ADMIN / SUPPORT action.
+
+    Admin role is read from the Supabase user's ``app_metadata.role`` — which is
+    server-controlled (a signed-in user cannot set it themselves), unlike
+    ``user_metadata``. Only ``admin`` and ``support`` are accepted.
+
+    The shared dev token is treated as admin ONLY when ALLOW_DEV_TOKEN=true
+    (explicit local development). Deployed environments must never set that flag,
+    so the only authoritative admin path in deployment is the Supabase JWT.
+
+    Raises 401 when unauthenticated, 403 when authenticated but not an admin.
+    """
+    token = _bearer(authorization)
+    if token:
+        user = await verify_supabase_token(token)
+        if user:
+            role = (user.get("app_metadata") or {}).get("role")
+            if role in ("admin", "support"):
+                return {
+                    "id": user.get("id"),
+                    "email": user.get("email"),
+                    "role": role,
+                    "via": "supabase",
+                }
+            # Authenticated, but lacks the role — distinct from "not signed in".
+            raise HTTPException(status_code=403, detail="Admin role required")
+
+    if ALLOW_DEV_TOKEN and PLANNER_DEV_TOKEN and x_planner_token and x_planner_token == PLANNER_DEV_TOKEN:
+        return {"id": "dev-token", "email": None, "role": "admin", "via": "dev_token"}
+
+    raise HTTPException(status_code=401, detail="Authentication required")

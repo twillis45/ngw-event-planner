@@ -1,0 +1,28 @@
+{
+  "390_mobile": {
+    "home": {
+      "body_scrollW": 390,
+      "body_bg": "rgb(7, 8, 9)",
+      "sub12_above_fold": 13,
+      "small_touch_targets": 18
+    },
+    "live_badge_visible": false,
+    "pipeline_friendly_empty": false,
+    "event_nav_error": "Locator.click: Timeout 2000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Home\\\")\").first\n",
+    "vendors_nav_error": "Locator.click: Timeout 2500ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Vendors\\\")\").last\n",
+    "docs_nav_error": "Locator.click: Timeout 3000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Command\\\")\").first\n",
+    "new_event_nav_error": "Locator.click: Timeout 3000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Home\\\")\").first\n"
+  },
+  "1440_desktop": {
+    "home": {
+      "body_scrollW": 1440,
+      "body_bg": "rgb(7, 8, 9)",
+      "sub12_above_fold": 31,
+      "small_touch_targets": 17
+    },
+    "live_badge_visible": false,
+    "start_with_visible": true,
+    "needs_attention_section": true,
+    "new_event_nav_error": "Locator.click: Timeout 3000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Home\\\")\").first\n"
+  }
+}

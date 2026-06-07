@@ -127,9 +127,43 @@ function buildThreads(event) {
 
 // ── Thread list ───────────────────────────────────────────────────────────────
 // Fix #2: Thread list with live search
-function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus }) {
+function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMobile = false }) {
   const [search, setSearch] = useState('');
-  const allInTab = threads.filter(t => t.tab === tab);
+  // Sprint 60.O Phase 3: "Needs reply" is a virtual cross-channel filter
+  // exposed as a tab on mobile. Same heuristic as the priority card —
+  // last-message inbound OR unresolved approval.
+  const isNeedsReply = t => {
+    if (t.needsApproval) return true;
+    const last = t.messages?.[t.messages.length - 1];
+    return last?.direction === 'inbound';
+  };
+  // Sprint 60.T Phase 3 closeout — action-priority sort.
+  // Spec acceptance: "user should not need to open every thread to know
+  // who needs a reply." The list now leads with action, not chronology:
+  //   1. Needs reply           (inbound last or pending approval)
+  //   2. Approval pending      (explicit needsApproval flag)
+  //   3. Delivery failed / Provider blocked
+  //   4. Delivery pending
+  //   5. Recent saved/sent
+  //   6. Older, no action
+  // Within each tier, sort by latest timestamp desc.
+  const tierFor = t => {
+    if (isNeedsReply(t)) return t.needsApproval ? 1 : 0; // tier 0 strongest
+    const latest = t.messages?.[t.messages.length - 1];
+    const ds = latest?.deliveryStatus;
+    if (ds === 'email-failed' || ds === 'email-bounced' || ds === 'email-complained') return 2;
+    if (ds === 'email-accepted' || ds === 'email-sent' || ds === 'email-deferred') return 3;
+    if (ds === 'email-delivered' || ds === 'sent-via-app' || ds === 'local-only') return 4;
+    return 5;
+  };
+  const tieredSort = list => [...list].sort((a, b) => {
+    const ta = tierFor(a), tb = tierFor(b);
+    if (ta !== tb) return ta - tb;
+    return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+  });
+  const allInTab = tab === 'Needs reply'
+    ? tieredSort(threads.filter(isNeedsReply))
+    : tieredSort(threads.filter(t => t.tab === tab));
   const filtered = search.trim()
     ? allInTab.filter(t =>
         t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -137,50 +171,192 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus }) {
       )
     : allInTab;
   const counts = {
+    'Needs reply': threads.filter(isNeedsReply).length,
     Client:  threads.filter(t => t.tab === 'Client').length,
     Vendors: threads.filter(t => t.tab === 'Vendors').length,
     Team:    threads.filter(t => t.tab === 'Team').length,
   };
   const needsAttention = threads.filter(t => t.tab === tab && t.needsApproval).length;
+  // Mobile shows "Needs reply" as first tab; desktop keeps role-only tabs.
+  const tabSet = isMobile ? ['Needs reply', 'Client', 'Vendors', 'Team'] : TABS;
+  // Sprint 60.M Phase 3a: cross-tab "needs reply" surface.
+  // A thread needs the planner's reply when its most recent message is
+  // inbound (someone asked something we haven't answered) OR it has an
+  // unresolved approval request. Counted across ALL tabs so the priority
+  // card on mobile is a single honest "you owe N replies" signal.
+  const needsReplyThreads = useMemo(() => {
+    return threads.filter(t => {
+      if (t.needsApproval) return true;
+      const last = t.messages?.[t.messages.length - 1];
+      return last?.direction === 'inbound';
+    });
+  }, [threads]);
+  const needsReplyByTab = {
+    Client:  needsReplyThreads.filter(t => t.tab === 'Client').length,
+    Vendors: needsReplyThreads.filter(t => t.tab === 'Vendors').length,
+    Team:    needsReplyThreads.filter(t => t.tab === 'Team').length,
+  };
+  const totalNeedsReply = needsReplyThreads.length;
 
   return (
     <div style={{
-      width: 240, flexShrink: 0,
+      width: isMobile ? '100%' : 240, flexShrink: 0,
       background: P.base,
-      borderRight: `1px solid ${P.borderSubtle}`,
+      borderRight: isMobile ? 'none' : `1px solid ${P.borderSubtle}`,
       display: 'flex', flexDirection: 'column', height: '100%',
     }}>
-      {/* Tab switcher */}
+      {/* Sprint 60.N Phase 3 + 4: Needs-reply priority card.
+          Hero-led mobile Messages landing — Carbon body + 3px amber
+          left rail + small amber chip + steel-blue Review reply CTA +
+          per-tab chip jumps. No amber wash. */}
+      {isMobile && totalNeedsReply > 0 && (
+        // Sprint 60.P polish: Studio Matte raise so the Messages landing
+        // hero card lifts off the page in the same family as Home's
+        // StudioCommandPanel hero. Margin around it lets the shadow
+        // breathe; bottom-border removed since elevation now does the
+        // job of separating from the tab switcher.
+        <div style={{
+          margin: '14px 14px 0',
+          padding: '14px 16px 16px 16px',
+          background: P.card,
+          border: `1px solid ${P.borderSubtle}`,
+          // Amber rail expressed as borderLeft so the panel's
+          // border-radius clips it cleanly at the corners.
+          borderLeft: `3px solid ${P.amber}`,
+          borderRadius: 14,
+          display: 'flex', flexDirection: 'column', gap: 10,
+          boxShadow: [
+            'inset 0 1px 0 rgba(255,255,255,0.05)',
+            '0 1px 0 rgba(255,255,255,0.02)',
+            '0 4px 10px rgba(0,0,0,0.30)',
+            '0 14px 28px rgba(0,0,0,0.22)',
+          ].join(', '),
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 9.5, fontWeight: type.weight.semibold,
+              letterSpacing: '0.14em', textTransform: 'uppercase',
+              color: P.amber, fontFamily: FF,
+              padding: '2px 7px', borderRadius: 4,
+              border: `1px solid ${P.amber}55`,
+            }}>
+              Needs reply · {totalNeedsReply}
+            </span>
+          </div>
+          <div style={{
+            fontSize: 15, color: P.textPrimary, fontFamily: FF,
+            lineHeight: 1.35, fontWeight: type.weight.semibold,
+          }}>
+            {totalNeedsReply === 1
+              ? '1 message is waiting for your response.'
+              : `${totalNeedsReply} messages are waiting for your response.`}
+          </div>
+          {/* Primary CTA: jump straight to the first thread that needs a reply */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
+            <button
+              onClick={() => {
+                const first = needsReplyThreads[0];
+                if (first) { onTab(first.tab); onSelect(first); }
+              }}
+              style={{
+                fontFamily: FF, fontSize: 14, fontWeight: type.weight.semibold,
+                color: '#e8edf2',
+                background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)',
+                border: 'none',
+                borderRadius: 10,
+                padding: '11px 18px',
+                minHeight: 44,
+                cursor: 'pointer',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
+                textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              Review reply <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+            </button>
+          </div>
+          {/* Per-tab jump chips — secondary navigation */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+            {TABS.map(t => {
+              const n = needsReplyByTab[t] || 0;
+              if (n === 0) return null;
+              return (
+                <button
+                  key={t}
+                  onClick={() => { onTab(t); setSearch(''); }}
+                  style={{
+                    fontFamily: FF, fontSize: 12, fontWeight: type.weight.medium,
+                    color: P.textPrimary,
+                    background: P.canvas,
+                    border: `1px solid ${P.borderSubtle}`,
+                    borderRadius: radius.sm,
+                    padding: '5px 11px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t} <span style={{ color: P.amber, fontWeight: type.weight.semibold }}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab switcher. Sprint 60.O Phase 3: mobile gets a readable
+          segmented control (44px hit target, 13px labels, includes the
+          new "Needs reply" virtual tab). Desktop keeps the compact row. */}
       <div style={{
         display: 'flex', alignItems: 'center',
         borderBottom: `1px solid ${P.borderSubtle}`,
-        padding: '0 8px', height: 42, flexShrink: 0, gap: 2,
+        padding: isMobile ? '6px 8px' : '0 8px',
+        height: isMobile ? 52 : 42,
+        flexShrink: 0, gap: isMobile ? 4 : 2,
+        overflowX: isMobile ? 'auto' : 'visible',
       }}>
-        {TABS.map(t => {
+        {tabSet.map(t => {
           const active = t === tab;
           const cnt = counts[t];
-          const attn = threads.filter(th => th.tab === t && th.needsApproval).length;
+          const attn = t === 'Needs reply'
+            ? 0  // the count chip already shows the value
+            : threads.filter(th => th.tab === t && th.needsApproval).length;
+          const isNRTab = t === 'Needs reply';
           return (
             <button key={t} onClick={() => { onTab(t); setSearch(''); }} style={{
-              flex: 1, height: 30, borderRadius: radius.sm,
+              flex: isMobile ? '0 0 auto' : 1,
+              minHeight: isMobile ? 44 : 30,
+              padding: isMobile ? '8px 14px' : '0',
+              borderRadius: radius.sm,
               border: 'none', cursor: 'pointer',
               background: active ? P.borderSubtle : 'transparent',
-              fontFamily: FF, fontSize: 11,
+              fontFamily: FF,
+              fontSize: isMobile ? 13 : 11,
               fontWeight: active ? type.weight.semibold : type.weight.regular,
               color: active ? P.textPrimary : P.textSecondary,
               position: 'relative',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
             }}>
               {t}
-              {cnt > 0 && <span style={{ marginLeft: 4, fontSize: 10, color: active ? P.textSecondary : P.textTertiary }}>{cnt}</span>}
-              {attn > 0 && <span style={{ position: 'absolute', top: 3, right: 6, width: 5, height: 5, borderRadius: '50%', background: P.amber }} />}
+              {cnt > 0 && (
+                <span style={{
+                  fontSize: isMobile ? 11 : 10,
+                  fontWeight: type.weight.semibold,
+                  color: isNRTab && cnt > 0 ? P.amber : (active ? P.textSecondary : P.textTertiary),
+                }}>{cnt}</span>
+              )}
+              {attn > 0 && <span style={{ position: 'absolute', top: isMobile ? 7 : 3, right: isMobile ? 10 : 6, width: 5, height: 5, borderRadius: '50%', background: P.amber }} />}
             </button>
           );
         })}
       </div>
 
-      {/* Status indicator + search */}
+      {/* Status indicator + search.
+          Sprint 60.M Phase 3a: on mobile, the chat status drops to a
+          single muted line below the search box (no colored chip in the
+          list header) so backend wiring stops competing with the actual
+          conversation list. Full chip remains on desktop. */}
       <div style={{ padding: '8px 10px', borderBottom: `1px solid ${P.borderSubtle}`, flexShrink: 0 }}>
-        {chatStatus && (
+        {chatStatus && !isMobile && (
           <div
             title={chatStatus.detail}
             style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, cursor: 'default' }}
@@ -226,39 +402,96 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus }) {
           </div>
         ) : filtered.map(thread => {
           const isSelected = selected?.id === thread.id;
+          const needsReply = isNeedsReply(thread);
+          const roleLabel = thread.tab === 'Vendors' ? 'Vendor' : thread.tab;
           return (
             <button key={thread.id} onClick={() => onSelect(thread)} style={{
-              display: 'flex', flexDirection: 'column', gap: 4,
-              width: '100%', padding: '12px 16px',
+              display: 'flex', flexDirection: 'column', gap: isMobile ? 6 : 4,
+              width: '100%',
+              padding: isMobile ? '14px 16px 14px 19px' : '12px 16px',
+              minHeight: isMobile ? 64 : undefined,
               borderBottom: `1px solid ${P.borderSubtle}`,
               border: 'none',
-              borderLeft: isSelected ? `3px solid ${P.green}` : '3px solid transparent',
+              borderLeft: needsReply
+                ? `3px solid ${thread.needsApproval ? P.amber : P.amber}`
+                : isSelected ? `3px solid ${P.green}` : '3px solid transparent',
               background: isSelected ? P.borderSubtle : 'transparent',
               cursor: 'pointer', textAlign: 'left',
+              position: 'relative',
             }}>
+              {/* Row 1: sender + age */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <span style={{
+                  fontSize: isMobile ? 15 : 12,
+                  fontWeight: type.weight.semibold,
+                  color: P.textPrimary, fontFamily: FF,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                }}>
                   {thread.name}
                 </span>
-                <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
+                <span style={{ fontSize: isMobile ? 12 : 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
                   {fmtRelative(thread.timestamp)}
                 </span>
               </div>
-              {/* Show subject if any message in thread has one */}
-              {thread.messages?.some(m => m.subject || m.subject_line) && (
-                <div style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
-                  {(thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject ||
-                    thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject_line)}
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {/* Row 2: explicit role label */}
+              <div style={{
+                fontSize: isMobile ? 12 : 10,
+                color: P.textTertiary, fontFamily: FF,
+                letterSpacing: '0.04em',
+              }}>
+                {roleLabel}{thread.messages?.some(m => m.subject || m.subject_line)
+                  ? ` · ${(thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject ||
+                          thread.messages.filter(m => m.subject || m.subject_line).slice(-1)[0]?.subject_line)}`
+                  : ''}
+              </div>
+              {/* Row 3: preview */}
+              <div style={{
+                fontSize: isMobile ? 13.5 : 11,
+                color: P.textSecondary, fontFamily: FF,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                lineHeight: 1.4,
+              }}>
                 {thread.preview}
               </div>
-              {thread.needsApproval && (
-                <span style={{ fontSize: 9, fontWeight: type.weight.semibold, color: P.amber, letterSpacing: '0.06em', fontFamily: FF }}>
-                  APPROVAL NEEDED
-                </span>
-              )}
+              {/* Status chip row — Sprint 60.T Phase 3 vocabulary lock.
+                  Each row carries its own message state chip so the user
+                  doesn't need to open every thread to know what state
+                  the latest message is in. Priority order: APPROVAL
+                  NEEDED > NEEDS REPLY > Delivery failed > Provider
+                  blocked > Delivery pending > Sent via email > Saved to
+                  thread. Color matches the locked vocabulary from the
+                  composer state. */}
+              {(() => {
+                const latest = thread.messages?.[thread.messages.length - 1];
+                const ds = latest?.deliveryStatus;
+                const isPlannerLatest = latest && (latest.direction === 'outbound' || latest.sender === 'planner');
+                let chip = null;
+                if (thread.needsApproval) {
+                  chip = { label: 'APPROVAL NEEDED', color: P.amber };
+                } else if (needsReply) {
+                  chip = { label: 'NEEDS REPLY', color: P.amber };
+                } else if (isPlannerLatest && ds) {
+                  if (ds === 'email-failed' || ds === 'email-bounced') chip = { label: 'DELIVERY FAILED', color: P.red };
+                  else if (ds === 'email-complained') chip = { label: 'PROVIDER BLOCKED', color: P.red };
+                  else if (ds === 'email-accepted' || ds === 'email-sent' || ds === 'email-deferred') chip = { label: 'DELIVERY PENDING', color: P.amber };
+                  else if (ds === 'email-delivered') chip = { label: 'SENT VIA EMAIL', color: P.green };
+                  else if (ds === 'sent-via-app' || ds === 'local-only') chip = { label: 'SAVED TO THREAD', color: P.textTertiary };
+                }
+                if (!chip) return null;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{
+                      fontSize: isMobile ? 10 : 9, fontWeight: type.weight.semibold,
+                      color: chip.color, letterSpacing: '0.10em', fontFamily: FF,
+                      padding: isMobile ? '2px 7px' : '1px 5px',
+                      borderRadius: 4,
+                      border: `1px solid ${chip.color}55`,
+                    }}>
+                      {chip.label}
+                    </span>
+                  </div>
+                );
+              })()}
             </button>
           );
         })}
@@ -283,7 +516,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus }) {
 // The planner always sees the truth. "Send email" never appears unless the
 // email will actually be attempted.
 // Fix #6: Composer with optional email subject field
-function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail }) {
+function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail, isDayOf = false }) {
   const [body, setBody]       = useState('');
   // Subject is shown by default — helps relate the message to the event/client
   const defaultSubject = event?.name
@@ -324,28 +557,100 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail 
     } finally { setBusy(false); }
   };
 
-  // Primary CTA: highest available mode
-  const primaryIsEmail = canEmail;
-  const ctaLabel = primaryIsEmail ? 'Send email'
-                 : commLive       ? 'Send via app'
-                                  : 'Log to thread';
-  const ctaTitle = primaryIsEmail
-    ? `Send email to ${recipientInfo?.name || recipientInfo?.email} and save to thread`
-    : commLive
-    ? 'Send through the app and save to thread'
-    : 'Save to the event thread. External sending is not connected in this session.';
+  // Sprint 60.Q Comms rebuild — composer state classification.
+  // Four mutually-exclusive states, named honestly. Each state has its
+  // own chip color, CTA label, and hint line so the planner always
+  // knows what will actually happen on tap. The "Open email draft"
+  // state is a real mailto: handoff — no fake send.
+  const recipientEmail = recipientInfo?.email;
+  const composerState =
+    canEmail                                          ? 'email-live' :
+    recipientEmail && !emailEnabled                   ? 'email-draft' :
+    commLive                                          ? 'backend' :
+                                                        'local';
+  // Sprint 60.R Comms trust — locked user-facing vocabulary. BACKEND was
+  // dev language and the spec forbids it in user UI. SHARED THREAD makes
+  // the state operationally honest: backend wired up, email isn't, so
+  // messages save to the shared event thread (no external send).
+  // Sprint 60.T closeout — SHARED THREAD recolored steel (not amber).
+  // Amber implied a warning state; the operational meaning is neutral
+  // (backend wired, email not — messages save honestly to the shared
+  // thread, no external send). Steel matches the calm-state palette.
+  const stateChipMap = {
+    'email-live':  { label: 'EMAIL LIVE',     color: P.green },
+    'email-draft': { label: 'EMAIL DRAFT',    color: P.textSecondary },
+    'backend':     { label: 'SHARED THREAD',  color: P.textSecondary },
+    'local':       { label: 'LOCAL ONLY',     color: P.textTertiary },
+  };
+  const stateChip = stateChipMap[composerState];
+  const primaryIsEmail = composerState === 'email-live';
+  const primaryIsMailto = composerState === 'email-draft';
+  const ctaLabel =
+    primaryIsEmail  ? 'Send email' :
+    primaryIsMailto ? 'Open email draft' :
+    commLive        ? 'Save to thread' :
+                      'Log to thread';
+  const ctaTitle =
+    primaryIsEmail  ? `Sends to ${recipientInfo?.name || recipientEmail} and saves to thread.` :
+    primaryIsMailto ? 'Opens your email app. Nothing is sent until you send it.' :
+    commLive        ? 'Backend connected — saved to shared approval history. No external send.' :
+                      'Saved locally only — backend not connected in this session.';
+  const stateHint = ctaTitle; // hint line under the CTA mirrors the title
 
   return (
+    // Sprint 60.P polish: composer becomes a Studio Matte well — the
+    // input + send live inside a recessed Mid Carbon tray so the
+    // controls feel like physical tools set into the conversation
+    // surface, not floating over it. Inset shadow stack mirrors the
+    // hero CTA well in App.js.
     <div style={{
       flexShrink: 0, padding: `${space[4]}px ${space[6]}px`,
-      borderTop: `1px solid ${P.borderSubtle}`, background: P.base,
+      borderTop: `1px solid ${P.borderSubtle}`,
+      background: P.canvas,
+      boxShadow: [
+        'inset 0 2px 4px rgba(0,0,0,0.35)',
+        'inset 0 1px 0 rgba(0,0,0,0.40)',
+        'inset 0 -1px 0 rgba(255,255,255,0.03)',
+      ].join(', '),
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      {/* Recipient indicator when email is live */}
-      {canEmail && (
-        <div style={{ fontSize: 10, color: P.green, fontFamily: FF, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: P.green, flexShrink: 0 }} />
-          Email to {recipientInfo.email}
+      {/* Composer state chip. Sprint 60.Q Comms #2 Day-of: drops to a
+          single dot during live event ops — the operational moment
+          shouldn't be cluttered with EMAIL LIVE / BACKEND chips. The
+          dot color still carries the state; the persistent hint line
+          under the CTA carries the honest explanation. */}
+      {!isDayOf ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 10, fontFamily: FF, marginBottom: 2,
+        }}>
+          <span style={{
+            fontWeight: type.weight.semibold,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: stateChip.color,
+            padding: '2px 7px', borderRadius: 4,
+            border: `1px solid ${stateChip.color}55`,
+          }}>
+            {stateChip.label}
+          </span>
+          {recipientEmail && composerState === 'email-live' && (
+            <span style={{ color: P.textTertiary }}>
+              to {recipientInfo.name || recipientEmail}
+            </span>
+          )}
+          {recipientEmail && composerState === 'email-draft' && (
+            <span style={{ color: P.textTertiary }}>
+              via your email app · {recipientEmail}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: FF, color: P.textTertiary, marginBottom: 2 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: stateChip.color, flexShrink: 0 }} />
+          {composerState === 'email-live' ? `Sending as email to ${recipientInfo?.name || recipientEmail}`
+            : composerState === 'email-draft' ? 'Opens email draft on tap'
+            : composerState === 'backend' ? 'Save to shared thread'
+            : 'Save locally to thread'}
         </div>
       )}
       {/* Subject — always visible, pre-filled with event + recipient context */}
@@ -372,25 +677,53 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail 
             }
           }}
           style={{
-            flex: 1, minHeight: 60, maxHeight: 140, resize: 'vertical',
-            padding: '9px 12px', borderRadius: radius.sm,
+            flex: 1, minHeight: isDayOf ? 72 : 60, maxHeight: 180, resize: 'vertical',
+            padding: isDayOf ? '12px 14px' : '9px 12px',
+            borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`,
             background: P.canvas, color: P.textPrimary,
-            fontSize: 12.5, fontFamily: FF, outline: 'none', lineHeight: 1.45,
+            fontSize: isDayOf ? 16 : 12.5,
+            fontFamily: FF, outline: 'none', lineHeight: 1.45,
           }}
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
           <button
-            onClick={() => submit(primaryIsEmail)}
+            onClick={() => {
+              // Sprint 60.Q Comms rebuild — honest CTA dispatch.
+              if (primaryIsMailto) {
+                // Open the user's email app with a real draft. We still
+                // record the body to the local thread as a planning log
+                // (no fake send claim — the planner has to send it from
+                // their email app for it to actually go out).
+                const sub = encodeURIComponent(subject.trim() || defaultSubject);
+                const bod = encodeURIComponent(body.trim());
+                window.open(`mailto:${recipientEmail}?subject=${sub}&body=${bod}`, '_blank');
+                submit(false); // also log to thread as a record-only
+                return;
+              }
+              submit(primaryIsEmail);
+            }}
             disabled={!body.trim() || busy}
             title={ctaTitle}
             style={{
-              padding: '9px 16px', borderRadius: radius.sm, border: 'none',
-              background: body.trim() && !busy ? P.green : P.borderSubtle,
-              color: body.trim() && !busy ? P.canvas : P.textTertiary,
-              fontSize: 12, fontWeight: type.weight.semibold, fontFamily: FF,
+              padding: isDayOf ? '13px 22px' : '9px 16px',
+              minHeight: isDayOf ? 48 : undefined,
+              borderRadius: radius.sm, border: 'none',
+              background: body.trim() && !busy
+                ? (primaryIsEmail ? P.green : 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)')
+                : P.borderSubtle,
+              color: body.trim() && !busy
+                ? (primaryIsEmail ? P.canvas : '#e8edf2')
+                : P.textTertiary,
+              fontSize: isDayOf ? 15 : 12,
+              fontWeight: type.weight.semibold, fontFamily: FF,
               cursor: body.trim() && !busy ? 'pointer' : 'not-allowed',
               whiteSpace: 'nowrap',
+              boxShadow: body.trim() && !busy && !primaryIsEmail
+                ? 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.04), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)'
+                : undefined,
+              textShadow: body.trim() && !busy && !primaryIsEmail
+                ? '0 1px 0 rgba(0,0,0,0.25)' : undefined,
             }}
           >
             {busy ? '…' : ctaLabel}
@@ -425,10 +758,13 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail 
           {status.text}
         </div>
       )}
-      {/* Persistent advisory when backend isn't wired */}
-      {!commLive && !status && (
-        <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>
-          External sending isn't connected in this session — messages save to the event thread.
+      {/* Sprint 60.Q Comms rebuild — persistent honest hint matched to
+          composer state. Replaces the old single-state "not wired"
+          advisory. The hint always appears so the planner can't
+          accidentally assume a Send actually sent. */}
+      {!status && (
+        <div style={{ fontSize: 10.5, lineHeight: 1.4, color: P.textTertiary, fontStyle: 'italic' }}>
+          {stateHint}
         </div>
       )}
     </div>
@@ -436,7 +772,12 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail 
 }
 
 // Fix #3 + #7: ConversationPane with inline approve/reject + scroll preservation
-function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEnabled, resolveEmail }) {
+function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEnabled, resolveEmail, isDayOf = false, isMobile = false }) {
+  // Sprint 60.S Mobile Comms — collapse older messages on mobile by
+  // default. Latest 2 + any pending approval bubble are shown; older
+  // messages live behind a "Show N earlier messages" affordance. Keeps
+  // the action above transcript history per the spec rebuild.
+  const [earlierExpanded, setEarlierExpanded] = useState(false);
   // Fix #7: preserve scroll position per thread
   const scrollRef = useRef(null);
   const scrollPositions = useRef({});
@@ -486,8 +827,18 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
           {thread.name}
         </span>
         {thread.needsApproval && (
-          <span style={{ fontSize: 10, fontWeight: type.weight.semibold, color: P.amber, letterSpacing: '0.06em', fontFamily: FF, background: P.amber + '14', border: `1px solid ${P.amber}44`, borderRadius: radius.sm, padding: '2px 7px' }}>
-            APPROVAL PENDING
+          // Sprint 60.Q Comms #3: drop the +14 amber wash → outline chip
+          // to match the rest of the rail/chip vocabulary on the screen.
+          <span style={{
+            fontSize: 10, fontWeight: type.weight.semibold,
+            color: P.amber, letterSpacing: '0.14em', textTransform: 'uppercase',
+            fontFamily: FF,
+            background: 'transparent',
+            border: `1px solid ${P.amber}66`,
+            borderRadius: 4,
+            padding: '3px 8px',
+          }}>
+            Approval pending
           </span>
         )}
       </div>
@@ -498,9 +849,48 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
           <div style={{ textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
             No messages yet
           </div>
-        ) : (
+        ) : (() => {
+          // Sprint 60.S — on mobile, hide earlier messages by default.
+          // Keep: last 2 messages + any pending approval bubble (so the
+          // current action is always visible). Older messages collapse
+          // behind a steel-blue "Show N earlier messages" affordance.
+          const allMessages = thread.messages;
+          const SHOW_TAIL = 2;
+          const pendingApprovalIdx = allMessages.findIndex(m =>
+            m.message_type === 'approval_request' &&
+            !['approved','rejected'].includes(m.approval_status)
+          );
+          const tailStart = Math.max(0, allMessages.length - SHOW_TAIL);
+          let visibleMessages = allMessages;
+          let hiddenCount = 0;
+          if (isMobile && !earlierExpanded && allMessages.length > SHOW_TAIL) {
+            const keepIndices = new Set();
+            // Always keep the tail
+            for (let i = tailStart; i < allMessages.length; i++) keepIndices.add(i);
+            // Always keep any pending approval bubble, even if it's older
+            if (pendingApprovalIdx >= 0) keepIndices.add(pendingApprovalIdx);
+            visibleMessages = allMessages.filter((_, i) => keepIndices.has(i));
+            hiddenCount = allMessages.length - visibleMessages.length;
+          }
+          return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {thread.messages.map((m, i) => {
+            {hiddenCount > 0 && (
+              <button
+                onClick={() => setEarlierExpanded(true)}
+                style={{
+                  alignSelf: 'center',
+                  padding: '8px 16px', borderRadius: 999,
+                  background: P.canvas,
+                  border: `1px solid ${P.borderSubtle}`,
+                  color: P.textSecondary,
+                  fontSize: 12, fontFamily: FF, fontWeight: type.weight.medium,
+                  cursor: 'pointer',
+                }}
+              >
+                Show {hiddenCount} earlier message{hiddenCount !== 1 ? 's' : ''}
+              </button>
+            )}
+            {visibleMessages.map((m, i) => {
               const isPlanner  = m.direction === 'outbound' || m.sender === 'planner';
               const isApproval = m.message_type === 'approval_request';
               const isPending  = isApproval && !['approved','rejected'].includes(m.approval_status);
@@ -508,17 +898,49 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
               const isRejected = m.approval_status === 'rejected';
               return (
                 <div key={m.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: isPlanner ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>
+                  {/* Sprint 60.Q Comms #2 Day-of: sender row scales up for
+                      operational legibility. Day-of: 13px medium. Normal: 10px. */}
+                  <div style={{
+                    fontSize: isDayOf ? 13 : 10,
+                    fontWeight: isDayOf ? type.weight.semibold : type.weight.regular,
+                    color: P.textTertiary, fontFamily: FF, marginBottom: 4,
+                  }}>
                     {isPlanner ? 'Planner' : (m.senderName || thread.name)} · {fmtRelative(m.createdAt || m.date)}
                   </div>
+                  {/* Sprint 60.Q Comms rebuild: chat-bubble convention so
+                      direction is obvious at a glance, not only by reading
+                      the timestamp row. Planner bubbles are tinted steel-
+                      blue and corner-clipped on the right (tail toward the
+                      planner avatar position); other-party bubbles are
+                      Carbon and corner-clipped on the left. Approval rail
+                      moves to the side opposite the tail so it still reads
+                      as a signal without competing with the bubble shape. */}
                   <div style={{
                     maxWidth: '70%',
-                    background: isApproval ? (isApproved ? P.green + '14' : isRejected ? P.red + '14' : P.amber + '14')
-                      : isPlanner ? P.borderSubtle : P.card,
-                    border: `1px solid ${isApproval ? (isApproved ? P.green + '44' : isRejected ? P.red + '44' : P.amber + '44') : P.borderSubtle}`,
-                    borderRadius: radius.md,
-                    padding: `${space[3]}px ${space[4]}px`,
-                    fontSize: 12, color: P.textPrimary, fontFamily: FF,
+                    background: isPlanner
+                      ? 'linear-gradient(180deg, #2a3845 0%, #1f2a35 100%)'  // steel-tinted Carbon — planner
+                      : P.card,                                              // Lifted Carbon — other party
+                    border: `1px solid ${isPlanner ? '#3a4a59' : P.borderSubtle}`,
+                    borderLeft: !isPlanner && isApproval
+                      ? `3px solid ${isApproved ? P.green : isRejected ? P.red : P.amber}`
+                      : `1px solid ${isPlanner ? '#3a4a59' : P.borderSubtle}`,
+                    borderRight: isPlanner && isApproval
+                      ? `3px solid ${isApproved ? P.green : isRejected ? P.red : P.amber}`
+                      : undefined,
+                    // Chat-bubble corner radii — tail corner is small, the
+                    // three away corners are large. Planner's tail is
+                    // bottom-right; other's tail is bottom-left.
+                    borderRadius: isPlanner
+                      ? `${radius.md}px ${radius.md}px 4px ${radius.md}px`
+                      : `${radius.md}px ${radius.md}px ${radius.md}px 4px`,
+                    // Sprint 60.Q Comms #2 Day-of: bubble copy scales up
+                    // (12 → 16) and padding loosens for thumb-reading
+                    // during live event ops.
+                    padding: isDayOf
+                      ? `${space[4]}px ${space[5]}px`
+                      : `${space[3]}px ${space[4]}px`,
+                    fontSize: isDayOf ? 16 : 12,
+                    color: P.textPrimary, fontFamily: FF,
                     lineHeight: type.leading.relaxed,
                   }}>
                     {/* Subject line — shown when present */}
@@ -535,42 +957,99 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                     )}
                     {m.body || m.text || m.message}
 
-                    {/* Fix #3: inline approve/reject on pending approval messages */}
+                    {/* Approval action row — Sprint 60.Q Comms #3 polish.
+                        Eyebrow chip on its own line above the buttons,
+                        proper touch targets (40px min), Approve is the
+                        steel-blue action (green is reserved for the
+                        post-recorded state below), Reject keeps the red
+                        outline ghost. */}
                     {isPending && onApprove && (
-                      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 10, color: P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, flex: 1 }}>
-                          APPROVAL NEEDED
+                      <div style={{
+                        marginTop: 12, paddingTop: 10,
+                        borderTop: `1px solid ${P.borderSubtle}`,
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                      }}>
+                        <span style={{
+                          fontSize: 10, color: P.amber,
+                          fontWeight: type.weight.semibold,
+                          letterSpacing: '0.14em', textTransform: 'uppercase',
+                          fontFamily: FF,
+                          padding: '2px 7px', borderRadius: 4,
+                          border: `1px solid ${P.amber}55`,
+                          alignSelf: 'flex-start',
+                        }}>
+                          Approval needed
                         </span>
-                        <button
-                          onClick={() => onApprove(m.id, 'approved')}
-                          style={{ padding: '4px 10px', borderRadius: radius.sm, border: 'none', background: P.green, color: P.canvas, fontSize: 10, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => onApprove(m.id, 'rejected')}
-                          style={{ padding: '4px 10px', borderRadius: radius.sm, border: `1px solid ${P.red}44`, background: 'transparent', color: P.red, fontSize: 10, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}
-                        >
-                          Reject
-                        </button>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => onApprove(m.id, 'approved')}
+                            style={{
+                              flex: 1, minHeight: 40,
+                              padding: '10px 16px', borderRadius: 10, border: 'none',
+                              background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)',
+                              color: '#e8edf2',
+                              fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF,
+                              cursor: 'pointer',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.04), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
+                              textShadow: '0 1px 0 rgba(0,0,0,0.25)',
+                            }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => onApprove(m.id, 'rejected')}
+                            style={{
+                              flex: 1, minHeight: 40,
+                              padding: '10px 16px', borderRadius: 10,
+                              border: `1px solid ${P.red}66`,
+                              background: 'transparent',
+                              color: P.red,
+                              fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </div>
                       </div>
                     )}
                     {isApproved && (
-                      <div style={{ marginTop: 6, fontSize: 10, color: P.green, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
-                        ✓ APPROVED — recorded by planner
+                      <div style={{
+                        marginTop: 10, paddingTop: 8,
+                        borderTop: `1px solid ${P.borderSubtle}`,
+                        fontSize: 11, color: P.green,
+                        fontWeight: type.weight.semibold,
+                        letterSpacing: '0.10em', textTransform: 'uppercase',
+                        fontFamily: FF,
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.green }} />
+                        Approved · recorded by planner
                       </div>
                     )}
                     {isRejected && (
-                      <div style={{ marginTop: 6, fontSize: 10, color: P.red, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF }}>
-                        REJECTED — recorded by planner
+                      <div style={{
+                        marginTop: 10, paddingTop: 8,
+                        borderTop: `1px solid ${P.borderSubtle}`,
+                        fontSize: 11, color: P.red,
+                        fontWeight: type.weight.semibold,
+                        letterSpacing: '0.10em', textTransform: 'uppercase',
+                        fontFamily: FF,
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.red }} />
+                        Rejected · recorded by planner
                       </div>
                     )}
                   </div>
                   {isPlanner && m.deliveryStatus && (() => {
-                    // Delivery status truth map.
-                    // "accepted" = Resend accepted; not yet confirmed delivered.
-                    // "delivered" = Resend webhook confirmed inbox delivery.
-                    // "bounced" / "complained" / "deferred" from Resend webhook.
+                    // Sprint 60.R Comms trust — Phase E vocabulary lock.
+                    // Each delivery state gets a scannable TAG (one of the 6
+                    // locked states from the spec) plus the existing detail
+                    // sentence so the planner can scan severity AND get the
+                    // honest context. No "Sent" unless the provider actually
+                    // accepted; "Saved to thread" for everything that wasn't
+                    // dispatched externally.
                     const ds = m.deliveryStatus;
                     const color =
                       ds === 'email-delivered'                          ? P.green
@@ -580,24 +1059,46 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                           || ds === 'email-complained')                  ? P.red
                       : ds === 'email-deferred'                         ? P.amber
                       : P.textTertiary;
-                    const text =
+                    const tag =
+                      ds === 'email-delivered'    ? 'Sent via email'
+                      : ds === 'email-accepted'   ? 'Delivery pending'
+                      : ds === 'email-sent'       ? 'Delivery pending'
+                      : ds === 'email-failed'     ? 'Delivery failed'
+                      : ds === 'email-bounced'    ? 'Delivery failed'
+                      : ds === 'email-complained' ? 'Provider blocked'
+                      : ds === 'email-deferred'   ? 'Delivery pending'
+                      : ds === 'sent-via-app'     ? 'Saved to thread'
+                      : ds === 'local-only'       ? 'Saved to thread'
+                      :                              'Saved to thread';
+                    const detail =
                       ds === 'email-delivered'   ? 'Email delivered.'
                       : ds === 'email-accepted'  ? 'Email accepted by provider — delivery not yet confirmed.'
                       : ds === 'email-sent'       ? 'Email accepted by provider — delivery not yet confirmed.' // legacy
-                      : ds === 'email-failed'     ? 'Email failed — logged to thread. Recipient was NOT notified.'
-                      : ds === 'email-bounced'    ? 'Email bounced — recipient address may be invalid. Not delivered.'
+                      : ds === 'email-failed'     ? 'Email failed — recipient was NOT notified. Manual follow-up needed.'
+                      : ds === 'email-bounced'    ? 'Email bounced — recipient address may be invalid. Manual follow-up needed.'
                       : ds === 'email-complained' ? 'Recipient marked as spam. Further emails may be blocked.'
                       : ds === 'email-deferred'   ? 'Email delivery delayed — provider will retry.'
-                      : ds === 'sent-via-app'     ? 'Message sent and saved to thread.'
-                      : ds === 'local-only'       ? 'Email not configured — message logged only. Recipient was NOT notified.'
-                      : 'Message logged to thread.';
+                      : ds === 'sent-via-app'     ? 'Saved to shared thread. No external send.'
+                      : ds === 'local-only'       ? 'Saved to this device only. Recipient was NOT notified.'
+                      : 'Saved to thread.';
                     return (
                       <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
                         fontSize: 9.5, fontFamily: FF, marginTop: 3,
-                        color, letterSpacing: '0.04em',
-                        fontStyle: (ds === 'local-only' || ds === 'email-deferred') ? 'italic' : 'normal',
+                        letterSpacing: '0.04em',
                       }}>
-                        {text}
+                        <span style={{
+                          fontWeight: type.weight.semibold,
+                          letterSpacing: '0.12em', textTransform: 'uppercase',
+                          color,
+                          padding: '1px 6px', borderRadius: 3,
+                          border: `1px solid ${color}55`,
+                          flexShrink: 0,
+                        }}>{tag}</span>
+                        <span style={{
+                          color, opacity: 0.85,
+                          fontStyle: (ds === 'local-only' || ds === 'email-deferred') ? 'italic' : 'normal',
+                        }}>{detail}</span>
                       </div>
                     );
                   })()}
@@ -605,10 +1106,11 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
               );
             })}
           </div>
-        )}
+          );
+        })()}
       </div>
 
-      <Composer thread={thread} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
+      <Composer thread={thread} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
     </div>
   );
 }
@@ -741,7 +1243,7 @@ function ContextPanel({ thread, event }) {
 
 // ── Root export ───────────────────────────────────────────────────────────────
 export default function CommunicationHub({
-  event, isMobile,
+  event, isMobile, isDayOf = false,
   openId,
   onBack,
   onSend,
@@ -798,23 +1300,32 @@ export default function CommunicationHub({
       >
         ← Command Center
       </button>
+      {/* Sprint 61.K — steel-blue eyebrow matches modal NO GUESSWORK
+          rails + LegacyTabHeader + CommandCenter SectionHeader voice. */}
       <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
-        letterSpacing: '0.16em', textTransform: 'uppercase',
-        color: P.textTertiary, fontFamily: FF,
+        fontSize: isMobile ? 13 : 10.5,
+        fontWeight: 800,
+        letterSpacing: isMobile ? '0' : '0.16em',
+        textTransform: isMobile ? 'none' : 'uppercase',
+        color: isMobile ? P.textPrimary : '#4E6877',
+        fontFamily: FF,
       }}>
-        Communication
+        {isMobile ? 'Messages' : 'Communication'}
       </span>
-      {/* Chat live status indicator */}
+      {/* Chat live status indicator.
+          Sprint 60.M Phase 3a: on mobile the workspace header collapses
+          to a single dot — the priority card below already carries
+          "what you owe" and the backend wiring belongs in Settings, not
+          fighting with the conversation list for the planner's eye. */}
       <div
         title={chatStatus.detail}
         style={{
           marginLeft: 'auto',
           display: 'flex', alignItems: 'center', gap: 5,
-          padding: '3px 9px',
+          padding: isMobile ? 0 : '3px 9px',
           borderRadius: 20,
-          border: `1px solid ${chatStatus.color}44`,
-          background: chatStatus.color + '14',
+          border: isMobile ? 'none' : `1px solid ${chatStatus.color}44`,
+          background: isMobile ? 'transparent' : (chatStatus.color + '14'),
           cursor: 'default',
         }}
       >
@@ -823,13 +1334,15 @@ export default function CommunicationHub({
           background: chatStatus.color,
           boxShadow: commLive ? `0 0 0 2px ${chatStatus.color}30` : 'none',
         }} />
-        <span style={{
-          fontSize: 9, fontWeight: type.weight.semibold,
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: chatStatus.color, fontFamily: FF,
-        }}>
-          {chatStatus.label}
-        </span>
+        {!isMobile && (
+          <span style={{
+            fontSize: 9, fontWeight: type.weight.semibold,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: chatStatus.color, fontFamily: FF,
+          }}>
+            {chatStatus.label}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -846,6 +1359,7 @@ export default function CommunicationHub({
             selected={selected}
             onSelect={t => { setSelected(t); setMobileView('conversation'); }}
             chatStatus={chatStatus}
+            isMobile={true}
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
@@ -863,7 +1377,7 @@ export default function CommunicationHub({
             >
               ← All threads
             </button>
-            <ConversationPane thread={selected} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
+            <ConversationPane thread={selected} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
           </div>
         )}
       </div>
