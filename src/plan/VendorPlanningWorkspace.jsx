@@ -70,6 +70,10 @@ import {
   accountabilityLabel,
   deriveVendorPromiseConflicts,
   conflictsForVendor,
+  // Sprint 50B — surface the promise tracker + follow-up drafts in the detail
+  PROMISE_STATUS_LABEL,
+  PROMISE_STATUS_SEVERITY,
+  generateVendorFollowUpDraft,
 } from '../lib/vendorAccountability';
 
 const P = {
@@ -3010,6 +3014,86 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
   );
 }
 
+// ── Sprint 50B: Deliverables / Promises tracker ────────────────────────────
+// Surfaces the EXISTING vendor accountability engine (inferPromisesFromVendor
+// + promise lifecycle + follow-up draft generator) in the vendor detail.
+// Read-only derivation. "Draft follow-up" is COPY-ONLY — never sends/emails.
+const PROMISE_SEV_COLOR = (sev) => sev === 'critical' ? P.red : sev === 'attention' ? P.amber : sev === 'none' ? P.green : P.textTertiary;
+const PROMISE_NEXT_BY_STATUS = {
+  not_requested:   'Request from vendor',
+  requested:       'Awaiting vendor response',
+  promised:        'Get it in writing — request proof',
+  evidence_needed: 'Request proof (COI, confirmation, etc.)',
+  due_soon:        'Confirm before it’s due',
+  overdue:         'Follow up now — past due',
+  changed:         'Re-confirm the change',
+  at_risk:         'Resolve the conflict / follow up',
+  confirmed:       null,
+  completed:       null,
+};
+
+function PromiseTrackerSection({ vendor, event, isOpen, onToggle }) {
+  const [draftFor, setDraftFor] = useState(null);
+  const promises = useMemo(
+    () => inferPromisesFromVendor(vendor, event).filter(p => p.status !== 'not_required'),
+    [vendor, event]
+  );
+  if (!promises.length) return null;
+  const sevRank = { critical: 0, attention: 1, watch: 2, none: 3 };
+  const sorted = [...promises].sort(
+    (a, b) => (sevRank[PROMISE_STATUS_SEVERITY[a.status]] ?? 2) - (sevRank[PROMISE_STATUS_SEVERITY[b.status]] ?? 2)
+  );
+  const openCount  = promises.filter(p => !['confirmed', 'completed'].includes(p.status)).length;
+  const riskyCount = promises.filter(p => ['overdue', 'at_risk'].includes(p.status)).length;
+  const summary = riskyCount > 0 ? `${riskyCount} need attention` : openCount > 0 ? `${openCount} open` : 'All confirmed';
+  const summaryColor = riskyCount > 0 ? P.red : openCount > 0 ? P.amber : P.green;
+  const ownerLabel = (o) => o ? o.charAt(0).toUpperCase() + o.slice(1) : '—';
+
+  return (
+    <CollapsibleSection label="Deliverables & Promises" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
+      <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
+        What this vendor has promised, and where the proof stands. Drafts are copy-only — Event Boss never sends or emails on its own.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: space[2] }}>
+        {sorted.map(p => {
+          const sev = PROMISE_STATUS_SEVERITY[p.status] || 'watch';
+          const col = PROMISE_SEV_COLOR(sev);
+          const nextHint = p.nextAction || PROMISE_NEXT_BY_STATUS[p.status] || null;
+          const showDraft = draftFor === p.id;
+          let draft = null;
+          if (showDraft) { try { draft = generateVendorFollowUpDraft(vendor, event, [p]); } catch (e) { draft = null; } }
+          const proofTxt = p.evidenceRequired ? ` · Proof: ${(p.evidenceStatus === 'attached' || p.evidenceStatus === 'confirmed') ? 'on file' : 'needed'}` : '';
+          return (
+            <div key={p.id} style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${col}`, borderRadius: radius.sm, padding: space[3] }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF }}>{p.promiseText}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: col, background: `${col}1e`, border: `1px solid ${col}55`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>{PROMISE_STATUS_LABEL[p.status] || p.status}</span>
+              </div>
+              <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginTop: 3 }}>
+                Owner: {ownerLabel(p.owner)}{p.dueDate ? ` · Due ${p.dueDate}` : ''}{proofTxt}
+              </div>
+              {nextHint && (
+                <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>→ {nextHint}</div>
+              )}
+              {!['confirmed', 'completed'].includes(p.status) && (
+                <button type="button" onClick={() => setDraftFor(showDraft ? null : p.id)}
+                  style={{ marginTop: space[2], background: 'none', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: P.textSecondary, fontFamily: FF, padding: '5px 12px' }}>
+                  {showDraft ? 'Hide draft' : 'Draft follow-up'}
+                </button>
+              )}
+              {showDraft && draft && (
+                <div style={{ marginTop: space[2] }}>
+                  <CopyableDraft text={draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
@@ -3046,8 +3130,8 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   // Desktop keeps the smart-default open behavior so pros see the signal-led
   // sections without an extra tap.
   const collapseDefaults = isMobile
-    ? { readinessSnapshot: false, readinessCopilot: false, documents: false, notes: false, activity: false }
-    : { readinessSnapshot: hasReadinessSignal, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
+    ? { readinessSnapshot: false, promises: false, readinessCopilot: false, documents: false, notes: false, activity: false }
+    : { readinessSnapshot: hasReadinessSignal, promises: true, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
   const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
   const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -3183,6 +3267,13 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
           challenges={challenges}
           isOpen={collapse.readinessSnapshot}
           onToggle={() => toggle('readinessSnapshot')}
+        />
+
+        <PromiseTrackerSection
+          vendor={vendor}
+          event={event}
+          isOpen={collapse.promises}
+          onToggle={() => toggle('promises')}
         />
 
         <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={!isMobile} onAddressRow={addressRow} />
