@@ -224,22 +224,20 @@ function ActiveCenter({ event, canonical, viewportW, onResolve }) {
           size={primarySize}
           full={primaryIsFull}
           style={primaryIsFull ? undefined : primaryStyle}
+          onClick={() => {
+            // Sprint 52B — wire the primary escalation CTA to a real contact
+            // action so it goes somewhere: call, then email, then acknowledge.
+            if (active?.phone) window.open(`tel:${active.phone}`, '_self');
+            else if (active?.contact) window.open(`mailto:${active.contact}`, '_blank');
+            else if (onResolve) onResolve();
+          }}
         >
           {primaryLabel}
         </Button>
-        {supp.commandSet !== 'minimal' && (
-          <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap' }}>
-            <Button priority="p2" size="md" style={{ width: 160 }}>
-              {canonical === 'critical' ? 'Page backup' : 'Notify next station'}
-            </Button>
-            {supp.commandSet === 'full' && (
-              <Button priority="p2" size="md" style={{ width: 160 }}>Reroute timeline</Button>
-            )}
-            {(canonical === 'critical' || canonical === 'emergency') && (
-              <Button priority="p2" size="md" style={{ width: 160 }}>Move to backup</Button>
-            )}
-          </div>
-        )}
+        {/* Sprint 52B — removed the non-functional escalation buttons (Page
+            backup / Notify next station / Reroute timeline / Move to backup):
+            they had no backing behaviour. The primary contact action and
+            "Mark resolved" below are the real, wired CTAs. */}
         <Button priority="ambient" size="sm" onClick={onResolve}>Mark resolved</Button>
       </div>
     </Surface>
