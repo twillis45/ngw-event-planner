@@ -10812,6 +10812,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   const [copied,       setCopied]       = useState(false);
   const [showPay,      setShowPay]      = useState(!!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote));
   const [showAdvanced, setShowAdvanced] = useState(false); // Sprint 52B — tuck non-crucial settings into a drawer
+  const [showGuide,    setShowGuide]    = useState(false); // Sprint 52B — persistent Getting Started entry
+  // Sprint 52B — every settings section collapses; only identity is open by
+  // default so the modal opens compact. Keyed by section label.
+  const [openSec, setOpenSec] = useState({ Studio: true, Planner: true });
+  const secOpen = (k, dflt = false) => (openSec[k] === undefined ? dflt : openSec[k]);
+  const toggleSec = (k, dflt = false) => setOpenSec(o => ({ ...o, [k]: !(o[k] === undefined ? dflt : o[k]) }));
   const [showAI,       setShowAI]       = useState(false);
   const [dsBackend,    setDsBackend]    = useState(null);
   useEffect(() => { checkDocuSignStatus().then(setDsBackend); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -10868,7 +10874,9 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     border: `1px solid ${color}55`,
     flexShrink: 0,
   });
-  const SectionHead = ({ label, ownership = 'workspace', anchor }) => {
+  const SectionHead = ({ label, ownership = 'workspace', anchor, collapsible = false, secKey, defaultOpen = false }) => {
+    const secK = secKey || label;
+    const open = collapsible ? secOpen(secK, defaultOpen) : true;
     const chip =
       ownership === 'account'   ? { label: 'Account',   color: C.muted } :
       ownership === 'event'     ? { label: 'Per event', color: C.warn } :
@@ -10877,8 +10885,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     return (
       <div
         data-setup-anchor={anchor || undefined}
+        onClick={collapsible ? () => toggleSec(secK, defaultOpen) : undefined}
+        role={collapsible ? 'button' : undefined}
+        aria-expanded={collapsible ? open : undefined}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
+          cursor: collapsible ? 'pointer' : 'default',
           margin: '22px 0 14px',
           padding: anchor ? '6px 8px' : 0,
           marginLeft: anchor ? -8 : 0,
@@ -10894,6 +10906,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                                   'Affects every event in this workspace.'
         }>{chip.label}</span>
         <div style={{ flex: 1, height: 1, background: C.border }} />
+        {collapsible && <span style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>}
       </div>
     );
   };
@@ -11292,6 +11305,19 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           )}
 
+          {/* Sprint 52B — persistent entry to the Getting Started guide so it's
+              findable after onboarding (the welcome-hero link only shows for
+              brand-new, empty workspaces). */}
+          <button onClick={() => setShowGuide(true)}
+            style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderRadius: 10, background: C.accent + '12', border: `1px solid ${C.accent}55`, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
+            <span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.text }}>Getting started guide</span>
+              <span style={{ display: 'block', fontSize: 11.5, color: C.muted, marginTop: 2 }}>How to run an event, start to finish — 10 steps.</span>
+            </span>
+            <span style={{ color: C.accent, fontSize: 16, flexShrink: 0 }}>→</span>
+          </button>
+          {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} />}
+
           {/* ── STUDIO IDENTITY ── */}
           <SectionHead label="Studio" ownership="workspace" anchor="studio" />
           <PMRow2>
@@ -11579,8 +11605,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
               59A audit. Provider statuses already truthful (configured-state
               aware via isXConfigured() helpers); only the section header
               changes here. */}
-          <SectionHead label="Connections" anchor="connections" />
-          {(() => {
+          <SectionHead label="Connections" anchor="connections" collapsible defaultOpen={false} />
+          {secOpen('Connections', false) && (() => {
             const supabaseOn   = isSupabaseConfigured();
             const commApiOn    = isCommApiConfigured();
             const emailOn      = isEmailConfigured();
@@ -11919,12 +11945,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           {/* Sprint 59B: renamed "Preferred Vendor Directory" / "Preferred
               Vendors" → "My Vendor Bank" to distinguish it from event-scoped
               Vendors. Studio-private asset bank, not event-committed work. */}
-          <SectionHead label="My Vendor Bank" anchor="vendor-bank" />
-          <PreferredVendorDirectory C={C} s={s} />
+          <SectionHead label="My Vendor Bank" anchor="vendor-bank" collapsible defaultOpen={false} />
+          {secOpen('My Vendor Bank', false) && <PreferredVendorDirectory C={C} s={s} />}
 
           {/* ── Sprint 67: Lead Intake ── */}
-          <SectionHead label="Lead Intake" anchor="lead-intake" />
-          {(() => {
+          <SectionHead label="Lead Intake" anchor="lead-intake" collapsible defaultOpen={false} />
+          {secOpen('Lead Intake', false) && (() => {
             const getOrCreateIntakeToken = () => {
               if (profile?.intakeToken) return profile.intakeToken;
               const tok = `intake-${Math.random().toString(36).slice(2, 14)}`;
