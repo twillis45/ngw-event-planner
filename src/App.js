@@ -2256,6 +2256,30 @@ const PER_HEAD = {
   'Client Dinner':     { good: 80,  better: 140, best: 250 },
 };
 
+// Sprint 52B v2 — short per-category descriptor of what each tier buys. Generic
+// across event types; falls back to Essential/Elevated/Premium for any category
+// not listed. Drives the "why it costs more" line in the itemized estimator.
+const CATEGORY_TIER_NOTES = {
+  Venue:                { good: 'Community or off-peak space', better: 'Dedicated event venue', best: 'Premium venue + valet' },
+  Catering:             { good: 'Buffet or food stations', better: 'Plated service', best: 'Multi-course + open bar' },
+  Photography:          { good: 'Photographer, key hours', better: 'Full-day photographer', best: 'Photographer + videographer' },
+  Florals:              { good: 'Simple arrangements', better: 'Custom florals + centerpieces', best: 'Designer florals + installations' },
+  Entertainment:        { good: 'DJ', better: 'Premium DJ or small band', best: 'Live band + production' },
+  'Hair & Makeup':      { good: 'Day-of basics', better: 'Trial + day-of', best: 'Full glam team' },
+  Cake:                 { good: 'Simple cake', better: 'Custom cake', best: 'Designer cake + dessert table' },
+  Invitations:          { good: 'Digital / template', better: 'Custom printed suite', best: 'Letterpress + calligraphy' },
+  Transport:            { good: 'Self / rideshare', better: 'Group shuttle', best: 'Luxury transport' },
+  'AV / Tech':          { good: 'In-house AV', better: 'Pro AV rental', best: 'Full production team' },
+  Decor:                { good: 'Basic styling', better: 'Themed décor', best: 'Full design + rentals' },
+  'Printing / Signage': { good: 'Printed basics', better: 'Branded materials', best: 'Full signage package' },
+  Favors:               { good: 'Simple favors', better: 'Curated favors', best: 'Premium gift bags' },
+  Activities:           { good: 'DIY games', better: 'Hosted activity', best: 'Premium experience' },
+  Misc:                 { good: 'Essentials buffer', better: 'Comfortable buffer', best: 'Generous buffer' },
+};
+const TIER_FALLBACK_NOTE = { good: 'Essential option', better: 'Elevated option', best: 'Premium option' };
+const tierNote = (cat, tier) => (CATEGORY_TIER_NOTES[cat] && CATEGORY_TIER_NOTES[cat][tier]) || TIER_FALLBACK_NOTE[tier];
+const TIER_LABEL = { good: 'Good', better: 'Better', best: 'Best' };
+
 const TIER_WHY = {
   Wedding: {
     good:   ['Buffet or food stations', 'DJ music', 'Budget-friendly venue', 'Simple florals', 'Photography only (no video)'],
@@ -6867,7 +6891,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // shown. The KITS table below is the single source of truth for both
   // Step 2's expanded selected-card AND the Success "Created for you" panel.
   const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
-  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: timeOfDayForEventType('Wedding') });
+  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
   const [kit,     setKit]     = useState(() => kitForEventType('Wedding'));
   // Intelligence Gap PR #1 — kit auto-suggestion is gated on whether the
   // user has manually picked a card. Once they do, the suggestion stops
@@ -6896,6 +6920,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const [budgetSource,   setBudgetSource]   = useState('none'); // none | manual | estimate
   const [replaceConfirm, setReplaceConfirm] = useState(false);
   const [estApplyTotal,  setEstApplyTotal]  = useState(0); // tier total pending replace-confirm
+  const [estApplyBreakdown, setEstApplyBreakdown] = useState(null); // per-category amounts pending replace-confirm
+  const [categoryTiers,  setCategoryTiers]  = useState({}); // Sprint 52B v2 — per-category tier selection (mix-and-match)
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Intelligence Gap PR #1 — auto-suggest kit + timeOfDay from event type
@@ -6950,8 +6976,13 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       : [];
     const budgetAmt  = Number(form.totalBudget) || 0;
     const budgetTmpl = types.length ? mergeBudgetTemplate(...types) : BUDGET_TEMPLATES.Other;
+    // Sprint 52B v2 — if the planner built the budget by category (mix-and-match
+    // tiers), seed each row with that exact amount; otherwise split the total
+    // proportionally as before.
+    const byCat = (budgetSource === 'estimate' && form.budgetByCategory) ? form.budgetByCategory : null;
     const budget = kitCfg.b
-      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, actual: 0, notes: '', budgeted: budgetAmt > 0 ? Math.round(budgetAmt * item.pct) : 0 }))
+      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, actual: 0, notes: '',
+          budgeted: byCat && byCat[item.c] != null ? byCat[item.c] : (budgetAmt > 0 ? Math.round(budgetAmt * item.pct) : 0) }))
       : [];
     const vendorCats = types.length ? mergeVendorStubs(...types) : VENDOR_STUBS.Other;
     const vendors = kitCfg.v
@@ -6973,7 +7004,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   };
 
   const resetForAnother = () => {
-    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', timeOfDay: timeOfDayForEventType('Wedding') });
+    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
+    setCategoryTiers({});
     setKit(kitForEventType('Wedding'));
     setKitTouched(false);
     setSelectedClientId(''); setShowErr(false); setCreatedId(null); setStep(1);
@@ -7373,7 +7405,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               {(() => {
                 const guests = Number(form.guestCount) || 0;
                 const ph = PER_HEAD[form.type] || PER_HEAD.Other;
-                const metroFactor = getMetroFactor(profile);
+                // Sprint 52B v2 — per-EVENT market override. The estimator prefers
+                // the event's own market (destination events) over the studio's
+                // default market.
+                const marketId  = form.market || profile?.metroMarket || '';
+                const marketObj = marketId ? METRO_MARKETS.find(m => m.id === marketId) : null;
+                const metroFactor = marketObj ? marketObj.factor : 1.0;
                 const rush  = getRushFactor(form.date);
                 const datePrem = getDatePremium(form.date, form.type);
                 const tod   = getTimeOfDayFactor(form.timeOfDay);
@@ -7387,25 +7424,39 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 const lowT  = canEstimate ? tierTotal('good')   : 0;
                 const midT  = canEstimate ? tierTotal('better') : 0;
                 const highT = canEstimate ? tierTotal('best')   : 0;
+                const tierTotals = { good: lowT, better: midT, best: highT };
                 const conf = estimatorConfidence({
                   hasType: !!form.type, hasDate: !!form.date, hasGuestCount: guests > 0,
-                  hasMarket: !!profile?.metroMarket, hasTimeOfDay: !!form.timeOfDay, hasHistory: false,
+                  hasMarket: !!marketId, hasTimeOfDay: !!form.timeOfDay, hasHistory: false,
                 });
                 const confColor = conf.level === 'high' ? C.success : conf.level === 'medium' ? C.warn : C.muted;
                 const money = (n) => '$' + Math.round(n).toLocaleString();
                 const todLabel = (TIME_OF_DAY_SLOTS.find(s => s.key === form.timeOfDay) || {}).shortLabel || form.timeOfDay;
+
+                // Sprint 52B v2 — itemized per-category tiers (mix-and-match). Same
+                // category split createNow uses, so choices flow into the budget.
+                const estTypes = [form.type, form.secondaryType].filter(t => t && EVT_PARENT[t]);
+                const catTmpl  = (estTypes.length ? mergeBudgetTemplate(...estTypes) : (BUDGET_TEMPLATES[form.type] || BUDGET_TEMPLATES.Other)) || [];
+                const tierOf   = (cat) => categoryTiers[cat] || 'better';
+                const catPrice = (cat, tier) => Math.round((tierTotals[tier] * (cat.pct || 0)) / 50) * 50;
+                const grandTotal = canEstimate ? catTmpl.reduce((sum, c) => sum + catPrice(c, tierOf(c.c)), 0) : 0;
+                const budgetByCategory = canEstimate ? Object.fromEntries(catTmpl.map(c => [c.c, catPrice(c, tierOf(c.c))])) : {};
+                const perGuestGrand = guests > 0 ? Math.round(grandTotal / guests) : 0;
+                const allTierActive = catTmpl.length && catTmpl.every(c => tierOf(c.c) === tierOf(catTmpl[0].c)) ? tierOf(catTmpl[0].c) : null;
+                const setAllTiers = (tier) => setCategoryTiers(catTmpl.reduce((m, c) => { m[c.c] = tier; return m; }, {}));
+
                 const missing = [];
-                if (guests < 1)             missing.push('Estimated guest count');
-                if (!form.date)             missing.push('Event date');
-                if (!profile?.metroMarket)  missing.push('Your metro market (Studio Setup)');
+                if (guests < 1)  missing.push('Estimated guest count');
+                if (!form.date)  missing.push('Event date');
+                if (!marketId)   missing.push('Event market (set it above, or your studio market in Setup)');
                 const flags = [];
                 if (!estServiceTax)         flags.push('Service & tax are not included in this estimate.');
                 if (rush.multiplier > 1)    flags.push(`${rush.label || 'Rush timeline'} — short-notice costs may run higher.`);
                 if (guests < 1)             flags.push('No guest count yet — the estimate cannot run.');
 
-                const applyTier = (total) => {
-                  if (form.totalBudget.trim() && budgetSource === 'manual') { setEstApplyTotal(total); setReplaceConfirm(true); return; }
-                  upd('totalBudget', String(total)); setBudgetSource('estimate'); setReplaceConfirm(false);
+                const applyBudget = () => {
+                  if (form.totalBudget.trim() && budgetSource === 'manual') { setEstApplyTotal(grandTotal); setEstApplyBreakdown(budgetByCategory); setReplaceConfirm(true); return; }
+                  upd('totalBudget', String(grandTotal)); upd('budgetByCategory', budgetByCategory); setBudgetSource('estimate'); setReplaceConfirm(false);
                 };
 
                 return (
@@ -7455,45 +7506,81 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                           <span style={{ fontSize: 13, color: C.text }}>Add a contingency buffer{ctg.label ? ` (${ctg.label})` : ''}</span>
                         </label>
 
+                        {/* Sprint 52B v2 — per-event market. Defaults to the studio market
+                            but can be overridden for a destination event in another city. */}
+                        <div>
+                          <div style={{ ...ui.label, marginBottom: 6 }}>Market (event location)</div>
+                          <select data-testid="ce-est-market" style={{ ...ui.field(false), fontSize: 13 }} value={form.market} onChange={e => upd('market', e.target.value)}>
+                            <option value="">{profile?.metroMarket ? `Use studio market (${(METRO_MARKETS.find(m => m.id === profile.metroMarket) || {}).label || 'set'})` : 'Select a market…'}</option>
+                            {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label} (×{m.factor})</option>)}
+                          </select>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>Pick the event's city if it differs from your studio — prices scale to that market.</div>
+                        </div>
+
                         {canEstimate ? (
                           <>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Estimated planning tiers</span>
                               <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
                             </div>
-                            <div data-testid="ce-estimator-range" style={{ fontSize: 12, color: C.muted, marginTop: -2 }}>{money(lowT)} – {money(highT)} across tiers · {guests} guests · {form.type} · what each tier typically includes:</div>
+                            <div data-testid="ce-estimator-range" style={{ fontSize: 12, color: C.muted, marginTop: -2 }}>{money(lowT)} – {money(highT)} across tiers · pick a tier per item below.</div>
 
-                            {/* Sprint 52 — three labeled tiers (Good / Better / Best) each
-                                showing price, per-guest, and the options it includes (TIER_WHY).
-                                Planner applies any tier; "Better" is the default recommendation. */}
-                            {[{ key: 'good', label: 'Good', total: lowT }, { key: 'better', label: 'Better', total: midT, rec: true }, { key: 'best', label: 'Best', total: highT }].map(t => {
-                              const opts = (TIER_WHY[form.type] || TIER_WHY.Other)[t.key] || [];
-                              const perGuest = guests > 0 ? Math.round(t.total / guests) : 0;
+                            {/* Quick pick — set every category to one tier, then tweak individual ones. */}
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 11, color: C.muted }}>Set all to:</span>
+                              {['good', 'better', 'best'].map(t => (
+                                <button type="button" key={t} data-testid={`ce-alltier-${t}`} onClick={() => setAllTiers(t)}
+                                  style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36,
+                                    border: `1px solid ${allTierActive === t ? steelTop : C.border}`, background: allTierActive === t ? `${steelTop}1e` : 'transparent', color: C.text }}>{TIER_LABEL[t]}</button>
+                              ))}
+                            </div>
+
+                            {/* Sprint 52B v2 — per-category builder. Each major item shows its price
+                                at Good / Better / Best so the planner sees exactly how much a top-tier
+                                vendor costs vs another option, and can mix tiers (e.g. tight budget but
+                                Best photographer). */}
+                            {catTmpl.map(cat => {
+                              const sel = tierOf(cat.c);
                               return (
-                                <div key={t.key} data-testid={`ce-tier-${t.key}`} style={{ border: `1px solid ${t.rec ? steelTop : C.border}`, borderLeft: `3px solid ${t.rec ? steelTop : C.border}`, borderRadius: 10, padding: '12px 14px', background: t.rec ? `${steelTop}0e` : C.bg }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 14, fontWeight: 700, color: C.text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}{t.rec ? ' · most chosen' : ''}</span>
-                                    <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{money(t.total)}</span>
+                                <div key={cat.c} data-testid={`ce-cat-${cat.c}`} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', background: C.bg }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{cat.c}</span>
+                                    <span data-testid={`ce-cat-price-${cat.c}`} style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{money(catPrice(cat, sel))}</span>
                                   </div>
-                                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>~{money(perGuest)}/guest all-in</div>
-                                  <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                    {opts.map((o, i) => (
-                                      <li key={i} style={{ fontSize: 12, color: C.text, lineHeight: 1.5, display: 'flex', gap: 7, alignItems: 'baseline' }}>
-                                        <span aria-hidden style={{ color: steelTop }}>•</span><span>{o}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                  <button type="button" data-testid={`ce-tier-apply-${t.key}`} onClick={() => applyTier(t.total)}
-                                    style={{ ...primaryBtn, marginTop: 10, minWidth: 0, padding: '9px 16px', fontSize: 13, ...(t.rec ? {} : { background: 'transparent', color: C.text, border: `1px solid ${steelTop}66` }) }}>Use {t.label} as budget</button>
+                                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1, marginBottom: 8 }}>{tierNote(cat.c, sel)}</div>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    {['good', 'better', 'best'].map(t => {
+                                      const on = sel === t;
+                                      return (
+                                        <button type="button" key={t} data-testid={`ce-cat-${cat.c}-${t}`} onClick={() => setCategoryTiers(m => ({ ...m, [cat.c]: t }))}
+                                          style={{ flex: 1, minWidth: 0, padding: '7px 6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: 1.3,
+                                            border: `1px solid ${on ? steelTop : C.border}`, background: on ? `${steelTop}1e` : 'transparent' }}>
+                                          <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: on ? C.text : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{TIER_LABEL[t]}</span>
+                                          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.text }}>{money(catPrice(cat, t))}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               );
                             })}
-                            <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>Pick a tier to fill the budget field. Does not create a payment or move money.</div>
+
+                            {/* Grand total + apply (sum of the chosen tiers) */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Your budget</span>
+                              <span data-testid="ce-estimator-grandtotal" style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{money(grandTotal)}</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: C.muted, marginTop: -4 }}>~{money(perGuestGrand)}/guest all-in · {guests} guests · {form.type}{marketObj ? ` · ${marketObj.label}` : ''}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
+                              <button type="button" data-testid="ce-estimator-apply" onClick={applyBudget}
+                                style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use this budget</button>
+                              <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>Fills the budget by category. Does not create a payment or move money.</span>
+                            </div>
 
                             <div data-testid="ce-estimator-assumptions" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
                               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Based on</div>
                               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                                {guests} guests · {form.type}{form.date ? ` · ${new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · {todLabel} · service+tax {estServiceTax ? 'on' : 'off'} · contingency {estContingency ? 'on' : 'off'} · metro {profile?.metroMarket ? 'set' : 'not set'}
+                                {guests} guests · {form.type}{form.date ? ` · ${new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · {todLabel} · service+tax {estServiceTax ? 'on' : 'off'} · contingency {estContingency ? 'on' : 'off'} · market {marketObj ? marketObj.label : 'not set'}
                               </div>
                             </div>
 
@@ -7533,7 +7620,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                           <button type="button" data-testid="ce-replace-cancel" onClick={() => setReplaceConfirm(false)}
                             style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                          <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(estApplyTotal)); setBudgetSource('estimate'); setReplaceConfirm(false); }}
+                          <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(estApplyTotal)); if (estApplyBreakdown) upd('budgetByCategory', estApplyBreakdown); setBudgetSource('estimate'); setReplaceConfirm(false); }}
                             style={{ ...primaryBtn }}>Replace budget</button>
                         </div>
                       </div>
