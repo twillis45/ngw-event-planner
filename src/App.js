@@ -22,7 +22,8 @@ import {
   dangerRed, amber, successGreen, textPrimary, textSecondary,
   brandPresets, defaultBrandColor,
 } from './theme/palette';
-import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache } from './lib/api';
+import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers } from './lib/api';
+import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
 import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, getUnansweredMessages } from './CommandCenter';
@@ -6314,6 +6315,14 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
   const s          = makeS(C);
   const showToast  = useToast();
   const aiKey      = useAIKey();
+  // Sprint 52B — roster-backed task ownership (free text still supported).
+  const roster     = useMemo(() => loadTeamRoster(), []);
+  const ownerSelectValue = (task.ownerId && roster.some(m => m.id === task.ownerId)) ? task.ownerId : '';
+  const pickOwner  = (id) => {
+    if (!id) { onChange('ownerId', ''); return; }
+    const m = roster.find(x => x.id === id);
+    if (m) { onChange('ownerId', m.id); onChange('owner', m.name); }
+  };
   const [confirmDel, setConfirmDel] = useState(false);
   const [taskNotesLoad, setTaskNotesLoad] = useState(false);
   useEffect(() => {
@@ -6390,7 +6399,13 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Owner / Responsible</label>
-            <input style={s.input} value={task.owner || ''} placeholder="Planner, Couple, Vendor…" onChange={e => onChange('owner', e.target.value)} />
+            {roster.length > 0 && (
+              <select data-testid="task-owner-member" style={{ ...s.input, marginBottom: 6 }} value={ownerSelectValue} onChange={e => pickOwner(e.target.value)}>
+                <option value="">Type a name (free text)</option>
+                {roster.map(m => <option key={m.id} value={m.id}>{m.name}{m.roleLabel ? ` · ${m.roleLabel}` : ''}</option>)}
+              </select>
+            )}
+            <input style={s.input} value={task.owner || ''} placeholder="Planner, Couple, Vendor…" onChange={e => { onChange('owner', e.target.value); onChange('ownerId', ''); }} />
           </div>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
@@ -6871,11 +6886,16 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // Sprint 60.U P0 — "Estimate my budget" expander state. Collapsed by default.
   // estServiceTax/estContingency mirror the Budget tab defaults so the modal
   // estimate matches the Budget tab for identical inputs (parity).
-  const [estimatorOpen,  setEstimatorOpen]  = useState(false);
+  // Sprint 52 — OPEN by default on Step 3 so the planner actually discovers the
+  // estimate before creating the event (it was previously collapsed and went
+  // unnoticed). When no guest count is entered yet it shows the "add a guest
+  // count to see your range" prompt, which itself is the discovery cue.
+  const [estimatorOpen,  setEstimatorOpen]  = useState(true);
   const [estServiceTax,  setEstServiceTax]  = useState(SERVICE_TAX_DEFAULT_ON);
   const [estContingency, setEstContingency] = useState(CONTINGENCY_DEFAULT_ON);
   const [budgetSource,   setBudgetSource]   = useState('none'); // none | manual | estimate
   const [replaceConfirm, setReplaceConfirm] = useState(false);
+  const [estApplyTotal,  setEstApplyTotal]  = useState(0); // tier total pending replace-confirm
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Intelligence Gap PR #1 — auto-suggest kit + timeOfDay from event type
@@ -7383,9 +7403,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 if (rush.multiplier > 1)    flags.push(`${rush.label || 'Rush timeline'} — short-notice costs may run higher.`);
                 if (guests < 1)             flags.push('No guest count yet — the estimate cannot run.');
 
-                const applyEstimate = () => {
-                  if (form.totalBudget.trim() && budgetSource === 'manual') { setReplaceConfirm(true); return; }
-                  upd('totalBudget', String(midT)); setBudgetSource('estimate'); setReplaceConfirm(false);
+                const applyTier = (total) => {
+                  if (form.totalBudget.trim() && budgetSource === 'manual') { setEstApplyTotal(total); setReplaceConfirm(true); return; }
+                  upd('totalBudget', String(total)); setBudgetSource('estimate'); setReplaceConfirm(false);
                 };
 
                 return (
@@ -7438,11 +7458,37 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         {canEstimate ? (
                           <>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Estimated planning range</span>
+                              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Estimated planning tiers</span>
                               <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
                             </div>
-                            <div data-testid="ce-estimator-range" style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{money(lowT)} – {money(highT)}</div>
-                            <div style={{ fontSize: 12, color: C.muted }}>Midpoint {money(midT)} · {guests} guests · {form.type}</div>
+                            <div data-testid="ce-estimator-range" style={{ fontSize: 12, color: C.muted, marginTop: -2 }}>{money(lowT)} – {money(highT)} across tiers · {guests} guests · {form.type} · what each tier typically includes:</div>
+
+                            {/* Sprint 52 — three labeled tiers (Good / Better / Best) each
+                                showing price, per-guest, and the options it includes (TIER_WHY).
+                                Planner applies any tier; "Better" is the default recommendation. */}
+                            {[{ key: 'good', label: 'Good', total: lowT }, { key: 'better', label: 'Better', total: midT, rec: true }, { key: 'best', label: 'Best', total: highT }].map(t => {
+                              const opts = (TIER_WHY[form.type] || TIER_WHY.Other)[t.key] || [];
+                              const perGuest = guests > 0 ? Math.round(t.total / guests) : 0;
+                              return (
+                                <div key={t.key} data-testid={`ce-tier-${t.key}`} style={{ border: `1px solid ${t.rec ? steelTop : C.border}`, borderLeft: `3px solid ${t.rec ? steelTop : C.border}`, borderRadius: 10, padding: '12px 14px', background: t.rec ? `${steelTop}0e` : C.bg }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 14, fontWeight: 700, color: C.text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.label}{t.rec ? ' · most chosen' : ''}</span>
+                                    <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{money(t.total)}</span>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>~{money(perGuest)}/guest all-in</div>
+                                  <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    {opts.map((o, i) => (
+                                      <li key={i} style={{ fontSize: 12, color: C.text, lineHeight: 1.5, display: 'flex', gap: 7, alignItems: 'baseline' }}>
+                                        <span aria-hidden style={{ color: steelTop }}>•</span><span>{o}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  <button type="button" data-testid={`ce-tier-apply-${t.key}`} onClick={() => applyTier(t.total)}
+                                    style={{ ...primaryBtn, marginTop: 10, minWidth: 0, padding: '9px 16px', fontSize: 13, ...(t.rec ? {} : { background: 'transparent', color: C.text, border: `1px solid ${steelTop}66` }) }}>Use {t.label} as budget</button>
+                                </div>
+                              );
+                            })}
+                            <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>Pick a tier to fill the budget field. Does not create a payment or move money.</div>
 
                             <div data-testid="ce-estimator-assumptions" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
                               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Based on</div>
@@ -7471,16 +7517,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               <span>Money moved: No</span><span aria-hidden>·</span>
                               <span>Payment created: No</span>
                             </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
-                              <button type="button" data-testid="ce-estimator-apply" onClick={applyEstimate}
-                                style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use estimate as budget</button>
-                              <span data-testid="ce-estimator-apply-sub" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>Fills the budget field. Does not create a payment or move money.</span>
-                            </div>
                           </>
                         ) : (
                           <div data-testid="ce-estimator-needs-input" style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>
-                            Add an <strong style={{ color: C.text }}>estimated guest count</strong> above to see your range.
+                            Add an <strong style={{ color: C.text }}>estimated guest count</strong> above to see your tiers.
                           </div>
                         )}
                       </div>
@@ -7489,11 +7529,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     {replaceConfirm && (
                       <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.warn}55`, borderRadius: 10, padding: '12px 14px' }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
-                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(midT)}. No payment is created.</div>
+                        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(estApplyTotal)}. No payment is created.</div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                           <button type="button" data-testid="ce-replace-cancel" onClick={() => setReplaceConfirm(false)}
                             style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                          <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(midT)); setBudgetSource('estimate'); setReplaceConfirm(false); }}
+                          <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(estApplyTotal)); setBudgetSource('estimate'); setReplaceConfirm(false); }}
                             style={{ ...primaryBtn }}>Replace budget</button>
                         </div>
                       </div>
@@ -20120,7 +20160,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency }) {
       : C.muted)
     : null;
   return (
-    <div onClick={() => setModalId(t.id)}
+    <div data-testid="task-row" onClick={() => setModalId(t.id)}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: (bp === 'mobile' || bp === 'tablet') ? '14px 4px' : '10px 0', borderTop: `1px solid ${C.border}`, cursor: 'pointer' }}
       onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
       onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
@@ -23758,7 +23798,7 @@ const PLANNER_TABS = [
   // source of truth; only the host tab is consolidated.
   'Budget', 'Planning', 'Decisions',
   // PEOPLE — who's involved
-  'Client Intake', 'Vendors', 'Guests', 'Seating',
+  'Client Intake', 'Vendors', 'Crew', 'Guests', 'Seating',
   // DAY OF — event-day surfaces
   'Calendar', 'Run of Show',
   // FILES (Sprint 59E) — one canonical home for files, links, signatures.
@@ -25960,7 +26000,171 @@ function CommunicationRail({ event, onOpenCommunication }) {
   );
 }
 
-function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank }) {
+// ─── Sprint 52B: Studio Team operational bridge ────────────────────────────
+const crewStatusColor = (C, status) => {
+  const sev = CREW_STATUS_SEVERITY[status] || 'watch';
+  return sev === 'none' ? C.success : sev === 'attention' ? C.warn : C.muted;
+};
+
+// Call / Email / Copy-call-sheet. No auto-send: email is a mailto draft, copy
+// is clipboard only. Reused by the Crew tab and the Day-of manifest.
+function CrewContactActions({ c, event, compact }) {
+  const C = useT();
+  const [copied, setCopied] = useState(false);
+  const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: compact ? '7px 10px' : '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', minHeight: 36 };
+  const copySheet = async () => {
+    try { await navigator.clipboard.writeText(crewCallSheetText(c, event)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+  };
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {c.phone && <a href={`tel:${c.phone}`} style={btn}>☎ Call</a>}
+      {c.email && <a href={`mailto:${c.email}`} title="Opens your email app with a blank message. Nothing is sent until you send it." style={btn}>✉ Email</a>}
+      <button type="button" onClick={copySheet} style={btn}>{copied ? '✓ Copied' : '⧉ Copy call sheet'}</button>
+    </div>
+  );
+}
+
+// Day-of crew manifest — read-only roster with call times + contact actions.
+function CrewManifest({ crew = [], event, isMobile }) {
+  const C = useT();
+  if (!crew.length) return null;
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>Crew manifest</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {crew.map(c => (
+          <div key={c.id} data-testid="crew-manifest-row" style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{c.name}</span>
+                {c.roleLabel && <span style={{ fontSize: 12, color: C.muted }}> · {c.roleLabel}</span>}
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: crewStatusColor(C, c.status), background: `${crewStatusColor(C, c.status)}14`, border: `1px solid ${crewStatusColor(C, c.status)}44`, padding: '1px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{CREW_STATUS_LABEL[c.status] || 'Assigned'}</span>
+            </div>
+            {(c.callTime || c.arrivalTime) && (
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
+                {c.callTime ? `Call ${c.callTime}` : ''}{c.callTime && c.arrivalTime ? ' · ' : ''}{c.arrivalTime ? `Arrive ${c.arrivalTime}` : ''}
+              </div>
+            )}
+            {c.notes && <div style={{ fontSize: 12, color: C.text, marginTop: 4, lineHeight: 1.5 }}>{c.notes}</div>}
+            <div style={{ marginTop: 8 }}><CrewContactActions c={c} event={event} compact /></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Crew tab — assign studio members to this event, set role + call times +
+// status, and contact them. Roster is studio-wide; crew is per-event.
+function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
+  const C = useT(); const s = makeS(C);
+  const crew = event.crew || [];
+  const setCrew = (fn) => setEvent(e => ({ ...e, crew: typeof fn === 'function' ? fn(e.crew || []) : fn }));
+  const assignedIds = new Set(crew.map(c => c.memberId).filter(Boolean));
+  const available = team.filter(m => !assignedIds.has(m.id));
+  const [adding, setAdding] = useState(false);
+  const [nm, setNm] = useState(''); const [rl, setRl] = useState(''); const [em, setEm] = useState(''); const [ph, setPh] = useState('');
+
+  const addTeammate = () => {
+    if (!nm.trim()) return;
+    const m = makeRosterMember({ name: nm, roleLabel: rl, email: em, phone: ph });
+    setTeam?.(t => [...t, m]);
+    setCrew(list => [...list, makeCrewAssignment(m, { roleLabel: rl })]);
+    setNm(''); setRl(''); setEm(''); setPh(''); setAdding(false);
+  };
+  const assign = (m) => setCrew(list => [...list, makeCrewAssignment(m)]);
+  const updateCrew = (id, key, val) => setCrew(list => list.map(c => c.id === id ? { ...c, [key]: val } : c));
+  const removeCrew = (id) => setCrew(list => list.filter(c => c.id !== id));
+
+  const field = { ...s.input, fontSize: 13 };
+  const fieldRow = isMobile ? { display: 'flex', flexDirection: 'column', gap: 8 } : { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' };
+
+  return (
+    <div data-testid="crew-tab">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+        <div>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 4 }}>Crew</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>Who's on this event</div>
+        </div>
+        {onBack && <button onClick={onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px' }}>← Command</button>}
+      </div>
+      <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, marginBottom: 14 }}>Assign studio teammates, set call times, and track who's confirmed. Solo events can leave this empty.</div>
+
+      {/* Assigned crew */}
+      {crew.length === 0 ? (
+        <div data-testid="crew-empty" style={{ background: C.surface2, border: `1px dashed ${C.border}`, borderRadius: 12, padding: '18px 16px', textAlign: 'center', color: C.muted, fontSize: 13, marginBottom: 14 }}>
+          No crew assigned yet. Add a teammate below — or run this event solo.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+          {crew.map(c => (
+            <div key={c.id} data-testid="crew-row" style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{c.name}{c.email ? <span style={{ fontSize: 12, fontWeight: 400, color: C.muted }}> · {c.email}</span> : null}</span>
+                <button onClick={() => removeCrew(c.id)} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
+              </div>
+              <div style={fieldRow}>
+                <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Role</span>
+                  <input data-testid="crew-role" style={field} value={c.roleLabel} placeholder="e.g. Second shooter" onChange={e => updateCrew(c.id, 'roleLabel', e.target.value)} /></label>
+                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Call time</span>
+                  <input type="time" style={field} value={c.callTime} onChange={e => updateCrew(c.id, 'callTime', e.target.value)} /></label>
+                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Arrival</span>
+                  <input type="time" style={field} value={c.arrivalTime} onChange={e => updateCrew(c.id, 'arrivalTime', e.target.value)} /></label>
+                <label style={{ width: isMobile ? '100%' : 170 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Status</span>
+                  <select data-testid="crew-status" style={field} value={c.status} onChange={e => updateCrew(c.id, 'status', e.target.value)}>
+                    {CREW_STATUSES.map(st => <option key={st} value={st}>{CREW_STATUS_LABEL[st]}</option>)}
+                  </select></label>
+              </div>
+              <label style={{ display: 'block', marginTop: 8 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Notes</span>
+                <input style={field} value={c.notes} placeholder="Optional — e.g. handles drone, leaves at 9pm" onChange={e => updateCrew(c.id, 'notes', e.target.value)} /></label>
+              <div style={{ marginTop: 10 }}><CrewContactActions c={c} event={event} /></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Assign from roster */}
+      {available.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 6 }}>Add from your studio</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {available.map(m => (
+              <button key={m.id} data-testid="crew-assign-chip" onClick={() => assign(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 999, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40 }}>
+                + {m.name}{m.roleLabel ? <span style={{ color: C.muted, fontWeight: 400 }}> · {m.roleLabel}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add a new teammate */}
+      {adding ? (
+        <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Add a teammate</div>
+          <div style={fieldRow}>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Name *</span>
+              <input data-testid="crew-new-name" style={field} value={nm} placeholder="Full name" onChange={e => setNm(e.target.value)} /></label>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Role</span>
+              <input style={field} value={rl} placeholder="e.g. Assistant" onChange={e => setRl(e.target.value)} /></label>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Email</span>
+              <input style={field} value={em} placeholder="teammate@studio.com" onChange={e => setEm(e.target.value)} /></label>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Phone</span>
+              <input style={field} value={ph} placeholder="(555) 555-0123" onChange={e => setPh(e.target.value)} /></label>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button data-testid="crew-new-save" onClick={addTeammate} disabled={!nm.trim()} style={{ ...s.btn(nm.trim() ? 'primary' : 'secondary'), fontSize: 13, opacity: nm.trim() ? 1 : 0.5 }}>Add to crew</button>
+            <button onClick={() => { setAdding(false); setNm(''); setRl(''); setEm(''); setPh(''); }} style={{ ...s.btn('ghost'), fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button data-testid="crew-add-teammate" onClick={() => setAdding(true)} style={{ ...s.btn('secondary'), fontSize: 13 }}>+ Add a teammate</button>
+      )}
+    </div>
+  );
+}
+
+function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank, team = [], setTeam }) {
   const C      = useT();
   const s      = makeS(C);
   const evtCLR = EVT_CLR(C);
@@ -26156,7 +26360,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     () => event.type === 'Board Meeting'
       ? [
           'Command', 'Communication',
-          'Client Intake', 'Budget', 'Guests', 'Vendors',
+          'Client Intake', 'Budget', 'Guests', 'Vendors', 'Crew',
           'Planning',
           'Decisions',
           'Calendar', 'Run of Show',
@@ -26435,6 +26639,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           onBack={() => handleTabChange('Command')}
         />
       )}
+      {tab === 'Crew' && (
+        <CrewTab
+          event={event}
+          setEvent={setEvent}
+          team={team}
+          setTeam={setTeam}
+          isMobile={isMobile}
+          onBack={() => handleTabChange('Command')}
+        />
+      )}
       {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} eventName={event.name} /></>}
       {tab === 'Run of Show' && (
         <>
@@ -26511,6 +26725,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                section of the cockpit (handleTabChange tracks vendorSection). */
             onOpenVendor={(vId, section) => handleTabChange('Vendors', vId, section ? { vendorSection: section } : undefined)}
           />
+          {/* Sprint 52B — crew manifest beneath vendor arrivals on event day. */}
+          <CrewManifest crew={event.crew || []} event={event} isMobile={isMobile} />
         </>
       )}
     </ErrorBoundary>
@@ -27256,6 +27472,19 @@ export default function App() {
   const [showNewClient,  setShowNewClient]  = useState(false);
   const [showProfile,    setShowProfile]    = useState(false);
   const [showMembers,    setShowMembers]    = useState(false);
+  // Sprint 52B — studio team roster (localStorage-backed; carries name + phone
+  // the crew manifest needs). Best-effort merges invited Supabase members.
+  const [team,           setTeam]           = useState(loadTeamRoster);
+  useEffect(() => { saveTeamRoster(team); }, [team]);
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    let cancelled = false;
+    currentStudio()
+      .then((st) => (st ? listStudioMembers(st.id) : []))
+      .then((members) => { if (!cancelled && members && members.length) setTeam((t) => mergeSupabaseMembers(t, members)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   // Pick up any pending invitations the moment a session is available.
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) return;
@@ -27871,6 +28100,8 @@ export default function App() {
         setEvent={setEvent}
         client={activeClient}
         setClient={setClient}
+        team={team}
+        setTeam={setTeam}
         allEvents={events}
         onBack={() => { setActiveId(null); setInitialNav(null); }}
         onOpenClient={activeClient ? () => { setActiveId(null); setInitialNav(null); setActiveClientId(activeClient.id); } : undefined}
