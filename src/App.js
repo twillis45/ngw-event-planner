@@ -30,6 +30,7 @@ import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEven
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
+import { copyToClipboard } from './lib/clipboard';
 import { isStripeConfigured, createCheckoutSession, verifySession as stripeVerifySession } from './lib/stripeApi';
 // Sprint 57f: compressed workflow intelligence — derive how rushed the timeline
 // is and classify template tasks into friendly urgency buckets so newly-created
@@ -8277,7 +8278,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
                 <div style={{ padding:'10px 14px', background:C.accent+'12', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <span style={{ fontSize:12, fontWeight:700, color:C.accent }}>Draft Proposal</span>
                   <div style={{ display:'flex', gap:6 }}>
-                    {proposalDraft && <button aria-label="Remove" onClick={()=>navigator.clipboard?.writeText(proposalDraft)} style={{ ...makeS(C).btn(), fontSize:10, padding:'3px 8px' }}>Copy</button>}
+                    {proposalDraft && <button aria-label="Remove" onClick={()=>copyToClipboard(proposalDraft)} style={{ ...makeS(C).btn(), fontSize:10, padding:'3px 8px' }}>Copy</button>}
                     <button aria-label="Remove" onClick={()=>setShowProposal(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:C.muted }}>✕</button>
                   </div>
                 </div>
@@ -11875,7 +11876,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           <input readOnly value={intakeUrl} style={{ ...s.input, flex: 1, fontSize: 11, color: C.muted, minWidth: 180 }} onClick={e => e.target.select()} />
                           <button style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }}
-                            onClick={() => navigator.clipboard?.writeText(intakeUrl).catch(() => {})}>Copy link</button>
+                            onClick={() => copyToClipboard(intakeUrl, 'Link copied')}>Copy link</button>
                           <a href={intakeUrl} target="_blank" rel="noopener noreferrer"
                             style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 14px', textDecoration: 'none', flexShrink: 0 }}>Preview</a>
                         </div>
@@ -11893,7 +11894,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                           />
                           <button
                             style={{ position: 'absolute', top: 8, right: 8, ...s.btn('ghost'), fontSize: 11, padding: '3px 10px' }}
-                            onClick={() => navigator.clipboard?.writeText(embedCode).catch(() => {})}>
+                            onClick={() => copyToClipboard(embedCode, 'Embed code copied')}>
                             Copy
                           </button>
                         </div>
@@ -14188,7 +14189,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
                 onClick={() => {
                   const base = window.location.origin + window.location.pathname;
                   const url  = `${base}?intake=${profile.intakeToken}`;
-                  navigator.clipboard.writeText(url).catch(() => {});
+                  copyToClipboard(url, 'Link copied');
                 }}
                 title="Copy your public intake form link"
                 style={{ ...s.btn('ghost'), fontSize: 12, padding: '7px 14px' }}
@@ -19437,7 +19438,7 @@ function Guests({ guests, setGuests, event = {} }) {
                         <button onClick={() => {
                           if (!g.thankYouSent) {
                             const msg = `Hi ${g.name.split(' ')[0]}, thank you so much for the gift and for celebrating with us! It means the world. 💛`;
-                            navigator.clipboard?.writeText(msg).catch(() => {});
+                            copyToClipboard(msg, 'Thank-you message copied');
                           }
                           toggle(g.id, 'thankYouSent');
                         }} style={{
@@ -19480,7 +19481,7 @@ function Guests({ guests, setGuests, event = {} }) {
         const noResponse   = guests.filter(g => !g.rsvp).length;
         const tablesUsed   = [...new Set(confirmed.map(g => g.table).filter(Boolean))].length;
 
-        const copyText = (text) => navigator.clipboard?.writeText(text).catch(() => {});
+        const copyText = (text) => copyToClipboard(text);
 
         const fbText = [
           `F&B Summary — ${event.name || 'Event'}`,
@@ -27589,6 +27590,13 @@ export default function App() {
   const [toast,          setToast]          = useState(null); // { msg, variant }
   const showToast = (msg, variant = 'success') => setToast({ msg, variant });
   const toastCtxVal = { showToast };
+  // Sprint 52B — global copy confirmation: copyToClipboard() (lib/clipboard)
+  // dispatches 'ngw-toast' so every copy action anywhere shows a toast.
+  useEffect(() => {
+    const onCopyToast = (e) => showToast(e?.detail?.message || 'Copied to clipboard');
+    window.addEventListener('ngw-toast', onCopyToast);
+    return () => window.removeEventListener('ngw-toast', onCopyToast);
+  }, []);
 
   // Sprint Budget/Payments — Undo toast for financial-state actions.
   // Auto-dismisses after 5000ms. Tapping Undo cancels timer + fires onUndo.
