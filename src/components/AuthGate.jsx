@@ -304,13 +304,21 @@ export default function AuthGate({ children }) {
     if (BYPASS_ACTIVE) { setReady(true); return; }
     if (!configured || !supabase) { setReady(true); return; }
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) { setSession(data?.session || null); setReady(true); }
-    });
+    // Sprint 52B — never hang on "Loading…". supabase.auth.getSession() can
+    // stall indefinitely in some environments (iOS Safari Private Mode blocks
+    // the storage / navigator-lock Supabase relies on), and previously nothing
+    // ever set `ready`, leaving a permanent Loading screen. A catch + a hard
+    // timeout guarantee we always fall through (to the login screen if needed).
+    const finish = () => { if (mounted) setReady(true); };
+    const timer = setTimeout(finish, 5000);
+    supabase.auth.getSession()
+      .then(({ data }) => { if (mounted) setSession(data?.session || null); })
+      .catch(() => { /* storage/network blocked — proceed to login */ })
+      .finally(() => { clearTimeout(timer); finish(); });
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => {
       if (mounted) setSession(sess);
     });
-    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
+    return () => { mounted = false; clearTimeout(timer); sub?.subscription?.unsubscribe?.(); };
   }, [configured]);
 
   const value = {
