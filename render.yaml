@@ -19,6 +19,12 @@ services:
         sync: false
       - key: COMMUNICATION_EMAIL_FROM # e.g. events@yourdomain.com (verified in Resend)
         sync: false
+      # ── AI proxy (server-side Claude) — the key stays on the server, never
+      #    in the browser. Powers POST /api/ai/anthropic. ──
+      - key: ANTHROPIC_API_KEY       # console.anthropic.com → API Keys (secret)
+        sync: false
+      - key: ANTHROPIC_MODEL         # optional; the API model id to use
+        value: claude-3-5-sonnet-latest
       - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
         sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
       # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every
