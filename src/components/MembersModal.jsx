@@ -41,10 +41,15 @@ export default function MembersModal({ onClose, currentUserId: propUid }) {
   const refresh = async () => {
     setLoading(true); setErr('');
     try {
-      // Resolve current user (for self-checks) if not provided.
-      if (!me && supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (data?.session?.user?.id) setMe(data.session.user.id);
+      // Resolve current user (for self-checks) if not provided. Under the dev
+      // auth bypass there is no Supabase session, so use the synthetic id so the
+      // "(you)" tag + self-row guards still work for local QA.
+      if (!me) {
+        if (process.env.REACT_APP_AUTH_BYPASS === 'true') setMe('dev-bypass-user');
+        else if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user?.id) setMe(data.session.user.id);
+        }
       }
       const s = await currentStudio();
       if (!s) { setErr('No studio found for the current user.'); return; }
