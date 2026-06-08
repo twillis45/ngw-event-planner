@@ -7579,9 +7579,17 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                             </div>
                             <div style={{ fontSize: 11, color: C.muted, marginTop: -4 }}>~{money(perGuestGrand)}/guest all-in · {guests} guests · {form.type}{marketObj ? ` · ${marketObj.label}` : ''}</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
-                              <button type="button" data-testid="ce-estimator-apply" onClick={applyBudget}
-                                style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use this budget</button>
-                              <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>Fills the budget by category. Does not create a payment or move money.</span>
+                              {(budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal) ? (
+                                <div data-testid="ce-estimator-applied" style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190, textAlign: 'center', background: C.success + '22', color: C.success, border: `1px solid ${C.success}66`, cursor: 'default' }}>✓ Using this budget</div>
+                              ) : (
+                                <button type="button" data-testid="ce-estimator-apply" onClick={applyBudget}
+                                  style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use this budget</button>
+                              )}
+                              <span style={{ fontSize: 12, color: (budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal) ? C.success : C.muted, lineHeight: 1.5 }}>
+                                {(budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal)
+                                  ? `✓ Applied — ${money(grandTotal)} set as your budget by category.`
+                                  : 'Fills the budget by category. Does not create a payment or move money.'}
+                              </span>
                             </div>
 
                             <div data-testid="ce-estimator-assumptions" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
