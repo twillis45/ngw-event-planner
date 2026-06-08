@@ -186,10 +186,20 @@ function LoginScreen() {
   );
 }
 
-function ThemeFallbackSplash() {
+function ThemeFallbackSplash({ onContinue }) {
+  // Sprint 52B — diagnostic + escape hatch. The build marker tells us whether a
+  // device loaded the new bundle (if you DON'T see the Continue button, you're
+  // on a stale cached bundle). The button is a manual fall-through to login in
+  // case session resolution ever stalls.
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: D.bg, color: D.muted, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>
-      Loading…
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: D.bg, color: D.muted, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif", padding: 20, textAlign: 'center' }}>
+      <div>Loading…</div>
+      {onContinue && (
+        <button onClick={onContinue} style={{ background: 'transparent', color: D.accent, border: `1px solid ${D.border}`, borderRadius: 8, padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Taking too long? Continue to sign-in →
+        </button>
+      )}
+      <div style={{ fontSize: 9, color: '#3a424c', letterSpacing: '0.08em' }}>build auth-r2</div>
     </div>
   );
 }
@@ -341,7 +351,7 @@ export default function AuthGate({ children }) {
       </AuthCtx.Provider>
     );
   }
-  if (configured && !ready)    return <ThemeFallbackSplash />;
+  if (configured && !ready)    return <ThemeFallbackSplash onContinue={() => setReady(true)} />;
   if (configured && !session)  return <LoginScreen />;
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
