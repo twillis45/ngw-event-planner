@@ -13384,7 +13384,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
 // ─── Global Compose — full communications hub, accessible from every screen ─────
 // Sprint 66+: Message · Approval request · Follow-up · Internal note ·
 // 📞 Call · 💬 WhatsApp · 📧 Email client — all one click from anywhere.
-function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnections, hideFabOn = 'none' }) {
+function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnections, hideFabOn = 'none', currentEventId = null }) {
   const C    = useT();
   const s    = makeS(C);
   const bp   = useContext(BpCtx);
@@ -13413,23 +13413,54 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
   const selectedEvent = useMemo(() =>
     events.find(e => e.id === selectedEventId) || null,
     [events, selectedEventId]);
+  // Sprint 51B P0 Fix 1 — context inheritance / no silent event switch.
+  // When the panel OPENS:
+  //  • If launched with a source context (currentEventId — e.g. from an
+  //    event, decision, approval, request, promise or vendor), inherit THAT
+  //    event automatically.
+  //  • Otherwise (the generic Home FAB, no source) NEVER silently assume a
+  //    particular event. Auto-select only when there is exactly one active
+  //    event (unambiguous); when there are several, leave the picker empty
+  //    so the planner chooses explicitly — the old behaviour of defaulting
+  //    to the soonest active event was the documented trust violation.
+  //  • An explicit dropdown change is the only other way the event switches.
   useEffect(() => {
-    if (!selectedEventId && activeEvents.length) setSelectedEventId(activeEvents[0].id);
-  }, [activeEvents.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!open) return;
+    if (currentEventId && events.some(e => e.id === currentEventId)) {
+      if (currentEventId !== selectedEventId) { setSelectedEventId(currentEventId); setChannel('client'); }
+    } else if (!currentEventId && !selectedEventId && activeEvents.length === 1) {
+      setSelectedEventId(activeEvents[0].id);
+    }
+  }, [open, currentEventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const vendors = selectedEvent ? (selectedEvent.vendors || []).filter(v => v.contact || v.phone) : [];
 
-  // Full recipient — email + phone + WhatsApp
+  // The client linked to the selected event (used for both the "To" dropdown
+  // label and the recipient identity card).
+  const eventClient = useMemo(() =>
+    selectedEvent ? (clients.find(c => (c.eventIds || []).includes(selectedEvent.id)) || null) : null,
+    [selectedEvent, clients]);
+
+  // Sprint 51B P0 Fix 2 — recipient identity. Resolve the ACTUAL person/company
+  // (name, role, email, company) rather than the abstract Client/Vendor/Team.
   const recipient = useMemo(() => {
     if (!selectedEvent) return null;
-    if (channel === '__team') return { name: 'Team', isInternal: true };
+    if (channel === '__team') return { name: 'Team', role: 'Internal note', isInternal: true };
     if (channel === 'client') {
-      const cl = clients.find(c => (c.eventIds || []).includes(selectedEvent.id));
-      return cl ? { name: cl.name, email: cl.email, phone: cl.phone, whatsapp: cl.whatsapp, googleVoice: cl.googleVoice } : null;
+      return eventClient
+        ? { name: eventClient.name, role: 'Client', email: eventClient.email, phone: eventClient.phone, whatsapp: eventClient.whatsapp, googleVoice: eventClient.googleVoice }
+        : null;
     }
     const v = vendors.find(vd => vd.name === channel);
-    return v ? { name: v.contactName || v.name, email: v.contact, phone: v.phone, whatsapp: v.whatsapp, googleVoice: v.googleVoice } : null;
-  }, [selectedEvent, channel, clients, vendors]);
+    if (!v) return null;
+    const hasPerson = v.contactName && v.contactName !== v.name;
+    return {
+      name: hasPerson ? v.contactName : v.name,
+      role: v.category || 'Vendor',
+      company: hasPerson ? v.name : undefined,
+      email: v.contact, phone: v.phone, whatsapp: v.whatsapp, googleVoice: v.googleVoice,
+    };
+  }, [selectedEvent, channel, eventClient, vendors]);
 
   const canEmail = commLive && emailEnabled && !!recipient?.email;
   const canWA    = !!(recipient?.whatsapp || recipient?.phone);
@@ -13604,6 +13635,10 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Event</label>
                   <select style={{ ...s.input, fontSize: 12 }} value={selectedEventId} onChange={e => { setSelectedEventId(e.target.value); setChannel('client'); }}>
+                    {/* Sprint 51B P0 Fix 1 — explicit-choice placeholder so the
+                        panel never silently assumes an event the planner did
+                        not pick. */}
+                    {!selectedEventId && <option value="">Choose event…</option>}
                     {activeEvents.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                     {!activeEvents.length && <option value="">No active events</option>}
                   </select>
@@ -13611,23 +13646,45 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>To</label>
                   <select style={{ ...s.input, fontSize: 12 }} value={channel} onChange={e => setChannel(e.target.value)}>
-                    <option value="client">Client</option>
-                    {vendors.map(v => <option key={v.id || v.name} value={v.name}>{v.name}</option>)}
-                    <option value="__team">Team (internal note)</option>
+                    <option value="client">{eventClient?.name || 'Client'}</option>
+                    {vendors.map(v => <option key={v.id || v.name} value={v.name}>{v.category ? `${v.name} · ${v.category}` : v.name}</option>)}
+                    <option value="__team">Team · Internal note</option>
                   </select>
                 </div>
               </div>
 
+              {/* Sprint 51B P0 Fix 1 — explicit-choice prompt (shown only when
+                  the generic FAB opened without a source event and several
+                  events exist). Trust: no message is composed against an
+                  unchosen event. */}
+              {!selectedEvent && (
+                <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, fontSize: 12, color: C.muted }}>
+                  Choose the event this message is about — nothing is assumed for you.
+                </div>
+              )}
+
               {/* Recipient card + quick-action buttons */}
               {recipient && (
                 <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-                  <div style={{ fontSize: 11, marginBottom: recipient.isInternal ? 0 : 8, display: 'flex', flexWrap: 'wrap', gap: '2px 14px', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: C.text, fontSize: 12 }}>{recipient.name}</span>
-                    {recipient.email && <span style={{ color: C.muted }}>📧 {recipient.email}</span>}
-                    {recipient.phone && <span style={{ color: C.muted }}>📞 {recipient.phone}</span>}
-                    {!recipient.email && !recipient.phone && !recipient.isInternal && (
-                      <span style={{ color: C.warn, fontSize: 10 }}>⚠ No contact info on file</span>
+                  {/* Sprint 51B P0 Fix 2 — actual recipient identity:
+                      Name · Role · Company (if any) · Email / Phone. */}
+                  <div style={{ marginBottom: recipient.isInternal ? 0 : 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: C.text, fontSize: 13 }}>{recipient.name}</span>
+                      {recipient.role && (
+                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 10, padding: '1px 7px' }}>{recipient.role}</span>
+                      )}
+                    </div>
+                    {recipient.company && (
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{recipient.company}</div>
                     )}
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: '2px 12px' }}>
+                      {recipient.email && <span>📧 {recipient.email}</span>}
+                      {recipient.phone && <span>📞 {recipient.phone}</span>}
+                      {!recipient.email && !recipient.phone && !recipient.isInternal && (
+                        <span style={{ color: C.warn }}>⚠ No contact info on file</span>
+                      )}
+                    </div>
                   </div>
                   {!recipient.isInternal && (canCall || canWA || canGV || recipient.email) && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -27935,6 +27992,9 @@ export default function App() {
         // surface — hide the FAB on mobile so the hero owns the screen.
         // Event-detail screens have their own composer entries.
         hideFabOn="mobile-home"
+        // Sprint 51B P0 Fix 1 — inherit the event currently being viewed
+        // (null on Home) instead of silently defaulting to activeEvents[0].
+        currentEventId={activeId}
         onOpenConnections={() => setShowProfile(true)}
         onMessageSent={(eventId, msg) => {
           setEvents(prev => prev.map(e => e.id === eventId
