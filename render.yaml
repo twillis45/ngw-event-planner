@@ -21,6 +21,8 @@ services:
         sync: false
       # AI feature proxy (POST /api/ai/feature) reuses the existing
       # OPENAI_API_KEY (set in the dashboard) — no extra secret needed.
+      - key: OPENWEATHER_KEY         # openweathermap.org → API keys. Powers the
+        sync: false                  #   /api/weather proxy so the key stays server-side.
       - key: PLANNER_DEV_TOKEN       # local-dev shorthand only; IGNORED in deployment
         sync: false                   # unless ALLOW_DEV_TOKEN=true is ALSO set (do NOT set in prod)
       # SECURITY: Do NOT add ALLOW_DEV_TOKEN here. It must remain unset in every

@@ -11,8 +11,11 @@
 
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
 const BASE = 'https://api.openweathermap.org/data/3.0/onecall';
+// Sprint 52B — prefer the backend weather proxy (key stays server-side). Falls
+// back to a direct REACT_APP_OPENWEATHER_KEY call for local dev.
+const PROXY = process.env.REACT_APP_API_BASE_URL;
 
-export const isWeatherConfigured = () => Boolean(API_KEY);
+export const isWeatherConfigured = () => Boolean(API_KEY || PROXY);
 
 /** Outdoor venue keywords — used to determine if weather check applies */
 const OUTDOOR_KEYWORDS = [
@@ -31,8 +34,14 @@ export function isLikelyOutdoor(venue = '', notes = '') {
  * Returns { lat, lon } or null on failure.
  */
 export async function geocodeVenue(venue) {
-  if (!API_KEY || !venue) return null;
+  if (!venue || (!API_KEY && !PROXY)) return null;
   try {
+    if (PROXY) {
+      const res = await fetch(`${PROXY}/api/weather/geocode?q=${encodeURIComponent(venue)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.result || null;
+    }
     const res = await fetch(
       `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(venue)}&limit=1&appid=${API_KEY}`
     );
@@ -62,19 +71,20 @@ export async function geocodeVenue(venue) {
  * }
  */
 export async function getEventWeatherRisk(lat, lon, eventDateIso) {
-  if (!API_KEY || !lat || !lon || !eventDateIso) return null;
+  if ((!API_KEY && !PROXY) || !lat || !lon || !eventDateIso) return null;
 
   const daysOut = Math.ceil((new Date(eventDateIso) - new Date()) / (1000 * 60 * 60 * 24));
   if (daysOut < 0 || daysOut > 14) return null; // outside forecast window
 
   try {
-    const res = await fetch(
-      `${BASE}?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&units=imperial&appid=${API_KEY}`
-    );
+    const res = PROXY
+      ? await fetch(`${PROXY}/api/weather/onecall?lat=${lat}&lon=${lon}`)
+      : await fetch(`${BASE}?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&units=imperial&appid=${API_KEY}`);
     if (!res.ok) return null;
     const data = await res.json();
 
-    // Find the daily forecast matching the event date
+    // Find the daily forecast matching the event date (proxy + direct both
+    // expose a `daily` array).
     const eventDay = data.daily?.find(d => {
       const dayDate = new Date(d.dt * 1000).toISOString().slice(0, 10);
       return dayDate === eventDateIso;

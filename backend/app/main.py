@@ -13,6 +13,7 @@ from .db import close_pool
 from .routers import communication
 from .routers import docusign
 from .routers import ai
+from .routers import weather
 from .routers import webhooks
 from .routers import stripe_payments
 from .routers import admin
@@ -178,6 +179,7 @@ async def _shutdown():
 app.include_router(communication.router)
 app.include_router(docusign.router)
 app.include_router(ai.router)
+app.include_router(weather.router)
 app.include_router(webhooks.router)
 app.include_router(stripe_payments.router)
 app.include_router(admin.router)
