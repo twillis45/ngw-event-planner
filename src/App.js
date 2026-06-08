@@ -16240,17 +16240,20 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   gap: isMob ? 10 : 14,
                   marginBottom: isMob ? 14 : 20,
                 }}>
-                  <div style={{
+                  <div role="button" tabIndex={0} onClick={() => setEventsFilter('active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('active'); } }} style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: 'pointer',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{allEvents.length} total in portfolio</div>
                   </div>
-                  <div style={{
+                  <div role={nextEvent ? 'button' : undefined} tabIndex={nextEvent ? 0 : undefined}
+                    onClick={nextEvent ? () => onSelectEvent(nextEvent.ev.id) : undefined}
+                    onKeyDown={nextEvent ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectEvent(nextEvent.ev.id); } } : undefined}
+                    style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: nextEvent ? 'pointer' : 'default',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
                     <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -16271,9 +16274,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       {totalAttention === 0 ? 'All clear' : `across ${priorityEvents.length} event${priorityEvents.length !== 1 ? 's' : ''}`}
                     </div>
                   </div>
-                  <div style={{
+                  <div role="button" tabIndex={0} onClick={() => setEventsFilter('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('all'); } }} style={{
                     ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px',
-                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: 'pointer',
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: portfolioValue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{fmtD(portfolioValue)}</div>
