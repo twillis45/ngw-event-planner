@@ -10612,7 +10612,8 @@ function PreferredVendorDirectory({ C, s }) {
     try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : []; } catch { return []; }
   });
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: '', category: '', contact: '', phone: '', website: '', notes: '' });
+  const BLANK_DRAFT = { name: '', category: '', contact: '', phone: '', website: '', notes: '', insuranceStatus: '', eventsCompleted: '', onTimeRate: '', avgResponseHours: '', plannerRehireCount: '', successfulEventCount: '', incidentCount: '' };
+  const [draft, setDraft] = useState(BLANK_DRAFT);
   const [search, setSearch] = useState('');
 
   const save = (v) => {
@@ -10620,11 +10621,18 @@ function PreferredVendorDirectory({ C, s }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); } catch {}
   };
 
+  // Sprint 52B — carry the vendor-intelligence track record into the bank so each
+  // saved vendor is scored by the same engine the event workspace uses
+  // (vendorReliabilityScore / vendorBadges / vendorTier). Empty fields are
+  // omitted so they never count as data (honest scoring).
+  const TRACK_NUM_FIELDS = ['eventsCompleted', 'onTimeRate', 'avgResponseHours', 'plannerRehireCount', 'successfulEventCount', 'incidentCount'];
   const addVendor = () => {
     if (!draft.name.trim()) return;
-    const next = [...vendors, { ...draft, id: `pv-${Date.now()}`, rehireCount: 0, addedAt: new Date().toISOString() }];
-    save(next);
-    setDraft({ name: '', category: '', contact: '', phone: '', website: '', notes: '' });
+    const rec = { name: draft.name, category: draft.category, contact: draft.contact, phone: draft.phone, website: draft.website, notes: draft.notes, id: `pv-${Date.now()}`, rehireCount: 0, addedAt: new Date().toISOString() };
+    if (draft.insuranceStatus) rec.insuranceStatus = draft.insuranceStatus;
+    TRACK_NUM_FIELDS.forEach(k => { if (String(draft[k]).trim() !== '') rec[k] = Number(draft[k]); });
+    save([...vendors, rec]);
+    setDraft(BLANK_DRAFT);
     setAdding(false);
   };
 
@@ -10636,6 +10644,7 @@ function PreferredVendorDirectory({ C, s }) {
     : vendors;
 
   const VENDOR_CATS = ['Venue', 'Catering', 'Florals', 'Photography', 'Entertainment', 'AV / Tech', 'Hair & Makeup', 'Transportation', 'Lighting', 'Décor', 'Officiant', 'Other'];
+  const tierColor = (t) => t === 'Elite' ? '#a78bfa' : t === 'Certified' ? '#34d399' : t === 'Preferred' ? (C.accent || '#6c96c4') : C.muted;
 
   return (
     <div style={{ marginBottom: 8 }}>
@@ -10679,6 +10688,29 @@ function PreferredVendorDirectory({ C, s }) {
             <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Notes (what they're great at, pricing range, quirks)</label>
             <textarea style={{ ...s.input, minHeight: 55, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={draft.notes} placeholder="Best for outdoor weddings. Responsive. Budget: $3–5k for florals." onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))} />
           </div>
+          {/* Sprint 52B — track record powers the quality score + badges (why a
+              vendor is good or not). All optional; the score only appears once
+              there's a real record. */}
+          <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10, marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Track record — powers the quality score (all optional)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {[['eventsCompleted', 'Events done', 'e.g. 40'], ['onTimeRate', 'On-time %', '0–100'], ['avgResponseHours', 'Avg reply hrs', 'e.g. 6'], ['plannerRehireCount', 'You rehired', 'e.g. 3'], ['successfulEventCount', 'Successful', 'e.g. 38'], ['incidentCount', 'Incidents', 'e.g. 0']].map(([k, lab, ph]) => (
+                <div key={k}>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>{lab}</label>
+                  <input type="number" data-testid={`pv-${k}`} style={{ ...s.input, fontSize: 12 }} value={draft[k]} placeholder={ph} onChange={e => setDraft(d => ({ ...d, [k]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Insurance</label>
+              <select style={{ ...s.input, fontSize: 12 }} value={draft.insuranceStatus} onChange={e => setDraft(d => ({ ...d, insuranceStatus: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option>Insured &amp; verified</option>
+                <option>Insured</option>
+                <option>Not insured</option>
+              </select>
+            </div>
+          </div>
           <button style={{ ...s.btn('primary'), fontSize: 12 }} onClick={addVendor} disabled={!draft.name.trim()}>Save to my vendor bank</button>
         </div>
       )}
@@ -10690,9 +10722,13 @@ function PreferredVendorDirectory({ C, s }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filtered.map(v => (
-            <div key={v.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: v.notes ? 4 : 0 }}>
+          {filtered.map(v => {
+            const rel = vendorReliabilityScore(v);
+            const badges = vendorBadges(v);
+            const tier = vendorTier(v);
+            return (
+            <div key={v.id} data-testid="pv-row" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>{v.name}</span>
                   {v.category && <span style={{ fontSize: 10, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '1px 7px', marginLeft: 6 }}>{v.category}</span>}
@@ -10705,9 +10741,25 @@ function PreferredVendorDirectory({ C, s }) {
                   <button style={{ ...s.btn('danger'), fontSize: 10, padding: '3px 8px' }} onClick={() => removeVendor(v.id)} title="Remove from my vendor bank">×</button>
                 </div>
               </div>
+              {/* Sprint 52B — quality intelligence: why this vendor is good (or not yet scored). */}
+              <div data-testid="pv-quality" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: v.notes ? 4 : 0 }}>
+                {rel.sufficient ? (
+                  <>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: tierColor(tier), background: `${tierColor(tier)}1e`, border: `1px solid ${tierColor(tier)}55`, borderRadius: 6, padding: '1px 7px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tier}</span>
+                    <span style={{ fontSize: 11, color: C.text, fontWeight: 600 }}>Reliability {rel.score}/100</span>
+                    {badges.slice(0, 3).map(bd => (
+                      <span key={bd} style={{ fontSize: 10, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '1px 7px' }}>{bd}</span>
+                    ))}
+                    {v.insuranceStatus && <span style={{ fontSize: 10, color: /verified/i.test(v.insuranceStatus) ? C.success : /not/i.test(v.insuranceStatus) ? C.warn : C.muted }}>{v.insuranceStatus}</span>}
+                  </>
+                ) : (
+                  <span style={{ fontSize: 10, color: C.muted, fontStyle: 'italic' }}>No track record yet — add on-time %, response time, and rehires to score quality.</span>
+                )}
+              </div>
               {v.notes && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{v.notes}</div>}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
