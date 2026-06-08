@@ -10892,11 +10892,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           display: 'flex', alignItems: 'center', gap: 10,
           cursor: collapsible ? 'pointer' : 'default',
           margin: '22px 0 14px',
-          padding: anchor ? '6px 8px' : 0,
+          padding: collapsible ? '11px 12px' : anchor ? '6px 8px' : 0,
           marginLeft: anchor ? -8 : 0,
           marginRight: anchor ? -8 : 0,
-          borderRadius: anchor ? 6 : 0,
-          background: isFlashing ? `${C.accentTopGrad || C.accent}22` : 'transparent',
+          borderRadius: collapsible ? 8 : anchor ? 6 : 0,
+          border: collapsible ? `1px solid ${open ? C.accent + '55' : C.border}` : 'none',
+          background: isFlashing ? `${C.accentTopGrad || C.accent}22` : collapsible ? C.surface2 : 'transparent',
           transition: 'background 220ms ease',
         }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, color: C.accentTopGrad || C.accent, letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
@@ -10905,8 +10906,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           ownership === 'event' ? 'Set on each event individually.' :
                                   'Affects every event in this workspace.'
         }>{chip.label}</span>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-        {collapsible && <span style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>}
+        <div style={{ flex: 1, height: collapsible ? 0 : 1, background: collapsible ? 'transparent' : C.border }} />
+        {collapsible && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.accent, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
+            {open ? 'Hide' : 'Show'}<span style={{ fontSize: 12, lineHeight: 1 }}>{open ? '▾' : '▸'}</span>
+          </span>
+        )}
       </div>
     );
   };
