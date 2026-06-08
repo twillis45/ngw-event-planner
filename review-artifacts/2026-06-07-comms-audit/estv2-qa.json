@@ -1,0 +1,72 @@
+[
+  {
+    "width": 1440,
+    "categoryCount": 10,
+    "sampleCats": [
+      {
+        "cat": "Venue",
+        "price": "$8,900"
+      },
+      {
+        "cat": "Catering",
+        "price": "$10,450"
+      },
+      {
+        "cat": "Photography",
+        "price": "$3,800"
+      },
+      {
+        "cat": "Florals",
+        "price": "$2,550"
+      }
+    ],
+    "marketPresent": true,
+    "grand0": "$31,750",
+    "grandAfterPhotoBest": "$33,950",
+    "mixIncreasedTotal": true,
+    "marketRaisedVenue": true,
+    "venueBeforeAfter": [
+      "$8,900",
+      "$14,650"
+    ],
+    "grandAfterAllGood": "$31,800",
+    "overflowH": false,
+    "totalBudgetField": "$31,800",
+    "budgetSeeded": true,
+    "cErr": 0,
+    "pErr": 0,
+    "pErrs": []
+  },
+  {
+    "width": 390,
+    "categoryCount": 0,
+    "sampleCats": [],
+    "marketPresent": false,
+    "mixIncreasedTotal": false,
+    "marketRaisedVenue": false,
+    "venueBeforeAfter": [
+      null,
+      null
+    ],
+    "overflowH": false,
+    "cErr": 0,
+    "pErr": 0,
+    "pErrs": []
+  },
+  {
+    "width": 375,
+    "categoryCount": 0,
+    "sampleCats": [],
+    "marketPresent": false,
+    "mixIncreasedTotal": false,
+    "marketRaisedVenue": false,
+    "venueBeforeAfter": [
+      null,
+      null
+    ],
+    "overflowH": false,
+    "cErr": 0,
+    "pErr": 0,
+    "pErrs": []
+  }
+]
