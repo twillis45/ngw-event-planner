@@ -1,8 +1,8 @@
-// Sprint 52B — frontend client for the server-side Anthropic proxy.
-// The Anthropic API key lives ONLY on the backend (Render env). The browser
-// just POSTs {feature, prompt, context} to /api/ai/anthropic with the planner's
-// Supabase token; the backend validates, builds a server-owned system prompt,
-// calls Claude, and returns only the text. No key ever reaches the client.
+// Sprint 52B — frontend client for the secure server-side AI feature proxy.
+// The provider API key lives ONLY on the backend (Render env, OPENAI_API_KEY).
+// The browser POSTs {feature, prompt, context} to /api/ai/feature with the
+// planner's Supabase token; the backend validates, builds a server-owned system
+// prompt, calls the model, and returns only the text. No key reaches the client.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
@@ -32,7 +32,7 @@ export async function callAiFeature(feature, prompt, context = null) {
   if (!AI_FEATURES.includes(feature)) throw new Error(`Unknown AI feature: ${feature}`);
   let res;
   try {
-    res = await fetch(`${BASE}/api/ai/anthropic`, {
+    res = await fetch(`${BASE}/api/ai/feature`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ feature, prompt, context }),
