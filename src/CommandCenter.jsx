@@ -32,6 +32,7 @@ import { color, space, type, radius } from './design/tokens';
 // when the planner most needs to see it, with a CTA that routes into the
 // existing Timeline tab compressed-priorities filter.
 import { deriveEventCompressionSummary } from './lib/workflowCompression';
+import { summarizeCrew } from './lib/studioTeam';
 
 // ── Studio Matte palette aliases (matches the rest of /plan/) ─────────────────
 const P = {
@@ -802,7 +803,7 @@ export function selectStudioCommand(events = []) {
       eventId: todayEv.id,
       eventName: todayEv.name,
       title: 'Your event is today.',
-      consequence: 'Day-of Mode gives you arrivals, messages, guest check-in, and the run-of-show in one place.',
+      consequence: 'Day-of Mode gives you vendor arrivals, messages, and the run-of-show in one place.',
       primaryCta: 'Enter Day-of Mode',
       primaryRoute: { eventId: todayEv.id, tab: 'Command' },
       secondaryCta: 'View full event details',
@@ -1690,7 +1691,34 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MOBILE LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function MobileCommandCenter({ event, data, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+// Sprint 52B — small, informational team-readiness block. Renders nothing for
+// solo events (no crew assigned) so it never becomes dashboard clutter.
+function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
+  if (!summary || summary.total === 0) return null;
+  const sev = summary.severity === 'attention' ? P.amber : summary.severity === 'none' ? P.green : P.textSecondary;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      <SectionHeader label="Team" action="Manage →" onAction={onManage} />
+      <div data-testid="cc-team-readiness" style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10, padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: sev, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary }}>{summary.total} on this event</span>
+        </div>
+        <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 4 }}>
+          {summary.confirmed} confirmed{summary.needsConfirmation ? ` · ${summary.needsConfirmation} need confirmation` : ''}{summary.assigned ? ` · ${summary.assigned} assigned` : ''}
+        </div>
+        {summary.crew.slice(0, 4).map(c => (
+          <div key={c.id} style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ color: P.textPrimary }}>{c.name}{c.roleLabel ? ` · ${c.roleLabel}` : ''}</span>
+            <span style={{ color: c.status === 'needs_confirmation' ? P.amber : c.status === 'confirmed' ? P.green : P.textTertiary, whiteSpace: 'nowrap' }}>{c.status === 'needs_confirmation' ? 'Needs confirmation' : c.status === 'confirmed' ? 'Confirmed' : 'Assigned'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileCommandCenter({ event, data, crewSummary, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
@@ -1826,6 +1854,9 @@ function MobileCommandCenter({ event, data, onTabChange, onBack, backLabel, onAd
           ) : <EmptyState>No vendors yet.</EmptyState>}
         </div>
 
+        {/* Team — Sprint 52B */}
+        <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} gap={10} />
+
         {/* Documents — Sprint 49: real status from event.documents */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Run of Show')} />
@@ -1870,7 +1901,7 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
@@ -2027,6 +2058,9 @@ function DesktopCommandCenter({ event, data, onTabChange, onBack, backLabel, onA
               ) : <EmptyState>No vendors yet.</EmptyState>}
             </div>
 
+            {/* Team — Sprint 52B */}
+            <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} />
+
             {/* Documents — Sprint 49: real status from event.documents */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Documents" action="All →" />
@@ -2064,7 +2098,8 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
   const addApproval = onAddApproval || (() => onTabChange?.('Communication'));
   const addRequest  = onAddRequest  || (() => onTabChange?.('Communication'));
 
-  const sharedProps = { event, data, onTabChange, onBack, backLabel,
+  const crewSummary = summarizeCrew(event);
+  const sharedProps = { event, data, crewSummary, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />

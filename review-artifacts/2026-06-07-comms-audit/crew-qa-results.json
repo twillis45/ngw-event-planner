@@ -1,0 +1,32 @@
+[
+  {
+    "width": 1440,
+    "inEvent": true,
+    "crewRows": 1,
+    "crewOverflowH": false,
+    "cmdBlock": "1 on this event | 0 confirmed · 1 need confirmation | Alex Rivera · Second shooter | Needs confirmation",
+    "taskOwnerDD": false,
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "inEvent": false,
+    "crewRows": 0,
+    "crewOverflowH": false,
+    "cmdBlock": null,
+    "taskOwnerDD": false,
+    "consoleErrors": [],
+    "pageErrors": []
+  },
+  {
+    "width": 375,
+    "inEvent": false,
+    "crewRows": 0,
+    "crewOverflowH": false,
+    "cmdBlock": null,
+    "taskOwnerDD": false,
+    "consoleErrors": [],
+    "pageErrors": []
+  }
+]
