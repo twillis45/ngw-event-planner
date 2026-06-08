@@ -17,12 +17,16 @@ While OPENAI_API_KEY is unset, routes return 503 so the frontend
 falls back to BYOK gracefully.
 """
 
+import json
 import logging
 import os
+import time
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
+
+from ..auth import require_planner
 
 log = logging.getLogger("ngw.ai")
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -32,6 +36,55 @@ MAX_TOKENS      = int(os.environ.get("AI_MAX_TOKENS", "500"))
 OPENAI_URL      = "https://api.openai.com/v1/chat/completions"
 COMPLETIONS_MODEL = "gpt-4o-mini"   # fast + cheap for text completions
 VISION_MODEL      = "gpt-4o"        # vision-capable for document extraction
+
+# ── Sprint 52B: server-side Anthropic proxy ─────────────────────────────────
+# Lets signed-in planners use Claude-powered features WITHOUT the API key ever
+# touching the browser. The key lives only in the Render env (ANTHROPIC_API_KEY).
+# Auth-gated, feature-restricted (no freeform endpoint), input/output capped,
+# and rate-limited per user. See POST /api/ai/anthropic below.
+ANTHROPIC_KEY             = os.environ.get("ANTHROPIC_API_KEY")
+ANTHROPIC_MODEL           = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
+ANTHROPIC_URL             = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_MAX_TOKENS      = int(os.environ.get("ANTHROPIC_MAX_TOKENS", "1024"))      # output cap
+ANTHROPIC_MAX_INPUT_CHARS = int(os.environ.get("ANTHROPIC_MAX_INPUT_CHARS", "8000")) # input cap (per field)
+ANTHROPIC_RATE_MAX        = int(os.environ.get("ANTHROPIC_RATE_MAX", "15"))          # requests
+ANTHROPIC_RATE_WINDOW     = int(os.environ.get("ANTHROPIC_RATE_WINDOW", "60"))       # per N seconds
+
+# Allow-listed features → server-built system prompts. There is NO way for the
+# client to supply a system prompt or call an unrestricted endpoint.
+ANTHROPIC_FEATURES = {
+    "event_brief":      "You are an event-planning assistant for a professional studio. Using ONLY the provided context, write a clear, concise event brief the planner can share. Never invent dates, names, prices, or vendor details. This is a draft for the planner to review and edit.",
+    "vendor_followup":  "You are an event-planning assistant. Draft a short, polite, professional follow-up message to a vendor using ONLY the provided context. Never invent commitments, prices, or dates. The planner reviews and sends it themselves — never imply it was already sent.",
+    "document_summary": "You are an event-planning assistant. Summarize the provided text into key dates, amounts, and action items the planner must handle, using ONLY the provided text. Flag anything uncertain. This is AI-generated — the planner must verify against the original document.",
+    "checklist_help":   "You are an event-planning assistant. Help the planner complete the given checklist task with practical, specific, actionable steps based ONLY on the provided context. Be concise.",
+}
+
+# In-memory per-user sliding-window rate limiter. Per-process (good enough for a
+# single-worker beta); swap for Redis if the backend is scaled horizontally.
+_ai_rate: dict[str, list] = {}
+
+
+def _anthropic_configured() -> bool:
+    return bool(ANTHROPIC_KEY)
+
+
+def _anthropic_headers():
+    return {
+        "x-api-key":         ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type":      "application/json",
+    }
+
+
+def _rate_check(user_id: str):
+    """Returns (allowed: bool, retry_after_seconds: int)."""
+    now = time.time()
+    hits = [t for t in _ai_rate.get(user_id, []) if now - t < ANTHROPIC_RATE_WINDOW]
+    if len(hits) >= ANTHROPIC_RATE_MAX:
+        return False, int(ANTHROPIC_RATE_WINDOW - (now - hits[0])) + 1
+    hits.append(now)
+    _ai_rate[user_id] = hits
+    return True, 0
 
 
 def is_ai_configured() -> bool:
@@ -51,7 +104,109 @@ async def ai_status():
         "configured": is_ai_configured(),
         "provider":   "openai",
         "model":      COMPLETIONS_MODEL,
+        # Sprint 52B — server-side Anthropic proxy availability (no key exposed).
+        "anthropic_configured": _anthropic_configured(),
+        "anthropic_model":      ANTHROPIC_MODEL if _anthropic_configured() else None,
+        "anthropic_features":   list(ANTHROPIC_FEATURES.keys()),
     }
+
+
+class AnthropicRequest(BaseModel):
+    feature: str
+    prompt: str
+    context: Optional[dict] = None
+
+
+@router.post("/anthropic")
+async def anthropic_proxy(
+    body: AnthropicRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Sprint 52B — secure server-side Claude proxy.
+
+    Flow: validate the signed-in planner → validate the requested feature →
+    build a SERVER-OWNED system prompt → call Anthropic with the server's key →
+    return ONLY the model's text. The API key never reaches the browser, there
+    is no freeform/system-prompt passthrough, input/output are capped, and each
+    user is rate-limited.
+    """
+    # 1. Auth — only signed-in planners (401 otherwise).
+    principal = await require_planner(authorization, x_planner_token)
+    user_id = principal.get("id") or "unknown"
+
+    # 2. Configured? (graceful 503 so the frontend can fall back / hide the feature)
+    if not _anthropic_configured():
+        raise HTTPException(status_code=503, detail="AI not configured — set ANTHROPIC_API_KEY on the server")
+
+    # 3. Feature must be allow-listed; its system prompt is server-owned.
+    system = ANTHROPIC_FEATURES.get(body.feature)
+    if not system:
+        raise HTTPException(status_code=400, detail=f"Unknown feature. Allowed: {', '.join(ANTHROPIC_FEATURES)}")
+
+    # 4. Validate + cap input.
+    prompt = (body.prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Empty prompt")
+    prompt = prompt[:ANTHROPIC_MAX_INPUT_CHARS]
+    ctx_str = ""
+    if body.context:
+        try:
+            ctx_str = json.dumps(body.context, ensure_ascii=False)[:ANTHROPIC_MAX_INPUT_CHARS]
+        except Exception:
+            ctx_str = ""
+    est_in_tokens = (len(prompt) + len(ctx_str)) // 4  # rough estimate for logging
+
+    # 5. Per-user rate limit (429 with Retry-After).
+    allowed, retry_after = _rate_check(user_id)
+    if not allowed:
+        log.warning("ai.anthropic RATE_LIMIT user=%s feature=%s est_in=%d", user_id, body.feature, est_in_tokens)
+        raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",
+                            headers={"Retry-After": str(retry_after)})
+
+    # 6. Build the user message. The client supplies content ONLY as the user
+    #    turn — never the system prompt.
+    user_content = prompt if not ctx_str else f"{prompt}\n\nContext (JSON):\n{ctx_str}"
+    payload = {
+        "model":      ANTHROPIC_MODEL,
+        "max_tokens": ANTHROPIC_MAX_TOKENS,
+        "system":     system,
+        "messages":   [{"role": "user", "content": user_content}],
+    }
+
+    # 7. Call Anthropic; log user_id, feature, token estimate, and success/failure.
+    try:
+        async with httpx.AsyncClient(timeout=40) as client:
+            resp = await client.post(ANTHROPIC_URL, headers=_anthropic_headers(), json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+        usage = data.get("usage", {})
+        log.info(
+            "ai.anthropic OK user=%s feature=%s est_in=%d in=%s out=%s",
+            user_id, body.feature, est_in_tokens,
+            usage.get("input_tokens"), usage.get("output_tokens"),
+        )
+        # Return ONLY the model's text + usage. Never the key, never raw upstream.
+        return {
+            "ok":      True,
+            "feature": body.feature,
+            "text":    text,
+            "usage":   {"input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens")},
+        }
+    except httpx.HTTPStatusError as e:
+        log.error(
+            "ai.anthropic FAIL user=%s feature=%s est_in=%d status=%s body=%s",
+            user_id, body.feature, est_in_tokens, e.response.status_code, (e.response.text or "")[:300],
+        )
+        # Don't leak upstream error bodies to the client.
+        raise HTTPException(status_code=502, detail="AI service error — please try again")
+    except httpx.RequestError as e:
+        log.error("ai.anthropic UNAVAILABLE user=%s feature=%s err=%s", user_id, body.feature, e)
+        raise HTTPException(status_code=503, detail="AI service unavailable — please try again")
+    except Exception as e:
+        log.error("ai.anthropic EXC user=%s feature=%s err=%s", user_id, body.feature, e)
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 class CompletionRequest(BaseModel):
