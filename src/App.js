@@ -520,6 +520,12 @@ function GlobalStyles() {
       // Skip-to-content link — visible only when focused
       '.a11y-skip { position: absolute; left: 8px; top: -40px; padding: 8px 16px; background: #fff; color: #000; border-radius: 6px; font-weight: 600; font-size: 13px; z-index: 99999; transition: top 0.15s; }',
       '.a11y-skip:focus { top: 8px; }',
+      // Sprint 52B — stop iOS Safari auto-zooming when a sub-16px field is
+      // focused (it left the page zoomed and "not fitting the viewport" on
+      // every mobile screen). Touch devices only (coarse pointer) so desktop
+      // keeps its dense fonts; !important is required to beat the inline
+      // font-size styles. Pinch-zoom stays enabled (maximum-scale untouched).
+      '@media (hover: none) and (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }',
       // Visually-hidden helper for screen-reader-only text
       '.a11y-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }',
       // Respect prefers-reduced-motion — disable orchestration animations
