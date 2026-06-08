@@ -11890,33 +11890,54 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           </div>
 
-          {/* ── PLAN & BILLING ── stub */}
+          {/* ── PLAN & BILLING ── Sprint 52B: admin can switch tiers to preview
+              tier-gated features (Essentials / Studio / Agency). The admin
+              account + dev bypass can switch; everyone else sees the roadmap. */}
           <SectionHead label="Plan & Billing" />
-          <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>NGW Event Boss</div>
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Essentials</div>
-              </div>
-              <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Current plan
-              </div>
-            </div>
-            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                ['Studio', 'Team collaboration, advanced comms, reporting'],
-                ['Agency', 'Multi-studio orchestration, infrastructure-grade ops'],
-              ].map(([plan, desc]) => (
-                <div key={plan} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          {(() => {
+            const PLANS = [
+              { id: 'essentials', name: 'Essentials', desc: 'Solo planning — events, budget, vendors, day-of.' },
+              { id: 'studio',     name: 'Studio',     desc: 'Team collaboration, shared comms & sharing, reporting.' },
+              { id: 'agency',     name: 'Agency',     desc: 'Multi-studio orchestration, infrastructure-grade ops.' },
+            ];
+            const current = profile?.plan || 'essentials';
+            const email = (auth?.user?.email || '').toLowerCase();
+            const canSwitch = email === 'info@noguessworksystems.com' || email === 'dev-bypass@local';
+            return (
+              <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{plan}</span>
-                    <span style={{ fontSize: 11, color: C.muted }}> — {desc}</span>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>NGW Event Boss</div>
+                    <div data-testid="plan-current" style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{PLANS.find(p => p.id === current)?.name || 'Essentials'}</div>
                   </div>
-                  <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>Coming soon</div>
+                  <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Current plan</div>
                 </div>
-              ))}
-            </div>
-          </div>
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {PLANS.map(p => {
+                    const active = p.id === current;
+                    return (
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: active ? C.accent : C.text }}>{p.name}</span>
+                          <span style={{ fontSize: 11, color: C.muted }}> — {p.desc}</span>
+                        </div>
+                        {canSwitch ? (
+                          <button data-testid={`plan-switch-${p.id}`} onClick={() => onChange('plan', p.id)} disabled={active}
+                            style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '5px 11px', borderRadius: 6, cursor: active ? 'default' : 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em',
+                              border: `1px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '22' : 'transparent', color: active ? C.accent : C.text }}>
+                            {active ? 'Active' : 'Switch'}
+                          </button>
+                        ) : (
+                          <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{active ? 'Active' : 'Coming soon'}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {canSwitch && <div style={{ fontSize: 10, color: C.muted, marginTop: 10, fontStyle: 'italic' }}>Admin: switch tiers to preview tier-gated features. Saved to your studio profile.</div>}
+              </div>
+            );
+          })()}
 
           {/* ── NOTIFICATION PREFERENCES ── per-user, not workspace-shared */}
           <SectionHead label="Notifications" ownership="account" />
