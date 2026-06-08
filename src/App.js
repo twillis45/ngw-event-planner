@@ -14457,6 +14457,54 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   );
 }
 
+// Sprint 52B — Getting Started guide for brand-new users: the full
+// event/client workflow, step by step. Opened from the welcome hero.
+const GETTING_STARTED_STEPS = [
+  ['Set up your studio', 'Open Settings (your avatar, top-right) and add your studio name, your name, contact info, and your market. This personalizes client briefs and makes budget estimates accurate for your area.'],
+  ['Add your first client', 'Go to Clients → New Client and enter their name, email, and phone. A client can be linked to one or more events — now or later.'],
+  ['Create an event', 'Tap New Event. Pick a type, set a date, and add a guest count. Event Boss builds the planning structure for you — timeline, budget categories, and vendor slots.'],
+  ['Estimate the budget', 'On New Event step 3 (or later in the Budget tab), open “Estimate my budget” and choose Good / Better / Best for each category — mix and match — then apply it to seed your budget.'],
+  ['Add your vendors', 'Inside the event → Vendors. Track each vendor’s contract, payments, and readiness. Save the ones you trust to your Vendor Bank (in Settings) to reuse across events.'],
+  ['Assign your crew', 'Event → Crew. Add teammates, give each a role and call time, and mark who has confirmed. Solo events can skip this.'],
+  ['Work the Command Center', 'The event’s home screen shows your single next-best action, open decisions, approvals, incoming requests, and overall readiness. Start here each day.'],
+  ['Communicate', 'Event → Messages. Draft messages to clients and vendors. Drafts are copy-first and you choose when to send — nothing goes out automatically.'],
+  ['Add documents', 'Event → Documents. Upload contracts and files; the status clearly shows what is signed, pending, or still missing.'],
+  ['Run event day', 'When the day arrives, switch to Day-of Mode for vendor arrivals, the run-of-show, your crew manifest, and live messages — all in one focused view.'],
+];
+
+function GettingStartedGuide({ onClose }) {
+  const C = useT(); const s = makeS(C);
+  return (
+    <div onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(7,8,9,0.78)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div role="dialog" aria-label="Getting started" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14 }}>
+        <div style={{ position: 'sticky', top: 0, background: C.surface, padding: '18px 22px 12px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.accent, textTransform: 'uppercase', marginBottom: 4 }}>Getting started</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>How to run an event, start to finish</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>Ten steps from a blank workspace to event day. Do them in order, or jump around — nothing locks.</div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>✕</button>
+        </div>
+        <div style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {GETTING_STARTED_STEPS.map(([title, desc], i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: C.accent + '22', border: `1px solid ${C.accent}66`, color: C.accent, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{title}</div>
+                <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 2 }}>{desc}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+            <button onClick={onClose} style={{ ...s.btn('primary'), fontSize: 13 }}>Got it — let’s start</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
@@ -14475,6 +14523,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // "View all attention items" secondary) expands it. Desktop never
   // collapses — the full triage view is a pro feature there.
   const [attentionExpanded, setAttentionExpanded] = useState(false);
+  const [showGuide, setShowGuide] = useState(false); // Sprint 52B — Getting Started guide
   // Sprint 60.P Addendum — compute the StudioCommand at MainDashboard
   // level so supporting modules can hide when the hero is urgent. This
   // is the single source of truth that fixes the "hero says slipping /
@@ -15284,7 +15333,13 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.65 }}>
                 Whether it's a wedding, a backyard birthday, a baby shower, or a fundraiser — track what matters, see what needs follow-up, and feel ready for event day. Pick how you want to start.
               </div>
+              {/* Sprint 52B — brand-new-user walkthrough */}
+              <button onClick={() => setShowGuide(true)}
+                style={{ marginTop: 14, background: 'none', border: 'none', color: C.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                New here? See how to run an event, step by step →
+              </button>
             </div>
+            {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} />}
 
             {/* Three explicit paths, each as a card-button */}
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 22 }}>
