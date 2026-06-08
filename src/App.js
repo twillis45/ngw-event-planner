@@ -10753,6 +10753,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   const auth = useContext(AuthCtx);
   const [copied,       setCopied]       = useState(false);
   const [showPay,      setShowPay]      = useState(!!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote));
+  const [showAdvanced, setShowAdvanced] = useState(false); // Sprint 52B — tuck non-crucial settings into a drawer
   const [showAI,       setShowAI]       = useState(false);
   const [dsBackend,    setDsBackend]    = useState(null);
   useEffect(() => { checkDocuSignStatus().then(setDsBackend); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -11769,6 +11770,18 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             );
           })()}
 
+          {/* ── ADVANCED SETTINGS ── Sprint 52B: non-crucial settings (team,
+              plan, notifications) tucked into a drawer so the profile leads
+              with what matters. Uses the Studio Matte collapsible pattern. */}
+          <SectionHead label="Advanced settings" />
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <button data-testid="advanced-settings-toggle" onClick={() => setShowAdvanced(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+              <span style={{ fontSize: 12, fontWeight: 500 }}>Team, plan &amp; notifications</span>
+              <span style={{ color: C.muted, fontSize: 12 }}>{showAdvanced ? '▾' : '▸'}</span>
+            </button>
+            {showAdvanced && (
+              <div style={{ padding: '6px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6, borderTop: `1px solid ${C.border}` }}>
+
           {/* ── TEAM & PERMISSIONS ── stub */}
           <SectionHead label="Team & Permissions" />
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}` }}>
@@ -11837,6 +11850,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                 </label>
               </div>
             ))}
+          </div>
+
+              </div>
+            )}
           </div>
 
           {/* ── COMING SOON — honestly labeled ── */}
