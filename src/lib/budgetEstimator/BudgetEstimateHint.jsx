@@ -13,30 +13,8 @@
 // importing ThemeCtx.
 
 import { estimatorConfidence, NOT_INCLUDED } from './confidence.js';
-import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
+import { estimateTotalRange } from './totalEstimate.js';
 import { carbonBody, carbonPanel, carbonBorder } from '../../theme/palette';
-
-// Per-event-type per-head bands. Reflect commonly cited US bands. Planning
-// estimates only — never claimed as quotes.
-const PER_HEAD_BY_TYPE = {
-  Wedding:             { low: 200, high: 500 },
-  'Vow Renewal':       { low: 150, high: 400 },
-  Quinceañera:         { low: 150, high: 400 },
-  'Engagement Party':  { low: 100, high: 300 },
-  'Bridal Shower':     { low:  80, high: 250 },
-  'Baby Shower':       { low:  50, high: 180 },
-  Birthday:            { low:  60, high: 250 },
-  'Sweet 16':          { low: 100, high: 350 },
-  'Retirement Party':  { low:  80, high: 250 },
-  Reunion:             { low:  60, high: 200 },
-  Graduation:          { low:  50, high: 180 },
-  Conference:          { low: 150, high: 400 },
-  'Corporate Retreat': { low: 200, high: 500 },
-  'Corporate Event':   { low: 150, high: 400 },
-  Gala:                { low: 250, high: 600 },
-  'Fundraiser / Gala': { low: 250, high: 600 },
-  'Networking Event':  { low:  60, high: 200 },
-};
 
 const DEFAULT_PALETTE = {
   bg:     carbonBody,   // tokenized canvas — follows ACTIVE_MODE
@@ -67,17 +45,9 @@ export default function BudgetEstimateHint({
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
 
-  const ph = PER_HEAD_BY_TYPE[type] || { low: 100, high: 250 };
-  // Sprint 61.G — caller can pass metroFactor explicitly; otherwise the
-  // hint stays neutral (1.0) so we never claim a market adjustment the
-  // component can't actually derive from the lib.
-  const metroFactor = 1;
-  const tod = getTimeOfDayFactor(timeOfDay);
-  const datePrem = getDatePremium(date, type);
-  const factor = metroFactor * (tod.multiplier || 1) * (datePrem.multiplier || 1);
-
-  const lowTotal  = Math.round(ph.low  * guests * factor / 100) * 100;
-  const highTotal = Math.round(ph.high * guests * factor / 100) * 100;
+  // Sprint 61.G / 60.Y — shared total math (metroFactor neutral at 1.0 so we
+  // never claim a market adjustment the component can't derive from the lib).
+  const { lowTotal, highTotal } = estimateTotalRange({ type, guestCount: guests, date, timeOfDay, metroFactor: 1 });
 
   const conf = estimatorConfidence({
     hasType:       !!type,

@@ -1116,7 +1116,7 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
 }
 
 // Fix #4: Populate ContextPanel with event + contact data
-function ContextPanel({ thread, event }) {
+function ContextPanel({ thread, event, onRoute }) {
   if (!thread) return null;
 
   const approvalMsg  = thread.messages.find(m => m.message_type === 'approval_request');
@@ -1196,6 +1196,12 @@ function ContextPanel({ thread, event }) {
             <div style={{ fontSize: 9, color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
               {(linkedVendor.status || '').toUpperCase()}
             </div>
+            {onRoute && (
+              <button onClick={() => onRoute('Vendors', linkedVendor.id)}
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.green, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                Open vendor cockpit →
+              </button>
+            )}
           </div>
         )}
 
@@ -1205,6 +1211,12 @@ function ContextPanel({ thread, event }) {
             <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>DECISION</div>
             <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{approvalMsg.subject || 'Approval request'}</div>
             <span style={{ fontSize: 9, fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
+            {onRoute && (
+              <button onClick={() => onRoute('Decisions', approvalMsg.id)}
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.amber, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                Open decision →
+              </button>
+            )}
           </div>
         )}
 
@@ -1214,6 +1226,12 @@ function ContextPanel({ thread, event }) {
             <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>TASK</div>
             <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{taskMsg.linked_task || 'Linked task'}</div>
             {taskMsg.task_due && <div style={{ fontSize: 10, color: P.red, fontFamily: FF }}>DUE {taskMsg.task_due.toUpperCase()}</div>}
+            {onRoute && (
+              <button onClick={() => onRoute('Planning Tasks', taskMsg.task_id || taskMsg.id)}
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.textSecondary, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                Open task →
+              </button>
+            )}
           </div>
         )}
 
@@ -1251,6 +1269,7 @@ export default function CommunicationHub({
   commLive,
   emailEnabled,
   resolveEmail,
+  onRouteToTab,  // Sprint 60.Y: (tab, itemId) => void — deep-link ContextPanel rows
 }) {
   const threads = useMemo(() => buildThreads(event), [event]);
   const [tab, setTab] = useState('Client');
@@ -1267,6 +1286,15 @@ export default function CommunicationHub({
     const found = threads.find(t => t.messages?.some(m => m.id === openId)) || threads.find(t => t.id === openId);
     if (found) { setSelected(found); setTab(found.tab || 'Client'); }
   }, [openId, threads]);
+  // Sprint 60.Y — the open conversation must reflect the freshest thread, not a
+  // frozen snapshot. threads rebuild from `event` (e.g. on approve/reject), so
+  // re-resolve the selected thread by id each render. Without this, approving a
+  // request updated event state but the open pane kept rendering the stale copy,
+  // so the Approve button looked inert.
+  const selectedLive = useMemo(
+    () => (selected ? threads.find(t => t.id === selected.id) || selected : null),
+    [threads, selected]
+  );
   const [mobileView, setMobileView] = useState(openId ? 'conversation' : 'list');
 
   // Derive a single status descriptor from commLive + emailEnabled.
@@ -1377,7 +1405,7 @@ export default function CommunicationHub({
             >
               ← All threads
             </button>
-            <ConversationPane thread={selected} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
+            <ConversationPane thread={selectedLive} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
           </div>
         )}
       </div>
@@ -1396,8 +1424,8 @@ export default function CommunicationHub({
         onSelect={setSelected}
         chatStatus={chatStatus}
       />
-      <ConversationPane thread={selected} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} />
-      <ContextPanel thread={selected} event={event} />
+      <ConversationPane thread={selectedLive} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
+      <ContextPanel thread={selectedLive} event={event} onRoute={onRouteToTab} />
       </div>
     </div>
   );

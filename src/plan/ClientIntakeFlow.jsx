@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { color, space, type, radius } from '../design/tokens';
 // Sprint 61.G — shared budget hint
 import BudgetEstimateHint from '../lib/budgetEstimator/BudgetEstimateHint';
+import { breakdownByCategory, estimateTotalRange } from '../lib/budgetEstimator';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -326,6 +327,67 @@ function Step4({ data, onChange }) {
           <TextInput value={data.budget_remaining} onChange={v => onChange('budget_remaining', v)} placeholder="e.g. 30000" />
         </Field>
       </TwoCol>
+
+      {/* Sprint 60.Y — Typical setup checklist. Surfaces the categories most
+          events of this type include, each with a typical $ range (planning
+          estimate, not a quote). Checking a row seeds an editable budget line
+          at the midpoint; the CATEGORY BREAKDOWN below stays in sync via
+          data.budget. Combines a "what to expect" reference, a setup checklist,
+          and a pre-filled-but-editable budget in one. */}
+      {(() => {
+        const guestCount = data.guestEstimate || (data.guests || []).length;
+        const range = data.type ? estimateTotalRange({ type: data.type, guestCount, date: data.date, timeOfDay: data.timeOfDay || 'afternoon' }) : null;
+        if (!range) return null;
+        const cats = breakdownByCategory(range.lowTotal, range.highTotal, data.type);
+        const rowFor = (label) => budget.find(r => r.category === label);
+        const mid = (c) => Math.round(((c.low + c.high) / 2) / 100) * 100;
+        const toggle = (c) => {
+          if (rowFor(c.label)) onChange('budget', budget.filter(r => r.category !== c.label));
+          else onChange('budget', [...budget, { category: c.label, budgeted: mid(c), actual: 0 }]);
+        };
+        const setAmt = (label, v) => onChange('budget', budget.map(r =>
+          r.category === label ? { ...r, budgeted: Number(String(v).replace(/[^0-9.]/g, '')) || 0 } : r));
+        const checkedTotal = cats.reduce((s, c) => { const r = rowFor(c.label); return s + (r ? Number(r.budgeted) || 0 : 0); }, 0);
+        return (
+          <div style={{ marginBottom: space[6] }}>
+            <SectionHeading>TYPICAL SETUP — WHAT TO EXPECT</SectionHeading>
+            <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
+              Most {data.type ? data.type.toLowerCase() : 'these'} events include these. Check the ones you're planning — each seeds an editable budget line at a typical amount. Planning estimates, not quotes.
+            </div>
+            <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.md, overflow: 'hidden' }}>
+              {cats.map((c, i) => {
+                const row = rowFor(c.label);
+                const checked = !!row;
+                return (
+                  <div key={c.key} style={{
+                    display: 'flex', alignItems: 'center', gap: space[3],
+                    padding: `${space[3]}px ${space[5]}px`,
+                    borderBottom: i < cats.length - 1 ? `1px solid ${P.borderSubtle}` : 'none',
+                    background: checked ? `${P.green}0c` : 'transparent',
+                  }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggle(c)}
+                      aria-label={`Include ${c.label}`}
+                      style={{ width: 17, height: 17, flexShrink: 0, cursor: 'pointer', accentColor: P.green }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, color: P.textPrimary, fontFamily: FF, fontWeight: checked ? type.weight.semibold : type.weight.medium }}>{c.label}</div>
+                      <div style={{ fontSize: 10.5, color: P.textTertiary, fontFamily: FF, marginTop: 1 }}>typically {fmtMoney(c.low)}–{fmtMoney(c.high)}</div>
+                    </div>
+                    {checked && (
+                      <div style={{ flexShrink: 0, width: 110 }}>
+                        <TextInput value={row.budgeted} onChange={v => setAmt(c.label, v)} placeholder={String(mid(c))} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${space[3]}px ${space[5]}px`, background: P.borderSubtle }}>
+                <span style={{ fontSize: 11, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>Selected total</span>
+                <span style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{fmtMoney(checkedTotal)}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {budget.length > 0 && (
         <>

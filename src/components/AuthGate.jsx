@@ -238,6 +238,26 @@ const BYPASS_SESSION = {
   expires_at: 9999999999,
 };
 
+// Sprint 60.Y — shown when a dev pauses bypass via Sign out. Honest signed-out
+// state with a one-click path back into the dev session (bypass is env-driven,
+// so there's no real session to clear — we pause it for the tab instead).
+function BypassSignedOut({ onResume }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0e1116', color: '#cdd6e0', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
+      <div style={{ maxWidth: 360, textAlign: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#5b6b7d', marginBottom: 10 }}>Dev bypass</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Signed out</div>
+        <div style={{ fontSize: 13, lineHeight: 1.55, color: '#8a99a8', marginBottom: 20 }}>
+          You signed out of the dev-bypass session. Real auth isn't used while <code style={{ color: '#cdd6e0' }}>REACT_APP_AUTH_BYPASS=true</code>. Resume the dev session, or open a fresh tab.
+        </div>
+        <button onClick={onResume} style={{ background: '#2f6df0', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          Resume dev session
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BypassBadge() {
   // Sprint 60.M Phase 2b: collapse to a tiny dev-only dot on mobile so the
   // pill never dominates the product UI. Full pill still shows on tablet/
@@ -333,19 +353,42 @@ export default function AuthGate({ children }) {
     return () => { mounted = false; clearTimeout(timer); sub?.subscription?.unsubscribe?.(); };
   }, [configured]);
 
+  // Sprint 60.Y — dev-bypass sign-out. Bypass is env-driven and has no real
+  // session to clear, so the old signOut was a no-op. We now pause bypass for
+  // the tab (sessionStorage) so "Sign out" actually drops you to a signed-out
+  // screen; "Resume dev session" or a fresh tab restores it.
+  const [bypassPaused, setBypassPaused] = useState(() => {
+    try { return sessionStorage.getItem('ngw-bypass-paused') === '1'; } catch (e) { return false; }
+  });
+  const bypassActive = BYPASS_ACTIVE && !bypassPaused;
   const value = {
     configured,
-    bypass:  BYPASS_ACTIVE,
+    bypass:  bypassActive,
     ready,
-    session: BYPASS_ACTIVE ? BYPASS_SESSION : session,
-    user:    BYPASS_ACTIVE ? BYPASS_USER : (session?.user || null),
-    signOut: () => BYPASS_ACTIVE
-      ? Promise.resolve({ error: null })
-      : supabase?.auth?.signOut(),
+    session: bypassActive ? BYPASS_SESSION : session,
+    user:    bypassActive ? BYPASS_USER : (session?.user || null),
+    signOut: () => {
+      if (BYPASS_ACTIVE) {
+        try { sessionStorage.setItem('ngw-bypass-paused', '1'); } catch (e) { /* ignore */ }
+        setBypassPaused(true);
+        return Promise.resolve({ error: null });
+      }
+      return supabase?.auth?.signOut();
+    },
   };
 
   // Bypass wins — never show splash or login when active.
   if (BYPASS_ACTIVE) {
+    if (bypassPaused) {
+      return (
+        <AuthCtx.Provider value={value}>
+          <BypassSignedOut onResume={() => {
+            try { sessionStorage.removeItem('ngw-bypass-paused'); } catch (e) { /* ignore */ }
+            setBypassPaused(false);
+          }} />
+        </AuthCtx.Provider>
+      );
+    }
     return (
       <AuthCtx.Provider value={value}>
         <BypassBadge />

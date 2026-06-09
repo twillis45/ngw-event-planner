@@ -123,7 +123,7 @@ function CheckRow({ task, eventDate, onToggle, urgency }) {
     ? (urgency.tone === 'danger' ? P.red : urgency.tone === 'warn' ? P.amber : P.textSecondary)
     : null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: sp[4], padding: `${sp[3]}px ${sp[5]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+    <div data-deeplink={task.id} style={{ display: 'flex', alignItems: 'center', gap: sp[4], padding: `${sp[3]}px ${sp[5]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
       <button
         onClick={() => onToggle(task.id)}
         aria-label={task.done ? 'Mark incomplete' : 'Mark complete'}

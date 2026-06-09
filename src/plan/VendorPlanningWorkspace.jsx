@@ -1917,15 +1917,15 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
               borderRadius: radius.md, padding: `${space[3]}px ${space[5]}px`,
               fontFamily: FF,
             }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: isOpen ? 6 : 0 }}>
               <button
                 type="button"
                 onClick={() => toggle(g.key)}
                 aria-expanded={isOpen}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 6,
+                  flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6,
                   background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                   textAlign: 'left', fontFamily: FF,
-                  marginBottom: isOpen ? 6 : 0,
                 }}
               >
                 <span style={{ color: P.textTertiary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
@@ -1937,6 +1937,13 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
                   {g.label} {items.length > 0 && <span style={{ color: P.textSecondary }}>· {items.length}</span>}
                 </span>
               </button>
+              {onRouteToLinked && g.tab && items.length > 0 && (
+                <button type="button" onClick={() => onRouteToLinked(g.tab, null)} title={`Open ${g.tab}`}
+                  style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: FF, fontSize: 10, fontWeight: type.weight.semibold, color: P.textSecondary, letterSpacing: '0.04em' }}>
+                  View all →
+                </button>
+              )}
+              </div>
               {isOpen && (items.length === 0 ? (
                 <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic', paddingLeft: 18 }}>
                   {g.empty}
@@ -3151,7 +3158,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection('nextAction');
       setTimeout(() => setFlashSection(null), 2000);
       if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       return;
     }
@@ -3167,7 +3174,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection('nextAction');
       setTimeout(() => setFlashSection(null), 2000);
       if (nextActionRef.current?.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   };
@@ -3194,7 +3201,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection('nextAction');
       setTimeout(() => setFlashSection(null), 2000);
       if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
       return;
     }
@@ -3207,7 +3214,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection(openSection);
       setTimeout(() => setFlashSection(null), 2000);
       if (targetRef.current.scrollIntoView) {
-        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   }, [openSection, sectionPing]); // eslint-disable-line react-hooks/exhaustive-deps

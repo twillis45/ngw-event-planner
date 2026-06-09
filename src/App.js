@@ -32,6 +32,7 @@ import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEven
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
 import { copyToClipboard } from './lib/clipboard';
 import { isStripeConfigured, createCheckoutSession, verifySession as stripeVerifySession } from './lib/stripeApi';
+import { playMessageChime } from './lib/notificationSound';
 // Sprint 57f: compressed workflow intelligence — derive how rushed the timeline
 // is and classify template tasks into friendly urgency buckets so newly-created
 // short-runway events don't show "6 Months Out" guidance or a wall of red.
@@ -118,6 +119,19 @@ const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
 const ONBOARD_DONE_KEY = 'ngw-onboard-done';
+
+// Sprint 60.Y — single source of truth for the Vendor Bank. Both the Settings
+// directory (PreferredVendorDirectory) and the event-side "save to bank" write
+// to the SAME store (preferred_vendors / localStorage ngw-preferred-vendors) via
+// the vendors API — no more split brain with the old profile.savedVendors. This
+// reads that shared store for dedupe + setup-health.
+const readVendorBank = () => { try { return JSON.parse(localStorage.getItem('ngw-preferred-vendors') || '[]'); } catch (e) { return []; } };
+
+// Sprint 60.Y — Studio-plan testers. Emails here are auto-granted the Studio
+// plan on hydration so they can exercise tier-gated features (e.g. additional
+// assistants) without a manual switch. Reversible: remove the email. Never
+// downgrades a higher plan.
+const STUDIO_PLAN_TESTERS = new Set(['vida.a.haynes@gmail.com']);
 
 // ─── First-run guidance — Getting Started gets prominence for the first 5 logins ─
 // A "login" = one app session (page load). Counted once per session via a
@@ -10642,6 +10656,23 @@ const getRushFactor = (eventDate) => {
 // Studio-private list of go-to vendors. Persists to localStorage under
 // 'ngw-preferred-vendors'. Each entry: { id, name, category, contact, phone,
 // website, notes, rehireCount, rating } — planner-maintained.
+// Sprint 60.Y — elegant collapse. Animates to the content's true height via the
+// grid-template-rows 0fr↔1fr technique (no magic max-height, no JS measuring).
+// Children mount only while open or mid-close, so heavy/networked sections don't
+// run effects while collapsed; they unmount once the collapse animation finishes.
+function Collapse({ open, children, dur = 260 }) {
+  const [render, setRender] = useState(open);
+  useEffect(() => { if (open) setRender(true); }, [open]);
+  return (
+    <div
+      style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: `grid-template-rows ${dur}ms cubic-bezier(.4,0,.2,1)` }}
+      onTransitionEnd={(e) => { if (e.propertyName === 'grid-template-rows' && !open) setRender(false); }}
+    >
+      <div style={{ overflow: 'hidden', minHeight: 0 }}>{render ? children : null}</div>
+    </div>
+  );
+}
+
 function PreferredVendorDirectory({ C, s }) {
   const STORAGE_KEY = 'ngw-preferred-vendors';
   const [vendors, setVendors] = useState(() => {
@@ -10651,6 +10682,12 @@ function PreferredVendorDirectory({ C, s }) {
   const BLANK_DRAFT = { name: '', category: '', contact: '', phone: '', website: '', notes: '', insuranceStatus: '', eventsCompleted: '', onTimeRate: '', avgResponseHours: '', plannerRehireCount: '', successfulEventCount: '', incidentCount: '' };
   const [draft, setDraft] = useState(BLANK_DRAFT);
   const [search, setSearch] = useState('');
+  const [openCardId, setOpenCardId] = useState(null); // Sprint 60.Y — click a vendor name to expand its card
+  // Sprint 60.Y — viewport awareness so the Vendor Bank reads as a first-class
+  // screen on a phone, not the Settings-drawer column it was born in: the add
+  // form and track-record grids reflow, and row actions get real tap targets.
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
 
   // Sprint 60.Y — the Vendor Bank now persists to Supabase (studio-scoped) via
   // the vendors API, not just localStorage, so it survives logout / a new device
@@ -10711,7 +10748,7 @@ function PreferredVendorDirectory({ C, s }) {
       {/* Add form */}
       {adding && (
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8, marginBottom: 8 }}>
             <div>
               <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Vendor name *</label>
               <input style={s.input} value={draft.name} placeholder="e.g. Wild Bloom Florals" onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
@@ -10741,7 +10778,7 @@ function PreferredVendorDirectory({ C, s }) {
               there's a real record. */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10, marginBottom: 8 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Track record — powers the quality score (all optional)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
               {[['eventsCompleted', 'Events done', 'e.g. 40'], ['onTimeRate', 'On-time %', '0–100'], ['avgResponseHours', 'Avg reply hrs', 'e.g. 6'], ['plannerRehireCount', 'You rehired', 'e.g. 3'], ['successfulEventCount', 'Successful', 'e.g. 38'], ['incidentCount', 'Incidents', 'e.g. 0']].map(([k, lab, ph]) => (
                 <div key={k}>
                   <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>{lab}</label>
@@ -10778,15 +10815,25 @@ function PreferredVendorDirectory({ C, s }) {
             <div key={v.id} data-testid="pv-row" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{v.name}</span>
+                  <button onClick={() => setOpenCardId(id => id === v.id ? null : v.id)}
+                    style={{ fontWeight: 700, fontSize: 13, background: 'none', border: 'none', padding: 0, color: C.text, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    title="Open vendor card" aria-expanded={openCardId === v.id}>{v.name} <span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>{openCardId === v.id ? '▾' : '▸'}</span></button>
                   {v.category && <span style={{ fontSize: 10, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '1px 7px', marginLeft: 6 }}>{v.category}</span>}
                   {v.rehireCount > 0 && <span style={{ fontSize: 10, color: C.success, marginLeft: 6 }}>↻ {v.rehireCount}x booked</span>}
                 </div>
-                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                  {v.contact && <a href={`mailto:${v.contact}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.contact}>✉</a>}
-                  {v.phone && <a href={`tel:${v.phone}`} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }} title={v.phone}>📞</a>}
-                  <button style={{ ...s.btn(), fontSize: 10, padding: '3px 8px' }} onClick={() => bumpRehire(v.id)} title="Mark as booked again">↻</button>
-                  <button style={{ ...s.btn('danger'), fontSize: 10, padding: '3px 8px' }} onClick={() => removeVendor(v.id)} title="Remove from my vendor bank">×</button>
+                <div style={{ display: 'flex', gap: isMobile ? 8 : 5, flexShrink: 0 }}>
+                  {(() => {
+                    // ≥44px touch targets on mobile; the dense desktop sizing stays in the Settings drawer.
+                    // Size overrides spread LAST so they win over whatever s.btn() sets.
+                    const sz = { fontSize: isMobile ? 15 : 10, padding: isMobile ? '9px 13px' : '3px 8px', textDecoration: 'none', lineHeight: 1 };
+                    const act = { ...s.btn(), ...sz };
+                    return (<>
+                      {v.contact && <a href={`mailto:${v.contact}`} style={act} title={v.contact} aria-label={`Email ${v.name}`}>✉</a>}
+                      {v.phone && <a href={`tel:${v.phone}`} style={act} title={v.phone} aria-label={`Call ${v.name}`}>📞</a>}
+                      <button style={act} onClick={() => bumpRehire(v.id)} title="Mark as booked again" aria-label={`Mark ${v.name} booked again`}>↻</button>
+                      <button style={{ ...s.btn('danger'), ...sz }} onClick={() => removeVendor(v.id)} title="Remove from my vendor bank" aria-label={`Remove ${v.name}`}>×</button>
+                    </>);
+                  })()}
                 </div>
               </div>
               {/* Sprint 52B — quality intelligence: why this vendor is good (or not yet scored). */}
@@ -10805,6 +10852,40 @@ function PreferredVendorDirectory({ C, s }) {
                 )}
               </div>
               {v.notes && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{v.notes}</div>}
+              {/* Sprint 60.Y — expanded vendor card: full track record + contact + badges. */}
+              {openCardId === v.id && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
+                    {[
+                      ['Events done', v.eventsCompleted],
+                      ['On-time %', v.onTimeRate != null ? `${v.onTimeRate}%` : null],
+                      ['Avg reply', v.avgResponseHours != null ? `${v.avgResponseHours}h` : null],
+                      ['You rehired', v.plannerRehireCount],
+                      ['Successful', v.successfulEventCount],
+                      ['Incidents', v.incidentCount],
+                    ].map(([lab, val]) => (
+                      <div key={lab} style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 8px' }}>
+                        <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{lab}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: (val == null || val === '') ? C.muted : C.text }}>{(val == null || val === '') ? '—' : val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {(v.contact || v.phone || v.website) && (
+                    <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 11, color: C.muted, marginTop: 8 }}>
+                      {v.contact && <span>✉ {v.contact}</span>}
+                      {v.phone && <span>📞 {v.phone}</span>}
+                      {v.website && <span>🔗 {v.website}</span>}
+                    </div>
+                  )}
+                  {badges.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {badges.map(bd => (
+                        <span key={bd} style={{ fontSize: 10, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 6, padding: '1px 7px' }}>{bd}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             );
           })}
@@ -10837,6 +10918,66 @@ function PMField({ C, s, profile, onChange, fkey, label, type = 'text', ph }) {
   );
 }
 
+// Sprint 60.Y — common US "City, ST" values for native datalist autocomplete on
+// the Service Area field. Not exhaustive — free text + ZIP resolution cover the rest.
+const US_CITY_SUGGESTIONS = [
+  'New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ',
+  'Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','Austin, TX',
+  'San Jose, CA','Fort Worth, TX','Jacksonville, FL','Columbus, OH','Charlotte, NC',
+  'Indianapolis, IN','San Francisco, CA','Seattle, WA','Denver, CO','Nashville, TN',
+  'Washington, DC','Boston, MA','Las Vegas, NV','Portland, OR','Atlanta, GA',
+  'Miami, FL','Minneapolis, MN','New Orleans, LA','Tampa, FL','Orlando, FL',
+  'Sacramento, CA','Kansas City, MO','Salt Lake City, UT','Raleigh, NC','Richmond, VA',
+  'Charleston, SC','Savannah, GA','Scottsdale, AZ','Asheville, NC','Brooklyn, NY',
+];
+
+// Sprint 60.Y — Service Area field: city autocomplete + ZIP resolution. Type a
+// city (native datalist) or a 5-digit ZIP — on blur/Enter a ZIP resolves to
+// "City, ST" via the free, key-less zippopotam.us API. Degrades to plain free
+// text if the lookup is unavailable, so it never blocks input.
+function CityRegionField({ C, s, profile, onChange }) {
+  const [resolving, setResolving] = useState(false);
+  const [note, setNote] = useState('');
+  const value = profile?.city || '';
+  const resolveZip = async (raw) => {
+    const zip = (raw || '').trim();
+    if (!/^\d{5}$/.test(zip)) return;
+    setResolving(true); setNote('');
+    try {
+      const r = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!r.ok) { setNote('ZIP not found — type a city instead.'); setResolving(false); return; }
+      const d = await r.json();
+      const place = (d.places || [])[0];
+      if (place) {
+        const city = `${place['place name']}, ${place['state abbreviation']}`;
+        onChange('city', city);
+        setNote(`Set to ${city}`);
+      }
+    } catch (e) { setNote('Couldn’t reach ZIP lookup — type a city instead.'); }
+    setResolving(false);
+  };
+  return (
+    <div>
+      <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>City / Region</label>
+      <input
+        list="ngw-city-suggestions"
+        style={s.input}
+        value={value}
+        placeholder="Nashville, TN — or enter a ZIP"
+        onChange={e => { setNote(''); onChange('city', e.target.value); }}
+        onBlur={e => resolveZip(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); resolveZip(e.target.value); } }}
+      />
+      <datalist id="ngw-city-suggestions">
+        {US_CITY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+      </datalist>
+      {(resolving || note) && (
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>{resolving ? 'Resolving ZIP…' : note}</div>
+      )}
+    </div>
+  );
+}
+
 function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
@@ -10862,7 +11003,22 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   const toggleSec = (k, dflt = false) => setOpenSec(o => ({ ...o, [k]: !(o[k] === undefined ? dflt : o[k]) }));
   const [showAI,       setShowAI]       = useState(false);
   const [dsBackend,    setDsBackend]    = useState(null);
-  useEffect(() => { checkDocuSignStatus().then(setDsBackend); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Render free tier cold-starts: the first /api/docusign/status probe can
+    // fail or report not-configured while the backend is still waking. Retry a
+    // couple times before trusting a negative so the Connect button isn't
+    // permanently hidden behind a cold start.
+    let cancelled = false;
+    const probe = (attempt = 0) => {
+      checkDocuSignStatus().then((r) => {
+        if (cancelled) return;
+        setDsBackend(r);
+        if (!r?.configured && attempt < 2) setTimeout(() => probe(attempt + 1), 3000);
+      });
+    };
+    probe();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [specCat,      setSpecCat]      = useState(Object.keys(EVT_CATEGORIES)[0]);
 
   const hasPayData = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck || profile?.paymentNote);
@@ -10938,9 +11094,9 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           marginLeft: anchor ? -8 : 0,
           marginRight: anchor ? -8 : 0,
           borderRadius: collapsible ? 8 : anchor ? 6 : 0,
-          border: collapsible ? `1px solid ${open ? C.accent + '55' : C.border}` : 'none',
-          background: isFlashing ? `${C.accentTopGrad || C.accent}22` : collapsible ? C.surface2 : 'transparent',
-          transition: 'background 220ms ease',
+          border: collapsible ? `1px solid ${open ? C.accent + '4d' : 'transparent'}` : 'none',
+          background: isFlashing ? `${C.accentTopGrad || C.accent}22` : collapsible ? (open ? C.surface2 : C.surface2 + '66') : 'transparent',
+          transition: 'background 220ms ease, border-color 220ms ease',
         }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, color: C.accentTopGrad || C.accent, letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
         <span style={ownershipChipStyle(chip.color)} title={
@@ -10948,20 +11104,18 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
           ownership === 'event' ? 'Set on each event individually.' :
                                   'Affects every event in this workspace.'
         }>{chip.label}</span>
-        <div style={{ flex: 1, height: collapsible ? 0 : 1, background: collapsible ? 'transparent' : C.border }} />
+        <div style={{ flex: 1, height: 1, background: collapsible ? `linear-gradient(90deg, ${open ? C.accent + '40' : C.border}, transparent)` : C.border }} />
         {collapsible && (
-          // Hardware pull — a recessed knob (inset shadow) with a chevron that
-          // rotates from ▸ (closed) to ▾ (open). Replaces the SHOW/HIDE text;
-          // reads as a physical drawer pull, lights steel when open.
+          // Quiet, flat chevron — rotates 0°→90° on open. No skeuomorphic knob;
+          // the affordance is the rotation + the hairline lighting to accent.
           <span aria-hidden="true" style={{
             flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 30, height: 22, borderRadius: 7,
-            background: C.bg, border: `1px solid ${open ? C.accent : C.border}`,
-            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45)',
-            color: open ? C.accent : C.muted, transition: 'border-color 180ms ease, color 180ms ease',
-          }}>
-            <span style={{ display: 'inline-block', fontSize: 13, fontWeight: 800, lineHeight: 1, transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 200ms ease' }}>›</span>
-          </span>
+            width: 22, height: 22, fontSize: 16, fontWeight: 600, lineHeight: 1,
+            color: open ? C.accent : C.muted,
+            transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+            transformOrigin: '50% 50%',
+            transition: 'transform 260ms cubic-bezier(.4,0,.2,1), color 200ms ease',
+          }}>›</span>
         )}
       </div>
     );
@@ -10996,7 +11150,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     const emailOn    = isEmailConfigured();
     const aiOn       = !!profile?.anthropicKey;
     const intakeLinkSet = !!(profile?.intakeUrl || profile?.businessName);
-    const vendorBankSet = !!(profile?.vendorBankSeeded || profile?.savedVendors?.length);
+    const vendorBankSet = !!(profile?.vendorBankSeeded || readVendorBank().length);
     const hasPay     = !!(profile?.venmo || profile?.zelle || profile?.paypal || profile?.acceptsCash || profile?.acceptsCheck);
     const sigOn      = !!profile?.docusignAccessToken;
     return [
@@ -11380,17 +11534,18 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
               findable after onboarding (the welcome-hero link only shows for
               brand-new, empty workspaces). */}
           <button onClick={() => setShowGuide(true)}
-            style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderRadius: 10, background: C.accent + '12', border: `1px solid ${C.accent}55`, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
+            style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderRadius: 10, background: C.success + '12', border: `1px solid ${C.success}55`, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
             <span>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.text }}>Getting started guide</span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.success }}>Getting started guide</span>
               <span style={{ display: 'block', fontSize: 11.5, color: C.muted, marginTop: 2 }}>How to run an event, start to finish — 10 steps.</span>
             </span>
-            <span style={{ color: C.accent, fontSize: 16, flexShrink: 0 }}>→</span>
+            <span style={{ color: C.success, fontSize: 16, flexShrink: 0 }}>→</span>
           </button>
           {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} />}
 
           {/* ── STUDIO IDENTITY ── */}
-          <SectionHead label="Studio" ownership="workspace" anchor="studio" />
+          <SectionHead label="Studio" ownership="workspace" anchor="studio" collapsible defaultOpen />
+          <Collapse open={secOpen('Studio', true)}>
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="businessName" label="Studio Name"   ph="Events by Jane"  />
             <div>
@@ -11401,8 +11556,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           </PMRow2>
 
+          </Collapse>
           {/* ── PLANNER IDENTITY ── */}
-          <SectionHead label="Planner" ownership="account" anchor="planner" />
+          <SectionHead label="Planner" ownership="account" anchor="planner" collapsible defaultOpen />
+          <Collapse open={secOpen('Planner', true)}>
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="name"         label="Your Name"      ph="Jane Planner" />
           </PMRow2>
@@ -11470,8 +11627,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             )}
           </div>
 
+          </Collapse>
           {/* ── CONTACT & REACH ── */}
-          <SectionHead label="Contact & Reach" />
+          <SectionHead label="Contact & Reach" collapsible defaultOpen />
+          <Collapse open={secOpen('Contact & Reach', true)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <PMRow2>
               <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="email"     label="Email"     type="email" ph="you@planner.com"  />
@@ -11483,10 +11642,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </PMRow2>
           </div>
 
+          </Collapse>
           {/* ── SERVICE AREA ── */}
-          <SectionHead label="Service Area & Market" />
+          <SectionHead label="Service Area & Market" collapsible defaultOpen />
+          <Collapse open={secOpen('Service Area & Market', true)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="city" label="City / Region" ph="Nashville, TN" />
+            <CityRegionField C={C} s={s} profile={profile} onChange={onChange} />
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Primary Metro Market</label>
               <select
@@ -11518,13 +11679,15 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           </div>
 
+          </Collapse>
           {/* ── ESTIMATOR DEFAULTS — Sprint 57h ──
               Per-studio defaults for service charge + tax. Decimals on
               the profile (0.20 / 0.06); displayed as percentages in
               the inputs. Clamped to honest ranges (0–35% service,
               0–15% tax) so a typo can't break the math. Copy never
               implies these are legal tax — they're planning defaults. */}
-          <SectionHead label="Estimator Defaults" />
+          <SectionHead label="Estimator Defaults" collapsible defaultOpen />
+          <Collapse open={secOpen('Estimator Defaults', true)}>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
             Set the planning assumptions NGW uses for service charges and tax in the budget estimator. These are estimate defaults, not legal tax settings. Adjust to match your market.
           </div>
@@ -11598,8 +11761,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             })()}
           </div>
 
+          </Collapse>
           {/* ── EVENT SPECIALTIES ── */}
-          <SectionHead label="Event Specialties" />
+          <SectionHead label="Event Specialties" collapsible defaultOpen />
+          <Collapse open={secOpen('Event Specialties', true)}>
           {/* Category tabs */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
             {Object.keys(EVT_CATEGORIES).map(cat => {
@@ -11636,8 +11801,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             </div>
           )}
 
+          </Collapse>
           {/* ── HOW CLIENTS PAY ── collapsible */}
-          <SectionHead label="How Clients Pay" anchor="how-clients-pay" />
+          <SectionHead label="How Clients Pay" anchor="how-clients-pay" collapsible defaultOpen />
+          <Collapse open={secOpen('How Clients Pay', true)}>
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowPay(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
               <span style={{ fontSize: 12, fontWeight: 500 }}>Payment methods you accept</span>
@@ -11671,6 +11838,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             )}
           </div>
 
+          </Collapse>
           {/* ── INTEGRATIONS HUB ── live status for every service ── */}
           {/* Sprint 59E: renamed "Integrations" → "Connections" per Sprint
               59A audit. Provider statuses already truthful (configured-state
@@ -11842,11 +12010,11 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                 {/* DocuSign */}
                 <IntRow
                   label="E-signatures"
-                  desc={dsConnected ? `Connected as ${profile?.docusignAccountName || 'signing account'}` : dsBackend?.configured ? 'Setup partially complete — connect your signing account' : 'Send contracts for legal signature'}
-                  status={dsConnected ? 'connected' : dsBackend?.configured ? 'partial' : 'disconnected'}
-                  detail={!dsBackend?.configured ? 'Provider: DocuSign. Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend.' : dsConnected ? 'Provider: DocuSign.' : 'Provider: DocuSign.'}
-                  actionLabel={dsBackend?.configured && !dsConnected ? 'Connect signing account' : null}
-                  onAction={dsBackend?.configured && !dsConnected ? startDocuSignOAuth : null}
+                  desc={dsBackend === null ? 'Checking signing service…' : dsConnected ? `Connected as ${profile?.docusignAccountName || 'signing account'}` : dsBackend?.configured ? 'Setup partially complete — connect your signing account' : 'Send contracts for legal signature'}
+                  status={dsBackend === null ? 'partial' : dsConnected ? 'connected' : dsBackend?.configured ? 'partial' : 'disconnected'}
+                  detail={dsBackend === null ? 'Provider: DocuSign. Contacting the backend…' : !dsBackend?.configured ? 'Provider: DocuSign. Set DOCUSIGN_INTEGRATION_KEY + DOCUSIGN_SECRET_KEY + DOCUSIGN_ACCOUNT_ID on the backend.' : dsConnected ? `Provider: DocuSign.${profile?.docusignConnectedAt ? ` Connected ${new Date(profile.docusignConnectedAt).toLocaleDateString()}.` : ''} Sessions expire after ~1 hour — use Reconnect if a send fails.` : 'Provider: DocuSign.'}
+                  actionLabel={dsBackend?.configured ? (dsConnected ? 'Reconnect' : 'Connect signing account') : null}
+                  onAction={dsBackend?.configured ? startDocuSignOAuth : null}
                 />
 
                 <ConnGroupHeader label="Logistics" />
@@ -12038,7 +12206,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
               Vendors" → "My Vendor Bank" to distinguish it from event-scoped
               Vendors. Studio-private asset bank, not event-committed work. */}
           <SectionHead label="My Vendor Bank" anchor="vendor-bank" collapsible defaultOpen={false} />
-          {secOpen('My Vendor Bank', false) && <PreferredVendorDirectory C={C} s={s} />}
+          <Collapse open={secOpen('My Vendor Bank', false)}><PreferredVendorDirectory C={C} s={s} /></Collapse>
 
           {/* ── Sprint 67: Lead Intake ── */}
           <SectionHead label="Lead Intake" anchor="lead-intake" collapsible defaultOpen={false} />
@@ -12979,7 +13147,7 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
 // 7-day strip with current day highlighted + named items below for days that
 // have payments, vendor deadlines, or scheduled visits. Replaces the calendar
 // widget on the dashboard view.
-function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar }) {
+function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEvent }) {
   const C = useT();
   // Sprint 48+: prev/next arrows step a week at a time. weekOffset=0 is the
   // current week; +1 is next week; -1 is last week.
@@ -13021,6 +13189,8 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar }) {
             sub: `${ev.name} · ${fmtD(balance)}`,
             color: C.warn,
             iso: v.payDueDate,
+            eventId: ev.id,
+            clickTarget: { tab: 'Vendors', vendorId: v.id },
           });
         }
       }
@@ -13034,6 +13204,8 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar }) {
             sub: `${ev.name} · ${t.owner || 'You'}`,
             color: C.accent2,
             iso: t.dueDate,
+            eventId: ev.id,
+            clickTarget: { tab: 'Planning Tasks', taskId: t.id },
           });
         }
       }
@@ -13130,8 +13302,15 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {items.map(it => (
-            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {items.map(it => {
+            // Sprint 60.Y click-through audit — payment/task rows deep-link to
+            // their tab; personal notes open the calendar. Mirrors MasterCalendarView.
+            const go = it.eventId && onSelectEvent ? () => onSelectEvent(it.eventId, it.clickTarget)
+              : (!it.eventId && onOpenCalendar) ? onOpenCalendar : null;
+            return (
+            <button key={it.id} onClick={go || undefined} disabled={!go}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: '2px 0', cursor: go ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
+              title={go ? (it.eventId ? 'Open' : 'Open calendar') : undefined}>
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: it.color,
                 width: 28, flexShrink: 0,
@@ -13140,8 +13319,9 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar }) {
                 <div style={{ fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</div>
                 <div style={{ fontSize: 10.5, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.sub}</div>
               </div>
-            </div>
-          ))}
+            </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -14930,6 +15110,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     ? { title: 'Client Roster', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
     : dashView === 'pipeline'
     ? { title: 'Pipeline', sub: 'Intake → planning → contract → deposit → booked.' }
+    : dashView === 'vendor-bank'
+    ? { title: 'Vendor Bank', sub: "Your studio's trusted vendor roster — reusable across every event." }
     : { title: 'Home',       sub: 'Your events and what needs attention.' };
 
   // ── Primary navigation model (shared by desktop sidebar + mobile drawer) ──
@@ -14945,6 +15127,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     { id: 'calendar',  label: 'Calendar',   icon: 'calendar' },
     { id: 'events',    label: 'All Events', icon: 'list' },
     { id: 'clients',   label: 'Clients',    icon: 'users' },
+    { id: 'vendor-bank', label: 'Vendor Bank', icon: 'briefcase' },
     { id: 'settings',  label: 'Settings',   icon: 'settings', external: true },
   ];
   const initials = (profile?.name || 'P').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -15080,16 +15263,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {dashView === 'dashboard' && guideNeedsAttention && (
         <div role="status" style={{
           padding: isMobile ? '10px 14px' : '12px 16px',
-          background: `linear-gradient(90deg, ${C.accent2}24, ${C.accent2}0c)`,
-          borderBottom: `1px solid ${C.accent2}40`,
+          background: `linear-gradient(90deg, ${C.success}24, ${C.success}0c)`,
+          borderBottom: `1px solid ${C.success}40`,
           display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, flexWrap: 'wrap',
         }}>
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: C.accent2, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.accent2}66`, flexShrink: 0,
+            color: C.success, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.success}66`, flexShrink: 0,
           }}>Getting Started</span>
           <div style={{ flex: 1, minWidth: 150 }}>
-            <div style={{ fontSize: isMobile ? 12.5 : 13.5, fontWeight: 700, color: C.accent2, lineHeight: 1.3 }}>
+            <div style={{ fontSize: isMobile ? 12.5 : 13.5, fontWeight: 700, color: C.success, lineHeight: 1.3 }}>
               New to Event Boss? Walk through running an event, step by step.
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
@@ -15512,7 +15695,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     information, smaller text, tight calendar grid that
                     fails the grandmother test). Tablet/desktop keep it
                     because the right rail has room. */}
-                {!isMobile && <HomeThisWeekPanel events={events} calNotes={calNotes} onOpenCalendar={() => setDashView('calendar')} />}
+                {!isMobile && <HomeThisWeekPanel events={events} calNotes={calNotes} onOpenCalendar={() => setDashView('calendar')} onSelectEvent={onSelectEvent} />}
               </div>
             </div>
           )}
@@ -15670,6 +15853,18 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               onCreateFromIntake={onCreateFromIntake}
               onProfile={onProfile}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Vendor Bank page ── Sprint 60.Y: the unified preferred-vendor
+          directory, mounted as a top-level screen. Reuses the SAME
+          PreferredVendorDirectory component embedded in Settings — one
+          surface, two entry points, never a duplicate. */}
+      {dashView === 'vendor-bank' && (
+        <div style={{ padding: bp === 'mobile' ? '14px' : '28px 36px' }}>
+          <div style={inner}>
+            <PreferredVendorDirectory C={C} s={s} />
           </div>
         </div>
       )}
@@ -16384,10 +16579,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         // ── Readiness helpers ────────────────────────────────────────
         const colorFor = (st) => st === 'ON_TRACK' ? C.success : st === 'AT_RISK' ? C.danger : C.warn;
         const readinessAxes = [
-          { key: 'decision',  label: 'Decisions' },
-          { key: 'vendor',    label: 'Vendors'   },
-          { key: 'timeline',  label: 'Timeline'  },
-          { key: 'document',  label: 'Documents' },
+          { key: 'decision',  label: 'Decisions', tab: 'Decisions' },
+          { key: 'vendor',    label: 'Vendors',   tab: 'Vendors'   },
+          { key: 'timeline',  label: 'Timeline',  tab: 'Timeline'  },
+          { key: 'document',  label: 'Documents', tab: 'Documents' },
         ];
 
         // ── Responsive layout vars ───────────────────────────────────
@@ -16789,15 +16984,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Readiness</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                        {readinessAxes.map(({ key, label }) => {
+                        {readinessAxes.map(({ key, label, tab }) => {
                           const r1 = previewR[key];
                           const c1 = colorFor(r1.status);
                           return (
-                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                            <button key={key} onClick={() => onSelectEvent(previewEv.id, { tab })} title={`Open ${tab}`}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}>
                               <span style={{ width: 7, height: 7, borderRadius: '50%', background: c1, flexShrink: 0 }} />
                               <span style={{ color: C.muted, fontWeight: 600 }}>{label}</span>
                               <span style={{ color: c1, fontSize: 10, marginLeft: 'auto' }}>{r1.note}</span>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -16808,26 +17004,23 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       <div style={{ marginBottom: 16 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Needs Attention</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {previewAtt.decisions > 0 && (
-                            <div style={{ fontSize: 12, color: C.danger, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.danger }} />{previewAtt.decisions} open decision{previewAtt.decisions !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                          {previewAtt.approvals > 0 && (
-                            <div style={{ fontSize: 12, color: C.warn, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.warn }} />{previewAtt.approvals} pending approval{previewAtt.approvals !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                          {previewAtt.requests > 0 && (
-                            <div style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.muted }} />{previewAtt.requests} pending request{previewAtt.requests !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                          {previewAtt.vendorIssues > 0 && (
-                            <div style={{ fontSize: 12, color: C.warn, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.warn }} />{previewAtt.vendorIssues} vendor issue{previewAtt.vendorIssues !== 1 ? 's' : ''}
-                            </div>
-                          )}
+                          {(() => {
+                            // Sprint 60.Y click-through audit — each attention row deep-links
+                            // to its owning tab, matching AttentionQueue / EventReadinessPanel.
+                            const attRow = (color, label, navTab) => (
+                              <button onClick={() => onSelectEvent(previewEv.id, { tab: navTab })}
+                                style={{ fontSize: 12, color, display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
+                                title={`Open ${navTab}`}>
+                                <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />{label}<span style={{ marginLeft: 'auto', opacity: 0.55 }}>›</span>
+                              </button>
+                            );
+                            return (<>
+                              {previewAtt.decisions > 0 && attRow(C.danger, `${previewAtt.decisions} open decision${previewAtt.decisions !== 1 ? 's' : ''}`, 'Decisions')}
+                              {previewAtt.approvals > 0 && attRow(C.warn, `${previewAtt.approvals} pending approval${previewAtt.approvals !== 1 ? 's' : ''}`, 'Decisions')}
+                              {previewAtt.requests > 0 && attRow(C.muted, `${previewAtt.requests} pending request${previewAtt.requests !== 1 ? 's' : ''}`, 'Communication')}
+                              {previewAtt.vendorIssues > 0 && attRow(C.warn, `${previewAtt.vendorIssues} vendor issue${previewAtt.vendorIssues !== 1 ? 's' : ''}`, 'Vendors')}
+                            </>);
+                          })()}
                         </div>
                       </div>
                     )}
@@ -16942,10 +17135,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           <span style={{ color: C.muted }}>Active events</span>
                           <span style={{ fontWeight: 600, color: C.text }}>{upcomingEvents.length}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                          <span style={{ color: C.muted }}>Items needing attention</span>
+                        <button onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined} disabled={!(totalAttention > 0)}
+                          title={totalAttention > 0 ? 'View events needing attention' : undefined}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, width: '100%', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', textAlign: 'left', cursor: totalAttention > 0 ? 'pointer' : 'default' }}>
+                          <span style={{ color: C.muted }}>Items needing attention{totalAttention > 0 ? ' ›' : ''}</span>
                           <span style={{ fontWeight: 600, color: totalAttention > 0 ? C.warn : C.muted }}>{totalAttention}</span>
-                        </div>
+                        </button>
                         {portfolioValue > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                             <span style={{ color: C.muted }}>Contracted value</span>
@@ -23684,7 +23879,7 @@ const computeDayAlerts = (event) => {
 };
 
 // ─── WeatherAlert — Sprint 63: outdoor event weather risk ────────────────────
-function WeatherAlert({ event }) {
+function WeatherAlert({ event, onNavTo }) {
   const C = useT();
   const s = makeS(C);
   const [wx, setWx] = useState(null);
@@ -23729,6 +23924,7 @@ function WeatherAlert({ event }) {
         <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
         <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
       </div>
+      {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: 600, flexShrink: 0 }}>Review vendors →</button>}
       <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: 12, color: C.muted }}>×</button>
     </div>
   );
@@ -24411,7 +24607,7 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
           C={themeC} s={themeS}
           event={event}
           bankAvailable={typeof onSaveVendorToBank === 'function'}
-          alreadyInBank={(profile?.savedVendors) || []}
+          alreadyInBank={readVendorBank()}
           onCancel={() => setWizardOpen(false)}
           onCreate={handleCreate}
         />
@@ -25013,7 +25209,7 @@ function VendorAddedToast(props) { return <VendorCreatedSuccess {...props} saved
 // The CTA is honest: "Send email" only when all three conditions align for
 // the active thread. "Send via app" when backend is live but no email.
 // "Log to thread" when neither.
-function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clients }) {
+function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clients, onRouteToLinked }) {
   const commLive = isCommApiConfigured() && canAuthenticatePlanner();
   const emailEnabled = isEmailConfigured();
 
@@ -25156,6 +25352,7 @@ function EventCommTab({ event, setEvent, openId, isMobile, onBack, profile, clie
       commLive={commLive}
       emailEnabled={emailEnabled}
       resolveEmail={resolveEmail}
+      onRouteToTab={onRouteToLinked}
     />
   );
 }
@@ -26663,6 +26860,23 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // legacy 'Timeline' tab routes still carry timelineId; seed it through the
   // same normalization so Planning → Timeline opens to the right item.
   const [openTimelineId,  setOpenTimelineId] = useState(_initialNorm.planningView === 'timeline' ? (_initialNorm.openId || null) : (initialNav?.timelineId || null));
+  // Sprint 60.Y — deep-link scroll. When a CTA routes to a tab + item, bring the
+  // target front-and-center instead of only switching tabs. Targets opt in by
+  // rendering data-deeplink="<id>". Vendors self-scroll in their cockpit, so they
+  // are excluded here. Retries briefly while the destination tab mounts.
+  useEffect(() => {
+    const id = openDecisionId || openTaskId || openCommId || openTimelineId;
+    if (!id) return undefined;
+    let tries = 0, timer = null;
+    const esc = (v) => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/"/g, '\\"');
+    const tick = () => {
+      const el = document.querySelector(`[data-deeplink="${esc(id)}"]`);
+      if (el && el.scrollIntoView) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      if (++tries < 10) timer = setTimeout(tick, 80);
+    };
+    timer = setTimeout(tick, 90);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [tab, openDecisionId, openTaskId, openCommId, openTimelineId]);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
   const [evtDrawerOpen,      setEvtDrawerOpen]      = useState(false);
   const [evtActionsOpen,     setEvtActionsOpen]     = useState(false);
@@ -27161,6 +27375,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             onBack={() => handleTabChange('Command')}
             profile={profile}
             clients={clients}
+            onRouteToLinked={(t, id) => handleTabChange(t, id)}
           />
         </Suspense>
       )}
@@ -27451,7 +27666,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       </div>}
 
       {/* Weather risk alert — outdoor events within 14 days */}
-      {!dayMode && tab === 'Command' && <WeatherAlert event={event} />}
+      {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t) => handleTabChange(t)} />}
 
       {/* Event Day Bar — live execution strip */}
       {dayMode && (
@@ -28025,6 +28240,7 @@ export default function App() {
   // localStorage caches so refresh-while-signed-out doesn't re-show the prior
   // user's data, and the next sign-in starts from cloud truth.
   const [hydratedFromCloud, setHydratedFromCloud] = useState(false);
+  const planAuth = useContext(AuthCtx);
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) return;
     let cancelled = false;
@@ -28157,20 +28373,70 @@ export default function App() {
     const t = setTimeout(() => { cloudSaveProfile(profile); }, 800);
     return () => clearTimeout(t);
   }, [profile, hydratedFromCloud]);
+  // Sprint 60.Y — one-time migration: fold any legacy profile.savedVendors into
+  // the unified preferred_vendors bank, then drop the field so we don't re-run.
+  useEffect(() => {
+    if (!hydratedFromCloud) return;
+    const legacy = profile?.savedVendors;
+    if (!Array.isArray(legacy) || !legacy.length) return;
+    const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
+    const have = new Set(readVendorBank().map(k));
+    legacy.forEach((v, i) => {
+      if (!v?.name || have.has(k(v))) return;
+      have.add(k(v));
+      saveVendor({
+        id: v.id || `pv-legacy-${i}-${Date.now()}`,
+        name: v.name, category: v.category || '',
+        contact: v.email || v.contact_name || '', phone: v.phone || '',
+        website: '', notes: '', rehireCount: 0,
+        addedAt: v.savedAt || new Date().toISOString(),
+      });
+    });
+    setProfile(p => { const next = { ...p }; delete next.savedVendors; return next; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydratedFromCloud]);
+  // Sprint 60.Y — auto-grant Studio plan to allowlisted testers so they can
+  // exercise tier-gated features. Only lifts essentials/planner → studio; never
+  // downgrades an already-higher plan.
+  useEffect(() => {
+    if (!hydratedFromCloud) return;
+    const email = (planAuth?.user?.email || '').toLowerCase();
+    if (!STUDIO_PLAN_TESTERS.has(email)) return;
+    const cur = profile?.plan || 'essentials';
+    if (cur === 'studio' || cur === 'agency') return;
+    setProfile(p => ({ ...p, plan: 'studio' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydratedFromCloud, planAuth?.user?.email, profile?.plan]);
+  // Sprint 60.Y — new-message chime. Rings a soft notification when the total
+  // inbound-message count across events increases (a message arrived). Skips the
+  // first measurement so loading existing data on mount never rings.
+  const prevInboundCount = useRef(null);
+  useEffect(() => {
+    const count = (events || []).reduce((s, ev) => s + (ev.commClient || []).filter(m => m.direction === 'inbound').length, 0);
+    if (prevInboundCount.current !== null && count > prevInboundCount.current) playMessageChime();
+    prevInboundCount.current = count;
+  }, [events]);
   // PostHog: identify studio when profile is set
   useEffect(() => { if (profile?.businessName || profile?.name) identifyStudio(profile); }, [profile?.businessName]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // DocuSign OAuth callback — parse tokens from URL after redirect
+  // DocuSign OAuth callback — parse tokens from URL after redirect. Sprint 60.Y:
+  // gate on hydratedFromCloud and apply once. Previously this ran on mount with
+  // []-deps, setting the tokens BEFORE async cloud hydration resolved — hydration
+  // then overwrote them, and the debounced save (also gated on hydration) never
+  // fired, so DocuSign "forgot" the connection on the next load. Applying AFTER
+  // hydration lets the tokens land on the hydrated profile and persist via save.
+  const dsCallbackApplied = useRef(false);
   useEffect(() => {
+    if (!hydratedFromCloud || dsCallbackApplied.current) return;
     const ds = parseDocuSignCallback();
-    if (ds) {
-      setProfile(p => ({ ...p, docusignAccessToken: ds.accessToken, docusignRefreshToken: ds.refreshToken, docusignConnectedAt: ds.connectedAt, docusignAccountName: ds.accountName }));
-      // Clean URL params
-      const url = new URL(window.location.href);
-      ['docusign_connected','docusign_access_token','docusign_refresh_token','docusign_expires_in','docusign_account_name','docusign_error'].forEach(k => url.searchParams.delete(k));
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!ds) return;
+    dsCallbackApplied.current = true;
+    setProfile(p => ({ ...p, docusignAccessToken: ds.accessToken, docusignRefreshToken: ds.refreshToken, docusignConnectedAt: ds.connectedAt, docusignAccountName: ds.accountName }));
+    // Clean URL params
+    const url = new URL(window.location.href);
+    ['docusign_connected','docusign_access_token','docusign_refresh_token','docusign_expires_in','docusign_account_name','docusign_error'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({}, '', url.toString());
+  }, [hydratedFromCloud]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced save: clients (upserts present + deletes removed, like events).
   const prevClientIdsRef = useRef(new Set((clients || []).map(c => c.id)));
@@ -28592,22 +28858,25 @@ export default function App() {
         /* Sprint Add Vendor 10+ — bank-save callback. Dedupes by
            lowercased name+category so the same vendor isn't appended
            twice. Writes a snapshot, not a live reference. */
-        onSaveVendorToBank={(snap) => setProfile(p => {
-          const existing = (p?.savedVendors) || [];
+        onSaveVendorToBank={(snap) => {
+          // Unified bank: write to the SAME preferred_vendors store the Settings
+          // directory uses (localStorage + Supabase), not profile.savedVendors.
           const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
           const newKey = k(snap);
-          if (!newKey || newKey === '|') return p;
-          if (existing.some(v => k(v) === newKey)) return p;
-          return { ...p, savedVendors: [...existing, {
-            id: snap.id || uid(),
+          if (!newKey || newKey === '|') return;
+          if (readVendorBank().some(v => k(v) === newKey)) return; // dedupe
+          saveVendor({
+            id: snap.id || `pv-${Date.now()}`,
             name: snap.name || '',
             category: snap.category || '',
-            contact_name: snap.contact_name || '',
-            email: snap.email || '',
+            contact: snap.email || snap.contact_name || '',
             phone: snap.phone || '',
-            savedAt: new Date().toISOString().slice(0, 10),
-          }] };
-        })}
+            website: '',
+            notes: '',
+            rehireCount: 0,
+            addedAt: new Date().toISOString(),
+          });
+        }}
         /* Sprint 60: opens the Studio Setup profile modal so interior
            "Open Connections →" chips have a destination. */
         onOpenConnections={() => setShowProfile(true)}
