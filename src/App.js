@@ -15080,16 +15080,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {dashView === 'dashboard' && guideNeedsAttention && (
         <div role="status" style={{
           padding: isMobile ? '10px 14px' : '12px 16px',
-          background: `linear-gradient(90deg, ${C.accent}1f, ${C.accent}0a)`,
-          borderBottom: `1px solid ${C.accent}3a`,
+          background: `linear-gradient(90deg, ${C.accent2}24, ${C.accent2}0c)`,
+          borderBottom: `1px solid ${C.accent2}40`,
           display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, flexWrap: 'wrap',
         }}>
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-            color: C.accent, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.accent}66`, flexShrink: 0,
+            color: C.accent2, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.accent2}66`, flexShrink: 0,
           }}>Getting Started</span>
           <div style={{ flex: 1, minWidth: 150 }}>
-            <div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: C.text, lineHeight: 1.3 }}>
+            <div style={{ fontSize: isMobile ? 12.5 : 13.5, fontWeight: 700, color: C.accent2, lineHeight: 1.3 }}>
               New to Event Boss? Walk through running an event, step by step.
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
