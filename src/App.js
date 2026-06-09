@@ -22,7 +22,7 @@ import {
   dangerRed, amber, successGreen, textPrimary, textSecondary,
   brandPresets, defaultBrandColor,
 } from './theme/palette';
-import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers } from './lib/api';
+import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers, loadVendors, saveVendor, deleteVendor, loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from './lib/api';
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -118,6 +118,28 @@ const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
 const ONBOARD_DONE_KEY = 'ngw-onboard-done';
+
+// ─── First-run guidance — Getting Started gets prominence for the first 5 logins ─
+// A "login" = one app session (page load). Counted once per session via a
+// sessionStorage guard so refreshes within a tab don't inflate it. The
+// Getting Started guide auto-opens on login #1 and a dismissible attention
+// banner persists through login #5 (or until the planner dismisses it).
+const LOGIN_COUNT_KEY  = 'ngw-login-count';
+const GUIDE_DONE_KEY   = 'ngw-guide-dismissed';
+const GUIDE_ATTENTION_LOGINS = 5;
+function bumpLoginCount() {
+  try {
+    if (sessionStorage.getItem('ngw-login-counted')) {
+      return Number(localStorage.getItem(LOGIN_COUNT_KEY) || 0);
+    }
+    const n = Number(localStorage.getItem(LOGIN_COUNT_KEY) || 0) + 1;
+    localStorage.setItem(LOGIN_COUNT_KEY, String(n));
+    sessionStorage.setItem('ngw-login-counted', '1');
+    return n;
+  } catch (e) { return 0; }
+}
+const isGuideDismissed = () => { try { return localStorage.getItem(GUIDE_DONE_KEY) === '1'; } catch (e) { return false; } };
+const markGuideDismissed = () => { try { localStorage.setItem(GUIDE_DONE_KEY, '1'); } catch (e) { /* ignore */ } };
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Themes — add new themes here; ThemeCtx distributes the active one.
@@ -370,7 +392,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 40, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif", background: '#0f0f11', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ padding: 40, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif", background: carbonBody, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#e8e8f0', marginBottom: 8 }}>A component failed to render</div>
           <div style={{ fontSize: 12, color: '#6b6b80', marginBottom: 6, maxWidth: 340 }}>Your data is safe — this is a display error, not a data loss event.</div>
           <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'monospace', marginBottom: 24, maxWidth: 380, wordBreak: 'break-word' }}>{this.state.error.message}</div>
@@ -9087,9 +9109,9 @@ function ClientPortalPublicView({ token, events }) {
   // Sprint 61.E — palette aligned to Studio Matte + Event Boss steel-blue.
   // Accent shifts from bright #1a6fba to steel-blue #4E6877 so the portal
   // reads as part of the Event Boss product, not generic SaaS.
-  const bg     = '#111519'; // Mid Carbon
-  const card   = '#1C2227'; // Lifted Carbon
-  const border = '#2E353D';
+  const bg     = carbonBody;   // tokenized canvas — follows ACTIVE_MODE
+  const card   = carbonPanel;  // tokenized card surface
+  const border = carbonBorder; // tokenized hairline
   const text   = '#eef0f4';
   const muted  = '#9098b0';
   const accent = '#4E6877'; // Steel blue (was #1a6fba)
@@ -10630,10 +10652,15 @@ function PreferredVendorDirectory({ C, s }) {
   const [draft, setDraft] = useState(BLANK_DRAFT);
   const [search, setSearch] = useState('');
 
-  const save = (v) => {
-    setVendors(v);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); } catch {}
-  };
+  // Sprint 60.Y — the Vendor Bank now persists to Supabase (studio-scoped) via
+  // the vendors API, not just localStorage, so it survives logout / a new device
+  // / cleared site data and is shared across studio members. The initial useState
+  // reads localStorage for an instant paint; this hydrates from the cloud.
+  useEffect(() => {
+    let on = true;
+    loadVendors().then(v => { if (on && Array.isArray(v)) setVendors(v); }).catch(() => {});
+    return () => { on = false; };
+  }, []);
 
   // Sprint 52B — carry the vendor-intelligence track record into the bank so each
   // saved vendor is scored by the same engine the event workspace uses
@@ -10645,13 +10672,20 @@ function PreferredVendorDirectory({ C, s }) {
     const rec = { name: draft.name, category: draft.category, contact: draft.contact, phone: draft.phone, website: draft.website, notes: draft.notes, id: `pv-${Date.now()}`, rehireCount: 0, addedAt: new Date().toISOString() };
     if (draft.insuranceStatus) rec.insuranceStatus = draft.insuranceStatus;
     TRACK_NUM_FIELDS.forEach(k => { if (String(draft[k]).trim() !== '') rec[k] = Number(draft[k]); });
-    save([...vendors, rec]);
+    setVendors(prev => [...prev, rec]);
+    saveVendor(rec); // writes localStorage immediately + syncs to Supabase
     setDraft(BLANK_DRAFT);
     setAdding(false);
   };
 
-  const removeVendor = (id) => save(vendors.filter(v => v.id !== id));
-  const bumpRehire = (id) => save(vendors.map(v => v.id === id ? { ...v, rehireCount: (v.rehireCount || 0) + 1 } : v));
+  const removeVendor = (id) => { setVendors(prev => prev.filter(v => v.id !== id)); deleteVendor(id); };
+  const bumpRehire = (id) => {
+    const v = vendors.find(x => x.id === id);
+    if (!v) return;
+    const updated = { ...v, rehireCount: (v.rehireCount || 0) + 1 };
+    setVendors(prev => prev.map(x => x.id === id ? updated : x));
+    saveVendor(updated);
+  };
 
   const filtered = search.trim()
     ? vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.category || '').toLowerCase().includes(search.toLowerCase()))
@@ -10916,8 +10950,17 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
         }>{chip.label}</span>
         <div style={{ flex: 1, height: collapsible ? 0 : 1, background: collapsible ? 'transparent' : C.border }} />
         {collapsible && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.accent, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>
-            {open ? 'Hide' : 'Show'}<span style={{ fontSize: 12, lineHeight: 1 }}>{open ? '▾' : '▸'}</span>
+          // Hardware pull — a recessed knob (inset shadow) with a chevron that
+          // rotates from ▸ (closed) to ▾ (open). Replaces the SHOW/HIDE text;
+          // reads as a physical drawer pull, lights steel when open.
+          <span aria-hidden="true" style={{
+            flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 30, height: 22, borderRadius: 7,
+            background: C.bg, border: `1px solid ${open ? C.accent : C.border}`,
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.45)',
+            color: open ? C.accent : C.muted, transition: 'border-color 180ms ease, color 180ms ease',
+          }}>
+            <span style={{ display: 'inline-block', fontSize: 13, fontWeight: 800, lineHeight: 1, transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 200ms ease' }}>›</span>
           </span>
         )}
       </div>
@@ -10980,21 +11023,36 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
   const [setupHealthOpen, setSetupHealthOpen] = useState(false);
   const bodyRef = useRef(null);
   const [flashAnchor, setFlashAnchor] = useState(null);
+  // Maps a setup-health anchor to the collapsible section key it lives in, so
+  // jumping from the checklist lands the user IN the actionable panel — no
+  // second click to expand. Falls back to the anchor itself as the key, which
+  // is the convention for newly-collapsible sections (secKey === anchor).
+  const ANCHOR_SEC = {
+    connections: 'Connections', 'vendor-bank': 'My Vendor Bank',
+    'lead-intake': 'Lead Intake', 'how-clients-pay': 'How Clients Pay',
+    studio: 'Studio', planner: 'Planner',
+  };
   const scrollToAnchor = (anchor) => {
     const root = bodyRef.current;
     if (!root || !anchor) return;
-    const el = root.querySelector(`[data-setup-anchor="${anchor}"]`);
-    if (!el) return;
-    const top = el.offsetTop - 12;
-    root.scrollTo({ top, behavior: 'smooth' });
-    setFlashAnchor(anchor);
-    setTimeout(() => setFlashAnchor(null), 1400);
-    // Focus the first declared field for this anchor (no autocomplete
-    // surprises — we only focus inputs explicitly tagged for this).
+    // Open the target section first so the action is one click away, not two.
+    const secKey = ANCHOR_SEC[anchor] || anchor;
+    setOpenSec(o => ({ ...o, [secKey]: true }));
+    // Wait a frame for the expand to lay out, then scroll + flash + focus.
     setTimeout(() => {
-      const field = root.querySelector(`[data-setup-anchor="${anchor}"] [data-setup-field]`);
-      if (field && typeof field.focus === 'function') field.focus({ preventScroll: true });
-    }, 320);
+      const el = root.querySelector(`[data-setup-anchor="${anchor}"]`);
+      if (!el) return;
+      const top = el.offsetTop - 12;
+      root.scrollTo({ top, behavior: 'smooth' });
+      setFlashAnchor(anchor);
+      setTimeout(() => setFlashAnchor(null), 1400);
+      // Focus the first declared field for this anchor (no autocomplete
+      // surprises — we only focus inputs explicitly tagged for this).
+      setTimeout(() => {
+        const field = root.querySelector(`[data-setup-anchor="${anchor}"] [data-setup-field]`);
+        if (field && typeof field.focus === 'function') field.focus({ preventScroll: true });
+      }, 320);
+    }, 70);
   };
   // Mobile bottom-sheet detection — drives the wrapper layout. We track
   // viewport width with a resize listener so the sheet swaps cleanly on
@@ -12046,10 +12104,22 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             );
           })()}
 
-          <SectionHead label="Planned Integrations" />
+          <SectionHead label="Upcoming Features" />
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
+            On the roadmap. Phases are our build order, not date commitments — your feedback reprioritizes this list.
+          </div>
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
             {[
-              { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar', phase: 'Phase 2' },
+              { label: 'Event export → Excel · Sheets · Notion', desc: 'Export any event with all sections — overview, budget, vendors, tasks, contacts — to a spreadsheet or Notion.', phase: 'Phase 2' },
+              { label: 'Cloud sync for Vendor Bank & profile', desc: 'Your vendor bank and studio settings follow you across devices and survive a new browser — backed up, not just on this one.', phase: 'Phase 2' },
+              { label: 'AI drafting assistant', desc: 'First-draft client and vendor messages, event briefs, and checklists — you always review before anything sends.', phase: 'Phase 2' },
+              { label: 'Client portal', desc: 'A shareable, read-only event page for clients — timeline, budget summary, and approvals in one link.', phase: 'Phase 2' },
+              { label: 'Google Calendar push', desc: 'Push event dates and timeline milestones to your Google calendar.', phase: 'Phase 2' },
+              { label: 'Weather watch for outdoor events', desc: 'Automatic forecast-risk alerts in the two weeks before an outdoor event.', phase: 'Phase 2' },
+              { label: 'Online deposits & payments', desc: 'Collect retainers and vendor deposits with a payment link; track paid vs. outstanding.', phase: 'Phase 3' },
+              { label: 'E-signature for contracts', desc: 'Send contracts for signature and see signed / pending status without leaving the event.', phase: 'Phase 3' },
+              { label: 'Two-way email & SMS', desc: 'Send and receive client and vendor messages in-app, threaded to the event.', phase: 'Phase 3' },
+              { label: 'Accounting export (QuickBooks)', desc: 'Push budgets and payments to your accounting tool at year end.', phase: 'Phase 4' },
             ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -14519,46 +14589,93 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
 
 // Sprint 52B — Getting Started guide for brand-new users: the full
 // event/client workflow, step by step. Opened from the welcome hero.
+// Each step: [title, desc, key]. `key` drives both the completion check and
+// the click destination — clicking a step closes the guide and jumps the user
+// to the exact screen/section that needs action (see handleGuideStep), and the
+// number flips to a ✓ once that key is satisfied (see guideProgress).
 const GETTING_STARTED_STEPS = [
-  ['Set up your studio', 'Open Settings (your avatar, top-right) and add your studio name, your name, contact info, and your market. This personalizes client briefs and makes budget estimates accurate for your area.'],
-  ['Add your first client', 'Go to Clients → New Client and enter their name, email, and phone. A client can be linked to one or more events — now or later.'],
-  ['Create an event', 'Tap New Event. Pick a type, set a date, and add a guest count. Event Boss builds the planning structure for you — timeline, budget categories, and vendor slots.'],
-  ['Estimate the budget', 'On New Event step 3 (or later in the Budget tab), open “Estimate my budget” and choose Good / Better / Best for each category — mix and match — then apply it to seed your budget.'],
-  ['Add your vendors', 'Inside the event → Vendors. Track each vendor’s contract, payments, and readiness. Save the ones you trust to your Vendor Bank (in Settings) to reuse across events.'],
-  ['Assign your crew', 'Event → Crew. Add teammates, give each a role and call time, and mark who has confirmed. Solo events can skip this.'],
-  ['Work the Command Center', 'The event’s home screen shows your single next-best action, open decisions, approvals, incoming requests, and overall readiness. Start here each day.'],
-  ['Communicate', 'Event → Messages. Draft messages to clients and vendors. Drafts are copy-first and you choose when to send — nothing goes out automatically.'],
-  ['Add documents', 'Event → Documents. Upload contracts and files; the status clearly shows what is signed, pending, or still missing.'],
-  ['Run event day', 'When the day arrives, switch to Day-of Mode for vendor arrivals, the run-of-show, your crew manifest, and live messages — all in one focused view.'],
+  ['Set up your studio', 'Open Settings (your avatar, top-right) and add your studio name, your name, contact info, and your market. This personalizes client briefs and makes budget estimates accurate for your area.', 'studio'],
+  ['Add your first client', 'Go to Clients → New Client and enter their name, email, and phone. A client can be linked to one or more events — now or later.', 'client'],
+  ['Create an event', 'Tap New Event. Pick a type, set a date, and add a guest count. Event Boss builds the planning structure for you — timeline, budget categories, and vendor slots.', 'event'],
+  ['Estimate the budget', 'On New Event step 3 (or later in the Budget tab), open “Estimate my budget” and choose Good / Better / Best for each category — mix and match — then apply it to seed your budget.', 'budget'],
+  ['Add your vendors', 'Inside the event → Vendors. Track each vendor’s contract, payments, and readiness. Save the ones you trust to your Vendor Bank (in Settings) to reuse across events.', 'vendors'],
+  ['Assign your crew', 'Event → Crew. Add teammates, give each a role and call time, and mark who has confirmed. Solo events can skip this.', 'crew'],
+  ['Work the Command Center', 'The event’s home screen shows your single next-best action, open decisions, approvals, incoming requests, and overall readiness. Start here each day.', 'command'],
+  ['Communicate', 'Event → Messages. Draft messages to clients and vendors. Drafts are copy-first and you choose when to send — nothing goes out automatically.', 'comms'],
+  ['Add documents', 'Event → Documents. Upload contracts and files; the status clearly shows what is signed, pending, or still missing.', 'docs'],
+  ['Run event day', 'When the day arrives, switch to Day-of Mode for vendor arrivals, the run-of-show, your crew manifest, and live messages — all in one focused view.', 'dayof'],
 ];
 
-function GettingStartedGuide({ onClose }) {
+function GettingStartedGuide({ onClose, progress = {} }) {
   const C = useT(); const s = makeS(C);
+  const doneCount = GETTING_STARTED_STEPS.filter(([, , key]) => progress[key]).length;
+  // Sprint 60.X — slide-in/out drawer. Mount fully off-screen, then animate in
+  // on the next frame; on close, animate out first and unmount after the
+  // transition so the exit is visible (conditional `{showGuide && …}` alone
+  // would pop it out instantly).
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const requestClose = () => { setShown(false); setTimeout(() => onClose?.(), 290); };
+  // Drag-to-dismiss — grab the handle and slide the drawer out on demand. A
+  // tap (no real movement) also closes; a partial drag snaps back.
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startXRef = useRef(0);
+  const onDragStart = (e) => { startXRef.current = e.clientX; setDragging(true); try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch (x) { /* ignore */ } };
+  const onDragMove = (e) => { if (!dragging) return; setDragX(Math.max(0, e.clientX - startXRef.current)); };
+  const onDragEnd = () => {
+    if (!dragging) return;
+    setDragging(false);
+    if (dragX > 110 || dragX < 4) requestClose(); // full slide-out OR a tap
+    else setDragX(0);                              // partial drag — snap back
+  };
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(7,8,9,0.78)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div role="dialog" aria-label="Getting started" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14 }}>
-        <div style={{ position: 'sticky', top: 0, background: C.surface, padding: '18px 22px 12px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.accent, textTransform: 'uppercase', marginBottom: 4 }}>Getting started</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>How to run an event, start to finish</div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>Ten steps from a blank workspace to event day. Do them in order, or jump around — nothing locks.</div>
+    <div onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}
+      style={{ position: 'fixed', inset: 0, background: `rgba(7,8,9,${shown ? 0.78 : 0})`, zIndex: 1000, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', transition: 'background 0.29s ease' }}>
+      <div role="dialog" aria-label="Getting started" style={{ position: 'relative', width: '100%', maxWidth: 560, height: '100%', overflow: 'auto', background: C.surface, borderLeft: `3px solid ${C.accent}`, transform: !shown ? 'translateX(100%)' : `translateX(${dragX}px)`, transition: dragging ? 'none' : 'transform 0.29s cubic-bezier(0.22, 1, 0.36, 1)', boxShadow: '-24px 0 60px rgba(0,0,0,0.45)' }}>
+        <div style={{ position: 'sticky', top: 0, zIndex: 2, background: C.surface, padding: '22px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div onPointerDown={onDragStart} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}
+            role="button" aria-label="Slide guide out" title="Drag or tap to slide out"
+            style={{ alignSelf: 'center', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 40, marginLeft: -6, cursor: 'grab', touchAction: 'none' }}>
+            <div style={{ width: 4, height: 30, borderRadius: 2, background: C.accent, opacity: 0.85 }} />
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>✕</button>
-        </div>
-        <div style={{ padding: '14px 22px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {GETTING_STARTED_STEPS.map(([title, desc], i) => (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: C.accent + '22', border: `1px solid ${C.accent}66`, color: C.accent, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{title}</div>
-                <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 2 }}>{desc}</div>
-              </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+              <span style={{ width: 18, height: 2, background: C.accent, borderRadius: 1 }} />
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: C.accent, textTransform: 'uppercase' }}>Getting started</span>
             </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
-            <button onClick={onClose} style={{ ...s.btn('primary'), fontSize: 13 }}>Got it — let’s start</button>
+            <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>How to run an event, start to finish</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>Ten steps from a blank workspace to event day. Do them in order or jump around — nothing locks.</div>
           </div>
+          <button onClick={requestClose} aria-label="Close" style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.muted, width: 30, height: 30, borderRadius: 8, fontSize: 15, cursor: 'pointer', lineHeight: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+        <div style={{ background: C.bg }}>
+          {GETTING_STARTED_STEPS.map(([title, desc, key], i) => {
+            const done = !!progress[key];
+            return (
+              <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '15px 24px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none' }}>
+                <div style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 9,
+                  background: done ? C.accent2 : C.surface,
+                  border: `1px solid ${done ? C.accent2 : C.border}`,
+                  color: done ? '#fff' : C.accent, fontSize: done ? 14 : 13, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{done ? '✓' : i + 1}</div>
+                <div style={{ minWidth: 0, paddingTop: 1, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text }}>{title}</div>
+                    {done && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent2 }}>Done</span>}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 3 }}>{desc}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ position: 'sticky', bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, color: C.muted }}>{doneCount} of {GETTING_STARTED_STEPS.length} done · checks off automatically as you go</span>
+          <button onClick={requestClose} style={{ ...s.btn('primary'), fontSize: 13 }}>Got it — let’s start</button>
         </div>
       </div>
     </div>
@@ -14584,6 +14701,32 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // collapses — the full triage view is a pro feature there.
   const [attentionExpanded, setAttentionExpanded] = useState(false);
   const [showGuide, setShowGuide] = useState(false); // Sprint 52B — Getting Started guide
+  // Sprint 60.X — first-5-logins guidance. loginCount is bumped once per
+  // session; the guide auto-opens on login #1 and an attention banner shows
+  // through login #5 unless dismissed.
+  const loginCount = useMemo(() => bumpLoginCount(), []);
+  const [guideDismissed, setGuideDismissed] = useState(isGuideDismissed);
+  const guideNeedsAttention = loginCount > 0 && loginCount <= GUIDE_ATTENTION_LOGINS && !guideDismissed;
+  useEffect(() => {
+    // Auto-open once, on the very first login, for a brand-new planner.
+    if (loginCount === 1 && !guideDismissed) setShowGuide(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const dismissGuideAttention = () => { markGuideDismissed(); setGuideDismissed(true); };
+  // Sprint 60.X — guide step completion, derived from real workspace data so
+  // the numbers flip to ✓ as the planner actually does the work.
+  const guideProgress = useMemo(() => ({
+    studio:  !!(profile?.businessName || profile?.name),
+    client:  (clients?.length || 0) > 0,
+    event:   (events?.length || 0) > 0,
+    budget:  (events || []).some(e => Number(e.totalBudget) > 0),
+    vendors: (events || []).some(e => (e.vendors || []).length > 0),
+    crew:    (events || []).some(e => (e.crew || e.team || []).length > 0),
+    command: (events?.length || 0) > 0,
+    comms:   (events || []).some(e => (e.messages || e.comms || []).length > 0),
+    docs:    (events || []).some(e => (e.documents || e.docs || []).length > 0),
+    dayof:   (events || []).some(e => e.status === 'complete' || e.completed),
+  }), [profile, clients, events]);
   // Sprint 60.P Addendum — compute the StudioCommand at MainDashboard
   // level so supporting modules can hide when the hero is urgent. This
   // is the single source of truth that fixes the "hero says slipping /
@@ -14931,6 +15074,39 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
       {/* Setup progress banner — only on the dashboard view, only when incomplete */}
       {dashView === 'dashboard' && <SetupBanner profile={profile} onOpenProfile={onProfile} />}
+      {/* Sprint 60.X — Getting Started attention, surfaced for the first 5 logins.
+          Unlike the welcome hero (empty-state only), this rides along even after
+          the planner adds their first event, so onboarding isn't lost mid-stream. */}
+      {dashView === 'dashboard' && guideNeedsAttention && (
+        <div role="status" style={{
+          padding: isMobile ? '10px 14px' : '12px 16px',
+          background: `linear-gradient(90deg, ${C.accent}1f, ${C.accent}0a)`,
+          borderBottom: `1px solid ${C.accent}3a`,
+          display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 14, flexWrap: 'wrap',
+        }}>
+          <span style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: C.accent, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.accent}66`, flexShrink: 0,
+          }}>Getting Started</span>
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: C.text, lineHeight: 1.3 }}>
+              New to Event Boss? Walk through running an event, step by step.
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Login {loginCount} of {GUIDE_ATTENTION_LOGINS} · we'll keep this handy while you settle in
+            </div>
+          </div>
+          <button onClick={() => setShowGuide(true)} style={{ ...s.btn('primary'), fontSize: 12, padding: '7px 14px', flexShrink: 0 }}>
+            Open guide
+          </button>
+          <button onClick={dismissGuideAttention} title="Hide this" aria-label="Hide Getting Started"
+            style={{ ...s.btn('ghost'), fontSize: 11, padding: '7px 10px', flexShrink: 0 }}>
+            Got it
+          </button>
+        </div>
+      )}
+      {/* Guide modal is reachable from the welcome hero, this banner, and Settings. */}
+      {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} progress={guideProgress} />}
       {/* Sprint 51 onboarding: sample-data banner — shown when any seed event
           or client is present in state. Gives the planner a single-click path
           to clear the demo and start their real workspace. */}
@@ -15399,7 +15575,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 New here? See how to run an event, step by step →
               </button>
             </div>
-            {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} />}
+            {/* Guide modal is mounted once at the dashboard top level (Sprint 60.X). */}
 
             {/* Three explicit paths, each as a card-button */}
             <div style={{ display: 'grid', gridTemplateColumns: bp === 'mobile' ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 22 }}>
@@ -27864,15 +28040,24 @@ export default function App() {
 
       try {
         setSyncState('saving');
-        const [cloudEvts, cloudCls] = await Promise.all([
+        const [cloudEvts, cloudCls, cloudProfile] = await Promise.all([
           cloudLoadEvents(),
           cloudLoadClients(),
+          cloudLoadProfile(),
         ]);
         if (cancelled) return;
         const nextEvents  = Array.isArray(cloudEvts) ? cloudEvts : [];
         const nextClients = Array.isArray(cloudCls)  ? cloudCls  : [];
         setEvents(nextEvents);
         setClients(nextClients);
+        // Sprint 60.Y — studio profile now persists to Supabase too. If the
+        // cloud has a profile, it wins; if not, back up the local profile so the
+        // studio's setup is durable from here on (survives a new device).
+        if (cloudProfile) {
+          setProfile(cloudProfile);
+        } else {
+          try { const lp = JSON.parse(localStorage.getItem('ngw-profile') || 'null'); if (lp) cloudSaveProfile(lp); } catch { /* ignore */ }
+        }
         prevEventIdsRef.current  = new Set(nextEvents.map(e => e.id));
         prevClientIdsRef.current = new Set(nextClients.map(c => c.id));
         setHydratedFromCloud(true);
@@ -27964,6 +28149,14 @@ export default function App() {
   }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { try { localStorage.setItem('ngw-profile', JSON.stringify(profile)); } catch {} }, [profile]);
+  // Sprint 60.Y — debounced cloud save of the profile. Gated on hydratedFromCloud
+  // so an early write can't clobber the cloud copy before it has loaded; the
+  // 800ms debounce coalesces keystroke-level edits in Settings into one upsert.
+  useEffect(() => {
+    if (!hydratedFromCloud) return undefined;
+    const t = setTimeout(() => { cloudSaveProfile(profile); }, 800);
+    return () => clearTimeout(t);
+  }, [profile, hydratedFromCloud]);
   // PostHog: identify studio when profile is set
   useEffect(() => { if (profile?.businessName || profile?.name) identifyStudio(profile); }, [profile?.businessName]); // eslint-disable-line react-hooks/exhaustive-deps
 

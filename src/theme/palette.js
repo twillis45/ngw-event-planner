@@ -71,8 +71,10 @@ const TOKENS = {
 };
 
 // The production default mode. Until a user-level "Theme" toggle ships,
-// the app shell runs Mid.
-export const ACTIVE_MODE = 'mid';
+// the app shell runs the Dark Standard Carbon ramp (matte/050 #070809 page).
+// Sprint 60.W — moved the whole-app canvas from Mid Carbon to the deepest
+// Standard Carbon so cards earn their separation on a true matte-black page.
+export const ACTIVE_MODE = 'dark';
 
 // ── Default-mode named exports ─────────────────────────────────────────
 // These are the values existing code imports directly. They resolve to

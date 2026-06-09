@@ -6,15 +6,16 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabaseClient';
 import { AuthCtx } from '../contexts/AuthContext';
+import { carbonBody, carbonPanel, carbonBorder } from '../theme/palette';
 
 // Sprint 61.M — palette aligned to Studio Matte + Event Boss steel-blue.
 // Login is the first surface a new user sees; bright SaaS blue + neon teal
 // (the prior accent/accent2 values) read as generic SaaS and conflict with
 // the locked product voice. Switched to Mid Carbon + steel-blue.
 const D = {
-  bg:      '#111519', // Mid Carbon page
-  surface: '#1C2227', // Lifted Carbon card
-  border:  '#2E353D',
+  bg:      carbonBody,   // tokenized canvas — follows ACTIVE_MODE
+  surface: carbonPanel,  // tokenized card
+  border:  carbonBorder, // tokenized hairline
   accent:  '#4E6877', // Steel blue (was #4a90d9 SaaS blue)
   accent2: '#4FAE7A', // Sage green (was banned #14b8a6 neon teal)
   text:    '#eef0f4',

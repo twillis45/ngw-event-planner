@@ -4,7 +4,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #0f0f11; /* DARK theme bg — default; App.js overrides per theme */
+  background: #070809; /* matte/050 Standard Carbon page — synced to ACTIVE_MODE 'dark' */
 }
 #root {
   min-height: 100vh;

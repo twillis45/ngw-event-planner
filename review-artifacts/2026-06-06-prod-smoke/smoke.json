@@ -1,0 +1,17 @@
+{
+  "home_loaded": true,
+  "event_command_center": true,
+  "vendor_cockpit": true,
+  "add_vendor_wizard": true,
+  "wizard_step_label": true,
+  "wizard_trust_block": true,
+  "comms_loaded": true,
+  "profile_settings": false,
+  "overflow": false,
+  "banSaaSBlue": 0,
+  "banNeonTeal": 0,
+  "openWeatherURL": 0,
+  "page_errors": 0,
+  "console_errors": 0,
+  "error_messages": []
+}

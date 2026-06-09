@@ -16,6 +16,18 @@ export {
 } from './clients';
 
 export {
+  loadVendors,
+  saveVendor,
+  deleteVendor,
+  migrateLocalToCloud as migrateVendorsToCloud,
+} from './vendors';
+
+export {
+  loadProfile,
+  saveProfile,
+} from './profile';
+
+export {
   currentStudio,
   currentStudioId,
   clearStudioCache,

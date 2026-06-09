@@ -1,0 +1,93 @@
+// ─── Preferred Vendors (Vendor Bank) data access layer ────────────────────────
+// Studio-scoped mirror of clients.js — the studio's saved/trusted vendors.
+// localStorage-first, Supabase-when-available. localStorage key is the SAME one
+// the old localStorage-only Vendor Bank used (ngw-preferred-vendors), so a
+// planner's existing bank is preserved and migrates to the cloud on first save.
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { currentStudioId } from './studio';
+
+const LOCAL_KEY = 'ngw-preferred-vendors';
+
+function readLocal() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
+}
+function writeLocal(vendors) {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(vendors)); } catch {}
+}
+
+/** Load all preferred vendors for the current studio. Falls back to localStorage. */
+export async function loadVendors() {
+  if (!isSupabaseConfigured() || !supabase) return readLocal();
+  const sid = await currentStudioId();
+  if (!sid) return readLocal();
+  try {
+    const { data, error } = await supabase
+      .from('preferred_vendors')
+      .select('id, data, updated_at')
+      .eq('studio_id', sid)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    const vendors = (data || []).map((row) => ({ ...row.data, id: row.id }));
+    // First-run merge: if the cloud is empty but localStorage has a bank, keep
+    // the local copy so we don't blank an existing roster before migration.
+    if (!vendors.length) {
+      const local = readLocal();
+      if (local.length) return local;
+    }
+    writeLocal(vendors);
+    return vendors;
+  } catch {
+    return readLocal();
+  }
+}
+
+/** Upsert a single vendor (within the current studio). */
+export async function saveVendor(vendor) {
+  const local = readLocal();
+  writeLocal(local.some((v) => v.id === vendor.id)
+    ? local.map((v) => (v.id === vendor.id ? vendor : v))
+    : [...local, vendor]);
+
+  if (!isSupabaseConfigured() || !supabase) return;
+  const sid = await currentStudioId();
+  if (!sid) return;
+  try {
+    const { error } = await supabase
+      .from('preferred_vendors')
+      .upsert({ id: vendor.id, studio_id: sid, data: vendor }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch { /* local write already succeeded; cloud syncs on next load */ }
+}
+
+/** Delete a vendor by id (within the current studio). */
+export async function deleteVendor(vendorId) {
+  writeLocal(readLocal().filter((v) => v.id !== vendorId));
+  if (!isSupabaseConfigured() || !supabase) return;
+  const sid = await currentStudioId();
+  if (!sid) return;
+  try {
+    const { error } = await supabase
+      .from('preferred_vendors').delete().eq('id', vendorId).eq('studio_id', sid);
+    if (error) throw error;
+  } catch { /* local delete already done */ }
+}
+
+/** Import localStorage vendors into the current studio (first-time migration). */
+export async function migrateLocalToCloud(localVendors) {
+  if (!isSupabaseConfigured() || !supabase) return { migrated: 0, failed: 0 };
+  const sid = await currentStudioId();
+  if (!sid) return { migrated: 0, failed: 0 };
+  let migrated = 0, failed = 0;
+  for (const vendor of localVendors) {
+    try {
+      const { error } = await supabase
+        .from('preferred_vendors')
+        .upsert({ id: vendor.id, studio_id: sid, data: vendor }, { onConflict: 'id' });
+      if (error) throw error;
+      migrated++;
+    } catch {
+      failed++;
+    }
+  }
+  return { migrated, failed };
+}

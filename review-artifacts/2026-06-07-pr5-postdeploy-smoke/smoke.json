@@ -1,0 +1,269 @@
+{
+  "390": {
+    "viewport": "390",
+    "prod_loads": true,
+    "ce_opens": true,
+    "ce_date_helper": {
+      "present": true,
+      "type": "date",
+      "inputMode": "numeric",
+      "hasOnFocus": false,
+      "hasOnClick": true
+    },
+    "ce_chip_this_weekend": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_date_after_tap": "2026-09-07",
+    "ce_subtext_visible": true,
+    "ce_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "vm_chip_14_before": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 155,
+        "h": 44
+      }
+    },
+    "vm_subtext_after_tap": true,
+    "vm_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 158,
+        "h": 44
+      }
+    },
+    "banned": {
+      "ban1a6fba": 0,
+      "rgbSaaSBlue": 0,
+      "ban14b8a6": 0,
+      "overflow": false
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1024": {
+    "viewport": "1024",
+    "prod_loads": true,
+    "ce_opens": true,
+    "ce_date_helper": {
+      "present": true,
+      "type": "date",
+      "inputMode": "numeric",
+      "hasOnFocus": false,
+      "hasOnClick": true
+    },
+    "ce_chip_this_weekend": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_date_after_tap": "2026-09-07",
+    "ce_subtext_visible": true,
+    "ce_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "vm_chip_14_before": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 155,
+        "h": 44
+      }
+    },
+    "vm_subtext_after_tap": true,
+    "vm_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 158,
+        "h": 44
+      }
+    },
+    "banned": {
+      "ban1a6fba": 0,
+      "rgbSaaSBlue": 0,
+      "ban14b8a6": 0,
+      "overflow": false
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  },
+  "1440": {
+    "viewport": "1440",
+    "prod_loads": true,
+    "ce_opens": true,
+    "ce_date_helper": {
+      "present": true,
+      "type": "date",
+      "inputMode": "numeric",
+      "hasOnFocus": false,
+      "hasOnClick": true
+    },
+    "ce_chip_this_weekend": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 111,
+        "h": 44
+      }
+    },
+    "ce_chip_plus_3_months": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "ce_date_after_tap": "2026-09-07",
+    "ce_subtext_visible": true,
+    "ce_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 94,
+        "h": 44
+      }
+    },
+    "ce_chip_after_manual": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 93,
+        "h": 44
+      }
+    },
+    "vm_chip_14_before": {
+      "present": true,
+      "ariaPressed": null,
+      "background": "rgba(0, 0, 0, 0)",
+      "borderColor": "rgb(46, 53, 61)",
+      "fontWeight": "600",
+      "rect": {
+        "w": 155,
+        "h": 44
+      }
+    },
+    "vm_subtext_after_tap": true,
+    "vm_chip_selected_state": {
+      "present": true,
+      "ariaPressed": "true",
+      "background": "rgba(78, 104, 119, 0.1)",
+      "borderColor": "rgb(78, 104, 119)",
+      "fontWeight": "700",
+      "rect": {
+        "w": 158,
+        "h": 44
+      }
+    },
+    "banned": {
+      "ban1a6fba": 0,
+      "rgbSaaSBlue": 0,
+      "ban14b8a6": 0,
+      "overflow": false
+    },
+    "page_errors": 0,
+    "console_errors": 0
+  }
+}

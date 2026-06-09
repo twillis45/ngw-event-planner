@@ -1,0 +1,20 @@
+{
+  "home_loaded": true,
+  "event_command_center": true,
+  "vendor_cockpit": true,
+  "add_vendor_wizard": true,
+  "mark_paid_dialog": true,
+  "trust_block_visible": true,
+  "undo_toast": true,
+  "budget_loads": true,
+  "reconcile_card": true,
+  "stripe_link_truth": true,
+  "stripe_explainer": true,
+  "profile_settings": false,
+  "overflow": false,
+  "banSaaSBlue": 0,
+  "banNeonTeal": 0,
+  "openWeather": 0,
+  "page_errors": 0,
+  "console_errors": 0
+}

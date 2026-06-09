@@ -1,0 +1,43 @@
+{
+  "prod_loads": true,
+  "home_loads": true,
+  "create_event_cta_reachable": true,
+  "step1_trust_block": true,
+  "cancel_visible_step1": {
+    "present": true,
+    "rect": {
+      "w": 96,
+      "h": 44
+    },
+    "hasBorder": true,
+    "text": "Cancel"
+  },
+  "step2_setup_visible": true,
+  "step3_review_visible": true,
+  "step3_trust_block": true,
+  "back_visible_step3": {
+    "present": true,
+    "rect": {
+      "w": 96,
+      "h": 44
+    },
+    "hasBorder": true,
+    "text": "Back"
+  },
+  "success_visible": true,
+  "success_created_card": true,
+  "success_not_done_card": true,
+  "add_vendor_action_present": true,
+  "add_client_action_present": true,
+  "add_client_action_enabled": true,
+  "add_another_resets": true,
+  "event_command_center_loads": true,
+  "vendor_cockpit_loads": false,
+  "budget_payments_loads": true,
+  "overflow": false,
+  "openWeather": 0,
+  "devBypass": 0,
+  "page_errors": 0,
+  "console_errors": 0,
+  "profile_settings_opens": true
+}

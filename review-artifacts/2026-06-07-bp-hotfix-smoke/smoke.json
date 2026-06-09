@@ -1,0 +1,43 @@
+{
+  "prod_loads": true,
+  "mark_deposit_dialog_opens": true,
+  "cancel_visibility_unmark_deposit": {
+    "present": true,
+    "rect": {
+      "w": 88,
+      "h": 44
+    },
+    "hasBorder": true,
+    "text": "Cancel"
+  },
+  "cancel_leaves_state_unchanged_deposit": true,
+  "mark_balance_dialog_opens": true,
+  "cancel_visibility_mark_balance": {
+    "present": true,
+    "rect": {
+      "w": 88,
+      "h": 44
+    },
+    "hasBorder": true,
+    "text": "Cancel"
+  },
+  "undo_toast_after_confirm": true,
+  "budget_loads": true,
+  "reconcile_dialog_opens": true,
+  "cancel_visibility_reconcile": {
+    "present": true,
+    "rect": {
+      "w": 88,
+      "h": 44
+    },
+    "hasBorder": true,
+    "text": "Cancel"
+  },
+  "add_vendor_wizard_opens": true,
+  "overflow": false,
+  "openWeather": 0,
+  "devBypass": 0,
+  "page_errors": 0,
+  "console_errors": 0,
+  "profile_settings_opens": true
+}

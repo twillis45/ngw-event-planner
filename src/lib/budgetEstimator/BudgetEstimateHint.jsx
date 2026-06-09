@@ -14,6 +14,7 @@
 
 import { estimatorConfidence, NOT_INCLUDED } from './confidence.js';
 import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
+import { carbonBody, carbonPanel, carbonBorder } from '../../theme/palette';
 
 // Per-event-type per-head bands. Reflect commonly cited US bands. Planning
 // estimates only — never claimed as quotes.
@@ -38,9 +39,9 @@ const PER_HEAD_BY_TYPE = {
 };
 
 const DEFAULT_PALETTE = {
-  bg:     '#111519',
-  card:   '#1C2227',
-  border: '#2E353D',
+  bg:     carbonBody,   // tokenized canvas — follows ACTIVE_MODE
+  card:   carbonPanel,  // tokenized card
+  border: carbonBorder, // tokenized hairline
   text:   '#eef0f4',
   muted:  '#9098b0',
   accent: '#4E6877',  // steel-blue

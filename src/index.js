@@ -4,8 +4,14 @@ import './index.css';
 import App from './App';
 import AuthGate from './components/AuthGate';
 import { initSentry } from './lib/sentry';
+import { carbonBody } from './theme/palette';
 
 initSentry(); // no-op unless REACT_APP_SENTRY_DSN is set
+
+// Canvas is fully tokenized: the page background follows the palette token
+// (ACTIVE_MODE). index.css carries the same value as a pre-paint fallback to
+// avoid a white flash; this line makes the token the single source of truth.
+try { document.documentElement.style.background = carbonBody; document.body.style.background = carbonBody; } catch (e) { /* SSR/no-DOM guard */ }
 
 // Slice harness — App.js is never touched; additive and fully reversible.
 //   ?slice=vendor          → Sprint 10 single-escalation lab (VendorEscalationSlice)
