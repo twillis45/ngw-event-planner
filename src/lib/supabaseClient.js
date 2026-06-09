@@ -44,6 +44,13 @@ export const supabase = isSupabaseConfigured()
         // browser session that initiated the sign-in — this breaks on GitHub
         // Pages where the email client may open the link in a fresh context.
         flowType: 'implicit',
+        // Sprint 52B — non-deadlocking lock. Supabase's default uses
+        // navigator.locks, which can get STUCK after a closed/crashed tab so
+        // getSession() never resolves → permanent "Loading…" / login bounce
+        // (it bit a real device until site-data was cleared). A no-op lock just
+        // runs the callback — at worst two tabs refresh the token concurrently,
+        // which is harmless. This guarantees auth can never deadlock.
+        lock: (_name, _acquireTimeout, fn) => fn(),
       },
     })
   : null;

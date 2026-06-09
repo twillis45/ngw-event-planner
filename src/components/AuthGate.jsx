@@ -305,6 +305,7 @@ function BypassBadge() {
 export default function AuthGate({ children }) {
   const configured = isSupabaseConfigured();
   const [session, setSession] = useState(null);
+  const [authErr, setAuthErr] = useState(null); // Sprint 52B — surfaced via ?authdebug=1
   // Bypass mode is "ready" immediately; same behavior as !configured.
   const [ready,   setReady]   = useState(BYPASS_ACTIVE || !configured);
 
@@ -323,7 +324,7 @@ export default function AuthGate({ children }) {
     const timer = setTimeout(finish, 5000);
     supabase.auth.getSession()
       .then(({ data }) => { if (mounted) setSession(data?.session || null); })
-      .catch(() => { /* storage/network blocked — proceed to login */ })
+      .catch((e) => { try { setAuthErr(e && (e.message || String(e))); } catch (x) { /* ignore */ } })
       .finally(() => { clearTimeout(timer); finish(); });
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => {
       if (mounted) setSession(sess);
@@ -351,7 +352,18 @@ export default function AuthGate({ children }) {
       </AuthCtx.Provider>
     );
   }
-  if (configured && !ready)    return <ThemeFallbackSplash onContinue={() => setReady(true)} />;
-  if (configured && !session)  return <LoginScreen />;
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  // Sprint 52B — ?authdebug=1 overlay to diagnose a login bounce on a device:
+  // shows whether a session exists, whether the URL still has the token, any
+  // getSession error, and whether localStorage holds the Supabase auth keys.
+  const authDebug = (() => { try { return new URLSearchParams(window.location.search).get('authdebug') === '1'; } catch (e) { return false; } })();
+  const debugPanel = authDebug ? (
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2147483647, background: '#000', color: '#5fd35f', font: '11px/1.5 monospace', padding: '8px 12px', borderTop: '1px solid #333', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '45vh', overflow: 'auto' }}>
+      {`configured=${configured}\nready=${ready}\nhasSession=${!!session}\nurlHash=${(() => { try { return (window.location.hash || '').slice(0, 50); } catch (e) { return '?'; } })()}\ngetSessionErr=${authErr || 'none'}\nlocalStorage=${(() => { try { const k = Object.keys(window.localStorage); return 'OK -> ' + (k.filter(x => /sb-|supabase|auth/i.test(x)).join(',') || '(no auth keys)'); } catch (e) { return 'BLOCKED: ' + e.message; } })()}`}
+    </div>
+  ) : null;
+  let content;
+  if (configured && !ready)        content = <ThemeFallbackSplash onContinue={() => setReady(true)} />;
+  else if (configured && !session) content = <LoginScreen />;
+  else                             content = <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
+  return <>{content}{debugPanel}</>;
 }
