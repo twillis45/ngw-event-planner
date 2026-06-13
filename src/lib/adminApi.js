@@ -63,4 +63,6 @@ export const adminApi = {
   // A3-err — Error feed
   errors: (sinceHours = 168, source = '') =>
     req('GET', `/api/admin/errors?since_hours=${sinceHours}${source ? `&source=${encodeURIComponent(source)}` : ''}`),
+  // A1 — Activation funnel
+  activation: ()          => req('GET', '/api/admin/metrics/activation'),
 };

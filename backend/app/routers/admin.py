@@ -666,3 +666,48 @@ async def list_errors(
                 pass
         out.append(d)
     return {"errors": out, "sentry_note": _ERRORS_NOTE}
+
+
+# ─── A1: Activation funnel ────────────────────────────────────────────────────
+# The honest beta-health funnel from server-synced state. "Synced an event" is a
+# PROXY for real activity — the server can't tell a real event from the sample
+# (event contents are localStorage-first), so the UI must not call it "created a
+# real event." At beta scale show the true small N, never a vanity curve.
+
+@router.get("/metrics/activation")
+async def metrics_activation(
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Signup → confirmed → synced-an-event → active funnel, plus recent signups."""
+    actor = await require_admin(authorization, x_planner_token)
+    await audit(actor, "view_activation")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        now = await conn.fetchval("select now()")
+        signed_up = await conn.fetchval("select count(*) from auth.users")
+        confirmed = await conn.fetchval(
+            "select count(*) from auth.users where email_confirmed_at is not null")
+        synced_event = await conn.fetchval(
+            "select count(distinct owner_id) from event_owners")
+        active_14d = await conn.fetchval(
+            "select count(*) from auth.users where last_sign_in_at > now() - interval '14 days'")
+        new_7d = await conn.fetchval(
+            "select count(*) from auth.users where created_at > now() - interval '7 days'")
+        new_30d = await conn.fetchval(
+            "select count(*) from auth.users where created_at > now() - interval '30 days'")
+
+    funnel = [
+        {"key": "signed_up", "label": "Signed up", "count": signed_up, "note": None},
+        {"key": "confirmed", "label": "Confirmed email", "count": confirmed, "note": None},
+        {"key": "synced_event", "label": "Synced an event", "count": synced_event,
+         "note": "Server-synced proxy — can't distinguish a real event from the sample."},
+        {"key": "active_14d", "label": "Active (last 14 days)", "count": active_14d, "note": None},
+    ]
+    return {
+        "coverage": _COVERAGE,
+        "generated_at": now,
+        "funnel": funnel,
+        "new_signups": {"d7": new_7d, "d30": new_30d},
+    }

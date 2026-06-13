@@ -1665,6 +1665,31 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               <span style={{ color: P.borderDef }}>·</span>
               <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{stage}</span>
             </div>
+            {/* Attention-item KPIs LEAD the detail (board 2026-06-12): a glanceable,
+                clickable strip — what needs you, how locked-in, what's owed — so the
+                planner reads the vendor's state in one look and can act from the top. */}
+            {(() => {
+              const planning = getVendorPlanningState(vendor, event);
+              const gates = LOCKIN_GATES.map(g => (planning || []).find(x => x.key === g.key)).filter(g => g && g.status !== 'not_tracked');
+              const lockedIn = gates.filter(g => g.status === 'done').length;
+              const lockTotal = gates.length;
+              const openCount = (readiness.counts?.critical || 0) + (readiness.counts?.attention || 0);
+              const balanceDue = !vendor.balancePaid && (vendor.cost || 0) > 0
+                ? (vendor.depositPaid ? Math.max(0, (vendor.cost || 0) - (vendor.depositAmt || 0)) : (vendor.cost || 0)) : 0;
+              const chip = (key, label, color, onClick) => (
+                <button key={key} type="button" onClick={onClick || undefined} disabled={!onClick}
+                  title={onClick ? `Resolve: ${label}` : label}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}40`, borderRadius: 999, padding: '3px 10px', fontFamily: FF, cursor: onClick ? 'pointer' : 'default' }}>
+                  {label}{onClick ? ' →' : ''}
+                </button>
+              );
+              const chips = [];
+              if (openCount > 0) chips.push(chip('open', `${openCount} need you`, (readiness.counts?.critical ? P.red : P.amber), () => onAddressItem && alsoItems[0] && onAddressItem(alsoItems[0])));
+              if (lockTotal > 0) chips.push(chip('lock', `${lockedIn}/${lockTotal} locked in`, lockedIn === lockTotal ? P.green : P.steelBlue, null));
+              if (balanceDue > 0) chips.push(chip('bal', `$${balanceDue.toLocaleString()} due`, P.amber, () => onAddressItem && onAddressItem({ key: 'financial' })));
+              if (!chips.length) return null;
+              return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>{chips}</div>;
+            })()}
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
             <ReachActions vendor={vendor} />
@@ -3350,6 +3375,16 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   // canonical vendor edit modal.
   const addressRow = (row) => {
     const key = row?.key;
+    // "Booking — not yet confirmed" is a ONE-CLICK confirm, not a trip to the
+    // editor (board 2026-06-12: on a Contracted vendor like Premier AV it
+    // routed to onEdit and felt like nothing happened). Confirm in place.
+    if (key === 'booking' && onPatchVendor && vendor && vendor.status !== 'Confirmed' && vendor.status !== 'Booked') {
+      onPatchVendor(vendor.id, { status: 'Confirmed' });
+      if (onAddLog) onAddLog(vendor.id, `Marked Confirmed via vendor cockpit (was ${vendor.status || 'unset'}).`);
+      setFlashSection('nextAction');
+      setTimeout(() => setFlashSection(null), 2000);
+      return;
+    }
     // Maps a row/attention-item key → the inline panel that clears it. Now also
     // accepts challenge-CATEGORY keys (financial/documents/logistics) so the
     // "Also open" attention rows route to the same panels (board 2026-06-12).

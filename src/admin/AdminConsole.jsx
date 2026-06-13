@@ -43,7 +43,7 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Errors', 'Providers', 'Audit'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Metrics', 'Errors', 'Providers', 'Audit'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -432,6 +432,74 @@ function InvitationsPanel({ onOpenUser }) {
   );
 }
 
+// ─── Metrics tab — A1 Activation funnel (P1; A2 AI-cost section lands here too) ─
+// Honest beta health from server-synced state. Tiny-N is shown truthfully (Tufte:
+// "3 of 7", never a vanity curve). "Synced an event" is a proxy — the server can't
+// tell a real event from the sample, and the row says so.
+function MetricsPanel() {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setBusy(true); setErr(null);
+    try { setData(await adminApi.activation()); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const funnel = data?.funnel;
+  const top = funnel?.[0]?.count || 0;
+  const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : 0);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation</div>
+        <button onClick={load} disabled={busy} style={{
+          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
+        }}>{busy ? 'loading…' : 'refresh'}</button>
+        {data?.new_signups && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}>
+            <span style={{ color: D.good, fontWeight: 700 }}>+{data.new_signups.d7}</span> in 7d
+            {' · '}<span style={{ color: D.muted, fontWeight: 700 }}>+{data.new_signups.d30}</span> in 30d
+          </span>
+        )}
+      </div>
+
+      {err && <Banner tone="bad">Error: {err}</Banner>}
+
+      {data && top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No signups yet.</div>}
+
+      {data && top > 0 && (
+        <div>
+          {funnel.map((s, i) => {
+            const prev = i > 0 ? funnel[i - 1].count : null;
+            return (
+              <div key={s.key} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+                  <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+                  <span style={{ fontSize: 11, color: D.faint, width: 92, textAlign: 'right' }}>
+                    {pct(s.count, top)}% of signups
+                    {prev !== null && <span style={{ color: prev > 0 && s.count < prev ? D.warn : D.faint }}> · {pct(s.count, prev)}→</span>}
+                  </span>
+                </div>
+                <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct(s.count, top)}%`, background: D.accent, borderRadius: 4 }} />
+                </div>
+                {s.note && <div style={{ fontSize: 10.5, color: D.warn, marginTop: 4 }}>⚠ {s.note}</div>}
+              </div>
+            );
+          })}
+          <div style={{ fontSize: 11, color: D.faint, marginTop: 14, lineHeight: 1.5 }}>{data.coverage}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Errors tab — A3-err server-side error feed ──────────────────────────────
 // admin_error_log: AI-proxy, email, payments, unhandled API exceptions. Honest
 // scope — browser errors (CSP, frontend crashes) are NOT here; they live in
@@ -753,6 +821,8 @@ export default function AdminConsole() {
         {tab === 'Workspaces' && <WorkspacesPanel onOpenUser={goToUser} />}
 
         {tab === 'Invitations' && <InvitationsPanel onOpenUser={goToUser} />}
+
+        {tab === 'Metrics' && <MetricsPanel />}
 
         {tab === 'Errors' && <ErrorsPanel />}
 

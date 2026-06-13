@@ -585,6 +585,36 @@ function Step4({ data, onChange }) {
 function Step5({ data, onChange }) {
   return (
     <div>
+      {/* Meaning-first intake (board 2026-06-12): the question a real planner opens
+          with — what this celebration MEANS — before colors and logistics. Drives
+          the toast prompt, the day-of moments, and the vendor briefs downstream. */}
+      <SectionHeading>WHAT THIS CELEBRATION MEANS</SectionHeading>
+      <Field label="WHO'S HOSTING — AND WHAT DO THEY HOPE FOR THE NIGHT?">
+        <TextInput value={data.meaning_host} onChange={v => onChange('meaning_host', v)} placeholder="e.g. Wanda's daughter — wants her mom to feel honored after 30 years of service" multiline rows={2} />
+      </Field>
+      <Field label="GUEST OF HONOR — THEIR STORY / WHAT THEY'RE PROUDEST OF">
+        <TextInput value={data.honoree_story} onChange={v => onChange('honoree_story', v)} placeholder="Who they are, the milestone, the moment that matters most…" multiline rows={2} />
+      </Field>
+      <TwoCol>
+        <Field label="THREE WORDS FOR THE FEELING">
+          <TextInput value={data.feeling_words} onChange={v => onChange('feeling_words', v)} placeholder="e.g. proud · warm · elegant" />
+        </Field>
+        <Field label="ONE MUST-HAVE MOMENT OR SURPRISE">
+          <TextInput value={data.must_have_moment} onChange={v => onChange('must_have_moment', v)} placeholder="e.g. a video tribute from her unit at dinner" />
+        </Field>
+      </TwoCol>
+      <Field label="WHY THIS MATTERS">
+        <TextInput value={data.meaning_why} onChange={v => onChange('meaning_why', v)} placeholder="What this milestone means — the heart of the night" multiline rows={2} />
+      </Field>
+      <TwoCol>
+        <Field label="GUEST OF HONOR'S FAVORITE SONG">
+          <TextInput value={data.honoree_song} onChange={v => onChange('honoree_song', v)} placeholder="for a dedication" />
+        </Field>
+        <Field label="THEIR SIGNATURE DRINK">
+          <TextInput value={data.honoree_drink} onChange={v => onChange('honoree_drink', v)} placeholder="name a cocktail after them" />
+        </Field>
+      </TwoCol>
+
       <SectionHeading>AESTHETIC</SectionHeading>
       <TwoCol>
         <Field label="OVERALL STYLE / VIBE">

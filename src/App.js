@@ -2039,14 +2039,17 @@ const ROS_CELEBRATION_TYPES = new Set([
   'Quinceañera', 'Engagement Party', 'Vow Renewal', 'Bridal Shower',
   'Baby Shower', 'Graduation', 'Reunion',
 ]);
-const buildStarterROS = (type, timeOfDay) => {
+const buildStarterROS = (type, timeOfDay, theme, honoree, song) => {
   const base = timeOfDay === 'morning' ? 10 : timeOfDay === 'evening' ? 18 : 15; // anchor hour
   const L = ROS_STARTER_LABELS[type] || ROS_STARTER_LABELS.Other;
   const hhmm = (h, m) => `${String(((h % 24) + 24) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  const seg = (h, m, segment, t, owner = '') => ({ id: uid(), time: hhmm(h, m), segment, location: '', type: t, owner, confirmed: false, notes: '' });
+  const seg = (h, m, segment, t, owner = '', notes = '') => ({ id: uid(), time: hhmm(h, m), segment, location: '', type: t, owner, confirmed: false, notes });
+  // Theme drives the day-of look (board 2026-06-12, Bailey): name it on the décor
+  // segment so the crew installs the right palette, not a generic "décor".
+  const th = (theme || '').trim();
   const rows = [
     seg(base - 3, 0,  'Vendor load-in / setup begins', 'prep'),
-    seg(base - 2, 0,  'Decor & florals install',       'prep'),
+    seg(base - 2, 0,  th ? `Décor & florals install — ${th}` : 'Decor & florals install', 'prep', '', th ? `Palette: ${th}. Includes any printed hero photos / signage for display.` : ''),
     seg(base - 1, 0,  'Final walkthrough',             'prep'),
     seg(base - 1, 30, 'Doors / guest arrival',         'event'),
     seg(base,     0,  L.main,                          'event'),
@@ -2060,6 +2063,9 @@ const buildStarterROS = (type, timeOfDay) => {
       seg(base + 1, 45, 'Toasts & speeches',           'event', 'Host / MC'),
       seg(base + 2, 0,  L.moment,                       'event'),
     );
+    // The honoree's song → a real day-of dedication moment (board 2026-06-12, Weiss).
+    const sg = (song || '').trim();
+    if (sg) rows.push(seg(base + 2, 30, `Dedication — “${sg}”`, 'event', 'DJ / Band', `${(honoree || '').trim() ? `${honoree}'s favorite` : 'Their favorite'} — cue it for the dance.`));
   } else {
     rows.push(seg(base + 2, 0, L.moment, 'event'));
   }
@@ -2069,6 +2075,48 @@ const buildStarterROS = (type, timeOfDay) => {
   );
   return rows;
 };
+
+// ── Lean into the STORY of the celebration (board 2026-06-12: event pros +
+// Grandmother). An event isn't a "type" on a form — it's an occasion with a
+// reason. This returns a short, warm, occasion-aware acknowledgment so the
+// create flow opens like a planner ("tell me about it"), not a DMV renewal.
+const OCCASION_NOTE = {
+  Wedding: 'a wedding', 'Vow Renewal': 'a promise renewed', 'Engagement Party': 'a new chapter',
+  'Retirement Party': 'a send-off for years of service', Anniversary: 'years worth celebrating',
+  Birthday: 'a birthday', 'Sweet 16': 'a coming-of-age milestone', 'Quinceañera': 'a coming-of-age milestone',
+  Graduation: 'a hard-earned milestone', 'Baby Shower': 'a new arrival on the way',
+  'Bridal Shower': 'the lead-up to the big day', Reunion: 'a long-awaited reunion',
+  'Fundraiser / Gala': 'a night that raises real money', 'Holiday Party': 'a season worth marking',
+};
+const PROFESSIONAL_TYPES = new Set(['Corporate', 'Corporate Event', 'Board Meeting', 'Conference',
+  'Training / Workshop', 'Town Hall', 'Team Retreat', 'Award Ceremony', 'Client Dinner',
+  'Product Launch', 'Networking Event']);
+const occasionBlurb = (type, secondaryType) => {
+  if (!type) return null;
+  const n1 = OCCASION_NOTE[type];
+  const n2 = secondaryType && secondaryType !== type ? OCCASION_NOTE[secondaryType] : null;
+  if (n1 && n2) {
+    const cap = n1.charAt(0).toUpperCase() + n1.slice(1);
+    return `${cap} AND ${n2} — two reasons to celebrate in one night. Let's make it one they'll remember.`;
+  }
+  if (n1) {
+    const cap = n1.charAt(0).toUpperCase() + n1.slice(1);
+    return `${cap} — a moment that matters. Let's make it easy on you and unforgettable for them.`;
+  }
+  if (PROFESSIONAL_TYPES.has(type)) return 'Let’s run a sharp, well-organized event your guests remember for the right reasons.';
+  return 'Let’s build a plan that does this day justice.';
+};
+
+// Venue-type optimism (board 2026-06-12, VenueOps): community halls — Legion,
+// VFW, church halls, lodges, rec centers — usually let you bring your own bar +
+// caterer and lean on volunteers, which stretches a tight budget a long way. The
+// app asked for the venue; it should USE that gift instead of just quoting a
+// scary number.
+const COMMUNITY_VENUE_RE = /\b(american legion|legion|vfw|veterans|elks|moose|knights of columbus|grange|community (center|centre|hall)|rec(reation)? (center|centre)|fire ?hall|church|parish|fellowship hall|banquet hall|lodge|union hall|grangehall)\b/i;
+const communityVenueNote = (venue) => COMMUNITY_VENUE_RE.test(venue || '')
+  ? 'Good news — a venue like this usually lets you bring your own bar and caterer (and lean on volunteer help), which stretches a tight budget a long way.'
+  : null;
+
 // Union timeline templates: dedupe by lowercased task text (catches near-dupes).
 const mergeTimelineTemplate = (...types) => {
   const seen = new Set();
@@ -5204,11 +5252,45 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                             {p.whyItMatters ? ` · ${p.whyItMatters}` : ''}
                           </div>
                         </div>
+                        {/* Actionable now (board 2026-06-12): confirm in place via the
+                            SAME promiseEvidence override the vendor detail uses, so the
+                            modal brief, the detail promise tracker, and the readiness all
+                            move together — no more dead read-out. */}
+                        <button type="button"
+                          onClick={() => onChange('promiseEvidence', { ...(vendor.promiseEvidence || {}), [p.promiseKey]: 'attached' })}
+                          style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.success, background: 'none', border: `1px solid ${C.success}66`, borderRadius: 6, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {p.evidenceRequired ? 'Mark proof on file' : 'Mark confirmed'}
+                        </button>
                       </div>
                     ))}
                   </div>
                 );
               })()}
+
+              {/* Every missing brief item is addressable (board 2026-06-12): a click
+                  confirms it via promiseEvidence — so "Brief 1/8" can actually become
+                  8/8 from here, and it moves in lockstep with the detail. */}
+              {brief.missingItems.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Brief — confirm what's set</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {brief.missingItems.map(key => {
+                      const pm = (promises || []).find(p => p.promiseKey === key);
+                      const label = pm ? pm.promiseText : key.replace(/_/g, ' ');
+                      return (
+                        <button key={key} type="button"
+                          onClick={() => onChange('promiseEvidence', { ...(vendor.promiseEvidence || {}), [key]: 'attached' })}
+                          title={`Confirm: ${label}`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '4px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = C.success + '99'; e.currentTarget.style.color = C.success; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}>
+                          {label.length > 28 ? label.slice(0, 27) + '…' : label} <span aria-hidden style={{ color: C.success }}>✓</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -7532,7 +7614,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // shown. The KITS table below is the single source of truth for both
   // Step 2's expanded selected-card AND the Success "Created for you" panel.
   const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
-  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', theme: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
+  const [form,    setForm]    = useState({ name: '', type: '', secondaryType: '', date: '', venue: '', theme: '', honoree: '', honoreeSong: '', honoreeDrink: '', guestCount: '', totalBudget: '', market: '', timeOfDay: 'afternoon' });
   const [kit,     setKit]     = useState(() => kitForEventType('Wedding'));
   // Intelligence Gap PR #1 — kit auto-suggestion is gated on whether the
   // user has manually picked a card. Once they do, the suggestion stops
@@ -7634,13 +7716,23 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     // tiers), seed each row with that exact amount; otherwise split the total
     // proportionally as before.
     const byCat = (budgetSource === 'estimate' && form.budgetByCategory) ? form.budgetByCategory : null;
+    // Theme drives the décor/florals budget line (board 2026-06-12, Bailey) — seed
+    // the palette as a note so the spend is briefed, not generic.
+    const themeNote = (form.theme || '').trim();
     const budget = kitCfg.b
-      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, actual: 0, notes: '',
+      ? budgetTmpl.map(item => ({ id: uid(), category: item.c, actual: 0,
+          notes: (themeNote && /decor|décor|floral|flower|rental|balloon/i.test(item.c)) ? `${themeNote} palette` : '',
           budgeted: byCat && byCat[item.c] != null ? byCat[item.c] : (budgetAmt > 0 ? Math.round(budgetAmt * item.pct) : 0) }))
       : [];
     const vendorCats = types.length ? mergeVendorStubs(...types) : proposedVendorCategories('Other');
     const vendors = kitCfg.v
-      ? vendorCats.map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '', notes: '', log: [] }))
+      ? vendorCats.map(cat => ({ id: uid(), name: '', category: cat, budgetCategory: cat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', arrivalTime: '', contact: '', phone: '', website: '', backup: '',
+          // Theme briefs the look-driving vendors (Bailey); the honoree's signature
+          // drink briefs the bar (Weiss) — board 2026-06-12.
+          notes: [
+            (themeNote && /decor|décor|floral|flower|rental|balloon|cake|photo|av|light/i.test(cat)) ? `Theme: ${themeNote}` : '',
+            ((form.honoreeDrink || '').trim() && /bar|beverage|cocktail|drink/i.test(cat)) ? `Signature drink: ${form.honoreeDrink.trim()}` : '',
+          ].filter(Boolean).join(' · '), log: [] }))
       : [];
     const guestCt    = Number(form.guestCount) || 0;
     const tableCount = guestCt ? Math.max(1, Math.ceil(guestCt / (TABLE_SIZE[form.type] || 8))) : 0;
@@ -7650,17 +7742,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     onCreate({
       id: newId, rsvpCode: uid(), name: form.name.trim(), type: form.type,
       secondaryType: form.secondaryType || '', date: form.date, venue: form.venue, venueTags: form.venueTags || [],
-      theme: (form.theme || '').trim(),
+      theme: (form.theme || '').trim(), honoree: (form.honoree || '').trim(),
+      honoreeSong: (form.honoreeSong || '').trim(), honoreeDrink: (form.honoreeDrink || '').trim(),
       tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon',
       guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline,
-      ros: kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon') : [],
+      ros: kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon', form.theme, form.honoree, form.honoreeSong) : [],
     }, selectedClientId || null, false);
     setCreatedId(newId);
     setStep('success');
   };
 
   const resetForAnother = () => {
-    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', theme: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
+    setForm({ name: '', type: '', secondaryType: '', date: '', venue: '', theme: '', honoree: '', honoreeSong: '', honoreeDrink: '', guestCount: '', totalBudget: '', market: '', timeOfDay: 'afternoon' });
     setCategoryTiers({});
     setOmittedCats([]); setExtraCats([]); setSaveMoneyOpen(false); setAddCatOpen(false); setBuilderOpen(false);
     setKit(kitForEventType('Wedding'));
@@ -7810,7 +7903,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
               <div style={{ marginBottom: 16 }}>
                 <label style={ui.label} htmlFor="ce-name">Event name <span style={ui.req}>· required</span></label>
-                <input id="ce-name" data-testid="ce-name" autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Sarah & James Wedding"
+                <input id="ce-name" data-testid="ce-name" autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Maya's 30th Birthday"
                   value={form.name}
                   onChange={e => upd('name', e.target.value)}
                   onBlur={() => setTouched(t => ({ ...t, name: true }))} />
@@ -7854,11 +7947,15 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16 }}>
                 <div>
                   <label style={ui.label} htmlFor="ce-type">Event type <span style={ui.req}>· required</span></label>
-                  <select id="ce-type" data-testid="ce-type" style={ui.field(false)} value={form.type} onChange={e => upd('type', e.target.value)}>
+                  <select id="ce-type" data-testid="ce-type" style={ui.field((showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
+                    {/* No default to Wedding (board 2026-06-12) — the planner picks the
+                        occasion, which is what warms up the flow and tells the real story. */}
+                    <option value="" disabled>What are you celebrating?</option>
                     {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
                       <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
                     ))}
                   </select>
+                  {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you're celebrating.</div>}
                 </div>
                 <div>
                   <label style={ui.label} htmlFor="ce-secondary-type">Secondary type <span style={ui.opt}>· optional</span></label>
@@ -7871,16 +7968,53 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 </div>
               </div>
 
+              {/* Lean into the STORY (board 2026-06-12): the moment a planner picks
+                  the occasion, the flow warms up and names what they're celebrating —
+                  so it reads like a planner who gets it, not a form. */}
+              {form.type && occasionBlurb(form.type, form.secondaryType) && (
+                <div style={{
+                  marginTop: 16, padding: isMobile ? '11px 13px' : '12px 15px', borderRadius: 10,
+                  background: `${C.accent}10`, border: `1px solid ${C.accent}33`, borderLeft: `3px solid ${C.accent}`,
+                  fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500,
+                }}>
+                  {occasionBlurb(form.type, form.secondaryType)}
+                </div>
+              )}
+
+              {/* Guest of honor — who the celebration is FOR (board: lean into the
+                  story). Optional; feeds the event header + the day-of opener. */}
+              {!PROFESSIONAL_TYPES.has(form.type) && (
+                <div style={{ marginTop: 16 }}>
+                  <label style={ui.label} htmlFor="ce-honoree">Guest of honor <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-honoree" data-testid="ce-honoree" style={ui.field(false)} placeholder="Who are we celebrating? e.g. Wanda Mundy" value={form.honoree || ''} onChange={e => upd('honoree', e.target.value)} />
+                  {/* The honoree's loves (board 2026-06-12, Weiss): delightful, not
+                      form-y — these make it THEIR party, and flow to the day-of song
+                      dedication + the bar brief. */}
+                  {form.honoree && form.honoree.trim() && (
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 12, marginTop: 12 }}>
+                      <div>
+                        <label style={ui.label} htmlFor="ce-song">Their favorite song <span style={ui.opt}>· optional</span></label>
+                        <input id="ce-song" data-testid="ce-song" style={ui.field(false)} placeholder="for a dedication" value={form.honoreeSong || ''} onChange={e => upd('honoreeSong', e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={ui.label} htmlFor="ce-drink">Their signature drink <span style={ui.opt}>· optional</span></label>
+                        <input id="ce-drink" data-testid="ce-drink" style={ui.field(false)} placeholder="name a cocktail after them" value={form.honoreeDrink || ''} onChange={e => upd('honoreeDrink', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Location surfaced on step 1 (was buried in the step-3 estimator):
                   it drives the location-based budget estimate AND day-of logistics,
                   so the planner sets it up front. Same form.market the estimator reads. */}
               <div style={{ marginTop: 16 }}>
                 <label style={ui.label} htmlFor="ce-location">Event location <span style={ui.opt}>· optional</span></label>
                 <select id="ce-location" data-testid="ce-location" style={ui.field(false)} value={form.market} onChange={e => upd('market', e.target.value)}>
-                  <option value="">{profile?.metroMarket ? `Use studio market (${(METRO_MARKETS.find(m => m.id === profile.metroMarket) || {}).label || 'set'})` : 'Select the event’s market…'}</option>
+                  <option value="">{profile?.metroMarket ? `Use my usual city (${(METRO_MARKETS.find(m => m.id === profile.metroMarket) || {}).label || 'set'})` : 'Select the event’s city…'}</option>
                   {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label} (×{m.factor})</option>)}
                 </select>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>Budget estimates are priced for this market. Change it anytime.</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>Budget estimates are priced for this city. Change it anytime.</div>
               </div>
 
               {/* Sprint Create Event P0 — explicit 4-line trust block.
@@ -8239,7 +8373,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         <div>
                           <div style={{ ...ui.label, marginBottom: 6 }}>What city is the event in?</div>
                           <select data-testid="ce-est-market" style={{ ...ui.field(false), fontSize: 13 }} value={form.market} onChange={e => upd('market', e.target.value)}>
-                            <option value="">{profile?.metroMarket ? `Use studio market (${(METRO_MARKETS.find(m => m.id === profile.metroMarket) || {}).label || 'set'})` : 'Select a market…'}</option>
+                            <option value="">{profile?.metroMarket ? `Use my usual city (${(METRO_MARKETS.find(m => m.id === profile.metroMarket) || {}).label || 'set'})` : 'Select a city…'}</option>
                             {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label} (×{m.factor})</option>)}
                           </select>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>Pick the event's city if it differs from your studio — prices scale to that market.</div>
@@ -8260,9 +8394,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               if (!(ub > 0 && ub < lowT * 0.7)) return null;
                               const gap = Math.max(0, lowT - ub);
                               const pct = lowT > 0 ? Math.round((ub / lowT) * 100) : 100;
+                              const venueNote = communityVenueNote(form.venue);
                               return (
                                 <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.6, background: `${C.warn}12`, border: `1px solid ${C.warn}40`, borderRadius: 8, padding: '8px 10px' }}>
-                                  <span style={{ color: C.warn, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%). Doable with trade-offs: a community or in-house-catering venue, family-style or buffet service, DIY or rented décor, a friend or smaller act for music, BYO bar where allowed, and premium add-ons (photo booth, extras) as optional.
+                                  <span style={{ color: C.warn, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%).{' '}
+                                  <strong style={{ fontWeight: 700 }}>Spend first</strong> on the room, food, and music; <strong style={{ fontWeight: 700 }}>save</strong> with family-style or buffet service, DIY or rented décor, a smaller act or a great playlist, and treat add-ons (photo booth, extras) as optional.
+                                  {venueNote && <div style={{ marginTop: 6, color: C.accent2, fontWeight: 600 }}>{venueNote}</div>}
                                 </div>
                               );
                             })()}
@@ -8279,8 +8416,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                 {(budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal) ? (
                                   <div data-testid="ce-estimator-applied" style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190, textAlign: 'center', background: C.success + '22', color: C.success, border: `1px solid ${C.success}66`, cursor: 'default' }}>✓ Using this budget</div>
                                 ) : (
+                                  // Board 2026-06-12: was a second blue primary next to "Create
+                                  // event" (Grandmother clicked it thinking it made the party) —
+                                  // demoted to an OUTLINE so only "Create event" is primary.
                                   <button type="button" data-testid="ce-estimator-apply" onClick={applyBudget}
-                                    style={{ ...primaryBtn, alignSelf: 'flex-start', minWidth: 190 }}>Use this budget</button>
+                                    style={{ alignSelf: 'flex-start', minWidth: 190, background: 'transparent', color: C.text, border: `1px solid ${steelTop}88`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Use this estimate as my budget</button>
                                 )}
                                 <span style={{ fontSize: 12, color: (budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal) ? C.success : C.muted, lineHeight: 1.5 }}>
                                   {(budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal)
@@ -8624,9 +8764,25 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           )}
           {step === 'success' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Meaning-first hand-off (board 2026-06-12): a real planner's first
+                  move isn't "open the dashboard" — it's "tell me about the night."
+                  Lead the success state with the intake so the celebration's
+                  meaning gets captured while it's fresh. */}
+              <button
+                data-testid="ce-tell-me-about-it"
+                style={{ ...primaryBtn, width: '100%' }}
+                onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake' }); onClose(); }}>
+                Tell me about the celebration →
+              </button>
               <button
                 data-testid="ce-open-event"
-                style={{ ...primaryBtn, width: '100%' }}
+                style={{
+                  width: '100%', background: 'transparent', color: C.text,
+                  border: `1px solid ${C.muted}66`, borderRadius: 10,
+                  padding: '12px 18px', minHeight: 44,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
                 onClick={() => { onOpenEvent(createdId); onClose(); }}>
                 Open event
               </button>
@@ -22848,7 +23004,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eventId, isDayOf = false }) {
+function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eventId, isDayOf = false, honoree = '', meaning = {} }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -23201,6 +23357,60 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
           onDelete={() => del(modalId)}
         />
       )}
+
+      {/* "Heart of the night" (board 2026-06-12): the meaning-first intake feeds
+          straight into the day-of so the planner runs the night against what it's
+          supposed to FEEL like — not just the logistics. Only shows once the
+          intake's been filled. */}
+      {(() => {
+        const story    = (meaning.story    || '').trim();
+        const feeling  = (meaning.feeling  || '').trim();
+        const why      = (meaning.why      || '').trim();
+        const mustHave = (meaning.mustHave || '').trim();
+        if (!story && !feeling && !why && !mustHave) return null;
+        const feelWords = feeling ? feeling.split(/[·,]/).map(w => w.trim()).filter(Boolean) : [];
+        return (
+          <div style={{ ...s.card, marginBottom: 14, padding: '13px 16px', borderLeft: `3px solid ${C.accent}` }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: C.accent, textTransform: 'uppercase', marginBottom: 7 }}>
+              The heart of the night
+            </div>
+            {feelWords.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: story || why || mustHave ? 9 : 0 }}>
+                {feelWords.map((w, i) => (
+                  <span key={i} style={{ fontSize: 11.5, fontWeight: 600, color: C.text, background: `${C.accent}1A`, border: `1px solid ${C.accent}40`, padding: '2px 9px', borderRadius: 999 }}>{w}</span>
+                ))}
+              </div>
+            )}
+            {why && <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, marginBottom: story || mustHave ? 7 : 0 }}>{why}</div>}
+            {story && <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginBottom: mustHave ? 7 : 0 }}>{story}</div>}
+            {mustHave && (
+              <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.45, display: 'flex', gap: 7, alignItems: 'baseline' }}>
+                <span aria-hidden style={{ color: C.accent, fontWeight: 800 }}>★</span>
+                <span><strong style={{ color: C.accent }}>Must-have moment:</strong> {mustHave}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* "Honoree does nothing" guard (board 2026-06-12, VenueOps): the guest of
+          honor should be celebrated, not coordinating. Flag any day-of moment
+          assigned to them so the planner reassigns it. */}
+      {(() => {
+        const hn = (honoree || '').trim().toLowerCase();
+        if (!hn) return null;
+        const first = hn.split(' ')[0];
+        const mine = (ros || []).filter(r => { const o = (r.owner || '').trim().toLowerCase(); return o && (o === hn || o === first || first === o.split(' ')[0]); });
+        if (!mine.length) return null;
+        return (
+          <div style={{ ...s.card, marginBottom: 14, padding: '11px 14px', borderLeft: `3px solid ${C.warn}`, background: `${C.warn}12`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span aria-hidden style={{ color: C.warn, fontWeight: 800 }}>⚠</span>
+            <span style={{ fontSize: 12.5, color: C.text, lineHeight: 1.45, flex: 1, minWidth: 180 }}>
+              <strong>{honoree}</strong> is running {mine.length} moment{mine.length !== 1 ? 's' : ''} — they should be <em>celebrating</em>, not working. Reassign so they can enjoy their night.
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ROS mobile action sheet */}
       {rosActionsOpen && (
@@ -27290,7 +27500,16 @@ function EventClientIntakeTab({ event, setEvent, isMobile, onBack }) {
     const ALLOWED = ['name', 'type', 'date', 'venue', 'guestEstimate',
                      'budget', 'vendors', 'clients', 'vision',
                      'priorities', 'mustHaves', 'dealBreakers',
-                     'vipConcerns', 'commPrefs', 'intake'];
+                     'vipConcerns', 'commPrefs', 'intake',
+                     // Step 5 Vision & Style — meaning-first intake (board 2026-06-12).
+                     // These top-level keys were being dropped on save; the meaning
+                     // questions drive the toast prompt, day-of moments, and briefs.
+                     'meaning_host', 'honoree_story', 'feeling_words',
+                     'must_have_moment', 'meaning_why', 'honoree_song',
+                     'honoree_drink', 'style_vibe', 'color_palette',
+                     'floral_direction', 'lighting_notes', 'ceremony_type',
+                     'officiant', 'ceremony_length', 'special_rituals',
+                     'first_dance_song', 'dinner_format', 'inspiration_notes'];
     const patch = {};
     ALLOWED.forEach(k => { if (k in draft) patch[k] = draft[k]; });
     setEvent(e => ({ ...e, ...patch, intakeSavedAt: new Date().toISOString() }));
@@ -28320,7 +28539,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
+          <EDTField C={C} s={s} label="Guest of honor" value={event.honoree || ''} onChange={v => upd('honoree', v)} placeholder="Who you're celebrating" />
           <EDTField C={C} s={s} label="Theme / colors" value={event.theme || ''} onChange={v => upd('theme', v)} placeholder="e.g. gold & black" />
+          <EDTField C={C} s={s} label="Their favorite song" value={event.honoreeSong || ''} onChange={v => upd('honoreeSong', v)} placeholder="for a dedication" />
+          <EDTField C={C} s={s} label="Their signature drink" value={event.honoreeDrink || ''} onChange={v => upd('honoreeDrink', v)} placeholder="name a cocktail after them" />
         </EDTRow>
       </div>
 
@@ -29477,7 +29699,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} isDayOf={dayMode} />
+          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
         </>
       )}
       {tab === 'Agenda'      && <>
@@ -29578,6 +29800,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               Event Details tab now). */}
           <span style={{ fontSize: 12.5, color: C.muted, fontWeight: 500, whiteSpace: 'nowrap' }}>
             {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}
+            {event.honoree ? ` · for ${event.honoree}` : ''}
             {event.date ? ` · ${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}
             {days !== null && event.date ? ' · ' : ''}
           </span>
