@@ -13,7 +13,7 @@
 // No Supabase writes here. No cross-contamination with OrchestrationSlice.
 // Status via color + text only. No emoji. No icons.
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { color, space, type, radius } from '../design/tokens';
 import US_CITIES from '../lib/usCities';
 // Sprint 61.G — shared budget hint
@@ -37,12 +37,15 @@ const P = {
 const FF = type.family;
 
 // ── 7 Intake Steps ────────────────────────────────────────────────────────────
+// Board 2026-06-12 reorder: the MEANING leads. "Event Basics" is gone as an
+// entry step — name/type/date/venue were captured at creation and are recapped
+// read-only inside The Celebration, never re-typed (kills the duplicate intake).
 const STEPS = [
-  { n: 1, label: 'Event Basics' },
+  { n: 1, label: 'The Celebration' },
   { n: 2, label: 'Client Contact' },
   { n: 3, label: 'Guest List' },
   { n: 4, label: 'Budget Overview' },
-  { n: 5, label: 'Vision & Style' },
+  { n: 5, label: 'Look & Feel' },
   { n: 6, label: 'Vendor Priorities' },
   { n: 7, label: 'Review & Confirm' },
 ];
@@ -582,17 +585,39 @@ function Step4({ data, onChange }) {
 }
 
 // ── Step 5: Vision & Style ────────────────────────────────────────────────────
-function Step5({ data, onChange }) {
+// ── Step: The Celebration (meaning-first) ─────────────────────────────────────
+// Board 2026-06-12 rebuild: this LEADS the intake — the conversation a real
+// planner opens with, the night's MEANING, before colors or logistics. A
+// read-only summary of what creation already captured sits up top so the
+// planner never re-types name/type/date/venue. Drives the toast list, the
+// day-of "heart of the night" card, vendor briefs, and the honoree protections.
+function StepMeaning({ data, onChange }) {
+  const honoree = (data.honoree || '').trim();
+  const hon = honoree ? honoree.split(' ')[0] : 'them';
+  // Read-only recap of the facts creation already has — kills the duplicate entry.
+  const recap = [
+    data.type && (data.secondaryType ? `${data.type} + ${data.secondaryType}` : data.type),
+    honoree && `for ${honoree}`,
+    data.date,
+    data.venue,
+    data.guestEstimate && `${data.guestEstimate} guests`,
+  ].filter(Boolean);
   return (
     <div>
-      {/* Meaning-first intake (board 2026-06-12): the question a real planner opens
-          with — what this celebration MEANS — before colors and logistics. Drives
-          the toast prompt, the day-of moments, and the vendor briefs downstream. */}
+      {recap.length > 0 && (
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginBottom: space[6] }}>
+          {recap.map((r, i) => (
+            <span key={i} style={{ fontSize: 11.5, fontWeight: type.weight.medium, color: P.textSecondary, background: P.card, border: `1px solid ${P.borderSubtle}`, padding: '3px 10px', borderRadius: 999, fontFamily: FF }}>{r}</span>
+          ))}
+          <span style={{ fontSize: 10.5, color: P.textTertiary, fontFamily: FF }}>· set when you created the event</span>
+        </div>
+      )}
+
       <SectionHeading>WHAT THIS CELEBRATION MEANS</SectionHeading>
       <Field label="WHO'S HOSTING — AND WHAT DO THEY HOPE FOR THE NIGHT?">
         <TextInput value={data.meaning_host} onChange={v => onChange('meaning_host', v)} placeholder="e.g. Wanda's daughter — wants her mom to feel honored after 30 years of service" multiline rows={2} />
       </Field>
-      <Field label="GUEST OF HONOR — THEIR STORY / WHAT THEY'RE PROUDEST OF">
+      <Field label={`GUEST OF HONOR — ${honoree ? honoree.toUpperCase() + "'S" : 'THEIR'} STORY / WHAT THEY'RE PROUDEST OF`}>
         <TextInput value={data.honoree_story} onChange={v => onChange('honoree_story', v)} placeholder="Who they are, the milestone, the moment that matters most…" multiline rows={2} />
       </Field>
       <TwoCol>
@@ -606,54 +631,85 @@ function Step5({ data, onChange }) {
       <Field label="WHY THIS MATTERS">
         <TextInput value={data.meaning_why} onChange={v => onChange('meaning_why', v)} placeholder="What this milestone means — the heart of the night" multiline rows={2} />
       </Field>
+
+      {/* Board 2026-06-12 (Rafanelli) — the questions that actually PLAN the
+          night: the people, the tears, and the things to protect against. */}
+      <SectionHeading>GOING DEEPER</SectionHeading>
+      <Field label="THE PEOPLE WHO MATTER MOST — AND YOUR HOPE FOR EACH">
+        <TextInput value={data.meaning_people} onChange={v => onChange('meaning_people', v)} placeholder="e.g. her three kids (want them to give the toast), her old unit (the surprise), her late husband (a quiet tribute)" multiline rows={2} />
+      </Field>
+      <Field label={`THE ONE MOMENT THAT WOULD MAKE ${honoree ? honoree.toUpperCase() : 'THEM'} CRY THE GOOD TEARS`}>
+        <TextInput value={data.meaning_cry_moment} onChange={v => onChange('meaning_cry_moment', v)} placeholder="The peak of the night — plan everything else around it" multiline rows={2} />
+      </Field>
+      <Field label={`ANYTHING ${hon.toUpperCase()} DOESN'T WANT?`}>
+        <TextInput value={data.meaning_avoid} onChange={v => onChange('meaning_avoid', v)} placeholder="e.g. no long speeches, doesn't love being the center of attention, surprises are OK" multiline rows={2} />
+      </Field>
+
+      <SectionHeading>THE LITTLE THINGS THEY LOVE</SectionHeading>
       <TwoCol>
         <Field label="GUEST OF HONOR'S FAVORITE SONG">
-          <TextInput value={data.honoree_song} onChange={v => onChange('honoree_song', v)} placeholder="for a dedication" />
+          <TextInput value={data.honoree_song || data.honoreeSong} onChange={v => onChange('honoree_song', v)} placeholder="for a dedication" />
         </Field>
         <Field label="THEIR SIGNATURE DRINK">
-          <TextInput value={data.honoree_drink} onChange={v => onChange('honoree_drink', v)} placeholder="name a cocktail after them" />
+          <TextInput value={data.honoree_drink || data.honoreeDrink} onChange={v => onChange('honoree_drink', v)} placeholder="name a cocktail after them" />
         </Field>
       </TwoCol>
+    </div>
+  );
+}
 
+// ── Step: Look & Feel (aesthetic, ADAPTIVE) ───────────────────────────────────
+// Ceremony / first-dance / officiant fields only appear for wedding-type events
+// (Tutera: a retirement party should never be asked for an officiant).
+function Step5({ data, onChange }) {
+  const isWedding = /wedding/i.test(`${data.type || ''} ${data.secondaryType || ''}`);
+  return (
+    <div>
       <SectionHeading>AESTHETIC</SectionHeading>
       <TwoCol>
         <Field label="OVERALL STYLE / VIBE">
-          <TextInput value={data.style_vibe} onChange={v => onChange('style_vibe', v)} placeholder="e.g. Romantic garden, Modern minimal" />
+          <TextInput value={data.style_vibe} onChange={v => onChange('style_vibe', v)} placeholder="e.g. Black-tie glam, Backyard casual, Modern minimal" />
         </Field>
         <Field label="COLOR PALETTE">
-          <TextInput value={data.color_palette} onChange={v => onChange('color_palette', v)} placeholder="e.g. Ivory, blush, sage green" />
+          <TextInput value={data.color_palette || data.theme} onChange={v => onChange('color_palette', v)} placeholder="e.g. gold & black, ivory & sage" />
         </Field>
-        <Field label="FLORAL DIRECTION">
-          <TextInput value={data.floral_direction} onChange={v => onChange('floral_direction', v)} placeholder="e.g. Lush, organic, peonies" />
+        <Field label="FLORAL / DÉCOR DIRECTION">
+          <TextInput value={data.floral_direction} onChange={v => onChange('floral_direction', v)} placeholder="e.g. dessert table, photo booth, lush centerpieces" />
         </Field>
         <Field label="LIGHTING NOTES">
-          <TextInput value={data.lighting_notes} onChange={v => onChange('lighting_notes', v)} placeholder="e.g. Candlelight, bistro strings" />
+          <TextInput value={data.lighting_notes} onChange={v => onChange('lighting_notes', v)} placeholder="e.g. Candlelight, bistro strings, uplighting" />
         </Field>
       </TwoCol>
 
-      <SectionHeading>CEREMONY</SectionHeading>
-      <TwoCol>
-        <Field label="CEREMONY TYPE">
-          <TextInput value={data.ceremony_type} onChange={v => onChange('ceremony_type', v)} placeholder="e.g. Non-denominational, Catholic" />
-        </Field>
-        <Field label="OFFICIANT">
-          <TextInput value={data.officiant} onChange={v => onChange('officiant', v)} placeholder="Name or TBD" />
-        </Field>
-        <Field label="CEREMONY LENGTH">
-          <TextInput value={data.ceremony_length} onChange={v => onChange('ceremony_length', v)} placeholder="e.g. 30 minutes" />
-        </Field>
-        <Field label="SPECIAL RITUALS">
-          <TextInput value={data.special_rituals} onChange={v => onChange('special_rituals', v)} placeholder="e.g. Unity candle, ring warming" />
-        </Field>
-      </TwoCol>
+      {isWedding && (
+        <>
+          <SectionHeading>CEREMONY</SectionHeading>
+          <TwoCol>
+            <Field label="CEREMONY TYPE">
+              <TextInput value={data.ceremony_type} onChange={v => onChange('ceremony_type', v)} placeholder="e.g. Non-denominational, Catholic" />
+            </Field>
+            <Field label="OFFICIANT">
+              <TextInput value={data.officiant} onChange={v => onChange('officiant', v)} placeholder="Name or TBD" />
+            </Field>
+            <Field label="CEREMONY LENGTH">
+              <TextInput value={data.ceremony_length} onChange={v => onChange('ceremony_length', v)} placeholder="e.g. 30 minutes" />
+            </Field>
+            <Field label="SPECIAL RITUALS">
+              <TextInput value={data.special_rituals} onChange={v => onChange('special_rituals', v)} placeholder="e.g. Unity candle, ring warming" />
+            </Field>
+          </TwoCol>
+        </>
+      )}
 
-      <SectionHeading>RECEPTION</SectionHeading>
+      <SectionHeading>{isWedding ? 'RECEPTION' : 'DINNER & DANCING'}</SectionHeading>
       <TwoCol>
-        <Field label="FIRST DANCE SONG">
-          <TextInput value={data.first_dance_song} onChange={v => onChange('first_dance_song', v)} placeholder="Song title — Artist" />
-        </Field>
+        {isWedding && (
+          <Field label="FIRST DANCE SONG">
+            <TextInput value={data.first_dance_song} onChange={v => onChange('first_dance_song', v)} placeholder="Song title — Artist" />
+          </Field>
+        )}
         <Field label="DINNER FORMAT">
-          <TextInput value={data.dinner_format} onChange={v => onChange('dinner_format', v)} placeholder="e.g. Plated, family style, buffet" />
+          <TextInput value={data.dinner_format} onChange={v => onChange('dinner_format', v)} placeholder="e.g. Plated, family style, buffet, stations" />
         </Field>
       </TwoCol>
 
@@ -915,13 +971,14 @@ function StepSidebar({ current, onStep, completedSteps }) {
 //
 // When `onPersist` is provided the draft persists to host event state on
 // Confirm Intake. Without it, the draft is local-only (display mode).
-export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onPersist }) {
+export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onPersist, intakeMode }) {
   const embedded = typeof onBack === 'function';
   const [step, setStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
   // Local draft — initialized from event prop. Persisted to host state via
   // onPersist on Confirm Intake (when provided).
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState(() => {
+    return {
     name:          event.name,
     type:          event.type,
     date:          event.date,
@@ -931,26 +988,44 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
     vendors:       event.vendors || [],
     clients:       event.clients || [],
     ...event,
+    };
   });
 
   function setField(key, value) {
     setDraft(prev => ({ ...prev, [key]: value }));
   }
 
+  // Auto-save (board 2026-06-13): the Client Intake sits inside a <Suspense>
+  // boundary that re-suspends and REMOUNTS this component on step navigation —
+  // which used to reset `draft` from the event and silently wipe everything the
+  // planner had typed. Persisting every change (debounced) means a remount just
+  // re-seeds `draft` from the saved event, so no answer is ever lost. Refs keep
+  // the effect from re-subscribing on every keystroke.
+  const persistRef = useRef(onPersist); persistRef.current = onPersist;
+  const draftRef   = useRef(draft);     draftRef.current   = draft;
+  const didMount   = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) { didMount.current = true; return; }
+    const t = setTimeout(() => { if (typeof persistRef.current === 'function') persistRef.current(draftRef.current); }, 500);
+    return () => clearTimeout(t);
+  }, [draft]);
+
   function handleNext() {
     setCompletedSteps(prev => new Set([...prev, step]));
+    // Persist progress BEFORE the step change so the navigation remount re-seeds
+    // from the saved event instead of dropping this step's answers.
+    if (typeof onPersist === 'function') onPersist(draft);
     if (step < STEPS.length) {
       setStep(s => s + 1);
     } else {
-      // Confirm Intake — persist to host event state, then either route back
-      // to Command Center (embedded) or close the overlay (standalone).
-      if (typeof onPersist === 'function') onPersist(draft);
+      // Confirm Intake — route back to Command Center (embedded) or close.
       if (embedded) onBack();
       else if (typeof onClose === 'function') onClose();
     }
   }
 
   function handleBack() {
+    if (typeof onPersist === 'function') onPersist(draft);
     if (step > 1) setStep(s => s - 1);
   }
 
@@ -959,7 +1034,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
   }
 
   const stepContent = {
-    1: <Step1 data={draft} onChange={setField} />,
+    1: <StepMeaning data={draft} onChange={setField} />,
     2: <Step2 data={draft} onChange={setField} />,
     3: <Step3 data={draft} onChange={setField} />,
     4: <Step4 data={draft} onChange={setField} />,
@@ -1071,7 +1146,10 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
               this event is ready to start planning, what's missing, and one
               concrete next action. Lives above the step body so it's always
               the first thing the planner reads when opening Client Intake. */}
-          {(() => {
+          {/* De-nag (board 2026-06-12, Bailey): the meaning step leads clean —
+              the readiness/confidence chore-card never sits above the heart of
+              the night. It returns on every other step. */}
+          {step !== 1 && (() => {
             const steelBlueIC = '#4E6877';
             const amberIC = '#ECA13F';
             const greenIC = '#4FAE7A';
@@ -1088,11 +1166,11 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             let state;
             // Priority cascade — surface the most-blocking gap first.
             if (!has.name || !has.type || !has.date) {
-              state = { label: 'Basics needed', color: amberIC, missing: ['Name', 'Type', 'Date'].filter((_, i) => ![has.name, has.type, has.date][i]), explain: 'Add the event name, type, and date before anything else can be planned.', nextAction: 'Start with Event Basics', nextStep: 1 };
+              state = { label: 'Basics needed', color: amberIC, missing: ['Name', 'Type', 'Date'].filter((_, i) => ![has.name, has.type, has.date][i]), explain: 'Add the event name, type, and date in Event Details before anything else can be planned.', nextAction: 'Open Event Details', nextStep: null };
             } else if (!has.contact) {
               state = { label: 'Missing client contact', color: amberIC, missing: ['Email or phone'], explain: 'Add email or phone before sending approvals or reminders.', nextAction: 'Go to Client Contact', nextStep: 2 };
             } else if (!has.venue) {
-              state = { label: 'Venue unknown', color: amberIC, missing: ['Venue'], explain: 'A venue anchors arrival times and the day-of schedule. You can plan without one for a while.', nextAction: 'Back to Event Basics', nextStep: 1 };
+              state = { label: 'Venue unknown', color: amberIC, missing: ['Venue'], explain: 'A venue anchors arrival times and the day-of schedule — add it in Event Details. You can plan without one for a while.', nextAction: 'Got it', nextStep: null };
             } else if (!has.guests) {
               state = { label: 'Guest count missing', color: amberIC, missing: ['Guest estimate'], explain: 'Caterer, seating, and budget estimates all depend on this. A rough number is enough.', nextAction: 'Go to Guest List', nextStep: 3 };
             } else if (!has.budget) {
@@ -1160,6 +1238,23 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
           }}>
             Step {step} of {STEPS.length}
           </div>
+
+          {/* "Send to client" path (board 2026-06-12 fork): when the planner is
+              setting up solo, point them at Share with client to collect the
+              answers — they can also fill in what they already know. */}
+          {step === 1 && intakeMode === 'client' && (
+            <div style={{
+              marginBottom: space[6], padding: isMobile ? '12px 14px' : '13px 18px',
+              background: '#4E687712', border: '1px solid #4E687733', borderLeft: '3px solid #4E6877',
+              borderRadius: 12, fontFamily: FF,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary }}>Collecting this from the client?</div>
+              <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+                Use <strong>Share with client</strong> (top right) to send them their story to fill in — or capture what you already know here and refine it together later.
+              </div>
+            </div>
+          )}
+
           {stepContent[step]}
         </div>
       </div>

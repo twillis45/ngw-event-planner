@@ -8764,27 +8764,46 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           )}
           {step === 'success' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Meaning-first hand-off (board 2026-06-12): a real planner's first
-                  move isn't "open the dashboard" — it's "tell me about the night."
-                  Lead the success state with the intake so the celebration's
-                  meaning gets captured while it's fresh. */}
+              {/* With-client / without-client fork (board 2026-06-12): a real
+                  planner's workflow splits here. If the client is in the room,
+                  you capture the vision together as a conversation. If you're
+                  setting it up solo, you scaffold it and send them their story to
+                  fill in. The app should ask, not assume. */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 2 }}>
+                How are you capturing the vision?
+              </div>
               <button
                 data-testid="ce-tell-me-about-it"
-                style={{ ...primaryBtn, width: '100%' }}
-                onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake' }); onClose(); }}>
-                Tell me about the celebration →
+                style={{ ...primaryBtn, width: '100%', textAlign: 'left', display: 'block' }}
+                onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake', intakeMode: 'together' }); onClose(); }}>
+                We're together now — let's talk it through →
+                <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, opacity: 0.85, marginTop: 2 }}>Capture the celebration's meaning as a conversation</span>
               </button>
               <button
-                data-testid="ce-open-event"
+                data-testid="ce-send-to-client"
                 style={{
-                  width: '100%', background: 'transparent', color: C.text,
+                  width: '100%', textAlign: 'left',
+                  background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44,
                   fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
+                onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake', intakeMode: 'client' }); onClose(); }}>
+                I'll set it up and send it to the client →
+                <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.muted, marginTop: 2 }}>Open intake — then Share with client to collect their answers</span>
+              </button>
+              <button
+                data-testid="ce-open-event"
+                style={{
+                  width: '100%', background: 'transparent', color: C.muted,
+                  border: 'none', borderRadius: 10,
+                  padding: '8px 18px', minHeight: 40,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
                 onClick={() => { onOpenEvent(createdId); onClose(); }}>
-                Open event
+                Skip — just open the event
               </button>
               <div style={{ display: 'flex', gap: 10, flexDirection: isMobile ? 'column' : 'row' }}>
                 <button
@@ -23370,9 +23389,9 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         if (!story && !feeling && !why && !mustHave) return null;
         const feelWords = feeling ? feeling.split(/[·,]/).map(w => w.trim()).filter(Boolean) : [];
         return (
-          <div style={{ ...s.card, marginBottom: 14, padding: '13px 16px', borderLeft: `3px solid ${C.accent}` }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: C.accent, textTransform: 'uppercase', marginBottom: 7 }}>
-              The heart of the night
+          <div style={{ ...s.card, marginBottom: 18, padding: '16px 20px', borderLeft: `3px solid ${C.accent}`, background: `linear-gradient(180deg, ${C.accent}12 0%, ${C.accent}05 100%)` }}>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.18em', color: C.accent, textTransform: 'uppercase', marginBottom: 9 }}>
+              ★ The heart of the night
             </div>
             {feelWords.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: story || why || mustHave ? 9 : 0 }}>
@@ -27492,7 +27511,7 @@ function EventCommTab({ event, setEvent, client, setClient, openId, isMobile, on
 // event state via onPersist (mirrors the Sprint 49 promoted-tab pattern).
 // Only the intake-shaped fields are merged back into the event — guards
 // against the embedded draft accidentally overwriting unrelated event keys.
-function EventClientIntakeTab({ event, setEvent, isMobile, onBack }) {
+function EventClientIntakeTab({ event, setEvent, isMobile, intakeMode, onBack }) {
   const onPersist = (draft) => {
     // Allow-list the fields that the 7 steps actually edit, to avoid the
     // draft (which seeded from `...event`) overwriting unrelated state on
@@ -27506,7 +27525,8 @@ function EventClientIntakeTab({ event, setEvent, isMobile, onBack }) {
                      // questions drive the toast prompt, day-of moments, and briefs.
                      'meaning_host', 'honoree_story', 'feeling_words',
                      'must_have_moment', 'meaning_why', 'honoree_song',
-                     'honoree_drink', 'style_vibe', 'color_palette',
+                     'honoree_drink', 'meaning_people', 'meaning_cry_moment',
+                     'meaning_avoid', 'style_vibe', 'color_palette',
                      'floral_direction', 'lighting_notes', 'ceremony_type',
                      'officiant', 'ceremony_length', 'special_rituals',
                      'first_dance_song', 'dinner_format', 'inspiration_notes'];
@@ -27518,6 +27538,7 @@ function EventClientIntakeTab({ event, setEvent, isMobile, onBack }) {
     <ClientIntakeFlow
       event={event}
       isMobile={isMobile}
+      intakeMode={intakeMode}
       onBack={onBack}
       onPersist={onPersist}
     />
@@ -29583,6 +29604,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             event={event}
             setEvent={setEvent}
             isMobile={isMobile}
+            intakeMode={initialNav?.intakeMode}
             onBack={() => handleTabChange('Command')}
           />
         </Suspense>
