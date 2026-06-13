@@ -349,6 +349,9 @@ function Step2({ data, onChange }) {
 
 // ── Step 3: Guest List ────────────────────────────────────────────────────────
 function Step3({ data, onChange }) {
+  // Adaptive (board 2026-06-13, Grandmother): a retirement party has no
+  // ceremony aisle — only weddings get the ceremony/reception seat split.
+  const isWedding = /wedding/i.test(`${data.type || ''} ${data.secondaryType || ''}`);
   return (
     <div>
       <SectionHeading>GUEST COUNTS</SectionHeading>
@@ -359,12 +362,20 @@ function Step3({ data, onChange }) {
         <Field label="CONFIRMED GUEST COUNT">
           <TextInput value={data.guest_confirmed} onChange={v => onChange('guest_confirmed', v)} placeholder="e.g. 140" />
         </Field>
-        <Field label="CEREMONY SEATS NEEDED">
-          <TextInput value={data.ceremony_seats} onChange={v => onChange('ceremony_seats', v)} placeholder="e.g. 160" />
-        </Field>
-        <Field label="RECEPTION SEATS NEEDED">
-          <TextInput value={data.reception_seats} onChange={v => onChange('reception_seats', v)} placeholder="e.g. 150" />
-        </Field>
+        {isWedding ? (
+          <>
+            <Field label="CEREMONY SEATS NEEDED">
+              <TextInput value={data.ceremony_seats} onChange={v => onChange('ceremony_seats', v)} placeholder="e.g. 160" />
+            </Field>
+            <Field label="RECEPTION SEATS NEEDED">
+              <TextInput value={data.reception_seats} onChange={v => onChange('reception_seats', v)} placeholder="e.g. 150" />
+            </Field>
+          </>
+        ) : (
+          <Field label="SEATS NEEDED">
+            <TextInput value={data.reception_seats} onChange={v => onChange('reception_seats', v)} placeholder="e.g. 150" />
+          </Field>
+        )}
         <Field label="PLUS-ONE POLICY">
           <TextInput value={data.plus_one_policy} onChange={v => onChange('plus_one_policy', v)} placeholder="e.g. Couples only" />
         </Field>
