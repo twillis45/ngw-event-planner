@@ -41,6 +41,24 @@ else:
 
 app.add_middleware(CORSMiddleware, **_cors)
 
+
+@app.middleware("http")
+async def _error_capture(request: Request, call_next):
+    """Record unhandled exceptions to admin_error_log (A3-err), then re-raise so
+    the normal 500 response is unchanged. Deliberate HTTPExceptions (4xx/5xx) do
+    NOT reach here — they're handled by FastAPI and logged at their call site."""
+    try:
+        return await call_next(request)
+    except Exception as e:  # noqa: BLE001 — record then re-raise; never swallow
+        try:
+            from .error_log import record_error
+            await record_error("api", f"{request.method} {request.url.path}: {e}",
+                               context={"path": request.url.path, "method": request.method})
+        except Exception:  # noqa: BLE001 — capture must never mask the real error
+            pass
+        raise
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "ngw-events-api"}

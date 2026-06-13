@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..auth import require_planner
+from ..error_log import record_error
 
 log = logging.getLogger("ngw.ai")
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -188,12 +189,18 @@ async def ai_feature(
             "ai.feature FAIL user=%s feature=%s est_in=%d status=%s body=%s",
             user_id, body.feature, est_in_tokens, e.response.status_code, (e.response.text or "")[:300],
         )
+        await record_error("ai_proxy", f"AI service error ({e.response.status_code}) on {body.feature}",
+                           context={"feature": body.feature, "status": e.response.status_code, "user": user_id})
         raise HTTPException(status_code=502, detail="AI service error — please try again")
     except httpx.RequestError as e:
         log.error("ai.feature UNAVAILABLE user=%s feature=%s err=%s", user_id, body.feature, e)
+        await record_error("ai_proxy", f"AI service unavailable on {body.feature}: {e}",
+                           context={"feature": body.feature, "user": user_id})
         raise HTTPException(status_code=503, detail="AI service unavailable — please try again")
     except Exception as e:
         log.error("ai.feature EXC user=%s feature=%s err=%s", user_id, body.feature, e)
+        await record_error("ai_proxy", f"Unexpected AI error on {body.feature}: {e}",
+                           context={"feature": body.feature, "user": user_id})
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 

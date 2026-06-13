@@ -255,8 +255,17 @@ export const classifyTemplateTaskUrgency = (
     return { urgency: 'do_now', ...URGENCY_META.do_now };
   }
 
-  // Slipped significantly → consider swapping for a faster path
-  return { urgency: 'risk_lost', ...URGENCY_META.risk_lost };
+  // Slipped significantly. BUT a behind-template phase is only genuinely "lost"
+  // (→ overdue) when the event is in DEEP RUSH — no runway left to recover it.
+  // With real lead time (a normal 6-month wedding is 'compressed', not rush),
+  // these early phases are front-loaded CATCH-UP work the planner does first
+  // (do_now), NOT missed deadlines. Without this gate, freshly creating a viable
+  // 6-month event read as "most tasks overdue" — confusing and wrong. risk_lost
+  // re-emerges naturally as the event approaches and the ratio drops into rush.
+  if (level === 'rush') {
+    return { urgency: 'risk_lost', ...URGENCY_META.risk_lost };
+  }
+  return { urgency: 'do_now', ...URGENCY_META.do_now };
 };
 
 // Composite summary for the intake banner + dashboards. Returns one object

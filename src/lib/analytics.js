@@ -11,17 +11,22 @@
  * No fake tracking. No silent data collection.
  */
 
-const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY;
+// PostHog project keys (phc_…) are PUBLIC, write-only ingestion keys — designed to
+// ship in the client bundle. Hardcoded as a fallback so every prod build reports
+// without remembering an env prefix; an env var still overrides it.
+const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY || 'phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p';
 const PH_HOST   = process.env.REACT_APP_POSTHOG_HOST || 'https://us.i.posthog.com';
+// Never report from local dev — keep the production funnel clean.
+const IS_LOCAL  = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
 
-export const isAnalyticsConfigured = () => Boolean(PH_KEY);
+export const isAnalyticsConfigured = () => Boolean(PH_KEY) && !IS_LOCAL;
 
 let _ph = null;
 
 /** Lazy-load PostHog and initialize once. */
 async function getPostHog() {
   if (_ph) return _ph;
-  if (!PH_KEY) return null;
+  if (!PH_KEY || IS_LOCAL) return null;
   try {
     const { default: posthog } = await import('posthog-js');
     posthog.init(PH_KEY, {

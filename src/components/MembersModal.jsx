@@ -21,7 +21,7 @@ const D = {
   accent:  '#4a90d9',
   accent2: '#2dd4bf',
   warn:    '#e0a93f',
-  danger:  '#e63946',
+  danger:  '#E84036', // Red parity: canonical fire red (was #e63946).
   success: '#22a87a',
 };
 const fmt = (iso) => { try { return new Date(iso).toLocaleDateString(); } catch { return ''; } };

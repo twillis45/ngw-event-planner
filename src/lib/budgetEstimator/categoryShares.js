@@ -68,8 +68,23 @@ export const CATEGORY_SHARES_BY_TYPE = {
   Graduation:       PRIVATE_SHARES,
 };
 
+// The app has TWO event-type vocabularies (the create-event modal uses
+// 'Corporate'/'Conference'; the intake uses 'Corporate Event'/'Conference / Summit'),
+// and the explicit map covers only some. Without a family fallback, common types
+// (Conference / Summit, Gala / Fundraiser, Birthday Party, plain 'Corporate') silently
+// dropped to the thin FALLBACK — so both the budget breakdown AND the intake's proposed
+// vendor categories were generic/wrong for them. Match on family before falling back.
+const WEDDING_TYPE_RE   = /wedding|vow\s*renewal|quincea|bridal\s*shower|engagement/i;
+const CORPORATE_TYPE_RE = /corporate|conference|summit|gala|fundrais|networking|board\s*meeting|product\s*launch|team\s*retreat|town\s*hall|training|workshop|award|client\s*dinner|expo|trade\s*show/i;
+const PRIVATE_TYPE_RE   = /birthday|sweet\s*16|baby\s*shower|retirement|reunion|graduation|anniversary|holiday\s*party|celebration/i;
+
 export function getCategoryShares(eventType) {
-  return CATEGORY_SHARES_BY_TYPE[eventType] || FALLBACK_SHARES;
+  if (CATEGORY_SHARES_BY_TYPE[eventType]) return CATEGORY_SHARES_BY_TYPE[eventType];
+  const t = String(eventType || '');
+  if (WEDDING_TYPE_RE.test(t))   return WEDDING_SHARES;
+  if (CORPORATE_TYPE_RE.test(t)) return CORPORATE_SHARES;
+  if (PRIVATE_TYPE_RE.test(t))   return PRIVATE_SHARES;
+  return FALLBACK_SHARES;
 }
 
 /**

@@ -42,6 +42,84 @@ function fieldEither(v, ...keys) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COI / insurance certificate gate (operational reality — board 2026-06-10 #4)
+// ─────────────────────────────────────────────────────────────────────────────
+// Most venues legally require a Certificate of Insurance from liability-bearing
+// vendors, naming the venue as additional insured, ON FILE ~30 days before the
+// event. No COI = no load-in — a hard, real-world gate the screen never modeled.
+// This tracks the EVENT-SPECIFIC COI as a real GATE (distinct from the vendor's
+// general `insuranceStatus` reputation string). Board 2026-06-10: "received" (a
+// PDF arrived) is NOT "valid" — the venue gate is that the certificate names the
+// venue as additional insured AND covers the event date. So a received-but-
+// unverified COI stays AMBER, not green; only a verified cert with coverage
+// through the event reads safe. Fields:
+//   vendor.coiStatus     = 'received' | 'requested' | 'not_required' (else inferred)
+//   vendor.coiVerified   = bool  — a human confirmed venue-as-additional-insured + window
+//   vendor.coiExpiryDate = ISO   — coverage valid through
+const COI_REQUIRED_CATEGORIES = [
+  'venue', 'catering', 'bar', 'beverage', 'rental', 'furniture', 'staffing',
+  'transport', 'shuttle', 'pyro', 'firework', 'tent', 'lighting', 'av',
+  'production', 'stage', 'security', 'valet', 'generator',
+];
+export function getVendorCOIState(vendor, event) {
+  if (!vendor) return null;
+  const cat = (vendor.category || '').toLowerCase();
+  const explicit = vendor.coiStatus;
+  const requiredByCat = COI_REQUIRED_CATEGORIES.some(c => cat.includes(c));
+  if (explicit === 'not_required' || (!explicit && !requiredByCat)) {
+    return { required: false, status: 'not_required', label: 'Not required', level: 'safe', dueInDays: null, verified: false, expiry: null };
+  }
+  const status = explicit === 'received' ? 'received' : explicit === 'requested' ? 'requested' : 'required';
+  const eventDays = event && event.date ? daysFrom(event.date) : null;
+  const dueInDays = eventDays === null ? null : eventDays - 30; // COI due 30 days out
+  const verified = vendor.coiVerified === true;
+  const expiry = vendor.coiExpiryDate || null;
+  const expiresBeforeEvent = !!(expiry && event && event.date
+    && new Date(expiry + 'T00:00:00').getTime() < new Date(event.date + 'T00:00:00').getTime());
+
+  if (status === 'received') {
+    if (expiresBeforeEvent) {
+      // Coverage lapses before the event — worse than not having one.
+      return { required: true, status: 'expired', label: `Lapses ${expiry} — before the event`, level: 'critical', dueInDays, verified, expiry };
+    }
+    if (!verified) {
+      // The gap Venue Ops flagged: a PDF arrived but no one confirmed it's VALID.
+      return { required: true, status: 'received', label: 'Received — not verified valid', level: 'attention', dueInDays, verified: false, expiry };
+    }
+    return { required: true, status: 'verified', label: expiry ? `Verified · valid through ${expiry}` : 'Verified valid', level: 'safe', dueInDays, verified: true, expiry };
+  }
+  const overdue = dueInDays !== null && dueInDays <= 0;
+  const soon = dueInDays !== null && dueInDays <= 14;
+  let level, label;
+  if (status === 'requested') {
+    level = overdue ? 'critical' : 'attention';
+    label = overdue ? 'Overdue — chase it' : 'Requested — awaiting';
+  } else {
+    level = (overdue || soon) ? 'critical' : 'attention';
+    label = overdue ? 'Required — not requested' : 'Request it';
+  }
+  return { required: true, status, label, level, dueInDays, verified: false, expiry };
+}
+
+// Centralized COI next-action so the priority ladder and the false-done guard
+// agree. Returns {title, consequence, ctaCopy, sourceCategory:'coi'} or null.
+export function coiNextAction(vendor, event, vname) {
+  const coi = getVendorCOIState(vendor, event);
+  if (!coi || !coi.required || coi.level === 'safe') return null;
+  if (coi.status === 'requested') {
+    return { title: `Get the insurance certificate on file for ${vname}.`, consequence: 'A current COI naming the venue is the most common reason a vendor is turned away at load-in — it is not on file yet.', ctaCopy: 'Mark COI received', sourceCategory: 'coi' };
+  }
+  if (coi.status === 'received') { // received but not verified valid
+    return { title: `Verify ${vname}'s insurance certificate.`, consequence: 'A PDF arrived, but no one has confirmed it names the venue as additional insured and covers the event date. "Received" is not "valid".', ctaCopy: 'Verify COI', sourceCategory: 'coi' };
+  }
+  if (coi.status === 'expired') {
+    return { title: `Get an updated COI from ${vname}.`, consequence: `The certificate ${coi.label.toLowerCase()} — coverage must extend through the event date or the venue will turn them away.`, ctaCopy: 'Request current COI', sourceCategory: 'coi' };
+  }
+  // required, not yet requested
+  return { title: `Request a certificate of insurance from ${vname}.`, consequence: 'Most venues require a COI naming them as additional insured, due ~30 days out.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. Lifecycle stage
 // ─────────────────────────────────────────────────────────────────────────────
 // Maps real vendor data into the 10-stage brief model.
@@ -81,22 +159,25 @@ export function getVendorLifecycleStage(vendor, event) {
   if (eventToday) return 'Event Day';
 
   // Pre-event states driven by status
+  // Lifecycle vocab (2026-06): Lead → Booking → Booked → Locked in. The pros
+  // wanted the "missing middle" made obvious — a brand-new vendor is a LEAD (not
+  // delinquent "Planning"), and a fully-confirmed one is LOCKED IN. Display-only.
   switch (status) {
-    case 'Considering': return 'Shortlisted';
-    case 'Quoted':      return 'Selected';
-    case 'Contracted':  return 'Contracting';
+    case 'Considering': return 'Lead';
+    case 'Quoted':      return 'Lead · quoted';
+    case 'Contracted':  return 'Booking';
     case 'Deposit Paid': return 'Booked';
     case 'Booked':       return 'Booked';
     case 'Confirmed': {
-      if (eventSoon) return 'Final Confirmation';
-      return 'Planning';
+      if (eventSoon) return 'Locked in · final check';
+      return 'Locked in';
     }
     case 'Not Started':
     case '':
     case undefined:
-      return 'Looking';
+      return 'Lead';
     default:
-      return 'Planning';
+      return 'Booked';
   }
 }
 
@@ -142,11 +223,26 @@ export function getVendorChallengeSummary(vendor, event) {
   const lastLogDays = lastLog && lastLog.date ? -daysFrom(lastLog.date) : null;
   let communication;
   if (!vendor.contact && !vendor.phone) {
-    communication = { level: 'critical', note: 'No contact details on file — cannot reach vendor.' };
+    // A vendor you haven't sourced yet (still 'Considering' / a seeded category
+    // placeholder) has no one to reach — missing contact is NOT a crisis until
+    // you're actually pursuing them. Otherwise a fresh event seeded with N
+    // suggested categories would read as "N critical vendors." Only escalate to
+    // critical once the vendor is past the considering stage.
+    communication = booking.level === 'not_started'
+      ? { level: 'not_started', note: 'Not sourced yet — add a contact when you reach out.' }
+      : { level: 'critical', note: 'No contact details on file — cannot reach vendor.' };
   } else if (checklistRatio !== null && checklistRatio < 0.5 && eventClose) {
     communication = { level: 'attention', note: `Less than half of vendor comms checklist complete with ${eventDays}d left.` };
-  } else if (lastLogDays !== null && lastLogDays > 30 && isCommitted && !eventPast) {
-    communication = { level: 'attention', note: `Last touch ${lastLogDays}d ago — radio silence.` };
+  } else if (lastLogDays !== null && lastLogDays > 21 && isCommitted && !eventPast && eventClose) {
+    // Radio silence only counts as "needs follow-up" when a reconfirm is actually
+    // DUE — inside the 30-day window, matching the reconfirm rung in the next-
+    // action ladder (getVendorNextAction). Far from the event a confirmed vendor
+    // with open channels is SAFE, not amber. Flagging a vendor that hadn't been
+    // logged in weeks 3 months out made the readiness count read "needs follow-up"
+    // with NO live action behind it (board 2026-06-12: "the count is lying" —
+    // Bluebell, fully locked in, was counted as follow-up for a 58-day-old note).
+    // Now readiness and the action ladder agree on when staleness matters.
+    communication = { level: 'attention', note: `Last touch ${lastLogDays}d ago — reconfirm before the event.` };
   } else if (vendor.contact || vendor.phone) {
     communication = { level: 'safe', note: 'Contact channels available.' };
   } else {
@@ -186,24 +282,41 @@ export function getVendorChallengeSummary(vendor, event) {
   else if (isCommitted && !depositPaid) financial = { level: 'attention', note: 'Deposit not yet recorded.' };
   else financial = { level: 'not_tracked', note: 'Payment state not tracked yet.' };
 
-  // ── Documents ── (no FK to event.documents; rely on contractSigned)
+  // ── Documents ── (contract + COI compliance gate)
   let documents;
-  if (contractSigned) documents = { level: 'safe', note: 'Contract signed (file storage coming).' };
-  else if (isConfirmed) documents = { level: 'attention', note: 'Contract not on file.' };
-  else documents = { level: 'not_tracked', note: 'Contract not yet expected.' };
+  const coi = getVendorCOIState(vendor, event);
+  if (coi && coi.required && coi.level === 'critical') {
+    documents = { level: 'critical', note: coi.status === 'expired'
+      ? `Insurance ${coi.label.toLowerCase()} — venue will turn them away.`
+      : coi.dueInDays !== null && coi.dueInDays <= 0
+        ? 'Certificate of insurance overdue — venue may hold them at the door.'
+        : 'Insurance certificate not on file before the 30-day venue deadline.' };
+  } else if (isConfirmed && !contractSigned) {
+    documents = { level: 'attention', note: 'Contract not on file.' };
+  } else if (coi && coi.required && coi.level === 'attention') {
+    documents = { level: 'attention', note: coi.status === 'received'
+      ? 'Insurance certificate received but NOT yet verified valid (venue named + covers the event date).'
+      : coi.status === 'requested'
+        ? 'Insurance certificate requested — awaiting the document.'
+        : 'Insurance certificate still needs to be requested.' };
+  } else if (contractSigned) {
+    documents = { level: 'safe', note: coi && coi.required ? 'Contract signed; COI verified valid.' : 'Contract signed (file storage coming).' };
+  } else {
+    documents = { level: 'not_tracked', note: 'Contract not yet expected.' };
+  }
 
   // ── Day-of ── (model doesn't support check-in / setup / arrival actuals)
   let dayOf;
   if (eventPast) dayOf = { level: 'not_tracked', note: 'Day-of details not retained after the event.' };
   else if (eventClose) {
-    if (arrivalSet) dayOf = { level: 'attention', note: 'Arrival time set — day-of check-in not yet tracked.' };
+    if (arrivalSet) dayOf = { level: 'safe', note: 'Arrival time set — day-of ready.' }; // Readiness reflectivity (2026-06-10): condition (arrival) satisfied → green, not stuck amber. Live check-in is not_tracked, not an open issue.
     else dayOf = { level: 'attention', note: 'Day-of plan not confirmed.' };
   } else dayOf = { level: 'not_tracked', note: 'Day-of activates closer to the event.' };
 
   // ── Closeout ── (no closeout fields exist)
   let closeout;
   if (eventPast) {
-    if (balancePaid) closeout = { level: 'attention', note: 'Final payment recorded — deliverables/closeout not tracked yet.' };
+    if (balancePaid) closeout = { level: 'safe', note: 'Paid in full.' }; // Readiness reflectivity: condition (paid in full) satisfied → green, not stuck amber.
     else closeout = { level: 'critical', note: 'Final payment not recorded after event.' };
   } else closeout = { level: 'not_tracked', note: 'Closeout activates after the event.' };
 
@@ -336,6 +449,16 @@ export function getVendorNextAction(vendor, event) {
     };
   }
 
+  // Certificate of insurance — a hard venue gate. Surface it HIGH in the ladder
+  // when critical (overdue request, or coverage that lapses before the event).
+  // Lower-severity COI states (requested-awaiting, received-but-unverified) are
+  // surfaced by the false-done guard near the end.
+  const coiCrit = getVendorCOIState(vendor, event);
+  if (isCommitted && coiCrit && coiCrit.required && coiCrit.level === 'critical') {
+    const a = coiNextAction(vendor, event, vname);
+    if (a) return a;
+  }
+
   // Committed but deposit not recorded
   if (isCommitted && !depositPaid && (vendor.cost || 0) > 0) {
     return {
@@ -416,10 +539,42 @@ export function getVendorNextAction(vendor, event) {
     }
   }
 
-  // Neutral fallback
+  // ── "FALSE DONE" GUARD (board 2026-06-10, pros' #1 safety bug) ──────────────
+  // Before declaring "no blockers", honestly check whether anything is still
+  // amber. The old fallback said "No blockers detected" while the vendor chip
+  // was still amber (booking unconfirmed, COI requested-not-received) — telling
+  // the planner they were DONE when they weren't. Absence of a *critical* item
+  // is NOT readiness. Surface the most important remaining attention item — COI
+  // first (the #1 reason a vendor is turned away at load-in).
+  const ch = getVendorChallengeSummary(vendor, event);
+  // COI first (the #1 reason a vendor is turned away). Covers requested-awaiting,
+  // received-but-unverified ("verify it's valid"), and expired states.
+  if (isCommitted) {
+    const coiA = coiNextAction(vendor, event, vname);
+    if (coiA) return coiA;
+  }
+  if (isCommitted && ch.booking && ch.booking.level === 'attention') {
+    return {
+      title: `Confirm ${vname} is fully booked.`,
+      consequence: ch.booking.note || 'Booking is recorded but not yet confirmed.',
+      ctaCopy: 'Mark confirmed',
+      sourceCategory: 'booking',
+    };
+  }
+  const stillOpen = Object.values(ch).filter(v => v && (v.level === 'attention' || v.level === 'critical'));
+  if (stillOpen.length > 0) {
+    return {
+      title: `Follow up with ${vname}.`,
+      consequence: `${stillOpen[0].note} Not fully clear yet.`,
+      ctaCopy: 'Open vendor',
+      sourceCategory: 'review',
+    };
+  }
+
+  // Truly clear — every category is safe/not-applicable. Only NOW is it "done".
   return {
-    title: `Review readiness for ${vname}.`,
-    consequence: 'No blockers detected. Spot-check the planning, day-of, and closeout sections.',
+    title: `${vname} is on track.`,
+    consequence: 'No open items. Spot-check before event day.',
     ctaCopy: 'Open vendor',
     sourceCategory: 'review',
   };
@@ -500,6 +655,24 @@ export function getActionableNextStep(nextAction, vendor) {
     };
   }
 
+  // ── COI: certificate of insurance gate — one-click request/receive ──
+  if (cat === 'coi') {
+    // No event in scope here; derive status from vendor fields (expiry-vs-event
+    // is handled where the action TITLE is built, in coiNextAction).
+    const coi = getVendorCOIState(vendor, null);
+    const st = coi ? coi.status : (vendor.coiStatus || 'required');
+    if (st === 'requested') {
+      // PDF arrives → mark received (still NOT verified valid).
+      return { kind: 'patch', ctaLabel: 'Mark COI received', patch: { coiStatus: 'received' }, logText: `Certificate of insurance received from ${vname} — needs verifying (venue named + covers the event date).` };
+    }
+    if (st === 'received' || st === 'expired') {
+      // Verify validity — requires the expiry date + a human check, so open the
+      // editor (you can't one-click "valid"). This is the real gate.
+      return { kind: 'edit', ctaLabel: st === 'expired' ? 'Request current COI' : 'Verify COI', editHint: 'Confirm it names the venue as additional insured and covers the event date, then set "verified" + the expiry.' };
+    }
+    return { kind: 'patch', ctaLabel: 'Mark COI requested', patch: { coiStatus: 'requested' }, logText: `Requested a certificate of insurance from ${vname} (naming the venue as additional insured).` };
+  }
+
   // ── Documents: contract not on file — paste URL or email for signature ──
   if (cat === 'documents') {
     const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
@@ -556,8 +729,17 @@ export function getActionableNextStep(nextAction, vendor) {
     };
   }
 
-  // ── Review fallback: no specific actionable move ──
-  return null;
+  // ── Universal fallback — the app must ALWAYS offer a next step ──────────────
+  // Board 2026-06-12 ("the first CTA isn't actionable" / "the app should always
+  // tell you the next step"): a Next-action card must NEVER render without a
+  // working CTA. Whatever the category — including the 'review' / spot-check
+  // fallback from getVendorNextAction — opening the vendor editor lets the
+  // planner resolve the open item and clear "needs follow-up". No dead cards.
+  return {
+    kind: 'edit',
+    ctaLabel: 'Review & update',
+    editHint: 'Update the open item to clear follow-up.',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -574,6 +756,7 @@ export function getVendorPlanningState(vendor, event) {
   const depositPaid = vendor.depositPaid === true;
   const balancePaid = vendor.balancePaid === true;
   const arrivalTime = fieldEither(vendor, 'arrivalTime', 'arrival_time');
+  const coi = getVendorCOIState(vendor, event);
 
   return [
     {
@@ -597,17 +780,26 @@ export function getVendorPlanningState(vendor, event) {
       consequence: !contractSigned && isConfirmed ? 'Booking record is incomplete without a signed contract.' : undefined,
     },
     {
+      // Payment stage 1 — deposit (books the date). Board #5: carry a real due
+      // date so it's a scheduled stage, not a guess.
       key: 'deposit',
-      label: 'Deposit paid',
+      label: 'Deposit (books the date)',
       status: depositPaid ? 'done' : (isCommitted ? 'missing' : 'pending'),
-      value: depositPaid ? 'Paid' : (vendor.depositAmt ? `$${vendor.depositAmt.toLocaleString()} due` : 'Not recorded'),
+      value: depositPaid ? 'Paid'
+        : vendor.depositAmt
+          ? `$${vendor.depositAmt.toLocaleString()} due${vendor.depositDueDate ? ` ${vendor.depositDueDate}` : ''}`
+          : 'Not recorded',
       consequence: !depositPaid && isCommitted ? 'Booking is not fully secured until deposit lands.' : undefined,
     },
     {
+      // Payment stage 2 — final balance (typically due 2–4 weeks out).
       key: 'balance',
       label: 'Final payment',
       status: balancePaid ? 'done' : (vendor.payDueDate ? 'pending' : 'not_tracked'),
-      value: balancePaid ? 'Paid' : (vendor.payDueDate ? `Due ${vendor.payDueDate}` : 'No due date set'),
+      value: balancePaid ? 'Paid'
+        : vendor.payDueDate
+          ? (() => { const d = daysFrom(vendor.payDueDate); return d !== null && d >= 0 ? `Due ${vendor.payDueDate} · in ${d}d` : `Due ${vendor.payDueDate}`; })()
+          : 'No due date set',
     },
     {
       key: 'primaryContact',
@@ -640,11 +832,20 @@ export function getVendorPlanningState(vendor, event) {
       consequence: 'Load-in route, power, parking, kitchen access — to be added.',
     },
     {
-      key: 'documents',
-      label: 'Required documents',
-      status: 'not_tracked',
-      value: 'File uploads coming next',
-      consequence: 'Contract PDF, COI, invoices cannot be attached yet.',
+      key: 'coi',
+      label: 'Insurance certificate (COI)',
+      // 'done' ONLY when verified valid (level safe). Received-but-unverified is
+      // pending; overdue/expired is missing.
+      status: !coi || !coi.required ? 'done'
+        : coi.level === 'safe' ? 'done'
+        : coi.level === 'critical' ? 'missing' : 'pending',
+      value: !coi || !coi.required ? 'Not required for this vendor'
+        : coi.label + (coi.status !== 'verified' && coi.dueInDays !== null && coi.dueInDays > 0 && coi.status !== 'received' ? ` · due in ${coi.dueInDays}d` : ''),
+      consequence: coi && coi.required && coi.level !== 'safe'
+        ? (coi.status === 'received'
+            ? 'A PDF arrived but no one confirmed it names the venue and covers the event date — "received" is not "valid".'
+            : 'Most venues hold vendors at the door without a current COI naming the venue.')
+        : undefined,
     },
   ];
 }
@@ -660,61 +861,56 @@ export function getVendorDayOfState(vendor, event) {
   const eventDays = event && event.date ? daysFrom(event.date) : null;
   const eventToday = eventDays === 0;
   const eventPast = eventDays !== null && eventDays < 0;
+  const eventClose = eventDays !== null && eventDays >= 0 && eventDays <= 30;
+  // Operational reality (board 2026-06-10 #6): real day-of planning fields.
+  const onSiteName  = fieldEither(vendor, 'onSiteContactName', 'onsiteContactName');
+  const onSitePhone = fieldEither(vendor, 'onSitePhone', 'onsitePhone');
+  const loadInOrder = fieldEither(vendor, 'loadInOrder', 'load_in_order');
+  const reportsTo   = fieldEither(vendor, 'reportsTo', 'reports_to');
+  // "Plan now" items are missing (not just untracked) once the event is close.
+  const planStatus = (val) => val ? 'done' : (eventClose ? 'missing' : 'pending');
 
   return [
     {
       key: 'expectedArrival',
-      label: 'Expected arrival',
-      status: arrivalTime ? 'done' : 'missing',
+      label: 'Arrival / setup time',
+      status: arrivalTime ? 'done' : (eventClose ? 'missing' : 'pending'),
       value: arrivalTime || (eventToday ? 'Not set — needed today' : 'Not set'),
+      consequence: !arrivalTime && eventClose ? 'Run-of-show timing cannot be trusted without an arrival time.' : undefined,
+    },
+    {
+      key: 'loadInOrder',
+      label: 'Load-in order',
+      status: planStatus(loadInOrder),
+      value: loadInOrder || (eventClose ? 'Not set — sequence load-in' : 'Not set yet'),
+      consequence: !loadInOrder && eventClose ? 'Vendors arriving out of order block the dock and each other.' : undefined,
+    },
+    {
+      key: 'onSiteContact',
+      label: 'On-site contact',
+      status: (onSiteName || onSitePhone) ? 'done' : (vendor.phone ? 'pending' : (eventClose ? 'missing' : 'pending')),
+      value: (onSiteName || onSitePhone)
+        ? `${onSiteName || vendor.name}${onSitePhone ? ` · ${onSitePhone}` : ''}`
+        : (vendor.phone ? `Default: ${vendor.contactName || vendor.name} · ${vendor.phone}` : 'No on-site contact set'),
+      consequence: !onSiteName && !onSitePhone && !vendor.phone && eventClose ? 'No one to call if setup is delayed on the day.' : undefined,
+    },
+    {
+      key: 'reportsTo',
+      label: 'Reports to',
+      status: planStatus(reportsTo),
+      value: reportsTo || (eventClose ? 'Not set — assign a point person' : 'Not set yet'),
     },
     {
       key: 'actualArrival',
-      label: 'Actual arrival / check-in',
+      label: 'Checked in on the day',
       status: 'not_tracked',
-      value: eventPast ? 'Not retained' : 'Not tracked yet',
-    },
-    {
-      key: 'setup',
-      label: 'Setup status',
-      status: 'not_tracked',
-      value: 'Not tracked yet',
-    },
-    {
-      key: 'ready',
-      label: 'Ready status',
-      status: 'not_tracked',
-      value: 'Not tracked yet',
-    },
-    {
-      key: 'active',
-      label: 'Active / complete',
-      status: 'not_tracked',
-      value: 'Not tracked yet',
+      value: eventPast ? 'Not retained' : 'Tracked live on event day',
     },
     {
       key: 'strike',
       label: 'Strike / load-out',
       status: 'not_tracked',
-      value: 'Not tracked yet',
-    },
-    {
-      key: 'dayOfContact',
-      label: 'Day-of contact',
-      status: vendor.phone ? 'done' : 'missing',
-      value: vendor.phone ? `${vendor.contactName || vendor.name} · ${vendor.phone}` : 'No phone on file',
-    },
-    {
-      key: 'logistics',
-      label: 'Logistics needs',
-      status: 'not_tracked',
-      value: 'Not tracked yet',
-    },
-    {
-      key: 'incidents',
-      label: 'Incident notes',
-      status: 'not_tracked',
-      value: 'Not tracked yet',
+      value: 'Tracked live on event day',
     },
   ];
 }

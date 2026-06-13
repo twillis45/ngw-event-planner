@@ -5,14 +5,16 @@
 // planner's existing bank is preserved and migrates to the cloud on first save.
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId } from './studio';
+import { captureError } from '../sentry';
 
 const LOCAL_KEY = 'ngw-preferred-vendors';
+const onLine = () => (typeof navigator !== 'undefined' ? navigator.onLine : null);
 
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
 }
 function writeLocal(vendors) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(vendors)); } catch {}
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(vendors)); } catch (e) { captureError(e, { where: 'vendors.writeLocal', count: vendors?.length }); }
 }
 
 /** Load all preferred vendors for the current studio. Falls back to localStorage. */
@@ -36,7 +38,8 @@ export async function loadVendors() {
     }
     writeLocal(vendors);
     return vendors;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'vendors.loadVendors', onLine: onLine() });
     return readLocal();
   }
 }
@@ -56,7 +59,7 @@ export async function saveVendor(vendor) {
       .from('preferred_vendors')
       .upsert({ id: vendor.id, studio_id: sid, data: vendor }, { onConflict: 'id' });
     if (error) throw error;
-  } catch { /* local write already succeeded; cloud syncs on next load */ }
+  } catch (e) { captureError(e, { where: 'vendors.saveVendor', id: vendor.id, onLine: onLine() }); }
 }
 
 /** Delete a vendor by id (within the current studio). */
@@ -69,7 +72,7 @@ export async function deleteVendor(vendorId) {
     const { error } = await supabase
       .from('preferred_vendors').delete().eq('id', vendorId).eq('studio_id', sid);
     if (error) throw error;
-  } catch { /* local delete already done */ }
+  } catch (e) { captureError(e, { where: 'vendors.deleteVendor', id: vendorId, onLine: onLine() }); }
 }
 
 /** Import localStorage vendors into the current studio (first-time migration). */

@@ -79,9 +79,13 @@ export const color = {
     warning:       primitive.amber['400'], // #d4904a — Sprint 49 calibrated honey tungsten
     warningText:   primitive.amber['300'], // #d99a59
     warningBg:     '#1a1004',
-    risk:          primitive.red['400'],   // #b04848 — Sprint 49 calibrated dignified crimson
-    riskText:      primitive.red['200'],   // #d36c6c — calibrated
-    riskBright:    primitive.red['bright'], // #c93f4a emergency tier
+    // Red parity (board 2026-06-10): unified to the single canonical fire red
+    // (#E84036 = palette.js dangerRed = C.danger). The plan/ layer read
+    // primitive.red['400'] (#b04848 dignified crimson) while the rest of the app
+    // used #E84036 — two different reds on screen. One red now: this token.
+    risk:          '#E84036',              // canonical fire red (was #b04848)
+    riskText:      '#f0897e',              // lighter fire tint for text-on-dark
+    riskBright:    primitive.red['bright'], // #c93f4a emergency tier (day-of only)
     riskBg:        '#1a0608',
     neutral:       primitive.steel['500'],
     neutralText:   primitive.steel['300'],
@@ -99,7 +103,11 @@ export const color = {
 
 // ── Spacing (NGW Spacing) ───────────────────────────────────────────────
 export const space = { 0: 0, 1: 2, 2: 4, 3: 8, 4: 12, 5: 16, 6: 20, 7: 24, 8: 32, 9: 40, 10: 48, 12: 64 };
-export const radius = { none: 0, sm: 6, md: 10, lg: 14, xl: 20, full: 999 };
+// Card/panel radius unified to 12 to match App.js s.card (the dominant card
+// system) — the plan/ components were rendering panels at 6/10/14, reading as
+// "different-shaped" surfaces. md = the canonical CARD radius; sm stays small
+// for chips/inputs/compact buttons.
+export const radius = { none: 0, sm: 8, md: 12, lg: 12, xl: 20, full: 999 };
 
 // ── Typography (NGW Typography) ─────────────────────────────────────────
 export const type = {

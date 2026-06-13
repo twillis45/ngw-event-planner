@@ -31,8 +31,27 @@ import { color, space, type, radius } from './design/tokens';
 // Event Command can surface "Tight timeline — N tasks moved to the front"
 // when the planner most needs to see it, with a CTA that routes into the
 // existing Timeline tab compressed-priorities filter.
-import { deriveEventCompressionSummary } from './lib/workflowCompression';
+import { deriveEventCompressionSummary, classifyTemplateTaskUrgency } from './lib/workflowCompression';
 import { summarizeCrew } from './lib/studioTeam';
+// A critical COI (expired / overdue) is a hard load-in gate the venue turns
+// vendors away for — it must rank in the event's next-action ladder, not only
+// in the vendor detail. Surfaced here so the Portfolio triage column + its
+// "Waiting on" word (both derived from this engine) agree.
+import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
+
+// An approval counts as SENT (ball in the client's court) when it's gone out —
+// requestSentAt is the canonical flag but is not always written, so fall back to
+// the same outbound/planner signal used elsewhere. Without this, a sent approval
+// is misread as an unsent draft and the next action wrongly says "send it" /
+// "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
+const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
+
+// A "request needing a reply" is an INBOUND message (from client/vendor), not one
+// the planner sent. Without this guard every outbound planner message counted as a
+// request — seed data is 18 outbound / 0 inbound, so every event showed phantom
+// "N requests" across the attention queue, portfolio totals, and studio command.
+const isInboundMessage = (m) => m.direction === 'inbound' || (!!m.sender && m.sender !== 'planner');
+export { approvalIsSent, isInboundMessage };
 
 // ── Studio Matte palette aliases (matches the rest of /plan/) ─────────────────
 const P = {
@@ -85,12 +104,23 @@ function fmtRelative(isoStr) {
   if (d < 7)   return `${d}d ago`;
   return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-function isTaskOverdue(task, eventDate) {
-  if (!eventDate || !(task.week in PHASE_OFFSET)) return false;
+function isTaskOverdue(task, eventDate, eventType) {
+  if (task.done || !eventDate || !(task.week in PHASE_OFFSET)) return false;
+  // Compression-aware "behind" — mirrors App.js's isTaskOverdue so the
+  // CommandCenter (Your Call to Make / readiness / attention) agrees with the
+  // rest of the app. A tight booking that pushes a phase's FIXED offset into the
+  // past must NOT mark every task overdue: route through the compression engine
+  // so a task counts as behind only when it's genuinely past recovery
+  // (risk_lost), not merely compressed into a shorter runway. Naive past-date
+  // fallback only when the event type is unknown. PL-3: due-today counts (`<=`).
+  const days = daysFrom(eventDate);
+  if (eventType && days !== null && days >= 0) {
+    return classifyTemplateTaskUrgency(task, days, eventType, PHASE_OFFSET).urgency === 'risk_lost';
+  }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = new Date(eventDate + 'T00:00:00');
   due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return due < today && !task.done;
+  return due <= today;
 }
 function overdueDays(task, eventDate) {
   if (!eventDate || !(task.week in PHASE_OFFSET)) return 0;
@@ -110,7 +140,7 @@ export function deriveCommandCenterData(event) {
 
   // Open Decisions = overdue uncompleted tasks
   const decisions = timeline
-    .filter(t => !t.done && isTaskOverdue(t, event.date))
+    .filter(t => !t.done && isTaskOverdue(t, event.date, event.type))
     .map(t => {
       const od = overdueDays(t, event.date);
       return {
@@ -118,7 +148,7 @@ export function deriveCommandCenterData(event) {
         owner: t.owner || 'You',
         phase: t.week,
         // Sprint 49: Figma H vocabulary (PENDING/URGENT/AWAITING/OPEN/APPROVED/REJECTED)
-        statusLabel: od > 14 ? 'URGENT' : 'AWAITING',
+        statusLabel: od > 14 ? 'OVERDUE' : 'DUE', // critical≠urgent: these are TIME states (how overdue), not severity jargon.
         statusColor: od > 14 ? P.red : P.amber,
         dueLabel: od > 0 ? `Overdue ${od}d` : 'Today',
         dueColor: P.red,
@@ -133,12 +163,19 @@ export function deriveCommandCenterData(event) {
     .filter(m => m.message_type === 'approval_request')
     .filter(m => !['approved', 'rejected'].includes(m.approval_status))
     .map(m => {
-      const sent = !!m.requestSentAt;
+      const sent = approvalIsSent(m);
       return {
         id: m.id,
         title: m.subject || (m.body || '').slice(0, 80) || 'Approval request',
         sub: sent ? `Sent · ${m.channel || 'client'}` : 'Draft saved',
         ago: fmtRelative(m.createdAt || m.requestSentAt || m.date),
+        // The next-action engine reads a.sent / a.sentRelative to choose between
+        // "Send the drafted approval request" (You) and "Nudge the client" (Client).
+        // These MUST be on the returned object — a local-only `sent` left the engine
+        // seeing undefined and always picking the draft branch (the "Client" branch
+        // was dead code, and this panel's AWAITING badge contradicted the engine).
+        sent,
+        sentRelative: sent ? fmtRelative(m.requestSentAt || m.createdAt || m.date) : null,
         // Sprint 49: Figma H vocabulary — draft = PENDING, sent = AWAITING
         statusLabel: sent ? 'AWAITING' : 'PENDING',
         statusColor: sent ? P.amber : P.textSecondary,
@@ -149,6 +186,7 @@ export function deriveCommandCenterData(event) {
   // Requests = inbound, non-approval messages
   const requests = comms
     .filter(m => m.message_type !== 'approval_request')
+    .filter(isInboundMessage)
     .filter(m => (m.body || m.text))
     .filter(m => !m.handled && !m.answered)
     .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0))
@@ -163,11 +201,10 @@ export function deriveCommandCenterData(event) {
       linksTo: null,
     }));
 
-  // Unanswered Questions — frame requests as questions linking back to decisions
-  const questions = requests.slice(0, 5).map(r => ({
-    ...r,
-    snippet: r.title.length > 80 ? r.title.slice(0, 78) + '…' : r.title,
-  }));
+  // Board (honesty): "Unanswered Questions" was just requests.slice() re-labeled —
+  // it duplicated the Requests sub-group AND double-counted the "Needs You" badge.
+  // Removed. A real unanswered-thread signal can use getUnansweredMessages() later.
+  const questions = [];
 
   // Next Up — upcoming tasks within next two phases
   const phaseOrder = Object.keys(PHASE_OFFSET);
@@ -194,8 +231,8 @@ export function deriveCommandCenterData(event) {
       id: t.id,
       label: t.task || 'Untitled task',
       sub: `${t.week} · ${t.owner || 'You'}`,
-      color: isTaskOverdue(t, event.date) ? P.red : P.amber,
-      dateLabel: isTaskOverdue(t, event.date) ? 'OVD' : t.week === 'Week Of' ? 'WK' : 'SOON',
+      color: isTaskOverdue(t, event.date, event.type) ? P.red : P.amber,
+      dateLabel: isTaskOverdue(t, event.date, event.type) ? 'OVD' : t.week === 'Week Of' ? 'WK' : 'SOON',
       dateNum: t.week === 'Week Of' ? '7d' : t.week === '2 Weeks Out' ? '14d' : (t.week || '').replace(/[^0-9]/g, '') + 'm',
     }));
 
@@ -208,9 +245,9 @@ export function deriveCommandCenterData(event) {
   const figmaBadge = (v) => {
     if (v.status === 'Confirmed' || v.status === 'Booked')                       return { label: 'CONFIRMED',    color: P.green };
     if (v.status === 'Deposit Paid' || v.status === 'Contracted' || v.status === 'Partial') return { label: 'PARTIAL',     color: P.amber };
-    if (v.status === 'Quoted' || v.status === 'Pending')                          return { label: 'PENDING',     color: '#c9a84c' };
+    if (v.status === 'Quoted' || v.status === 'Pending')                          return { label: 'PENDING',     color: P.amber };
     if (v.status === 'Considering' || v.status === 'Not Started' || !v.status)    return { label: 'NOT STARTED', color: P.textTertiary };
-    if (v.status === 'Unconfirmed' || v.status === 'Needs Action' || v.flagged)   return { label: 'UNCONFIRMED', color: P.red };
+    if (v.status === 'Unconfirmed' || v.status === 'Needs Action' || v.flagged)   return { label: 'UNCONFIRMED', color: P.amber }; // Red audit: unconfirmed is pending (amber), not blocking (red).
     return { label: 'NOT STARTED', color: P.textTertiary };
   };
   // Sprint 51 Path B (Overview retire): caterer drift detection migrated from
@@ -260,7 +297,7 @@ export function deriveCommandCenterData(event) {
   // Planning Health (operational readiness, not financial)
   const tasksDone   = timeline.filter(t => t.done).length;
   const tasksTotal  = timeline.length;
-  const overdueCount = timeline.filter(t => !t.done && isTaskOverdue(t, event.date)).length;
+  const overdueCount = timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
   const confirmedVendors = vendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
   const yesGuests = guests.filter(g => g.rsvp === 'Yes').length;
   const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
@@ -465,9 +502,11 @@ export function getEventAttention(event) {
   const comms    = event.commClient || [];
   const vendors  = event.vendors || [];
   return {
-    decisions: timeline.filter(t => !t.done && isTaskOverdue(t, event.date)).length,
+    decisions: timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length,
     approvals: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status)).length,
-    requests:  comms.filter(m => m.message_type !== 'approval_request' && (m.body || m.text) && !m.handled && !m.answered).length,
+    // Split: an approval still on the planner to SEND is not "awaiting client".
+    approvalsAwaiting: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status) && approvalIsSent(m)).length,
+    requests:  comms.filter(m => m.message_type !== 'approval_request' && isInboundMessage(m) && (m.body || m.text) && !m.handled && !m.answered).length,
     vendorIssues: vendors.filter(v => v.status !== 'Confirmed' && v.status !== 'Booked').length,
   };
 }
@@ -505,7 +544,7 @@ export function getCrossEventAttentionItems(events = []) {
 
     // Decisions = overdue uncompleted tasks
     for (const t of timeline) {
-      if (t.done || !isTaskOverdue(t, ev.date)) continue;
+      if (t.done || !isTaskOverdue(t, ev.date, ev.type)) continue;
       // Sprint 57f.2: when compression meta-row will appear, hide most
       // derivative overdue rows. Keep the top do_now items so a planner
       // who clicks the compression row OR taps a do_now row still sees
@@ -518,7 +557,7 @@ export function getCrossEventAttentionItems(events = []) {
         owner: t.owner || 'You',
         meta: `${t.week} · ${t.owner || 'You'}`,
         // Sprint 49: Figma H vocabulary
-        statusLabel: od > 14 ? 'URGENT' : 'AWAITING',
+        statusLabel: od > 14 ? 'OVERDUE' : 'DUE', // critical≠urgent: these are TIME states (how overdue), not severity jargon.
         statusColor: '#E84036', // red
         dueLabel: `Overdue ${od}d`,
         dueColor: '#E84036',
@@ -534,7 +573,7 @@ export function getCrossEventAttentionItems(events = []) {
     for (const m of comms) {
       if (m.message_type !== 'approval_request') continue;
       if (['approved', 'rejected'].includes(m.approval_status)) continue;
-      const sent = !!m.requestSentAt;
+      const sent = approvalIsSent(m);
       items.push({
         id: `app-${ev.id}-${m.id}`, kind: 'approval', eventId: ev.id, eventName,
         title: m.subject || (m.body || '').slice(0, 80) || 'Approval request',
@@ -554,6 +593,7 @@ export function getCrossEventAttentionItems(events = []) {
     // Requests = inbound, non-approval messages awaiting response
     for (const m of comms) {
       if (m.message_type === 'approval_request') continue;
+      if (!isInboundMessage(m)) continue; // outbound planner messages aren't requests
       if (!(m.body || m.text)) continue;
       if (m.handled || m.answered) continue;
       items.push({
@@ -609,8 +649,12 @@ export function getCrossEventAttentionItems(events = []) {
     // the top of this iteration (already computed for dedupe decisions).
     {
       if (compression && compression.significant) {
+        // Red audit (2026-06-10): a tight timeline is CAUTION (act fast, less
+        // buffer), not a blocking/critical state — so it's amber, never the
+        // fire red. "rush" was #E84036; demoted to amber. The headline copy +
+        // do-now count carry the severity, not an alarm color.
         const tone =
-            compression.level === 'rush'       ? '#E84036'
+            compression.level === 'rush'       ? '#d4904a'
           : compression.level === 'compressed' ? '#d4904a'
           :                                      '#3a8a62'; // tight
         items.push({
@@ -682,7 +726,7 @@ export function getEventReadiness(event) {
   const timeline = event.timeline || [];
   const vendors  = event.vendors || [];
 
-  const overdueCount   = timeline.filter(t => !t.done && isTaskOverdue(t, event.date)).length;
+  const overdueCount   = timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
   const tasksDone      = timeline.filter(t => t.done).length;
   const tasksTotal     = timeline.length;
   const confirmedV     = vendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
@@ -694,12 +738,21 @@ export function getEventReadiness(event) {
   else if (overdueCount <= 2)      decision = { status: 'ATTENTION', label: 'Attention', note: `${overdueCount} open` };
   else                              decision = { status: 'AT_RISK',  label: 'At risk',  note: `${overdueCount} open` };
 
-  // Vendor readiness
+  // Vendor readiness. A vendor isn't fully "on track" just because it's booked —
+  // a Confirmed vendor with no signed contract is exactly the "needs follow-up"
+  // the vendor DETAIL flags (getVendorReadiness booking/documents axis). Count it
+  // here too so the event-level readiness and the vendor detail never disagree
+  // (the "on track" vs "contract conflict" contradiction).
+  const confirmedNoContract = vendors.filter(v =>
+    (v.status === 'Confirmed' || v.status === 'Booked') &&
+    !(v.contractSigned === true || v.contract_signed === true)
+  ).length;
   let vendor;
   if      (vendors.length === 0)               vendor = { status: 'AT_RISK',   label: 'At risk',  note: 'No vendors' };
-  else if (unconfirmedV === 0)                 vendor = { status: 'ON_TRACK',  label: 'On track', note: `${confirmedV} confirmed` };
   else if (unconfirmedV >= 3)                  vendor = { status: 'AT_RISK',   label: 'At risk',  note: `${unconfirmedV} unconfirmed` };
-  else                                          vendor = { status: 'ATTENTION', label: 'Attention', note: `${unconfirmedV} unconfirmed` };
+  else if (unconfirmedV > 0)                   vendor = { status: 'ATTENTION', label: 'Attention', note: `${unconfirmedV} unconfirmed` };
+  else if (confirmedNoContract > 0)            vendor = { status: 'ATTENTION', label: 'Attention', note: `${confirmedNoContract} missing contract` };
+  else                                          vendor = { status: 'ON_TRACK',  label: 'On track', note: `${confirmedV} confirmed` };
 
   // Timeline readiness
   const taskPct = tasksTotal > 0 ? tasksDone / tasksTotal : 0;
@@ -777,7 +830,7 @@ export function selectStudioCommand(events = []) {
   if (todayActive) {
     const { ev: todayEv } = todayActive;
     // Are there any URGENT/AT_RISK items tied to the today event?
-    const todayCritical = items.filter(it => it.eventId === todayEv.id && (it.statusLabel === 'URGENT' || it.statusLabel === 'AT RISK'));
+    const todayCritical = items.filter(it => it.eventId === todayEv.id && (it.statusLabel === 'OVERDUE' || it.statusLabel === 'AT RISK'));
     const todayAttention = items.filter(it => it.eventId === todayEv.id);
     if (todayCritical.length > 0 || todayAttention.length > 0) {
       // Tier 1a: LIVE · ACT NOW — live event with active day-of issues
@@ -812,10 +865,10 @@ export function selectStudioCommand(events = []) {
   }
 
   // Tier 2: critical blockers — URGENT-labeled items or AT RISK vendors
-  const critical = items.find(it => it.statusLabel === 'URGENT' || it.statusLabel === 'AT RISK');
+  const critical = items.find(it => it.statusLabel === 'OVERDUE' || it.statusLabel === 'AT RISK');
   if (critical) {
     const sameEventCount = items.filter(it => it.eventId === critical.eventId &&
-      (it.statusLabel === 'URGENT' || it.statusLabel === 'AT RISK')).length;
+      (it.statusLabel === 'OVERDUE' || it.statusLabel === 'AT RISK')).length;
     return {
       level: 'critical',
       category: 'blocker',
@@ -1028,6 +1081,35 @@ export function selectEventNextAction(event) {
   };
 }
 
+// Sprint 61 (Next-Step Spine): WHO the next action is waiting on, derived from
+// the SAME engine (na.category) that produced the action — so the owner word and
+// the action can never name different parties on one surface. Returns a semantic
+// key; each renderer maps key→color (the triage board uses amber/text/muted; the
+// Spine uses its own palette). This is the single source the triage "Waiting on"
+// column and the Spine ribbon both consume.
+export function nextStepOwner(na) {
+  const cat = (na || {}).category;
+  const title = ((na || {}).title || '');
+  switch (cat) {
+    case 'decision': case 'blocker': case 'today-act': case 'today':
+    case 'compression': case 'timeline': case 'readiness': case 'caterer':
+    case 'comm': // inbound message awaiting your reply
+    case 'sample': // demo: exploring the sample event
+      return { key: 'you', label: 'You' };
+    case 'vendor':
+      return { key: 'vendor', label: 'Vendor' };
+    case 'approval':
+      // A drafted (unsent) approval is on you to send; a sent one awaits the client.
+      return /drafted|send the/i.test(title)
+        ? { key: 'you', label: 'You' }
+        : { key: 'client', label: 'Client' };
+    case 'calendar': case 'multiple-upcoming':
+      return { key: 'soon', label: 'Soon' };
+    default:
+      return { key: 'clear', label: 'Clear' };
+  }
+}
+
 function _selectEventNextActionInner(event) {
   if (!event) return null;
   const d = deriveCommandCenterData(event);
@@ -1063,7 +1145,7 @@ function _selectEventNextActionInner(event) {
       consequence: od > 0
         ? `Overdue by ${daysWord(od)}. Open decisions block timeline, vendor, and approval progress downstream.`
         : `Pending decision. Holding it open blocks downstream timeline + vendor work.`,
-      primaryCta: 'Open decision',
+      primaryCta: 'Decide',
       primaryRoute: { tab: 'Decisions', decisionId: urgent.id },
       contextLine: daysSub,
     };
@@ -1078,7 +1160,7 @@ function _selectEventNextActionInner(event) {
       category: 'approval',
       title: 'Send the drafted approval request.',
       consequence: `"${(draftedApproval.title || 'an approval').slice(0, 80)}" is drafted but never sent. The client clock can't start until it goes out.`,
-      primaryCta: 'Open approval',
+      primaryCta: 'Send it',
       primaryRoute: { tab: 'Decisions', decisionId: draftedApproval.id },
       contextLine: daysSub,
     };
@@ -1090,7 +1172,7 @@ function _selectEventNextActionInner(event) {
       category: 'approval',
       title: 'Nudge the client on the pending approval.',
       consequence: `"${(awaitingApproval.title || 'an approval').slice(0, 80)}" was sent ${awaitingApproval.sentRelative || 'a while ago'}. Decisions stay paused until the client answers.`,
-      primaryCta: 'Open approval',
+      primaryCta: 'Nudge client',
       primaryRoute: { tab: 'Decisions', decisionId: awaitingApproval.id },
       contextLine: daysSub,
     };
@@ -1112,8 +1194,29 @@ function _selectEventNextActionInner(event) {
       title: `Send payment to ${v.name || 'this vendor'}.`,
       consequence: `Balance was due ${daysWord(od)} ago${v.cost ? ` (${fmtMoney0(v.cost)})` : ''}. Late payments can affect how the vendor prioritizes your event — better to settle now.`,
       // Sprint 60.B: issue-specific CTA. Lands inside the payment section.
-      primaryCta: 'Open payment details',
+      primaryCta: 'Pay now',
       primaryRoute: { tab: 'Vendors', vendorId: v.id, vendorSection: 'payment' },
+      contextLine: daysSub,
+    };
+  }
+
+  // Tier 4.2: critical COI — a dock-blocker even on an otherwise-Confirmed vendor.
+  // The venue turns vendors away without current insurance, so it outranks a
+  // merely-unconfirmed booking. Messaging comes from the shared coiNextAction so
+  // the ladder and the vendor detail agree.
+  const coiCritical = vendors
+    .map(v => ({ v, coi: getVendorCOIState(v, event) }))
+    .find(x => x.v.name && x.coi && x.coi.level === 'critical');
+  if (coiCritical) {
+    const v = coiCritical.v;
+    const cna = coiNextAction(v, event, v.name) || {};
+    return {
+      level: 'critical',
+      category: 'vendor',
+      title: cna.title || `Get an updated COI from ${v.name}.`,
+      consequence: cna.consequence || 'A current certificate of insurance naming the venue is required to clear load-in.',
+      primaryCta: 'Get COI',
+      primaryRoute: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' },
       contextLine: daysSub,
     };
   }
@@ -1125,9 +1228,8 @@ function _selectEventNextActionInner(event) {
       category: 'vendor',
       title: `Confirm ${unconfirmed.name}.`,
       consequence: `Currently ${(unconfirmed.status || 'open').toLowerCase()}. The closer to the event, the harder it gets to find another option if this one falls through.`,
-      // Sprint 60.B: generic "Open vendor" is OK here — the action is to
-      // review readiness, not address one specific field.
-      primaryCta: 'Open vendor',
+      // Sprint 61: verb-first — the move is to confirm the booking.
+      primaryCta: 'Confirm vendor',
       primaryRoute: { tab: 'Vendors', vendorId: unconfirmed.id },
       contextLine: daysSub,
     };
@@ -1151,7 +1253,7 @@ function _selectEventNextActionInner(event) {
       category: 'compression',
       title: compression.headline || 'Tight timeline — a few tasks moved to the front.',
       consequence: `${consequenceParts.join(' · ')}. ${compression.meta.sub}`,
-      primaryCta: 'Open compressed tasks',
+      primaryCta: 'Review tasks',
       // Route into Planning Tasks (the editor) with the '__compressed__'
       // sentinel as taskId. Timeline.defaultPhase consumes that sentinel
       // and auto-selects the "Tight timeline" filter so the planner lands
@@ -1169,7 +1271,7 @@ function _selectEventNextActionInner(event) {
       category: 'timeline',
       title: 'Catch up on overdue planning tasks.',
       consequence: `${readiness.timeline.note}${days !== null && days >= 0 ? ` · only ${daysWord(days)} left to recover` : ''}. Falling further behind compounds vendor and budget risk.`,
-      primaryCta: 'Open timeline',
+      primaryCta: 'Catch up',
       primaryRoute: { tab: 'Timeline' },
       contextLine: daysSub,
     };
@@ -1184,7 +1286,7 @@ function _selectEventNextActionInner(event) {
       category: 'comm',
       title: `Reply to ${r.from || r.owner || 'an inbound message'}.`,
       consequence: `"${(r.preview || r.title || '').slice(0, 100)}" — ${r.relative || 'awaiting response'}. A short reply often unblocks more than its size suggests.`,
-      primaryCta: 'Open thread',
+      primaryCta: 'Reply',
       primaryRoute: { tab: 'Communication', commId: r.id },
       contextLine: daysSub,
     };
@@ -1196,9 +1298,13 @@ function _selectEventNextActionInner(event) {
     return {
       level: 'neutral',
       category: 'calendar',
-      title: `Prep for "${(nextUp.title || 'next milestone').slice(0, 80)}".`,
-      consequence: `${nextUp.relative || 'Coming up soon'}. Staying ahead by one step makes the rest of the timeline feel quiet.`,
-      primaryCta: 'Open timeline',
+      // Bug fix 2026-06-12: nextUp items carry `label`/`sub` (see deriveCommandCenterData
+      // ~230), NOT `title`/`relative` — so this CTA was showing a generic
+      // "Prep for 'next milestone'. Coming up soon." placeholder instead of the
+      // real task. Use the actual fields so it names the real milestone.
+      title: `Prep for "${(nextUp.label || 'the next milestone').slice(0, 80)}".`,
+      consequence: `${nextUp.sub ? `Coming up: ${nextUp.sub}. ` : ''}Staying ahead by one step makes the rest of the timeline feel quiet.`,
+      primaryCta: 'Get ahead',
       primaryRoute: { tab: 'Timeline', timelineId: nextUp.id },
       contextLine: daysSub,
     };
@@ -1272,6 +1378,19 @@ function SectionHeader({ label, count, countColor, action, onAction }) {
           fontStyle: 'italic', marginTop: 2, lineHeight: 1.4,
         }}>{subtitle}</div>
       )}
+    </div>
+  );
+}
+
+// Quiet sub-label inside the unified "Needs You" queue — one notch below
+// SectionHeader (board: the four "waiting on you" lists share one header now).
+function NeedsSubLabel({ label, count, action, onAction }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: P.textSecondary, fontFamily: FF, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+      {count > 0 && <span style={{ fontSize: 10.5, fontWeight: 600, color: P.textTertiary, fontFamily: FF }}>{count}</span>}
+      <div style={{ flex: 1 }} />
+      {action && <button onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10.5, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0 }}>{action}</button>}
     </div>
   );
 }
@@ -1452,36 +1571,56 @@ function VendorRow({ v, onOpen, isFirst }) {
 }
 
 // ── Document pill ─────────────────────────────────────────────────────────────
-function DocPill({ label, status, color }) {
-  return (
-    <div style={{
-      flex: 1, padding: '10px 12px', background: P.card,
-      border: `1px solid ${P.borderSubtle}`, borderRadius: 8,
-      display: 'flex', flexDirection: 'column', gap: 4, fontFamily: FF,
-    }}>
+function DocPill({ label, status, color, onClick }) {
+  const baseStyle = {
+    flex: 1, padding: '10px 12px', background: P.card,
+    border: `1px solid ${P.borderSubtle}`, borderRadius: 8,
+    display: 'flex', flexDirection: 'column', gap: 4, fontFamily: FF,
+    minWidth: 0, textAlign: 'left',
+  };
+  const inner = (
+    <>
       <div style={{ fontSize: 11, fontWeight: 600, color: P.textPrimary }}>{label}</div>
       <div style={{ fontSize: 10, color: color || P.textTertiary }}>{status}</div>
-    </div>
+    </>
+  );
+  if (!onClick) return <div style={baseStyle}>{inner}</div>;
+  return (
+    <button onClick={onClick} title={`Open ${label}`}
+      style={{ ...baseStyle, cursor: 'pointer', minHeight: 44 }}>
+      {inner}
+    </button>
   );
 }
 
 // ── Planning Health row ───────────────────────────────────────────────────────
-function HealthRow({ h, isFirst }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px',
-      borderTop: isFirst ? 'none' : `1px solid ${P.borderSubtle}`, fontFamily: FF,
-    }}>
+// Each health dimension routes to the tab that owns it (board: a callout that
+// names a problem must be the handle that takes you to it).
+const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents' };
+function HealthRow({ h, isFirst, onTabChange }) {
+  const target    = HEALTH_ROUTE[h.label];
+  const clickable = !!(target && onTabChange);
+  const inner = (
+    <>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: h.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{h.label}</div>
         <div style={{ fontSize: 11, color: P.textSecondary }}>{h.note}</div>
       </div>
-      <span style={{
-        fontSize: 9.5, fontWeight: 600, color: h.color,
-        letterSpacing: '0.10em', flexShrink: 0,
-      }}>{h.statusLabel}</span>
-    </div>
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: h.color, letterSpacing: '0.10em', flexShrink: 0 }}>{h.statusLabel}</span>
+      {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: 15, flexShrink: 0, marginLeft: 2 }}>›</span>}
+    </>
+  );
+  const baseStyle = {
+    display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px',
+    borderTop: isFirst ? 'none' : `1px solid ${P.borderSubtle}`, fontFamily: FF,
+  };
+  if (!clickable) return <div style={baseStyle}>{inner}</div>;
+  return (
+    <button onClick={() => onTabChange(target)} title={`Open ${h.label}`}
+      style={{ ...baseStyle, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', minHeight: 44 }}>
+      {inner}
+    </button>
   );
 }
 
@@ -1629,7 +1768,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
       {command.compressionSubBadge && (() => {
         const sb = command.compressionSubBadge;
         const sbTone =
-            sb.level === 'rush'       ? P.red
+            sb.level === 'rush'       ? P.amber  // Red audit: tight timeline = caution, not red.
           : sb.level === 'compressed' ? P.amber
           :                             P.textSecondary;
         const handleSubCta = () => {
@@ -1792,45 +1931,47 @@ function MobileCommandCenter({ event, data, crewSummary, onTabChange, onBack, ba
           isMobile={true}
         />
 
-        {/* Open Decisions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHeader label="Open Decisions" count={d.decisions.length} countColor={P.red} action="+ Add" onAction={onAddDecision} />
-          {d.decisions.length > 0 ? d.decisions.map(dc => (
-            <DecisionCard key={dc.id} d={dc} onOpen={() => onTabChange?.('Decisions', dc.id)} isMobile />
-          )) : <EmptyState>No open decisions — you're clear.</EmptyState>}
-        </div>
-
-        {/* Approvals */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHeader label="Approvals" count={d.approvals.length} countColor={P.amber} action="+ Create" onAction={onAddApproval} />
-          {d.approvals.length > 0 ? d.approvals.map(a => (
-            <ApprovalRow key={a.id} a={a} onOpen={() => onTabChange?.('Decisions', a.id)} />
-          )) : <EmptyState>No approvals pending.</EmptyState>}
-        </div>
-
-        {/* Requests */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHeader label="Requests" count={d.requests.length} countColor={P.amber} action="All →" onAction={() => onTabChange?.('Communication')} />
-          {d.requests.length > 0 ? (
-            <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
-              {d.requests.map((r, i) => (
-                <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />
-              ))}
+        {/* NEEDS YOU — one unified queue (board: four parallel "waiting on you"
+            lists were hierarchy theater). Decisions / Approvals / Requests /
+            Questions share one header + total; each is a quiet sub-group. Row
+            renderers and routing are unchanged. */}
+        {(() => {
+          const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
+              {needs === 0 && <EmptyState>Nothing needs you right now — you're clear.</EmptyState>}
+              {d.decisions.length > 0 && (<>
+                <NeedsSubLabel label="Your call to make" count={d.decisions.length} action="+ Add" onAction={onAddDecision} />
+                {d.decisions.map(dc => (
+                  <DecisionCard key={dc.id} d={dc} onOpen={() => onTabChange?.('Decisions', dc.id)} isMobile />
+                ))}
+              </>)}
+              {d.approvals.length > 0 && (<>
+                <NeedsSubLabel label="Waiting on client" count={d.approvals.length} action="+ Create" onAction={onAddApproval} />
+                {d.approvals.map(a => (
+                  <ApprovalRow key={a.id} a={a} onOpen={() => onTabChange?.('Decisions', a.id)} />
+                ))}
+              </>)}
+              {d.requests.length > 0 && (<>
+                <NeedsSubLabel label="Vendor asks" count={d.requests.length} action="All →" onAction={() => onTabChange?.('Communication')} />
+                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+                  {d.requests.map((r, i) => (
+                    <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />
+                  ))}
+                </div>
+              </>)}
+              {d.questions.length > 0 && (<>
+                <NeedsSubLabel label="Open questions" count={d.questions.length} action="View →" onAction={() => onTabChange?.('Communication')} />
+                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+                  {d.questions.map((q, i) => (
+                    <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />
+                  ))}
+                </div>
+              </>)}
             </div>
-          ) : <EmptyState>No incoming requests.</EmptyState>}
-        </div>
-
-        {/* Unanswered Questions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHeader label="Unanswered Questions" count={d.questions.length} countColor={P.amber} action="View thread →" onAction={() => onTabChange?.('Communication')} />
-          {d.questions.length > 0 ? (
-            <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
-              {d.questions.map((q, i) => (
-                <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />
-              ))}
-            </div>
-          ) : <EmptyState>No unanswered questions.</EmptyState>}
-        </div>
+          );
+        })()}
 
         {/* Next Up */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1859,7 +2000,7 @@ function MobileCommandCenter({ event, data, crewSummary, onTabChange, onBack, ba
 
         {/* Documents — Sprint 49: real status from event.documents */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Run of Show')} />
+          <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
           {(() => {
             const cards = getEventDocCards(event);
             return (
@@ -1990,40 +2131,37 @@ function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, b
           {/* LEFT — action stream */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Open Decisions */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Open Decisions" count={d.decisions.length} countColor={P.red} action="+ Add decision" onAction={onAddDecision} />
-              {d.decisions.length > 0
-                ? d.decisions.map(dc => <DecisionCard key={dc.id} d={dc} onOpen={() => onTabChange?.('Decisions', dc.id)} />)
-                : <EmptyState>No open decisions — this event is on track.</EmptyState>}
-            </div>
-
-            {/* Approvals */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Approvals" count={d.approvals.length} countColor={P.amber} action="+ Create approval" onAction={onAddApproval} />
-              {d.approvals.length > 0
-                ? d.approvals.map(a => <ApprovalRow key={a.id} a={a} onOpen={() => onTabChange?.('Decisions', a.id)} />)
-                : <EmptyState>No approvals pending.</EmptyState>}
-            </div>
-
-            {/* Requests */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Requests" count={d.requests.length} countColor={P.amber} action="All requests →" onAction={() => onTabChange?.('Communication')} />
-              {d.requests.length > 0 ? (
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                  {d.requests.map((r, i) => <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />)}
+            {/* NEEDS YOU — unified queue (board: four parallel "waiting on you"
+                lists were hierarchy theater). One header + total; quiet sub-groups. */}
+            {(() => {
+              const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
+                  {needs === 0 && <EmptyState>Nothing needs you right now — this event is on track.</EmptyState>}
+                  {d.decisions.length > 0 && (<>
+                    <NeedsSubLabel label="Your call to make" count={d.decisions.length} action="+ Add decision" onAction={onAddDecision} />
+                    {d.decisions.map(dc => <DecisionCard key={dc.id} d={dc} onOpen={() => onTabChange?.('Decisions', dc.id)} />)}
+                  </>)}
+                  {d.approvals.length > 0 && (<>
+                    <NeedsSubLabel label="Waiting on client" count={d.approvals.length} action="+ Create approval" onAction={onAddApproval} />
+                    {d.approvals.map(a => <ApprovalRow key={a.id} a={a} onOpen={() => onTabChange?.('Decisions', a.id)} />)}
+                  </>)}
+                  {d.requests.length > 0 && (<>
+                    <NeedsSubLabel label="Vendor asks" count={d.requests.length} action="All requests →" onAction={() => onTabChange?.('Communication')} />
+                    <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                      {d.requests.map((r, i) => <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />)}
+                    </div>
+                  </>)}
+                  {d.questions.length > 0 && (<>
+                    <NeedsSubLabel label="Open questions" count={d.questions.length} action="View full stream →" onAction={() => onTabChange?.('Communication')} />
+                    <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                      {d.questions.map((q, i) => <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />)}
+                    </div>
+                  </>)}
                 </div>
-              ) : <EmptyState>No incoming requests.</EmptyState>}
-            </div>
-
-            {/* Communication */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Unanswered Questions" count={d.questions.length} countColor={P.amber} action="View full stream →" onAction={() => onTabChange?.('Communication')} />
-              {d.questions.length > 0 ? (
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                  {d.questions.map((q, i) => <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />)}
-                </div>
-              ) : <EmptyState>No unanswered questions.</EmptyState>}
-            </div>
+              );
+            })()}
           </div>
 
           {/* RIGHT — operational rail */}
@@ -2032,7 +2170,7 @@ function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, b
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} />)}
+                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} />)}
               </div>
             </div>
 
@@ -2063,7 +2201,7 @@ function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, b
 
             {/* Documents — Sprint 49: real status from event.documents */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Documents" action="All →" />
+              <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
               {(() => {
                 const cards = getEventDocCards(event);
                 return (

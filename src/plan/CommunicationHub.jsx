@@ -23,6 +23,10 @@ const P = {
   green:  color.status.confirmed,
   amber:  color.status.warning,
   red:    color.status.risk,
+  // Steel-blue accent — was MISSING, so anything using P.steelBlue/P.accent
+  // (the AI Draft button, contact links) rendered with no color → looked white.
+  accent:    color.text.secondary, // steel #849eb8
+  steelBlue: '#4E6877',            // CTA steel-blue
 };
 const FF = type.family;
 
@@ -125,6 +129,98 @@ function buildThreads(event) {
   return threads;
 }
 
+// Wait-time label for a thread — how long since the last (unanswered) message.
+function fmtWait(ts) {
+  if (!ts) return '';
+  const d = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+  if (d <= 0) return 'today';
+  if (d === 1) return '1 day';
+  return `${d} days`;
+}
+
+// ── Needs-reply HERO BAND (board A1+A2+B3) ──────────────────────────────────
+// Full-width band above both panes. Carries the planner's reply DEBT (count +
+// channel split) and leads with WAIT-TIME on the longest-waiting thread. When
+// the queue is clear it becomes the "caught up" reward state.
+function NeedsReplyBand({ threads, onOpen, onJumpTab }) {
+  const needs = useMemo(() => {
+    const isNR = t => t.needsApproval || t.messages?.[t.messages.length - 1]?.direction === 'inbound';
+    // Oldest-waiting first — the planner owes the longest-waiting person first.
+    return threads.filter(isNR).sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+  }, [threads]);
+  const total = needs.length;
+
+  if (total === 0) {
+    // B3 — caught-up reward: quiet, dim, the payoff a dense inbox can't express.
+    return (
+      <div style={{
+        flexShrink: 0, margin: '14px 16px 0', padding: '14px 18px',
+        background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 12,
+        display: 'flex', alignItems: 'center', gap: 10, fontFamily: FF,
+      }}>
+        <span style={{ color: P.green, fontSize: 14, fontWeight: 800 }}>✓</span>
+        <span style={{ fontSize: 13.5, fontWeight: type.weight.semibold, color: P.textSecondary }}>
+          You're caught up — no one's waiting on you.
+        </span>
+      </div>
+    );
+  }
+
+  const oldest = needs[0];
+  const firstName = (oldest.name || 'Someone').split(' ')[0];
+  const wait = fmtWait(oldest.timestamp);
+  const byTab = {
+    Client:  needs.filter(t => t.tab === 'Client').length,
+    Vendors: needs.filter(t => t.tab === 'Vendors').length,
+    Team:    needs.filter(t => t.tab === 'Team').length,
+  };
+  const debt = Object.entries(byTab).filter(([, n]) => n > 0)
+    .map(([k, n]) => `${n} ${k.toLowerCase()}`).join(' · ');
+  const lead = oldest.subject || oldest.preview || 'needs your reply';
+
+  return (
+    <div style={{
+      flexShrink: 0, margin: '14px 16px 0', padding: '14px 18px 16px',
+      background: P.card, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${P.amber}`,
+      borderRadius: 12, fontFamily: FF,
+      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.30), 0 14px 28px rgba(0,0,0,0.22)',
+    }}>
+      <div style={{ flex: 1, minWidth: 240 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, padding: '2px 7px', borderRadius: 4, border: `1px solid ${P.amber}55` }}>
+            Needs you · {total}
+          </span>
+          {debt && <span style={{ fontSize: 11.5, color: P.textTertiary }}>{debt} waiting</span>}
+        </div>
+        {/* A2 — wait-time is the hero datum. The message preview is clamped to a
+            single line (board fix: it was dumping the full 6-line body on mobile,
+            so it stopped being a signal and became the content). */}
+        <div style={{ fontSize: 15, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
+          {firstName} has been waiting <span style={{ color: P.amber }}>{wait}</span>
+        </div>
+        <div style={{
+          fontSize: 12.5, color: P.textTertiary, lineHeight: 1.4, marginTop: 3,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+        }}>
+          {lead}
+        </div>
+      </div>
+      <button
+        onClick={() => onOpen && onOpen(oldest)}
+        style={{
+          flexShrink: 0, fontFamily: FF, fontSize: 14, fontWeight: type.weight.semibold, color: '#fff',
+          background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', border: 'none', borderRadius: 8,
+          padding: '11px 18px', minHeight: 40, cursor: 'pointer',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}>
+        Review reply <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+      </button>
+    </div>
+  );
+}
+
 // ── Thread list ───────────────────────────────────────────────────────────────
 // Fix #2: Thread list with live search
 function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMobile = false }) {
@@ -159,7 +255,10 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
   const tieredSort = list => [...list].sort((a, b) => {
     const ta = tierFor(a), tb = tierFor(b);
     if (ta !== tb) return ta - tb;
-    return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+    // Board redesign: needs-reply tiers (0,1) sort OLDEST-waiting first — the
+    // planner owes the longest-waiting person first. Other tiers: newest first.
+    const dir = ta <= 1 ? 1 : -1;
+    return dir * (new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
   });
   const allInTab = tab === 'Needs reply'
     ? tieredSort(threads.filter(isNeedsReply))
@@ -200,7 +299,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
 
   return (
     <div style={{
-      width: isMobile ? '100%' : 240, flexShrink: 0,
+      width: isMobile ? '100%' : 300, flexShrink: 0,
       background: P.base,
       borderRight: isMobile ? 'none' : `1px solid ${P.borderSubtle}`,
       display: 'flex', flexDirection: 'column', height: '100%',
@@ -209,98 +308,6 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
           Hero-led mobile Messages landing — Carbon body + 3px amber
           left rail + small amber chip + steel-blue Review reply CTA +
           per-tab chip jumps. No amber wash. */}
-      {isMobile && totalNeedsReply > 0 && (
-        // Sprint 60.P polish: Studio Matte raise so the Messages landing
-        // hero card lifts off the page in the same family as Home's
-        // StudioCommandPanel hero. Margin around it lets the shadow
-        // breathe; bottom-border removed since elevation now does the
-        // job of separating from the tab switcher.
-        <div style={{
-          margin: '14px 14px 0',
-          padding: '14px 16px 16px 16px',
-          background: P.card,
-          border: `1px solid ${P.borderSubtle}`,
-          // Amber rail expressed as borderLeft so the panel's
-          // border-radius clips it cleanly at the corners.
-          borderLeft: `3px solid ${P.amber}`,
-          borderRadius: 14,
-          display: 'flex', flexDirection: 'column', gap: 10,
-          boxShadow: [
-            'inset 0 1px 0 rgba(255,255,255,0.05)',
-            '0 1px 0 rgba(255,255,255,0.02)',
-            '0 4px 10px rgba(0,0,0,0.30)',
-            '0 14px 28px rgba(0,0,0,0.22)',
-          ].join(', '),
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              fontSize: 9.5, fontWeight: type.weight.semibold,
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: P.amber, fontFamily: FF,
-              padding: '2px 7px', borderRadius: 4,
-              border: `1px solid ${P.amber}55`,
-            }}>
-              Needs reply · {totalNeedsReply}
-            </span>
-          </div>
-          <div style={{
-            fontSize: 15, color: P.textPrimary, fontFamily: FF,
-            lineHeight: 1.35, fontWeight: type.weight.semibold,
-          }}>
-            {totalNeedsReply === 1
-              ? '1 message is waiting for your response.'
-              : `${totalNeedsReply} messages are waiting for your response.`}
-          </div>
-          {/* Primary CTA: jump straight to the first thread that needs a reply */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
-            <button
-              onClick={() => {
-                const first = needsReplyThreads[0];
-                if (first) { onTab(first.tab); onSelect(first); }
-              }}
-              style={{
-                fontFamily: FF, fontSize: 14, fontWeight: type.weight.semibold,
-                color: '#e8edf2',
-                background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)',
-                border: 'none',
-                borderRadius: 10,
-                padding: '11px 18px',
-                minHeight: 44,
-                cursor: 'pointer',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
-                textShadow: '0 1px 0 rgba(0,0,0,0.25)',
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              Review reply <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
-            </button>
-          </div>
-          {/* Per-tab jump chips — secondary navigation */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-            {TABS.map(t => {
-              const n = needsReplyByTab[t] || 0;
-              if (n === 0) return null;
-              return (
-                <button
-                  key={t}
-                  onClick={() => { onTab(t); setSearch(''); }}
-                  style={{
-                    fontFamily: FF, fontSize: 12, fontWeight: type.weight.medium,
-                    color: P.textPrimary,
-                    background: P.canvas,
-                    border: `1px solid ${P.borderSubtle}`,
-                    borderRadius: radius.sm,
-                    padding: '5px 11px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t} <span style={{ color: P.amber, fontWeight: type.weight.semibold }}>{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Tab switcher. Sprint 60.O Phase 3: mobile gets a readable
           segmented control (44px hit target, 13px labels, includes the
@@ -327,7 +334,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               padding: isMobile ? '8px 14px' : '0',
               borderRadius: radius.sm,
               border: 'none', cursor: 'pointer',
-              background: active ? P.borderSubtle : 'transparent',
+              background: active ? 'rgba(110,135,148,0.18)' : 'transparent',
               fontFamily: FF,
               fontSize: isMobile ? 13 : 11,
               fontWeight: active ? type.weight.semibold : type.weight.regular,
@@ -394,18 +401,20 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
         </div>
       </div>
 
-      {/* Thread rows */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Thread rows — flex column so a short list ends in a quiet end-cap
+          instead of a flat black void (board fix #1: the sparse list left
+          50–65% of the pane as a "broken-looking" empty box). */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {filtered.length === 0 ? (
           <div style={{ padding: space[5], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
-            {search ? `No results for "${search}"` : `No ${tab.toLowerCase()} threads`}
+            {search ? `No results for "${search}"` : `No ${tab.toLowerCase()} threads — they'll appear here as messages come in.`}
           </div>
         ) : filtered.map(thread => {
           const isSelected = selected?.id === thread.id;
           const needsReply = isNeedsReply(thread);
           const roleLabel = thread.tab === 'Vendors' ? 'Vendor' : thread.tab;
           return (
-            <button key={thread.id} onClick={() => onSelect(thread)} style={{
+            <button key={thread.id} data-deeplink={thread.id} onClick={() => onSelect(thread)} style={{
               display: 'flex', flexDirection: 'column', gap: isMobile ? 6 : 4,
               width: '100%',
               padding: isMobile ? '14px 16px 14px 19px' : '12px 16px',
@@ -413,9 +422,9 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               borderBottom: `1px solid ${P.borderSubtle}`,
               border: 'none',
               borderLeft: needsReply
-                ? `3px solid ${thread.needsApproval ? P.amber : P.amber}`
-                : isSelected ? `3px solid ${P.green}` : '3px solid transparent',
-              background: isSelected ? P.borderSubtle : 'transparent',
+                ? `3px solid ${P.amber}`
+                : isSelected ? `3px solid ${P.steelBlue || '#6E8794'}` : '3px solid transparent',
+              background: isSelected ? 'rgba(110,135,148,0.18)' : 'transparent',
               cursor: 'pointer', textAlign: 'left',
               position: 'relative',
             }}>
@@ -429,9 +438,18 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
                 }}>
                   {thread.name}
                 </span>
-                <span style={{ fontSize: isMobile ? 12 : 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
-                  {fmtRelative(thread.timestamp)}
-                </span>
+                {/* Board B2 — urgency tiering: a thread that needs the planner's
+                    reply leads with its WAIT-TIME in amber (the debt), not a neutral
+                    "2d ago". Non-urgent rows keep the quiet relative timestamp. */}
+                {needsReply ? (
+                  <span style={{ fontSize: isMobile ? 12 : 10.5, color: P.amber, fontWeight: type.weight.semibold, fontFamily: FF, flexShrink: 0 }}>
+                    waiting {fmtWait(thread.timestamp)}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: isMobile ? 12 : 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
+                    {fmtRelative(thread.timestamp)}
+                  </span>
+                )}
               </div>
               {/* Row 2: explicit role label */}
               <div style={{
@@ -495,6 +513,20 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
             </button>
           );
         })}
+        {/* End-cap hugging the list — a quiet "you've reached the end" marker so a
+            short list reads as complete. The list column's lifted-carbon background
+            fills the remainder as a calm panel (not a black void). Cross-tab counts
+            point to where the rest of the threads live. */}
+        {filtered.length > 0 && (
+          <div style={{ padding: '14px 16px 18px', textAlign: 'center', fontSize: 10.5, color: P.textTertiary, fontFamily: FF, letterSpacing: '0.04em', opacity: 0.7, borderTop: `1px solid ${P.borderSubtle}` }}>
+            {(() => {
+              const others = ['Client', 'Vendors', 'Team']
+                .filter(t => t !== tab && (counts[t] || 0) > 0)
+                .map(t => `${counts[t]} in ${t}`).join(' · ');
+              return others ? `End of ${tab} · ${others}` : `End of ${tab} threads`;
+            })()}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -516,7 +548,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
 // The planner always sees the truth. "Send email" never appears unless the
 // email will actually be attempted.
 // Fix #6: Composer with optional email subject field
-function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail, isDayOf = false }) {
+function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, resolveEmail, isDayOf = false }) {
   const [body, setBody]       = useState('');
   // Subject is shown by default — helps relate the message to the event/client
   const defaultSubject = event?.name
@@ -525,7 +557,24 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
   const [subject, setSubject] = useState(defaultSubject);
   const [busy, setBusy]       = useState(false);
   const [status, setStatus]   = useState(null); // { kind, text }
+  const [drafting, setDrafting] = useState(false); // AI message drafting
+  const [asApproval, setAsApproval] = useState(false); // create an approval request
   if (!thread || !onSend) return null;
+
+  // Comms innovation — one-tap AI draft. Streams a context-aware message into
+  // the composer; the planner edits and sends. Honest: nothing is sent here.
+  const aiDraft = async () => {
+    if (!onAiDraft || drafting || busy) return;
+    setDrafting(true); setStatus(null);
+    try {
+      await onAiDraft(thread, (chunk) => setBody(chunk));
+    } catch (e) {
+      // Surface the real reason (the OpenAI proxy throws friendly messages like
+      // "Please sign in to use AI features." / "AI is unavailable right now.").
+      setStatus({ kind: 'error', text: e?.message || 'Couldn’t draft a message — please try again.' });
+    }
+    setDrafting(false);
+  };
 
   // Resolve whether this thread can receive email
   const recipientInfo = resolveEmail ? resolveEmail(thread) : null;
@@ -537,7 +586,7 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
     setBusy(true); setStatus(null);
     try {
       const result = await Promise.resolve(
-        onSend(thread, text, { deliverEmail: deliverEmail && canEmail, subject: subject.trim() || undefined })
+        onSend(thread, text, { deliverEmail: deliverEmail && canEmail, subject: subject.trim() || undefined, asApproval })
       );
       const ok       = result && (result.ok || result.status === 'sent' || result.status === 'logged' || result.status === 'email-sent');
       const fellBack = result && result.fallback;
@@ -551,6 +600,7 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
         setStatus({ kind: 'local',  text: 'Message logged to thread.' });
       }
       setBody('');
+      setAsApproval(false);
       setTimeout(() => setStatus(null), 4000);
     } catch (e) {
       setStatus({ kind: 'error', text: 'Could not save the message. Try again.' });
@@ -665,6 +715,42 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
           fontSize: 11.5, fontFamily: FF, outline: 'none',
         }}
       />
+      {onAiDraft && (
+        <div style={{ alignSelf: 'flex-start', marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <button type="button" onClick={aiDraft} disabled={drafting || busy}
+            title="Draft a context-aware message — you review and send"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 11px', minHeight: 32, borderRadius: 8, cursor: drafting ? 'default' : 'pointer',
+              border: `1px solid ${P.steelBlue}59`, background: `${P.steelBlue}16`, color: P.steelBlue,
+              fontFamily: FF, fontSize: 11.5, fontWeight: 700, opacity: drafting ? 0.7 : 1,
+            }}>
+            {drafting ? '✨ Drafting…' : body.trim() ? '✨ Redraft' : '✨ Draft this'}
+          </button>
+          {/* Count of drafts the planner has generated for this event */}
+          {(event.aiDraftsCreated || 0) > 0 && (
+            <span style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
+              {event.aiDraftsCreated} draft{event.aiDraftsCreated === 1 ? '' : 's'} created
+            </span>
+          )}
+        </div>
+      )}
+      {/* Request-approval toggle — create an approval request from Messages. When
+          on, the message is sent as an approval the recipient (or planner) resolves
+          via the sticky Approve/Reject card. */}
+      <button type="button" onClick={() => setAsApproval(a => !a)}
+        title="Send as an approval request — it shows up with Approve / Reject"
+        style={{
+          alignSelf: 'flex-start', marginBottom: 8,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '6px 11px', minHeight: 32, borderRadius: 8, cursor: 'pointer',
+          border: `1px solid ${asApproval ? P.amber : P.borderSubtle}`,
+          background: asApproval ? `${P.amber}1a` : 'transparent',
+          color: asApproval ? P.amber : P.textSecondary,
+          fontFamily: FF, fontSize: 11.5, fontWeight: 700,
+        }}>
+        {asApproval ? '✓ Approval request' : 'Request approval'}
+      </button>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
         <textarea
           value={body}
@@ -677,7 +763,8 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
             }
           }}
           style={{
-            flex: 1, minHeight: isDayOf ? 72 : 60, maxHeight: 180, resize: 'vertical',
+            flex: 1, minWidth: 0, boxSizing: 'border-box',
+            minHeight: isDayOf ? 72 : 60, maxHeight: 180, resize: 'vertical',
             padding: isDayOf ? '12px 14px' : '9px 12px',
             borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`,
@@ -772,12 +859,19 @@ function Composer({ thread, event, onSend, commLive, emailEnabled, resolveEmail,
 }
 
 // Fix #3 + #7: ConversationPane with inline approve/reject + scroll preservation
-function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEnabled, resolveEmail, isDayOf = false, isMobile = false }) {
+function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMessage, onEditMessage, onAiDraft, onUpdateContact, commLive, emailEnabled, resolveEmail, isDayOf = false, isMobile = false, onRoute }) {
   // Sprint 60.S Mobile Comms — collapse older messages on mobile by
   // default. Latest 2 + any pending approval bubble are shown; older
   // messages live behind a "Show N earlier messages" affordance. Keeps
   // the action above transcript history per the spec rebuild.
   const [earlierExpanded, setEarlierExpanded] = useState(false);
+  // Inline message edit/delete state.
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState('');
+  // Contact-info edit state (board: "create/update contact info from Messages").
+  const [editingContact, setEditingContact] = useState(false);
+  const [cEmail, setCEmail] = useState('');
+  const [cPhone, setCPhone] = useState('');
   // Fix #7: preserve scroll position per thread
   const scrollRef = useRef(null);
   const scrollPositions = useRef({});
@@ -814,37 +908,128 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
   const linkedDecision = (event.commClient || []).find(m =>
     m.message_type === 'approval_request' && thread.messages.some(tm => tm.id === m.id)
   );
+  // The pending approval (if any) — pinned to the top as a sticky action card so
+  // the planner never scrolls the transcript to find what needs them.
+  const pendingApproval = thread.messages.find(m =>
+    m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status)
+  );
+
+  // Contact behind this thread — the vendor (Vendors tab) or the client (Client
+  // tab). Team/internal threads have no external contact. Vendors store email on
+  // `contact`; clients store it on `email`. The editor normalizes to {email,phone}.
+  const linkedVendor = thread.tab === 'Vendors'
+    ? (event.vendors || []).find(v => (v.name || v.vendor_name) === thread.name)
+    : null;
+  const linkedClient = thread.tab === 'Client' ? (client || event.client || null) : null;
+  const contact = linkedVendor
+    ? { kind: 'vendor', name: linkedVendor.name || thread.name, email: linkedVendor.contact || '', phone: linkedVendor.phone || '' }
+    : linkedClient
+    ? { kind: 'client', name: linkedClient.name || thread.name, email: linkedClient.email || '', phone: linkedClient.phone || '' }
+    : null;
+  const canEditContact = !!(contact && onUpdateContact);
+  const openContactEditor = () => { setCEmail(contact.email || ''); setCPhone(contact.phone || ''); setEditingContact(true); };
+  const saveContact = () => { onUpdateContact(thread, { email: cEmail.trim(), phone: cPhone.trim() }); setEditingContact(false); };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: P.canvas, overflow: 'hidden' }}>
-      {/* Thread header */}
+      {/* Thread header — name + folded context (event · linked decision link).
+          The board cut the standalone 240px Context rail; its one useful row
+          (the decision link) lives here now. */}
       <div style={{
-        height: 48, flexShrink: 0,
+        minHeight: 48, flexShrink: 0,
         background: P.base, borderBottom: `1px solid ${P.borderSubtle}`,
-        display: 'flex', alignItems: 'center', gap: 16, padding: '0 24px',
+        display: 'flex', alignItems: 'center', gap: 16, padding: '8px 24px', flexWrap: 'wrap',
       }}>
         <span style={{ fontSize: 14, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
           {thread.name}
         </span>
-        {thread.needsApproval && (
-          // Sprint 60.Q Comms #3: drop the +14 amber wash → outline chip
-          // to match the rest of the rail/chip vocabulary on the screen.
-          <span style={{
-            fontSize: 10, fontWeight: type.weight.semibold,
-            color: P.amber, letterSpacing: '0.14em', textTransform: 'uppercase',
-            fontFamily: FF,
-            background: 'transparent',
-            border: `1px solid ${P.amber}66`,
-            borderRadius: 4,
-            padding: '3px 8px',
-          }}>
-            Approval pending
-          </span>
+        <span style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF }}>{event.name}</span>
+        {linkedDecision && onRoute && (
+          <button onClick={() => onRoute('Decisions', linkedDecision.id)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.accent || P.steelBlue, fontSize: 11.5, fontWeight: type.weight.semibold, fontFamily: FF, padding: 0 }}>
+            Open decision →
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
+        {/* Contact info — quiet summary + edit affordance (board: update contact
+            from Messages). Shows what's on file for the vendor/client behind the
+            thread; click to edit email + phone inline. */}
+        {canEditContact && !editingContact && (
+          <button
+            onClick={openContactEditor}
+            title={`Edit ${contact.kind === 'vendor' ? 'vendor' : 'client'} contact info`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0,
+              background: 'transparent', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
+              cursor: 'pointer', padding: '4px 10px', fontFamily: FF, fontSize: 11, color: P.textSecondary,
+            }}
+          >
+            {(contact.email || contact.phone)
+              ? <span style={{ color: P.textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{contact.email || contact.phone}</span>
+              : <span style={{ color: P.amber }}>No contact info</span>}
+            <span style={{ color: P.steelBlue || P.accent, fontWeight: type.weight.semibold }}>{(contact.email || contact.phone) ? 'Edit' : 'Add'}</span>
+          </button>
         )}
       </div>
 
+      {/* Inline contact editor — email + phone for the vendor/client behind this thread. */}
+      {canEditContact && editingContact && (
+        <div style={{
+          flexShrink: 0, margin: '12px 24px 0', padding: '12px 14px',
+          background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 12,
+          display: 'flex', flexDirection: 'column', gap: 8, fontFamily: FF,
+        }}>
+          <div style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.textTertiary }}>
+            {contact.kind === 'vendor' ? 'Vendor' : 'Client'} contact · {contact.name}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="Email" type="email"
+              style={{ flex: '1 1 180px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: 12.5, fontFamily: FF, outline: 'none' }} />
+            <input value={cPhone} onChange={e => setCPhone(e.target.value)} placeholder="Phone" type="tel"
+              style={{ flex: '1 1 140px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: 12.5, fontFamily: FF, outline: 'none' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+            <button onClick={saveContact}
+              style={{ minHeight: 32, padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 12.5, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              Save contact
+            </button>
+            <button onClick={() => setEditingContact(false)}
+              style={{ minHeight: 32, padding: '7px 14px', borderRadius: 8, border: `1px solid ${P.borderSubtle}`, background: 'transparent', color: P.textSecondary, fontSize: 12.5, fontWeight: type.weight.medium, fontFamily: FF, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky approval action card — pinned at the top of the conversation
+          (was buried mid-transcript). Amber outline, the one action that needs you. */}
+      {pendingApproval && onApprove && (
+        <div style={{
+          flexShrink: 0, margin: '12px 24px 0', padding: '12px 14px',
+          background: P.card, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${P.amber}`,
+          borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <span style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, fontFamily: FF }}>
+            Approval needed
+          </span>
+          <span style={{ fontSize: 13, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>
+            {pendingApproval.subject || pendingApproval.body || 'Review and approve this request.'}
+          </span>
+          <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+            <button onClick={() => onApprove(pendingApproval.id, 'approved')}
+              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              Approve
+            </button>
+            <button onClick={() => onApprove(pendingApproval.id, 'rejected')}
+              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: `1px solid ${P.red}66`, background: 'transparent', color: P.red, fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              Reject
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Messages — Fix #7: ref for scroll preservation */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: `${space[5]}px ${space[6]}px` }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space[5]}px ${space[6]}px` }}>
         {thread.messages.length === 0 ? (
           <div style={{ textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
             No messages yet
@@ -873,7 +1058,10 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
             hiddenCount = allMessages.length - visibleMessages.length;
           }
           return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          /* Board Messages fix #8: cap the transcript to a readable measure and
+             center it, so a single bubble doesn't stretch across a 1900px pane on
+             wide screens. Full-width below the cap; centered above it. */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760, width: '100%', margin: '0 auto' }}>
             {hiddenCount > 0 && (
               <button
                 onClick={() => setEarlierExpanded(true)}
@@ -897,7 +1085,7 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
               const isApproved = m.approval_status === 'approved';
               const isRejected = m.approval_status === 'rejected';
               return (
-                <div key={m.id || i} style={{ display: 'flex', flexDirection: 'column', alignItems: isPlanner ? 'flex-end' : 'flex-start' }}>
+                <div key={m.id || i} data-deeplink={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isPlanner ? 'flex-end' : 'flex-start' }}>
                   {/* Sprint 60.Q Comms #2 Day-of: sender row scales up for
                       operational legibility. Day-of: 13px medium. Normal: 10px. */}
                   <div style={{
@@ -955,7 +1143,32 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                         {m.subject || m.subject_line}
                       </div>
                     )}
-                    {m.body || m.text || m.message}
+                    {editingId === m.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <textarea autoFocus value={editBody} onChange={e => setEditBody(e.target.value)}
+                          style={{ width: '100%', boxSizing: 'border-box', minHeight: 60, resize: 'vertical', borderRadius: 6, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontFamily: FF, fontSize: 13, padding: 8, outline: 'none' }} />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => { onEditMessage && onEditMessage(m.id, editBody); setEditingId(null); }}
+                            style={{ minHeight: 28, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 11.5, fontWeight: 700, fontFamily: FF, cursor: 'pointer' }}>Save</button>
+                          <button onClick={() => setEditingId(null)} style={{ minHeight: 28, padding: '4px 10px', borderRadius: 6, border: 'none', background: 'none', color: P.textTertiary, fontSize: 11.5, fontFamily: FF, cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>{m.body || m.text || m.message}{m.editedAt && <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}> · edited</span>}</>
+                    )}
+                    {/* Edit (planner messages) / Delete — quiet controls under the bubble */}
+                    {editingId !== m.id && (onEditMessage || onDeleteMessage) && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                        {isPlanner && onEditMessage && (
+                          <button onClick={() => { setEditingId(m.id); setEditBody(m.body || m.text || m.message || ''); }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: 10.5, fontWeight: 600, fontFamily: FF, padding: 0 }}>Edit</button>
+                        )}
+                        {onDeleteMessage && (
+                          <button onClick={() => { if (window.confirm('Delete this message from the thread?')) onDeleteMessage(m.id); }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: 10.5, fontWeight: 600, fontFamily: FF, padding: 0 }}>Delete</button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Approval action row — Sprint 60.Q Comms #3 polish.
                         Eyebrow chip on its own line above the buttons,
@@ -963,7 +1176,9 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                         steel-blue action (green is reserved for the
                         post-recorded state below), Reject keeps the red
                         outline ghost. */}
-                    {isPending && onApprove && (
+                    {/* The pending Approve/Reject now lives in the sticky card pinned
+                        at the top of the pane — suppress the duplicate here. */}
+                    {isPending && onApprove && !pendingApproval && (
                       <div style={{
                         marginTop: 12, paddingTop: 10,
                         borderTop: `1px solid ${P.borderSubtle}`,
@@ -1059,8 +1274,13 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                           || ds === 'email-complained')                  ? P.red
                       : ds === 'email-deferred'                         ? P.amber
                       : P.textTertiary;
-                    const tag =
-                      ds === 'email-delivered'    ? 'Sent via email'
+                    // Demo: with no live email backend, the seeded email-* statuses
+                    // didn't actually send anything — show honest sample language
+                    // instead of "Email accepted by provider".
+                    const isEmailDs = typeof ds === 'string' && ds.startsWith('email-');
+                    const isDemo = !commLive;
+                    const tag = (isDemo && isEmailDs) ? 'Sample message'
+                      : ds === 'email-delivered'    ? 'Sent via email'
                       : ds === 'email-accepted'   ? 'Delivery pending'
                       : ds === 'email-sent'       ? 'Delivery pending'
                       : ds === 'email-failed'     ? 'Delivery failed'
@@ -1070,8 +1290,8 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
                       : ds === 'sent-via-app'     ? 'Saved to thread'
                       : ds === 'local-only'       ? 'Saved to thread'
                       :                              'Saved to thread';
-                    const detail =
-                      ds === 'email-delivered'   ? 'Email delivered.'
+                    const detail = (isDemo && isEmailDs) ? 'Demo data — no message was actually sent.'
+                      : ds === 'email-delivered'   ? 'Email delivered.'
                       : ds === 'email-accepted'  ? 'Email accepted by provider — delivery not yet confirmed.'
                       : ds === 'email-sent'       ? 'Email accepted by provider — delivery not yet confirmed.' // legacy
                       : ds === 'email-failed'     ? 'Email failed — recipient was NOT notified. Manual follow-up needed.'
@@ -1110,7 +1330,7 @@ function ConversationPane({ thread, event, onSend, onApprove, commLive, emailEna
         })()}
       </div>
 
-      <Composer thread={thread} event={event} onSend={onSend} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
+      <Composer thread={thread} event={event} onSend={onSend} onAiDraft={onAiDraft} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
     </div>
   );
 }
@@ -1178,18 +1398,18 @@ function ContextPanel({ thread, event, onRoute }) {
             <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginBottom: 6 }}>{linkedVendor.name}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {vendorEmail && (
-                <a href={`mailto:${vendorEmail}`} style={{ fontSize: 11, color: P.green, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>✉</span> {vendorEmail}
+                <a href={`mailto:${vendorEmail}`} style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>EMAIL</span> {vendorEmail}
                 </a>
               )}
               {vendorPhone && (
-                <a href={`tel:${vendorPhone}`} style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>📞</span> {vendorPhone}
+                <a href={`tel:${vendorPhone}`} style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>CALL</span> {vendorPhone}
                 </a>
               )}
               {vendorWhatsApp && (
-                <a href={`https://wa.me/${vendorWhatsApp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: P.green, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>💬</span> WhatsApp
+                <a href={`https://wa.me/${vendorWhatsApp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>WHATSAPP</span>
                 </a>
               )}
             </div>
@@ -1261,17 +1481,34 @@ function ContextPanel({ thread, event, onRoute }) {
 
 // ── Root export ───────────────────────────────────────────────────────────────
 export default function CommunicationHub({
-  event, isMobile, isDayOf = false,
+  event, client, isMobile, isDayOf = false,
   openId,
   onBack,
   onSend,
   onApprove,   // Fix #3: (messageId, verdict) => void
+  onDeleteMessage, // (messageId) => void
+  onEditMessage,   // (messageId, newBody) => void
+  onAiDraft,   // comms innovation: (thread, onChunk) => Promise<string> | null
+  onUpdateContact, // (thread, {email, phone}) => void — edit vendor/client contact from a thread
   commLive,
   emailEnabled,
   resolveEmail,
   onRouteToTab,  // Sprint 60.Y: (tab, itemId) => void — deep-link ContextPanel rows
 }) {
   const threads = useMemo(() => buildThreads(event), [event]);
+  // Board redesign (2026-06-11): tablet (<1024) uses the single-pane
+  // list↔conversation swap — the 3 crushed columns at 834 were the worst break.
+  // Only ≥1024 gets the multi-pane layout.
+  const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280);
+  useEffect(() => {
+    const h = () => setVw(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  // Board fix #2: the 2-pane only earns its width with real breathing room. At
+  // 1024–1279 it forced a cramped ~300px list + a voided conversation. Raise the
+  // floor to 1280 so tablet-landscape uses the cleaner single-pane swap.
+  const isNarrow = isMobile || vw < 1280;
   const [tab, setTab] = useState('Client');
   const initialSelected = useMemo(() => {
     if (openId) {
@@ -1326,7 +1563,7 @@ export default function CommunicationHub({
           padding: '4px 10px',
         }}
       >
-        ← Command Center
+        ← Overview
       </button>
       {/* Sprint 61.K — steel-blue eyebrow matches modal NO GUESSWORK
           rails + LegacyTabHeader + CommandCenter SectionHeader voice. */}
@@ -1375,11 +1612,17 @@ export default function CommunicationHub({
     </div>
   );
 
-  if (isMobile) {
+  if (isNarrow) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        {workspaceHeader}
+        {/* Board fix #6: the mobile workspaceHeader (← Overview | Messages | ●)
+            duplicated the App-level LegacyTabHeader (‹ Overview / Messages /
+            subtitle) — three wayfinding elements in ~80px. Removed; the shared
+            header already names where you are. Live-status belongs in Settings. */}
         {mobileView === 'list' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+          {/* A1+A2 — full-width needs-reply band above the list on narrow screens. */}
+          <NeedsReplyBand threads={threads} onOpen={t => { setSelected(t); setTab(t.tab); setMobileView('conversation'); }} onJumpTab={setTab} />
           <ThreadList
             threads={threads}
             tab={tab}
@@ -1389,6 +1632,7 @@ export default function CommunicationHub({
             chatStatus={chatStatus}
             isMobile={true}
           />
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <button
@@ -1405,7 +1649,7 @@ export default function CommunicationHub({
             >
               ← All threads
             </button>
-            <ConversationPane thread={selectedLive} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
+            <ConversationPane thread={selectedLive} event={event} client={client} onSend={onSend} onApprove={onApprove} onDeleteMessage={onDeleteMessage} onEditMessage={onEditMessage} onAiDraft={onAiDraft} onUpdateContact={onUpdateContact} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} onRoute={onRouteToTab} />
           </div>
         )}
       </div>
@@ -1414,8 +1658,15 @@ export default function CommunicationHub({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {workspaceHeader}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* Desktop: the shared LegacyTabHeader "Messages" title (App.js) now carries
+          the ‹ Overview back + title, so the in-hub COMMUNICATION header is removed
+          to avoid a double header. */}
+      {/* A1+A2 — full-width needs-reply hero band above both panes (wait-time led). */}
+      <NeedsReplyBand threads={threads} onOpen={t => { setSelected(t); setTab(t.tab); }} onJumpTab={setTab} />
+      {/* Board redesign: 2-pane (thread list + conversation). The standalone
+          240px Context rail was cut — its decision link folded into the
+          conversation header, freeing the conversation to breathe. */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
       <ThreadList
         threads={threads}
         tab={tab}
@@ -1424,8 +1675,7 @@ export default function CommunicationHub({
         onSelect={setSelected}
         chatStatus={chatStatus}
       />
-      <ConversationPane thread={selectedLive} event={event} onSend={onSend} onApprove={onApprove} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} />
-      <ContextPanel thread={selectedLive} event={event} onRoute={onRouteToTab} />
+      <ConversationPane thread={selectedLive} event={event} client={client} onSend={onSend} onApprove={onApprove} onDeleteMessage={onDeleteMessage} onEditMessage={onEditMessage} onAiDraft={onAiDraft} onUpdateContact={onUpdateContact} commLive={commLive} emailEnabled={emailEnabled} resolveEmail={resolveEmail} isDayOf={isDayOf} isMobile={isMobile} onRoute={onRouteToTab} />
       </div>
     </div>
   );

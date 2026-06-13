@@ -46,10 +46,21 @@ const req = async (method, path, body) => {
 
 export const adminApi = {
   whoami:  ()             => req('GET', '/api/admin/whoami'),
+  // S1 — Triage ("who needs me right now")
+  triage:  ()             => req('GET', '/api/admin/triage'),
   audit:   (limit = 100)  => req('GET', `/api/admin/audit?limit=${limit}`),
   // A3 — User Lookup + Support Notes
   users:   (q = '')       => req('GET', `/api/admin/users?q=${encodeURIComponent(q)}`),
   user:    (id)           => req('GET', `/api/admin/users/${encodeURIComponent(id)}`),
   notes:   (id)           => req('GET', `/api/admin/users/${encodeURIComponent(id)}/notes`),
   addNote: (id, body)     => req('POST', `/api/admin/users/${encodeURIComponent(id)}/notes`, { body }),
+  // S2 — Workspace / Event diagnostics
+  workspaces: (q = '')    => req('GET', `/api/admin/workspaces?q=${encodeURIComponent(q)}`),
+  workspace:  (id)        => req('GET', `/api/admin/workspaces/${encodeURIComponent(id)}`),
+  // S3 — Invitation ops
+  invitations:      (scope = 'pending') => req('GET', `/api/admin/invitations?scope=${encodeURIComponent(scope)}`),
+  revokeInvitation: (id)  => req('POST', `/api/admin/invitations/${encodeURIComponent(id)}/revoke`),
+  // A3-err — Error feed
+  errors: (sinceHours = 168, source = '') =>
+    req('GET', `/api/admin/errors?since_hours=${sinceHours}${source ? `&source=${encodeURIComponent(source)}` : ''}`),
 };

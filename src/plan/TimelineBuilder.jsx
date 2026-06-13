@@ -63,7 +63,7 @@ function taskStatus(t, eventDate) {
 function vendorStatus(v) {
   return (v.status||'').toLowerCase() === 'confirmed'
     ? { label: 'CONFIRMED',   bg: P.greenBg, fg: P.green }
-    : { label: 'UNCONFIRMED', bg: P.redBg,   fg: P.red   };
+    : { label: 'UNCONFIRMED', bg: P.amberBg, fg: P.amber }; // Red audit: in-progress vendors are amber, not alarms.
 }
 function vendorBarColor(item) {
   if (!item._vendor) return P.amber;
@@ -350,9 +350,11 @@ export default function TimelineBuilder({
   // Honor openId — pre-select the item with that id if it's in the timeline
   const initialSelected = useMemo(() => {
     if (openId) {
-      // Search across all lanes for an item with matching id
-      for (const lane of lanes) {
-        const found = (lane.items || []).find(it => it.id === openId);
+      // buildLanes returns an OBJECT { milestones, vendorItems, buffers } whose
+      // values are item arrays — iterate the arrays, not the object (the old
+      // `for (const lane of lanes)` threw "lanes is not iterable").
+      for (const items of Object.values(lanes)) {
+        const found = (items || []).find(it => it.id === openId);
         if (found) return found;
       }
     }
@@ -361,8 +363,8 @@ export default function TimelineBuilder({
   const [selected, setSelected] = useState(initialSelected);
   useEffect(() => {
     if (!openId) return;
-    for (const lane of lanes) {
-      const found = (lane.items || []).find(it => it.id === openId);
+    for (const items of Object.values(lanes)) {
+      const found = (items || []).find(it => it.id === openId);
       if (found) { setSelected(found); return; }
     }
   }, [openId, lanes]);
@@ -393,7 +395,7 @@ export default function TimelineBuilder({
             padding: '4px 10px',
           }}
         >
-          ← Command Center
+          ← Overview
         </button>
         <span style={{
           fontSize: 9, fontWeight: T.weight.semibold,

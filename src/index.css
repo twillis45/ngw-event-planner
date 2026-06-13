@@ -13,6 +13,31 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Touch-native contract (PL-2) ─────────────────────────────────────────────
+   This app is mobile-first, but most feedback/affordances were wired through
+   :hover / onMouseEnter — which never fire on touch. Two global rules fix that
+   everywhere at once, without touching 49 individual call sites:
+
+   1. A real PRESSED state on every clickable. `:active` fires on tap as well as
+      click, so touch users finally get confirmation the control registered. */
+button:active,
+[role="button"]:active,
+[data-pressable]:active {
+  filter: brightness(0.88);
+}
+button:disabled:active,
+[aria-disabled="true"]:active {
+  filter: none;
+}
+
+/* 2. REVEAL hover-only affordances on touch devices. Controls that hide at rest
+      and only appear on mouse-hover (e.g. the calendar "+ add" buttons, dimmed
+      to opacity 0.45) are invisible on a phone. On devices with no hover, show
+      them at full strength so the affordance is actually discoverable. */
+@media (hover: none) {
+  [data-addbtn] { opacity: 1 !important; }
+}
+
 /* Studio Matte: native <input type="date"> calendar icon is dark-gray by
    default and invisible on Mid Carbon surfaces. Lift to a steel-tinted
    glyph that reads on dark backgrounds without competing with primary

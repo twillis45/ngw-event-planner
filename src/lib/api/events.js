@@ -12,6 +12,9 @@
 //   ngw-cache-pending    — JSON array of mutations not yet flushed to Supabase
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId } from './studio';
+import { captureError } from '../sentry';
+
+const onLine = () => (typeof navigator !== 'undefined' ? navigator.onLine : null);
 
 const LOCAL_KEY     = 'ngw-events';
 const LAST_SYNC_KEY = 'ngw-cache-last-sync';
@@ -22,7 +25,9 @@ function readLocal() {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
 }
 function writeLocal(events) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(events)); } catch {}
+  // Board (Majors): a swallowed write here = silent data loss (e.g. iOS Private Mode);
+  // the planner still sees "autosaved". Capture it instead of dropping it silently.
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(events)); } catch (e) { captureError(e, { where: 'events.writeLocal', count: events?.length }); }
 }
 function getPending() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch { return []; }
@@ -59,7 +64,8 @@ export async function loadEvents() {
     writeLocal(events);
     localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
     return events;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'events.loadEvents', onLine: onLine() });
     return readLocal();
   }
 }
@@ -79,7 +85,8 @@ export async function saveEvent(event) {
       .from('events')
       .upsert({ id: event.id, studio_id: sid, data: event }, { onConflict: 'id' });
     if (error) throw error;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'events.saveEvent', id: event.id, onLine: onLine(), pending: getPendingCount() });
     enqueueMutation({ type: 'upsert', id: event.id, data: event });
   }
 }
@@ -97,7 +104,8 @@ export async function deleteEvent(eventId) {
       .eq('id', eventId)
       .eq('studio_id', sid);
     if (error) throw error;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'events.deleteEvent', id: eventId, onLine: onLine() });
     enqueueMutation({ type: 'delete', id: eventId });
   }
 }

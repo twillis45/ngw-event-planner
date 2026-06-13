@@ -3,14 +3,16 @@
 // localStorage-first, Supabase-when-available. localStorage key: ngw-clients.
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId } from './studio';
+import { captureError } from '../sentry';
 
 const LOCAL_KEY = 'ngw-clients';
+const onLine = () => (typeof navigator !== 'undefined' ? navigator.onLine : null);
 
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
 }
 function writeLocal(clients) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(clients)); } catch {}
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(clients)); } catch (e) { captureError(e, { where: 'clients.writeLocal', count: clients?.length }); }
 }
 
 /** Load all clients for the current studio. Falls back to localStorage. */
@@ -28,7 +30,8 @@ export async function loadClients() {
     const clients = (data || []).map((row) => ({ ...row.data, id: row.id }));
     writeLocal(clients);
     return clients;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'clients.loadClients', onLine: onLine() });
     return readLocal();
   }
 }
@@ -48,7 +51,7 @@ export async function saveClient(client) {
       .from('clients')
       .upsert({ id: client.id, studio_id: sid, data: client }, { onConflict: 'id' });
     if (error) throw error;
-  } catch { /* local write already succeeded; cloud syncs on next load */ }
+  } catch (e) { captureError(e, { where: 'clients.saveClient', id: client.id, onLine: onLine() }); }
 }
 
 /** Delete a client by id (within the current studio). */
@@ -61,7 +64,7 @@ export async function deleteClient(clientId) {
     const { error } = await supabase
       .from('clients').delete().eq('id', clientId).eq('studio_id', sid);
     if (error) throw error;
-  } catch { /* local delete already done */ }
+  } catch (e) { captureError(e, { where: 'clients.deleteClient', id: clientId, onLine: onLine() }); }
 }
 
 /** Import localStorage clients into the current studio (first-time migration). */

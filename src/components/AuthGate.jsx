@@ -225,11 +225,25 @@ function ThemeFallbackSplash({ onContinue }) {
 //     Supabase env is set, the bypass flag wins.
 const BYPASS_ACTIVE = process.env.REACT_APP_AUTH_BYPASS === 'true';
 
+// Dev-only: lets a bypass session carry an admin/support role so the Admin
+// console (?admin=1) can be QA'd locally. Honored ONLY when bypass is active, so
+// it is dead code in any prod build (prod forces REACT_APP_AUTH_BYPASS=false).
+// Set REACT_APP_BYPASS_ROLE=admin|support, or pass ?devrole=admin on the URL.
+const _bypassRole = (() => {
+  if (!BYPASS_ACTIVE) return undefined;
+  let role = process.env.REACT_APP_BYPASS_ROLE;
+  try {
+    const p = new URLSearchParams(window.location.search).get('devrole');
+    if (p) role = p;
+  } catch (e) { /* no window/search — ignore */ }
+  return role === 'admin' || role === 'support' ? role : undefined;
+})();
+
 const BYPASS_USER = {
   id: 'dev-bypass-user',
   email: 'dev-bypass@local',
   user_metadata: { name: 'Dev Bypass' },
-  app_metadata: { provider: 'dev-bypass' },
+  app_metadata: { provider: 'dev-bypass', ...(_bypassRole ? { role: _bypassRole } : {}) },
 };
 const BYPASS_SESSION = {
   user: BYPASS_USER,
@@ -263,6 +277,19 @@ function BypassBadge() {
   // pill never dominates the product UI. Full pill still shows on tablet/
   // desktop where pixel budget allows. Honesty preserved — it never
   // disappears; the dot still signals "bypass is on" to a watching dev.
+  // Sprint 61 (board / Rafanelli veto): the badge is DISMISSIBLE for the one
+  // real risk it posed — a planner screen-sharing a dev/demo build with a
+  // client. Click hides it for the session (sessionStorage); a fresh tab or
+  // re-entry restores it so the dev signal is never permanently lost. (Prod
+  // strips REACT_APP_AUTH_BYPASS, so this never renders on a client-facing
+  // production view in the first place.)
+  const [hidden, setHidden] = useState(() => {
+    try { return sessionStorage.getItem('ngw-bypass-badge-hidden') === '1'; } catch (e) { return false; }
+  });
+  const dismiss = () => {
+    try { sessionStorage.setItem('ngw-bypass-badge-hidden', '1'); } catch (e) { /* ignore */ }
+    setHidden(true);
+  };
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   );
@@ -274,21 +301,27 @@ function BypassBadge() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  if (hidden) return null;
+
   if (isMobile) {
     return (
       <div
         role="status"
-        aria-label="Auth bypass active — development only"
-        title="Auth bypass · dev only"
+        aria-label="Auth bypass active — development only. Tap to hide."
+        title="Auth bypass · dev only — tap to hide"
+        onClick={dismiss}
         style={{
           position: 'fixed',
           top: 6, right: 6,
           zIndex: 100000,
           width: 8, height: 8,
           borderRadius: '50%',
-          background: '#7a2a2a',
-          border: '1px solid #b06060',
-          pointerEvents: 'none',
+          // Board audit (2026-06-12): dev-bypass is a DEV STATE, not a blocking
+          // user error — recolored off red so it never competes with the
+          // doctrine's reserved alarm color. Steel = structural/neutral.
+          background: '#2e3a44',
+          border: '1px solid #849eb8',
+          cursor: 'pointer',
           opacity: 0.7,
           boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
         }}
@@ -298,14 +331,18 @@ function BypassBadge() {
   return (
     <div
       role="status"
-      aria-label="Auth bypass active — development only"
+      aria-label="Auth bypass active — development only. Click to hide."
+      title="Auth bypass · dev only — click to hide for this session"
+      onClick={dismiss}
       style={{
         position: 'fixed',
         top: 8, right: 8,
         zIndex: 100000,
-        background: '#7a2a2a',
-        color: '#ffe9d4',
-        border: '1px solid #b06060',
+        // Board audit (2026-06-12): steel, not red — dev-bypass is a neutral dev
+        // state, not a blocking alarm. Red stays reserved for genuine blocks.
+        background: '#2a3340',
+        color: '#cdd6e0',
+        border: '1px solid #5a6b7d',
         borderRadius: 6,
         padding: '3px 9px',
         fontSize: 10,
@@ -313,12 +350,13 @@ function BypassBadge() {
         letterSpacing: '0.10em',
         textTransform: 'uppercase',
         fontFamily: "'Inter', system-ui, sans-serif",
-        pointerEvents: 'none',
+        cursor: 'pointer',
         opacity: 0.92,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
       }}
     >
-      Auth bypass · dev only
+      Auth bypass · dev only <span style={{ opacity: 0.6, fontWeight: 600 }}>✕</span>
     </div>
   );
 }

@@ -55,6 +55,31 @@ const ASKS = {
   parking:      'Where will your team park, and is loading-zone access required?',
 };
 
+// The 7 questions a planner should ask EVERY vendor regardless of category —
+// the baseline that ~70% of industry vetting checklists share (The Knot, Zola,
+// Here Comes the Guide, 2024–2026). Appended to every playbook's category script
+// via deriveVendorFollowUpQuestions / follow-up drafts. See
+// docs/ecosystem/VENDOR_TAXONOMY_AND_QUESTION_SCRIPTS_2026.md.
+export const UNIVERSAL_VENDOR_QUESTIONS = [
+  'Are you available on our date — and is ours the only event you are staffing that day?',
+  'How many events of our size and style do you do per year, and can you share references from similar ones?',
+  'Have you worked at our venue before? If not, will you do a site visit?',
+  'Do you carry liability insurance, and will you provide a COI naming the venue as additional insured?',
+  'What is your backup plan if you are sick or have to cancel on the day?',
+  'What exactly is included vs. extra, and what is your overtime rate?',
+  'What are the deposit, full payment schedule, and cancellation/refund policy — and is it all in a written contract?',
+];
+
+// Red-flag warnings surfaced to the planner (NOT questions asked of the vendor).
+// Liability-bearing categories additionally require license/insurance on file.
+export const UNIVERSAL_VENDOR_RED_FLAGS = [
+  'No written contract, or unwilling to put verbal promises in writing.',
+  'No backup gear and no replacement-if-sick plan.',
+  'Cannot produce a COI — or it does not name the venue / does not cover the full setup-through-strike window.',
+  'Vague substitution, deliverable-timeline, or overtime terms.',
+  'Books multiple events the same day with no contingency.',
+];
+
 // ──────────────────────────────────────────────────────────────────────────
 // 1. Venue
 // ──────────────────────────────────────────────────────────────────────────
@@ -99,6 +124,11 @@ const VENUE = {
     'Who is the day-of venue contact and what is their direct number?',
     'What time must cleanup be complete?',
     'Are there noise or curfew rules we should warn vendors about?',
+    'What exactly is included vs. extra (tables, linens, coordinator, suites, parking)?',
+    'Is the preferred-vendor list required or just recommended, and are referral fees built in?',
+    'Are sparklers, cold-spark, open flame, and confetti allowed?',
+    'What is the rain / backup plan, who calls it, and by when?',
+    'What is the remedy if the venue double-books or becomes unavailable, and is event insurance required?',
   ],
   briefSections: ['access_time', 'parking_plan', 'rooms_assigned', 'day_of_contact', 'vendor_rules', 'cleanup'],
   runOfShowDependencies: ['access_time', 'event_window', 'cleanup'],
@@ -159,6 +189,10 @@ const CATERING = {
     ASKS.arrivalTime,
     'Where does your team set up, and what kitchen access do you need?',
     ASKS.cleanup,
+    'What service styles do you offer, and what staff-to-guest ratio comes with each?',
+    'Is the tasting the actual menu, complimentary, and how many can attend?',
+    'Which rentals are included (linens, china, glass, flatware) versus extra?',
+    'Is pricing per head or flat, what is the service charge versus gratuity, and what triggers extra cost?',
   ],
   briefSections: ['final_guest_count', 'final_menu', 'allergy_dietary', 'arrival_time', 'kitchen_access', 'service_style', 'staff_count', 'cleanup_responsibility'],
   runOfShowDependencies: ['arrival_time', 'kitchen_access', 'service_style'],
@@ -219,6 +253,10 @@ const PHOTO_VIDEO = {
     'Do you need a meal during coverage and when?',
     ASKS.parking,
     'Who is your day-of contact for the couple?',
+    'How would you describe your style, and can we see 2-3 full galleries (not just highlights)?',
+    'Will you personally shoot, or an associate — and is a second shooter included?',
+    'How many edited images / film runtime, do we get raw files, and what is the turnaround?',
+    'Do your cameras shoot to dual cards with backup bodies, and what happens if files are lost?',
   ],
   briefSections: ['arrival_time', 'coverage_hours', 'shot_list', 'family_groupings', 'timeline_share', 'parking', 'day_of_contact'],
   runOfShowDependencies: ['arrival_time', 'coverage_hours', 'timeline_share'],
@@ -275,6 +313,10 @@ const DJ_ENT = {
     'How would you like the ceremony and reception cues delivered?',
     'What is your do-not-play / no-go policy?',
     'What power and AV do you need from the venue?',
+    'Can we hear or see you perform live or via unedited video, and will the person we meet be the one performing?',
+    'Can we provide a must-play and do-not-play list, and how do you read the crowd?',
+    'Do you MC, and do you provide microphones for toasts and the officiant?',
+    'Do you bring backup equipment, and is there a substitute performer if you are sick?',
   ],
   briefSections: ['arrival_time', 'setup_time', 'ceremony_timing', 'reception_timing', 'announcement_script', 'song_list', 'power_av'],
   runOfShowDependencies: ['arrival_time', 'setup_time', 'ceremony_timing', 'reception_timing'],
@@ -327,6 +369,10 @@ const FLORIST = {
     'How long do you need to set up, and where?',
     'Who is breaking down the arrangements after the event?',
     'Do you confirm the final count from the planner or the client?',
+    'What is your substitution policy if a bloom is unavailable — equal-or-greater value in the same palette?',
+    'Will you do a mock-up centerpiece, at what cost, and when?',
+    'Can ceremony florals be repurposed to the reception, and is that included or added labor?',
+    'For draping and candles, can you provide fire-rating docs and a COI covering install-through-strike?',
   ],
   briefSections: ['delivery_time', 'setup_window', 'final_count', 'inspiration_share', 'breakdown_plan'],
   runOfShowDependencies: ['delivery_time', 'setup_window'],
@@ -732,11 +778,79 @@ const OTHER = {
 };
 
 // ──────────────────────────────────────────────────────────────────────────
+// Bar / Beverage (liquor, beer, wine, bartending, mobile bar)
+// Distinct from catering: alcohol carries licensing, liability, and staffing
+// rules a food caterer does not. Lumping it into "Catering" hid those.
+// ──────────────────────────────────────────────────────────────────────────
+const BAR_BEVERAGE = {
+  categoryKey: 'bar_beverage',
+  displayName: 'Bar / Beverage',
+  plainDescription:
+    'Bar vendors serve the alcohol — liquor, beer, and wine. Beyond pouring drinks they carry licensing, liability, and staffing requirements that, if missed, can shut a bar (or an event) down.',
+  commonPromises: [
+    { key: 'bar_type',            label: 'Bar type (open / cash / limited / dry)', daysBefore: 30, critical: true,  evidenceRequired: false, ownerHint: 'client'  },
+    { key: 'liquor_license',      label: 'Liquor license / permit',         daysBefore: 21, critical: true,  evidenceRequired: true,  evidenceKind: 'document', ownerHint: 'vendor' },
+    { key: 'liquor_liability',    label: 'Host liquor liability insurance', daysBefore: 21, critical: true,  evidenceRequired: true,  evidenceKind: 'document', ownerHint: 'vendor' },
+    { key: 'alcohol_supply',      label: 'Who supplies the alcohol (vendor vs client + corkage)', daysBefore: 21, critical: true,  evidenceRequired: false, ownerHint: 'planner' },
+    { key: 'final_guest_count',   label: 'Final guest count (drives quantities)', daysBefore: 7, critical: true,  evidenceRequired: true,  evidenceKind: 'count', ownerHint: 'planner' },
+    { key: 'bartender_count',     label: 'Bartender count (≈1 per 50–75 guests)', daysBefore: 7, critical: true,  evidenceRequired: false, ownerHint: 'vendor' },
+    { key: 'beverage_menu',       label: 'Beverage menu (signature cocktails, beer & wine)', daysBefore: 14, critical: false, evidenceRequired: false, ownerHint: 'client' },
+    { key: 'consumption_estimate', label: 'Consumption estimate / quantities', daysBefore: 10, critical: false, evidenceRequired: false, ownerHint: 'vendor' },
+    { key: 'glassware_supply',    label: 'Glassware / ice / mixers — who provides', daysBefore: 10, critical: false, evidenceRequired: false, ownerHint: 'planner' },
+    { key: 'arrival_time',        label: 'Arrival / setup time',            daysBefore: 3,  critical: true,  evidenceRequired: false, ownerHint: 'vendor' },
+    { key: 'last_call',           label: 'Last call / service end time',    daysBefore: 7,  critical: false, evidenceRequired: false, ownerHint: 'venue'  },
+    { key: 'payment_terms',       label: 'Payment terms',                   daysBefore: 30, critical: false, evidenceRequired: true,  evidenceKind: 'contract', ownerHint: 'vendor' },
+  ],
+  requiredConfirmations: ['bar_type', 'liquor_license', 'liquor_liability', 'alcohol_supply', 'final_guest_count', 'bartender_count', 'arrival_time'],
+  evidenceNeeded:        ['liquor_license', 'liquor_liability', 'final_guest_count', 'payment_terms'],
+  typicalDeadlines: [
+    { key: 'liquor_license',    daysBefore: 21 },
+    { key: 'liquor_liability',  daysBefore: 21 },
+    { key: 'final_guest_count', daysBefore: 7 },
+    { key: 'bartender_count',   daysBefore: 7 },
+    { key: 'arrival_time',      daysBefore: 3 },
+  ],
+  dayOfReadinessChecks: [
+    'Liquor license / permit on site',
+    'Liability insurance on file',
+    'Bartender count matches guest count',
+    'Last call time confirmed with venue',
+    'Arrival time matches venue access',
+  ],
+  commonRisks: [
+    'No liquor license / permit on file — the bar (or the whole event) can be shut down.',
+    'Host liquor liability gap leaves the client legally exposed for over-service.',
+    'Understaffed bar creates long lines and slows the whole reception.',
+    'Running out of alcohol mid-event when quantities track a stale guest count.',
+    COMMON_RISK_PRESETS.delayedArrival,
+  ],
+  questionsToAsk: [
+    'Do you carry the liquor license and host liability insurance, or does the venue?',
+    'Who supplies the alcohol — you or the client — and is there a corkage fee?',
+    'How many bartenders for our guest count, and what is your guests-per-bartender ratio?',
+    ASKS.finalCount,
+    ASKS.arrivalTime,
+  ],
+  briefSections: ['bar_type', 'liquor_license', 'liquor_liability', 'alcohol_supply', 'final_guest_count', 'bartender_count', 'beverage_menu', 'arrival_time', 'last_call'],
+  runOfShowDependencies: ['arrival_time', 'last_call'],
+  whyItMattersByField: {
+    bar_type:         'Open vs cash vs limited bar drives the budget, the quantities, and the staffing — settle it first.',
+    liquor_license:   'No permit on file is the fastest way to get a bar shut down on the day.',
+    liquor_liability: 'Host liquor liability protects the client if a guest is over-served — non-negotiable.',
+    alcohol_supply:   'Whether the vendor or client supplies alcohol changes the quote, the corkage, and who restocks.',
+    final_guest_count: 'Quantities and bartender count both key off the final guest count.',
+    bartender_count:  'Too few bartenders and the bar line becomes the event — plan ~1 per 50–75 guests.',
+    last_call:        'Last call must match the venue end time or the room clears with drinks still pouring.',
+  },
+};
+
+// ──────────────────────────────────────────────────────────────────────────
 // Registry + lookup
 // ──────────────────────────────────────────────────────────────────────────
 export const PLAYBOOKS = {
   venue:            VENUE,
   catering:         CATERING,
+  bar_beverage:     BAR_BEVERAGE,
   photo_video:      PHOTO_VIDEO,
   dj_entertainment: DJ_ENT,
   florist_decor:    FLORIST,
@@ -755,17 +869,18 @@ export const PLAYBOOKS = {
 // "Catering", "DJ", etc.) without forcing a migration.
 const CATEGORY_ALIASES = {
   venue:            ['venue', 'venues'],
-  catering:         ['catering', 'caterer', 'caterers', 'food', 'banquet'],
-  photo_video:      ['photo', 'photography', 'photographer', 'videographer', 'video', 'photo/video', 'photo + video', 'photo_video'],
+  catering:         ['catering', 'caterer', 'caterers', 'food', 'banquet', 'coffee cart', 'coffee', 'espresso', 'specialty cart', 'food truck', 'foodtruck', 'food trucks'],
+  bar_beverage:     ['bar / beverage', 'bar_beverage', 'bar', 'bartender', 'bartending', 'beverage', 'beverages', 'alcohol', 'liquor', 'spirits', 'mixology', 'mobile bar', 'cocktail', 'beer', 'wine'],
+  photo_video:      ['photo', 'photography', 'photographer', 'videographer', 'video', 'photo/video', 'photo + video', 'photo_video', 'content creator', 'content', 'social media'],
   dj_entertainment: ['dj', 'entertainment', 'band', 'musician', 'music', 'live music', 'dj/entertainment', 'dj_entertainment'],
   florist_decor:    ['florist', 'florals', 'floral', 'flowers', 'decor', 'florist_decor'],
-  rentals:          ['rentals', 'rental', 'tables & chairs', 'tent'],
+  rentals:          ['rentals', 'rental', 'tables & chairs', 'tent', 'tents', 'structures', 'marquee', 'restroom', 'restrooms', 'restroom trailer', 'photo booth', 'photobooth', 'linens', 'dance floor', 'dancefloor', 'staging', 'stage', 'riser', 'draping', 'drape', 'pipe and drape', 'generator', 'generators', 'genset', 'power'],
   transportation:   ['transportation', 'transport', 'shuttle', 'limo', 'limousine'],
   hair_makeup:      ['hair_makeup', 'hair / makeup', 'hair/makeup', 'hair', 'makeup', 'beauty', 'hmu'],
   officiant:        ['officiant', 'celebrant', 'minister', 'pastor'],
   av_production:    ['av', 'av production', 'av/production', 'production', 'sound', 'lighting', 'av_production'],
   security:         ['security', 'guards'],
-  staffing:         ['staffing', 'servers', 'valet', 'attendants', 'coordinator', 'coordinators'],
+  staffing:         ['staffing', 'staff', 'servers', 'server', 'waitstaff', 'valet', 'attendants', 'coordinator', 'coordinators', 'day-of coordinator', 'day of coordinator', 'planner', 'childcare', 'child care', 'nanny', 'babysitting'],
   other:            ['other', 'misc', 'miscellaneous'],
 };
 
@@ -775,10 +890,19 @@ const CATEGORY_ALIASES = {
  */
 export function normalizeCategory(input) {
   if (!input || typeof input !== 'string') return 'other';
-  const s = input.trim().toLowerCase();
+  // Normalize accents ("Décor" → "decor") and punctuation → spaces, so matching
+  // is robust. Single-word aliases match on WORD BOUNDARY (not substring) — this
+  // fixes false positives like "Favors"/"engraving" hitting "av" → AV/Production.
+  const s = input.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (PLAYBOOKS[s]) return s;
+  const norm = s.replace(/[^a-z0-9]+/g, ' ').trim();
+  const words = new Set(norm.split(' '));
   for (const [key, aliases] of Object.entries(CATEGORY_ALIASES)) {
-    if (aliases.some(a => a === s || s.includes(a))) return key;
+    for (const a of aliases) {
+      if (norm === a) return key;
+      if (a.includes(' ')) { if (norm.includes(a)) return key; }   // multi-word phrase → substring
+      else if (words.has(a)) return key;                            // single word → exact word match
+    }
   }
   return 'other';
 }

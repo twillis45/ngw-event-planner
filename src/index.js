@@ -23,12 +23,16 @@ try { document.documentElement.style.background = carbonBody; document.body.styl
 const params = new URLSearchParams(window.location.search);
 const sliceParam = params.get('slice');
 const observeParam = params.get('observe');
+// Sprint 60.Y (board: Ops) — the proving-ground slices ship synthetic/demo data
+// and must not be reachable in production. Dev-only. (orchestration stays
+// reachable: it's the alpha observation surface used for tester distribution.)
+const devSlices = process.env.NODE_ENV !== 'production';
 
 const SliceHarness =
-  sliceParam === 'vendor'           ? React.lazy(() => import('./slices/VendorEscalationSlice'))
-  : sliceParam === 'desktop-density' ? React.lazy(() => import('./slices/DesktopDensitySlice'))
-  : sliceParam === 'debrief'         ? React.lazy(() => import('./slices/DebriefSlice'))
-  : sliceParam === 'event-day'       ? React.lazy(() => import('./slices/EventDaySlice'))
+  (devSlices && sliceParam === 'vendor')           ? React.lazy(() => import('./slices/VendorEscalationSlice'))
+  : (devSlices && sliceParam === 'desktop-density') ? React.lazy(() => import('./slices/DesktopDensitySlice'))
+  : (devSlices && sliceParam === 'debrief')         ? React.lazy(() => import('./slices/DebriefSlice'))
+  : (devSlices && sliceParam === 'event-day')       ? React.lazy(() => import('./slices/EventDaySlice'))
   : sliceParam === 'orchestration'   ? React.lazy(() => import('./slices/OrchestrationSlice'))
   : null;
 

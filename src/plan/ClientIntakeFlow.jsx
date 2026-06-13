@@ -15,9 +15,11 @@
 
 import { useState } from 'react';
 import { color, space, type, radius } from '../design/tokens';
+import US_CITIES from '../lib/usCities';
 // Sprint 61.G — shared budget hint
 import BudgetEstimateHint from '../lib/budgetEstimator/BudgetEstimateHint';
 import { breakdownByCategory, estimateTotalRange } from '../lib/budgetEstimator';
+import { proposedVendorCategories } from '../lib/vendorCategoriesByType';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -57,7 +59,7 @@ function FieldLabel({ children }) {
   );
 }
 
-function TextInput({ value, onChange, placeholder, multiline, rows }) {
+function TextInput({ value, onChange, placeholder, multiline, rows, date, time }) {
   const base = {
     width: '100%', boxSizing: 'border-box',
     background: P.card, border: `1px solid ${P.borderSubtle}`,
@@ -79,6 +81,20 @@ function TextInput({ value, onChange, placeholder, multiline, rows }) {
       />
     );
   }
+  // Dates and times are NEVER free text — native pickers only (open on first tap).
+  if (date || time) {
+    return (
+      <input
+        type={date ? 'date' : 'time'}
+        inputMode="numeric"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        onFocus={e => { try { e.target.showPicker?.(); } catch {} }}
+        onClick={e => { try { e.target.showPicker?.(); } catch {} }}
+        style={{ ...base, height: 36, display: 'block' }}
+      />
+    );
+  }
   return (
     <input
       type="text"
@@ -87,6 +103,99 @@ function TextInput({ value, onChange, placeholder, multiline, rows }) {
       placeholder={placeholder}
       style={{ ...base, height: 36, display: 'block' }}
     />
+  );
+}
+
+// Event type is multi-select — a real event can be more than one thing
+// (Wedding + Reception, Birthday + Corporate). First pick is the primary type.
+const EVENT_TYPE_OPTIONS = [
+  'Wedding', 'Corporate Event', 'Birthday Party', 'Baby Shower', 'Bridal Shower',
+  'Quinceañera', 'Sweet 16', 'Holiday Party', 'Graduation Party', 'Gala / Fundraiser',
+  'Conference / Summit', 'Other',
+];
+function ChipMultiSelect({ options, value, onChange }) {
+  const selected = Array.isArray(value) ? value : (value ? [value] : []);
+  const toggle = (opt) => onChange(selected.includes(opt) ? selected.filter(x => x !== opt) : [...selected, opt]);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {options.map(opt => {
+        const on = selected.includes(opt);
+        return (
+          <button type="button" key={opt} onClick={() => toggle(opt)}
+            style={{
+              padding: '8px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: on ? 700 : 500,
+              cursor: 'pointer', fontFamily: FF, minHeight: 36,
+              border: `1px solid ${on ? P.textSecondary : P.borderSubtle}`,
+              background: on ? P.textSecondary + '24' : 'transparent',
+              color: on ? P.textPrimary : P.textSecondary,
+            }}>
+            {on ? '✓ ' : ''}{opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Single-select dropdown — for fields with a known option set (never free text).
+function Select({ value, onChange, options, placeholder }) {
+  return (
+    <select value={value || ''} onChange={e => onChange(e.target.value)}
+      style={{
+        width: '100%', boxSizing: 'border-box', background: P.card,
+        border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
+        padding: `${space[3]}px ${space[4]}px`, fontSize: 13,
+        color: value ? P.textPrimary : P.textTertiary, fontFamily: FF,
+        outline: 'none', height: 36, display: 'block', cursor: 'pointer',
+      }}>
+      <option value="">{placeholder || 'Select…'}</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+// City field connected to the city/state/ZIP database — type a city, or type a
+// 5-digit ZIP and it resolves to "City, ST" via the free, key-less zippopotam.us
+// API (no Google key required). Shared control so intake + event creation match.
+function CityZipInput({ value, onChange, placeholder }) {
+  const [note, setNote] = useState('');
+  // 240 common cities show instantly; the full ~29,700-city list lazy-loads on
+  // first focus (separate chunk — never bloats the main bundle).
+  const [cities, setCities] = useState(US_CITIES);
+  const loadFull = () => {
+    if (cities.length > 1000) return;
+    import('../lib/usCitiesFull').then(m => setCities(m.default || m)).catch(() => {});
+  };
+  const base = {
+    width: '100%', boxSizing: 'border-box', background: P.card,
+    border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
+    padding: `${space[3]}px ${space[4]}px`, fontSize: 13,
+    color: value ? P.textPrimary : P.textTertiary, fontFamily: FF,
+    outline: 'none', height: 36, display: 'block',
+  };
+  const resolveZip = async (raw) => {
+    const zip = (raw || '').trim();
+    if (!/^\d{5}$/.test(zip)) return;
+    setNote('Looking up ZIP…');
+    try {
+      const r = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!r.ok) { setNote('ZIP not found — type a city instead.'); return; }
+      const d = await r.json();
+      const place = d.places && d.places[0];
+      if (place) { onChange(`${place['place name']}, ${place['state abbreviation']}`); setNote(''); }
+      else setNote('');
+    } catch (e) { setNote('Could not look up that ZIP.'); }
+  };
+  return (
+    <div>
+      <input type="text" value={value || ''} list="ngw-intake-cities" onFocus={loadFull}
+        onChange={e => { onChange(e.target.value); if (note) setNote(''); }}
+        onBlur={e => resolveZip(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); resolveZip(e.target.value); } }}
+        placeholder={placeholder || 'City, ST — or type a ZIP'} style={base} />
+      <datalist id="ngw-intake-cities">{cities.map(c => <option key={c} value={c} />)}</datalist>
+      {note && <div style={{ fontSize: 11, color: P.textTertiary, marginTop: 4 }}>{note}</div>}
+    </div>
   );
 }
 
@@ -130,16 +239,20 @@ function Step1({ data, onChange }) {
         <Field label="EVENT NAME">
           <TextInput value={data.name} onChange={v => onChange('name', v)} placeholder="e.g. Sarah & Todd's Wedding" />
         </Field>
-        <Field label="EVENT TYPE">
-          <TextInput value={data.type} onChange={v => onChange('type', v)} placeholder="e.g. Wedding" />
-        </Field>
         <Field label="EVENT DATE">
-          <TextInput value={data.date} onChange={v => onChange('date', v)} placeholder="YYYY-MM-DD" />
+          <TextInput date value={data.date} onChange={v => onChange('date', v)} />
         </Field>
         <Field label="CEREMONY TIME">
-          <TextInput value={data.ceremony_time} onChange={v => onChange('ceremony_time', v)} placeholder="e.g. 4:00 PM" />
+          <TextInput time value={data.ceremony_time} onChange={v => onChange('ceremony_time', v)} />
         </Field>
       </TwoCol>
+      <Field label="EVENT TYPE — pick one or more">
+        <ChipMultiSelect
+          options={EVENT_TYPE_OPTIONS}
+          value={data.eventTypes || (data.type ? [data.type] : [])}
+          onChange={next => { onChange('eventTypes', next); onChange('type', next[0] || ''); }}
+        />
+      </Field>
 
       <SectionHeading>VENUE</SectionHeading>
       <TwoCol>
@@ -147,13 +260,13 @@ function Step1({ data, onChange }) {
           <TextInput value={data.venue} onChange={v => onChange('venue', v)} placeholder="e.g. Bluebell Estate" />
         </Field>
         <Field label="VENUE CITY">
-          <TextInput value={data.venue_city} onChange={v => onChange('venue_city', v)} placeholder="e.g. Sonoma, CA" />
+          <CityZipInput value={data.venue_city} onChange={v => onChange('venue_city', v)} placeholder="City, ST — or type a ZIP" />
         </Field>
         <Field label="RECEPTION VENUE">
           <TextInput value={data.reception_venue} onChange={v => onChange('reception_venue', v)} placeholder="Same as ceremony?" />
         </Field>
         <Field label="COCKTAIL HOUR">
-          <TextInput value={data.cocktail_time} onChange={v => onChange('cocktail_time', v)} placeholder="e.g. 5:30 PM" />
+          <TextInput time value={data.cocktail_time} onChange={v => onChange('cocktail_time', v)} />
         </Field>
       </TwoCol>
 
@@ -196,7 +309,7 @@ function Step2({ data, onChange }) {
         </Field>
       </TwoCol>
       <Field label="PREFERRED CONTACT METHOD">
-        <TextInput value={c1.preferredContact} onChange={v => updateClient(0, 'preferredContact', v)} placeholder="e.g. Text, Email, Phone" />
+        <Select value={c1.preferredContact} onChange={v => updateClient(0, 'preferredContact', v)} options={['Text', 'Email', 'Phone', 'Either']} placeholder="Choose…" />
       </Field>
 
       <SectionHeading>SECONDARY CLIENT</SectionHeading>
@@ -221,7 +334,7 @@ function Step2({ data, onChange }) {
       </Field>
       <TwoCol>
         <Field label="CITY">
-          <TextInput value={data.address_city} onChange={v => onChange('address_city', v)} placeholder="City" />
+          <CityZipInput value={data.address_city} onChange={v => onChange('address_city', v)} placeholder="City, ST — or type a ZIP" />
         </Field>
         <Field label="STATE / ZIP">
           <TextInput value={data.address_state_zip} onChange={v => onChange('address_state_zip', v)} placeholder="CA 94102" />
@@ -260,7 +373,7 @@ function Step3({ data, onChange }) {
       <SectionHeading>RSVP MANAGEMENT</SectionHeading>
       <TwoCol>
         <Field label="RSVP DEADLINE">
-          <TextInput value={data.rsvp_deadline} onChange={v => onChange('rsvp_deadline', v)} placeholder="YYYY-MM-DD" />
+          <TextInput date value={data.rsvp_deadline} onChange={v => onChange('rsvp_deadline', v)} />
         </Field>
         <Field label="RSVP METHOD">
           <TextInput value={data.rsvp_method} onChange={v => onChange('rsvp_method', v)} placeholder="e.g. Online form, Mail" />
@@ -525,11 +638,11 @@ function Step5({ data, onChange }) {
 function Step6({ data, onChange }) {
   const vendors = data.vendors || [];
 
-  const VENDOR_CATEGORIES = [
-    'Photography', 'Videography', 'Catering', 'Florals',
-    'Music / DJ', 'Band', 'Hair & Makeup', 'Transportation',
-    'Cake / Desserts', 'Officiant', 'Rentals', 'Lighting',
-  ];
+  // Proposed "still needed" categories now come from the market-research-grounded,
+  // on-trend roster keyed to the event type (was a hardcoded wedding list that showed
+  // Officiant/Hair/Cake even for a corporate conference). Falls back to type-aware
+  // budget buckets for any uncurated type.
+  const VENDOR_CATEGORIES = proposedVendorCategories(data.type);
 
   return (
     <div>
@@ -731,7 +844,7 @@ function StepSidebar({ current, onStep, completedSteps }) {
               display: 'flex', alignItems: 'center', gap: 12,
               width: '100%', height: 38, padding: '0 20px',
               border: 'none', cursor: 'pointer', textAlign: 'left',
-              background: isActive ? P.borderSubtle : 'transparent',
+              background: isActive ? 'rgba(110,135,148,0.18)' : 'transparent',
               fontFamily: FF, fontSize: 12,
               fontWeight: isActive ? type.weight.semibold : type.weight.regular,
               color: isActive ? P.textPrimary : P.textSecondary,
@@ -767,7 +880,7 @@ function StepSidebar({ current, onStep, completedSteps }) {
 //   - Standalone overlay (onClose provided, no onBack) — legacy mode used by
 //     PlanEventDashboard (retired) and any future deep-link entry point.
 //   - Embedded tab (onBack provided) — renders inside the EventPlanner shell
-//     with the standard "← Command Center · Client Intake" workspace header,
+//     with the standard "← Overview · Client Intake" workspace header,
 //     matching the Sprint 49 promotion pattern used by D / E / F / G / H.
 //
 // When `onPersist` is provided the draft persists to host event state on
@@ -825,43 +938,38 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
     7: <Step7 data={draft} />,
   };
 
-  // Workspace header — matches the Sprint 49 promoted-tab pattern.
+  // Workspace header — board title rework (2026-06-11): no flush band; quiet
+  // steel up-crumb, then the page name as a crisp ~22px sentence-case title
+  // (matches LegacyTabHeader across every tab). Save Draft floats top-right.
   const workspaceHeader = embedded && (
     <div style={{
-      height: 42, flexShrink: 0,
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '0 16px',
-      background: P.base,
-      borderBottom: `1px solid ${P.borderSubtle}`,
+      flexShrink: 0, padding: '12px 16px 14px',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
     }}>
-      <button
-        onClick={onBack}
-        style={{
-          background: 'transparent', border: `1px solid ${P.borderSubtle}`,
-          borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
-          color: P.textSecondary, fontFamily: FF,
-          padding: '4px 10px',
-        }}
-      >
-        ← Command Center
-      </button>
-      <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
-        letterSpacing: '0.16em', textTransform: 'uppercase',
-        color: P.textTertiary, fontFamily: FF,
-      }}>
-        Client Intake
-      </span>
-      <div style={{ flex: 1 }} />
+      <div>
+        <button
+          onClick={onBack}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 12, fontWeight: type.weight.semibold, letterSpacing: '0.01em',
+            color: P.textSecondary, padding: 0, marginBottom: 6,
+            fontFamily: FF, display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          ‹ Overview
+        </button>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15, color: P.textPrimary, fontFamily: FF }}>
+          Client Intake
+        </div>
+      </div>
       <button
         onClick={handleSaveDraft}
         style={{
-          padding: '4px 12px', borderRadius: radius.sm,
+          padding: '7px 14px', borderRadius: radius.sm, minHeight: 34,
           border: `1px solid ${P.borderSubtle}`,
           background: 'transparent', cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
-          color: P.textSecondary, fontFamily: FF,
+          fontSize: 12, fontWeight: type.weight.medium,
+          color: P.textSecondary, fontFamily: FF, flexShrink: 0,
         }}
       >
         Save Draft
@@ -925,8 +1033,10 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {showSidebar && <StepSidebar current={step} onStep={setStep} completedSteps={completedSteps} />}
 
-        {/* Step content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? `${space[6]}px ${space[5]}px` : `${space[7]}px ${space[9]}px` }}>
+        {/* Step content — capped to reading measure (~760) and left-aligned
+            against the steps rail. A questionnaire smeared to full Data width
+            hurts legibility; the empty margin to the right is correct, not wasted. */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? `${space[6]}px ${space[5]}px` : `${space[7]}px ${space[9]}px`, maxWidth: isMobile ? 'none' : 840, boxSizing: 'border-box' }}>
           {/* Sprint 60.W — Intake Confidence card. Tells the planner whether
               this event is ready to start planning, what's missing, and one
               concrete next action. Lives above the step body so it's always
@@ -952,7 +1062,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             } else if (!has.contact) {
               state = { label: 'Missing client contact', color: amberIC, missing: ['Email or phone'], explain: 'Add email or phone before sending approvals or reminders.', nextAction: 'Go to Client Contact', nextStep: 2 };
             } else if (!has.venue) {
-              state = { label: 'Venue unknown', color: amberIC, missing: ['Venue'], explain: 'A venue anchors arrival times and the run of show. You can plan without one for a while.', nextAction: 'Back to Event Basics', nextStep: 1 };
+              state = { label: 'Venue unknown', color: amberIC, missing: ['Venue'], explain: 'A venue anchors arrival times and the day-of schedule. You can plan without one for a while.', nextAction: 'Back to Event Basics', nextStep: 1 };
             } else if (!has.guests) {
               state = { label: 'Guest count missing', color: amberIC, missing: ['Guest estimate'], explain: 'Caterer, seating, and budget estimates all depend on this. A rough number is enough.', nextAction: 'Go to Guest List', nextStep: 3 };
             } else if (!has.budget) {

@@ -27,7 +27,7 @@ export const PROMISE_STATUS_LABEL = Object.freeze({
   not_requested:   'Not requested',
   requested:       'Requested',
   promised:        'Promised',
-  evidence_needed: 'Evidence needed',
+  evidence_needed: 'Proof needed',
   confirmed:       'Confirmed',
   due_soon:        'Due soon',
   overdue:         'Overdue',

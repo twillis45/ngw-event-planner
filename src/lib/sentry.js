@@ -20,4 +20,14 @@ export function initSentry() {
   });
 }
 
+// Sprint 60.Y (board: Majors) — explicit capture for otherwise-swallowed catches,
+// so support can answer "why didn't it save?". Tags context (where, online state,
+// queue depth). No-op (console only) when no DSN. Telemetry must never throw.
+export function captureError(err, context = {}) {
+  try {
+    if (DSN) Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { extra: context });
+    if (process.env.NODE_ENV !== 'production') console.warn('[captureError]', context.where || '', err, context);
+  } catch (e) { /* never throw from telemetry */ }
+}
+
 export { Sentry };

@@ -5,11 +5,14 @@
 // setup is preserved and migrates to the cloud on first save.
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { currentStudioId } from './studio';
+import { captureError } from '../sentry';
 
 const LOCAL_KEY = 'ngw-profile';
+const onLine = () => (typeof navigator !== 'undefined' ? navigator.onLine : null);
 
 function writeLocal(profile) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(profile)); } catch {}
+  // Board (Majors): a swallowed write here = the planner's studio setup silently lost.
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(profile)); } catch (e) { captureError(e, { where: 'profile.writeLocal' }); }
 }
 
 /**
@@ -30,7 +33,8 @@ export async function loadProfile() {
     if (error) throw error;
     if (data?.data) { writeLocal(data.data); return data.data; }
     return null;
-  } catch {
+  } catch (e) {
+    captureError(e, { where: 'profile.loadProfile', onLine: onLine() });
     return null;
   }
 }
@@ -46,5 +50,5 @@ export async function saveProfile(profile) {
       .from('studio_settings')
       .upsert({ studio_id: sid, data: profile }, { onConflict: 'studio_id' });
     if (error) throw error;
-  } catch { /* local write already succeeded; cloud syncs on next save */ }
+  } catch (e) { captureError(e, { where: 'profile.saveProfile', onLine: onLine() }); }
 }

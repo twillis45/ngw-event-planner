@@ -9,7 +9,7 @@
 //   - save_to_thread  (allowed when shared message history is connected)
 //   - send_via_email  (allowed only when commLive && emailEnabled)
 
-import { getVendorPlaybook } from './playbooks.js';
+import { getVendorPlaybook, UNIVERSAL_VENDOR_QUESTIONS } from './playbooks.js';
 
 /**
  * @typedef FollowUpDraft
@@ -84,7 +84,7 @@ export function generateVendorFollowUpDraft(vendor, event, promises = [], opts =
     blockedActions,
     missingItems: missingKeys,
     reason,
-    suggestedQuestions: playbook.questionsToAsk,
+    suggestedQuestions: [...(playbook.questionsToAsk || []), ...UNIVERSAL_VENDOR_QUESTIONS.filter(q => !(playbook.questionsToAsk || []).includes(q))],
   };
 }
 

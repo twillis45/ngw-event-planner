@@ -251,7 +251,7 @@ export default function ChecklistGenerator({
     return (
       <button
         onClick={() => setOwnerFilter(active ? null : owner)}
-        style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: active ? P.borderSubtle : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, color: active ? P.textPrimary : P.textSecondary, marginBottom: sp[1], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: active ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, color: active ? P.textPrimary : P.textSecondary, marginBottom: sp[1], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
       >{owner}</button>
     );
   };
@@ -275,7 +275,7 @@ export default function ChecklistGenerator({
           padding: '4px 10px',
         }}
       >
-        ← Command Center
+        ← Overview
       </button>
       <span style={{
         fontSize: 9, fontWeight: type.weight.semibold,
@@ -309,7 +309,7 @@ export default function ChecklistGenerator({
                 <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Filter by Owner</span>
               </div>
               <div style={{ padding: `0 ${sp[4]}px ${sp[5]}px` }}>
-                <button onClick={() => setOwnerFilter(null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: !ownerFilter ? P.borderSubtle : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, fontWeight: type.weight.medium, color: !ownerFilter ? P.textPrimary : P.textSecondary, marginBottom: sp[1] }}>All</button>
+                <button onClick={() => setOwnerFilter(null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: !ownerFilter ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, fontWeight: type.weight.medium, color: !ownerFilter ? P.textPrimary : P.textSecondary, marginBottom: sp[1] }}>All</button>
                 {owners.map(o => <OwnerBtn key={o} owner={o} />)}
               </div>
             </>

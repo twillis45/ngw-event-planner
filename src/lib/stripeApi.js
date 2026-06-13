@@ -50,6 +50,35 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
 };
 
 /**
+ * Create a Stripe Checkout Session in SUBSCRIPTION mode for the planner's own plan
+ * (self-serve billing). The backend maps `plan` → the recurring Stripe price and
+ * returns a hosted checkout URL. Throws 'billing-not-configured' when no backend is
+ * set, so the caller can degrade HONESTLY — it must never silently grant a plan.
+ * Returns { url, session_id }.
+ */
+export const createSubscriptionSession = async ({ plan, email, studioId }) => {
+  if (!BASE) throw new Error('billing-not-configured');
+  const origin   = window.location.origin;
+  const pathname = window.location.pathname;
+  const res = await fetch(`${BASE}/api/stripe/create-subscription-session`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      plan,
+      email:     email    || '',
+      studio_id: studioId || '',
+      success_url: `${origin}${pathname}?plan_upgraded=1&plan=${encodeURIComponent(plan)}`,
+      cancel_url:  `${origin}${pathname}?plan_cancel=1`,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Subscription API error ${res.status}`);
+  }
+  return res.json(); // { url, session_id }
+};
+
+/**
  * Verify payment status for a Checkout Session.
  * Returns { payment_status, fee_id, amount_total }.
  * payment_status: "paid" | "unpaid" | "no_payment_required"

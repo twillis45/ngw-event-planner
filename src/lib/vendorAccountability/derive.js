@@ -3,7 +3,7 @@
 // state and return: expected promises, accountability tier, missing proof,
 // follow-up questions, brief readiness, conflicts, next action.
 
-import { getVendorPlaybook, normalizeCategory } from './playbooks.js';
+import { getVendorPlaybook, normalizeCategory, UNIVERSAL_VENDOR_QUESTIONS } from './playbooks.js';
 import { makePromise, PROMISE_STATUS_SEVERITY } from './promiseModel.js';
 
 // Internal accountability tier (machine-internal). UI maps to display labels.
@@ -194,7 +194,10 @@ export function deriveVendorFollowUpQuestions(vendor, event, promises = []) {
       critical: pp.critical,
       why: playbook.whyItMattersByField[pp.key] || null,
     }));
-  return { items, suggestedQuestions: fromPlaybook };
+  // Category script first (most relevant), then the universal baseline every
+  // vendor should be asked — de-duplicated.
+  const suggestedQuestions = [...fromPlaybook, ...UNIVERSAL_VENDOR_QUESTIONS.filter(q => !fromPlaybook.includes(q))];
+  return { items, suggestedQuestions };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -307,7 +310,22 @@ export function inferPromisesFromVendor(vendor, event) {
   const SCOPE_CONFIRMED_STATUSES = new Set(['Confirmed', 'Contracted', 'Deposit Paid']);
   const scopeConfirmedByStatus = vendor.status && SCOPE_CONFIRMED_STATUSES.has(vendor.status);
 
+  // Planner override (2026-06-12): `vendor.promiseEvidence` is a studio-scoped
+  // map { promiseKey: 'attached' } the planner sets via "Mark proof on file".
+  // It's an honest manual assertion ("I have it"), NOT a faked upload — and it
+  // wins over the heuristics so the accountability tracker can be CLEARED.
+  const overrides = vendor.promiseEvidence || {};
+
   return expected.map(p => {
+    const ov = overrides[p.promiseKey];
+    if (ov) {
+      return {
+        ...p,
+        status: 'confirmed',
+        evidenceStatus: p.evidenceRequired ? ov : 'not_required',
+        sourceType: 'planner',
+      };
+    }
     const h = heuristics[p.promiseKey];
     if (h && h.whenTruthy) {
       return {

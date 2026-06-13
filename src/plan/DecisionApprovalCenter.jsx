@@ -8,7 +8,7 @@
 // Mobile: compact card list with inline approve / revision / reject
 // Status via color + text only. No emoji. No icons.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { color, space, type, radius } from '../design/tokens';
 
 // Sprint 49: Phase offsets mirror App.js — drives "URGENT" classification for
@@ -22,6 +22,8 @@ const PHASE_OFFSET = {
 function isOverdue(task, eventDate) {
   if (!eventDate || !(task.week in PHASE_OFFSET)) return false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  // Decision "Extend": a snoozed task drops off the board until the snooze passes.
+  if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > today) return false;
   const due = new Date(eventDate + 'T00:00:00');
   due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
   return due < today && !task.done;
@@ -56,7 +58,7 @@ const STATUS = {
   AWAITING:  { color: P.amber },
   OPEN:      { color: P.green },
   APPROVED:  { color: P.green },
-  REJECTED:  { color: P.red },
+  REJECTED:  { color: P.textTertiary }, // Red audit: rejected is a RESOLVED outcome, not a blocker — neutral, not red.
 };
 function pillColor(label) {
   return (STATUS[label] || STATUS.PENDING).color;
@@ -185,7 +187,7 @@ function FilterTabs({ active, counts, onChange }) {
             style={{
               padding: '3px 10px', borderRadius: radius.sm,
               border: isActive ? `1px solid ${P.borderSubtle}` : '1px solid transparent',
-              background: isActive ? P.borderSubtle : 'transparent',
+              background: isActive ? 'rgba(110,135,148,0.18)' : 'transparent',
               cursor: 'pointer', fontFamily: FF, fontSize: 11,
               fontWeight: isActive ? type.weight.semibold : type.weight.regular,
               color: isActive ? P.textPrimary : P.textSecondary,
@@ -231,6 +233,7 @@ function ItemList({ items, filter, selected, onSelect }) {
           return (
             <button
               key={item.id}
+              data-deeplink={item.id}
               onClick={() => onSelect(item)}
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4,
@@ -238,7 +241,7 @@ function ItemList({ items, filter, selected, onSelect }) {
                 borderBottom: `1px solid ${P.borderSubtle}`,
                 border: 'none',
                 borderLeft: isSelected ? `3px solid ${P.green}` : '3px solid transparent',
-                background: isSelected ? P.borderSubtle : 'transparent',
+                background: isSelected ? 'rgba(110,135,148,0.18)' : 'transparent',
                 cursor: 'pointer', textAlign: 'left',
               }}
             >
@@ -323,9 +326,33 @@ function ImpactedTaskRow({ task }) {
   );
 }
 
-function ItemDetail({ item, onAction }) {
+function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassign, reassignOptions = [] }) {
   const [tab, setTab] = useState('Detail');
   const alreadyClosed = ['APPROVED', 'REJECTED'].includes(item.status);
+
+  // Compose-in-place (board 2026-06-12): "Message about this" used to teleport
+  // to the generic Messages inbox with zero context. Now it opens an inline
+  // composer ON the decision, pre-filled "Re: {title}", sends + logs to the
+  // client thread, and never leaves the tab.
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [sentNote, setSentNote] = useState(false);
+  // Reassign-in-place (board 2026-06-12): the raw window.prompt is replaced by a
+  // real dropdown of owners.
+  const [reassigning, setReassigning] = useState(false);
+  // Reset transient compose/reassign state whenever the selected item changes.
+  useEffect(() => { setComposing(false); setDraft(''); setSentNote(false); setReassigning(false); }, [item.id]);
+
+  const openCompose = () => {
+    if (onSendMessage) { setSentNote(false); setDraft(`Re: ${item.title}\n\n`); setComposing(true); }
+    else onAction(item, 'message'); // fallback to legacy route if host didn't wire it
+  };
+  const sendCompose = () => {
+    const body = draft.trim();
+    if (!body || !onSendMessage) return;
+    onSendMessage(item, body);
+    setComposing(false); setDraft(''); setSentNote(true);
+  };
 
   return (
     <div style={{
@@ -426,7 +453,16 @@ function ItemDetail({ item, onAction }) {
                 {item.timelineImpact && (
                   <DetailRow
                     label="Timeline impact"
-                    value={`Must decide before ${fmtDate(item.timelineImpact)}`}
+                    value={(() => {
+                      // timelineImpact is mixed: a real deadline date OR an already-
+                      // formatted string ("Overdue 5d · 6 Months Out", "deadline June 15").
+                      // Only prefix "Must decide before" + format when it's a parseable
+                      // date — otherwise show the string as-is (no "Invalid Date").
+                      const d = new Date(item.timelineImpact);
+                      return isNaN(d.getTime())
+                        ? item.timelineImpact
+                        : `Must decide before ${fmtDate(item.timelineImpact)}`;
+                    })()}
                     valueColor={P.red}
                   />
                 )}
@@ -437,7 +473,7 @@ function ItemDetail({ item, onAction }) {
                     : 'Awaiting planner review'}
                   valueColor={
                     item.approvalStatus === 'approved' ? P.green
-                    : item.approvalStatus === 'rejected' ? P.red
+                    : item.approvalStatus === 'rejected' ? P.textTertiary
                     : P.amber
                   }
                 />
@@ -516,9 +552,10 @@ function ItemDetail({ item, onAction }) {
               {item.type === 'DECISION' ? 'Resolve Decision' : 'Your Decision'}
             </div>
 
-            {/* Approve */}
+            {/* Primary — close it out (green). For a DECISION this resolves the
+                underlying task; for an APPROVAL it approves. */}
             <button
-              onClick={() => onAction(item, 'approve')}
+              onClick={() => onAction(item, item.type === 'DECISION' ? 'close' : 'approve')}
               style={{
                 display: 'block', width: '100%', padding: `${space[4]}px`,
                 marginBottom: 10,
@@ -527,52 +564,173 @@ function ItemDetail({ item, onAction }) {
                 color: '#fff', fontFamily: FF, textAlign: 'center',
               }}
             >
-              {item.type === 'DECISION' ? 'Mark Resolved' : 'Mark Approved'}
+              {item.type === 'DECISION' ? 'Mark done' : 'Mark Approved'}
               {item.budgetImpact != null && ` — accept ${fmtMoney(item.budgetImpact)} increase`}
             </button>
 
-            {/* Request Revision */}
-            <button
-              onClick={() => onAction(item, 'revision')}
-              style={{
-                display: 'block', width: '100%', padding: `${space[4]}px`,
-                marginBottom: 10,
-                background: 'transparent',
-                border: `1px solid ${P.amber}`, borderRadius: radius.sm,
-                cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
-                color: P.amber, fontFamily: FF, textAlign: 'center',
-              }}
-            >
-              Mark Needs Revision
-            </button>
+            {item.type === 'DECISION' ? (
+              <>
+                {/* Extend — push the deadline a week so it leaves the board now. */}
+                <button
+                  onClick={() => onAction(item, 'extend')}
+                  style={{
+                    display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
+                    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+                    background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    color: P.textSecondary, fontFamily: FF, textAlign: 'center',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.amber, flexShrink: 0 }} />
+                  Extend deadline +1 week
+                </button>
+                {/* Reassign — a real dropdown of owners (board 2026-06-12: was a
+                    raw window.prompt). Selecting an owner reassigns in place. */}
+                {onReassign && reassignOptions.length > 0 ? (
+                  <select
+                    value=""
+                    onChange={(e) => { if (e.target.value) { onReassign(item, e.target.value); } }}
+                    aria-label="Reassign this decision to"
+                    style={{
+                      width: '100%', padding: `${space[4]}px`,
+                      background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                      cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                      color: P.textSecondary, fontFamily: FF, appearance: 'none', textAlign: 'center', textAlignLast: 'center',
+                    }}
+                  >
+                    <option value="" disabled>{`Reassign… (now: ${item.owner || '—'})`}</option>
+                    {reassignOptions.filter(o => o !== item.owner).map(o => (
+                      <option key={o} value={o}>{`Reassign to ${o}`}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <button
+                    onClick={() => onAction(item, 'reassign')}
+                    style={{
+                      display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
+                      alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                      cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                      color: P.textSecondary, fontFamily: FF, textAlign: 'center',
+                    }}
+                  >
+                    Reassign…
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Request Revision — neutral secondary; amber is a SIGNAL, not a fill. */}
+                <button
+                  onClick={() => onAction(item, 'revision')}
+                  style={{
+                    display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
+                    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
+                    background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    color: P.textSecondary, fontFamily: FF, textAlign: 'center',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.amber, flexShrink: 0 }} />
+                  Mark Needs Revision
+                </button>
+                {/* Reject — neutral secondary with a semantic red dot. */}
+                <button
+                  onClick={() => onAction(item, 'reject')}
+                  style={{
+                    display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
+                    alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    color: P.textSecondary, fontFamily: FF, textAlign: 'center',
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: P.red, flexShrink: 0 }} />
+                  Mark Rejected
+                  {item.budgetImpact != null ? ' — hold current budget' : ''}
+                </button>
+              </>
+            )}
 
-            {/* Reject */}
-            <button
-              onClick={() => onAction(item, 'reject')}
-              style={{
-                display: 'block', width: '100%', padding: `${space[4]}px`,
-                background: 'transparent',
-                border: `1px solid ${P.red}`, borderRadius: radius.sm,
-                cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
-                color: P.red, fontFamily: FF, textAlign: 'center',
-              }}
-            >
-              Mark Rejected
-              {item.budgetImpact != null ? ' — hold current budget' : ''}
-            </button>
+            {/* Message — compose in place (board 2026-06-12). Opens an inline
+                composer pre-filled "Re: {title}", sends + logs to the client
+                thread, and never leaves the Decisions tab. */}
+            {!composing ? (
+              <button
+                onClick={openCompose}
+                style={{
+                  display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
+                  alignItems: 'center', justifyContent: 'center', marginTop: 10,
+                  background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+                  cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                  color: sentNote ? P.green : P.textSecondary, fontFamily: FF, textAlign: 'center',
+                }}
+              >
+                {sentNote ? '✓ Logged to client thread — send another?' : '✉ Message about this'}
+              </button>
+            ) : (
+              <div style={{ marginTop: 10, border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: space[3], background: P.card }}>
+                <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>
+                  Message the client about this — logs to the conversation in Messages.
+                </div>
+                <textarea
+                  autoFocus
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  rows={4}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', borderRadius: radius.sm,
+                    border: `1px solid ${P.borderSubtle}`, background: P.base,
+                    padding: space[3], fontSize: 12.5, color: P.textPrimary, fontFamily: FF,
+                    resize: 'vertical', outline: 'none', lineHeight: 1.5,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button
+                    onClick={sendCompose}
+                    disabled={!draft.trim()}
+                    style={{
+                      flex: 1, padding: `${space[3]}px`, borderRadius: radius.sm, border: 'none',
+                      background: draft.trim() ? P.green : P.borderDef, color: '#fff',
+                      cursor: draft.trim() ? 'pointer' : 'default',
+                      fontSize: 12, fontWeight: type.weight.semibold, fontFamily: FF,
+                    }}
+                  >
+                    Send &amp; log
+                  </button>
+                  <button
+                    onClick={() => { setComposing(false); setDraft(''); }}
+                    style={{
+                      padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.sm,
+                      background: 'transparent', border: `1px solid ${P.borderDef}`,
+                      color: P.textSecondary, cursor: 'pointer', fontSize: 12,
+                      fontWeight: type.weight.semibold, fontFamily: FF,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {/* Note field */}
-            <div style={{
-              marginTop: space[5],
-              borderRadius: radius.sm,
-              border: `1px solid ${P.borderSubtle}`,
-              background: P.card,
-              padding: space[4],
-              fontSize: 12, color: P.textTertiary, fontFamily: FF,
-              minHeight: 60,
-            }}>
-              Internal note (stays on your board)…
-            </div>
+            {/* Note field — now an editable textarea persisted per item to
+                event.decisionNotes. Uncontrolled (defaultValue + key) so typing is
+                smooth; saves on blur. */}
+            <textarea
+              key={item.id}
+              defaultValue={note || ''}
+              placeholder="Internal note (stays on your board)…"
+              onBlur={e => onSaveNote && onSaveNote(item.id, e.target.value)}
+              style={{
+                marginTop: space[5], width: '100%', boxSizing: 'border-box',
+                borderRadius: radius.sm,
+                border: `1px solid ${P.borderSubtle}`,
+                background: P.card,
+                padding: space[4],
+                fontSize: 12, color: P.textPrimary, fontFamily: FF,
+                minHeight: 60, resize: 'vertical', outline: 'none', lineHeight: 1.5,
+              }}
+            />
 
             {/* Honesty microcopy — these verdicts record on the planner's board.
                 The client is NOT notified from here; the real client-facing path is
@@ -615,12 +773,28 @@ function ItemDetail({ item, onAction }) {
 }
 
 // ── Mobile card (compact approve/revision/reject inline) ──────────────────────
-function MobileItemCard({ item, onAction }) {
-  const [expanded, setExpanded] = useState(false);
+function MobileItemCard({ item, onAction, isTarget, onSendMessage, onReassign, reassignOptions = [] }) {
+  const [expanded, setExpanded] = useState(!!isTarget);
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [sentNote, setSentNote] = useState(false);
+  const ref = useRef(null);
+  // Routed-to decision: open it AND center it so the planner lands directly on
+  // the Resolve / Approve actions instead of a collapsed card in a long list.
+  useEffect(() => {
+    if (!isTarget) return;
+    setExpanded(true);
+    const t = setTimeout(() => {
+      if (ref.current && ref.current.scrollIntoView) {
+        ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+    return () => clearTimeout(t);
+  }, [isTarget]);
   const alreadyClosed = ['APPROVED', 'REJECTED'].includes(item.status);
 
   return (
-    <div style={{
+    <div ref={ref} data-deeplink={item.id} style={{
       background: P.card, border: `1px solid ${P.borderSubtle}`,
       borderRadius: radius.md, marginBottom: 10,
       overflow: 'hidden',
@@ -655,60 +829,63 @@ function MobileItemCard({ item, onAction }) {
         <StatusPill label={item.status} />
       </button>
 
-      {/* Expanded actions */}
-      {expanded && item.type === 'APPROVAL' && !alreadyClosed && (
-        <div style={{
-          padding: `0 ${space[4]}px ${space[4]}px`,
-          display: 'flex', gap: 8,
-          borderTop: `1px solid ${P.borderSubtle}`,
-          paddingTop: space[3],
-        }}>
-          <button
-            onClick={() => onAction(item, 'approve')}
-            style={{
-              flex: 1, padding: `${space[3]}px`,
-              background: P.green, border: 'none', borderRadius: radius.sm,
-              cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold,
-              color: '#fff', fontFamily: FF,
-            }}
-          >
-            Approve
-          </button>
-          <button
-            onClick={() => onAction(item, 'revision')}
-            style={{
-              flex: 1, padding: `${space[3]}px`,
-              background: 'transparent', border: `1px solid ${P.amber}`,
-              borderRadius: radius.sm, cursor: 'pointer',
-              fontSize: 11, fontWeight: type.weight.semibold,
-              color: P.amber, fontFamily: FF,
-            }}
-          >
-            Revision
-          </button>
-          <button
-            onClick={() => onAction(item, 'reject')}
-            style={{
-              flex: 1, padding: `${space[3]}px`,
-              background: 'transparent', border: `1px solid ${P.red}`,
-              borderRadius: radius.sm, cursor: 'pointer',
-              fontSize: 11, fontWeight: type.weight.semibold,
-              color: P.red, fontFamily: FF,
-            }}
-          >
-            Reject
-          </button>
-        </div>
-      )}
-
-      {expanded && (item.type !== 'APPROVAL' || alreadyClosed) && (
-        <div style={{
-          padding: `${space[3]}px ${space[4]}px ${space[4]}px`,
-          borderTop: `1px solid ${P.borderSubtle}`,
-          fontSize: 12, color: P.textSecondary, fontFamily: FF,
-          lineHeight: type.leading.relaxed,
-        }}>
-          {item.body || 'No additional details.'}
+      {/* Expanded: the urgency info AND inline actions — act here, never hunt
+          elsewhere to close it out. */}
+      {expanded && (
+        <div style={{ borderTop: `1px solid ${P.borderSubtle}` }}>
+          {item.body && (
+            <div style={{
+              padding: `${space[3]}px ${space[4]}px ${alreadyClosed ? space[4] : space[2]}px`,
+              fontSize: 12, color: P.textSecondary, fontFamily: FF,
+              lineHeight: type.leading.relaxed,
+            }}>
+              {item.body}
+            </div>
+          )}
+          {!alreadyClosed && item.type === 'APPROVAL' && (
+            <div style={{ padding: `${space[2]}px ${space[4]}px ${space[4]}px`, display: 'flex', gap: 8 }}>
+              <button onClick={() => onAction(item, 'approve')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Approve</button>
+              <button onClick={() => onAction(item, 'revision')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Revision</button>
+              <button onClick={() => onAction(item, 'reject')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reject</button>
+            </div>
+          )}
+          {!alreadyClosed && item.type === 'DECISION' && (
+            <div style={{ padding: `${space[2]}px ${space[4]}px ${space[2]}px`, display: 'flex', gap: 8 }}>
+              <button onClick={() => onAction(item, 'close')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Mark done</button>
+              <button onClick={() => onAction(item, 'extend')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Extend +1wk</button>
+              {onReassign && reassignOptions.length > 0 ? (
+                <select value="" onChange={e => { if (e.target.value) onReassign(item, e.target.value); }} aria-label="Reassign to"
+                  style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF, appearance: 'none', textAlignLast: 'center' }}>
+                  <option value="" disabled>Reassign</option>
+                  {reassignOptions.filter(o => o !== item.owner).map(o => <option key={o} value={o}>{`To ${o}`}</option>)}
+                </select>
+              ) : (
+                <button onClick={() => onAction(item, 'reassign')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reassign</button>
+              )}
+            </div>
+          )}
+          {!alreadyClosed && (
+            <div style={{ padding: `0 ${space[4]}px ${space[4]}px` }}>
+              {!composing ? (
+                <button
+                  onClick={() => { if (onSendMessage) { setSentNote(false); setDraft(`Re: ${item.title}\n\n`); setComposing(true); } else onAction(item, 'message'); }}
+                  style={{ width: '100%', padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: sentNote ? P.green : P.textSecondary, fontFamily: FF }}>
+                  {sentNote ? '✓ Logged to client thread' : '✉ Message about this'}
+                </button>
+              ) : (
+                <div>
+                  <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} rows={4}
+                    style={{ width: '100%', boxSizing: 'border-box', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.base, padding: space[3], fontSize: 12, color: P.textPrimary, fontFamily: FF, resize: 'vertical', outline: 'none', lineHeight: 1.5 }} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={() => { const b = draft.trim(); if (b && onSendMessage) { onSendMessage(item, b); setComposing(false); setDraft(''); setSentNote(true); } }} disabled={!draft.trim()}
+                      style={{ flex: 1, padding: `${space[3]}px`, borderRadius: radius.sm, border: 'none', background: draft.trim() ? P.green : P.borderDef, color: '#fff', cursor: draft.trim() ? 'pointer' : 'default', fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF }}>Send &amp; log</button>
+                    <button onClick={() => { setComposing(false); setDraft(''); }}
+                      style={{ padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.sm, background: 'transparent', border: `1px solid ${P.borderDef}`, color: P.textSecondary, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -722,9 +899,24 @@ export default function DecisionApprovalCenter({
   openId,
   onBack,
   onResolveDecision,   // (taskId) => marks the underlying timeline task done
+  onExtendDecision,    // (taskId) => pushes the deadline a week (snooze)
+  onReassignDecision,  // (taskId, owner) => changes the owner
+  onMessage,            // (item) => legacy fallback route to Communication
+  onSendMessage,        // (item, body) => compose-in-place: logs to client thread
   onActApproval,        // (messageId, action: 'approve' | 'reject' | 'revision')
+  onSaveNote,           // (itemId, note) => persists the internal note
 }) {
   const items = useMemo(() => buildItems(event), [event]);
+  // Reassign dropdown options (board 2026-06-12): a real owner list — the
+  // owners already in play + the standard you/client/both, plus any team.
+  const reassignOptions = useMemo(() => {
+    const set = new Set();
+    items.forEach(i => { if (i.owner) set.add(i.owner); });
+    ['You', 'Client', 'Both'].forEach(o => set.add(o));
+    (event.team || []).forEach(m => { if (m?.name) set.add(m.name); });
+    if (event.client?.name) set.add(event.client.name);
+    return [...set];
+  }, [items, event.team, event.client]);
   const [filter, setFilter] = useState('All');
   const initialSelected = useMemo(() => {
     if (openId) {
@@ -746,18 +938,31 @@ export default function DecisionApprovalCenter({
   const [actionLog, setActionLog] = useState({});
 
   function handleAction(item, action) {
+    // Message about this item — route to Communication (works for any item type).
+    if (action === 'message') { onMessage && onMessage(item); return; }
+    // DECISION items are real timeline tasks — act on them in place: extend the
+    // deadline, reassign the owner, or close (mark done). No hunting elsewhere.
+    if (item.type === 'DECISION') {
+      if (action === 'extend') { onExtendDecision && onExtendDecision(item.id); return; }
+      if (action === 'reassign') {
+        const owner = (typeof window !== 'undefined' && window.prompt)
+          ? window.prompt('Reassign this decision to whom?', item.owner || '') : null;
+        if (owner && owner.trim()) onReassignDecision && onReassignDecision(item.id, owner.trim());
+        return;
+      }
+      // 'close' / 'approve' → resolve (mark the underlying task done)
+      setActionLog(prev => ({ ...prev, [item.id]: 'approve' }));
+      setSelected(s => s?.id === item.id ? { ...s, status: 'APPROVED' } : s);
+      if (onResolveDecision) onResolveDecision(item.id);
+      return;
+    }
+    // APPROVAL items
     setActionLog(prev => ({ ...prev, [item.id]: action }));
     const next = action === 'approve' ? 'APPROVED'
       : action === 'reject' ? 'REJECTED'
       : 'AWAITING';
     setSelected(s => s?.id === item.id ? { ...s, status: next } : s);
-    // Sprint 49: propagate to host for real persistence where wired
-    if (item.type === 'DECISION' && action === 'approve' && onResolveDecision) {
-      onResolveDecision(item.id);
-    }
-    if (item.type === 'APPROVAL' && onActApproval) {
-      onActApproval(item.id, action);
-    }
+    if (onActApproval) onActApproval(item.id, action);
   }
 
   const counts = {
@@ -795,7 +1000,7 @@ export default function DecisionApprovalCenter({
           padding: '4px 10px',
         }}
       >
-        ← Command Center
+        ← Overview
       </button>
       <span style={{
         fontSize: 9, fontWeight: type.weight.semibold,
@@ -809,9 +1014,11 @@ export default function DecisionApprovalCenter({
 
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      // Mobile: flow with the page (host tab area scrolls) so a routed decision
+      // can scroll into view and the list isn't trapped in a collapsed region.
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {workspaceHeader}
-        <div style={{ padding: `${space[4]}px ${space[4]}px`, overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: `${space[4]}px ${space[4]}px` }}>
         <div style={{
           fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em',
           color: P.textTertiary, fontFamily: FF, marginBottom: space[4],
@@ -823,7 +1030,10 @@ export default function DecisionApprovalCenter({
             No decisions or approvals
           </div>
         ) : displayItems.map(item => (
-          <MobileItemCard key={item.id} item={item} onAction={handleAction} />
+          <MobileItemCard key={item.id} item={item} onAction={handleAction} isTarget={selected?.id === item.id}
+            onSendMessage={onSendMessage}
+            onReassign={(it, owner) => { if (owner && owner.trim() && onReassignDecision) onReassignDecision(it.id, owner.trim()); }}
+            reassignOptions={reassignOptions} />
         ))}
         </div>
       </div>
@@ -832,7 +1042,8 @@ export default function DecisionApprovalCenter({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {workspaceHeader}
+      {/* Desktop: shared LegacyTabHeader band (App.js) carries ← Overview +
+          DECISIONS, so the in-workspace breadcrumb is removed to avoid a double header. */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {/* Left list */}
       <div style={{
@@ -856,6 +1067,11 @@ export default function DecisionApprovalCenter({
         <ItemDetail
           item={displayItems.find(i => i.id === selected.id) || selected}
           onAction={handleAction}
+          note={(event.decisionNotes || {})[selected.id] || ''}
+          onSaveNote={onSaveNote}
+          onSendMessage={onSendMessage}
+          onReassign={(it, owner) => { if (owner && owner.trim() && onReassignDecision) onReassignDecision(it.id, owner.trim()); }}
+          reassignOptions={reassignOptions}
         />
       ) : (
         <div style={{

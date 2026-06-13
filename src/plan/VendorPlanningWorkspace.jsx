@@ -95,6 +95,26 @@ const P = {
 };
 const FF = type.family;
 
+// Studio Matte: the ONE steel-blue gradient used by primary CTAs in this
+// workspace. Previously hardcoded as three separate `linear-gradient(...)`
+// literals (Conflicts strip / Vendor list / Mobile summary) — consolidated so
+// the design-system button reads from a single source.
+const STEEL_CTA = 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)';
+
+// Canonical PRIMARY button — matches App.js s.btn('primary') so the Vendors
+// cockpit reads as the same app (steel-blue gradient, white text, 36/8/13,
+// sentence case). Neutral "do this" actions use this; semantic green is kept
+// ONLY for confirm/paid affirmations (a positive state change), never as a
+// generic primary. Spread it and override only padding/width where needed.
+const BTN_PRIMARY = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  background: STEEL_CTA, color: '#fff', border: 'none',
+  borderRadius: 8, minHeight: 32, padding: '6px 14px',
+  fontSize: 13, fontWeight: 600, fontFamily: FF,
+  cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.30)',
+};
+
 // ── Level → color mapping (used everywhere chips/dots appear) ────────────────
 function levelColor(level) {
   switch (level) {
@@ -111,6 +131,29 @@ function levelColor(level) {
 // Sprint 53 — the cockpit uses readiness-level chips via LevelChip instead.
 // All formatting concerns moved into vendorIntelligence helpers.)
 
+// Studio Matte: the ONE status-chip style. The board flagged ~5 slightly
+// different status-pill treatments (tint 12/14/1c/1e, border 33/40/55, radius
+// sm/99/999) reading as inconsistency. Every status pill — readiness level,
+// accountability tier, lock-in rung, promise status — now spreads this so they
+// read as one system. `c` is the semantic color (green/amber/red/steel).
+const statusChip = (c) => ({
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  fontSize: 10, fontWeight: 800, letterSpacing: '0.08em',
+  textTransform: 'uppercase', whiteSpace: 'nowrap', lineHeight: 1.3,
+  color: c, background: `${c}1a`, border: `1px solid ${c}4d`,
+  borderRadius: 999, padding: '2px 8px', fontFamily: FF,
+});
+
+// Board re-audit: the detail's reference sections group under 4 plain-language
+// ZONES (Deliverables · Money & contract · Day-of & after · Reference) so the
+// cockpit reads as 4 areas, not ~10 flat peers.
+const ZONE_LABEL = {
+  marginTop: space[5], marginBottom: space[2], paddingTop: space[3],
+  borderTop: `1px solid ${P.borderSubtle}`,
+  fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
+  textTransform: 'uppercase', color: P.steelBlue, fontFamily: FF,
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Visual primitives ───────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,16 +161,7 @@ function levelColor(level) {
 function LevelChip({ level, label }) {
   const c = levelColor(level);
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      fontSize: 9, fontWeight: type.weight.semibold,
-      letterSpacing: '0.10em', textTransform: 'uppercase',
-      color: c, background: c + '12',
-      border: `1px solid ${c}33`,
-      borderRadius: radius.sm,
-      padding: '3px 8px', fontFamily: FF,
-      whiteSpace: 'nowrap',
-    }}>
+    <span style={statusChip(c)}>
       <span style={{
         width: 6, height: 6, borderRadius: '50%',
         background: c, display: 'inline-block',
@@ -154,7 +188,7 @@ function SectionHeading({ label, hint }) {
       marginTop: space[5], marginBottom: space[3], gap: 8,
     }}>
       <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
+        fontSize: 10, fontWeight: type.weight.semibold,
         letterSpacing: '0.14em', textTransform: 'uppercase',
         color: P.textSecondary, fontFamily: FF,
       }}>
@@ -339,188 +373,143 @@ function StatusRow({ label, value, status, consequence, onAddress, addressLabel 
 // route CTA. Hidden when no conflicts detected.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ConflictsStrip({ conflicts, vendors, onSelectVendor }) {
-  if (!conflicts || conflicts.length === 0) return null;
-  const top = conflicts.slice(0, 3);
-  const vendorById = new Map((vendors || []).map(v => [v.id, v]));
-  const sevColor = (s) =>
-    s === 'critical' ? P.red
-    : s === 'high'   ? P.red
-    : s === 'attention' ? P.amber
-    : P.steelBlue;
-  return (
-    <div style={{
-      flexShrink: 0,
-      background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0a 100%)`,
-      borderBottom: `1px solid ${P.borderSubtle}`,
-      padding: `${space[3]}px ${space[5]}px`,
-      display: 'flex', flexDirection: 'column', gap: 8,
-      fontFamily: FF,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span aria-hidden style={{
-          width: 22, height: 22, borderRadius: '50%',
-          background: `${P.steelBlue}26`, color: P.steelBlue,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800,
-        }}>⚠</span>
-        <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
-          Conflicts found
-        </span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: P.red }}>{conflicts.length}</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {top.map(c => {
-          const target = vendorById.get(c.affectedVendorId);
-          const color = sevColor(c.severity);
-          return (
-            <div key={c.id} style={{
-              padding: '10px 12px',
-              background: P.card,
-              border: `1px solid ${color}3d`,
-              borderLeft: `3px solid ${color}`,
-              borderRadius: 8,
-              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
-                  {c.title}
-                </div>
-                <div style={{ fontSize: 11.5, color: P.textSecondary, marginTop: 2, lineHeight: 1.45 }}>
-                  {c.explanation}
-                </div>
-                <div style={{ fontSize: 11, color: P.steelBlue, marginTop: 4, fontWeight: 600 }}>
-                  → {c.recommendedAction}
-                </div>
-              </div>
-              {target && (
-                <button
-                  onClick={() => onSelectVendor && onSelectVendor(target)}
-                  style={{
-                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
-                    color: '#fff', border: 'none', cursor: 'pointer',
-                    borderRadius: 8, padding: '7px 12px',
-                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
-                    letterSpacing: '0.02em',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
-                    flexShrink: 0,
-                  }}>
-                  Open {target.name.split(' ')[0]} →
-                </button>
-              )}
-            </div>
-          );
-        })}
-        {conflicts.length > top.length && (
-          <div style={{ fontSize: 11, color: P.textTertiary, marginTop: 2 }}>
-            +{conflicts.length - top.length} more conflict{conflicts.length - top.length === 1 ? '' : 's'} — open each vendor to review.
-          </div>
-        )}
-      </div>
-    </div>
-  );
+// Inter-vendor SCHEDULE conflicts (board 2026-06-10): the "no conflicts" banner
+// was asserted from promise/delivery data only. This computes real day-of
+// collisions — two+ vendors arriving at the same time bottleneck the dock — so
+// "schedules are aligned" is earned, not claimed. Same conflict shape as
+// deriveVendorPromiseConflicts so the strip renders them identically.
+function getVendorArrivalConflicts(vendors) {
+  const byTime = new Map();
+  (vendors || []).forEach(v => {
+    const t = v.arrivalTime;
+    if (!t) return;
+    if (!byTime.has(t)) byTime.set(t, []);
+    byTime.get(t).push(v);
+  });
+  const out = [];
+  byTime.forEach((vs, time) => {
+    if (vs.length >= 2) {
+      const names = vs.map(v => v.name || 'a vendor');
+      out.push({
+        id: `arrival-collision-${time}`,
+        severity: 'attention',
+        title: `${vs.length} vendors arrive at ${time}`,
+        explanation: `${names.join(', ')} all arrive at ${time} — they'll bottleneck the dock unless you sequence their load-in.`,
+        recommendedAction: 'Stagger arrival times or set a clear load-in order.',
+        affectedVendorId: vs[0].id,
+      });
+    }
+  });
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ── Vendor Command Strip (top of workspace) ─────────────────────────────────
+// ── Vendor status bar (top of workspace) — ONE quiet line ────────────────────
+// Board 2026-06-12 ("Vendors: eyes go to too many spots → calm the waters").
+// The workspace previously stacked TWO loud bands above the list+detail:
+//   • VendorCommandStrip — a red/amber "VENDOR READINESS" headline band with a
+//     "Start with <vendor> →" button.
+//   • ConflictsStrip — a steel-gradient "CONFLICTS FOUND" banner with its own
+//     "Open <vendor> →" primary button.
+// Both raced the Next-Step spine for the eye, AND both pointed at the SAME
+// vendor the list already sorts to the top and auto-selects — the one action
+// announced four times in four treatments. Verdict: one hero, collapse the
+// redundant alarm layers. This single muted line replaces both:
+//   • readiness = plain stat counts with small dots — NO band, NO CTA. "Where
+//     do I start?" is answered by the risk-sorted list + default selection.
+//   • the schedule conflict = a quiet clickable flag (text button, amber on
+//     hover), NOT a banner with a filled button — an operational note, not a
+//     second alarm.
+// The ONE accent left on screen is the selected vendor's next-action button.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function VendorCommandStrip({ vendors, event, onSelectVendor }) {
+function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   const summary = useMemo(() => getVendorPortfolioSummary(vendors, event), [vendors, event]);
-  const topRisk = useMemo(() => getHighestRiskVendor(vendors, event), [vendors, event]);
-
   if (!vendors || vendors.length === 0) return null;
 
-  const accent =
-    summary.critical > 0 ? P.red
-    : summary.attention > 0 ? P.amber
-    : P.green;
+  const segs = [
+    summary.safe ? { level: 'safe', n: summary.safe, label: 'on track' } : null,
+    summary.attention ? { level: 'attention', n: summary.attention, label: 'need follow-up' } : null,
+    summary.critical ? { level: 'critical', n: summary.critical, label: 'critical' } : null,
+    summary.notStarted ? { level: 'not_started', n: summary.notStarted, label: 'not started' } : null,
+    summary.closed ? { level: 'closed', n: summary.closed, label: 'closed' } : null,
+  ].filter(Boolean);
 
-  // Sprint 56 tone calm-down: "blocking event readiness" → "need urgent
-  // follow-up"; "need attention" → "need follow-up"; "healthy" → "on track".
-  // Plain English for first-time hosts; signal preserved for pros.
-  const headline =
-    summary.critical > 0 ? `${summary.critical} vendor${summary.critical > 1 ? 's' : ''} need${summary.critical === 1 ? 's' : ''} urgent follow-up`
-    : summary.attention > 0 ? `${summary.attention} vendor${summary.attention > 1 ? 's' : ''} need${summary.attention === 1 ? 's' : ''} follow-up`
-    : 'All vendors on track';
-
-  const sub = [
-    summary.safe ? `${summary.safe} safe` : null,
-    summary.attention ? `${summary.attention} need attention` : null,
-    summary.critical ? `${summary.critical} critical` : null,
-    summary.notStarted ? `${summary.notStarted} not started` : null,
-    summary.closed ? `${summary.closed} closed` : null,
-  ].filter(Boolean).join(' · ');
+  // Quiet conflict flag — top conflict only; click routes to the affected
+  // vendor and centers its action card (handleSelect owns the focus).
+  const topConflict = conflicts && conflicts.length ? conflicts[0] : null;
+  const conflictTarget = topConflict
+    ? (vendors.find(v => v.id === topConflict.affectedVendorId) || null)
+    : null;
+  const conflictText = topConflict
+    ? (conflicts.length > 1 ? `${conflicts.length} scheduling conflicts` : topConflict.title)
+    : null;
 
   return (
     <div style={{
       flexShrink: 0,
       background: P.base,
       borderBottom: `1px solid ${P.borderSubtle}`,
-      padding: `${space[4]}px ${space[5]}px`,
-      display: 'flex', alignItems: 'stretch', gap: space[5],
+      padding: `${space[3]}px ${space[5]}px`,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: space[4], flexWrap: 'wrap',
       fontFamily: FF,
     }}>
-      {/* Left accent strip — single colored bar, signals priority without neon */}
-      <div style={{
-        width: 3, flexShrink: 0,
-        background: accent, borderRadius: 2,
-      }} />
-
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: space[5], flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          {/* Sprint 60.L F8: tag bumped 9 → 12 for status-pill min;
-              headline 15 → 17 for card-title min; sub 11 → 13 for
-              helper-copy min. */}
-          <div style={{
-            fontSize: 12, fontWeight: type.weight.semibold,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: accent, marginBottom: 4,
-          }}>
-            Vendor Readiness
-          </div>
-          <div style={{ fontSize: 17, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.3 }}>
-            {headline}
-          </div>
-          {sub && (
-            <div style={{ fontSize: 13, color: P.textSecondary, marginTop: 4 }}>
-              {sub}
-            </div>
-          )}
+      {/* Readiness — a whisper label + stat counts. The 7px dots carry the only
+          color; no headline, no band, no CTA. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minWidth: 0 }}>
+        <span style={{
+          fontSize: 10, fontWeight: type.weight.semibold,
+          letterSpacing: '0.16em', textTransform: 'uppercase',
+          color: P.textTertiary,
+        }}>
+          Vendor readiness
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {segs.map((s, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: P.textSecondary }}>
+              <StatusDot level={s.level} size={7} />
+              <span style={{ fontWeight: type.weight.semibold, color: P.textPrimary }}>{s.n}</span>
+              {s.label}
+            </span>
+          ))}
         </div>
-
-        {topRisk && topRisk.readiness.level !== 'safe' && topRisk.readiness.level !== 'closed' && (
-          // Sprint 60.L chip readability: solid colored bg with near-black
-          // text reads as caution-tape. Convert to TINTED carbon style —
-          // bg = accent@14%, border = accent@40%, text = accent itself.
-          // The chip still carries the semantic color identity (red /
-          // amber / green) while the text reads cleanly on Carbon.
-          <button
-            onClick={() => onSelectVendor && onSelectVendor(topRisk.vendor)}
-            style={{
-              padding: '12px 18px', borderRadius: radius.sm,
-              minHeight: 44,
-              border: `1px solid ${accent}66`,
-              cursor: 'pointer',
-              background: `${accent}22`,
-              color: accent,
-              fontSize: 14, fontWeight: type.weight.bold,
-              fontFamily: FF, letterSpacing: '0.02em',
-              flexShrink: 0, whiteSpace: 'nowrap',
-              boxShadow: `inset 0 0 0 1px ${accent}1a`,
-              transition: 'background 0.16s, border-color 0.16s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = `${accent}30`; e.currentTarget.style.borderColor = `${accent}99`; }}
-            onMouseLeave={e => { e.currentTarget.style.background = `${accent}22`; e.currentTarget.style.borderColor = `${accent}66`; }}
-            aria-label={`Open ${topRisk.vendor.name} to fix the highest priority issue`}
-          >
-            Start with {topRisk.vendor.name} →
-          </button>
-        )}
       </div>
+
+      {/* Conflict flag, or a quiet all-clear. A text button — never a filled
+          CTA. This is an operational note, not a second alarm. */}
+      {conflictTarget ? (
+        <button
+          onClick={() => onSelectVendor && onSelectVendor(conflictTarget, topConflict)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: P.textSecondary, fontSize: 12.5, fontFamily: FF,
+            padding: '4px 2px', flexShrink: 0, borderRadius: radius.sm,
+            transition: 'color 0.16s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = P.amber; }}
+          onMouseLeave={e => { e.currentTarget.style.color = P.textSecondary; }}
+          title={topConflict.explanation || 'Review this scheduling conflict'}
+          aria-label={`Review scheduling conflict: ${conflictText}`}
+        >
+          <span aria-hidden style={{ color: P.amber, fontSize: 12 }}>⚑</span>
+          <span style={{ borderBottom: `1px dotted ${P.borderSubtle}` }}>{conflictText}</span>
+          <span aria-hidden style={{ color: P.textTertiary }}>→</span>
+        </button>
+      ) : (vendors.length >= 2 ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: P.textTertiary, flexShrink: 0 }}>
+          <span aria-hidden style={{ color: P.green, fontWeight: 800 }}>✓</span>
+          Schedules aligned
+        </span>
+      ) : null)}
     </div>
   );
 }
+
+// (VendorCommandStrip + ConflictsStrip removed 2026-06-12 — both folded into
+// the single VendorStatusBar above. getHighestRiskVendor still drives the
+// list's default selection in VendorPlanningWorkspace, so the planner still
+// lands on the top-risk vendor without a "Start with X" band saying so.)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Vendor list (left column) — risk-aware ──────────────────────────────────
@@ -551,33 +540,40 @@ function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSe
   // flow through. If the parent doesn't pass an accountability prop, we
   // compute it locally (keeps the component testable in isolation).
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
-  const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
   const acc = accountability || useMemo(() => quickAccountabilityForVendor(vendor, event), [vendor, event]); // eslint-disable-line react-hooks/rules-of-hooks
-  const next = nextAction || null;
-  const lastContacted = useMemo(() => getVendorLastContacted(vendor, event), [vendor, event]);
 
   const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
   const tierLabel = accountabilityLabel(acc.tier);
   const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
-  const leftStrip = emphasis ? P.red
+  // The chip is reserved for the EXCEPTION — a genuinely critical vendor (red
+  // readiness) or a broken/at-risk promise. Routine follow-up rows ride on the
+  // colored dot alone, so the list reads "quiet, quiet, THIS" instead of five
+  // identical pills. A critical vendor is labelled by its real state.
+  const isCritical = readiness.level === 'critical';
+  const showChip = isCritical || emphasis;
+  const chipColor = isCritical ? P.red : tierColor;
+  const chipLabel = isCritical ? 'Critical' : tierLabel;
+  const leftStrip = isSelected ? P.steelBlue
+    : emphasis ? P.red
     : acc.tier === 'needs_follow_up' ? P.amber
-    : acc.tier === 'needs_proof'     ? P.steelBlue
-    : isSelected ? P.green
     : 'transparent';
 
-  // Top issue — first reason if any, otherwise stage + readiness label.
-  const topIssue = (acc.reasons && acc.reasons[0]) || null;
-
+  // Redesign (2026-06-10, "too busy"): the list is for SCANNING, not reading.
+  // Each row is now TWO lines max — status dot + name, then category — with a
+  // SINGLE status chip (only when the vendor isn't on track). The "why",
+  // last-contacted, next-step and tags all live in the detail; piling them into
+  // every row turned the list into a wall of repeated pills. On-track vendors
+  // carry only a calm green dot so attention rows actually stand out.
   return (
     <button
       onClick={() => onSelect(vendor)}
       style={{
-        display: 'flex', alignItems: 'flex-start',
-        width: '100%', padding: '12px 14px',
+        display: 'flex', alignItems: 'center',
+        width: '100%', padding: '11px 14px',
         borderBottom: `1px solid ${P.borderSubtle}`,
         border: 'none',
         borderLeft: `3px solid ${leftStrip}`,
-        background: isSelected ? P.borderSubtle : (emphasis ? '#15181c' : 'transparent'),
+        background: isSelected ? `${P.steelBlue}38` : 'transparent',
         cursor: 'pointer', textAlign: 'left', gap: 10,
         fontFamily: FF,
       }}
@@ -585,70 +581,29 @@ function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSe
       <StatusDot level={readiness.level} size={8} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12, fontWeight: emphasis ? type.weight.semibold : type.weight.medium,
+          fontSize: 12.5, fontWeight: isSelected ? type.weight.semibold : type.weight.medium,
           color: P.textPrimary,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {vendor.name || vendor.vendor_name || 'Unnamed Vendor'}
         </div>
-        <div style={{ fontSize: 10, color: P.textSecondary, marginTop: 2,
-          display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
+        <div style={{
+          fontSize: 11, color: P.textTertiary, marginTop: 2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          <span>{vendor.category || vendor.type || '—'}</span>
-          <span style={{ color: P.borderDef }}>·</span>
-          <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{stage}</span>
-          {lastContacted && (
-            <>
-              <span style={{ color: P.borderDef }}>·</span>
-              <span style={{ color: P.textTertiary }}>contacted {lastContacted}</span>
-            </>
-          )}
+          {vendor.category || vendor.type || '—'}
         </div>
-        {/* Top issue — only renders when there's a real reason to say it. */}
-        {topIssue && acc.tier !== 'on_track' && (
-          <div style={{
-            fontSize: 10.5, color: tierColor,
-            marginTop: 4, lineHeight: 1.35,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}>
-            {topIssue}
-          </div>
-        )}
-        {/* Next action — short. Steel-blue when actionable. */}
-        {next && next.kind && next.kind !== 'none' && (
-          <div style={{
-            fontSize: 10, color: P.steelBlue,
-            marginTop: 3, fontWeight: 600, letterSpacing: '0.01em',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            Next: {next.label.replace(/^.*?:\s/, '')}
-          </div>
-        )}
       </div>
-      <div style={{ flexShrink: 0, paddingTop: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-        {/* Accountability chip — primary signal */}
-        <span style={{
-          fontSize: 9, fontWeight: 800,
-          letterSpacing: '0.10em', color: tierColor,
-          background: `${tierColor}14`, border: `1px solid ${tierColor}44`,
-          padding: '2px 6px', borderRadius: 999,
-          textTransform: 'uppercase', whiteSpace: 'nowrap',
-        }}>
-          {tierLabel}
+      {/* Board re-audit (2026-06-10): the tier chip now shows ONLY on the
+          exception (critical / at-risk). When most rows share a tier the chip
+          was pure repetition — "five identical alarms." The colored status dot
+          + left strip carry routine follow-up; the chip is reserved for the one
+          vendor that's genuinely on fire, so the list reads "quiet, quiet, THIS." */}
+      {showChip && (
+        <span style={{ ...statusChip(chipColor), flexShrink: 0 }}>
+          {chipLabel}
         </span>
-        {/* Readiness label — secondary, only when different from on_track */}
-        {readiness.level !== 'safe' && (
-          <span style={{
-            fontSize: 8, fontWeight: type.weight.semibold,
-            letterSpacing: '0.10em', color: levelColor(readiness.level),
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-          }}>
-            {readiness.label.replace('Ready for day-of', 'Ready').replace('Needs follow-up', 'Follow up').replace('Day-of follow-up', 'Day-of')}
-          </span>
-        )}
-      </div>
+      )}
     </button>
   );
 }
@@ -663,23 +618,27 @@ const ACCOUNTABILITY_RANK = {
 };
 const ACCOUNTABILITY_COLOR = {
   missed_promise:  P.red,
-  at_risk:         P.red,
+  at_risk:         P.amber,  // Red audit (2026-06-10): reserve red for the broken-promise tier; at-risk is amber.
   needs_follow_up: P.amber,
   needs_proof:     P.steelBlue,
   on_track:        P.green,
 };
 
 // Phase C filter set. Filter keys match the spec Part 4 list.
+// Redesign (2026-06-10): trimmed from 5 chips to 3 so the filter row no longer
+// wraps to two rows and reads as chrome. "Evidence missing" / "Conflicts" were
+// power-filters — that signal still surfaces via the attention tier + the
+// Conflicts strip; the list header just needs the three the planner actually
+// toggles between.
 const FILTERS = [
   { key: 'attention', label: 'Needs attention' },
-  { key: 'evidence',  label: 'Evidence missing' },
-  { key: 'conflicts', label: 'Conflicts' },
   { key: 'ready',     label: 'Ready' },
   { key: 'all',       label: 'All' },
 ];
 
 function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, onAdd }) {
   const [filter, setFilter] = useState('attention');
+  const [tagFilter, setTagFilter] = useState(null); // attribute-tag filter
 
   // Compute accountability for every vendor once. Stable across filter changes.
   const enriched = useMemo(() => {
@@ -717,15 +676,17 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
     return sortedAll;
   }, [sortedAll, filter]);
 
-  // Top-of-list "Start with this vendor" — surfaces the single highest
-  // priority vendor when anyone is not on_track. Visible only on the
-  // "Needs attention" filter so it doesn't distract from Ready/All views.
-  const startWith = useMemo(() => {
-    if (filter !== 'attention') return null;
-    const top = sortedAll.find(x => x.acc.tier !== 'on_track');
-    if (!top) return null;
-    return top;
-  }, [filter, sortedAll]);
+  // Attribute-tag filter (additive to the tier filter).
+  const availableTags = useMemo(() => {
+    const set = new Set();
+    (vendors || []).forEach(v => (v.tags || []).forEach(t => set.add(t)));
+    return [...set];
+  }, [vendors]);
+  const visible = useMemo(
+    () => tagFilter ? sorted.filter(x => ((x.v && x.v.tags) || []).includes(tagFilter)) : sorted,
+    [sorted, tagFilter]
+  );
+
 
   return (
     <div style={{
@@ -733,7 +694,7 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
       background: P.base,
       borderRight: isMobile ? 'none' : `1px solid ${P.borderSubtle}`,
       display: 'flex', flexDirection: 'column',
-      height: '100%',
+      height: isMobile ? 'auto' : '100%',
     }}>
       <div style={{
         height: 42, flexShrink: 0,
@@ -746,7 +707,7 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
           fontSize: 10, fontWeight: type.weight.medium,
           letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF,
         }}>
-          {vendors.length} VENDORS · Ranked by accountability
+          {vendors.length} VENDORS
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           {onAdd && (
@@ -754,15 +715,9 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
               data-testid="add-vendor-btn"
               aria-label="Add vendor"
               onClick={onAdd}
-              style={{
-                background: P.green, border: 'none',
-                borderRadius: radius.sm, cursor: 'pointer',
-                fontSize: 10, fontWeight: type.weight.semibold,
-                color: P.canvas, fontFamily: FF,
-                padding: '3px 8px',
-              }}
+              style={{ ...BTN_PRIMARY, padding: isMobile ? '10px 16px' : '8px 16px', minHeight: isMobile ? 44 : 36, flexShrink: 0 }}
             >
-              + Add
+              + Add vendor
             </button>
           )}
         </div>
@@ -788,7 +743,7 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
                 fontFamily: FF, fontSize: 11, fontWeight: 700,
                 letterSpacing: '0.04em',
                 padding: isMobile ? '10px 12px' : '4px 10px',
-                minHeight: isMobile ? 44 : 28,
+                minHeight: isMobile ? 44 : 34,
                 lineHeight: 1,
               }}>
               {f.label}
@@ -796,7 +751,22 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
           );
         })}
       </div>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Attribute-tag filter — show only when vendors actually carry tags. */}
+      {availableTags.length > 0 && (
+        <div style={{ flexShrink: 0, display: 'flex', gap: 6, padding: '6px 10px', borderBottom: `1px solid ${P.borderSubtle}`, flexWrap: 'wrap', background: P.base, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: P.textTertiary, fontFamily: FF }}>Attributes</span>
+          {availableTags.map(t => {
+            const on = tagFilter === t;
+            return (
+              <button key={t} onClick={() => setTagFilter(on ? null : t)} aria-pressed={on}
+                style={{ background: on ? `${P.green}26` : 'transparent', border: `1px solid ${on ? P.green : P.borderSubtle}`, borderRadius: 999, cursor: 'pointer', color: on ? P.textPrimary : P.textSecondary, fontFamily: FF, fontSize: 10.5, fontWeight: 700, padding: isMobile ? '8px 11px' : '4px 9px', minHeight: isMobile ? 40 : 26, lineHeight: 1 }}>
+                {on ? '✓ ' : ''}{t}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div style={{ flex: isMobile ? 'none' : 1, overflowY: isMobile ? 'visible' : 'auto' }}>
         {vendors.length === 0 ? (
           // Sprint 60.L EmptyStateCard pattern (inline, using P tokens).
           // Title / body / primary CTA so the user understands what
@@ -835,55 +805,22 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
           </div>
         ) : (
           <>
-            {/* Sprint 61.B — Start with this vendor card. Steel-blue rail,
-                states the top vendor by name, the top reason, and a
-                steel-blue Open vendor CTA. Only when something is below
-                on_track AND the user is on the Needs attention filter. */}
-            {startWith && (
-              <div style={{
-                margin: '10px 10px 4px',
-                padding: '12px 14px',
-                background: `linear-gradient(180deg, ${P.steelBlue}1f 0%, ${P.steelBlue}0d 100%)`,
-                border: `1px solid ${P.steelBlue}3d`,
-                borderLeft: `3px solid ${P.steelBlue}`,
-                borderRadius: 10,
-                display: 'flex', flexDirection: 'column', gap: 6,
-                fontFamily: FF,
-              }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: P.steelBlue }}>
-                  Start with this vendor
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: P.textPrimary, letterSpacing: '-0.005em' }}>
-                  {startWith.v.name}
-                </div>
-                <div style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.45 }}>
-                  {startWith.acc.reasons[0] || `${accountabilityLabel(startWith.acc.tier)} — open the vendor to review.`}
-                </div>
-                <button
-                  onClick={() => onSelect(startWith.v)}
-                  style={{
-                    alignSelf: 'flex-start', marginTop: 2,
-                    background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
-                    color: '#fff', border: 'none', cursor: 'pointer',
-                    borderRadius: 8, padding: '8px 14px',
-                    fontSize: 11.5, fontWeight: 700, fontFamily: FF,
-                    letterSpacing: '0.02em',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.3)',
-                  }}>
-                  {startWith.next?.kind === 'resolve' || startWith.next?.kind === 'follow_up' ? 'Open follow-up →' : 'Open vendor →'}
-                </button>
-              </div>
-            )}
-            {sorted.length === 0 ? (
+            {/* Redesign (2026-06-10): the in-list "Start with this vendor" card
+                was removed — the workspace's top readiness strip already names
+                the one vendor to start with, and the two surfaces were naming
+                DIFFERENT vendors (different ranking logic), which read as noise
+                and confusion. One "start here" prompt, at the top. */}
+            {visible.length === 0 ? (
               <div style={{
                 padding: '20px 16px', textAlign: 'center',
                 color: P.textTertiary, fontSize: 13, fontFamily: FF,
               }}>
-                {filter === 'attention' ? 'Nothing needs attention right now — every vendor is on track.'
+                {tagFilter ? `No vendors tagged “${tagFilter}”.`
+                  : filter === 'attention' ? 'Nothing needs attention right now — every vendor is on track.'
                   : filter === 'ready' ? 'No vendors on track yet — start by confirming the highest-priority promise.'
                   : 'No vendors match this filter.'}
               </div>
-            ) : sorted.map(x => (
+            ) : visible.map(x => (
               <VendorRow
                 key={x.v.id || x.v.name}
                 vendor={x.v}
@@ -911,6 +848,9 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
 // minimal effort. No new fields, no new schema — purely leveraging vendor data
 // already stored. Renders only buttons for which the vendor has data on file.
 function ReachActions({ vendor }) {
+  // Call → opens the phone/dialer app (tel:); Email → opens the mail app
+  // (mailto:). On a phone these launch the native apps directly (user request
+  // 2026-06-12: "I want call and email to open the app").
   const callLink = vendor.zoomUrl || vendor.meetUrl || vendor.teamsUrl;
   const callPlatform = vendor.zoomUrl ? 'Zoom' : vendor.meetUrl ? 'Meet' : vendor.teamsUrl ? 'Teams' : null;
   const waHref = vendor.whatsapp
@@ -919,13 +859,16 @@ function ReachActions({ vendor }) {
   const telHref = vendor.phone ? `tel:${vendor.phone.replace(/\s/g, '')}` : null;
   const mailHref = vendor.contact ? `mailto:${vendor.contact}` : null;
 
+  // Secondary action style — aligned to the app's canonical button dimensions
+  // (height 32, radius 8, 13px) so Vendors' Call/Email/Edit read as the same
+  // system as the rest of the app, just the quiet (outlined) tier.
   const btnStyle = {
     background: 'none', border: `1px solid ${P.borderSubtle}`,
-    borderRadius: radius.sm, cursor: 'pointer',
-    fontSize: 11, fontWeight: type.weight.medium,
+    borderRadius: 8, cursor: 'pointer',
+    fontSize: 13, fontWeight: type.weight.medium,
     color: P.textSecondary, fontFamily: FF,
-    padding: '5px 10px', textDecoration: 'none',
-    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '6px 14px', textDecoration: 'none', minHeight: 32,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
   };
 
   return (
@@ -951,7 +894,8 @@ function ReachActions({ vendor }) {
       {telHref && (
         <a
           href={telHref}
-          aria-label={`Call ${vendor.name}`}
+          aria-label={`Call ${vendor.name} — opens your phone app`}
+          title={`Call ${vendor.phone}`}
           style={btnStyle}
         >
           Call
@@ -960,7 +904,8 @@ function ReachActions({ vendor }) {
       {mailHref && (
         <a
           href={mailHref}
-          aria-label={`Email ${vendor.name}`}
+          aria-label={`Email ${vendor.name} — opens your mail app`}
+          title={`Email ${vendor.contact}`}
           style={btnStyle}
         >
           Email
@@ -976,7 +921,7 @@ function ReachActions({ vendor }) {
 // contract handling exposes URL paste + send-for-signature, arrival time
 // shows an inline time picker. No more "mark this happened" without giving
 // the planner a real way to make it happen.
-function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId, expandedKind: extExpandedKind, setExpandedKind: extSetExpandedKind }) {
+function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, onEdit, eventId, userId, expandedKind: extExpandedKind, setExpandedKind: extSetExpandedKind, alsoItems = [], onAddressItem }) {
   const step = useMemo(() => getActionableNextStep(nextAction, vendor), [nextAction, vendor]);
   const [doneState, setDoneState] = useState(null);
   // Sprint 60.B: when VendorDetail drives expandedKind from outside (e.g.
@@ -1018,12 +963,15 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
       borderRadius: radius.md,
       padding: `${space[4]}px ${space[5]}px`,
     }}>
+      {/* Consolidated header: when there are other attention items the card IS
+          the "what needs attention" surface (next action = the lead item);
+          otherwise it's a plain "Next action". */}
       <div style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
+        fontSize: 10, fontWeight: type.weight.semibold,
         letterSpacing: '0.14em', textTransform: 'uppercase',
-        color: P.textTertiary, marginBottom: 6, fontFamily: FF,
+        color: alsoItems.length ? accent : P.textTertiary, marginBottom: 6, fontFamily: FF,
       }}>
-        Next action
+        {alsoItems.length ? `What needs attention · ${alsoItems.length + 1}` : 'Next action'}
       </div>
       <div style={{
         fontSize: 14, fontWeight: type.weight.semibold,
@@ -1070,6 +1018,63 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
               Logged to activity feed.
             </span>
           )}
+        </div>
+      )}
+
+      {/* "Also needs attention" — the remaining items, deduped against the lead
+          action. Hidden while an inline flow (payment/contract/arrival) is open
+          so the planner stays focused on the task they just started. */}
+      {!expandedKind && alsoItems.length > 0 && (
+        <div style={{ marginTop: space[4], paddingTop: space[3], borderTop: `1px solid ${P.borderSubtle}` }}>
+          <div style={{
+            fontSize: 10, fontWeight: type.weight.semibold,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: P.textTertiary, marginBottom: space[2], fontFamily: FF,
+          }}>
+            Also open
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+            {alsoItems.slice(0, 4).map((it, i) => {
+              const col = it.sev === 'critical' ? P.red : P.amber;
+              // Each "Also open" row is now a CLICKABLE button that routes to its
+              // clearing action (board 2026-06-12: no dead alerts). onAddressItem
+              // maps the item's category key → payment/contract/arrival panel or
+              // the editor; falls back to a plain row if no handler is wired.
+              const body = (
+                <>
+                  <span style={{ color: col, fontSize: 12, fontWeight: 800, lineHeight: 1.4, flexShrink: 0, width: 12, textAlign: 'center' }}>
+                    {it.sev === 'critical' ? '!' : '•'}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: P.textSecondary, lineHeight: 1.45 }}>
+                    <span style={{ color: P.textPrimary, fontWeight: type.weight.medium }}>{it.label}</span>
+                    {it.text ? <span style={{ color: P.textTertiary }}> — {it.text}</span> : null}
+                  </span>
+                  {onAddressItem && <span aria-hidden style={{ color: P.textTertiary, fontSize: 13, flexShrink: 0, alignSelf: 'center' }}>→</span>}
+                </>
+              );
+              if (!onAddressItem) {
+                return <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontFamily: FF, padding: '2px 0' }}>{body}</div>;
+              }
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onAddressItem(it)}
+                  title={`Resolve: ${it.label}`}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%',
+                    textAlign: 'left', fontFamily: FF, cursor: 'pointer',
+                    background: 'none', border: 'none', borderRadius: radius.sm,
+                    padding: '5px 6px', margin: '0 -6px', transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '40'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                >
+                  {body}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -1150,6 +1155,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
 
 // ── Payment flow — actually go pay (or copy info, or mark sent) ─────────────
 function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
+  const [confirming, setConfirming] = useState(false);
   const [method, setMethod] = useState(getSuggestedPayMethod(vendor));
   const amt = step.amount || 0;
   const link = useMemo(() => buildPayLink(method, vendor, amt), [method, vendor, amt]);
@@ -1177,7 +1183,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3], gap: space[3], flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary }}>
+          <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary }}>
             {step.amountLabel}
           </div>
           <div style={{ fontSize: 18, fontWeight: type.weight.semibold, color: P.textPrimary }}>
@@ -1284,7 +1290,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
                 marginLeft: 6, background: 'none',
                 border: `1px solid ${P.borderSubtle}`,
                 borderRadius: radius.sm, cursor: 'pointer',
-                fontSize: 9, color: P.textSecondary, padding: '2px 6px',
+                fontSize: 10, color: P.textSecondary, padding: '2px 6px',
                 letterSpacing: '0.06em', textTransform: 'uppercase',
               }}
             >
@@ -1294,24 +1300,44 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
         </div>
       )}
 
-      {/* "I sent it" confirmation */}
-      <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap' }}>
-        <button
-          onClick={() => onConfirmSent(method, amt)}
-          style={{
-            padding: '7px 14px', borderRadius: radius.sm,
-            border: 'none', cursor: 'pointer',
-            background: P.green, color: '#070809',
-            fontSize: 11, fontWeight: type.weight.semibold,
-            letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
-          }}
-        >
-          I sent it · mark paid
-        </button>
-        <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', alignSelf: 'center' }}>
-          Records the method used in the activity log.
-        </span>
-      </div>
+      {/* "I sent it" confirmation — two-step so a paid mark is never accidental */}
+      {confirming ? (
+        <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap', alignItems: 'center', background: `${P.green}10`, border: `1px solid ${P.green}33`, borderRadius: radius.sm, padding: space[3] }}>
+          <span style={{ fontSize: 11.5, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
+            Mark ${amt.toLocaleString()} paid via {method}?
+          </span>
+          <button
+            onClick={() => { onConfirmSent(method, amt); setConfirming(false); }}
+            style={{ padding: '7px 14px', borderRadius: radius.sm, border: 'none', cursor: 'pointer', background: P.green, color: '#070809', fontSize: 11, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF }}
+          >
+            Yes · mark paid
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: P.textTertiary, fontFamily: FF, padding: '4px 8px' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setConfirming(true)}
+            style={{
+              padding: '7px 14px', borderRadius: radius.sm,
+              border: 'none', cursor: 'pointer',
+              background: P.green, color: '#070809',
+              fontSize: 11, fontWeight: type.weight.semibold,
+              letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
+            }}
+          >
+            I sent it · mark paid
+          </button>
+          <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', alignSelf: 'center' }}>
+            Records the method used in the activity log.
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1441,7 +1467,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
             PDF, image, or Word document — stored securely and attached to this vendor.
           </div>
           {uploadErr && (
-            <div style={{ fontSize: 11, color: '#e63946', marginBottom: 8 }}>{uploadErr}</div>
+            <div style={{ fontSize: 11, color: P.red, marginBottom: 8 }}>{uploadErr}</div>
           )}
           <div style={{ display: 'flex', gap: space[2], alignItems: 'center' }}>
             <label style={{
@@ -1580,17 +1606,17 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
 }
 
 // 1 — Command Header
-function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId, expandedKind, setExpandedKind }) {
+function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, onPatchVendor, onAddLog, userId, expandedKind, setExpandedKind, isMobile = false, alsoItems = [], onAddressItem }) {
   const accent = levelColor(readiness.level);
   // Sprint 56 tone calm-down: "Vendor Cockpit" → "Vendor details". Internal
   // code references still call this the cockpit (the structural pattern); the
   // visible label uses the friendlier name so first-time planners aren't
   // greeted with aviation jargon.
-  const labelText =
-    readiness.level === 'critical' ? 'Vendor details · Critical'
-    : readiness.level === 'attention' ? 'Vendor details · Follow up'
-    : readiness.level === 'closed' ? 'Vendor details · Closed'
-    : 'Vendor details';
+  // Board re-audit (2026-06-10): drop the "· Critical / · Follow up" suffix —
+  // it stated the level a THIRD time (the colored LevelChip beside the name and
+  // the list-row chip already carry it). The breadcrumb accent color still
+  // signals urgency without repeating the word.
+  const labelText = 'Vendor details';
 
   return (
     <div style={{
@@ -1609,18 +1635,22 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Label */}
         <div style={{
-          fontSize: 9, fontWeight: type.weight.semibold,
+          fontSize: 10, fontWeight: type.weight.semibold,
           letterSpacing: '0.16em', textTransform: 'uppercase',
           color: accent, marginBottom: 6, fontFamily: FF,
         }}>
           {labelText}
         </div>
 
-        {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Title row. Redesign (2026-06-10): wrap-based, not breakpoint-based.
+            The name claims a 240px min and the reach/edit actions drop to their
+            own line whenever the pane can't fit both — so the vendor name never
+            gets squeezed into a 3-line wrap (was breaking at mobile AND at the
+            narrow two-pane detail on tablet-portrait). */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: isMobile ? 10 : 12 }}>
+          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <div style={{
-              fontSize: 22, fontWeight: type.weight.semibold,
+              fontSize: isMobile ? 19 : 22, fontWeight: type.weight.semibold,
               color: P.textPrimary, fontFamily: FF, lineHeight: 1.2,
             }}>
               {vendor.name || vendor.vendor_name}
@@ -1644,10 +1674,11 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
                 aria-label="Edit vendor details"
                 style={{
                   background: 'none', border: `1px solid ${P.borderSubtle}`,
-                  borderRadius: radius.sm, cursor: 'pointer',
-                  fontSize: 11, fontWeight: type.weight.medium,
+                  borderRadius: 8, cursor: 'pointer',
+                  fontSize: 13, fontWeight: type.weight.medium,
                   color: P.textSecondary, fontFamily: FF,
-                  padding: '5px 10px',
+                  padding: '6px 14px', minHeight: 32,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 Edit details →
@@ -1670,6 +1701,8 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
             userId={userId}
             expandedKind={expandedKind}
             setExpandedKind={setExpandedKind}
+            alsoItems={alsoItems}
+            onAddressItem={onAddressItem}
           />
         )}
       </div>
@@ -1690,53 +1723,6 @@ const CATEGORY_LABELS = {
   closeout: 'Wrap-up',
 };
 
-function ReadinessSnapshot({ challenges, isOpen, onToggle }) {
-  // Sprint 60.C: collapsible. Summary shows attention/critical counts so a
-  // collapsed snapshot still surfaces signal.
-  const cats = challenges ? Object.values(challenges) : [];
-  const critical = cats.filter(c => c && c.level === 'critical').length;
-  const attention = cats.filter(c => c && c.level === 'attention').length;
-  const summary = critical > 0 ? `${critical} critical${attention > 0 ? ` · ${attention} attention` : ''}`
-    : attention > 0 ? `${attention} need${attention === 1 ? 's' : ''} attention`
-    : 'All categories OK';
-  const summaryColor = critical > 0 ? P.red : attention > 0 ? P.amber : P.green;
-  return (
-    <CollapsibleSection label="Where this vendor stands" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-        gap: space[3],
-      }}>
-        {Object.keys(CATEGORY_LABELS).map(key => {
-          const c = challenges[key];
-          if (!c) return null;
-          const col = levelColor(c.level);
-          return (
-            <div key={key} style={{
-              background: P.card,
-              border: `1px solid ${P.borderSubtle}`,
-              borderLeft: `2px solid ${col}`,
-              borderRadius: radius.sm,
-              padding: `${space[3]}px ${space[4]}px`,
-              fontFamily: FF,
-            }}>
-              <div style={{
-                fontSize: 9, fontWeight: type.weight.semibold,
-                letterSpacing: '0.10em', textTransform: 'uppercase',
-                color: col, marginBottom: 4,
-              }}>
-                {CATEGORY_LABELS[key]}
-              </div>
-              <div style={{ fontSize: 11, color: P.textSecondary, lineHeight: 1.4 }}>
-                {c.note}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </CollapsibleSection>
-  );
-}
 
 // 3/4/5 — Phase sections (Planning / Day-Of / Closeout)
 // Vendor Readiness Pass: each phase is now collapsible. Planning is open
@@ -1817,7 +1803,11 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
 function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
   const cat = vendor.category || 'this vendor';
   const open = questions.filter(q => q.status !== 'answered').length;
-  const [isOpen, setIsOpen] = useState(open > 0);
+  // Redesign (2026-06-10, "too busy"): collapsed by default. A wall of
+  // "Not tracked yet" rows read as a cliff of failure, not a task — the
+  // collapsed "N unanswered" summary carries the signal; the planner opens
+  // the checklist when they're ready to work it.
+  const [isOpen, setIsOpen] = useState(false);
   return (
     <div>
       <button
@@ -1885,7 +1875,7 @@ function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
 // groups stay collapsed.
 function LinkedWorkSection({ linked, onRouteToLinked }) {
   const groups = [
-    { key: 'timeline', label: 'Timeline / Run-of-Show', empty: 'No linked timeline items yet.', tab: 'Run of Show' },
+    { key: 'timeline', label: 'Event Day Schedule', empty: 'No linked timeline items yet.', tab: 'Run of Show' },
     { key: 'decisions', label: 'Decisions / Approvals', empty: 'No linked decisions yet.', tab: 'Decisions' },
     { key: 'tasks', label: 'Planning Tasks', empty: 'No linked planning tasks yet.', tab: 'Planning Tasks' },
     { key: 'communication', label: 'Communication', empty: 'No linked messages yet.', tab: 'Communication' },
@@ -2125,7 +2115,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
         )}
         {extracted && (
           <div style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: space[4], marginBottom: space[3] }}>
-            <div style={{ fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3], display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3], display: 'flex', justifyContent: 'space-between' }}>
               <span>✨ AI-EXTRACTED · Verify against original document</span>
               <button onClick={() => setExtracted(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontFamily: FF, fontSize: 11 }}>×</button>
             </div>
@@ -2152,7 +2142,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
               <div style={{ fontSize: 10, color: P.textTertiary, lineHeight: 1.4 }}>{extracted.cancellation_policy}</div>
             )}
             {extracted.disclaimer && (
-              <div style={{ fontSize: 9, color: P.textTertiary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
+              <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
             )}
           </div>
         )}
@@ -2167,9 +2157,16 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
             <div style={{ fontSize: 11, color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
           </div>
-          <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: vendor.insuranceStatus ? P.success : P.textTertiary }}>
-            {vendor.insuranceStatus ? 'On file' : 'Not tracked'}
-          </span>
+          {(() => {
+            // Honesty (board): "On file" green only when actually insured — a status
+            // of "Not insured" / "Expired" must NOT read as present-and-good.
+            const insOk = vendor.insuranceStatus && !/\b(not|no|none|missing|expired|lapsed)\b/i.test(vendor.insuranceStatus);
+            return (
+              <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
+                {insOk ? 'On file' : vendor.insuranceStatus ? 'Not valid' : 'Not tracked'}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Invoice + other docs */}
@@ -2260,7 +2257,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
                 <button key={label} onClick={() => setDraft(d => d ? d : text)} style={{
                   padding: '3px 7px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`,
                   background: 'transparent', cursor: 'pointer',
-                  fontSize: 9, color: P.textTertiary, fontFamily: FF,
+                  fontSize: 10, color: P.textTertiary, fontFamily: FF,
                 }}>{label}</button>
               ))}
             </div>
@@ -2324,7 +2321,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
               </span>
               {entry.derived && (
                 <span style={{
-                  fontSize: 9, fontWeight: type.weight.medium,
+                  fontSize: 10, fontWeight: type.weight.medium,
                   color: P.amber, letterSpacing: '0.1em', textTransform: 'uppercase',
                 }}>
                   Auto
@@ -2364,7 +2361,7 @@ function CatererDriftBanner({ vendor, event, onMarkCatererUpdated }) {
     }}>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{
-          fontSize: 9, fontWeight: type.weight.semibold,
+          fontSize: 10, fontWeight: type.weight.semibold,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           color: P.amber, marginBottom: 4,
         }}>
@@ -2380,14 +2377,7 @@ function CatererDriftBanner({ vendor, event, onMarkCatererUpdated }) {
       </div>
       <button
         onClick={() => onMarkCatererUpdated(vendor.id, confirmedCount)}
-        style={{
-          padding: '6px 14px', borderRadius: radius.sm,
-          border: 'none', cursor: 'pointer',
-          background: P.amber, color: '#070809',
-          fontSize: 11, fontWeight: type.weight.semibold,
-          fontFamily: FF, letterSpacing: '0.04em', textTransform: 'uppercase',
-          flexShrink: 0,
-        }}
+        style={{ ...BTN_PRIMARY, flexShrink: 0 }}
       >
         Update to {confirmedCount}
       </button>
@@ -2427,7 +2417,7 @@ function CollapsibleList({ label, items, defaultOpen = false }) {
           display: 'flex', alignItems: 'center', gap: 6,
         }}
       >
-        <span style={{ fontSize: 9 }}>{open ? '▼' : '▶'}</span>
+        <span style={{ fontSize: 10 }}>{open ? '▼' : '▶'}</span>
         {label} · {items.length}
       </button>
       {open && (
@@ -2477,10 +2467,10 @@ function CopyableDraft({ text }) {
           background: copied ? P.green : 'none',
           border: `1px solid ${copied ? P.green : P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 10, fontWeight: type.weight.semibold,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
+          fontSize: 11, fontWeight: type.weight.semibold,
+          letterSpacing: '0.05em', textTransform: 'uppercase',
           color: copied ? P.canvas : P.textSecondary,
-          fontFamily: FF, padding: '5px 12px',
+          fontFamily: FF, padding: '9px 14px', minHeight: 40,
         }}
       >
         {copied ? 'Copied' : 'Copy draft'}
@@ -2591,7 +2581,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
       }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 10, fontWeight: type.weight.semibold,
             letterSpacing: '0.16em', textTransform: 'uppercase',
             color: sourceColor, marginBottom: 4,
           }}>
@@ -2746,7 +2736,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
           marginBottom: space[4],
         }}>
           <div style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: 10, fontWeight: type.weight.semibold,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.amber, marginBottom: 4,
           }}>
@@ -2796,7 +2786,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
 function SubSectionLabel({ label, count, color }) {
   return (
     <div style={{
-      fontSize: 9, fontWeight: type.weight.semibold,
+      fontSize: 10, fontWeight: type.weight.semibold,
       letterSpacing: '0.10em', textTransform: 'uppercase',
       color: color || P.textTertiary, marginBottom: 6,
     }}>
@@ -2866,7 +2856,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
   const smsHref  = vendor.phone   ? `sms:${vendor.phone.replace(/\s/g, '')}` : null;
 
   // Steel-blue gradient stack — mirrors StudioCommandPanel hero in App.js
-  const ctaFill = 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)';
+  const ctaFill = STEEL_CTA;
   const ctaShadow = [
     'inset 0 1px 0 rgba(255,255,255,0.14)',
     'inset 0 -1px 0 rgba(0,0,0,0.30)',
@@ -2898,7 +2888,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
       {/* Top row — eyebrow chip + edit affordance */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
         <span style={{
-          fontSize: 9.5, fontWeight: type.weight.semibold,
+          fontSize: 10, fontWeight: type.weight.semibold,
           letterSpacing: '0.14em', textTransform: 'uppercase',
           color: looksReady ? P.green : railColor,
           padding: '2px 7px', borderRadius: 4,
@@ -2949,14 +2939,14 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
           onClick={() => onPrimary(section)}
           style={{
             width: '100%',
-            minHeight: 54,
-            padding: '14px 18px',
-            borderRadius: 14,
+            minHeight: 50,
+            padding: '13px 18px',
+            borderRadius: 8,
             border: 'none',
             cursor: 'pointer',
             background: ctaFill,
-            color: '#e8edf2',
-            fontSize: 16,
+            color: '#fff',
+            fontSize: 15,
             fontWeight: type.weight.semibold,
             fontFamily: FF,
             letterSpacing: '0.01em',
@@ -3039,7 +3029,22 @@ const PROMISE_NEXT_BY_STATUS = {
   completed:       null,
 };
 
-function PromiseTrackerSection({ vendor, event, isOpen, onToggle }) {
+function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, onPatchVendor, onAddLog }) {
+  // "Mark proof on file" (board 2026-06-12): an honest manual assertion the
+  // planner HAS the evidence — persisted to vendor.promiseEvidence, undoable,
+  // never a faked upload. Closes the "evidence missing → needs follow-up" loop.
+  const markProof = (p) => {
+    if (!onPatchVendor) return;
+    onPatchVendor(vendor.id, { promiseEvidence: { ...(vendor.promiseEvidence || {}), [p.promiseKey]: 'attached' } });
+    if (onAddLog) onAddLog(vendor.id, `Marked proof on file for "${p.promiseText}" (planner-asserted via cockpit).`);
+  };
+  const undoProof = (p) => {
+    if (!onPatchVendor) return;
+    const next = { ...(vendor.promiseEvidence || {}) };
+    delete next[p.promiseKey];
+    onPatchVendor(vendor.id, { promiseEvidence: next });
+    if (onAddLog) onAddLog(vendor.id, `Un-marked proof for "${p.promiseText}" (correction via cockpit).`);
+  };
   const [draftFor, setDraftFor] = useState(null);
   const promises = useMemo(
     () => inferPromisesFromVendor(vendor, event).filter(p => p.status !== 'not_required'),
@@ -3057,9 +3062,9 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle }) {
   const ownerLabel = (o) => o ? o.charAt(0).toUpperCase() + o.slice(1) : '—';
 
   return (
-    <CollapsibleSection label="Deliverables & Promises" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
-      <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
-        What this vendor has promised, and where the proof stands. Drafts are copy-only — Event Boss never sends or emails on its own.
+    <CollapsibleSection label="What this vendor will deliver" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
+      <div style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
+        What this vendor agreed to deliver, and whether you have it in hand. Drafts are copy-only — Event Boss never sends or emails on its own.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: space[2] }}>
         {sorted.map(p => {
@@ -3070,26 +3075,70 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle }) {
           let draft = null;
           if (showDraft) { try { draft = generateVendorFollowUpDraft(vendor, event, [p]); } catch (e) { draft = null; } }
           const proofTxt = p.evidenceRequired ? ` · Proof: ${(p.evidenceStatus === 'attached' || p.evidenceStatus === 'confirmed') ? 'on file' : 'needed'}` : '';
+          // Each promise bar is clickable to its clearing action (board 2026-06-12).
+          // Evidence-backed promises route to the documents/contract flow (where
+          // proof is recorded); others open the editor. Done promises stay inert.
+          const canAddress = onAddressRow && !['confirmed', 'completed'].includes(p.status);
+          const address = () => canAddress && onAddressRow({ key: p.evidenceRequired ? 'documents' : 'promise', label: p.promiseText });
           return (
-            <div key={p.id} style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${col}`, borderRadius: radius.sm, padding: space[3] }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF }}>{p.promiseText}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: col, background: `${col}1e`, border: `1px solid ${col}55`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>{PROMISE_STATUS_LABEL[p.status] || p.status}</span>
+            <div
+              key={p.id}
+              onClick={canAddress ? address : undefined}
+              role={canAddress ? 'button' : undefined}
+              title={canAddress ? `Resolve: ${p.promiseText}` : undefined}
+              style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${col}`, borderRadius: radius.sm, padding: space[3], cursor: canAddress ? 'pointer' : 'default', transition: 'background 0.1s' }}
+              onMouseEnter={canAddress ? (e => { e.currentTarget.style.background = P.card; }) : undefined}
+              onMouseLeave={canAddress ? (e => { e.currentTarget.style.background = P.canvas; }) : undefined}
+            >
+              {/* PT-4: text takes the flex space and the pill stays anchored top-right
+                  (no more detaching to its own line). PT-2: ≥10px + a leading glyph so
+                  the severity isn't carried by color alone. */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>{p.promiseText}</span>
+                <span style={{ ...statusChip(col), flexShrink: 0 }}>
+                  {(sev === 'critical' ? '! ' : (p.status === 'confirmed' || p.status === 'completed') ? '✓ ' : '• ')}{PROMISE_STATUS_LABEL[p.status] || p.status}
+                </span>
+                {canAddress && <span aria-hidden style={{ color: P.textTertiary, fontSize: 13, flexShrink: 0, alignSelf: 'center' }}>→</span>}
               </div>
-              <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginTop: 3 }}>
-                Owner: {ownerLabel(p.owner)}{p.dueDate ? ` · Due ${p.dueDate}` : ''}{proofTxt}
+              <div style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF, marginTop: 3 }}>
+                Handled by: {ownerLabel(p.owner)}{p.dueDate ? ` · Due ${p.dueDate}` : ''}{proofTxt}
               </div>
               {nextHint && (
                 <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>→ {nextHint}</div>
               )}
-              {!['confirmed', 'completed'].includes(p.status) && (
-                <button type="button" onClick={() => setDraftFor(showDraft ? null : p.id)}
-                  style={{ marginTop: space[2], background: 'none', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: P.textSecondary, fontFamily: FF, padding: '5px 12px' }}>
-                  {showDraft ? 'Hide draft' : 'Draft follow-up'}
-                </button>
-              )}
+              {(() => {
+                const open = !['confirmed', 'completed'].includes(p.status);
+                const plannerProof = !!(vendor.promiseEvidence && vendor.promiseEvidence[p.promiseKey]);
+                const needsProof = p.evidenceRequired && onPatchVendor && !plannerProof && open;
+                if (!open && !plannerProof) return null;
+                const btn = { background: 'none', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, letterSpacing: '0.05em', textTransform: 'uppercase', color: P.textSecondary, fontFamily: FF, padding: '9px 14px', minHeight: 40 };
+                return (
+                  <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center', marginTop: space[2] }}>
+                    {open && (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setDraftFor(showDraft ? null : p.id); }} style={btn}>
+                        {showDraft ? 'Hide draft' : 'Draft follow-up'}
+                      </button>
+                    )}
+                    {needsProof && (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); markProof(p); }}
+                        style={{ ...btn, border: `1px solid ${P.green}55`, color: P.green }}>
+                        ✓ Mark proof on file
+                      </button>
+                    )}
+                    {plannerProof && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: P.green, fontFamily: FF }}>
+                        ✓ Proof on file
+                        <button type="button" onClick={(e) => { e.stopPropagation(); undoProof(p); }}
+                          style={{ background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: 10, textDecoration: 'underline', fontFamily: FF, padding: 0 }}>
+                          Undo
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               {showDraft && draft && (
-                <div style={{ marginTop: space[2] }}>
+                <div style={{ marginTop: space[2] }} onClick={(e) => e.stopPropagation()}>
                   <CopyableDraft text={draft.subject ? `${draft.subject}\n\n${draft.body}` : draft.body} />
                 </div>
               )}
@@ -3098,6 +3147,139 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle }) {
         })}
       </div>
     </CollapsibleSection>
+  );
+}
+
+// ── "What needs attention" — hero digest ─────────────────────────────────────
+// Board review #2 (Cognitive Load Officer + Grandmother, ranked #1): instead of
+// making the planner expand the Readiness Snapshot AND the Promise Tracker to
+// learn what's wrong, lead the detail with ONE merged digest that pulls only
+// the critical/attention items from BOTH surfaces, prioritized, in plain
+// language. The full Snapshot + Tracker still live below (collapsed) for depth
+// — this compresses the signal, it doesn't bury the detail. Renders nothing
+// when the vendor is clean (the calm path stays calm). Desktop-only: on mobile
+// the MobileVendorSummary already carries the first-look "what's wrong" signal.
+// Board re-audit (2026-06-10): consolidation. The standalone "What needs
+// attention" digest was removed — its items now live INSIDE the Next Action
+// card (the next action is the lead item; the rest list below it, deduped).
+// This helper computes the sorted attention items (readiness challenges +
+// risky promises) so the Next Action card can render the "also" list.
+function computeAttentionItems(challenges, vendor, event) {
+  const items = [];
+  Object.keys(CATEGORY_LABELS).forEach(key => {
+    const c = challenges?.[key];
+    if (c && (c.level === 'critical' || c.level === 'attention')) {
+      // `key` is the challenge category (booking/communication/financial/
+      // documents/logistics/…) — carried so the "Also open" rows are CLICKABLE
+      // to their clearing action (board 2026-06-12: every alert is actionable).
+      items.push({ sev: c.level, label: CATEGORY_LABELS[key], text: c.note, key });
+    }
+  });
+  let promises = [];
+  try { promises = inferPromisesFromVendor(vendor, event).filter(p => p.status !== 'not_required'); } catch (e) { promises = []; }
+  promises.forEach(p => {
+    const sev = PROMISE_STATUS_SEVERITY[p.status] || 'watch';
+    if (sev === 'critical' || sev === 'attention') {
+      const nextHint = p.nextAction || PROMISE_NEXT_BY_STATUS[p.status] || null;
+      // Promise rows route to the documents/contract editor (where proof + the
+      // promised deliverable are recorded) unless they map to a money gate.
+      const key = p.evidenceRequired ? 'documents' : 'promise';
+      items.push({ sev, label: p.promiseText, text: nextHint || PROMISE_STATUS_LABEL[p.status] || '', key });
+    }
+  });
+  const rank = { critical: 0, attention: 1 };
+  items.sort((a, b) => (rank[a.sev] ?? 2) - (rank[b.sev] ?? 2));
+  return items;
+}
+
+// ── Lock-in / clearance progress tracker ─────────────────────────────────────
+// Board (2026-06-10): the false-done guard + COI gate made the BEHAVIOR correct
+// (auto-advance, "cleared" only when all green) — this makes it VISIBLE. Shows
+// the real lock-in gates as one "X of N" strip so the planner sees "getting
+// there" at a glance, instead of one next-action at a time. Reads the existing
+// planning checklist rows (no new data).
+const LOCKIN_GATES = [
+  { key: 'selected', label: 'Booked' },
+  { key: 'contract', label: 'Contract' },
+  { key: 'deposit',  label: 'Deposit' },
+  { key: 'balance',  label: 'Final pay' },
+  { key: 'coi',      label: 'COI' },
+  { key: 'arrival',  label: 'Arrival' },
+];
+// Reversal patches for "uncheck for unpaid / undo mark" — payment gates only.
+// Clears the paid flag + its timestamp/method so readiness, budget truth and
+// the overdue alarm all re-derive honestly. Contract/COI reversal is a separate
+// follow-up (those have multi-flag state).
+const GATE_REVERSAL = {
+  deposit: { patch: { depositPaid: false, depositPaidAt: null, depositMethod: null }, label: 'Deposit', log: 'Deposit un-marked — back to unpaid (correction via cockpit).' },
+  balance: { patch: { balancePaid: false, balancePaidAt: null, balanceMethod: null }, label: 'Final payment', log: 'Final payment un-marked — back to unpaid (correction via cockpit).' },
+};
+function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) {
+  const [confirmKey, setConfirmKey] = useState(null);
+  const gates = LOCKIN_GATES.map(g => {
+    const r = (rows || []).find(x => x.key === g.key);
+    return r ? { ...g, status: r.status } : null;
+  }).filter(g => g && g.status !== 'not_tracked');
+  if (gates.length < 2) return null;
+  const reverse = (key) => {
+    const rev = GATE_REVERSAL[key];
+    if (!rev || !vendor || !onPatchVendor) return;
+    onPatchVendor(vendor.id, rev.patch);
+    if (onAddLog) onAddLog(vendor.id, rev.log);
+    setConfirmKey(null);
+  };
+  const done = gates.filter(g => g.status === 'done').length;
+  const total = gates.length;
+  const allDone = done === total;
+  const headColor = allDone ? P.green : P.steelBlue;
+  return (
+    <div style={{
+      background: P.card, border: `1px solid ${P.borderSubtle}`,
+      borderLeft: `3px solid ${headColor}`, borderRadius: radius.md,
+      padding: space[4], marginBottom: space[4],
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3] }}>
+        <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: headColor, fontFamily: FF }}>
+          {allDone ? 'Fully locked in' : 'Lock-in progress'}
+        </span>
+        <span style={{ fontSize: 11.5, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>{done} of {total}</span>
+      </div>
+      <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center' }}>
+        {gates.map(g => {
+          const c = g.status === 'done' ? P.green : g.status === 'missing' ? P.red : P.amber;
+          const glyph = g.status === 'done' ? '✓' : g.status === 'missing' ? '!' : '•';
+          // A PAID payment gate can be un-marked (correction). Clicking asks to
+          // confirm inline before reversing — no accidental un-pay.
+          const canReverse = g.status === 'done' && GATE_REVERSAL[g.key] && vendor && onPatchVendor;
+          // A PENDING/MISSING gate is clickable to advance it — jumps to the
+          // panel that clears it (board 2026-06-12: every lock-in rung is live).
+          const canAddress = g.status !== 'done' && onAddressRow;
+          if (confirmKey === g.key) {
+            return (
+              <span key={g.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: type.weight.medium, color: P.amber, background: `${P.amber}14`, border: `1px solid ${P.amber}40`, borderRadius: 999, padding: '4px 9px', fontFamily: FF, whiteSpace: 'nowrap' }}>
+                Un-mark {GATE_REVERSAL[g.key].label}?
+                <button onClick={() => reverse(g.key)} style={{ background: P.amber, color: '#070809', border: 'none', borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: FF }}>Yes</button>
+                <button onClick={() => setConfirmKey(null)} style={{ background: 'none', color: P.textTertiary, border: 'none', padding: '2px 4px', fontSize: 10, cursor: 'pointer', fontFamily: FF }}>No</button>
+              </span>
+            );
+          }
+          return (
+            <span key={g.key}
+              onClick={canReverse ? () => setConfirmKey(g.key) : (canAddress ? () => onAddressRow({ key: g.key, label: g.label }) : undefined)}
+              title={canReverse ? `Mistake? Un-mark ${GATE_REVERSAL[g.key].label} as paid` : (canAddress ? `Resolve: ${g.label}` : undefined)}
+              style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontSize: 11, fontWeight: type.weight.medium, color: c,
+              background: `${c}14`, border: `1px solid ${c}40`,
+              borderRadius: 999, padding: '4px 9px', fontFamily: FF, whiteSpace: 'nowrap',
+              cursor: (canReverse || canAddress) ? 'pointer' : 'default',
+            }}>
+              <span style={{ fontWeight: 800 }}>{glyph}</span>{g.label}{canReverse ? ' ⤺' : (canAddress ? ' →' : '')}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -3111,6 +3293,20 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   const closeout = useMemo(() => getVendorCloseoutState(vendor, event), [vendor, event]);
   const questions = useMemo(() => getVendorRequiredQuestions(vendor, event), [vendor, event]);
   const linked = useMemo(() => getVendorLinkedWork(vendor, event), [vendor, event]);
+
+  // Board re-audit (2026-06-10) consolidation: the "what needs attention" items
+  // now live inside the Next Action card. `alsoItems` is the attention list with
+  // the lead (next-action) item removed — deduped by label-in-title so the
+  // planner reads the primary problem once. Desktop/tablet only; on mobile the
+  // MobileVendorSummary already carries the first-look attention signal.
+  const attentionItems = useMemo(() => computeAttentionItems(challenges, vendor, event), [challenges, vendor, event]);
+  const alsoItems = useMemo(() => {
+    const title = (nextAction?.title || '').toLowerCase();
+    return attentionItems.filter(it => {
+      const lbl = (it.label || '').toLowerCase();
+      return lbl && !title.includes(lbl);
+    });
+  }, [attentionItems, nextAction]);
 
   // Sprint 60.B — section-focus state. expandedKind is shared with
   // NextActionCard so payment/contract/arrival routes from outside the
@@ -3136,9 +3332,14 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   // first-look "what's wrong" signal — so all sections start closed below it.
   // Desktop keeps the smart-default open behavior so pros see the signal-led
   // sections without an extra tap.
+  // Board review #2: the desktop AttentionDigest now carries the critical/
+  // attention signal from BOTH the Readiness Snapshot and the Promise Tracker,
+  // so those two sections start COLLAPSED (the digest leads; their full detail
+  // is one tap away). Documents stays open when the contract has an issue —
+  // the Trust Officer requirement that a missing contract/COI stays visible.
   const collapseDefaults = isMobile
     ? { readinessSnapshot: false, promises: false, readinessCopilot: false, documents: false, notes: false, activity: false }
-    : { readinessSnapshot: hasReadinessSignal, promises: true, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
+    : { readinessSnapshot: false, promises: false, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
   const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
   const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -3149,20 +3350,29 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   // canonical vendor edit modal.
   const addressRow = (row) => {
     const key = row?.key;
-    const targetKind = (key === 'deposit' || key === 'balance' || key === 'payment-overdue') ? 'payment'
+    // Maps a row/attention-item key → the inline panel that clears it. Now also
+    // accepts challenge-CATEGORY keys (financial/documents/logistics) so the
+    // "Also open" attention rows route to the same panels (board 2026-06-12).
+    const targetKind = (key === 'deposit' || key === 'balance' || key === 'payment-overdue' || key === 'financial') ? 'payment'
       : (key === 'contract' || key === 'documents') ? 'contract'
-      : (key === 'arrival' || key === 'expectedArrival') ? 'arrival'
+      : (key === 'arrival' || key === 'expectedArrival' || key === 'logistics') ? 'arrival'
       : null;
-    if (targetKind) {
-      setExpandedKind(targetKind);
-      setFlashSection('nextAction');
-      setTimeout(() => setFlashSection(null), 2000);
+    // Every readiness CTA must REACT: center the viewport on the action card and
+    // flash it, regardless of row kind. Previously only payment/contract/arrival
+    // rows scrolled; every other row fell through to onEdit (or, if onEdit was
+    // absent, did nothing at all) — so the CTA "went nowhere".
+    if (targetKind) setExpandedKind(targetKind);
+    setFlashSection('nextAction');
+    setTimeout(() => setFlashSection(null), 2000);
+    // Defer one tick so a freshly-expanded panel is laid out before we center.
+    setTimeout(() => {
       if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
         nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      return;
-    }
-    if (onEdit) onEdit();
+    }, 60);
+    // Contact / scope / status have no inline panel on the action card — also
+    // open the edit modal where those are actually fixed.
+    if (!targetKind && onEdit) onEdit();
   };
 
   // Sprint 60.H: MobileVendorSummary primary action — same section-focus
@@ -3191,8 +3401,11 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       if (onEdit) onEdit();
       return;
     }
-    if (openSection === 'payment' || openSection === 'contract' || openSection === 'arrival') {
-      setExpandedKind(openSection);
+    // 'nextAction' = center the viewport on the action card without forcing a
+    // specific inline panel open (used by the Conflicts strip "Open" CTA, which
+    // may swap the selected vendor — so we let the card show its own top action).
+    if (openSection === 'payment' || openSection === 'contract' || openSection === 'arrival' || openSection === 'nextAction') {
+      if (openSection !== 'nextAction') setExpandedKind(openSection);
       // Contract also expands the Documents collapsible so the planner sees
       // the contract row context after the inline panel.
       if (openSection === 'contract') {
@@ -3200,9 +3413,13 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       }
       setFlashSection('nextAction');
       setTimeout(() => setFlashSection(null), 2000);
-      if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      // Defer the scroll one tick so a just-swapped vendor's card is laid out
+      // before we center it (the conflict CTA changes `selected` in the same pass).
+      setTimeout(() => {
+        if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
+          nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 60);
       return;
     }
     const refMap = { documents: documentsRef, notes: notesRef, activity: activityRef, questions: questionsRef };
@@ -3229,7 +3446,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
-      background: P.canvas, overflow: 'hidden',
+      background: P.canvas, overflow: isMobile ? 'visible' : 'hidden',
     }}>
       <div ref={nextActionRef} style={flashStyle('nextAction')}>
         <CommandHeader
@@ -3244,13 +3461,27 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
           userId={userId}
           expandedKind={expandedKind}
           setExpandedKind={setExpandedKind}
+          isMobile={isMobile}
+          alsoItems={isMobile ? [] : alsoItems}
+          onAddressItem={addressRow}
         />
       </div>
 
       <div ref={scrollContainerRef} style={{
-        flex: 1, overflowY: 'auto',
-        padding: `${space[2]}px ${space[6]}px ${space[7]}px`,
+        flex: isMobile ? 'none' : 1, overflowY: isMobile ? 'visible' : 'auto',
+        // Vertical-center when short, but DON'T clip when tall. The old `margin:auto`
+        // on the child clipped the top of tall vendors so you couldn't scroll up to it
+        // (user 2026-06-12). `justify-content: safe center` centers short content and
+        // top-aligns (fully scrollable) once it overflows.
+        display: isMobile ? 'block' : 'flex', flexDirection: 'column',
+        justifyContent: isMobile ? undefined : 'safe center',
+        // The whole cockpit is now centered at the `wide` measure (App.js), so the
+        // detail body fills the pane symmetrically — its right edge lines up with the
+        // readiness/conflicts bands above it (no inner 1200 cap, which made the detail
+        // content ~150px narrower than the bands). Long PROSE keeps its own inner cap.
+        padding: `${space[2]}px ${space[6]}px ${space[7]}px ${space[6]}px`,
       }}>
+        <div style={{ margin: 0, width: '100%' }}>
         {isMobile && (
           <MobileVendorSummary
             vendor={vendor}
@@ -3262,6 +3493,55 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
         )}
         <CatererDriftBanner vendor={vendor} event={event} onMarkCatererUpdated={onMarkCatererUpdated} />
 
+        {/* Lock-in progress — "X of N" at a glance (makes the auto-advance
+            behavior visible). Desktop/tablet; mobile leads with MobileVendorSummary. */}
+        {!isMobile && <LockInTracker rows={planning} vendor={vendor} onPatchVendor={onPatchVendor} onAddLog={onAddLog} onAddressRow={addressRow} />}
+
+        {/* Consolidation (2026-06-10): the standalone "What needs attention"
+            digest was merged INTO the Next Action card above (next action = the
+            lead item, the rest list beneath it). One block, no duplicated
+            payment line. */}
+
+        {/* Board re-audit (2026-06-10) consolidation: promises LEAD the
+            reference sections; the redundant "Where this vendor stands" snapshot
+            was removed (the Next Action card's attention list now carries that
+            signal); the AI "Quick read" brief is demoted below the structured
+            facts (prose is for when you can't act — you can act above). Plainer,
+            topic-led labels; the day-of section is promoted with real arrivals
+            data. Flow ≈ Deliverables → Money/contract → Scope → On the day →
+            After → files/history. */}
+
+        {/* ── Zone 1 · What this vendor delivers (scope + deliverables) ── */}
+        <div style={ZONE_LABEL}>What this vendor delivers</div>
+        <PromiseTrackerSection
+          vendor={vendor}
+          event={event}
+          isOpen={collapse.promises}
+          onToggle={() => toggle('promises')}
+          onAddressRow={addressRow}
+          onPatchVendor={onPatchVendor}
+          onAddLog={onAddLog}
+        />
+        <div ref={questionsRef} style={flashStyle('questions')}>
+          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} />
+        </div>
+
+        {/* ── Zone 2 · Money & contract ─────────────────────────────── */}
+        <div style={ZONE_LABEL}>Money &amp; contract</div>
+        <PhaseSection label="Payments & booking" hint="The deal" rows={planning} defaultOpen={false} onAddressRow={addressRow} />
+        <div ref={documentsRef} style={flashStyle('documents')}>
+          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')} />
+        </div>
+
+        {/* ── Zone 3 · The day-of & after ───────────────────────────── */}
+        <div style={ZONE_LABEL}>The day-of &amp; after</div>
+        <PhaseSection label="On the day" hint="Arrivals, load-in, on-site" rows={dayOf} defaultOpen={false} onAddressRow={addressRow} />
+        <PhaseSection label="After the event" hint="Closeout" rows={closeout} defaultOpen={false} onAddressRow={addressRow} />
+        <LinkedWorkSection linked={linked} onRouteToLinked={onRouteToLinked} />
+
+        {/* ── Zone 4 · Reference & history ──────────────────────────── */}
+        <div style={ZONE_LABEL}>Reference &amp; history</div>
+        {/* AI readiness brief — demoted below the structured, actionable facts. */}
         <ReadinessCopilotSection
           vendor={vendor} event={event}
           aiAvailable={aiAvailable}
@@ -3269,36 +3549,12 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
           isOpen={collapse.readinessCopilot}
           onToggle={() => toggle('readinessCopilot')}
         />
-
-        <ReadinessSnapshot
-          challenges={challenges}
-          isOpen={collapse.readinessSnapshot}
-          onToggle={() => toggle('readinessSnapshot')}
-        />
-
-        <PromiseTrackerSection
-          vendor={vendor}
-          event={event}
-          isOpen={collapse.promises}
-          onToggle={() => toggle('promises')}
-        />
-
-        <PhaseSection label="Planning" hint="Before the event" rows={planning} defaultOpen={!isMobile} onAddressRow={addressRow} />
-        <PhaseSection label="The Day Of" hint="When the event is live" rows={dayOf} defaultOpen={false} onAddressRow={addressRow} />
-        <PhaseSection label="Wrap Up" hint="After the event" rows={closeout} defaultOpen={false} onAddressRow={addressRow} />
-
-        <div ref={questionsRef} style={flashStyle('questions')}>
-          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} />
-        </div>
-        <LinkedWorkSection linked={linked} onRouteToLinked={onRouteToLinked} />
-        <div ref={documentsRef} style={flashStyle('documents')}>
-          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')} />
-        </div>
         <div ref={notesRef} style={flashStyle('notes')}>
           <NotesSection vendor={vendor} isOpen={collapse.notes} onToggle={() => toggle('notes')} />
         </div>
         <div ref={activityRef} style={flashStyle('activity')}>
           <ActivityLogSection vendor={vendor} onAddLog={onAddLog} isOpen={collapse.activity} onToggle={() => toggle('activity')} />
+        </div>
         </div>
       </div>
     </div>
@@ -3362,7 +3618,10 @@ export default function VendorPlanningWorkspace({
   const vendors = useMemo(() => event.vendors || [], [event.vendors]);
   // Sprint 61.C Phase D — event-level conflict detection. Pure function;
   // recomputes whenever vendors/ros/guests/budget change.
-  const eventConflicts = useMemo(() => deriveVendorPromiseConflicts(event, []), [event]);
+  const eventConflicts = useMemo(
+    () => [...deriveVendorPromiseConflicts(event, []), ...getVendorArrivalConflicts(vendors)],
+    [event, vendors]
+  );
 
   const initialSelected = useMemo(() => {
     if (openId) {
@@ -3397,10 +3656,43 @@ export default function VendorPlanningWorkspace({
     }
   }, [vendors]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleSelect(v) {
+  // Local section-focus request. When a vendor is opened from the Conflicts
+  // strip we don't just select it — we ask its detail pane to center the
+  // viewport on the action card (and flash it). `ping` is monotonic so the
+  // detail's effect re-fires even when the same section is requested twice.
+  const [localFocus, setLocalFocus] = useState({ section: null, ping: 0 });
+
+  // Mobile: when a vendor is selected (incl. "Start with X"), bring the detail
+  // into the viewport — the page scroll otherwise stays on the command strip and
+  // the vendor loads below the fold (user 2026-06-12).
+  const mobileDetailRef = useRef(null);
+  useEffect(() => {
+    if (!isMobile || mobileView !== 'detail') return undefined;
+    const t = setTimeout(() => {
+      if (mobileDetailRef.current && mobileDetailRef.current.scrollIntoView) {
+        mobileDetailRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 70);
+    return () => clearTimeout(t);
+  }, [isMobile, mobileView, selected]);
+
+  function handleSelect(v, conflict) {
     setSelected(v);
     if (isMobile) setMobileView('detail');
+    if (conflict) {
+      // Payment-vs-budget routes to the payment panel; every other conflict
+      // (arrival / timeline / coverage / count / delivery) just centers the
+      // action card so the planner lands on what to do next.
+      const section = conflict.kind === 'payment_vs_budget' ? 'payment' : 'nextAction';
+      setLocalFocus(f => ({ section, ping: f.ping + 1 }));
+    }
   }
+
+  // Effective focus passed to the detail pane: local conflict-driven focus
+  // takes over once used; external deep-links (openSection prop) drive the
+  // initial mount. `effPing` sums both so either source re-fires the effect.
+  const effSection = localFocus.ping > 0 ? localFocus.section : openSection;
+  const effPing = sectionPing + localFocus.ping;
 
   const workspaceHeader = onBack && (
     <div style={{
@@ -3412,18 +3704,20 @@ export default function VendorPlanningWorkspace({
     }}>
       <button
         onClick={onBack}
+        title={event?.name ? `Back to ${event.name}` : 'Back to event overview'}
         style={{
           background: 'transparent', border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
           fontSize: 11, fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF,
-          padding: '4px 10px',
+          padding: '4px 10px', maxWidth: 200, overflow: 'hidden',
+          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}
       >
-        ← Command Center
+        ← {event?.name ? (event.name.length > 24 ? event.name.slice(0, 23) + '…' : event.name) : 'Overview'}
       </button>
       <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
+        fontSize: 10, fontWeight: type.weight.semibold,
         letterSpacing: '0.16em', textTransform: 'uppercase',
         color: P.textTertiary, fontFamily: FF,
       }}>
@@ -3434,10 +3728,12 @@ export default function VendorPlanningWorkspace({
 
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      // Mobile: flow with the page (the host tab area scrolls). A fixed height +
+      // overflow:hidden here collapsed against the unbounded mobile container, so
+      // the vendor detail couldn't scroll. Let it grow and the page handles scroll.
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {workspaceHeader}
-        <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
-        <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
+        <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
         {mobileView === 'list' ? (
           <VendorList
             vendors={vendors}
@@ -3448,7 +3744,7 @@ export default function VendorPlanningWorkspace({
             onAdd={onAddVendor}
           />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <div ref={mobileDetailRef} style={{ display: 'flex', flexDirection: 'column', scrollMarginTop: 8 }}>
             <button
               onClick={() => setMobileView('list')}
               style={{
@@ -3475,8 +3771,8 @@ export default function VendorPlanningWorkspace({
                 onAskAi={onAskAi}
                 userId={userId}
                 onRouteToLinked={onRouteToLinked}
-                openSection={openSection}
-                sectionPing={sectionPing}
+                openSection={effSection}
+                sectionPing={effPing}
               />
             ) : (
               <NoSelection count={vendors.length} />
@@ -3489,9 +3785,13 @@ export default function VendorPlanningWorkspace({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {workspaceHeader}
-      <VendorCommandStrip vendors={vendors} event={event} onSelectVendor={handleSelect} />
-      <ConflictsStrip conflicts={eventConflicts} vendors={vendors} onSelectVendor={handleSelect} />
+      {/* Desktop: the shared LegacyTabHeader band (added in App.js) now carries
+          the ← Overview back + VENDORS label, so the in-workspace breadcrumb is
+          redundant and removed here to avoid a double header. */}
+      {/* One quiet status line (readiness stats + a conflict flag) — see
+          VendorStatusBar. The risk-sorted list + default selection answer
+          "where do I start", so there's no "Start with X" band. */}
+      <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <VendorList
           vendors={vendors}
@@ -3511,8 +3811,8 @@ export default function VendorPlanningWorkspace({
             aiAvailable={aiAvailable}
             onAskAi={onAskAi}
             onRouteToLinked={onRouteToLinked}
-            openSection={openSection}
-            sectionPing={sectionPing}
+            openSection={effSection}
+            sectionPing={effPing}
           />
         ) : (
           <NoSelection count={vendors.length} />

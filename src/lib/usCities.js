@@ -1,0 +1,60 @@
+// Shared US "City, ST" list for key-less city autocomplete (native datalist) —
+// no Google Maps key required. Covers the largest metros, all 50 state capitals,
+// and popular event/wedding destinations. For exhaustive coverage, a 5-digit ZIP
+// resolves to "City, ST" via zippopotam.us, and a Google Places key (when set)
+// adds full live autocomplete. One source of truth for the Service Area field
+// (Settings) and the Client Intake city fields.
+const US_CITIES = [
+  // ── Largest metros (by population) ──
+  'New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ',
+  'Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','San Jose, CA',
+  'Austin, TX','Jacksonville, FL','Fort Worth, TX','Columbus, OH','Charlotte, NC',
+  'San Francisco, CA','Indianapolis, IN','Seattle, WA','Denver, CO','Washington, DC',
+  'Boston, MA','El Paso, TX','Nashville, TN','Detroit, MI','Oklahoma City, OK',
+  'Portland, OR','Las Vegas, NV','Memphis, TN','Louisville, KY','Baltimore, MD',
+  'Milwaukee, WI','Albuquerque, NM','Tucson, AZ','Fresno, CA','Sacramento, CA',
+  'Mesa, AZ','Kansas City, MO','Atlanta, GA','Omaha, NE','Colorado Springs, CO',
+  'Raleigh, NC','Long Beach, CA','Virginia Beach, VA','Miami, FL','Oakland, CA',
+  'Minneapolis, MN','Tulsa, OK','Bakersfield, CA','Wichita, KS','Arlington, TX',
+  'Aurora, CO','Tampa, FL','New Orleans, LA','Cleveland, OH','Honolulu, HI',
+  'Anaheim, CA','Lexington, KY','Stockton, CA','Corpus Christi, TX','Henderson, NV',
+  'Riverside, CA','Newark, NJ','Saint Paul, MN','Santa Ana, CA','Cincinnati, OH',
+  'Irvine, CA','Orlando, FL','Pittsburgh, PA','St. Louis, MO','Greensboro, NC',
+  'Jersey City, NJ','Anchorage, AK','Lincoln, NE','Plano, TX','Durham, NC',
+  'Buffalo, NY','Chandler, AZ','Chula Vista, CA','Toledo, OH','Madison, WI',
+  'Gilbert, AZ','Reno, NV','Fort Wayne, IN','North Las Vegas, NV','St. Petersburg, FL',
+  'Lubbock, TX','Irving, TX','Laredo, TX','Winston-Salem, NC','Chesapeake, VA',
+  'Glendale, AZ','Scottsdale, AZ','Garland, TX','Boise, ID','Norfolk, VA',
+  'Spokane, WA','Fremont, CA','Richmond, VA','Santa Clarita, CA','San Bernardino, CA',
+  'Baton Rouge, LA','Hialeah, FL','Tacoma, WA','Modesto, CA','Huntsville, AL',
+  'Des Moines, IA','Yonkers, NY','Rochester, NY','Moreno Valley, CA','Fayetteville, NC',
+  'Fontana, CA','Columbus, GA','Worcester, MA','Port St. Lucie, FL','Little Rock, AR',
+  'Augusta, GA','Oxnard, CA','Birmingham, AL','Montgomery, AL','Frisco, TX',
+  'Amarillo, TX','Salt Lake City, UT','Grand Rapids, MI','Huntington Beach, CA','Overland Park, KS',
+  'Glendale, CA','Tallahassee, FL','Grand Prairie, TX','McKinney, TX','Cape Coral, FL',
+  'Sioux Falls, SD','Peoria, AZ','Providence, RI','Vancouver, WA','Knoxville, TN',
+  'Akron, OH','Shreveport, LA','Mobile, AL','Brownsville, TX','Newport News, VA',
+  'Fort Lauderdale, FL','Chattanooga, TN','Tempe, AZ','Aurora, IL','Elk Grove, CA',
+  'Ontario, CA','Salem, OR','Cary, NC','Santa Rosa, CA','Rancho Cucamonga, CA',
+  'Eugene, OR','Oceanside, CA','Clarksville, TN','Garden Grove, CA','Lancaster, CA',
+  'Springfield, MO','Pembroke Pines, FL','Fort Collins, CO','Palmdale, CA','Salinas, CA',
+  'Hayward, CA','Corona, CA','Paterson, NJ','Murfreesboro, TN','Macon, GA',
+  'Lakewood, CO','Killeen, TX','Springfield, MA','Alexandria, VA','Kansas City, KS',
+  'Sunnyvale, CA','Hollywood, FL','Roseville, CA','Charleston, SC','Escondido, CA',
+  'Joliet, IL','Jackson, MS','Bellevue, WA','Surprise, AZ','Naperville, IL',
+  'Pasadena, TX','Pomona, CA','Bridgeport, CT','Denton, TX','Rockford, IL',
+  'Mesquite, TX','Savannah, GA','Syracuse, NY','McAllen, TX','Torrance, CA',
+  // ── State capitals not already above ──
+  'Montpelier, VT','Concord, NH','Augusta, ME','Hartford, CT','Trenton, NJ',
+  'Dover, DE','Annapolis, MD','Charleston, WV','Frankfort, KY','Columbia, SC',
+  'Jefferson City, MO','Topeka, KS','Lansing, MI','Springfield, IL','Pierre, SD',
+  'Bismarck, ND','Helena, MT','Cheyenne, WY','Carson City, NV','Olympia, WA',
+  'Juneau, AK','Salem, OR','Santa Fe, NM','Harrisburg, PA','Tallahassee, FL',
+  // ── Popular wedding / event destinations ──
+  'Napa, CA','Sonoma, CA','Carmel, CA','Santa Barbara, CA','Palm Springs, CA',
+  'Lake Tahoe, CA','Asheville, NC','Charleston, SC','Savannah, GA','Sedona, AZ',
+  'Aspen, CO','Jackson, WY','Park City, UT','Newport, RI','Cape Cod, MA',
+  'Hilton Head, SC','Key West, FL','Naples, FL','Sarasota, FL','Scottsdale, AZ',
+  'Telluride, CO','Vail, CO','Stowe, VT','Kennebunkport, ME','Hudson Valley, NY',
+];
+export default US_CITIES;
