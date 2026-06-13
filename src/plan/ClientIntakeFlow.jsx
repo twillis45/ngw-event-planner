@@ -13,7 +13,7 @@
 // No Supabase writes here. No cross-contamination with OrchestrationSlice.
 // Status via color + text only. No emoji. No icons.
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { color, space, type, radius } from '../design/tokens';
 import US_CITIES from '../lib/usCities';
 // Sprint 61.G — shared budget hint
@@ -973,7 +973,9 @@ function StepSidebar({ current, onStep, completedSteps }) {
 // Confirm Intake. Without it, the draft is local-only (display mode).
 export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onPersist, intakeMode }) {
   const embedded = typeof onBack === 'function';
-  const [step, setStep] = useState(1);
+  // Seed from the persisted place so a <Suspense> remount restores the step
+  // the planner was on instead of bouncing them back to the start.
+  const [step, setStep] = useState(() => event._intakeStep || 1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
   // Local draft — initialized from event prop. Persisted to host state via
   // onPersist on Confirm Intake (when provided).
@@ -991,42 +993,32 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
     };
   });
 
+  // Persist the latest draft to the host event. The Client Intake lives inside a
+  // <Suspense> boundary that can re-suspend and REMOUNT this component (which
+  // re-seeds `draft` and `step` from the event) — so we persist on every step
+  // transition and a remount simply restores from the saved event. We do NOT
+  // auto-save on a timer: under StrictMode that loops (persist → setEvent →
+  // remount → persist …). Field blur covers within-step edits cheaply.
+  const persist = (extra) => { if (typeof onPersist === 'function') onPersist({ ...draft, ...extra }); };
+
   function setField(key, value) {
     setDraft(prev => ({ ...prev, [key]: value }));
   }
 
-  // Auto-save (board 2026-06-13): the Client Intake sits inside a <Suspense>
-  // boundary that re-suspends and REMOUNTS this component on step navigation —
-  // which used to reset `draft` from the event and silently wipe everything the
-  // planner had typed. Persisting every change (debounced) means a remount just
-  // re-seeds `draft` from the saved event, so no answer is ever lost. Refs keep
-  // the effect from re-subscribing on every keystroke.
-  const persistRef = useRef(onPersist); persistRef.current = onPersist;
-  const draftRef   = useRef(draft);     draftRef.current   = draft;
-  const didMount   = useRef(false);
-  useEffect(() => {
-    if (!didMount.current) { didMount.current = true; return; }
-    const t = setTimeout(() => { if (typeof persistRef.current === 'function') persistRef.current(draftRef.current); }, 500);
-    return () => clearTimeout(t);
-  }, [draft]);
-
   function handleNext() {
     setCompletedSteps(prev => new Set([...prev, step]));
-    // Persist progress BEFORE the step change so the navigation remount re-seeds
-    // from the saved event instead of dropping this step's answers.
-    if (typeof onPersist === 'function') onPersist(draft);
     if (step < STEPS.length) {
+      persist({ _intakeStep: step + 1 });   // save answers + new place BEFORE the step change
       setStep(s => s + 1);
     } else {
-      // Confirm Intake — route back to Command Center (embedded) or close.
+      persist({ _intakeStep: 1 });
       if (embedded) onBack();
       else if (typeof onClose === 'function') onClose();
     }
   }
 
   function handleBack() {
-    if (typeof onPersist === 'function') onPersist(draft);
-    if (step > 1) setStep(s => s - 1);
+    if (step > 1) { persist({ _intakeStep: step - 1 }); setStep(s => s - 1); }
   }
 
   function handleSaveDraft() {
@@ -1255,7 +1247,11 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             </div>
           )}
 
-          {stepContent[step]}
+          {/* Blur-persist: any field that loses focus saves its answer, so a
+              remount mid-step restores from the event instead of losing it. */}
+          <div onBlur={() => persist({ _intakeStep: step })}>
+            {stepContent[step]}
+          </div>
         </div>
       </div>
 

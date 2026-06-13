@@ -27519,7 +27519,7 @@ function EventClientIntakeTab({ event, setEvent, isMobile, intakeMode, onBack })
     const ALLOWED = ['name', 'type', 'date', 'venue', 'guestEstimate',
                      'budget', 'vendors', 'clients', 'vision',
                      'priorities', 'mustHaves', 'dealBreakers',
-                     'vipConcerns', 'commPrefs', 'intake',
+                     'vipConcerns', 'commPrefs', 'intake', '_intakeStep',
                      // Step 5 Vision & Style — meaning-first intake (board 2026-06-12).
                      // These top-level keys were being dropped on save; the meaning
                      // questions drive the toast prompt, day-of moments, and briefs.
