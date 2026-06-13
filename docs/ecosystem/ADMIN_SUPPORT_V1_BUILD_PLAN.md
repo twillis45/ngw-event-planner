@@ -144,7 +144,11 @@ beats a chart-for-its-own-sake — see HANDOFF Open Thread #2.)
 
 ## 5. Build sequence (board order)
 
-- **P0 — finish support:** S1 Triage Overview · S2 Event diagnostics · S3 Invitation ops · A3-err error feed.
+- **P0 — finish support: ✅ COMPLETE (2026-06-12).** S1 Triage Overview ✅ · S2 Event/Workspace
+  diagnostics ✅ · S3 Invitation ops ✅ · A3-err error feed ✅ (server-table source, Option 3 —
+  Sentry proxy may layer on later). **Deploy step:** run migration `0006_admin_errors.sql` against
+  Supabase before the error feed / Triage `errors_24h` return live data (routes degrade gracefully
+  until then). View-as (S4) intentionally deferred (needs full audit + read-only guarantees).
 - **P1 — run the beta:** A1 activation board · A2 AI cost meter · A3-flags feature flags.
 - **P2 — after Payments P0:** A5 billing/revenue ops.
 - **Gated — the telemetry decision (§4) → LEG 3 real analytics.** Don't build BI before the stream exists.

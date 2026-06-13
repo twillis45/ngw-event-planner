@@ -115,18 +115,30 @@ export default function BudgetEstimateHint({
         {' '}{conf.level === 'low' && 'Adding date and metro will tighten the range.'}
       </div>
 
-      {verdict && (
-        <div style={{
-          fontSize: 11.5,
-          color: verdictColor,
-          marginTop: 6,
-          fontWeight: 600,
-        }}>
-          Your {fmtMoney(budgetN)} budget is {verdict === 'tight' ? 'tight for this scope'
-            : verdict === 'generous' ? 'generous for this scope'
-            : 'within typical range'}.
-        </div>
-      )}
+      {verdict && (() => {
+        // Budget-stretch coaching (board 2026-06-12, Wanda dogfood): when the
+        // budget is well UNDER the floor, "tight" undersells it — quantify the
+        // gap and hand over concrete ways to stretch it, so the honest signal is
+        // also actionable instead of just discouraging.
+        const gap = Math.max(0, lowTotal - budgetN);
+        const pct = lowTotal > 0 ? Math.round((budgetN / lowTotal) * 100) : 100;
+        const wellUnder = verdict === 'tight' && budgetN < lowTotal * 0.7;
+        return (
+          <div style={{ marginTop: 6 }}>
+            <div style={{ fontSize: 11.5, color: verdictColor, fontWeight: 600 }}>
+              {verdict === 'tight'
+                ? `Your ${fmtMoney(budgetN)} budget is ${wellUnder ? 'well under' : 'tight for'} this scope — ${fmtMoney(gap)} below the ${fmtMoney(lowTotal)} typical floor (≈${pct}%).`
+                : verdict === 'generous' ? `Your ${fmtMoney(budgetN)} budget is generous for this scope.`
+                : `Your ${fmtMoney(budgetN)} budget is within typical range.`}
+            </div>
+            {wellUnder && (
+              <div style={{ fontSize: 11, color: palette.muted, marginTop: 4, lineHeight: 1.6 }}>
+                Doable, but it means real trade-offs. Common ways to stretch it: a community or in-house-catering venue, family-style or buffet service, DIY or rented décor, a smaller act or friend for music, BYO bar where allowed, and treating premium add-ons (photo booth, extras) as optional.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {!compact && (
         <details style={{ marginTop: 8 }}>

@@ -2022,29 +2022,52 @@ const mergeBudgetTemplate = (...types) => {
 // skeleton anchored on the event's time of day, so a newly-created event opens to
 // a real draft to refine instead of a blank table. (Board #1 fix: born-empty ROS.)
 const ROS_STARTER_LABELS = {
-  Wedding:         { main: 'Ceremony begins',        meal: 'Dinner service',          moment: 'Toasts, cake & first dance' },
-  Corporate:       { main: 'Program / welcome',      meal: 'Lunch / catering service', moment: 'Keynote / main session' },
-  'Board Meeting': { main: 'Call to order',          meal: 'Working meal / break',     moment: 'Main agenda / voting' },
-  Birthday:        { main: 'Guests arrive & mingle', meal: 'Food served',              moment: 'Cake & celebration' },
-  Anniversary:     { main: 'Welcome & program',      meal: 'Dinner service',          moment: 'Toasts & tributes' },
-  Other:           { main: 'Main event begins',      meal: 'Food / catering service',  moment: 'Key moment / program' },
+  Wedding:           { main: 'Ceremony begins',        meal: 'Dinner service',           moment: 'Cake & first dance' },
+  Corporate:         { main: 'Program / welcome',      meal: 'Lunch / catering service', moment: 'Keynote / main session' },
+  'Board Meeting':   { main: 'Call to order',          meal: 'Working meal / break',     moment: 'Main agenda / voting' },
+  Birthday:          { main: 'Guests arrive & mingle', meal: 'Food served',              moment: 'Cake & celebration' },
+  Anniversary:       { main: 'Welcome & program',      meal: 'Dinner service',           moment: 'Tributes & toast' },
+  'Retirement Party':{ main: 'Welcome & program',      meal: 'Dinner service',           moment: 'Tribute & recognition' },
+  Other:             { main: 'Main event begins',      meal: 'Food / catering service',  moment: 'Key moment / program' },
 };
+// Celebration events get the day-of MOMENTS a planner shouldn't have to remember
+// (board 2026-06-12) — toast, the signature moment, and the hero/group photos
+// (the photos that become the displayed décor / keepsakes). Each carries a
+// default owner so it lands on the Day-of Responsibility board with a name.
+const ROS_CELEBRATION_TYPES = new Set([
+  'Wedding', 'Birthday', 'Anniversary', 'Retirement Party', 'Sweet 16',
+  'Quinceañera', 'Engagement Party', 'Vow Renewal', 'Bridal Shower',
+  'Baby Shower', 'Graduation', 'Reunion',
+]);
 const buildStarterROS = (type, timeOfDay) => {
   const base = timeOfDay === 'morning' ? 10 : timeOfDay === 'evening' ? 18 : 15; // anchor hour
   const L = ROS_STARTER_LABELS[type] || ROS_STARTER_LABELS.Other;
   const hhmm = (h, m) => `${String(((h % 24) + 24) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  const seg = (h, m, segment, t) => ({ id: uid(), time: hhmm(h, m), segment, location: '', type: t, owner: '', confirmed: false, notes: '' });
-  return [
+  const seg = (h, m, segment, t, owner = '') => ({ id: uid(), time: hhmm(h, m), segment, location: '', type: t, owner, confirmed: false, notes: '' });
+  const rows = [
     seg(base - 3, 0,  'Vendor load-in / setup begins', 'prep'),
     seg(base - 2, 0,  'Decor & florals install',       'prep'),
     seg(base - 1, 0,  'Final walkthrough',             'prep'),
     seg(base - 1, 30, 'Doors / guest arrival',         'event'),
     seg(base,     0,  L.main,                          'event'),
     seg(base + 1, 0,  L.meal,                          'event'),
-    seg(base + 2, 0,  L.moment,                        'event'),
+  ];
+  if (ROS_CELEBRATION_TYPES.has(type)) {
+    // Real day-of MOMENTS only (board 2026-06-12). A pre-event hero photoshoot is
+    // NOT a day-of moment — its prints arrive as décor and ride the "Decor &
+    // florals install" segment, so it isn't seeded here.
+    rows.push(
+      seg(base + 1, 45, 'Toasts & speeches',           'event', 'Host / MC'),
+      seg(base + 2, 0,  L.moment,                       'event'),
+    );
+  } else {
+    rows.push(seg(base + 2, 0, L.moment, 'event'));
+  }
+  rows.push(
     seg(base + 4, 0,  'Last call / farewell',          'event'),
     seg(base + 4, 30, 'Vendor strike / load-out',      'prep'),
-  ];
+  );
+  return rows;
 };
 // Union timeline templates: dedupe by lowercased task text (catches near-dupes).
 const mergeTimelineTemplate = (...types) => {
@@ -7509,7 +7532,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // shown. The KITS table below is the single source of truth for both
   // Step 2's expanded selected-card AND the Success "Created for you" panel.
   const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
-  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
+  const [form,    setForm]    = useState({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', theme: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
   const [kit,     setKit]     = useState(() => kitForEventType('Wedding'));
   // Intelligence Gap PR #1 — kit auto-suggestion is gated on whether the
   // user has manually picked a card. Once they do, the suggestion stops
@@ -7627,6 +7650,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     onCreate({
       id: newId, rsvpCode: uid(), name: form.name.trim(), type: form.type,
       secondaryType: form.secondaryType || '', date: form.date, venue: form.venue, venueTags: form.venueTags || [],
+      theme: (form.theme || '').trim(),
       tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon',
       guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline,
       ros: kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon') : [],
@@ -7636,7 +7660,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   };
 
   const resetForAnother = () => {
-    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
+    setForm({ name: '', type: 'Wedding', secondaryType: '', date: '', venue: '', theme: '', guestCount: '', totalBudget: '', market: '', timeOfDay: timeOfDayForEventType('Wedding') });
     setCategoryTiers({});
     setOmittedCats([]); setExtraCats([]); setSaveMoneyOpen(false); setAddCatOpen(false); setBuilderOpen(false);
     setKit(kitForEventType('Wedding'));
@@ -8053,6 +8077,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   <input id="ce-venue" data-testid="ce-venue" style={ui.field(false)} placeholder="Where is it being held?" value={form.venue} onChange={e => upd('venue', e.target.value)} />
                 </div>
                 <div>
+                  <label style={ui.label} htmlFor="ce-theme">Theme / colors <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-theme" data-testid="ce-theme" style={ui.field(false)} placeholder="e.g. gold &amp; black" value={form.theme} onChange={e => upd('theme', e.target.value)} />
+                </div>
+                <div>
                   <label style={ui.label} htmlFor="ce-guests">Estimated guest count <span style={ui.opt}>· optional</span></label>
                   <input id="ce-guests" data-testid="ce-guests" type="number" min="0" inputMode="numeric" style={ui.field(false)} placeholder="e.g. 120" value={form.guestCount} onChange={e => upd('guestCount', e.target.value)} />
                 </div>
@@ -8224,6 +8252,20 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
                             </div>
                             <div data-testid="ce-estimator-range" style={{ fontSize: 12, color: C.muted, marginTop: -2 }}>{money(lowT)} – {money(highT)} across tiers · {marketObj ? `priced for ${marketObj.label}` : 'national average — set the event city below for local pricing'} · adjust below.</div>
+                            {/* Budget-stretch coaching (board 2026-06-12, Wanda dogfood): if the
+                                entered budget is well under the floor, quantify the gap and hand
+                                over concrete ways to stretch it — honest AND actionable. */}
+                            {(() => {
+                              const ub = Number(form.totalBudget) || 0;
+                              if (!(ub > 0 && ub < lowT * 0.7)) return null;
+                              const gap = Math.max(0, lowT - ub);
+                              const pct = lowT > 0 ? Math.round((ub / lowT) * 100) : 100;
+                              return (
+                                <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.6, background: `${C.warn}12`, border: `1px solid ${C.warn}40`, borderRadius: 8, padding: '8px 10px' }}>
+                                  <span style={{ color: C.warn, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%). Doable with trade-offs: a community or in-house-catering venue, family-style or buffet service, DIY or rented décor, a friend or smaller act for music, BYO bar where allowed, and premium add-ons (photo booth, extras) as optional.
+                                </div>
+                              );
+                            })()}
 
                             {/* HERO — total + Use lead the step (board: lead with the answer). Sticky so
                                 the number stays in view and visibly drops as categories are skipped. */}
@@ -16906,7 +16948,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               already establish this, so the banner is now just the chip + the
               one action that matters (clear it). No verbose re-explanation. */}
           <span style={{ fontSize: isMobile ? 11 : 12, color: C.muted, flex: 1, minWidth: 120, fontWeight: 500 }}>
-            {isMobile ? 'A guided tour — your first event clears it.' : 'A guided tour. Create your first event (or Clear) to make this your real workspace.'}
+            {isMobile ? 'A guided tour.' : 'A guided tour — explore freely.'}
           </span>
           {/* Board P0-2 (2026-06-12): the "Open sample event" action that used to
               live in the (now-suppressed) sample-mode Spine moves here — one place
@@ -17618,34 +17660,46 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             gap: isMob ? 10 : 14,
             marginBottom: isMob ? 14 : 20,
           }}>
-            {/* Outstanding (the "needs you" money) LEADS the client KPIs
-                (board 2026-06-12) — it's the attention metric, not last. */}
-            <div role="button" tabIndex={0} onClick={totalOutstanding > 0 ? () => setClientsFilter && setClientsFilter('outstanding') : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: totalOutstanding > 0 ? 'pointer' : 'default' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
-              <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                {totalOutstanding === 0 ? 'All paid in full' : `across ${allClients.filter(c => clientComputed(c).outstanding > 0).length} client${allClients.filter(c => clientComputed(c).outstanding > 0).length !== 1 ? 's' : ''}`}
-              </div>
-            </div>
-            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Total Clients</div>
-              <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{activeClientCount} active or contracted</div>
-            </div>
-            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
-              <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {nextClientEvt ? nextClientEvt.ev.name : '—'}
-              </div>
-              <div style={{ fontSize: 11, color: nextClientEvt ? (nextClientEvt.days <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>
-                {nextClientEvt ? countdownLabel(nextClientEvt.days) : 'No upcoming events'}
-              </div>
-            </div>
-            <div style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
-              <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>collected to date</div>
-            </div>
+            {(() => {
+              // Dynamic precedence (board 2026-06-12) — same situation-scored
+              // pattern as the event portfolio. Outstanding (money owed = needs
+              // you) leads when there's a balance; otherwise the imminent next
+              // event floats up. Total/Revenue are quiet context.
+              const cnd = nextClientEvt ? nextClientEvt.days : null;
+              const owedClients = allClients.filter(c => clientComputed(c).outstanding > 0).length;
+              const cards = [
+                { key: 'outstanding', score: totalOutstanding > 0 ? 100 + Math.min(owedClients * 5, 40) : 5, node: (
+                  <div key="outstanding" role="button" tabIndex={0} onClick={totalOutstanding > 0 ? () => setClientsFilter('outstanding') : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: totalOutstanding > 0 ? 'pointer' : 'default' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalOutstanding === 0 ? 'All paid in full' : `across ${owedClients} client${owedClients !== 1 ? 's' : ''}`}</div>
+                  </div>
+                ) },
+                { key: 'next', score: cnd === null ? 0 : (cnd <= 3 ? 95 : cnd <= 7 ? 80 : cnd <= 14 ? 55 : 20), node: (
+                  <div key="next" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
+                    <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextClientEvt ? nextClientEvt.ev.name : '—'}</div>
+                    <div style={{ fontSize: 11, color: nextClientEvt ? (cnd <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextClientEvt ? countdownLabel(cnd) : 'No upcoming events'}</div>
+                  </div>
+                ) },
+                { key: 'total', score: 30, node: (
+                  <div key="total" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Total Clients</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{activeClientCount} active or contracted</div>
+                  </div>
+                ) },
+                { key: 'revenue', score: 15, node: (
+                  <div key="revenue" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
+                    <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>collected to date</div>
+                  </div>
+                ) },
+              ];
+              cards.sort((a, b) => b.score - a.score);
+              return cards.map(c => c.node);
+            })()}
           </div>
         )}
       </div>
@@ -28266,6 +28320,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
+          <EDTField C={C} s={s} label="Theme / colors" value={event.theme || ''} onChange={v => upd('theme', v)} placeholder="e.g. gold & black" />
         </EDTRow>
       </div>
 
@@ -28828,8 +28883,13 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             {totalOpen > 1 && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, fontFeatureSettings: '"tnum" 1', whiteSpace: 'nowrap' }}>
-                1 of {totalOpen}
+              // Board 2026-06-12 ("1 of 33 — of what?"): bare "1 of N" reads as a
+              // mystery count. Name it ("open items") + a tooltip so the planner
+              // knows they're seeing the TOP of N things needing them, and that
+              // clearing it advances to the next.
+              <span title={`Your top next step — 1 of ${totalOpen} open items. Clear it and the next moves up.`}
+                style={{ fontSize: 11, fontWeight: 600, color: C.muted, fontFeatureSettings: '"tnum" 1', whiteSpace: 'nowrap' }}>
+                1 of {totalOpen} open
               </span>
             )}
             {/* Board ruling (two-reds): the Spine is persistent CHROME, so its CTA
