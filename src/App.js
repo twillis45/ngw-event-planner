@@ -19242,6 +19242,44 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         return { label: o.label, color };
                       })();
 
+                      // Sprint 54F — compact row mode. An event with NO open attention
+                      // items (no decisions/approvals/requests/vendor issues) and not
+                      // critical collapses to a single line; events that need attention
+                      // stay fully expanded. Progressive disclosure: the row still opens
+                      // the full event on click. Cuts list height ~60% per quiet event.
+                      const isCompactRow = totalAtt === 0 && naLevel !== 'critical';
+                      const strictOnTrack = naLevel !== 'attention' && worstStatus !== 'AT_RISK';
+                      if (isCompactRow) {
+                        return (
+                          <div role="button" tabIndex={0} key={ev.id}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
+                            onClick={() => onSelectEvent(ev.id)}
+                            title="On track — click to open"
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: isMob ? 9 : 12,
+                              padding: isMob ? '8px 14px' : '8px 20px',
+                              borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : 'none',
+                              cursor: 'pointer', background: isPreview ? C.accent + '0c' : 'transparent',
+                              borderLeft: isPreview ? `3px solid ${C.accent}` : '3px solid transparent',
+                              transition: 'background 0.12s',
+                            }}
+                            onMouseEnter={e => { if (!isPreview) e.currentTarget.style.background = C.surface2; }}
+                            onMouseLeave={e => { if (!isPreview) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, fontSize: isMob ? 13 : 13.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{ev.name}</span>
+                            {!isMob && <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}`, flexShrink: 0 }}>{eventTypeLabel(ev) || ev.type}</span>}
+                            <span style={{ flex: 1 }} />
+                            {days !== null && <span style={{ fontSize: 11, fontWeight: 600, color: days <= 30 ? C.muted : C.accent2, flexShrink: 0, whiteSpace: 'nowrap' }}>{countdownShort(days)}</span>}
+                            {strictOnTrack
+                              ? <span style={{ fontSize: 10.5, fontWeight: 600, color: C.success, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check" size={11} />On track</span>
+                              : <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted, flexShrink: 0 }}>No open items</span>}
+                            {!isMob && balanceDue > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.muted, flexShrink: 0, fontFeatureSettings: '"tnum" 1' }}>{fmtD(balanceDue)}</span>}
+                            <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div role="button" tabIndex={0}
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
