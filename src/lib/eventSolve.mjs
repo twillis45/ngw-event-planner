@@ -1,8 +1,11 @@
 // Event Intelligence Engine — backward-solve core (family-agnostic).
 // One algorithm; the graph data per family makes it wedding / corporate / etc.
 // Imported by the app (the Next-Step Spine) and the CLI/backtest scripts.
+// ESM (.mjs): webpack bundles it and node loads it as a module — both import the
+// canonical taxonomy below as real ESM (no CJS module.exports anywhere in the engine).
 // Node tuple: [id, name, offset, duration, deps[], owner, gate, firesRule?, shield?]
 //   offset = days before D it must COMPLETE (negative = days after D); duration = working days.
+import * as taxonomy from './eventTaxonomy.mjs';
 
 const DAY = 86400000;
 const d = (D, days) => new Date(D.getTime() - days * DAY);
@@ -710,7 +713,7 @@ function solve(graph, D, completed, asOf = new Date()) {
 // type returns null (no preview) rather than fabricating wedding milestones. The
 // keyword/alias logic that used to live here as a local FAMILY_BY_TYPE array is now
 // the single ordered resolver shared with intake/budget/vendor classifiers.
-const taxonomy = require('./eventTaxonomy');
+// (`taxonomy` is imported at the top of this module.)
 function familyFor(event) {
   const t = (event && (event.type || event.kind || event.category)) || '';
   return taxonomy.solveFamilyFor(t); // null when unrecognized — honest, never a wedding.
@@ -841,48 +844,26 @@ function enginePreview(event, asOf = new Date()) {
   } catch (e) { return null; }
 }
 
-module.exports = { GRAPHS, solve, familyFor, completionFromEvent, enginePreview };
+// Re-export the canonical taxonomy resolvers THROUGH this engine module so the
+// webpack app reaches them via the single proven CJS chain (eventSolveAdapter ->
+// eventSolve -> eventTaxonomy). No ESM module imports eventTaxonomy directly — when
+// it had multiple ESM-side importers, the production bundle flagged it ESM and its
+// `module.exports` tripped webpack's "ES Modules may not assign module.exports" guard.
+export { GRAPHS, solve, familyFor, completionFromEvent, enginePreview };
+// Re-export the canonical taxonomy resolvers through the engine so app surfaces can
+// reach them via the engine adapter (one ESM boundary for the whole engine).
+export {
+  EVENT_TAXONOMY,
+  resolveCanonicalType,
+  intakeFamilyFor,
+  budgetFamilyFor,
+  solveFamilyFor,
+  budgetShareFamilyFor,
+  recordKindFor,
+  curatedRosterKeyFor,
+  culturalFlagFor,
+} from './eventTaxonomy.mjs';
 
-// CLI demo (node src/lib/eventSolve.js) — proves the SAME solver runs both families.
-if (typeof require !== 'undefined' && require.main === module) {
-  const date = s => new Date(s + 'T00:00:00Z');
-  const fmt = x => x.toISOString().slice(0, 10);
-  const show = (label, r) => {
-    console.log(`\n${label} (${r.daysOut}d out)  Readiness ${r.readiness}%  ${r.flag}`);
-    if (r.binding) console.log(`  BINDING → ${r.binding.name}  [${r.delivery}]`);
-    console.log(r.dateAtRisk ? `  ⚠ DATE-AT-RISK: ${r.criticalChain.join(' → ')}` : '  on schedule');
-  };
-  const WED_DONE = new Set(['date_budget','venue','guestlist_draft','deposits','photographer','caterer','officiant','band_dj','florist','attire_order','save_the_dates','cake','hmua','rentals','tasting','transport','invitations_design','guestlist_final','invitations_sent']);
-  show('WEDDING · Maria & James', solve(GRAPHS.wedding, date('2026-07-07'), WED_DONE, date('2026-06-13')));
-  // Corporate conference 30 days out — speaker content NOT delivered (the corporate content-risk)
-  const CORP_DONE = new Set(['objective_signoff','budget_approval','venue_date','speakers_confirm','av_production','agenda_ros_v1','catering','registration_live','invites_open_reg','swag']);
-  show('CORPORATE · User Conference', solve(GRAPHS.corporate, date('2026-07-13'), CORP_DONE, date('2026-06-13')));
-
-  // enginePreview on mock APP events — proves the real-state mapping (vendors/venue/payments → done)
-  const asOf = date('2026-06-13');
-  const showP = (label, ev) => { const r = enginePreview(ev, asOf); r ? show(label, r) : console.log(`\n${label} → no preview`); };
-  showP('PREVIEW · Todd & Sarah (mapped state)', {
-    date: '2026-09-12', type: 'Wedding', venue: 'Bluebell Venue', budget: 18900, guests: new Array(120), ros: [],
-    vendors: [{ category: 'Venue', status: 'Confirmed', depositPaid: true, coiStatus: 'on file' },
-              { category: 'Florals', status: 'Confirmed', depositPaid: true },
-              { category: 'Photography', status: 'Booked' }, { category: 'Catering', status: 'Confirmed' }],
-  });
-  showP('PREVIEW · Maria & James (mapped state)', {
-    date: '2026-07-07', type: 'Wedding', venue: 'Riverside Estate', budget: 32000, guests: new Array(140), ros: [],
-    vendors: [{ category: 'Venue', status: 'Confirmed' }, { category: 'Florals', status: 'Booked' }],
-  });
-  // CORPORATE app-event — reads corporate-shaped fields (speakers/registration/sponsor/swag)
-  showP('PREVIEW · Q3 User Conference (corporate, decks slipping)', {
-    date: '2026-07-20', type: 'Conference', venue: 'Hilton Downtown', budget: 240000, budgetApproved: true,
-    sponsorSignoff: true, objective: 'Drive 200 qualified leads',
-    attendees: new Array(180), agenda: true, registration: { live: true, open: true },
-    speakers: [{ name: 'VP Eng', status: 'Confirmed', deckReceived: false },
-               { name: 'CEO', status: 'Confirmed', deckReceived: false }],
-    vendors: [{ category: 'Venue', status: 'Confirmed' }, { category: 'AV / Tech', status: 'Booked' },
-              { category: 'Catering', status: 'Confirmed' }],
-  });
-  showP('PREVIEW · Board Offsite (corporate, early, budget unapproved)', {
-    date: '2026-11-15', type: 'Board Meeting', venue: '', budget: 60000, budgetApproved: false,
-    attendees: new Array(14), speakers: [], vendors: [],
-  });
-}
+// CLI self-test lives in scripts/engineSelfTest.mjs (run: node scripts/engineSelfTest.mjs).
+// It was moved out of this module so the engine carries no node-only `require.main`
+// code into the webpack bundle.

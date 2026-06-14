@@ -237,14 +237,13 @@ function culturalFlagFor(raw) {
   return null;
 }
 
-// CommonJS module. The node-testable engine (eventSolve.js + validate/backtest
-// scripts) `require`s it directly under node. The webpack/ESM surfaces (App.js,
-// budgetEstimator/*, vendorCategoriesByType) import it through `eventTaxonomyAdapter.js`
-// — a thin ESM wrapper (mirroring eventSolveAdapter.js) that re-exports real
-// `export const` bindings. That indirection is required because CRA's production
-// webpack refuses to synthesize named/default ESM bindings from a bare `import` of a
-// CJS `module.exports = {…}` (it fails the build).
-module.exports = {
+// ESM module (.mjs) — webpack/ESM surfaces import it (directly or via the engine),
+// and node loads it as ESM for the validate/backtest/self-test scripts. It is .mjs,
+// not .js, on purpose: CRA's babel marks every src/*.js as an ES module, so a CJS
+// `module.exports = {…}` here is pulled into the production bundle's harmony scope and
+// throws "ES Modules may not assign module.exports" at runtime. Real ESM exports avoid
+// that entirely; .mjs keeps node treating it as ESM too (no package.json "type" flip).
+export {
   EVENT_TAXONOMY,
   TYPE_ALIASES,
   FAMILY_RECORD_KIND,
