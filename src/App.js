@@ -12670,7 +12670,7 @@ function getStudioSetup(profile) {
   };
 }
 
-function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }) {
+function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], onLoadSample, onClearSample, onOpenSample }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
   // mode only; light mode preserved.
@@ -14078,6 +14078,33 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
             <span style={{ color: C.success, fontSize: 16, flexShrink: 0 }}>→</span>
           </button>
           {showGuide && <GettingStartedGuide onClose={() => setShowGuide(false)} />}
+
+          {/* ── DEMO WORKSPACE (Sprint 54C) ── sample-data controls relocated off the
+              operational Home banner. Load / open / clear the demo workspace here. */}
+          <SectionHead label="Demo Workspace" />
+          {(() => {
+            const hasSample = (events || []).some(e => SEED_EVENT_IDS.has(e.id));
+            return (
+              <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>Sample Data</div>
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>
+                  {hasSample
+                    ? 'A sample workspace is loaded — events, clients, vendors, and payments, all clearly marked SAMPLE. It never touches your real data.'
+                    : 'Explore Event Boss with a full sample workspace — events, clients, vendors, and payments. Clear it anytime; your real data is never touched.'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {hasSample ? (
+                    <>
+                      {onOpenSample && <button onClick={onOpenSample} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px' }}>Open sample event →</button>}
+                      {onClearSample && <button onClick={() => { if (window.confirm('Remove the sample events and clients? Your own data stays intact.')) onClearSample(); }} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px' }}>Clear sample data</button>}
+                    </>
+                  ) : (
+                    onLoadSample && <button onClick={onLoadSample} style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 12px' }}>Load sample data</button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <SectionHead label="Advanced settings" />
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -17031,7 +17058,7 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
   );
 }
 
-function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCompose, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact, eventsHydrated = true }) {
+function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCompose, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact, eventsHydrated = true }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
   // stable strings only used by the seed objects.
@@ -17601,54 +17628,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           if (key === 'event')  return onNew?.();
           if (tabFor[key]) { if (ev) onSelectEvent?.(ev.id, { tab: tabFor[key] }); else onNew?.(); }
         }} />}
-      {/* Sprint 51 onboarding: sample-data banner — shown when any seed event
-          or client is present in state. Gives the planner a single-click path
-          to clear the demo and start their real workspace. */}
-      {hasSampleData && dashView === 'dashboard' && onClearSampleData && (
-        <div role="status" style={{
-          padding: isMobile ? '6px 14px' : '8px 16px',
-          background: C.accent2 + '12', borderBottom: `1px solid ${C.accent2}44`,
-          display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap',
-        }}>
-          <span style={{
-            fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em',
-            textTransform: 'uppercase', color: C.accent2,
-            padding: '3px 9px', borderRadius: 4, border: `1px solid ${C.accent2}66`, background: `${C.accent2}1a`,
-          }}>Sample data</span>
-          {/* Board L1 audit: trimmed — the greeting ("Exploring sample data —
-              nothing here is yours yet") and the "SAMPLE · NOT A REAL EVENT" hero
-              already establish this, so the banner is now just the chip + the
-              one action that matters (clear it). No verbose re-explanation. */}
-          <span style={{ fontSize: isMobile ? 11 : 12, color: C.muted, flex: 1, minWidth: 120, fontWeight: 500 }}>
-            {isMobile ? 'A guided tour.' : 'A guided tour — explore freely.'}
-          </span>
-          {/* Board P0-2 (2026-06-12): the "Open sample event" action that used to
-              live in the (now-suppressed) sample-mode Spine moves here — one place
-              for the sample-tour affordances. */}
-          {(() => {
-            const firstSample = (events || []).find(e => SEED_EVENT_IDS.has(e.id));
-            if (!firstSample) return null;
-            return (
-              <button
-                onClick={() => onSelectEvent(firstSample.id, { tab: 'Command' })}
-                style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 12px', flexShrink: 0, color: C.accent2, borderColor: `${C.accent2}66` }}
-              >
-                {isMobile ? 'Open sample →' : 'Open sample event →'}
-              </button>
-            );
-          })()}
-          <button
-            onClick={() => {
-              if (window.confirm('Remove the sample events and clients? Your own events stay intact.')) {
-                onClearSampleData();
-              }
-            }}
-            style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 12px', flexShrink: 0 }}
-          >
-            {isMobile ? 'Clear' : 'Clear sample data'}
-          </button>
-        </div>
-      )}
+      {/* Sprint 54C: the operational sample-data control banner was removed from
+          Home. Demo plumbing (open / clear sample workspace) now lives in
+          Settings → Demo Workspace → Sample Data. Loading samples from empty
+          states is preserved (welcome hero / empty Pipeline / launchpad). */}
 
       {/* Sprint 58X: Events Portfolio has its own full-width command header;
           skip the padded header wrapper entirely on that view. */}
@@ -32246,7 +32229,6 @@ export default function App() {
         onToggleCalNote={toggleCalNote}
         onDeleteCalNote={deleteCalNote}
         onLoadSampleData={loadSampleData}
-        onClearSampleData={clearSampleData}
         onMarkOnboardDone={markOnboardDone}
         /* Sprint 59H — cross-event quick-action writers for AttentionQueue */
         onMarkTaskDone={markTaskDone}
@@ -32255,7 +32237,11 @@ export default function App() {
       />
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id, opts) => { setActiveId(id); if (opts?.tab) setInitialNav({ tab: opts.tab }); }} onOpenAddClient={() => { setShowNew(false); setShowNewClient(true); }} clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
-      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events} />}
+      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events}
+        onLoadSample={loadSampleData}
+        onClearSample={clearSampleData}
+        onOpenSample={() => { const sm = events.find(e => SEED_EVENT_IDS.has(e.id)); setShowProfile(false); if (sm) { setInitialNav({ tab: 'Command' }); setActiveId(sm.id); } }}
+      />}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
       {/* Global floating compose — accessible from every screen. Sprint 60:
           onOpenConnections gives the in-compose delivery hint a route to
