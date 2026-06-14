@@ -426,6 +426,50 @@ export function playbookCapacity(event) {
   return { guests, items, summary };
 }
 
+// ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────
+// Pure reader: the operational-reality checks a first-time host should confirm
+// before event day, DERIVED ONLY from authored playbook signals (risks /
+// contingencies / decisions / purchases) + event type. PROMPTS to confirm, never
+// deficits — it never infers venue capacity, parking, restroom, or power
+// adequacy, and never says "insufficient" (Patterns 009 / POS-P009-R1). Surfaced
+// display-only in Planning Health; never enters getEventReadiness (Pattern 010).
+export function playbookInfraPrompts(event) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook) return null;
+
+  // Authored-signal haystack: search the playbook's own words, not inference.
+  const hay = JSON.stringify([
+    playbook.risks || [], playbook.contingencies || [],
+    playbook.decisions || [], playbook.purchases || [],
+  ]).toLowerCase();
+  const has = (re) => re.test(hay);
+  const grill = has(/charcoal|propane/);                 // a real grill (fuel purchased)
+  const minors = has(/minor/);                           // authored alcohol-for-minors risk
+  const alcohol = has(/alcohol|cocktail|\bbar\b|byob/);
+  const kids = grill || event.type === 'Birthday';       // kid party or backyard grill/pool
+
+  const prompts = [];
+  if (has(/weather|\brain\b|canopy|\bshade\b|\btent\b/))   // \brain\b so "grain" never triggers it
+    prompts.push({ key: 'weather', short: 'rain plan', detail: 'Rain / weather plan — where does everyone go if the weather turns?' });
+  prompts.push({ key: 'food', short: 'food safety', detail: 'Food safety — keep cold on ice, hot food held, nothing perishable out more than ~2 hours; cook to safe temps.' });
+  prompts.push({ key: 'power', short: 'power & outlets', detail: "Power & outlets — plan where music, lights, and warmers plug in; don't overload one circuit." });
+  if ((playbook.schedules && Array.isArray(playbook.schedules.cleanup)) || has(/trash|recycling|bus tub/))
+    prompts.push({ key: 'trash', short: 'trash station', detail: 'Trash + recycling station — stage bags and a bus tub before guests arrive.' });
+  prompts.push({ key: 'emergency', short: 'emergency basics', detail: 'Emergency basics — a first-aid kit on hand; know the nearest ER.' });
+  if (grill)
+    prompts.push({ key: 'grill', short: 'grill / fire safety', detail: 'Grill / fire safety — keep an extinguisher within reach and never leave the grill unattended.' });
+  if (kids)
+    prompts.push({ key: 'child', short: 'child supervision', detail: 'Child safety — assign a watcher for the grill, pool, and outlets.' });
+  if (minors)
+    prompts.push({ key: 'minors', short: 'alcohol & minors', detail: 'Alcohol & minors — keep an adults-only serving area; no self-serve for under-21s.' });
+  else if (alcohol)
+    prompts.push({ key: 'alcohol', short: 'alcohol plan', detail: 'Alcohol plan — set a cutoff and a ride-home plan.' });
+
+  if (!prompts.length) return null;
+  return { prompts, summary: prompts.map((p) => p.short).join(' · ') };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a

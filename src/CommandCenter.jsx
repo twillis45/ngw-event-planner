@@ -38,7 +38,7 @@ import { summarizeCrew } from './lib/studioTeam';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, playbookCapacity } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -352,6 +352,20 @@ export function deriveCommandCenterData(event) {
       return {
         label: 'Capacity', statusLabel: 'ESTIMATE', color: P.textSecondary,
         note: `Confirm seating & serveware for ${cap.guests} guests — ${cap.summary}`,
+      };
+    })(),
+    // Sprint 55L: the Infrastructure-check prompts ("Reality Check") — the
+    // operational-reality items a first-time host should CONFIRM before event
+    // day, derived only from the playbook's authored risks/contingencies/type.
+    // Same Pattern 010 treatment as Capacity: display-only here, NOT in
+    // getEventReadiness, so it informs without escalating. Neutral steel
+    // ('REVIEW'), never a deficit, never an adequacy claim. Playbook events only.
+    (() => {
+      const infra = playbookInfraPrompts(event);
+      if (!infra) return null;
+      return {
+        label: 'Reality Check', statusLabel: 'REVIEW', color: P.textSecondary,
+        note: `Before event day, confirm: ${infra.summary}`,
       };
     })(),
   ].filter(Boolean);
