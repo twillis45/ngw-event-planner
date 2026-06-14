@@ -21,6 +21,17 @@ const IS_LOCAL  = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[:
 
 export const isAnalyticsConfigured = () => Boolean(PH_KEY) && !IS_LOCAL;
 
+// Sprint 55N — keep internal/test/smoke sessions out of the activation funnel.
+// The prod smoke loads `…?noanalytics=1`; an operator can also persist
+// `ngw-analytics-optout=1`. When opted out, track()/trackOnce() no-op.
+function analyticsOptedOut() {
+  try {
+    if (typeof window !== 'undefined' && /[?&]noanalytics=1/.test(window.location.search)) return true;
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-analytics-optout') === '1') return true;
+  } catch { /* storage blocked → treat as opted-in */ }
+  return false;
+}
+
 let _ph = null;
 
 /** Lazy-load PostHog and initialize once. */
@@ -76,6 +87,7 @@ export async function identifyStudio(profile) {
  * All properties are behavioral — no PII.
  */
 export async function track(event, properties = {}) {
+  if (analyticsOptedOut()) return;
   const ph = await getPostHog();
   if (!ph) return;
   ph.capture(event, {
@@ -97,6 +109,13 @@ export const EVENTS = {
   // Event management
   EVENT_CREATED:          'event_created',
   EVENT_OPENED:           'event_opened',
+
+  // Activation funnel (Sprint 55N) — denominator → setup → value → retention
+  SIGNED_UP:              'signed_up',
+  INTAKE_COMMITTED:       'intake_committed',
+  FIRST_VALUE:            'first_value',
+  RETURNED_D1:            'returned_d1',
+  RETURNED_D7:            'returned_d7',
 
   // Vendors
   VENDOR_ADDED:           'vendor_added',
@@ -125,6 +144,22 @@ export const EVENTS = {
   RSVP_REMINDER_SENT:     'rsvp_reminder_sent',
   AI_COPILOT_USED:        'ai_copilot_used',
 };
+
+/**
+ * Fire an event at most once per browser, keyed by a stable localStorage key.
+ * Returns true if it fired (first time), false if already fired / storage blocked.
+ * Used for the once-per-user / once-per-event activation stages (Sprint 55N).
+ */
+export function trackOnce(key, event, props = {}) {
+  try {
+    if (!key || localStorage.getItem(key)) return false;
+    localStorage.setItem(key, '1');
+  } catch {
+    return false; // storage unavailable → don't risk duplicate funnel events
+  }
+  track(event, props);
+  return true;
+}
 
 /** Shorthand helpers for the most common events */
 export const trackPageView  = (page)    => track(EVENTS.PAGE_VIEW, { page });
