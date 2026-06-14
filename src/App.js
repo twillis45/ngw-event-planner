@@ -17396,9 +17396,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // as the same thing).
   const clientIsHostRec = (c) => intakeFamilyConfig((events.find(e => (c.eventIds || []).includes(e.id)) || {}).type || c.eventType || null).recordKind === 'event';
   const eventIsHostFam  = (e) => intakeFamilyConfig(e && e.type).recordKind === 'event';
-  // Gate each tab on the content IT actually lists: My Events lists host client
-  // records; Client Events lists non-host events. (Don't cross the two data sets.)
-  const hasHostEvents   = (clients || []).some(clientIsHostRec);
+  // Gate each tab on the EVENTS it lists: My Events = self-hosted events,
+  // Client Events = non-host (professional) events. Both are event-based now,
+  // so a host event you create surfaces in My Events (its owning surface —
+  // Pattern 008) without needing a linked client record.
+  const hasHostEvents   = (events || []).some(eventIsHostFam);
   const hasClientEvents = (events || []).some(e => !eventIsHostFam(e));
   const navItems = [
     { id: 'dashboard', label: 'Home',       icon: 'home' },
@@ -18204,7 +18206,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       )}
 
       {/* ── Clients list page (also powers the My Events host tab) ── */}
-      {(dashView === 'clients' || dashView === 'my-events') && (() => {
+      {dashView === 'clients' && (() => {
   const isMob   = bp === 'mobile';
   const isTab   = bp === 'tablet';
   const isWideC = bp === 'desktop' || bp === 'tablet-land';
@@ -18886,12 +18888,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   );
 })()}
 
-      {/* ── Sprint 58X: Events Portfolio Command Board ── */}
-      {dashView === 'events' && (() => {
+      {/* ── Sprint 58X: Events Portfolio Command Board (Client Events + My Events) ── */}
+      {(dashView === 'events' || dashView === 'my-events') && (() => {
         // ── Data layer ──────────────────────────────────────────────
-        // Client Events excludes self-host events — those live in My Events, so a
-        // host's dinner never appears in the professional portfolio (and vice versa).
-        const allEvents = enrichedEvents.filter(ev => !eventIsHostFam(ev)).map(ev => ({ ev, att: getEventAttention(ev) }));
+        // Same board, two rosters: Client Events lists non-host (professional)
+        // events; My Events lists self-hosted events. A host event you create now
+        // appears here (Pattern 008 — its owning surface), no client record needed.
+        const isMyEvents = dashView === 'my-events';
+        const allEvents = enrichedEvents.filter(ev => isMyEvents ? eventIsHostFam(ev) : !eventIsHostFam(ev)).map(ev => ({ ev, att: getEventAttention(ev) }));
         // Search + event-type filter. Distinct types come from the roster itself
         // so the dropdown only ever lists types the planner actually has.
         const eventTypeOptions = [...new Set(allEvents.map(({ ev }) => ev.type).filter(Boolean))].sort();
@@ -19013,9 +19017,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
                 <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
                 <div style={{ flex: 1 }}>
-                  {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Events</h1>}
+                  {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{isMyEvents ? 'My Events' : 'Client Events'}</h1>}
                   {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
-                    {allEvents.length > 0 ? 'Choose the event that needs work next.' : 'Create your first event to get started.'}
+                    {allEvents.length > 0 ? (isMyEvents ? 'The events you’re hosting.' : 'Choose the event that needs work next.') : (isMyEvents ? 'Create your first self-hosted event to get started.' : 'Create your first event to get started.')}
                   </p>}
                 </div>
                 <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNew}>+ New Event</button>
