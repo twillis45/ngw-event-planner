@@ -9,15 +9,35 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import dinnerParty from './data/dinnerParty';
+import birthday from './data/birthday';
+import babyShower from './data/babyShower';
+import backyardBbq from './data/backyardBbq';
+import graduation from './data/graduation';
+import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 
 // ── Registry ────────────────────────────────────────────────────────────────
-// Normalized (case-insensitive) event-type → playbook. One entry for now: we
-// prove the wiring on Dinner Party before authoring the other Phase-1 books.
+// Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
+// playbooks. backyardBbq is registered under the canonical 'Get-Together' type
+// (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-const REGISTRY = { [norm(dinnerParty.type)]: dinnerParty };
+const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation];
+const REGISTRY = {};
+for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
+// Resolve a raw event type to its playbook. Tries an exact (normalized) match
+// first, then falls back to the canonical taxonomy so aliases and free-text
+// land correctly ("Birthday Party" → Birthday, "Backyard BBQ"/"cookout" →
+// Get-Together, "Graduation Party" → Graduation). Unknown types → null so the
+// caller's existing fallback path stays intact.
 export function getPlaybook(eventType) {
-  return REGISTRY[norm(eventType)] || null;
+  if (!eventType) return null;
+  const direct = REGISTRY[norm(eventType)];
+  if (direct) return direct;
+  try {
+    const canon = resolveCanonicalType(eventType);
+    if (canon && REGISTRY[norm(canon)]) return REGISTRY[norm(canon)];
+  } catch (_e) { /* taxonomy resolve is best-effort */ }
+  return null;
 }
 
 // ── Window model ──────────────────────────────────────────────────────────────
