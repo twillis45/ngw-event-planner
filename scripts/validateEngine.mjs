@@ -1,4 +1,4 @@
-const { GRAPHS, solve, familyFor } = require('../src/lib/eventSolve.js');
+import { GRAPHS, solve, familyFor } from '../src/lib/eventSolve.mjs';
 const fams = Object.keys(GRAPHS);
 let problems = 0;
 const D = new Date('2027-01-01T00:00:00Z'); const asOf = new Date('2026-06-13T00:00:00Z');

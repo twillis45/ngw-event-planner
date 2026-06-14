@@ -7,7 +7,7 @@
 //     slipped:[milestoneIds left undone], expect:{ atRisk:bool, binding?:milestoneId } }
 // The harness assumes every milestone whose deadline is before `asOf` was done ON SCHEDULE,
 // EXCEPT the `slipped` ids — which is how a real "what actually went wrong" record maps in.
-const { GRAPHS, solve } = require('../src/lib/eventSolve.js');
+import { GRAPHS, solve } from '../src/lib/eventSolve.mjs';
 const date = s => new Date(s + 'T00:00:00Z');
 
 function doneOnSchedule(graph, D, asOf, slipped) {

@@ -1,6 +1,17 @@
-// Thin ESM wrapper so React components can import the engine preview.
-// The real-state mapping + solve live in the (node-testable) CJS engine module.
-const engine = require('./eventSolve');
-
-export const enginePreview = engine.enginePreview;
-export const familyFor = engine.familyFor;
+// ESM re-export of the engine + canonical taxonomy resolvers. The engine lives in
+// eventSolve.mjs (real ESM, node-loadable). React/webpack surfaces import the named
+// bindings from here; nothing in the engine uses CJS module.exports, so the prod
+// bundle never hits the "ES Modules may not assign module.exports" runtime guard.
+export {
+  enginePreview,
+  familyFor,
+  EVENT_TAXONOMY,
+  resolveCanonicalType,
+  intakeFamilyFor,
+  budgetFamilyFor,
+  solveFamilyFor,
+  budgetShareFamilyFor,
+  recordKindFor,
+  curatedRosterKeyFor,
+  culturalFlagFor,
+} from './eventSolve.mjs';
