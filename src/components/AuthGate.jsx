@@ -312,7 +312,7 @@ function BypassBadge() {
         onClick={dismiss}
         style={{
           position: 'fixed',
-          top: 6, right: 6,
+          bottom: 6, right: 6,
           zIndex: 100000,
           width: 8, height: 8,
           borderRadius: '50%',
@@ -336,7 +336,7 @@ function BypassBadge() {
       onClick={dismiss}
       style={{
         position: 'fixed',
-        top: 8, right: 8,
+        bottom: 8, right: 8,
         zIndex: 100000,
         // Board audit (2026-06-12): steel, not red — dev-bypass is a neutral dev
         // state, not a blocking alarm. Red stays reserved for genuine blocks.

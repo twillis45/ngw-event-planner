@@ -12,7 +12,7 @@
 // inside Studio Matte (Mid Carbon) or any host-supplied theme without
 // importing ThemeCtx.
 
-import { estimatorConfidence, NOT_INCLUDED } from './confidence.js';
+import { estimatorConfidence, notIncludedFor } from './confidence.js';
 import { estimateTotalRange } from './totalEstimate.js';
 import { carbonBody, carbonPanel, carbonBorder } from '../../theme/palette';
 
@@ -41,6 +41,7 @@ export default function BudgetEstimateHint({
   userBudget = null,
   palette = DEFAULT_PALETTE,
   compact = false,
+  family = null,
 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
@@ -152,7 +153,7 @@ export default function BudgetEstimateHint({
             margin: '6px 0 0 16px', padding: 0,
             fontSize: 11, color: palette.muted, lineHeight: 1.55,
           }}>
-            {NOT_INCLUDED.slice(0, 5).map(item => <li key={item}>{item}</li>)}
+            {notIncludedFor(family || type).slice(0, 5).map(item => <li key={item}>{item}</li>)}
           </ul>
         </details>
       )}
