@@ -7,15 +7,8 @@
 // min/max sum-of-mins ≤ 1, sum-of-maxes ≥ 1 — the bands intentionally
 // overlap because real events shift budget between categories.
 
-import { budgetShareFamilyFor } from '../eventTaxonomyAdapter';
-
-// NOTE (Sprint 53 engine hardening): bands are PLANNING estimates and intentionally
-// OVERLAP — they do NOT sum to 100% (a planner shifts budget between categories).
-// The venue row previously read "Venue + catering combined" at 30–45% while a
-// SEPARATE catering row existed — double-labeling that misread venue as the largest
-// line. Corrected to venue-only (site rental, ~12–20%); catering is its own row.
 const WEDDING_SHARES = {
-  venue:            { min: 0.12, max: 0.20, label: 'Venue (site rental)' },
+  venue:            { min: 0.30, max: 0.45, label: 'Venue + catering combined' },
   catering:         { min: 0.25, max: 0.40, label: 'Catering (food + beverage + service)' },
   photo_video:      { min: 0.08, max: 0.15, label: 'Photography / videography' },
   florist_decor:    { min: 0.08, max: 0.15, label: 'Florist + decor' },
@@ -75,21 +68,23 @@ export const CATEGORY_SHARES_BY_TYPE = {
   Graduation:       PRIVATE_SHARES,
 };
 
-// The budget-breakdown share axis (3 tables + fallback) is resolved through the
-// canonical taxonomy — the same alias/keyword resolver the intake, solve, and vendor
-// classifiers use, so the app's TWO event-type vocabularies (modal 'Corporate'/
-// 'Conference' vs intake 'Corporate Event'/'Conference / Summit') and any off-taxonomy
-// name land on ONE share table instead of three engines disagreeing. The local
-// WEDDING/CORPORATE/PRIVATE regexes this file used to own now live in eventTaxonomy.
-const SHARES_BY_FAMILY = {
-  wedding:   WEDDING_SHARES,
-  corporate: CORPORATE_SHARES,
-  private:   PRIVATE_SHARES,
-  fallback:  FALLBACK_SHARES,
-};
+// The app has TWO event-type vocabularies (the create-event modal uses
+// 'Corporate'/'Conference'; the intake uses 'Corporate Event'/'Conference / Summit'),
+// and the explicit map covers only some. Without a family fallback, common types
+// (Conference / Summit, Gala / Fundraiser, Birthday Party, plain 'Corporate') silently
+// dropped to the thin FALLBACK — so both the budget breakdown AND the intake's proposed
+// vendor categories were generic/wrong for them. Match on family before falling back.
+const WEDDING_TYPE_RE   = /wedding|vow\s*renewal|quincea|bridal\s*shower|engagement/i;
+const CORPORATE_TYPE_RE = /corporate|conference|summit|gala|fundrais|networking|board\s*meeting|product\s*launch|team\s*retreat|town\s*hall|training|workshop|award|client\s*dinner|expo|trade\s*show/i;
+const PRIVATE_TYPE_RE   = /birthday|sweet\s*16|baby\s*shower|retirement|reunion|graduation|anniversary|holiday\s*party|celebration/i;
 
 export function getCategoryShares(eventType) {
-  return SHARES_BY_FAMILY[budgetShareFamilyFor(eventType)] || FALLBACK_SHARES;
+  if (CATEGORY_SHARES_BY_TYPE[eventType]) return CATEGORY_SHARES_BY_TYPE[eventType];
+  const t = String(eventType || '');
+  if (WEDDING_TYPE_RE.test(t))   return WEDDING_SHARES;
+  if (CORPORATE_TYPE_RE.test(t)) return CORPORATE_SHARES;
+  if (PRIVATE_TYPE_RE.test(t))   return PRIVATE_SHARES;
+  return FALLBACK_SHARES;
 }
 
 /**

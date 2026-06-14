@@ -5,6 +5,11 @@ import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
 import ImportHistoryDrawer from './components/ImportHistoryDrawer';
 import AuthGate           from './components/AuthGate';
+import EngineNextStep     from './components/EngineNextStep';
+import { SAMPLE_EVENTS_EXTRA, SAMPLE_EVENT_IDS_EXTRA } from './data/sampleEventsExtra';
+import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClientsExtra';
+import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
+import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { callAiFeature, isAiProxyConfigured } from './lib/aiProxy';
@@ -88,6 +93,7 @@ import { proposedVendorCategories } from './lib/vendorCategoriesByType';
 // Canonical COI state — the day-of roster dot delegates to this so the dock board
 // and the vendor cockpit can never disagree (e.g. an expired-but-verified cert).
 import { getVendorCOIState } from './lib/vendorIntelligence';
+import { intakeFamilyFor } from './lib/eventTaxonomyAdapter'; // canonical taxonomy (single source for all 5 type classifiers), via ESM adapter
 
 // Sprint 51 perf: lazy-load xlsx (~700KB) + qrcode (~50KB). Both are only
 // needed when the user explicitly exports / imports a sheet or generates a QR
@@ -124,8 +130,8 @@ const APP_VERSION = '1.5.0';
 // Sprint 51: stable seed ids let us distinguish demo data from the planner's
 // real workspace. Used by the welcome hero, sample-data banner, and the
 // "Clear sample data" / "Load sample data" actions.
-const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf', 'ev-msg']);
-const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise']);
+const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf', 'ev-msg', ...SAMPLE_EVENT_IDS_EXTRA, ...SAMPLE_EVENT_IDS_DMV]);
+const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise', ...SAMPLE_CLIENT_IDS_EXTRA]);
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
 const ONBOARD_DONE_KEY = 'ngw-onboard-done';
@@ -254,7 +260,7 @@ const LIGHT = {
   muted:    '#71707e',   // neutral gray — clearly secondary, not competing with accent
   danger:   '#ef4444',   // red-500 — 4.6:1 on white, vivid alert-red (not maroon)
   success:  '#16a34a',   // green-600 — 3.3:1 on white, reads as green (not dark forest)
-  warn:     '#f59e0b',   // amber-500 — vivid amber, same as dark theme, pops at large sizes
+  warn:     '#ef962e',   // CLEAN high-chroma amber (H32 S86) — the hard-won "lit tungsten" status amber (less-yellow, never gold #f59e0b, never muddy/desaturated). Disciplined "approaching/due-soon" STATUS only — never accent, never wallpaper.
   // ── Light parity completion (2026-06-12): DARK defined ~14 keys LIGHT did not.
   // Any component reading C.tier1 / C.steel / C.accentDeep / C.live etc. in light
   // mode got `undefined` → broken/transparent styling (the "light theme still
@@ -392,8 +398,8 @@ const makeS = (C) => {
     tensionCue: (level) => ({
       display: 'flex', alignItems: 'flex-start', gap: 9,
       padding: '8px 12px', borderRadius: 7,
-      borderLeft: `2px solid ${level === 'critical' ? C.danger : level === 'warn' ? C.warn : C.accent2}`,
-      background: level === 'critical' ? C.danger + '09' : level === 'warn' ? C.warn + '07' : C.accent2 + '07',
+      borderLeft: `2px solid ${level === 'critical' ? C.danger : level === 'warn' ? C.muted : C.accent2}`,
+      background: level === 'critical' ? C.danger + '09' : level === 'warn' ? C.muted + '07' : C.accent2 + '07',
     }),
     seqNode: (state) => ({
       display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0',
@@ -643,7 +649,7 @@ function Toast({ msg, variant = 'success', onDone }) {
     return () => clearTimeout(t);
   }, [msg, onDone]);
   if (!msg) return null;
-  const clr = variant === 'danger' ? C.danger : variant === 'warn' ? C.warn : C.success;
+  const clr = variant === 'danger' ? C.danger : variant === 'warn' ? C.muted : C.success;
   // Sprint 51 a11y: role+aria-live so screen readers announce toast content.
   // Danger toasts use assertive (interrupt); success/warn use polite (wait).
   return (
@@ -1612,7 +1618,7 @@ const vendorCommittedCost = (v) => vendorIsCommitted(v) ? (v.cost || 0) : 0;
 // ─── Sprint 59C: payment status color discipline ─────────────────────────────
 // Locks the semantic map called out in the Sprint 59A audit and the Sprint 59C
 // prompt: green = paid/done, red = overdue/broken, amber = actionable risk
-// (due ≤30 days), neutral steel = no due date / future. Stops `C.warn` from
+// (due ≤30 days), neutral steel = no due date / future. Stops `C.muted` from
 // painting every "money still owed" state amber regardless of urgency.
 //
 // `daysUntilDue` is the integer day delta to the soonest unpaid due date in
@@ -1622,7 +1628,7 @@ const paymentStatusColor = (C, paid, daysUntilDue) => {
   if (paid) return C.success;
   if (typeof daysUntilDue !== 'number') return C.muted;
   if (daysUntilDue < 0)   return C.danger;
-  if (daysUntilDue <= 30) return C.warn;
+  if (daysUntilDue <= 30) return C.muted;
   return C.muted;
 };
 // Find the soonest unpaid `payDueDate` across a category's committed vendors.
@@ -1641,7 +1647,7 @@ const soonestUnpaidDueDays = (vendors, category) => {
 };
 // Color maps are now functions so they react to the active theme token set.
 // Usage inside components: const stageCLR = STAGE_CLR(C); stageCLR['Confirmed']
-const STAGE_CLR = (C) => ({ Considering: C.muted, Quoted: C.warn, Contracted: C.accent2, 'Deposit Paid': C.accent, Confirmed: C.success });
+const STAGE_CLR = (C) => ({ Considering: C.muted, Quoted: C.muted, Contracted: C.accent2, 'Deposit Paid': C.accent, Confirmed: C.success });
 
 // ─── Vendor-1: operational reliability (transparent, data-gated — never faked) ──
 const _clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -1845,7 +1851,7 @@ const CLIENT_INTAKE_QUESTIONS = [
     { id: 'notes',    q: 'Anything else to note?',             type: 'textarea' },
   ]},
 ];
-const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.muted, Maybe: C.warn }); // Red audit: a decline is a fact, not a crisis — neutral, not red.
+const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.muted, Maybe: C.muted }); // Red audit: a decline is a fact, not a crisis — neutral, not red.
 const SPECIAL_NEEDS_OPTIONS = ['Nut allergy', 'Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Kosher', 'Halal', 'Wheelchair access', 'Kids meal'];
 const CATS      = ['Venue', 'Catering', 'Bar / Beverage', 'Photography', 'Videography', 'Florals', 'Entertainment', 'Photo Booth', 'Coordinator', 'Officiant', 'Invitations', 'AV / Tech', 'Lighting', 'Transport', 'Hair & Makeup', 'Decor', 'Cake', 'Rentals', 'Tent / Structures', 'Staffing', 'Security', 'Valet / Parking', 'Childcare', 'Calligraphy / Stationery', 'Dance Floor / Staging', 'Draping', 'Restroom Trailers', 'Generator / Power', 'Coffee / Specialty Cart', 'Food Truck', 'Live Painter', 'Send-off / Sparklers', 'Content Creator', 'Lodging / Concierge', 'Animals / Petting Zoo', 'Favors', 'Printing / Signage', 'Activities', 'Misc', 'Other'];
 // Grouped view of CATS for the category dropdown — a flat 40-item list was too
@@ -1899,11 +1905,31 @@ const VENUE_TAGS = [
   'Sustainability-certified',
   'Bring-your-own vendors',
 ];
+// Attributes relevant to a vendor's CATEGORY — venue qualities surface only for a
+// Venue, dietary only for food vendors, "travels" only for service pros, etc.
+// (board: "venue attributes should only surface for the venue related").
+const UNIVERSAL_VENDOR_TAGS = ['Insured / licensed', 'Budget-friendly', 'Premium / luxury', 'Woman / minority-owned'];
+const attrsForVendorCategory = (cat) => {
+  if (!cat) return VENDOR_TAGS;
+  if (cat === 'Venue') return VENUE_TAGS;
+  const c = cat.toLowerCase();
+  const extra = [];
+  if (/cater|bar|beverage|food|grazing|cake|coffee|truck/.test(c)) extra.push('Plant-based / dietary-friendly', 'All-inclusive');
+  if (/photo|video|content|dj|band|music|entertain|mc|host|hair|makeup|officiant|coordinator|choreograph|speaker|facilitat|auctioneer|staffing/.test(c)) extra.push('Destination / travels');
+  if (/floral|decor|balloon|light|drap|rental|staging|stationery|print|favor|calligraph/.test(c)) extra.push('Sustainable / eco');
+  return [...new Set([...extra, ...UNIVERSAL_VENDOR_TAGS])];
+};
+
+// Client-intake structured options — RSVP method + accessibility + dietary.
+const RSVP_METHODS = ['Online form / event website', 'Mailed RSVP cards', 'Text message', 'Email', 'Phone call', 'In-app (Event Boss)', 'Verbal / in person', 'Other'];
+const ACCESSIBILITY_OPTIONS = ['Wheelchair access', 'Step-free / ramp entry', 'ADA restrooms', 'Reserved / priority seating', 'Hearing assistance', 'Large-print materials', 'Service animals welcome', 'Sensory-friendly space', 'Gender-neutral restrooms', 'Designated parking'];
+const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Nut allergy', 'Dairy-free', 'Shellfish allergy', 'Kosher', 'Halal', 'Pescatarian', 'Diabetic-friendly', 'Alcohol-free'];
 const EVT_CATEGORIES = {
   'Weddings & Celebrations': [
-    'Wedding', 'Engagement Party', 'Vow Renewal', 'Anniversary',
-    'Bridal Shower', 'Baby Shower', 'Birthday', 'Sweet 16',
+    'Wedding', 'Elopement', 'Engagement Party', 'Vow Renewal', 'Anniversary',
+    'Bridal Shower', 'Baby Shower', 'Gender Reveal', 'Birthday', 'Sweet 16',
     'Quinceañera', 'Graduation', 'Retirement Party', 'Reunion',
+    'Surprise Proposal', 'Bachelorette Party', 'Bachelor Party',
   ],
   'Corporate': [
     'Holiday Party', 'Board Meeting', 'Conference', 'Product Launch',
@@ -1911,7 +1937,10 @@ const EVT_CATEGORIES = {
     'Client Dinner',
   ],
   'Social & Fundraising': [
-    'Fundraiser / Gala', 'Networking Event', 'Other',
+    'Fundraiser / Gala', 'Networking Event', 'Wellness Retreat', 'Other',
+  ],
+  'At-Home Gatherings': [
+    'Dinner Party', 'Housewarming', 'Get-Together',
   ],
 };
 const EVT_TYPES  = Object.values(EVT_CATEGORIES).flat();
@@ -1919,9 +1948,83 @@ const EVT_PARENT = Object.entries(EVT_CATEGORIES).reduce((acc, [cat, types]) => 
   types.forEach(t => { acc[t] = cat; });
   return acc;
 }, {});
+
+// ─── Intake Family engine (Chunk A keystone) ────────────────────────────────
+// A SECOND axis from the engine's solve-family: how much intake an event needs
+// and which sections are even relevant. A backyard dinner is not a small wedding —
+// it must never be shown a venue picker, a vendor gap-board, a COI block, a
+// deposit clock, or a "0 of N vendors booked" metric. Five families, each a
+// config of what the intakes show/suppress. Render-routing reads ONLY this.
+// SOURCE OF TRUTH (user directive 2026-06-13): every family-specific behavior —
+// sections, chrome, AND vocabulary — lives here. Surfaces must read these flags;
+// no ad-hoc `if (home)` checks. `recordKind:'event'` means a self-host planning
+// their OWN party (no client/roster/fee/lead-pipeline framing); `'client'` means
+// a professional engagement. `vocab` overrides host-facing copy per family.
+const INTAKE_FAMILIES = {
+  home_hosted: {
+    label: 'Home-hosted', diy: true, venue: false, vendors: false, coi: false, deposit: false,
+    plannerFee: false, partner: false, influencers: false, vision: 'light', personal: true, brief: false,
+    // chrome (board home-host demo): a host has no clients, no sales funnel.
+    recordKind: 'event', pipeline: false, discovery: false, commsChecklist: false, clientPortal: false, communication: false,
+    vocab: {
+      createTitle: 'Plan your get-together', createSub: 'Add the basics — Event Boss sets up your event, suggests a budget, and starts your checklist so you can enjoy the party.',
+      nameLabel: 'Who’s it for? (hosts)', namePlaceholder: 'e.g. Imani & Marcus',
+      createCta: 'Create event', createIntakeCta: 'Create & plan', recordWord: 'event',
+      guestLabel: 'How many guests', budgetLabel: 'Rough budget',
+    },
+  },
+  full_service: {
+    label: 'Full-service', diy: false, venue: true, vendors: true, coi: true, deposit: true,
+    plannerFee: true, partner: true, influencers: true, vision: true, personal: true, brief: false,
+    recordKind: 'client', pipeline: true, discovery: true, commsChecklist: true, clientPortal: true, communication: true,
+    vocab: { createTitle: 'Add to your roster', nameLabel: 'Client / Couple Name', createCta: 'Create Client', recordWord: 'client', guestLabel: 'Est. Guest Count', budgetLabel: 'Budget range' },
+  },
+  corporate: {
+    label: 'Corporate', diy: false, venue: true, vendors: true, coi: true, deposit: true,
+    plannerFee: false, partner: false, influencers: true, vision: false, personal: false, brief: true,
+    recordKind: 'client', pipeline: true, discovery: true, commsChecklist: true, clientPortal: true, communication: true,
+    vocab: { createTitle: 'Add to your roster', nameLabel: 'Organization / Team', createCta: 'Create Client', recordWord: 'client', guestLabel: 'Est. Attendees', budgetLabel: 'Budget range' },
+  },
+  host_driven: {
+    label: 'Host-driven', diy: false, venue: true, vendors: true, coi: false, deposit: true,
+    plannerFee: true, partner: true, influencers: false, vision: true, personal: true, brief: false,
+    recordKind: 'client', pipeline: true, discovery: true, commsChecklist: true, clientPortal: true, communication: true,
+    vocab: { createTitle: 'Add to your roster', nameLabel: 'Host / Guest of Honor', createCta: 'Create Client', recordWord: 'client', guestLabel: 'Est. Guest Count', budgetLabel: 'Budget range' },
+  },
+  travel_led: {
+    label: 'Travel-led', diy: false, venue: true, vendors: true, coi: false, deposit: true,
+    plannerFee: true, partner: true, influencers: false, vision: true, personal: true, brief: false,
+    recordKind: 'client', pipeline: true, discovery: true, commsChecklist: true, clientPortal: true, communication: true,
+    vocab: { createTitle: 'Add to your roster', nameLabel: 'Client / Traveler', createCta: 'Create Client', recordWord: 'client', guestLabel: 'Est. Travelers', budgetLabel: 'Budget range' },
+  },
+};
+// Vocabulary accessor — surfaces pull host-facing copy from the engine, never hardcode.
+function intakeVocab(type) { return (intakeFamilyConfig(type) || INTAKE_FAMILIES.host_driven).vocab || {}; }
+
+// Host on-ramp (board #7): the real jobs of someone hosting their own event —
+// replaces the suppressed sales-comms checklist for recordKind:'event'.
+const HOST_CHECKLIST = [
+  { key: 'invites',   label: 'Send the invites',           hint: 'Text, call, or email everyone' },
+  { key: 'headcount', label: 'Confirm who’s coming',       hint: 'Chase down the maybes' },
+  { key: 'menu',      label: 'Plan the menu',              hint: 'Food + drinks' },
+  { key: 'dietary',   label: 'Ask about allergies & diets', hint: 'Vegetarian, nut-free, etc.' },
+  { key: 'shopping',  label: 'Make a shopping list',        hint: 'Groceries, drinks, supplies' },
+  { key: 'setup',     label: 'Plan the day-of setup',       hint: 'Tables, music, where things go' },
+];
+// Returns one of the 5 family keys. The type→family table + keyword/alias inference
+// now live in the canonical taxonomy (lib/eventTaxonomy) — the SAME resolver the
+// solve, budget, and vendor engines read, so a type classifies one way everywhere.
+// CRITICAL (board trap) preserved there: an unrecognized type NEVER falls through to
+// 'full_service' and re-floods a host with a vendor gap-board; off-taxonomy names
+// ("Welcome Dinner", "Team Offsite") resolve by keyword, and the final default is
+// the middle-weight 'host_driven', not the maximal family.
+function intakeFamily(type) { return intakeFamilyFor(type); }
+function intakeFamilyConfig(type) { return INTAKE_FAMILIES[intakeFamily(type)] || INTAKE_FAMILIES.host_driven; }
 const isCorporateType = (t) => EVT_PARENT[t] === 'Corporate' || t === 'Corporate';
 // eslint-disable-next-line no-unused-vars
 const isCelebration   = (t) => EVT_PARENT[t] === 'Weddings & Celebrations';
+// At-home gatherings happen at the host's home — no bookable venue.
+const isAtHomeType    = (t) => EVT_PARENT[t] === 'At-Home Gatherings';
 
 // Intelligence Gap PR #1 — map Step 1 event type → suggested Step 2 kit.
 // This is the source for the "Suggested for <type>" pre-selection in
@@ -1969,6 +2072,37 @@ const timeOfDayForEventType = (type) => {
 // Primary remains canonical for color, category, compression, isCorporateType.
 // Secondary layers in additive templates (vendors / budget / timeline) at create
 // time and via a manual "merge templates" action post-creation.
+// Per-event next action from the 29-model engine — genuinely per-event (kills the
+// repeated canned Spine sentence the board flagged on L1). null if it can't solve.
+const engineNextAction = (ev) => {
+  try { const p = engineSolvePreview(ev); return p && p.binding ? p : null; } catch (e) { return null; }
+};
+// T1 helpers — propagate the engine triplet (readiness · binding · waiting-on)
+// onto L1 rows. Owner → "waiting on" party; flag → accent color.
+const ENGINE_OWNER_LABEL = (owner) => {
+  const o = (owner || '').toLowerCase();
+  if (/vendor/.test(o)) return 'Vendor';
+  if (/sponsor|speaker|board|chair|treasurer|secretary/.test(o)) return 'Sponsor';
+  if (/client|couple|family|host|teen|parent|quincea|honoree|committee|guest/.test(o)) return 'Client';
+  return 'You';
+};
+// Board ruling: status = red / AMBER / green / steel. behind = red,
+// approaching = amber (the disciplined "there's a clock" tier), on-track = green.
+const ENGINE_FLAG_COLOR = (C, flag) =>
+  (flag || '').includes('behind') ? C.danger : (flag || '').includes('approaching') ? C.warn : (C.success || C.muted);
+// Engine action for a client = the most-at-risk linked event's binding.
+const clientEngineAction = (client, events) => {
+  const ids = new Set(client && Array.isArray(client.eventIds) ? client.eventIds : []);
+  let best = null;
+  for (const ev of (events || [])) {
+    if (!ids.has(ev.id)) continue;
+    const p = engineNextAction(ev);
+    if (!p || !p.binding) continue;
+    const score = (p.dateAtRisk ? 0 : 1000) + (p.daysOut != null ? p.daysOut : 9999);
+    if (!best || score < best.score) best = { p, score };
+  }
+  return best ? best.p : null;
+};
 const eventTypesOf = (e) => {
   if (!e) return [];
   const primary   = e.type || '';
@@ -2130,7 +2264,7 @@ const mergeTimelineTemplate = (...types) => {
   }
   return out;
 };
-const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.warn, event: C.accent });
+const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.muted, event: C.accent });
 const EVT_CLR   = (C) => {
   const isLight = C.surface === '#ffffff';
   return {
@@ -2456,6 +2590,17 @@ const BUDGET_TEMPLATES = {
   'Training / Workshop':[{ c:'Venue',pct:.28 },{ c:'Catering',pct:.28 },{ c:'AV / Tech',pct:.22 },{ c:'Printing / Signage',pct:.15 },{ c:'Misc',pct:.07 }],
   'Award Ceremony':   [{ c:'Venue',pct:.28 },{ c:'Catering',pct:.35 },{ c:'AV / Tech',pct:.15 },{ c:'Decor',pct:.10 },{ c:'Printing / Signage',pct:.12 }],
   'Client Dinner':    [{ c:'Venue',pct:.40 },{ c:'Catering',pct:.45 },{ c:'Entertainment',pct:.10 },{ c:'Misc',pct:.05 }],
+  // At-home gatherings — NO Venue line (it's the host's home).
+  'Dinner Party':     [{ c:'Catering',pct:.45 },{ c:'Bar / Beverage',pct:.20 },{ c:'Decor',pct:.12 },{ c:'Rentals',pct:.13 },{ c:'Cake',pct:.05 },{ c:'Misc',pct:.05 }],
+  'Housewarming':     [{ c:'Catering',pct:.40 },{ c:'Bar / Beverage',pct:.18 },{ c:'Decor',pct:.20 },{ c:'Rentals',pct:.15 },{ c:'Misc',pct:.07 }],
+  'Get-Together':     [{ c:'Catering',pct:.50 },{ c:'Bar / Beverage',pct:.20 },{ c:'Rentals',pct:.18 },{ c:'Misc',pct:.12 }],
+  // Travel-led — lodging/activities, no traditional venue spend.
+  'Bachelorette Party': [{ c:'Lodging / Travel',pct:.40 },{ c:'Activities',pct:.25 },{ c:'Catering',pct:.15 },{ c:'Transport',pct:.12 },{ c:'Decor',pct:.08 }],
+  'Bachelor Party':     [{ c:'Lodging / Travel',pct:.40 },{ c:'Activities',pct:.28 },{ c:'Catering',pct:.15 },{ c:'Transport',pct:.12 },{ c:'Misc',pct:.05 }],
+  'Surprise Proposal':  [{ c:'Photography',pct:.35 },{ c:'Florals',pct:.25 },{ c:'Decor',pct:.22 },{ c:'Venue',pct:.10 },{ c:'Misc',pct:.08 }],
+  'Gender Reveal':      [{ c:'Catering',pct:.35 },{ c:'Decor',pct:.25 },{ c:'Venue',pct:.18 },{ c:'Photography',pct:.12 },{ c:'Cake',pct:.10 }],
+  'Elopement':          [{ c:'Photography',pct:.30 },{ c:'Venue',pct:.20 },{ c:'Lodging / Travel',pct:.20 },{ c:'Florals',pct:.12 },{ c:'Attire',pct:.10 },{ c:'Misc',pct:.08 }],
+  'Wellness Retreat':   [{ c:'Venue',pct:.40 },{ c:'Catering',pct:.25 },{ c:'Activities',pct:.20 },{ c:'Transport',pct:.10 },{ c:'Misc',pct:.05 }],
 };
 
 const VENDOR_STUBS = {
@@ -3053,7 +3198,7 @@ const CONSULT_QUESTIONS = {
 
 const CLIENT_STAGES    = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
 const REFERRAL_OPTIONS = ['Instagram', 'Facebook', 'Google', 'The Knot', 'WeddingWire', 'Zola', 'Pinterest', 'Word of Mouth', 'Friend / Family', 'Venue Referral', 'Vendor Referral', 'LinkedIn', 'Yelp'];
-const CLIENT_CLR    = (C) => ({ Inquiry: C.muted, Proposal: C.warn, Contracted: C.accent2, Active: C.accent, Complete: C.success });
+const CLIENT_CLR    = (C) => ({ Inquiry: C.muted, Proposal: C.muted, Contracted: C.accent2, Active: C.accent, Complete: C.success });
 
 // ─── Seed events ─────────────────────────────────────────────────────────────
 const SEED_EVENTS = [
@@ -3933,6 +4078,11 @@ const SEED_EVENTS = [
       { id: 'msg2', channel: 'vendor', direction: 'outbound', sender: 'planner', senderName: 'Jane Planner', vendor_name: 'Elite Floral NYC', body: 'Hi Elite Floral — we are working on getting client approval for the centerpiece design. Please hold our November 14 date. We expect confirmation by June 15.', createdAt: '2026-06-01T11:00:00Z', message_type: 'standard', deliveryStatus: 'email-sent' },
     ],
   },
+  // One rich sample per previously-uncovered event family (engine model coverage).
+  // Generated by the generate-sample-events workflow; see src/data/sampleEventsExtra.js.
+  ...SAMPLE_EVENTS_EXTRA,
+  // African American, DMV-based samples (real venues + real local market pricing).
+  ...SAMPLE_EVENTS_DMV,
 ];
 
 // ─── Seed clients ────────────────────────────────────────────────────────────
@@ -4137,6 +4287,8 @@ const SEED_CLIENTS = [
     ],
     eventIds: ['ev-conf'],
   },
+  // Pipeline coverage: sample leads/clients across Inquiry/Proposal/Contracted/Complete.
+  ...SAMPLE_CLIENTS_EXTRA,
 ];
 
 // ─── Shared components ────────────────────────────────────────────────────────
@@ -4292,6 +4444,10 @@ function StatCard({ label, value, sub, color, onClick, tier }) {
         cursor: onClick ? 'pointer' : 'default',
         borderRadius: 10,
         border: `1px solid transparent`,
+        // Left status "eyebrow" — follows the status rules: the strip is the card's
+        // own status color (red at-risk / amber approaching / green on-track / steel
+        // neutral). This is a status object, not a decorative accent.
+        borderLeft: `3px solid ${color || C.muted}`,
         transition: 'background 0.12s, border-color 0.12s',
         background: 'transparent',
         boxSizing: 'border-box',
@@ -4334,8 +4490,8 @@ function KpiInboxPanel({ label, headerRight, hasItems, empty, children }) {
 
 function budgetBarColor(pct, C) {
   if (pct > 100)  return C.danger;  // over budget — crimson
-  if (pct >= 90)  return C.warn;    // at/nearly budget — amber (theme-aware)
-  if (pct >= 75)  return C.warn;    // getting close — amber
+  if (pct >= 90)  return C.muted;    // at/nearly budget — amber (theme-aware)
+  if (pct >= 75)  return C.muted;    // getting close — amber
   return C.success;                 // on track — green
 }
 // Attribute tags — multi-select toggle chips (set on a vendor) and a compact
@@ -4392,20 +4548,23 @@ function ReadinessSparkline({ eventId }) {
   const hist = getReadinessHistory(eventId);
   if (!hist || hist.length < 2) return null;
   const pts   = hist.map(p => p.s);
-  const now   = pts[pts.length - 1];
-  const trend = now - pts[0];
+  const trend = pts[pts.length - 1] - pts[0];
   const up = trend > 0, down = trend < 0;
   const col   = up ? C.success : down ? C.warn : C.muted;
   const arrow = up ? '↗' : down ? '↘' : '→';
-  const word  = up ? 'Improving' : down ? 'Slipping' : 'Steady';
-  const delta = Math.abs(trend);
+  // PL-15b (board: "Improving 12 — 12 what?"): the delta is a DIRECTION signal,
+  // not a metric. Don't attribute a number to it — a bare "12" reads as a mystery
+  // count and invites false precision. Say only which way readiness is moving.
+  const plain = up   ? 'More ready'
+              : down ? 'Less ready'
+              :        'Holding steady';
   return (
     <span
-      title={`Readiness over time — now ${now}%, ${word.toLowerCase()}${delta ? ` ${delta} pts` : ''}. Updates only when the score actually moves.`}
-      aria-label={`Readiness ${word.toLowerCase()}${delta ? ` ${delta} points` : ''}, now ${now}%`}
+      title={`Readiness is ${up ? 'trending up' : down ? 'trending down' : 'holding steady'}. Updates only when the score actually moves.`}
+      aria-label={`Readiness ${up ? 'trending up, more ready' : down ? 'trending down, less ready' : 'holding steady'}`}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: col, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
       <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{arrow}</span>
-      {word}{delta ? ` ${delta}` : ''}
+      {plain}
     </span>
   );
 }
@@ -4608,8 +4767,8 @@ const msgTypeStyle = (type, C) => ({
   note:             { border: C.border,  bg: 'transparent',     icon: '📝', label: 'Note'              },
   update:           { border: C.accent,  bg: C.accent  + '10',  icon: '📋', label: 'Operational Update' },
   decision:         { border: C.accent2, bg: C.accent2 + '10',  icon: '📌', label: 'Decision'           },
-  approval_request: { border: C.warn,    bg: C.warn    + '10',  icon: '✋', label: 'Approval Request'   },
-  concern:          { border: C.warn,    bg: C.warn    + '10',  icon: '⚠️',  label: 'Concern'            },
+  approval_request: { border: C.muted,    bg: C.muted    + '10',  icon: '✋', label: 'Approval Request'   },
+  concern:          { border: C.muted,    bg: C.muted    + '10',  icon: '⚠️',  label: 'Concern'            },
   escalation:       { border: C.danger,  bg: C.danger  + '10',  icon: '🚨', label: 'Escalation'         },
 }[type] || { border: C.border, bg: 'transparent', icon: '📝', label: 'Note' });
 
@@ -5062,7 +5221,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           {/* Attribute tags — cross-cutting qualities used for filtering/shortlisting. */}
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Attributes <span style={{ opacity: 0.7 }}>(optional)</span></div>
-            <TagChips value={vendor.tags} onChange={(tags) => onChange('tags', tags)} />
+            <TagChips value={vendor.tags} onChange={(tags) => onChange('tags', tags)} options={attrsForVendorCategory(vendor.category)} />
           </div>
 
           {/* Sprint 61.I — Per-category budget hint. Renders when both
@@ -5143,7 +5302,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           const tierColor =
             acc.tier === 'missed_promise' ? C.danger
             : acc.tier === 'at_risk'      ? C.danger
-            : acc.tier === 'needs_follow_up' ? C.warn
+            : acc.tier === 'needs_follow_up' ? C.muted
             : acc.tier === 'needs_proof'  ? steelTopPT
             : C.success;
           // Group promises by status — top 3 most-actionable lift to the surface
@@ -5199,8 +5358,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 )}
                 {byStatus.evidence.length > 0 && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, color: C.warn,
-                    background: `${C.warn}14`, border: `1px solid ${C.warn}44`,
+                    fontSize: 10.5, fontWeight: 700, color: C.muted,
+                    background: `${C.muted}14`, border: `1px solid ${C.muted}44`,
                     padding: '3px 9px', borderRadius: 999,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
                   }}>
@@ -5240,7 +5399,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '8px 10px', borderRadius: 7,
                         background: C.bg, border: `1px solid ${C.border}`,
-                        borderLeft: `3px solid ${p.status === 'overdue' ? C.danger : C.warn}`,
+                        borderLeft: `3px solid ${p.status === 'overdue' ? C.danger : C.muted}`,
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
@@ -5885,10 +6044,10 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 {vendor.coiStatus === 'received' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap', paddingLeft: 4 }}>
                     <label onClick={() => onChange('coiVerified', !vendor.coiVerified)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.coiVerified ? C.success : C.warn}`, background: vendor.coiVerified ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.coiVerified ? C.success : C.muted}`, background: vendor.coiVerified ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {vendor.coiVerified && <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>✓</span>}
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: vendor.coiVerified ? C.success : C.warn }}>Verified valid (venue named + covers event date)</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: vendor.coiVerified ? C.success : C.muted }}>Verified valid (venue named + covers event date)</span>
                     </label>
                     <label style={{ fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
                       Valid through
@@ -5901,7 +6060,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                     {vendor.docusignEnvelopeId ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: vendor.docusignStatus === 'completed' ? C.success : C.warn, fontWeight: 600 }}>
+                        <span style={{ fontSize: 11, color: vendor.docusignStatus === 'completed' ? C.success : C.muted, fontWeight: 600 }}>
                           DocuSign: {envelopeStatusLabel(vendor.docusignStatus)}
                         </span>
                         {vendor.docusignStatus !== 'completed' && (
@@ -6648,7 +6807,7 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, marginBottom: 10 }}>{vendor.name} can scan this to open their brief — no link to type.</div>
                   <button onClick={downloadQr} disabled={!qrUrl} style={{ ...s.btn(), width: '100%', fontSize: 12, opacity: qrUrl ? 1 : 0.5 }}>⬇ Download PNG</button>
-                  {isLongUrl && <div style={{ fontSize: 10, color: C.warn, marginTop: 8, lineHeight: 1.4 }}>⚠ This brief has a lot of detail, so the QR is dense — print it at least 1.5″ wide for reliable scanning.</div>}
+                  {isLongUrl && <div style={{ fontSize: 10, color: C.muted, marginTop: 8, lineHeight: 1.4 }}>⚠ This brief has a lot of detail, so the QR is dense — print it at least 1.5″ wide for reliable scanning.</div>}
                 </div>
               </div>
             )}
@@ -7490,7 +7649,30 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
 
 // ─── ROS Modal ────────────────────────────────────────────────────────────────
 
-function ROSModal({ entry, onClose, onChange, onDelete }) {
+// "In charge" picker — a real dropdown (curated roles + vendor names + the row's
+// current value), with an "Add someone…" escape hatch for a custom name.
+function OwnerSelect({ value, options, onChange, style }) {
+  const opts = [...new Set([...(options || []), ...(value && !(options || []).includes(value) ? [value] : [])])];
+  return (
+    <select
+      style={style}
+      value={value || ''}
+      onChange={e => {
+        const val = e.target.value;
+        if (val === '__custom__') {
+          const c = window.prompt('Who is in charge? (name or role)', value || '');
+          if (c != null && c.trim()) onChange(c.trim());
+        } else onChange(val);
+      }}
+    >
+      <option value="">In charge…</option>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="__custom__">＋ Add someone…</option>
+    </select>
+  );
+}
+
+function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
   const C          = useT();
   const s          = makeS(C);
   const bp         = useContext(BpCtx);
@@ -7565,7 +7747,7 @@ function ROSModal({ entry, onClose, onChange, onDelete }) {
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Owner / Responsible</label>
-            <input style={s.input} value={entry.owner} placeholder="Name or role" onChange={e => onChange('owner', e.target.value)} />
+            <OwnerSelect value={entry.owner} options={ownerOptions} onChange={v => onChange('owner', v)} style={s.input} />
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Notes / Cues</label>
@@ -7662,6 +7844,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   useEffect(() => {
     if (!kitTouched) setKit(kitForEventType(form.type));
     upd('timeOfDay', timeOfDayForEventType(form.type));
+    // At-home gatherings happen at the host's home — default the venue so the
+    // planner isn't asked to "book" a venue for their own house. Clears the
+    // auto-default when switching back to a venue-based type.
+    if (isAtHomeType(form.type)) { if (!form.venue.trim()) upd('venue', "Host's home"); }
+    else if (form.venue === "Host's home") upd('venue', '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.type, kitTouched]);
 
@@ -7857,7 +8044,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   const done   = n < step;
                   return (
                     <div key={label} style={{ flex: 1, textAlign: 'center', fontSize: 12, fontWeight: active ? 700 : 600,
-                      letterSpacing: '0.02em', color: active ? C.text : done ? C.muted : C.muted, opacity: done ? 0.7 : 1 }}>
+                      letterSpacing: '0.02em', color: active ? C.text : done ? C.warn : C.muted, opacity: done ? 0.7 : 1 }}>
                       {label}
                     </div>
                   );
@@ -8207,8 +8394,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Optional details</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={ui.label} htmlFor="ce-venue">Venue <span style={ui.opt}>· optional</span></label>
-                  <input id="ce-venue" data-testid="ce-venue" style={ui.field(false)} placeholder="Where is it being held?" value={form.venue} onChange={e => upd('venue', e.target.value)} />
+                  <label style={ui.label} htmlFor="ce-venue">{isAtHomeType(form.type) ? 'Location' : 'Venue'} <span style={ui.opt}>· optional</span></label>
+                  <input id="ce-venue" data-testid="ce-venue" style={ui.field(false)} placeholder={isAtHomeType(form.type) ? "Host's home (default) — or where you're hosting" : 'Where is it being held?'} value={form.venue} onChange={e => upd('venue', e.target.value)} />
                 </div>
                 <div>
                   <label style={ui.label} htmlFor="ce-theme">Theme / colors <span style={ui.opt}>· optional</span></label>
@@ -8233,8 +8420,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 )}
               </div>
 
-              {/* Venue attributes — all-inclusive ↔ blank-canvas etc. Optional. */}
-              <div style={{ marginBottom: 16 }}>
+              {/* Venue attributes — all-inclusive ↔ blank-canvas etc. Optional.
+                  Hidden for at-home gatherings (a house isn't a bookable venue). */}
+              <div style={{ marginBottom: 16, display: isAtHomeType(form.type) ? 'none' : undefined }}>
                 <label style={ui.label}>Venue attributes <span style={ui.opt}>· optional</span></label>
                 <div style={{ marginTop: 6 }}>
                   <TagChips value={form.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS} />
@@ -8305,7 +8493,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   .filter(s => s && s.save > 0)
                   .sort((a, b) => b.save - a.save);
                 const totalSavings = saveSwaps.reduce((s, x) => s + x.save, 0);
-                const addable = ADDABLE_CATEGORIES.filter(a => !allCats.some(c => c.c === a.c));
+                // Only suggest "addable" categories the EVENT TYPE actually calls for —
+                // a dinner party shouldn't be offered Officiant / Hair & Makeup / Attire
+                // (board: "what's not included … all wedding related"). Matched against
+                // the same per-type vendor roster the engine uses.
+                const evtVendorCats = (proposedVendorCategories(form.type) || []).join(' · ').toLowerCase();
+                const addableRelevant = (name) => {
+                  const n = name.toLowerCase();
+                  if (/misc|staffing/.test(n)) return true; // universal, always allowed
+                  const first = n.split(/[ /&]+/).filter(Boolean)[0] || '';
+                  return evtVendorCats.includes(n) || (first.length > 2 && evtVendorCats.includes(first));
+                };
+                const addable = ADDABLE_CATEGORIES.filter(a => !allCats.some(c => c.c === a.c) && addableRelevant(a.c));
 
                 const missing = [];
                 if (guests < 1)  missing.push('Estimated guest count');
@@ -8396,8 +8595,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               const pct = lowT > 0 ? Math.round((ub / lowT) * 100) : 100;
                               const venueNote = communityVenueNote(form.venue);
                               return (
-                                <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.6, background: `${C.warn}12`, border: `1px solid ${C.warn}40`, borderRadius: 8, padding: '8px 10px' }}>
-                                  <span style={{ color: C.warn, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%).{' '}
+                                <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.6, background: `${C.muted}12`, border: `1px solid ${C.muted}40`, borderRadius: 8, padding: '8px 10px' }}>
+                                  <span style={{ color: C.muted, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%).{' '}
                                   <strong style={{ fontWeight: 700 }}>Spend first</strong> on the room, food, and music; <strong style={{ fontWeight: 700 }}>save</strong> with family-style or buffet service, DIY or rented décor, a smaller act or a great playlist, and treat add-ons (photo booth, extras) as optional.
                                   {venueNote && <div style={{ marginTop: 6, color: C.accent2, fontWeight: 600 }}>{venueNote}</div>}
                                 </div>
@@ -8525,7 +8724,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                             border: `1px solid ${on ? steelTop : C.border}`, background: on ? `${steelTop}1e` : 'transparent' }}>
                                           <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: on ? C.text : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{TIER_LABEL[t]}</span>
                                           <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.text }}>{money(catPrice(cat, t))}</span>
-                                          <span style={{ display: 'block', fontSize: 9.5, fontWeight: 500, color: on ? C.muted : C.muted, lineHeight: 1.25, marginTop: 1 }}>{tierNote(cat.c, t)}</span>
+                                          <span style={{ display: 'block', fontSize: 9.5, fontWeight: 500, color: on ? C.warn : C.muted, lineHeight: 1.25, marginTop: 1 }}>{tierNote(cat.c, t)}</span>
                                         </button>
                                       );
                                     })}
@@ -8603,7 +8802,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               </div>
                             )}
                             {flags.map((f, i) => (
-                              <div key={i} data-testid="ce-estimator-flag" style={{ fontSize: 12, color: C.warn, lineHeight: 1.5 }}>⚠ {f}</div>
+                              <div key={i} data-testid="ce-estimator-flag" style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>⚠ {f}</div>
                             ))}
 
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: 11.5, color: C.muted }}>
@@ -8622,7 +8821,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     )}
 
                     {replaceConfirm && (
-                      <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.warn}55`, borderRadius: 10, padding: '12px 14px' }}>
+                      <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.muted}55`, borderRadius: 10, padding: '12px 14px' }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
                         <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(estApplyTotal)}. No payment is created.</div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -9461,7 +9660,7 @@ function EventCard({ event, onClick }) {
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{event.venue || '—'} · {fmtDate(event.date)}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {days !== null && <span style={s.pill(days < 0 ? C.muted : days <= 90 ? C.warn : C.accent)}>{countdownLabel(days)}</span>}
+        {days !== null && <span style={s.pill(days < 0 ? C.muted : days <= 90 ? C.muted : C.accent)}>{countdownLabel(days)}</span>}
         {statusLabel && <span style={s.pill(C.muted)}>{statusLabel}</span>}
         {isArchived  && <span style={s.pill(C.muted)}>Archived</span>}
       </div>
@@ -9521,37 +9720,92 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
     const ev = (events || []).find(e => e.id === ids[0]);
     return ev?.date || null;
   }, [client?.eventIds, events]);
-  // Section expand/collapse state — default open only if has data
-  const hasData = (keys) => keys.some(k => {
-    const v = client[k];
-    return v && v !== '' && v !== false && !(Array.isArray(v) && !v.length);
-  });
+  // Section field maps — drive both fill-state captions and default-open logic.
+  const SECTION_KEYS = {
+    partner: ['partnerName','partnerEmail','partnerPhone','address','instagram'],
+    preferences: ['preferredContact','preferredTime','responseExpectation'],
+    vision: ['eventStyle','colorPalette','mustHaves','toAvoid','inspirationLink','guestEstimate','budgetRange'],
+    personal: ['birthday1','birthday2','anniversary','cultural','clientDietary'],
+    influencers: ['decisionMakerNotes','influencer1Name','influencer2Name','influencer3Name'],
+    discovery: ['intakeNotes','referredBy','referral'],
+    postEvent: ['thankYouSent','reviewRequested','futureEventNotes','referralPotential'],
+  };
+  const isFilled = (v) => v && v !== '' && v !== false && !(Array.isArray(v) && !v.length);
+  const hasData  = (keys) => keys.some(k => isFilled(client[k]));
+  const fillCount = (keys) => keys.reduce((n, k) => n + (isFilled(client[k]) ? 1 : 0), 0);
+  // Chunk A — intake family routing (the keystone). A backyard dinner host must
+  // never be shown a partner/secondary-contact, a planner-fee ledger, a vision
+  // board, or cultural metrics. Derive the family from the linked event's type
+  // (or the client's), then SUPPRESS irrelevant sections — but a section still
+  // shows if it already holds data, so routing never hides real content.
+  const intakeType = useMemo(() => {
+    const ids = client?.eventIds || [];
+    const ev = ids.length ? (events || []).find(e => e.id === ids[0]) : null;
+    return ev?.type || client?.eventType || null;
+  }, [client?.eventIds, client?.eventType, events]);
+  const intakeCfg = intakeFamilyConfig(intakeType);
+  const showSec = {
+    contact: true, logistics: true,
+    discovery: intakeCfg.discovery || hasData(SECTION_KEYS.discovery),
+    partner: intakeCfg.partner || hasData(SECTION_KEYS.partner),
+    preferences: !intakeCfg.diy || hasData(SECTION_KEYS.preferences),
+    vision: intakeCfg.vision === true || hasData(SECTION_KEYS.vision),
+    personal: (intakeCfg.personal && !intakeCfg.diy) || hasData(SECTION_KEYS.personal),
+    influencers: intakeCfg.influencers || hasData(SECTION_KEYS.influencers),
+    fee: intakeCfg.plannerFee || (client.plannerFee || 0) > 0 || (client.feeSchedule || []).length > 0,
+    postEvent: !intakeCfg.diy || hasData(SECTION_KEYS.postEvent),
+  };
+  // Board #7 — the stepper drives disclosure. At 'Inquiry' only the early-funnel
+  // essentials (Contact + Discovery) open; each later stage surfaces the next
+  // sections. A section also opens whenever it already holds data, so nothing
+  // with content stays hidden. Collapsed sections show a fill-state caption.
+  const sr = CLIENT_STAGES.indexOf(client.status); // Inquiry=0 … Complete=4
+  const stageOpen = {
+    contact: true, discovery: true,
+    vision: sr >= 1, preferences: sr >= 1, fee: sr >= 1,
+    partner: sr >= 2, personal: sr >= 2, influencers: sr >= 2,
+    postEvent: sr >= 4,
+  };
   const [openSections, setOpenSections] = useState({
     contact: true,
-    partner: hasData(['partnerName','partnerEmail','partnerPhone','address','instagram']),
-    preferences: hasData(['preferredContact','preferredTime','responseExpectation']),
-    vision: hasData(['eventStyle','colorPalette','mustHaves','toAvoid','inspirationLink','guestEstimate','budgetRange']),
-    personal: hasData(['birthday1','birthday2','anniversary','cultural','clientDietary']),
-    influencers: hasData(['decisionMakerNotes','influencer1Name','influencer2Name','influencer3Name']),
-    discovery: hasData(['intakeNotes','referredBy','referral']),
-    fee: true,
-    postEvent: hasData(['thankYouSent','reviewRequested','futureEventNotes','referralPotential']),
+    partner: stageOpen.partner || hasData(SECTION_KEYS.partner),
+    preferences: stageOpen.preferences || hasData(SECTION_KEYS.preferences),
+    vision: stageOpen.vision || hasData(SECTION_KEYS.vision),
+    personal: stageOpen.personal || hasData(SECTION_KEYS.personal),
+    influencers: stageOpen.influencers || hasData(SECTION_KEYS.influencers),
+    discovery: true,
+    fee: stageOpen.fee || (client.plannerFee || 0) > 0 || (client.feeSchedule || []).length > 0,
+    postEvent: stageOpen.postEvent || hasData(SECTION_KEYS.postEvent),
   });
   const toggleSection = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
-  // Section header component
-  const SecHeader = ({ skey, label, badge, badgeColor }) => (
-    <button onClick={() => toggleSection(skey)} style={{
-      width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-      background: openSections[skey] ? C.surface2 : 'transparent',
-      border: 'none', cursor: 'pointer', padding: '10px 14px', textAlign: 'left',
-    }}>
-      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>{label}</span>
-      {badge && <span style={{ fontSize: 10, fontWeight: 600, color: badgeColor || C.accent, background: (badgeColor || C.accent) + '18', padding: '2px 8px', borderRadius: 6 }}>{badge}</span>}
-      <span style={{ color: C.muted, fontSize: 11 }}>{openSections[skey] ? '▾' : '▸'}</span>
-    </button>
-  );
-  const Sec = ({ skey, label, badge, badgeColor, children }) => (
+  // Section header component — collapsed sections carry a fill-state caption so
+  // the planner sees what's captured without opening an empty drawer (board #7).
+  const SecHeader = ({ skey, label, badge, badgeColor }) => {
+    const open = openSections[skey];
+    const keys = SECTION_KEYS[skey];
+    let caption = null;
+    if (!open && keys) {
+      const f = fillCount(keys);
+      caption = f === 0 ? 'Not added' : `${f} of ${keys.length} added`;
+    }
+    return (
+      <button onClick={() => toggleSection(skey)} style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+        background: open ? C.surface2 : 'transparent',
+        border: 'none', cursor: 'pointer', padding: '10px 14px', textAlign: 'left',
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>{label}</span>
+        {caption && <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted, opacity: 0.8, fontStyle: caption === 'Not added' ? 'italic' : 'normal' }}>{caption}</span>}
+        {badge && <span style={{ fontSize: 10, fontWeight: 600, color: badgeColor || C.accent, background: (badgeColor || C.accent) + '18', padding: '2px 8px', borderRadius: 6 }}>{badge}</span>}
+        <span style={{ color: C.muted, fontSize: 11 }}>{open ? '▾' : '▸'}</span>
+      </button>
+    );
+  };
+  const Sec = ({ skey, label, badge, badgeColor, children }) => {
+    // Chunk A — family routing suppresses irrelevant sections entirely.
+    if (showSec[skey] === false) return null;
+    return (
     <div style={{ marginBottom: 12, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
       <SecHeader skey={skey} label={label} badge={badge} badgeColor={badgeColor} />
       {openSections[skey] && (
@@ -9560,7 +9814,8 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
         </div>
       )}
     </div>
-  );
+    );
+  };
   // Sprint 60.C: CMField + CMRow live at module scope; passing C explicitly.
   const stageIdx    = CLIENT_STAGES.indexOf(client.status);
   const collected   = (client.feeSchedule || []).reduce((acc, f) => acc + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
@@ -9619,7 +9874,10 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
 
-          {/* Pipeline stepper */}
+          {/* Pipeline stepper — engine source of truth: only a professional
+              engagement has a lead funnel. A self-host event (home_hosted) has
+              no Inquiry/Proposal/Contracted lifecycle. */}
+          {intakeCfg.pipeline && (
           <div style={{ display: 'flex', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 11, left: '10%', right: '10%', height: 2, background: C.border, zIndex: 0 }} />
             {CLIENT_STAGES.map((stage, i) => {
@@ -9643,6 +9901,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* ── Scrollable body ───────────────────────────────────────────────── */}
@@ -9726,6 +9985,22 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
                 <option value="">No preference stated</option>
                 {['Same day','Within 24 hours','Within 48 hours','Within the week'].map(r => <option key={r}>{r}</option>)}
               </select>
+            </CMField>
+          </Sec>
+
+          {/* ── Guest Experience & Logistics (RSVP method + accessibility + dietary) ── */}
+          <Sec skey="logistics" label="Guest Experience & Logistics">
+            <CMField C={C} label="RSVP method">
+              <select style={{ ...s.input, fontSize: 12 }} value={client.rsvpMethod || ''} onChange={e => onChange('rsvpMethod', e.target.value)}>
+                <option value="">Not decided yet</option>
+                {RSVP_METHODS.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </CMField>
+            <CMField C={C} label="Accessibility needs (select all that apply)">
+              <TagChips value={client.accessibilityNeeds || []} onChange={(t) => onChange('accessibilityNeeds', t)} options={ACCESSIBILITY_OPTIONS} />
+            </CMField>
+            <CMField C={C} label="Dietary restrictions (select all that apply)">
+              <TagChips value={client.dietaryNeeds || []} onChange={(t) => onChange('dietaryNeeds', t)} options={DIETARY_OPTIONS} />
             </CMField>
           </Sec>
 
@@ -9818,7 +10093,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
           </Sec>
 
           {/* ── 8. Planner Fee & Contract ── */}
-          <Sec skey="fee" label="Planner Fee & Contract" badge={outstanding > 0 ? `${fmtD(outstanding)} outstanding` : collected > 0 ? 'Paid in full' : null} badgeColor={outstanding > 0 ? C.warn : C.success}>
+          <Sec skey="fee" label="Planner Fee & Contract" badge={outstanding > 0 ? `${fmtD(outstanding)} outstanding` : collected > 0 ? 'Paid in full' : null} badgeColor={outstanding > 0 ? C.muted : C.success}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <CMField C={C} label="Total fee">
                 <input style={s.input} type="number" value={client.plannerFee || 0} onChange={e => onChange('plannerFee', Number(e.target.value) || 0)} />
@@ -9912,8 +10187,10 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
             <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.notes || ''} placeholder="Family dynamics, sensitivities, decision-maker dynamics, anything the team should know…" onChange={e => onChange('notes', e.target.value)} />
           </div>
 
-          {/* ── 11. Comms Checklist ── */}
-          {(() => {
+          {/* ── 11. Comms Checklist ── engine source of truth: a sales-onboarding
+              checklist (intro call / discovery questionnaire / proposal sent) only
+              applies to a professional engagement, never a self-host event. */}
+          {intakeCfg.commsChecklist && (() => {
             const checklist  = client.commsChecklist || {};
             const totalItems = CLIENT_STAGES.flatMap(st => CLIENT_COMMS[st] || []);
             const totalDone  = totalItems.filter(it => checklist[it]).length;
@@ -10641,18 +10918,18 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
               <div style={s.card}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div style={s.cardTitle}>Updates from your planner</div>
-                  {pendingApprovals > 0 && <span style={{ ...s.pill(C.warn), fontSize: 11 }}>{pendingApprovals} awaiting your approval</span>}
+                  {pendingApprovals > 0 && <span style={{ ...s.pill(C.muted), fontSize: 11 }}>{pendingApprovals} awaiting your approval</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {feed.map(e => {
                     const isApproval = e.type === 'approval_request';
                     const isDecision = e.type === 'decision';
-                    const clr   = isApproval ? C.warn : isDecision ? C.accent2 : C.accent;
+                    const clr   = isApproval ? C.muted : isDecision ? C.accent2 : C.accent;
                     const label = isApproval ? 'Approval Needed' : isDecision ? 'Decision' : 'Update';
                     const status = isApproval
                       ? (e.approvalStatus === 'approved' ? { t: '✓ You approved', c: C.success }
                         : e.approvalStatus === 'declined' ? { t: '✗ You declined',  c: C.danger }
-                        : { t: 'Awaiting your approval', c: C.warn })
+                        : { t: 'Awaiting your approval', c: C.muted })
                       : null;
                     return (
                       <div key={e.id} style={{ borderLeft: `3px solid ${clr}`, padding: '8px 12px', background: clr + '0d', borderRadius: '0 8px 8px 0' }}>
@@ -10692,7 +10969,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                       </div>
                     </div>
                     {days !== null && ev.date && (
-                      <span style={s.pill(days <= 90 ? C.warn : C.accent2)}>
+                      <span style={s.pill(days <= 90 ? C.muted : C.accent2)}>
                         {countdownLabel(days)}
                       </span>
                     )}
@@ -10745,7 +11022,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                       {phases.map(({ phase, date, dLeft, focus }) => {
                         const isPast    = dLeft <= 0;
                         const isUrgent  = dLeft > 0 && dLeft <= 30;
-                        const dotClr    = isPast ? C.muted : isUrgent ? C.warn : C.accent;
+                        const dotClr    = isPast ? C.muted : isUrgent ? C.muted : C.accent;
                         const isHov     = msHover?.phase === phase && msHover?.evId === ev.id;
                         const guideEntry = (WORKFLOW_FOCUS[ev.type] || WORKFLOW_FOCUS.Birthday || {})[phase];
                         const firstTip   = guideEntry?.tips?.[0] || null;
@@ -10881,7 +11158,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                             <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtD(f.amount)}</span>
                             {f.paid
                               ? <span style={s.pill(C.success)}>Paid</span>
-                              : <span style={s.pill(dLeft !== null && dLeft <= 14 ? C.danger : C.warn)}>Due</span>
+                              : <span style={s.pill(dLeft !== null && dLeft <= 14 ? C.danger : C.muted)}>Due</span>
                             }
                           </div>
                         </div>
@@ -10890,7 +11167,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                     {outstanding > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10 }}>
                         <span style={{ fontSize: 12, color: C.muted }}>Outstanding balance</span>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: C.warn }}>{fmtD(outstanding)}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.muted }}>{fmtD(outstanding)}</span>
                       </div>
                     )}
                   </div>
@@ -11009,7 +11286,11 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
   const isTablet = bp === 'tablet';
-  const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '',
+    // Board #3: the two facts that gate every inquiry — when + where. Entering
+    // either spins up a clean linked event stub so the countdown can start (a
+    // client record alone can't drive a date). See submit().
+    eventType: '', eventDate: '', eventLocation: '' });
   const [referralChoice,   setReferralChoice]   = useState('');
   const [touched,          setTouch]            = useState({});
   const [showErr,          setShowErr]          = useState(false);
@@ -11024,6 +11305,14 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   // pricing — required identity + contact + intake all fit above the fold.
   const [feeOpen, setFeeOpen] = useState(false);
   const set   = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Engine source of truth — host-facing copy comes from the family's vocab, so a
+  // home host never sees "roster / client / fee". Derive from the chosen type OR
+  // the LINKED event's type (board re-demo: linking an existing home event left
+  // form.eventType empty, so the modal fell back to pro vocab — the un-deconned
+  // "second surface" the board flagged as the biggest leak).
+  const vocabType = form.eventType || (events.find(ev => ev.id === selectedEventId) || {}).type || '';
+  const vocab = intakeVocab(vocabType);
+  const isHostEvent = (intakeFamilyConfig(vocabType) || {}).recordKind === 'event';
   const touch = (k)    => setTouch(t => ({ ...t, [k]: true }));
   const isOtherReferral = referralChoice === 'Other';
   // Steel-blue gradient stops — for the No-Guesswork rail and section eyebrows.
@@ -11081,6 +11370,22 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
     if (form.venueStatus)   initLogLines.push(`Venue status: ${form.venueStatus}.`);
     if (form.initNotes)     initLogLines.push(form.initNotes.trim());
     const feeSchedule = defaultFeeSchedule(finalFee, form.feeStructure);
+    // Board #3 — clean event stub. Only when the planner gave a real fact (date
+    // or location) and isn't already linking an event. A bare name+email inquiry
+    // stays just a contact; nothing fabricated. No budget/fee rows on the stub —
+    // those would read as phantom $0 ledgers (board #11).
+    const makeEvent = !selectedEventId && !!(form.eventDate || form.eventLocation.trim());
+    const stubEvent = makeEvent ? {
+      id: 'ev-' + uid(),
+      rsvpCode: uid(),
+      name: `${form.name.trim()}'s ${form.eventType || 'Event'}`,
+      type: form.eventType || 'Other',
+      date: form.eventDate || '',
+      venue: form.eventLocation.trim(),
+      guestCount: form.guestEstimate ? (parseInt(form.guestEstimate, 10) || 0) : 0,
+      budget: [], vendors: [], guests: [], timeline: [], ros: [], commClient: [],
+    } : null;
+    const linkId = selectedEventId || (stubEvent ? stubEvent.id : null);
     onCreate({
       id: 'cl-' + uid(),
       name: form.name.trim(),
@@ -11097,11 +11402,11 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
       style: form.styleNotes.trim(),
       notes: '',
       log: [{ id: uid(), date: today8601(), text: initLogLines.join(' ') }],
-      eventIds: selectedEventId ? [selectedEventId] : [],
+      eventIds: linkId ? [linkId] : [],
     // Sprint 60.U.3 10+ — pass navigate=!openIntake. Plain "Create Client"
     // skips parent navigation so this modal can paint its success payoff in
     // place. "Create & Start Intake" keeps the immediate-route fast path.
-    }, selectedEventId || null, openIntake, /* navigate */ !!openIntake);
+    }, selectedEventId || null, openIntake, /* navigate */ !!openIntake, stubEvent);
     if (openIntake) {
       onClose();
     } else {
@@ -11109,7 +11414,8 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
       if (feeSchedule.length) payoff.push(`Fee schedule (${feeSchedule.length} payment${feeSchedule.length === 1 ? '' : 's'})`);
       payoff.push('Planner log started');
       if (form.status) payoff.push(`Status: ${form.status}`);
-      if (linkedEvent) payoff.push(`Linked to ${linkedEvent.name}`);
+      if (stubEvent) payoff.push(`Event created: ${stubEvent.name}${stubEvent.date ? ` · ${fmtDate(stubEvent.date)}` : ''}`);
+      else if (linkedEvent) payoff.push(`Linked to ${linkedEvent.name}`);
       setSubmitted({ name: form.name.trim(), payoff });
     }
   };
@@ -11125,14 +11431,14 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
-                {submitted ? 'Roster updated' : 'New Client'}
+                {submitted ? (isHostEvent ? 'Event updated' : 'Roster updated') : (isHostEvent ? 'New get-together' : 'New Client')}
               </div>
               <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>
-                {submitted ? `${submitted.name} is ready` : 'Add to your roster'}
+                {submitted ? `${submitted.name} is ready` : (vocab.createTitle || 'Add to your roster')}
               </h2>
               {!submitted && (
                 <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5 }}>
-                  Add the basics. Event Boss saves the contact, fee schedule, and opens a planner log.
+                  {isHostEvent ? 'Add the basics — Event Boss sets up your event, sketches a rough budget, and starts the countdown.' : 'Add the basics. Event Boss saves the contact, fee schedule, and opens a planner log.'}
                 </div>
               )}
             </div>
@@ -11170,7 +11476,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 10 }}>
               <button style={{ ...s.btn(), flex: 1 }} onClick={() => {
                 // Reset to add another client
-                setForm({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '' });
+                setForm({ name: '', email: '', phone: '', referral: '', status: 'Inquiry', plannerFee: '', feeStructure: 'flat', contactPref: '', guestEstimate: '', venueStatus: '', styleNotes: '', initNotes: '', eventType: '', eventDate: '', eventLocation: '' });
                 setReferralChoice(''); setTouch({}); setShowErr(false); setSelectedEventId(''); setSubmitted(null);
               }}>Add another</button>
               <button style={{ ...s.btn('primary'), flex: 1 }} onClick={onClose}>Done</button>
@@ -11206,7 +11512,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                 Add the basics. Event Boss handles the rest.
               </div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                We open the planner log, draft a fee schedule, and prep the intake — so you can move on instead of writing boilerplate.
+                {isHostEvent ? 'We set up your event, suggest a budget from real per-guest costs, and start your planning checklist — so you can focus on the party.' : 'We open the planner log, draft a fee schedule, and prep the intake — so you can move on instead of writing boilerplate.'}
               </div>
             </div>
           </div>
@@ -11215,7 +11521,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           {events.length > 0 && (
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>
-                Link to Event <span style={{ fontWeight: 400 }}>(optional — drives fee suggestions)</span>
+                Link to Event <span style={{ fontWeight: 400 }}>{isHostEvent ? '(optional)' : '(optional — drives fee suggestions)'}</span>
               </label>
               <select style={s.input} value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
                 <option value="">No event — add later</option>
@@ -11255,7 +11561,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
 
           {/* ── Client Name ── */}
           <div>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Client / Couple Name *</label>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>{vocab.nameLabel || 'Client / Couple Name'} *</label>
             <input style={{ ...s.input, borderColor: errName ? C.danger : undefined }} value={form.name}
               placeholder={isInternal ? 'e.g. Acme Corp — Events Team' : 'e.g. Sarah & Todd Chen'}
               autoFocus onChange={e => set('name', e.target.value)} onBlur={() => touch('name')} />
@@ -11267,7 +11573,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Email</label>
               <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }}
-                type="email" value={form.email} placeholder="client@email.com"
+                type="email" value={form.email} placeholder={isHostEvent ? 'you@email.com' : 'client@email.com'}
                 onChange={e => set('email', e.target.value)} onBlur={() => touch('email')} />
               {errEmail && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
             </div>
@@ -11280,7 +11586,9 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             </div>
           </div>
 
-          {/* ── Source + Status ── */}
+          {/* ── Source + Status ── engine: a host has no acquisition channel and no
+              Inquiry/Proposal sales stage. Suppress both for self-host events. */}
+          {!isHostEvent && (
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>How They Found You</label>
@@ -11306,26 +11614,68 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               </select>
             </div>
           </div>
+          )}
 
           {/* ── Intake details ── */}
           <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: steelTop, marginBottom: 12 }}>Quick Intake</div>
+            <div style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: steelTop, marginBottom: 12 }}>{isHostEvent ? 'The basics' : 'Quick Intake'}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Row: contact pref + guest estimate */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Preferred Contact</label>
-                  <select style={s.input} value={form.contactPref} onChange={e => set('contactPref', e.target.value)}>
-                    <option value="">— Not asked —</option>
-                    {['Email', 'Text / SMS', 'Phone Call', 'WhatsApp', 'Any'].map(o => <option key={o}>{o}</option>)}
-                  </select>
+              {/* Board #3 — the event itself. When no existing event is linked, the
+                  two facts that gate every inquiry (when + where) live here; entering
+                  either creates a clean linked event stub so the countdown starts at
+                  intake. A client record alone can't hold a date. */}
+              {!selectedEventId && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event type <span style={{ fontWeight: 400 }}>(choose later if unsure)</span></label>
+                    {/* Chunk A — canonical taxonomy (incl. At-Home Gatherings) so the
+                        type routes cleanly to its intake family. The old short
+                        INTAKE_EVENT_TYPES list omitted home-hosted types entirely. */}
+                    <select style={s.input} value={form.eventType} onChange={e => set('eventType', e.target.value)}>
+                      <option value="">— Choose later —</option>
+                      {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
+                        <optgroup key={cat} label={cat}>
+                          {types.map(t => <option key={t} value={t}>{t}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event date <span style={{ fontWeight: 400 }}>(approximate is fine)</span></label>
+                    <input {...dateInputProps} style={s.input} value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'Where' : 'City / market'} <span style={{ fontWeight: 400 }}>{isHostEvent ? '(your place or address)' : '(or venue)'}</span></label>
+                    <input style={s.input} value={form.eventLocation} placeholder={isHostEvent ? 'e.g. my place, or an address' : 'e.g. Washington, DC'} onChange={e => set('eventLocation', e.target.value)} />
+                  </div>
+                  {(form.eventDate || form.eventLocation) && (
+                    <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: steelTop, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span aria-hidden>✓</span>
+                      Event Boss will create {form.name.trim() ? `${form.name.trim()}'s` : 'their'} event{form.eventDate ? ' and start the countdown' : ''}.
+                    </div>
+                  )}
                 </div>
+              )}
+              {/* Row: contact pref + guest estimate. Engine: a self-host has no
+                  client-comms protocol — drop Preferred Contact for host events. */}
+              <div style={{ display: 'grid', gridTemplateColumns: isHostEvent ? '1fr' : '1fr 1fr', gap: 10 }}>
+                {!isHostEvent && (
+                  <div>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Preferred Contact</label>
+                    <select style={s.input} value={form.contactPref} onChange={e => set('contactPref', e.target.value)}>
+                      <option value="">— Not asked —</option>
+                      {['Email', 'Text / SMS', 'Phone Call', 'WhatsApp', 'Any'].map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
-                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Est. Guest Count</label>
-                  <input style={s.input} type="number" placeholder="e.g. 150" value={form.guestEstimate} onChange={e => set('guestEstimate', e.target.value)} />
+                  <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{vocab.guestLabel || 'Est. Guest Count'}</label>
+                  <input style={s.input} type="number" placeholder={isHostEvent ? 'e.g. 12' : 'e.g. 150'} value={form.guestEstimate} onChange={e => set('guestEstimate', e.target.value)} />
                 </div>
               </div>
-              {/* Venue status */}
+              {/* Venue status — engine: the home IS the venue for a home-hosted
+                  event, so a venue-booking tracker is meaningless ceremony. */}
+              {!isHostEvent && (
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 6 }}>Venue Status</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -11339,15 +11689,16 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                   })}
                 </div>
               </div>
-              {/* Style/Vision */}
+              )}
+              {/* Style/Vision — engine: home-scale example, not black-tie/wedding. */}
               <div>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Style / Vision <span style={{ fontWeight: 400 }}>(keywords)</span></label>
-                <input style={s.input} placeholder={isInternal ? 'e.g. Modern, branded, all-hands…' : 'e.g. Garden-romantic, boho, black-tie…'} value={form.styleNotes} onChange={e => set('styleNotes', e.target.value)} />
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'The vibe you want' : 'Style / Vision'} <span style={{ fontWeight: 400 }}>(keywords)</span></label>
+                <input style={s.input} placeholder={isHostEvent ? 'e.g. Cozy, candlelit, good food & wine…' : isInternal ? 'e.g. Modern, branded, all-hands…' : 'e.g. Garden-romantic, boho, black-tie…'} value={form.styleNotes} onChange={e => set('styleNotes', e.target.value)} />
               </div>
               {/* Initial notes */}
               <div>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>First Impression / Notes</label>
-                <textarea style={{ ...s.input, minHeight: 56, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} placeholder="Quick notes from first call or inquiry…" value={form.initNotes} onChange={e => set('initNotes', e.target.value)} />
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'Notes' : 'First Impression / Notes'}</label>
+                <textarea style={{ ...s.input, minHeight: 56, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} placeholder={isHostEvent ? 'Theme ideas, who’s helping, must-haves…' : 'Quick notes from first call or inquiry…'} value={form.initNotes} onChange={e => set('initNotes', e.target.value)} />
               </div>
             </div>
           </div>
@@ -11360,7 +11711,8 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ marginTop: 4 }}>
               <BudgetEstimateHint
                 type={linkedEvent.type}
-                guestCount={linkedEvent.guestEstimate || (linkedEvent.guests || []).length}
+                family={intakeFamily(linkedEvent.type)}
+                guestCount={linkedEvent.guestEstimate || linkedEvent.guestCount || (linkedEvent.guests || []).length}
                 date={linkedEvent.date}
                 timeOfDay={linkedEvent.timeOfDay || 'afternoon'}
                 profile={profile}
@@ -11369,17 +11721,16 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                   bg: C.bg, card: C.surface, border: C.border,
                   text: C.text, muted: C.muted,
                   accent: C.accentTopGrad || C.accent,
-                  success: C.success, warn: C.warn, danger: C.danger,
+                  success: C.success, warn: C.muted, danger: C.danger,
                 }}
                 compact
               />
             </div>
           )}
 
-          {/* Sprint 60.U.4 — Planner Fee collapsed by default. Many planners
-              don't set fee on create — they confirm a number after the
-              consult. Hiding it until the user explicitly opens it cuts the
-              modal's perceived weight in half without losing functionality. */}
+          {/* Sprint 60.U.4 — Planner Fee collapsed by default. Engine: a self-host
+              event has no planner fee at all — suppress the whole row for home. */}
+          {!isHostEvent && (
           <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
             <button
               type="button"
@@ -11477,7 +11828,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                     <input style={{ ...s.input, maxWidth: 160 }} type="number" value={form.plannerFee} placeholder="0"
                       onChange={e => set('plannerFee', e.target.value)} />
                     {feeRange && form.plannerFee && (
-                      <span style={{ fontSize: 11, color: feeAmt < adjLow ? C.warn : feeAmt > adjHigh ? C.accent2 : C.success }}>
+                      <span style={{ fontSize: 11, color: feeAmt < adjLow ? C.muted : feeAmt > adjHigh ? C.accent2 : C.success }}>
                         {feeAmt < adjLow ? '↓ below market' : feeAmt > adjHigh ? '↑ above market' : '✓ market rate'}
                       </span>
                     )}
@@ -11505,6 +11856,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             )}
             </>)}
           </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -11512,16 +11864,16 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           <button style={{ ...s.btn(), flex: 1, minWidth: 90 }} onClick={onClose}>Cancel</button>
           {selectedEventId ? (
             <>
-              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>Create Client</button>
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>{vocab.createCta || 'Create Client'}</button>
               <button aria-label="Create the client and open the linked event's intake questionnaire" style={{ ...s.btn('primary'), flex: '1 1 100%', ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(true)} aria-disabled={!canSubmit} title="Create the client and open the linked event's intake questionnaire">
-                Create & Start Event Intake →
+                {isHostEvent ? (vocab.createIntakeCta || 'Create & plan') + ' →' : 'Create & Start Event Intake →'}
               </button>
             </>
           ) : (
             <>
-              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>Create Client</button>
+              <button style={{ ...s.btn(), flex: 1, minWidth: 110, ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(false)} aria-disabled={!canSubmit}>{vocab.createCta || 'Create Client'}</button>
               <button aria-label="Create the prospect and open the discovery questionnaire + inquiry checklist" style={{ ...s.btn('primary'), flex: '1 1 100%', ...(canSubmit ? {} : { opacity: 0.55 }) }} onClick={() => submit(true)} aria-disabled={!canSubmit} title="Create the prospect and open the discovery questionnaire + inquiry checklist">
-                Create & Start Intake →
+                {isHostEvent ? (vocab.createIntakeCta || 'Create & plan') + ' →' : 'Create & Start Intake →'}
               </button>
             </>
           )}
@@ -11698,6 +12050,10 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
   const BLANK_DRAFT = { name: '', category: '', contact: '', phone: '', website: '', notes: '', insuranceStatus: '', eventsCompleted: '', onTimeRate: '', avgResponseHours: '', plannerRehireCount: '', successfulEventCount: '', incidentCount: '', referralSource: 'self-added', referredBy: '', referralQuote: '' };
   const [draft, setDraft] = useState(BLANK_DRAFT);
   const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('all');
+  const [insFilter, setInsFilter] = useState('all');
+  const [refFilter, setRefFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('score');
   const [openCardId, setOpenCardId] = useState(null); // Sprint 60.Y — click a vendor name to expand its card
   // Sprint 60.Y — viewport awareness so the Vendor Bank reads as a first-class
   // screen on a phone, not the Settings-drawer column it was born in: the add
@@ -11765,13 +12121,35 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
     saveVendor(updated);
   };
 
-  const filtered = search.trim()
-    ? vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || (v.category || '').toLowerCase().includes(search.toLowerCase()))
-    : vendors;
+  // Insurance bucket for filtering: verified > insured > none(not insured) > unknown.
+  const insBucket = (v) => {
+    const x = (v.insuranceStatus || '').toLowerCase();
+    if (/verified/.test(x)) return 'verified';
+    if (/not/.test(x)) return 'none';
+    if (/insured/.test(x)) return 'insured';
+    return 'unknown';
+  };
+  const categories = [...new Set(vendors.map(v => v.category).filter(Boolean))].sort();
+  const filtered = vendors
+    .filter(v => {
+      if (search.trim() && !(v.name.toLowerCase().includes(search.toLowerCase()) || (v.category || '').toLowerCase().includes(search.toLowerCase()))) return false;
+      if (catFilter !== 'all' && v.category !== catFilter) return false;
+      if (insFilter !== 'all' && insBucket(v) !== insFilter) return false;
+      if (refFilter !== 'all' && (v.referralSource || 'self-added') !== refFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'name')   return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'recent') return new Date(b.addedAt || 0) - new Date(a.addedAt || 0);
+      if (sortBy === 'insurance') return ['verified','insured','unknown','none'].indexOf(insBucket(a)) - ['verified','insured','unknown','none'].indexOf(insBucket(b));
+      return (vendorReliabilityScore(b).score || 0) - (vendorReliabilityScore(a).score || 0); // score (default)
+    });
 
+  const fsel = { ...s.input, fontSize: 11.5, padding: '5px 8px', width: 'auto', flex: '0 0 auto' };
+  const filtersActive = catFilter !== 'all' || insFilter !== 'all' || refFilter !== 'all' || !!search.trim();
   const tierColor = (t) => t === 'Elite' ? '#a78bfa' : t === 'Certified' ? '#34d399' : t === 'Preferred' ? (C.accent || '#6c96c4') : C.muted;
 
-  const toneColor = (tone) => tone === 'success' ? C.success : tone === 'warn' ? C.warn : tone === 'accent' ? (C.accent || '#6c96c4') : C.muted;
+  const toneColor = (tone) => tone === 'success' ? C.success : tone === 'warn' ? C.muted : tone === 'accent' ? (C.accent || '#6c96c4') : C.muted;
   // Sprint 60.Y #15 — excellent on all viewports: the card grid auto-fills to the
   // ACTUAL available width (not a viewport guess), so the standalone screen flows
   // 1 → 2 → 3 columns from phone to desktop, while the narrow Settings drawer
@@ -11789,6 +12167,41 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
             {adding ? 'Cancel' : '+ Add'}
           </button>
         </div>
+
+        {/* Filter bar (board: filter the bank by category / insurance / source + sort) */}
+        {vendors.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '10px 12px' : '9px 16px', borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap', background: C.bg }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Filter</span>
+            <select style={fsel} value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filter by category">
+              <option value="all">All categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select style={fsel} value={insFilter} onChange={e => setInsFilter(e.target.value)} aria-label="Filter by insurance">
+              <option value="all">Any insurance</option>
+              <option value="verified">Insured &amp; verified</option>
+              <option value="insured">Insured</option>
+              <option value="unknown">Unknown</option>
+              <option value="none">Not insured</option>
+            </select>
+            <select style={fsel} value={refFilter} onChange={e => setRefFilter(e.target.value)} aria-label="Filter by referral source">
+              <option value="all">Any source</option>
+              {REFERRAL_ORDER.map(k => <option key={k} value={k}>{REFERRAL_LEVELS[k].label}</option>)}
+            </select>
+            <div style={{ flex: 1, minWidth: 4 }} />
+            <select style={fsel} value={sortBy} onChange={e => setSortBy(e.target.value)} aria-label="Sort">
+              <option value="score">Sort: Score</option>
+              <option value="name">Sort: Name</option>
+              <option value="insurance">Sort: Insurance</option>
+              <option value="recent">Sort: Recently added</option>
+            </select>
+            {filtersActive && (
+              <>
+                <span style={{ fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>{filtered.length} of {vendors.length}</span>
+                <button style={{ ...s.btn(), fontSize: 11, padding: '4px 10px' }} onClick={() => { setCatFilter('all'); setInsFilter('all'); setRefFilter('all'); setSearch(''); }}>Clear</button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Add form */}
         {adding && (
@@ -11934,7 +12347,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 18px', marginTop: 10 }}>
                     {stats.map(([lab, val, good]) => (
                       <div key={lab} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: good ? C.success : C.warn, flexShrink: 0 }} />
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: good ? C.success : C.muted, flexShrink: 0 }} />
                         <span style={{ color: C.muted }}>{lab}</span>
                         <span style={{ color: C.text, fontWeight: 700, marginLeft: 'auto' }}>{val}</span>
                       </div>
@@ -11975,7 +12388,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                           <div key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, padding: '3px 0' }}>
                             <span style={{ color: C.muted, width: 92, flexShrink: 0 }}>{b.label}</span>
                             <span style={{ color: C.text }}>{b.raw}</span>
-                            <span style={{ marginLeft: 'auto', fontWeight: 700, color: b.penalty ? C.warn : C.success }}>{b.points >= 0 ? '+' : ''}{b.points}{b.max ? ` / ${b.max}` : ''}</span>
+                            <span style={{ marginLeft: 'auto', fontWeight: 700, color: b.penalty ? C.muted : C.success }}>{b.points >= 0 ? '+' : ''}{b.points}{b.max ? ` / ${b.max}` : ''}</span>
                           </div>
                         ))}
                       </div>
@@ -12348,7 +12761,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
     const open = collapsible ? secOpen(secK, defaultOpen) : true;
     const chip =
       ownership === 'account'   ? { label: 'Account',   color: C.muted } :
-      ownership === 'event'     ? { label: 'Per event', color: C.warn } :
+      ownership === 'event'     ? { label: 'Per event', color: C.muted } :
                                   { label: 'Workspace', color: C.accent2 };
     const isFlashing = anchor && flashAnchor === anchor;
     return (
@@ -12921,7 +13334,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                           can't read); now an amber "Set up" chip. 'count' 0 reads as
                           "None yet", not the alarm-y "0 on". */}
                       {g.status === 'done'  && <span title="Set up" style={{ flexShrink: 0, color: C.success, fontSize: 13, fontWeight: 800 }}>✓</span>}
-                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.warn, border: `1px solid ${C.warn}66`, background: `${C.warn}1a`, borderRadius: 999, padding: '2px 8px' }}>Set up</span>}
+                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '2px 8px' }}>Set up</span>}
                       {g.status === 'count' && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: C.muted }}>{g.count > 0 ? `${g.count} on` : 'None yet'}</span>}
                       <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 16 }}>›</span>
                     </button>
@@ -12945,7 +13358,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                       onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.surface; e.currentTarget.style.color = C.text; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.muted; }}>
                       <span>{g.label}</span>
-                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.warn, border: `1px solid ${C.warn}66`, background: `${C.warn}1a`, borderRadius: 999, padding: '1px 6px' }}>Set up</span>}
+                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '1px 6px' }}>Set up</span>}
                       {g.status === 'count' && g.count > 0 && <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{g.count}</span>}
                     </button>
                   ))}
@@ -13489,7 +13902,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [] }
                       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                         {deliveryHealth.accepted > 0 && <span style={{ fontSize: 11, color: C.success }}>{deliveryHealth.accepted} accepted</span>}
                         {deliveryHealth.delivered > 0 && <span style={{ fontSize: 11, color: C.success }}>{deliveryHealth.delivered} delivered</span>}
-                        {deliveryHealth.deferred > 0 && <span style={{ fontSize: 11, color: C.warn }}>{deliveryHealth.deferred} deferred</span>}
+                        {deliveryHealth.deferred > 0 && <span style={{ fontSize: 11, color: C.muted }}>{deliveryHealth.deferred} deferred</span>}
                         {deliveryHealth.bounced > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.bounced} bounced</span>}
                         {deliveryHealth.complained > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.complained} complained</span>}
                         {deliveryHealth.failed > 0 && <span style={{ fontSize: 11, color: C.danger }}>{deliveryHealth.failed} failed</span>}
@@ -13922,7 +14335,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
       }
     });
     (ev.vendors || []).forEach(v => {
-      if (v.payDueDate && !v.balancePaid && v.name) add(v.payDueDate, { kind: 'payment', label: `Pay ${v.name}`, color: C.warn, eventId: ev.id, clickTarget: { tab: 'Vendors', vendorId: v.id } });
+      if (v.payDueDate && !v.balancePaid && v.name && vendorBalance(v) > 0) add(v.payDueDate, { kind: 'payment', label: `Pay ${v.name}`, color: C.muted, eventId: ev.id, clickTarget: { tab: 'Vendors', vendorId: v.id } });
     });
   });
   // Standalone day items the planner pins from the calendar (note / task / event).
@@ -13977,7 +14390,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
               const isSel = ds === selDay;
               // is this day inside the selected week?
               const inWeek = ds >= weekStartStr && ds <= weekEnd.toISOString().slice(0, 10);
-              const dot = dayItems.some(x => x.kind === 'payment') ? C.warn : dayItems.some(x => x.kind === 'event') ? dayItems.find(x => x.kind === 'event').color : dayItems.length ? C.accent : null;
+              const dot = dayItems.some(x => x.kind === 'payment') ? C.muted : dayItems.some(x => x.kind === 'event') ? dayItems.find(x => x.kind === 'event').color : dayItems.length ? C.accent : null;
               return (
                 <button key={dayNum} onClick={() => setSelDay(ds)}
                   style={{ height: 27, border: 'none', cursor: 'pointer', borderRadius: 7, position: 'relative',
@@ -14228,7 +14641,7 @@ function SwipeRow({ enabled, onSwipeRight, rightLabel, onSwipeLeft, children }) 
     <div style={{ position: 'relative', overflow: 'hidden' }}>
       <div aria-hidden style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', pointerEvents: 'none' }}>
         <span style={{ fontSize: 11.5, fontWeight: 800, color: C.success, opacity: dx > 16 ? 1 : 0, transition: 'opacity 0.1s' }}>✓ {rightLabel || 'Handle'}</span>
-        <span style={{ fontSize: 11.5, fontWeight: 800, color: C.warn, opacity: dx < -16 ? 1 : 0, transition: 'opacity 0.1s' }}>Snooze ⤵</span>
+        <span style={{ fontSize: 11.5, fontWeight: 800, color: C.muted, opacity: dx < -16 ? 1 : 0, transition: 'opacity 0.1s' }}>Snooze ⤵</span>
       </div>
       <div
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
@@ -14603,17 +15016,18 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
           {upcoming.map((ev, i) => {
             const days = daysUntil(ev.date);
             const eventColor = evtCLR[ev.type] || C.accent2;
-            // Board audit (Tufte): the old `days<=30 ? warn : days<=90 ? warn : muted`
-            // painted amber for BOTH ≤30 and ≤90 — color encoding a meaning it never
-            // defined. One defined threshold now: ≤14 days = approaching (amber),
-            // else neutral steel. Glyph-free pill reads as a single honest signal.
-            const daysColor = days <= 14 ? C.warn : C.muted;
+            // Board audit (2026-06-13, #6): ≤14d painted 14/15/17d-out events amber —
+            // but an event two-plus weeks out is a resting horizon, not a near-term
+            // clock, so amber there reads as wallpaper. Tightened to a genuine
+            // "this week" window: ≤7 days = approaching (amber), else neutral steel.
+            const daysColor = days <= 7 ? C.warn : C.muted;
             const d = new Date(ev.date + 'T00:00:00');
             const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
             const day = String(d.getDate());
             const conf  = (ev.guests || []).filter(g => g.rsvp === 'Yes').length;
             const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed').length;
             const vTot  = (ev.vendors || []).length;
+            const eng   = engineNextAction(ev); // T1: the engine's binding next action
             return (
               <button key={ev.id} onClick={() => onSelectEvent(ev.id)} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 14,
@@ -14664,9 +15078,16 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
                   </div>
                   {/* PL-5 honest density: the vendor count is the actionable bit —
                       protect it from truncation. Event type ellipsizes; the count stays whole. */}
-                  <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{eventTypeLabel(ev) || ev.type}</span>
-                    {vTot > 0 && <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>· {conf} conf · {vConf}/{vTot} vendors</span>}
+                  {/* T1: lead the subline with the engine's binding next action +
+                      readiness dot — not the vendor-count plumbing. */}
+                  <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                    <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{eventTypeLabel(ev) || ev.type}</span>
+                    {eng && eng.binding ? (
+                      <>
+                        <span aria-hidden style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: ENGINE_FLAG_COLOR(C, eng.flag) }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, color: eng.dateAtRisk ? C.danger : C.text }}>{eng.binding.name}</span>
+                      </>
+                    ) : (vTot > 0 && <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>· {conf} conf · {vConf}/{vTot} vendors</span>)}
                   </div>
                 </div>
 
@@ -14722,14 +15143,16 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
     for (const ev of events) {
       // Vendor payments due this week
       for (const v of (ev.vendors || [])) {
-        if (v.payDueDate && v.payDueDate >= startISO && v.payDueDate <= endISO) {
-          const balance = (v.fee || 0) - (v.deposit || 0);
+        // Canonical balance (cost − paid), not the stale fee/deposit fields that
+        // always read $0. Only nudge when money is actually owed (B6: no "$0" Pay).
+        const balance = vendorBalance(v);
+        if (v.payDueDate && !v.balancePaid && balance > 0 && v.payDueDate >= startISO && v.payDueDate <= endISO) {
           out.push({
             id: `pay-${ev.id}-${v.id}`,
             dayLabel: new Date(v.payDueDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3),
             label: `Pay ${v.name || 'vendor'}`,
             sub: `${ev.name} · ${fmtD(balance)}`,
-            color: C.warn,
+            color: C.muted,
             iso: v.payDueDate,
             eventId: ev.id,
             clickTarget: { tab: 'Vendors', vendorId: v.id },
@@ -14769,7 +15192,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
     // PL-6: return the full week — the day-dots above need every item, and the
     // render shows a "+N more" affordance instead of silently dropping items 7+.
     return out.sort((a, b) => (a.iso || '').localeCompare(b.iso || ''));
-  }, [events, calNotes, week.days, C.warn, C.accent2, C.muted]);
+  }, [events, calNotes, week.days, C.muted, C.accent2, C.muted]);
 
   const fmtRange = (a, b) =>
     `${a.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${b.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
@@ -14832,7 +15255,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
                 color: d.isToday ? C.success : C.text, letterSpacing: '-0.02em',
               }}>{d.day}</span>
               {hasEvent && (
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.warn }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.muted }} />
               )}
             </div>
           );
@@ -14909,7 +15332,7 @@ function HomeQuickActions({ events, onSelectEvent, onNew, onNewClient }) {
   const targetLabel = targetEvent ? targetEvent.name : '';
   const actions = [
     { id: 'decision', label: 'Decisions',    title: targetLabel ? `Open Decisions on ${targetLabel}`    : '', onClick: () => route('Decisions'),     disabled: !targetEvent, color: C.accent2 },
-    { id: 'approval', label: 'Approvals',    title: targetLabel ? `Open Approvals on ${targetLabel}`    : '', onClick: () => route('Decisions'),     disabled: !targetEvent, color: C.warn },
+    { id: 'approval', label: 'Approvals',    title: targetLabel ? `Open Approvals on ${targetLabel}`    : '', onClick: () => route('Decisions'),     disabled: !targetEvent, color: C.muted },
     { id: 'request',  label: 'Communication', title: targetLabel ? `Open Communication on ${targetLabel}` : '', onClick: () => route('Communication'), disabled: !targetEvent, color: C.accent2 },
     { id: 'event',    label: '+ Event',      title: 'Create new event',                                       onClick: onNew,                         disabled: false,        color: C.accent },
     { id: 'client',   label: '+ Client',     title: 'Create new client',                                      onClick: onNewClient,                   disabled: false,        color: C.accent },
@@ -14992,13 +15415,13 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
     summaryColor = C.danger;
   } else if (command?.category === 'today') {
     status = 'Event day is active';
-    summaryColor = C.warn;
+    summaryColor = C.muted;
   } else if (command?.level === 'critical') {
     status = `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · needs attention`;
     summaryColor = C.danger;
   } else if (command?.level === 'attention') {
     status = `${activeEvents} active event${activeEvents === 1 ? '' : 's'} · needs follow-up`;
-    summaryColor = C.warn;
+    summaryColor = C.muted;
   } else if (command?.category === 'multiple-upcoming') {
     status = `${upcoming60} events in the next 60 days`;
   } else if (command?.category === 'calendar' || command?.category === 'all-clear') {
@@ -15038,7 +15461,7 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
         <span style={{
           fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
           textTransform: 'uppercase', color: steelTopH, lineHeight: 1,
-        }}>Event Boss Pulse</span>
+        }}>Today at a glance</span>
       </div>
       {/* PL-12 "One Thing Now": the greeting is demoted to a compact context
           line so the decision (the command panel directly below) is the visual
@@ -15304,7 +15727,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
   // Visual treatment per level — Studio Matte calibrated
   const accent =
     command.level === 'critical'  ? C.danger :
-    command.level === 'attention' ? C.warn   :
+    command.level === 'attention' ? C.muted   :
                                     C.accent2; // neutral / quiet steel
   // Sprint 60.L F4: LIVE badge fires whenever the resolved hero event
   // is happening TODAY, regardless of which tier selectStudioCommand
@@ -15847,7 +16270,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                       {recipient.email && <a href={`mailto:${recipient.email}`} style={{ color: 'inherit', textDecoration: 'none' }} title={`Email ${recipient.email}`}>📧 {recipient.email}</a>}
                       {recipient.phone && <a href={`tel:${String(recipient.phone).replace(/\s/g, '')}`} style={{ color: 'inherit', textDecoration: 'none' }} title={`Call ${recipient.phone}`}>📞 {recipient.phone}</a>}
                       {!recipient.email && !recipient.phone && !recipient.isInternal && (
-                        <span style={{ color: C.warn }}>⚠ No contact info on file</span>
+                        <span style={{ color: C.muted }}>⚠ No contact info on file</span>
                       )}
                     </div>
                   </div>
@@ -15931,8 +16354,8 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                 {/* Delivery hint — Sprint 58P.4a: explicit "NOT notified" copy when email is
                     not configured so the planner is never misled into thinking the recipient
                     received anything externally. */}
-                <div style={{ fontSize: 10, color: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.warn : canEmail ? C.success : C.warn, flexShrink: 0 }} />
+                <div style={{ fontSize: 10, color: msgType === 'note' ? C.muted : canEmail ? C.success : C.muted, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: msgType === 'note' ? C.muted : canEmail ? C.success : C.muted, flexShrink: 0 }} />
                   <span>
                     {msgType === 'note'
                       ? 'Internal only — not sent to anyone'
@@ -16166,6 +16589,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   // routes; it never claims to send anything.
   const renderCard = (card) => {
     const ev = card.event;
+    const eng = ev ? engineNextAction(ev) : null; // T1: engine triplet on the card
     const ctaLabel = card.lane === 'active' || card.lane === 'complete'
       ? (ev ? 'Open event →' : 'Open client →')
       : card.lane === 'deposit'
@@ -16192,7 +16616,15 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
             {ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}
           </div>
         )}
-        <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.4 }}>{card.reason}</div>
+        {eng && eng.binding ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, minWidth: 0 }}>
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: ENGINE_FLAG_COLOR(C, eng.flag), flexShrink: 0 }} />
+            <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{eng.binding.name}</span>
+            <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.4 }}>{card.reason}</div>
+        )}
         <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
           <button onClick={ctaAction} style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px' }}>
             {ctaLabel}
@@ -16601,6 +17033,27 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // top cross-event command. (A truly empty workspace keeps the welcome hero.)
   const homeCmd = useMemo(() => {
     if (hasOnlyDemoData) {
+      // B4/T1 (board): lead Home with the engine's "What Needs You" — the
+      // most-at-risk event's binding action — even on sample data (events are
+      // clearly marked SAMPLE). Beats the bland "explore sample" with no signal.
+      let best = null;
+      for (const ev of (events || [])) {
+        const p = engineNextAction(ev);
+        if (!p || !p.binding) continue;
+        const score = (p.dateAtRisk ? 0 : 1000) + (p.daysOut != null ? p.daysOut : 9999);
+        if (!best || score < best.score) best = { ev, p, score };
+      }
+      if (best) {
+        const p = best.p;
+        return {
+          level: p.dateAtRisk ? 'critical' : (p.flag || '').includes('approaching') ? 'attention' : 'neutral',
+          category: 'sample-engine', eventId: best.ev.id, eventName: best.ev.name,
+          title: `${best.ev.name} — ${p.binding.name}`,
+          consequence: p.dateAtRisk ? 'Date at risk — this is the binding step.' : (p.delivery || ''),
+          primaryCta: 'Open event',
+          primaryRoute: { eventId: best.ev.id, tab: 'Command' },
+        };
+      }
       const firstSample = (events || []).find(e => SEED_EVENT_IDS.has(e.id));
       if (firstSample) {
         return {
@@ -16691,6 +17144,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const [eventsFilter, setEventsFilter] = useState(() => {
     try { return localStorage.getItem('ngw-events-filter') || 'all'; } catch { return 'all'; }
   });
+  // B-AllEvents: on-track events collapse behind a count so the board opens on the
+  // few that need a human (progressive disclosure).
+  const [showOnTrackEvents, setShowOnTrackEvents] = useState(false);
   useEffect(() => { try { localStorage.setItem('ngw-events-filter', eventsFilter); } catch {} }, [eventsFilter]);
   // Sprint 58X: desktop right-rail preview panel on the Events Index
   const [previewEventId, setPreviewEventId] = useState(null);
@@ -16789,7 +17245,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
         onMouseLeave={e => { e.currentTarget.style.background = ''; }}
       >
-        <div style={mkDot(overdue ? C.danger : C.warn, 7)} />
+        <div style={mkDot(overdue ? C.danger : C.muted, 7)} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.task || 'Untitled task'}</div>
           <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -16807,7 +17263,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const paymentRows = () => paymentAlerts.slice(0, 10).map((p, i) => {
     const overdue = p.daysLeft < 0;
     const urgent  = p.daysLeft >= 0 && p.daysLeft <= 14;
-    const clr     = overdue ? C.danger : urgent ? C.warn : C.accent2;
+    const clr     = overdue ? C.danger : urgent ? C.muted : C.accent2;
     const dueLabel = overdue ? `${Math.abs(p.daysLeft)}d overdue` : p.daysLeft === 0 ? 'Due today' : `${p.daysLeft}d`;
     return (
       <div key={`${p.eventId}-${p.id}`}
@@ -16831,7 +17287,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   });
 
   const commRows = () => commAlerts.slice(0, 10).map((a, i) => {
-    const clr = a.sent ? C.muted : C.warn; // Red audit: an unsent reminder is a to-do (amber), sent is done (neutral) — not red.
+    const clr = a.sent ? C.warn : C.muted; // Red audit: an unsent reminder is a to-do (amber), sent is done (neutral) — not red.
     return (
       <div key={`${a.clientId}-${i}`}
         onClick={() => a.eventId ? onSelectEvent(a.eventId, { tab: 'Communication' }) : onSelectClient(a.clientId)}
@@ -16857,7 +17313,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const pageMeta = dashView === 'calendar'
     ? { title: 'Calendar',    sub: 'All events, milestones & payments by date.' }
     : dashView === 'events'
-    ? { title: 'Event Portfolio',  sub: `${enrichedEvents.length} event${enrichedEvents.length === 1 ? '' : 's'} across your studio` }
+    ? { title: 'Client Events',  sub: 'Your studio portfolio — events produced for clients.' }
+    : dashView === 'my-events'
+    ? { title: 'My Events', sub: 'The events you’re hosting.' }
     : dashView === 'clients'
     ? { title: 'Client Roster', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
     : dashView === 'pipeline'
@@ -16871,13 +17329,26 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // only reachable via the "Open Settings" callout on the dashboard banner).
   // Settings is special — it opens the profile modal rather than swapping
   // dashView — so it's marked with `external: true` and handled in goView.
+  // Engine recordKind split — drives the Client Events vs My Events tab naming
+  // AND each tab's visibility (a pure host has no client events; a pure pro has
+  // no self-host events — show only the tab that has content so they never read
+  // as the same thing).
+  const clientIsHostRec = (c) => intakeFamilyConfig((events.find(e => (c.eventIds || []).includes(e.id)) || {}).type || c.eventType || null).recordKind === 'event';
+  const eventIsHostFam  = (e) => intakeFamilyConfig(e && e.type).recordKind === 'event';
+  // Gate each tab on the content IT actually lists: My Events lists host client
+  // records; Client Events lists non-host events. (Don't cross the two data sets.)
+  const hasHostEvents   = (clients || []).some(clientIsHostRec);
+  const hasClientEvents = (events || []).some(e => !eventIsHostFam(e));
   const navItems = [
     { id: 'dashboard', label: 'Home',       icon: 'home' },
     // Sprint 60.A: Pipeline sits between Home and Calendar as the revenue
     // workflow layer (intake → planning → contract → deposit → booked).
     { id: 'pipeline',  label: 'Pipeline',   icon: 'list' },
     { id: 'calendar',  label: 'Calendar',   icon: 'calendar' },
-    { id: 'events',    label: 'All Events', icon: 'list' },
+    // Client Events = the studio's professional book (work produced for clients);
+    // My Events = the user's own self-hosted events. Each hides when empty.
+    { id: 'events',    label: 'Client Events', icon: 'list',     hide: !hasClientEvents },
+    { id: 'my-events', label: 'My Events',     icon: 'calendar', hide: !hasHostEvents },
     { id: 'clients',   label: 'Clients',    icon: 'users' },
     { id: 'vendor-bank', label: 'Vendor Bank', icon: 'archive' },
     { id: 'settings',  label: 'Settings',   icon: 'settings', external: true },
@@ -16897,7 +17368,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // `renderEvtNavItem` — same padding / font-size / font-weight / active strip
   // / icon scaling so the two sidebar contexts feel like one nav system. Items
   // and grouping differ by scope, but visual language is unified.
-  const navLinks = (collapsed) => navItems.map(it => {
+  const navLinks = (collapsed) => navItems.filter(it => !it.hide).map(it => {
     const active = !it.external && dashView === it.id;
     return (
       <button key={it.id} onClick={() => goView(it.id)} title={it.label}
@@ -17022,12 +17493,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           the Launchpad is the SOLE first-run hero; the "Open sample event" action
           moves into the SAMPLE banner below. (StudioCommandPanel stays hidden —
           l1SpineActive is still true, so !l1SpineActive gates it off.) */}
-      {dashView === 'dashboard' && l1SpineActive && !hasOnlyDemoData && (() => {
+      {dashView === 'dashboard' && l1SpineActive && (() => {
         const items = getCrossEventAttentionItems((events || []).filter(e => !e.archived));
         return (
           <NextStepSpine
             command={homeCmd}
-            totalOpen={hasOnlyDemoData ? 0 : items.length}
+            totalOpen={items.length}
             pad={pad}
             isMobile={isMobile}
             onNavigate={(route) => {
@@ -17259,12 +17730,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}
                 >
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.warn, borderRadius: 2 }} />
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.muted, borderRadius: 2 }} />
                   <span style={{
                     fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
-                    textTransform: 'uppercase', color: C.warn,
+                    textTransform: 'uppercase', color: C.muted,
                     padding: '2px 7px', borderRadius: 4,
-                    border: `1px solid ${C.warn}55`, flexShrink: 0,
+                    border: `1px solid ${C.muted}55`, flexShrink: 0,
                   }}>Waiting</span>
                   <span style={{ fontSize: 13.5, color: C.text, flex: 1, lineHeight: 1.35 }}>
                     {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
@@ -17279,7 +17750,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               // same elevation as the hero panel above.
               <div style={{
                 ...s.card, marginBottom: 20, padding: 0, overflow: 'hidden',
-                borderColor: C.warn + '55', borderRadius: 14,
+                borderColor: C.muted + '55', borderRadius: 14,
                 boxShadow: [
                   'inset 0 1px 0 rgba(255,255,255,0.05)',
                   '0 1px 0 rgba(255,255,255,0.02)',
@@ -17288,7 +17759,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 ].join(', '),
               }}>
                 <div style={{ padding: '12px 18px 10px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>
                     ⏱ {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
                   </span>
                   <span style={{ fontSize: 11, color: C.muted, marginLeft: 4 }}>
@@ -17352,12 +17823,17 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             // events reads as the user's real money and panics first-timers
             // ("I owe $462,000?"). Returns once they create a real event.
             if (hasOnlyDemoData) return null;
+            // Attention-sorted: the KPI that needs you floats to the 1st (left) slot.
+            const homeStats = [
+              { score: balanceDueTotal > 0 ? 100 : 5, node: <StatCard key="bal"  label="Balance Due"      value={fmtD(balanceDueTotal)} sub="owed to vendors"     color={balanceDueTotal > 0 ? C.warn : C.muted}    onClick={onOpenBalance} /> },
+              { score: t.approvals > 0 ? 95 : 5,      node: <StatCard key="appr" label="Open Approvals"   value={t.approvals}           sub={t.approvals === 0 ? 'all clear' : `${t.approvals} awaiting response`} color={t.approvals > 0 ? C.warn : C.muted}       onClick={onOpenApprovals} /> },
+              { score: t.requests > 0 ? 90 : 5,       node: <StatCard key="req"  label="Pending Requests" value={t.requests}            sub={t.requests === 0 ? 'no incoming' : `${t.requests} need a reply`}      color={t.requests > 0 ? C.warn : C.muted}        onClick={onOpenRequests} /> },
+              { score: 20,                            node: <StatCard key="val"  label="Contracted Value" value={fmtD(contractedValue)} sub="committed to vendors" color={C.accent2}                                  onClick={() => setDashView('events')} /> },
+            ];
+            homeStats.sort((a, b) => b.score - a.score);
             return (
               <div style={{ display: 'grid', gridTemplateColumns: isWide ? 'repeat(auto-fit, minmax(190px, 1fr))' : 'repeat(2, 1fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
-                <StatCard label="Contracted Value" value={fmtD(contractedValue)} sub="committed to vendors" color={C.accent2}                                  onClick={() => setDashView('events')} />
-                <StatCard label="Balance Due"      value={fmtD(balanceDueTotal)} sub="owed to vendors"     color={balanceDueTotal > 0 ? C.warn : C.muted}    onClick={onOpenBalance} />
-                <StatCard label="Open Approvals"   value={t.approvals}           sub={t.approvals === 0 ? 'all clear' : `${t.approvals} awaiting response`} color={t.approvals > 0 ? C.warn : C.muted}       onClick={onOpenApprovals} />
-                <StatCard label="Pending Requests" value={t.requests}            sub={t.requests === 0 ? 'no incoming' : `${t.requests} need a reply`}      color={t.requests > 0 ? C.accent2 : C.muted}      onClick={onOpenRequests} />
+                {homeStats.map(x => x.node)}
               </div>
             );
           })()}
@@ -17367,9 +17843,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               hero and AttentionQueue own the above-the-fold space. Quick
               actions remain reachable via the bottom nav, attention queue
               row CTAs, the drawer, and the GlobalCompose FAB. */}
-          {dashView === 'dashboard' && !isMobile && events.length > 0 && (
-            <HomeQuickActions events={events} onSelectEvent={onSelectEvent} onNew={onNew} onNewClient={onNewClient} />
-          )}
+          {/* B4 (board): Quick Actions rail removed — it duplicated the sidebar
+              nav and competed with the engine hero for the accent. Nav lives in
+              the sidebar / attention-queue CTAs / the engine hero's Open event. */}
 
           {/* Sprint 67: New inquiries from intake form */}
           {dashView === 'dashboard' && profile?.intakeToken && (() => {
@@ -17500,9 +17976,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         display: 'flex', alignItems: 'center', gap: 12,
                       }}
                     >
-                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.warn, borderRadius: 2 }} />
+                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.muted, borderRadius: 2 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.warn, marginBottom: 2 }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 2 }}>
                           Attention
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
@@ -17704,16 +18180,20 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         </div>
       )}
 
-      {/* ── Clients list page ── */}
-      {dashView === 'clients' && (() => {
+      {/* ── Clients list page (also powers the My Events host tab) ── */}
+      {(dashView === 'clients' || dashView === 'my-events') && (() => {
   const isMob   = bp === 'mobile';
   const isTab   = bp === 'tablet';
   const isWideC = bp === 'desktop' || bp === 'tablet-land';
   const pagePad = isMob ? '14px' : isTab ? '16px 20px' : '28px 36px';
   const showRailC = isWideC;
 
+  // Self-host events get their own tab; classify by the linked event's family.
+  const hostMode = dashView === 'my-events';
+  const isHostClient = (c) => intakeFamilyConfig((events.find(e => (c.eventIds || []).includes(e.id)) || {}).type || c.eventType || null).recordKind === 'event';
+
   // ── Derived stats ──────────────────────────────────────────────
-  const allClients = filteredClients; // search-filtered
+  const allClients = filteredClients.filter(c => hostMode ? isHostClient(c) : !isHostClient(c));
 
   // Per-client computed helpers — MUST be declared before filters/sorts that use it
   const clientComputed = (c) => {
@@ -17819,19 +18299,21 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
           <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
           <div style={{ flex: 1 }}>
-            {!isMob && <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Portfolio</h1>}
+            {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{hostMode ? 'My Events' : 'Client Portfolio'}</h1>}
             {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
-              {allClients.length > 0 ? 'Which client relationship needs attention next?' : 'Add your first client to get started.'}
+              {hostMode
+                ? (allClients.length > 0 ? 'The events you’re hosting.' : 'Plan your first get-together to get started.')
+                : (allClients.length > 0 ? 'Which client relationship needs attention next?' : 'Add your first client to get started.')}
             </p>}
           </div>
-          <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNewClient}>+ New Client</button>
+          <button style={{ ...s.btn('primary'), padding: isMob ? '8px 14px' : '9px 18px', fontSize: 13 }} onClick={onNewClient}>{hostMode ? '+ New event' : '+ New Client'}</button>
         </div>
 
         {/* Stat cards */}
         {allClients.length > 0 && (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
             gap: isMob ? 10 : 14,
             marginBottom: isMob ? 14 : 20,
           }}>
@@ -17844,36 +18326,38 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const owedClients = allClients.filter(c => clientComputed(c).outstanding > 0).length;
               const cards = [
                 { key: 'outstanding', score: totalOutstanding > 0 ? 100 + Math.min(owedClients * 5, 40) : 5, node: (
-                  <div key="outstanding" role="button" tabIndex={0} onClick={totalOutstanding > 0 ? () => setClientsFilter('outstanding') : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: totalOutstanding > 0 ? 'pointer' : 'default' }}>
+                  <div key="outstanding" role="button" tabIndex={0} onClick={totalOutstanding > 0 ? () => setClientsFilter('outstanding') : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: totalOutstanding > 0 ? 'pointer' : 'default' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
-                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalOutstanding === 0 ? 'All paid in full' : `across ${owedClients} client${owedClients !== 1 ? 's' : ''}`}</div>
                   </div>
                 ) },
                 { key: 'next', score: cnd === null ? 0 : (cnd <= 3 ? 95 : cnd <= 7 ? 80 : cnd <= 14 ? 55 : 20), node: (
-                  <div key="next" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                  <div key="next" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
                     <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextClientEvt ? nextClientEvt.ev.name : '—'}</div>
                     <div style={{ fontSize: 11, color: nextClientEvt ? (cnd <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextClientEvt ? countdownLabel(cnd) : 'No upcoming events'}</div>
                   </div>
                 ) },
                 { key: 'total', score: 30, node: (
-                  <div key="total" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Total Clients</div>
+                  <div key="total" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{hostMode ? 'My Events' : 'Total Clients'}</div>
                     <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
-                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{activeClientCount} active or contracted</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{hostMode ? (allClients.length === 1 ? 'event you’re hosting' : 'events you’re hosting') : `${activeClientCount} active or contracted`}</div>
                   </div>
                 ) },
                 { key: 'revenue', score: 15, node: (
-                  <div key="revenue" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                  <div key="revenue" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
                     <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>collected to date</div>
                   </div>
                 ) },
               ];
-              cards.sort((a, b) => b.score - a.score);
-              return cards.map(c => c.node);
+              // Host mode has no accounts-receivable — drop Outstanding + Revenue.
+              const visible = hostMode ? cards.filter(c => c.key === 'next' || c.key === 'total') : cards;
+              visible.sort((a, b) => b.score - a.score);
+              return visible.map(c => c.node);
             })()}
           </div>
         )}
@@ -17884,7 +18368,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         const lead = priorityClients[0];
         const { c, outstanding, nextEvt, nextDays, feeUrgent, score } = lead;
         const isCritical = score >= 80 || feeUrgent;
-        const accent = isCritical ? C.warn : C.accent2;
+        // Amber is a STATUS color, not the accent (user + board). The accent stays
+        // steel; criticality reads from the full-opacity strip + "Needs attention" label.
+        const accent = C.accent2;
         const label = isCritical
           ? 'Which client needs you today · Needs attention'
           : 'Which client needs you today';
@@ -18023,19 +18509,21 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             </div>
           )}
 
-          {/* Empty state */}
+          {/* Empty state — host vs pro copy from the engine. */}
           {allClients.length === 0 ? (
             <div style={{ padding: '28px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Clients</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Add your first client</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>{hostMode ? 'My Events' : 'Clients'}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{hostMode ? 'Plan your first get-together' : 'Add your first client'}</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
-                Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.
+                {hostMode
+                  ? 'Start an event for the party you’re hosting — Event Boss sets up a budget, a countdown, and your planning checklist so you can enjoy it.'
+                  : 'Clients connect your fee collection, event roster, and planning history in one place. Create one now to get started.'}
               </div>
-              <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>New Client</button>
+              <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNewClient}>{hostMode ? 'New event' : 'New Client'}</button>
             </div>
           ) : sortedClients.length === 0 ? (
             <div style={{ padding: '28px 0', fontSize: 13, color: C.muted }}>
-              {clientSearch ? `No clients match "${clientSearch}".` : 'No clients match this filter.'}
+              {clientSearch ? `No ${hostMode ? 'events' : 'clients'} match "${clientSearch}".` : `No ${hostMode ? 'events' : 'clients'} match this filter.`}
             </div>
           ) : (
             <div style={{ ...s.card, padding: 0, overflow: 'hidden' }}>
@@ -18108,16 +18596,26 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           )}
                         </div>
                       )}
-                      {/* Readiness sub-line */}
-                      <div style={{ marginTop: 4 }}>
-                        {outstanding > 0 ? (
-                          <span style={{ fontSize: 10.5, fontWeight: 600, color: feeUrgent ? C.warn : C.muted }}>
-                            Needs attention: {fmtD(outstanding)} outstanding{feeUrgent && nextDays !== null ? ` · ${nextDays}d to event` : ''}
-                          </span>
-                        ) : clientEvents.length > 0 ? (
-                          <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track</span>
-                        ) : null}
-                      </div>
+                      {/* Readiness sub-line — T1: engine binding + waiting-on owner,
+                          plus the outstanding-$ STATUS (amber only here, never as accent). */}
+                      {(() => { const eng = clientEngineAction(c, events); return (
+                        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          {outstanding > 0 && (
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: feeUrgent ? C.warn : C.muted }}>
+                              {fmtD(outstanding)} outstanding{feeUrgent && nextDays !== null ? ` · ${nextDays}d to event` : ''}
+                            </span>
+                          )}
+                          {eng && eng.binding ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, minWidth: 0 }}>
+                              <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: ENGINE_FLAG_COLOR(C, eng.flag), flexShrink: 0 }} />
+                              <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: 600 }}>{eng.binding.name}</span>
+                              <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
+                            </span>
+                          ) : (!outstanding && clientEvents.length > 0 ? (
+                            <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track</span>
+                          ) : null)}
+                        </div>
+                      ); })()}
                     </div>
 
                     {/* Col 3: Fee + outstanding */}
@@ -18127,7 +18625,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           {c.plannerFee ? fmtD(c.plannerFee) : '—'}
                         </div>
                         {c.plannerFee > 0 && (
-                          <div style={{ fontSize: 10, color: feeUrgent ? C.warn : outstanding === 0 ? C.success : C.muted }}>
+                          <div style={{ fontSize: 10, color: feeUrgent ? C.muted : outstanding === 0 ? C.success : C.muted }}>
                             {outstanding === 0 ? 'Paid' : `${fmtD(outstanding)} due`}
                           </div>
                         )}
@@ -18189,7 +18687,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ marginBottom: 16, padding: '10px 14px', background: C.surface2, borderRadius: 8, border: `1px solid ${C.border}` }}>
                 {previewFeeUrgent ? (
                   <>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warn, marginBottom: 2 }}>Needs attention</div>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, marginBottom: 2 }}>Needs attention</div>
                     <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
                       {fmtD(previewOutstanding)} outstanding
                       {previewNextEvt ? ` · ${previewNextDays}d to ${previewNextEvt.name}` : ''}
@@ -18325,7 +18823,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     {totalOutstanding > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                         <span style={{ color: C.muted }}>Outstanding</span>
-                        <span style={{ fontWeight: 600, color: C.warn }}>{fmtD(totalOutstanding)}</span>
+                        <span style={{ fontWeight: 600, color: C.muted }}>{fmtD(totalOutstanding)}</span>
                       </div>
                     )}
                   </div>
@@ -18368,7 +18866,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {/* ── Sprint 58X: Events Portfolio Command Board ── */}
       {dashView === 'events' && (() => {
         // ── Data layer ──────────────────────────────────────────────
-        const allEvents = enrichedEvents.map(ev => ({ ev, att: getEventAttention(ev) }));
+        // Client Events excludes self-host events — those live in My Events, so a
+        // host's dinner never appears in the professional portfolio (and vice versa).
+        const allEvents = enrichedEvents.filter(ev => !eventIsHostFam(ev)).map(ev => ({ ev, att: getEventAttention(ev) }));
         const filtered = allEvents.filter(({ ev, att }) => {
           const totalAtt = att.decisions + att.approvals + att.requests + att.vendorIssues;
           switch (eventsFilter) {
@@ -18388,6 +18888,18 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               return bT - aT;
             })
           : filtered;
+        // Progressive disclosure: split into "needs you" (attention items OR engine
+        // date-at-risk) vs on-track. On-track collapses behind a count unless the
+        // user is explicitly filtering. Only applies to the unfiltered/needs views.
+        const collapseOnTrack = (eventsFilter === 'all' || eventsFilter === 'needs');
+        // "Needs you" = the RED band only (engine date-at-risk OR overdue decisions).
+        // Approaching/awaiting rows collapse with on-track behind the count, so the
+        // board opens on the few that need a human now (board: "2-3 at red").
+        const eventNeedsYou = ({ ev, att }) =>
+          att.decisions > 0 || !!(engineNextAction(ev) || {}).dateAtRisk;
+        const needsYouList = collapseOnTrack ? sorted.filter(eventNeedsYou) : sorted;
+        const onTrackList  = collapseOnTrack ? sorted.filter(x => !eventNeedsYou(x)) : [];
+        const displayList  = (collapseOnTrack && !showOnTrackEvents) ? needsYouList : sorted;
         const filterChips = [
           { id: 'all',      label: 'All',             count: allEvents.length },
           { id: 'needs',    label: 'Needs attention',  count: allEvents.filter(({ att }) => (att.decisions + att.approvals + att.requests + att.vendorIssues) > 0).length },
@@ -18416,6 +18928,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           .filter(item => item.totalAtt > 0)
           .sort((a, b) => b.totalAtt - a.totalAtt)
           .slice(0, 3);
+        // Board #5 — the count of ALL events with open attention (not the top-3
+        // preview). The KPI sub-line said "across 3 events" when many more needed
+        // you — a mystery/under-count. This is the honest denominator.
+        const eventsNeedingAttention = allEvents.filter(({ att }) => (att.decisions + att.approvals + att.requests + att.vendorIssues) > 0).length;
 
         // ── Preview panel event (Zone 4 — desktop only) ──────────────
         const previewEv = previewEventId
@@ -18426,7 +18942,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         const previewAtt = previewEv ? getEventAttention(previewEv) : null;
 
         // ── Readiness helpers ────────────────────────────────────────
-        const colorFor = (st) => st === 'ON_TRACK' ? C.success : st === 'AT_RISK' ? C.danger : C.warn;
+        const colorFor = (st) => st === 'ON_TRACK' ? C.success : st === 'AT_RISK' ? C.danger : C.muted;
         const readinessAxes = [
           { key: 'decision',  label: 'Decisions', tab: 'Decisions' },
           { key: 'vendor',    label: 'Vendors',   tab: 'Vendors'   },
@@ -18459,7 +18975,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
                 <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
                 <div style={{ flex: 1 }}>
-                  {!isMob && <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Event Portfolio</h1>}
+                  {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Client Events</h1>}
                   {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
                     {allEvents.length > 0 ? 'Choose the event that needs work next.' : 'Create your first event to get started.'}
                   </p>}
@@ -18471,7 +18987,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {allEvents.length > 0 && (
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMob ? 'repeat(2, 1fr)' : isTab ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
                   gap: isMob ? 10 : 14,
                   marginBottom: isMob ? 14 : 20,
                 }}>
@@ -18484,28 +19000,32 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     const nd = nextEvent ? daysUntil(nextEvent.ev.date) : null;
                     const cards = [
                       { key: 'attention', score: totalAttention > 0 ? 100 + Math.min(totalAttention, 40) : 5, node: (
-                        <div key="attention" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: totalAttention > 0 ? 'pointer' : 'default' }} onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined}>
+                        <div key="attention" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: totalAttention > 0 ? 'pointer' : 'default' }} onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined}>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Attention Items</div>
-                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.warn : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
-                          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalAttention === 0 ? 'All clear' : `across ${priorityEvents.length} event${priorityEvents.length !== 1 ? 's' : ''}`}</div>
+                          {/* Board ruling (2026-06-13): a big ever-present aggregate count painted
+                              amber = wallpaper; nothing then feels urgent. The COUNT is informational
+                              (white, primary tier); amber is earned only on the near-term (≤7d) ROWS
+                              below. Eyebrow stays steel to match the white number. */}
+                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalAttention === 0 ? 'All clear' : `across ${eventsNeedingAttention} event${eventsNeedingAttention !== 1 ? 's' : ''}`}</div>
                         </div>
                       ) },
                       { key: 'next', score: nd === null ? 0 : (nd <= 3 ? 95 : nd <= 7 ? 80 : nd <= 14 ? 55 : 20), node: (
-                        <div key="next" role={nextEvent ? 'button' : undefined} tabIndex={nextEvent ? 0 : undefined} onClick={nextEvent ? () => onSelectEvent(nextEvent.ev.id) : undefined} onKeyDown={nextEvent ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectEvent(nextEvent.ev.id); } } : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: nextEvent ? 'pointer' : 'default' }}>
+                        <div key="next" role={nextEvent ? 'button' : undefined} tabIndex={nextEvent ? 0 : undefined} onClick={nextEvent ? () => onSelectEvent(nextEvent.ev.id) : undefined} onKeyDown={nextEvent ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectEvent(nextEvent.ev.id); } } : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: nextEvent ? 'pointer' : 'default' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
                           <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextEvent ? nextEvent.ev.name : '—'}</div>
-                          <div style={{ fontSize: 11, color: nextEvent ? (nd <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextEvent ? countdownLabel(nd) : 'No upcoming events'}</div>
+                          <div style={{ fontSize: 11, color: nextEvent ? (nd <= 7 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextEvent ? countdownLabel(nd) : 'No upcoming events'}</div>
                         </div>
                       ) },
                       { key: 'active', score: 30, node: (
-                        <div key="active" role="button" tabIndex={0} onClick={() => setEventsFilter('active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('active'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: 'pointer' }}>
+                        <div key="active" role="button" tabIndex={0} onClick={() => setEventsFilter('active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('active'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
                           <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{allEvents.length} total in portfolio</div>
                         </div>
                       ) },
                       { key: 'value', score: hasOnlyDemoData ? 2 : 15, node: (
-                        <div key="value" role="button" tabIndex={0} onClick={() => setEventsFilter('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('all'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', cursor: 'pointer' }}>
+                        <div key="value" role="button" tabIndex={0} onClick={() => setEventsFilter('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('all'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
                           {/* Honesty: in sample-only mode the $ is sample money — "contracted
                               to vendors" read as a real debt; muted + relabeled. */}
@@ -18528,7 +19048,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const na = selectEventNextAction(ev);
               const days = daysUntil(ev.date);
               const hasCritical = att.decisions > 0 || (na && na.level === 'critical');
-              const accent = hasCritical ? C.danger : totalAtt > 0 ? C.warn : C.accent2;
+              const accent = hasCritical ? C.danger : totalAtt > 0 ? C.muted : C.accent2;
               const label = hasCritical
                 ? 'Which event needs you today · Critical'
                 : totalAtt > 0
@@ -18588,7 +19108,11 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      Open {ev.name.split(' ')[0]} →
+                      {/* Board #10 — `ev.name.split(' ')[0]` clipped multi-word names to
+                          nonsense ("Open The →"). The full name is the headline directly
+                          above, so a complete generic verb-object is clearer than a
+                          truncated one. */}
+                      Open event →
                     </button>
                     {otherCount > 0 && (
                       <button
@@ -18662,7 +19186,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         <span />
                       </div>
                     )}
-                    {sorted.map(({ ev, att }, i) => {
+                    {displayList.map(({ ev, att }, i) => {
                       const days  = daysUntil(ev.date);
                       const color = evtCLR[ev.type] || C.muted;
                       const vConf = (ev.vendors || []).filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
@@ -18680,6 +19204,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       // Next action drives the row's ONE red moment (critical) on the triage board.
                       const na = selectEventNextAction(ev);
                       const naLevel = (na || {}).level;
+                      // B1/T1 (board): show the engine's genuinely per-event binding as the
+                      // action — not the repeated canned Spine sentence. Keep `na` for routing/owner.
+                      const engAct = engineNextAction(ev);
+                      const naTitle = (engAct && engAct.binding && engAct.binding.name) || na.title;
                       // "Waiting on" — who to chase. Confirmation-pass fix: derive it from the
                       // SAME engine (na.category) that drives the dominant Next-action column,
                       // so the word and the action can never name different parties on one row.
@@ -18694,7 +19222,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         // You = amber (your move now); Vendor/Client = readable text
                         // (someone else's move); Soon/Clear = muted (recede).
                         const o = nextStepOwner(na);
-                        const color = o.key === 'you' ? C.warn
+                        const color = o.key === 'you' ? C.muted
                           : (o.key === 'vendor' || o.key === 'client') ? C.text
                           : C.muted;
                         return { label: o.label, color };
@@ -18744,7 +19272,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                               {ev.venue && <span style={{ opacity: 0.7 }}>· {ev.venue}</span>}
                               {ev.date && <span style={{ opacity: 0.7 }}>· {fmtDate(ev.date)}</span>}
                               {days !== null && (
-                                <span style={{ fontWeight: 600, color: days <= 14 ? C.danger : days <= 30 ? C.warn : days <= 90 ? C.accent2 : C.muted, marginLeft: 2 }}>
+                                <span style={{ fontWeight: 600, color: days <= 14 ? C.danger : days <= 30 ? C.muted : days <= 90 ? C.accent2 : C.muted, marginLeft: 2 }}>
                                   {countdownShort(days)}
                                 </span>
                               )}
@@ -18780,7 +19308,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                 }
                                 if (naLevel === 'attention' || atRiskAxes.length > 0 || attentionAxes.length > 0 || totalAtt > 0) {
                                   const detail = fragments.length > 0 ? fragments.slice(0, 3).join(' · ') : 'items need review';
-                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.warn }}>Needs attention: {detail}</span>;
+                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.muted }}>Needs attention: {detail}</span>;
                                 }
                                 // On track — still show progress fractions on desktop (not triage)
                                 const trackFrags = [];
@@ -18804,10 +19332,15 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                 {na ? (
                                   <div title={na.title} style={{
                                     fontSize: 13, fontWeight: 700, lineHeight: 1.3,
-                                    color: naLevel === 'critical' ? C.danger : naLevel === 'attention' ? C.warn : C.text,
+                                    // B3 (board): accent tied to the engine's real readiness — red only
+                                    // for date-at-risk, amber only for approaching, steel for on-track.
+                                    // Stops the "103 amber chips" wallpaper that killed the accent.
+                                    color: engAct
+                                      ? (engAct.dateAtRisk ? C.danger : (engAct.flag || '').includes('approaching') ? C.muted : C.text)
+                                      : (naLevel === 'critical' ? C.danger : naLevel === 'attention' ? C.muted : C.text),
                                     overflow: 'hidden', textOverflow: 'ellipsis',
                                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                                  }}>{na.title}</div>
+                                  }}>{naTitle}</div>
                                 ) : (
                                   <span style={{ fontSize: 12, color: C.muted }}>On track</span>
                                 )}
@@ -18842,8 +19375,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                   <span style={{
                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                     width: 24, height: 24, borderRadius: '50%',
-                                    background: att.decisions > 0 ? C.danger + '22' : C.warn + '22',
-                                    color: att.decisions > 0 ? C.danger : C.warn,
+                                    background: att.decisions > 0 ? C.danger + '22' : C.muted + '22',
+                                    color: att.decisions > 0 ? C.danger : C.muted,
                                     fontSize: 11, fontWeight: 700,
                                   }}>
                                     {totalAtt}
@@ -18858,7 +19391,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                               {/* Col 4: Balance due (desktop only) — only amber when overdue or due soon */}
                               {!isMob && (
                                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                  <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.warn : C.text }}>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.muted : C.text }}>
                                     {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
                                   </div>
                                   {evCommitted > 0 && <div style={{ fontSize: 10, color: C.muted }}>balance</div>}
@@ -18874,6 +19407,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         </div>
                       );
                     })}
+                    {collapseOnTrack && onTrackList.length > 0 && (
+                      <button
+                        onClick={() => setShowOnTrackEvents(v => !v)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 20px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 600, color: C.muted }}
+                      >
+                        {showOnTrackEvents ? '▾ Hide' : '▸ Show'} {onTrackList.length} on track
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -19010,7 +19551,17 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const clientEvents = events.filter(e => (client.eventIds || []).includes(e.id));
   const collected    = (client.feeSchedule || []).reduce((s, f) => s + (f.paid ? f.amount : (f.paidAmount || 0)), 0);
   const outstanding  = (client.plannerFee || 0) - collected;
+  // Board #11: don't show three zeroed ledgers (reads as "free" and undercuts the
+  // premium posture). A fee is "set" once there's a number or a schedule.
+  const feeSet       = (client.plannerFee || 0) > 0 || (client.feeSchedule || []).length > 0;
   const clr          = clientCLR[client.status] || C.muted;
+  // Engine source of truth — a self-host event has no planner fee; a card nagging
+  // a host to "price this inquiry" for their own dinner is the loudest leak the
+  // board found. Gate the whole fee card on the family.
+  const detailCfg    = intakeFamilyConfig(clientEvents[0]?.type || client.eventType || null);
+  // Option A (board re-demo blocker #2) — reskin the shell by family: a self-host
+  // record is never a "client". Strip client/roster vocab when recordKind:'event'.
+  const isHostRecord = detailCfg.recordKind === 'event';
 
   const onChange = (key, val) => setClient(c => ({ ...c, [key]: val }));
 
@@ -19018,23 +19569,27 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   useEffect(() => { if (autoIntake) { setShowIntake(true); onIntakeOpened && onIntakeOpened(); } }, [autoIntake]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Shared card sections so they can be reordered per breakpoint ─────────────
-  const feeCard = (
+  const feeCard = detailCfg.plannerFee ? (
     <div style={s.card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={s.cardTitle}>Planner Fee</div>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{fmtD(client.plannerFee || 0)}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: feeSet ? C.text : C.muted }}>{feeSet ? fmtD(client.plannerFee || 0) : 'Not set'}</div>
       </div>
-      <div style={{ display: 'flex', gap: 28, marginBottom: (client.feeSchedule || []).length > 0 ? 14 : 0 }}>
-        <div>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
-          <div style={{ ...s.statNum(C.success), fontSize: 22 }}>{fmtD(collected)}</div>
+      {feeSet && (
+        <div style={{ display: 'flex', gap: 28, marginBottom: (client.feeSchedule || []).length > 0 ? 14 : 0 }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
+            <div style={{ ...s.statNum(C.success), fontSize: 22 }}>{fmtD(collected)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Outstanding</div>
+            <div style={{ ...s.statNum(outstanding > 0 ? C.warn : C.muted), fontSize: 22 }}>{fmtD(outstanding)}</div>
+          </div>
         </div>
-        <div>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Outstanding</div>
-          <div style={{ ...s.statNum(outstanding > 0 ? C.warn : C.muted), fontSize: 22 }}>{fmtD(outstanding)}</div>
-        </div>
-      </div>
-      {(client.feeSchedule || []).length === 0 ? (
+      )}
+      {!feeSet ? (
+        <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>No fee set yet — add one in Edit Client when you're ready to price this {client.status === 'Inquiry' ? 'inquiry' : 'engagement'}.</div>
+      ) : (client.feeSchedule || []).length === 0 ? (
         <div style={{ fontSize: 12, color: C.muted }}>No installments — click Edit Client to add a fee schedule.</div>
       ) : (client.feeSchedule || []).map(f => {
         const dLeft    = daysUntil(f.due);
@@ -19048,7 +19603,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{f.label}</div>
                 {f.due && <div style={{ fontSize: 11, color: urgent ? C.danger : C.muted }}>Due {fmtDate(f.due)}{urgent ? ' — URGENT' : ''}</div>}
                 {f.paid && f.paymentMethod && <div style={{ fontSize: 11, color: C.success }}>Paid via {f.paymentMethod}</div>}
-                {partial && <div style={{ fontSize: 11, color: C.warn }}>{fmtD(f.paidAmount)} received · {fmtD(f.amount - f.paidAmount)} balance due</div>}
+                {partial && <div style={{ fontSize: 11, color: C.muted }}>{fmtD(f.paidAmount)} received · {fmtD(f.amount - f.paidAmount)} balance due</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{fmtD(f.amount)}</span>
@@ -19085,7 +19640,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     max={f.amount}
                     step="0.01"
                     placeholder="0"
-                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: (f.paidAmount || 0) > 0 ? C.warn : C.text, width: 64, fontFamily: "'Inter', system-ui, sans-serif" }}
+                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: (f.paidAmount || 0) > 0 ? C.muted : C.text, width: 64, fontFamily: "'Inter', system-ui, sans-serif" }}
                     value={f.paidAmount || ''}
                     onChange={e => updateF('paidAmount', Math.min(Number(e.target.value) || 0, f.amount))}
                   />
@@ -19096,7 +19651,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         );
       })}
     </div>
-  );
+  ) : null;
 
   const notesCard = (client.style || client.notes) ? (
     <div style={s.card}>
@@ -19163,6 +19718,13 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             const gConf = (ev.guests  || []).filter(g => g.rsvp === 'Yes').length;
             const tDone = (ev.timeline || []).filter(t => t.done).length;
             const tTot  = (ev.timeline || []).length;
+            // Chunk A — a home-hosted gathering has no vendor roster; "0 vendors
+            // confirmed" is noise that re-creates the overwhelm. Suppress the
+            // vendor metric unless the family actually uses vendors (or some exist).
+            const evFam = intakeFamilyConfig(ev.type);
+            const showVendorMetric = evFam.vendors || (ev.vendors || []).length > 0;
+            const evIsHost = evFam.recordKind === 'event';
+            const gTot = (ev.guests || []).length;
             return (
               <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={ev.id} onClick={() => onSelectEvent(ev.id)}
                 style={{ ...s.card, cursor: 'pointer', marginBottom: 0, borderLeft: `3px solid ${evClr}`, transition: 'background 0.15s' }}
@@ -19175,14 +19737,13 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{eventTypeLabel(ev) || ev.type}{ev.venue ? ` · ${ev.venue}` : ''}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                    {days !== null && <span style={s.pill(days <= 14 ? C.danger : days <= 90 ? C.warn : evClr)}>{days > 0 ? `${days}d` : days === 0 ? 'Today' : 'Done'}</span>}
+                    {days !== null && <span style={s.pill(days <= 14 ? C.danger : days <= 90 ? C.muted : evClr)}>{days > 0 ? `${days}d` : days === 0 ? 'Today' : 'Done'}</span>}
                     {ev.date && <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(ev.date)}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 16, fontSize: 12, color: C.muted, flexWrap: 'wrap' }}>
-                  <span>{gConf} confirmed guests</span>
-                  <span>·</span>
-                  <span>{vConf} vendors confirmed</span>
+                  <span>{evIsHost ? (gConf === 0 ? 'No RSVPs yet' : `${gConf}${gTot ? ` of ${gTot}` : ''} RSVP’d`) : `${gConf} ${gConf === 1 ? 'guest' : 'guests'} confirmed`}</span>
+                  {showVendorMetric && <><span>·</span><span>{vConf} vendors confirmed</span></>}
                   {tTot > 0 && <><span>·</span><span style={{ color: tDone === tTot ? C.success : C.muted }}>{tDone}/{tTot} tasks</span></>}
                 </div>
               </div>
@@ -19193,13 +19754,16 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     </div>
   );
 
-  const commsRollup = (() => {
+  // Engine: a self-host event has no client to "request approvals" from — those
+  // are the host's own guests. Suppress the client-comms panel for home events
+  // (a real host invite/RSVP surface replaces it later).
+  const commsRollup = detailCfg.communication ? (() => {
     const pc = clientPendingComms(client, events);
     return (
       <div style={s.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
           <div style={s.cardTitle}>Communication</div>
-          {pc.count > 0 && <span style={{ ...s.pill(C.warn), fontSize: 11 }}>{pc.count} pending approval{pc.count > 1 ? 's' : ''}</span>}
+          {pc.count > 0 && <span style={{ ...s.pill(C.muted), fontSize: 11 }}>{pc.count} pending approval{pc.count > 1 ? 's' : ''}</span>}
         </div>
         <div style={{ fontSize: 12, color: C.muted, marginBottom: clientEvents.length ? 14 : 0, lineHeight: 1.55 }}>
           Communication lives on each event. Open an event's <strong style={{ color: C.text }}>Communication</strong> tab to message the client, log decisions, and request approvals.
@@ -19225,7 +19789,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                       {cc.length ? `${cc.length} message${cc.length > 1 ? 's' : ''}${last ? ` · last ${fmtDate(String(last.created_at).slice(0, 10))}` : ''}` : 'No messages yet'}
                     </div>
                   </div>
-                  {pend > 0 && <span style={{ ...s.pill(C.warn), fontSize: 9, flexShrink: 0 }}>{pend} approval{pend > 1 ? 's' : ''}</span>}
+                  {pend > 0 && <span style={{ ...s.pill(C.muted), fontSize: 9, flexShrink: 0 }}>{pend} approval{pend > 1 ? 's' : ''}</span>}
                   <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
                 </div>
               );
@@ -19234,7 +19798,41 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
         )}
       </div>
     );
-  })();
+  })() : null;
+
+  // Host on-ramp (board #7) — a real host checklist where the sales-comms panel
+  // used to be. Only for self-host events; persists to client.hostChecklist.
+  const hostChecklistCard = isHostRecord ? (() => {
+    const checked = client.hostChecklist || {};
+    const done = HOST_CHECKLIST.filter(i => checked[i.key]).length;
+    return (
+      <div style={s.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={s.cardTitle}>Party Checklist</div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: done === HOST_CHECKLIST.length ? C.success : C.muted }}>{done}/{HOST_CHECKLIST.length}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {HOST_CHECKLIST.map(item => {
+            const on = !!checked[item.key];
+            return (
+              <label key={item.key} onClick={() => onChange('hostChecklist', { ...checked, [item.key]: !on })}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 6px', borderRadius: 8, cursor: 'pointer', userSelect: 'none' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                <div style={{ width: 18, height: 18, borderRadius: 5, marginTop: 1, flexShrink: 0, border: `2px solid ${on ? C.success : C.muted}`, background: on ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {on && <span style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>✓</span>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{item.hint}</div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    );
+  })() : null;
 
   const bodyPad  = bp === 'mobile' ? '16px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const maxW     = 1200;
@@ -19247,11 +19845,11 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           <div onClick={() => setClientActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Client Actions</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>{isHostRecord ? 'Actions' : 'Client Actions'}</div>
             {[
               { icon: 'clipboard', label: 'Intake',        onClick: () => { setShowIntake(true);  setClientActionsOpen(false); } },
-              { icon: 'eye',       label: 'Client Portal', onClick: () => { setShowPortal(true);  setClientActionsOpen(false); } },
-              { icon: 'edit',      label: 'Edit Client',   onClick: () => { setShowModal(true);   setClientActionsOpen(false); } },
+              ...(detailCfg.clientPortal ? [{ icon: 'eye', label: 'Client Portal', onClick: () => { setShowPortal(true);  setClientActionsOpen(false); } }] : []),
+              { icon: 'edit',      label: isHostRecord ? 'Edit event' : 'Edit Client',   onClick: () => { setShowModal(true);   setClientActionsOpen(false); } },
               { icon: 'download',  label: 'Downloads',     onClick: () => { setShowDownloads(true); setClientActionsOpen(false); } },
             ].map(a => (
               <button key={a.label} onClick={a.onClick}
@@ -19271,7 +19869,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
       <div style={{ ...s.header, padding: isMobile ? '16px 14px 0' : '28px 32px 0', paddingBottom: isWide ? 20 : 14 }}>
         <div style={{ maxWidth: maxW, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-            <button onClick={onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Clients</button>
+            <button onClick={onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>{isHostRecord ? '← My Events' : '← Clients'}</button>
             <span style={{ color: C.border, fontSize: 18 }}>|</span>
             {/* Sprint 58: client thumbnail. Click to upload; falls back to
                 colored initials. Same dataURL pattern as profile + vendor. */}
@@ -19305,7 +19903,9 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 reader.readAsDataURL(file);
               }} />
             <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
-            <span style={s.pill(clr)}>{client.status}</span>
+            {/* Engine: a lead-pipeline status ("Inquiry") is meaningless for a
+                self-host event — the countdown carries the timing instead. */}
+            {detailCfg.pipeline && <span style={s.pill(clr)}>{client.status}</span>}
             {isMobile ? (
               /* Mobile: primary CTA + overflow */
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -19319,10 +19919,10 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             ) : (
               /* Desktop/tablet: full row */
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
-                <button aria-label="Discovery questions & inquiry checklist" style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)} title="Discovery questions & inquiry checklist"><Icon name="clipboard" size={14} /> Intake</button>
-                {isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
+                <button aria-label={isHostRecord ? 'Plan this event' : 'Discovery questions & inquiry checklist'} style={{ ...s.btn('primary'), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowIntake(true)} title={isHostRecord ? 'Plan this event' : 'Discovery questions & inquiry checklist'}><Icon name="clipboard" size={14} /> {isHostRecord ? 'Plan' : 'Intake'}</button>
+                {isWide && detailCfg.clientPortal && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Client Portal</button>}
                 <button style={s.btn()} onClick={() => setShowModal(true)}>Edit</button>
-                {!isWide && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
+                {!isWide && detailCfg.clientPortal && <button style={s.btn('teal')} onClick={() => setShowPortal(true)}>Portal</button>}
                 <button style={{ ...s.btn('ghost'), display: 'flex', alignItems: 'center', gap: 5 }}
                   onClick={e => { e.stopPropagation(); setShowDownloads(v => !v); }}><Icon name="download" size={14} /> Downloads</button>
                 {showDownloads && (
@@ -19399,12 +19999,12 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             });
             if (pc.awaiting.length)  chips.push({
               t: `${pc.awaiting.length} awaiting client`,
-              c: C.warn,
+              c: C.muted,
               onClick: firstAwaitingEv ? () => onSelectEvent(firstAwaitingEv.id, { tab: 'Decisions' }) : null,
             });
             if (outstanding > 0)     chips.push({
               t: `${fmtD(outstanding)} outstanding`,
-              c: C.warn,
+              c: C.muted,
               // Outstanding lives at the client level (planner fee), so route
               // by scrolling/anchoring within the existing client view — the
               // fee card is already on this screen. No tab routing needed.
@@ -19450,6 +20050,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               <div>
                 {eventsSection}
                 {commsRollup}
+                {hostChecklistCard}
               </div>
               {/* Right — fee + meta */}
               <div>
@@ -19463,6 +20064,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               {eventsSection}
               {feeCard}
               {commsRollup}
+              {hostChecklistCard}
               {notesCard}
             </div>
           )}
@@ -19519,7 +20121,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
   // matches that doctrine. Detailed numbers remain in the tooltip + status row
   // for users who want depth without needing them as labels.
   const healthLabel = isOverSpent || isOverBudget        ? { text: 'AT RISK',   color: C.danger  }
-                    : spentPct > 90 || committedPct > 90 ? { text: 'ATTENTION', color: C.warn    }
+                    : spentPct > 90 || committedPct > 90 ? { text: 'ATTENTION', color: C.muted    }
                     : totalBudgeted > 0                  ? { text: 'ON TRACK',  color: C.success }
                     :                                      { text: 'ON TRACK',  color: C.muted   };
 
@@ -19530,7 +20132,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
     { label: 'Budget',         value: fmtD(totalBudgeted),  color: C.text,    pct: 100 },
     { label: 'Paid',           value: fmtD(totalActual),    color: C.text,    pct: spentPct,     bar: true, barColor: isOverSpent ? C.danger : C.success },
     { label: 'Booked',         value: fmtD(totalCommitted), color: C.accent2, pct: committedPct, bar: true, barColor: C.accent2 },
-    { label: 'Still to pay',   value: fmtD(balanceDue),     color: balanceDue > 0 ? C.warn : C.success },
+    { label: 'Still to pay',   value: fmtD(balanceDue),     color: balanceDue > 0 ? C.muted : C.success },
     { label: 'Not booked yet', value: fmtD(uncontracted),   color: C.muted },
   ];
 
@@ -19623,7 +20225,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
         <span style={{ color: C.success, fontWeight: 500 }}>{fmtD(totalActual)} paid</span>
         {totalCommitted > 0 && <span style={{ color: C.accent2, fontWeight: 500 }}>{fmtD(totalCommitted)} booked</span>}
-        {balanceDue > 0 && <span style={{ color: C.warn, fontWeight: 500 }}>{fmtD(balanceDue)} still to pay</span>}
+        {balanceDue > 0 && <span style={{ color: C.muted, fontWeight: 500 }}>{fmtD(balanceDue)} still to pay</span>}
         {uncontracted > 0 && !isOverBudget && <span style={{ color: C.muted }}>{fmtD(uncontracted)} not booked yet</span>}
         <span style={{ color: C.muted, marginLeft: 'auto' }}>
           {Math.round(spentPct)}% spent{committedPct > 0 ? ` · ${Math.round(committedPct)}% committed` : ''}
@@ -19915,9 +20517,9 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const budgetState =
     overCommitted        ? { text: 'OVER BUDGET',   color: C.danger,  headline: `Booked ${fmtD(totalCommitted - totalBudgeted)} over your ${fmtD(totalBudgeted)} budget — trim a category` } :
     overdueBalance > 0   ? { text: 'PAYMENT LATE',  color: C.danger,  headline: `${fmtD(overdueBalance)} overdue to vendors — pay it now` } :
-    projectedOver        ? { text: 'TRACKING OVER', color: C.warn,    headline: `Tracking to ${fmtD(projectedFinal)} — over your ${fmtD(totalBudgeted)} budget once everything's booked` } :
-    overCats > 0         ? { text: 'CHECK CATEGORY', color: C.warn,   headline: `${overCats} categor${overCats === 1 ? 'y is' : 'ies are'} over budget` } :
-    committedPct > 90    ? { text: 'ATTENTION',     color: C.warn,    headline: 'Almost fully booked — little room left' } :
+    projectedOver        ? { text: 'TRACKING OVER', color: C.muted,    headline: `Tracking to ${fmtD(projectedFinal)} — over your ${fmtD(totalBudgeted)} budget once everything's booked` } :
+    overCats > 0         ? { text: 'CHECK CATEGORY', color: C.muted,   headline: `${overCats} categor${overCats === 1 ? 'y is' : 'ies are'} over budget` } :
+    committedPct > 90    ? { text: 'ATTENTION',     color: C.muted,    headline: 'Almost fully booked — little room left' } :
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
                            { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
 
@@ -20012,18 +20614,18 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         </div>
         {/* Booked = under contract/deposit (was "Committed"). Over-commit reads
             AMBER not red — the hero owns the one red moment (overdue). */}
-        <StatCard tier="evidence" label="Booked"          value={fmtD(totalCommitted)} sub="Under contract or deposit" color={overCommitted ? C.warn : undefined} />
+        <StatCard tier="evidence" label="Booked"          value={fmtD(totalCommitted)} sub="Under contract or deposit" color={overCommitted ? C.muted : undefined} />
         {/* Paid = vendor-truth deposits + balances actually paid */}
         <StatCard tier="evidence" label="Paid"            value={fmtD(totalPaid)}      sub="Deposits + balances paid" />
         {/* Not booked yet = budget left to book (was "Uncontracted") */}
-        <StatCard tier="evidence" label="Not booked yet"  value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget left to book" color={overCommitted ? C.warn : undefined} />
+        <StatCard tier="evidence" label="Not booked yet"  value={fmtD(Math.max(0, totalBudgeted - totalCommitted))} sub="Budget left to book" color={overCommitted ? C.muted : undefined} />
       </div>
 
       {/* Upcoming Payment Alerts */}
       {upcomingPayments.length > 0 && (
-        <div style={{ ...s.card, marginBottom: 16, position: 'relative', borderLeft: upcomingPayments[0].daysUntilDue <= 14 ? `3px solid ${C.danger}` : `3px solid ${C.warn}` }}>
+        <div style={{ ...s.card, marginBottom: 16, position: 'relative', borderLeft: upcomingPayments[0].daysUntilDue <= 14 ? `3px solid ${C.danger}` : `3px solid ${C.muted}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: upcomingPayments[0].daysUntilDue <= 14 ? C.danger : C.warn }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: upcomingPayments[0].daysUntilDue <= 14 ? C.danger : C.muted }}>
               Upcoming Payments — {upcomingPayments.length} due within 30 days
             </div>
           </div>
@@ -20031,7 +20633,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             {upcomingPayments.map(v => {
               const urgent = v.daysUntilDue <= 14;
               const overdue = v.daysUntilDue < 0;
-              const clr = overdue ? C.danger : urgent ? C.danger : C.warn;
+              const clr = overdue ? C.danger : urgent ? C.danger : C.muted;
               const label = overdue
                 ? `${Math.abs(v.daysUntilDue)} days overdue`
                 : v.daysUntilDue === 0
@@ -20075,7 +20677,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             )}
             {rushFactor.badge && (() => {
               const rushColor = rushFactor.label === 'RUSH' ? C.danger
-                              : rushFactor.label === 'COMPRESSED' ? C.warn
+                              : rushFactor.label === 'COMPRESSED' ? C.muted
                               : C.accent2;
               return (
                 <span title={rushFactor.explanation} style={{ fontSize: 10, fontWeight: 700, color: rushColor, background: rushColor + '18', border: `1px solid ${rushColor}44`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
@@ -20088,8 +20690,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 active. Tooltip carries the full prose breakdown. */}
             {datePrem.label && (
               <span title={datePrem.explanation || ''} style={{
-                fontSize: 10, fontWeight: 700, color: C.warn,
-                background: C.warn + '18', border: `1px solid ${C.warn}44`,
+                fontSize: 10, fontWeight: 700, color: C.muted,
+                background: C.muted + '18', border: `1px solid ${C.muted}44`,
                 borderRadius: 12, padding: '2px 8px 2px 6px', letterSpacing: '0.04em',
                 display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
               }}>
@@ -20190,12 +20792,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                   <label style={{
                     flex: 1, minWidth: 200, display: 'flex', alignItems: 'flex-start', gap: 6,
                     padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
-                    border: `1px solid ${estContingency ? C.warn + '55' : C.border}`,
-                    background: estContingency ? C.warn + '08' : C.bg,
+                    border: `1px solid ${estContingency ? C.muted + '55' : C.border}`,
+                    background: estContingency ? C.muted + '08' : C.bg,
                   }}>
                     <input type="checkbox" checked={estContingency}
                       onChange={e => setEstContingency(e.target.checked)}
-                      style={{ accentColor: C.warn, marginTop: 2, flexShrink: 0 }} />
+                      style={{ accentColor: C.muted, marginTop: 2, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
                         Add 10% planning contingency
@@ -20630,7 +21232,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             const monthTotal   = vs.reduce((s, v) => s + vendorBalance(v), 0);
             const monthOverdue = vs.some(v => { const d = daysUntil(v.payDueDate); return d !== null && d < 0; });
             const monthSoon    = vs.some(v => { const d = daysUntil(v.payDueDate); return d !== null && d >= 0 && d <= 30; });
-            const monthColor   = monthOverdue ? C.danger : monthSoon ? C.warn : C.text;
+            const monthColor   = monthOverdue ? C.danger : monthSoon ? C.muted : C.text;
             return (
               <div key={mon} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -20642,7 +21244,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                   const catRow = budget.find(b => b.category === (v.budgetCategory || v.category));
                   const pillColor = days === null ? null
                     : days < 0  ? C.danger
-                    : days <= 30 ? C.warn
+                    : days <= 30 ? C.muted
                     : null; /* future commitments → no pill at all */
                   return (
                     <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={v.id} onClick={catRow ? () => setModalId(catRow.id) : undefined}
@@ -20743,7 +21345,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
                   <StatCard label="Total Fee"   value={fmtD(fee)} />
                   <StatCard label="Collected"   value={fmtD(collected)}   color={collected > 0 ? C.success : C.text} />
-                  <StatCard label="Outstanding" value={fmtD(outstanding)} color={outstanding > 0 ? C.warn : C.success} />
+                  <StatCard label="Outstanding" value={fmtD(outstanding)} color={outstanding > 0 ? C.muted : C.success} />
                 </div>
                 {(client.feeSchedule || []).length > 0 && (
                   <div style={{ marginBottom: 12 }}>
@@ -21453,9 +22055,9 @@ function Guests({ guests, setGuests, event = {} }) {
         <StatCard tier="evidence" label="Total Invited"  value={guests.length} sub={Number(event?.guestEstimate) > 0 ? `of ${Number(event.guestEstimate)} expected` : undefined} />
         <StatCard label="Confirmed"      value={yes}   color={C.success} />
         <StatCard tier="evidence" label="Declined"       value={no} />
-        <StatCard tier="evidence" label="Awaiting"       value={maybe} color={maybe > 0 ? C.warn : undefined} />
+        <StatCard tier="evidence" label="Awaiting"       value={maybe} color={maybe > 0 ? C.muted : undefined} />
         {kids > 0 && <StatCard tier="evidence" label="Kids Meals" value={kids} />}
-        {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.warn} sub="gifts received, note unsent" />}
+        {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
       </div>
 
       {(() => {
@@ -21482,7 +22084,7 @@ function Guests({ guests, setGuests, event = {} }) {
       })()}
 
       {needsFlag.length > 0 && (
-        <div style={{ ...s.card, borderColor: C.warn + '55' }}>
+        <div style={{ ...s.card, borderColor: C.muted + '55' }}>
           <button onClick={() => setNeedsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: 0, cursor: bp === 'mobile' ? 'pointer' : 'default', marginBottom: needsOpen ? 14 : 0 }}>
             <div style={{ ...s.cardTitle, margin: 0, flex: 1, textAlign: 'left' }}>Special Needs — {needsFlag.length} guest{needsFlag.length !== 1 ? 's' : ''} confirmed</div>
             {bp === 'mobile' && <span style={{ color: C.muted, display: 'flex', transform: needsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>}
@@ -21511,11 +22113,11 @@ function Guests({ guests, setGuests, event = {} }) {
         const emailEnabled = isEmailConfigured();
         const rsvpUrl = event?.rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${event.rsvpCode}` : null;
         return (
-          <div style={{ ...s.card, borderColor: C.warn + '66', marginBottom: 16 }}>
+          <div style={{ ...s.card, borderColor: C.muted + '66', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: nonRespOpen ? 10 : 0 }}>
               <button onClick={() => setNonRespOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                <span style={{ display: 'flex', color: C.warn }}><Icon name="calendar" size={15} /></span>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.warn, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
+                <span style={{ display: 'flex', color: C.muted }}><Icon name="calendar" size={15} /></span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.muted, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
                 <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
               </button>
               {/* Batch email reminder — DONE when email configured, DEEP HANDOFF via mailto otherwise.
@@ -21622,7 +22224,7 @@ function Guests({ guests, setGuests, event = {} }) {
                 {importBatches.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
               </button>
               {importBatches.length > 0 && (
-                <button aria-label="Undo last import" style={{ ...s.btn(), color: C.warn }} onClick={handleUndo} title="Undo last import">↩</button>
+                <button aria-label="Undo last import" style={{ ...s.btn(), color: C.muted }} onClick={handleUndo} title="Undo last import">↩</button>
               )}
               <button style={s.btn('primary')} onClick={add}>+ Guest</button>
             </div>
@@ -21689,7 +22291,7 @@ function Guests({ guests, setGuests, event = {} }) {
                     {g.group && <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>}
                     {g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
                     {g.table && <span style={{ fontSize: 11, color: C.muted }}>Table {g.table}</span>}
-                    {g.needs && <span style={{ fontSize: 11, color: C.warn }}>⚠ {g.needs}</span>}
+                    {g.needs && <span style={{ fontSize: 11, color: C.muted }}>⚠ {g.needs}</span>}
                     {g.plusOne && <span style={{ fontSize: 11, color: C.muted }}>+{g.plusOne}</span>}
                   </div>
                 </div>
@@ -21737,7 +22339,7 @@ function Guests({ guests, setGuests, event = {} }) {
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
             {Object.entries(mealCounts).map(([meal, count]) => <span key={meal} style={s.pill(C.accent2)}>{meal}: {count}</span>)}
-            {kids > 0 && <span style={s.pill(C.warn)}>Kids meals: {kids}</span>}
+            {kids > 0 && <span style={s.pill(C.muted)}>Kids meals: {kids}</span>}
           </div>
         )}
       </div>
@@ -21762,7 +22364,7 @@ function Guests({ guests, setGuests, event = {} }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
               <div style={s.cardTitle}>Thank-You Tracker</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {pending.length > 0 && <span style={s.pill(C.warn)}>{pending.length} pending</span>}
+                {pending.length > 0 && <span style={s.pill(C.muted)}>{pending.length} pending</span>}
                 <span style={{ fontSize: 12, color: C.muted }}>{gifted} received · {thanked}/{confirmed.length} sent</span>
               </div>
             </div>
@@ -21777,7 +22379,7 @@ function Guests({ guests, setGuests, event = {} }) {
                   background: isLight ? `linear-gradient(180deg, rgba(0,0,0,0.10) 0%, transparent 55%), ${C.surface2}` : `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.12) 55%, transparent 100%), ${C.surface2}`,
                   boxShadow: isLight ? 'inset 0 1px 3px rgba(0,0,0,0.14)' : 'inset 0 2px 4px rgba(0,0,0,0.40)',
                 }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${giftPct}%`, background: fillGrad(C.warn + 'bb'), borderRadius: 99, transition: 'width 0.4s ease' }} />
+                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${giftPct}%`, background: fillGrad(C.muted + 'bb'), borderRadius: 99, transition: 'width 0.4s ease' }} />
                   <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: fillGrad(pct === 100 ? C.success : C.accent2), borderRadius: 99, transition: 'width 0.4s ease' }} />
                 </div>
               );
@@ -21798,7 +22400,7 @@ function Guests({ guests, setGuests, event = {} }) {
                   const isDone    = g.thankYouSent;
                   return (
                     <tr key={g.id} style={{
-                      background: isPending ? C.warn + '09' : isDone ? C.success + '08' : 'transparent',
+                      background: isPending ? C.muted + '09' : isDone ? C.success + '08' : 'transparent',
                       opacity: isDone ? 0.6 : 1,
                     }}>
                       <td style={{ padding: '8px 8px 8px 0', borderBottom: `1px solid ${C.border}`, verticalAlign: 'middle' }}>
@@ -21822,8 +22424,8 @@ function Guests({ guests, setGuests, event = {} }) {
                           toggle(g.id, 'thankYouSent');
                         }} style={{
                           padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: 600,
-                          border: `1px solid ${g.thankYouSent ? C.accent2 : g.giftReceived ? C.warn + '88' : C.border}`,
-                          background: g.thankYouSent ? C.accent2 + '18' : g.giftReceived ? C.warn + '12' : C.bg,
+                          border: `1px solid ${g.thankYouSent ? C.accent2 : g.giftReceived ? C.muted + '88' : C.border}`,
+                          background: g.thankYouSent ? C.accent2 + '18' : g.giftReceived ? C.muted + '12' : C.bg,
                           color: g.thankYouSent ? C.accent2 : g.giftReceived ? C.warn : C.muted,
                           opacity: g.giftReceived ? 1 : 0.4,
                           title: !g.thankYouSent ? 'Copies a thank-you message to your clipboard' : '',
@@ -21908,7 +22510,7 @@ function Guests({ guests, setGuests, event = {} }) {
                   {totalKids > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Kids meals needed</span>
-                      <span style={{ fontWeight: 600, color: C.warn }}>{totalKids}</span>
+                      <span style={{ fontWeight: 600, color: C.muted }}>{totalKids}</span>
                     </div>
                   )}
                   {mealBreakdown.length > 0 && (
@@ -21928,7 +22530,7 @@ function Guests({ guests, setGuests, event = {} }) {
                       {Object.entries(needsCounts).map(([need, count]) => (
                         <div key={need} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
                           <span style={{ color: C.text }}>{need}</span>
-                          {count > 1 && <span style={{ fontWeight: 700, color: C.warn }}>×{count}</span>}
+                          {count > 1 && <span style={{ fontWeight: 700, color: C.muted }}>×{count}</span>}
                         </div>
                       ))}
                     </div>
@@ -21960,7 +22562,7 @@ function Guests({ guests, setGuests, event = {} }) {
                   {accessible > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Wheelchair access needed</span>
-                      <span style={{ fontWeight: 700, color: C.warn }}>{accessible}</span>
+                      <span style={{ fontWeight: 700, color: C.muted }}>{accessible}</span>
                     </div>
                   )}
                   {maybeCount > 0 && (
@@ -22037,7 +22639,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
       )}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <StatCard label="Confirmed" value={confirmed.length} color={C.accent} />
-        <StatCard label="Seated" value={seated} color={seated === confirmed.length && confirmed.length > 0 ? C.success : C.warn} sub={`${unassigned.length} unassigned`} />
+        <StatCard label="Seated" value={seated} color={seated === confirmed.length && confirmed.length > 0 ? C.success : C.muted} sub={`${unassigned.length} unassigned`} />
         <div style={{ ...s.card, flex: 1, minWidth: 110, marginBottom: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Tables</div>
           <input type="number" min="1" max="50" value={tableCount} onChange={e => onTablesChange && onTablesChange(Math.max(1, Number(e.target.value) || 1))} style={{ ...s.statNum(), fontSize: 28, border: 'none', background: 'transparent', outline: 'none', width: 64, padding: 0, fontFamily: "'Inter', system-ui, sans-serif" }} />
@@ -22087,7 +22689,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: selected === g.id ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                    {g.needs && <div style={{ fontSize: 10, color: C.warn, marginTop: 1 }}>{g.needs}</div>}
+                    {g.needs && <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{g.needs}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, marginLeft: 8 }}>
                     {g.meal !== '—' && g.meal !== 'Standard' && <span style={{ ...s.pill(C.accent2), fontSize: 10 }}>{mealShort[g.meal]}</span>}
@@ -22140,7 +22742,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
                     <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setGuestModalId(g.id); }}>
                         <div style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.accent2 }}>{g.name}</div>
-                        {g.needs && <div style={{ fontSize: 9, color: C.warn }}>{g.needs}</div>}
+                        {g.needs && <div style={{ fontSize: 9, color: C.muted }}>{g.needs}</div>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, marginLeft: 4 }}>
                         {g.meal !== '—' && g.meal !== 'Standard' && <span style={{ ...s.pill(C.accent2), fontSize: 9 }}>{mealShort[g.meal]}</span>}
@@ -22518,12 +23120,12 @@ function VendorScriptsPanel({ profile, event }) {
           borderRadius: 8, marginBottom: 14,
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <div style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, background: C.warn, borderRadius: 2 }} />
+          <div style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, background: C.muted, borderRadius: 2 }} />
           <span style={{
             fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
-            textTransform: 'uppercase', color: C.warn,
+            textTransform: 'uppercase', color: C.muted,
             padding: '2px 7px', borderRadius: 4,
-            border: `1px solid ${C.warn}55`, flexShrink: 0,
+            border: `1px solid ${C.muted}55`, flexShrink: 0,
           }}>Heads up</span>
           <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.45 }}>
             Set your name and business info in your Profile to auto-fill these scripts.
@@ -22622,7 +23224,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency }) {
   const showOverdueChip = overdue && !t.done && !urgency;
   const urgencyTone = urgency
     ? (urgency.tone === 'danger' ? C.danger
-      : urgency.tone === 'warn'   ? C.warn
+      : urgency.tone === 'warn'   ? C.muted
       : urgency.tone === 'accent' ? C.accent2
       : C.muted)
     : null;
@@ -22878,7 +23480,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                       // Sprint 57f.1: use the shorthand `border` to match
                       // s.btn('ghost') instead of mixing shorthand+borderColor,
                       // which trips a React "conflicting style property" warn.
-                      ...(selectedPhase === '__compressed__' ? {} : { color: C.warn, border: `1px solid ${C.warn}55` }),
+                      ...(selectedPhase === '__compressed__' ? {} : { color: C.muted, border: `1px solid ${C.muted}55` }),
                     }} title="Tasks that moved to the front because the timeline is tight">
                       ⏱ Tight timeline · {compressionSummary.totalUrgent}
                     </button>
@@ -22910,7 +23512,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                     <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.danger }}>Overdue Tasks{overdueCount > 0 ? ` (${overdueCount})` : ''}</div>
                   ) : selectedPhase === '__compressed__' ? (
                     <>
-                      <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.warn }}>Compressed plan priorities</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.muted }}>Compressed plan priorities</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                         {compressionSummary?.headline || 'Tasks moved to the front because the timeline is tight.'}
                       </div>
@@ -23037,6 +23639,8 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
   const qInput = { ...s.input, background: 'transparent', border: '1px solid transparent', borderRadius: 7, transition: 'background 0.12s, border-color 0.12s' };
   const qFocus = e => { e.currentTarget.style.background = C.bg; e.currentTarget.style.borderColor = C.border; };
   const qBlur  = e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; };
+  const ownerOptions = [...new Set(['You', 'Day-of Coordinator', 'Venue manager', 'Catering captain',
+    ...(vendors || []).flatMap(v => [v.onSiteContactName, v.name].filter(Boolean))])];
   const [modalId, setModalId] = useState(null);
   const modalEntry = ros.find(r => r.id === modalId);
   const [rosFilter, setRosFilter] = useState('all');
@@ -23128,7 +23732,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
     if (!coi || !coi.required) return null;
     if (coi.level === 'critical')   return { c: C.danger,  t: coi.label };
     if (coi.status === 'verified')  return { c: C.success, t: 'COI verified valid' };
-    if (coi.level === 'attention')  return { c: C.warn,    t: coi.label };
+    if (coi.level === 'attention')  return { c: C.muted,    t: coi.label };
     return null;
   };
   const emergencyContacts = vendors.filter(v => dayOfPhone(v)).sort((a, b) => (a.arrivalTime || '').localeCompare(b.arrivalTime || ''));
@@ -23276,7 +23880,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
     const drift = (nowItem && nowItem.actualStart != null) ? nowItem.actualStart - nowItem._min : null;
     const driftLabel = drift == null ? null
       : Math.abs(drift) <= 3 ? { txt: 'On time',                col: C.success }
-      : drift > 0            ? { txt: `${drift} min behind`,    col: C.warn }
+      : drift > 0            ? { txt: `${drift} min behind`,    col: C.muted }
       :                        { txt: `${-drift} min ahead`,    col: C.accent2 };
 
     const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
@@ -23341,7 +23945,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         {/* Header + drift badge */}
         <div style={{ marginBottom: 16, paddingLeft: 4, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.warn, marginBottom: 4 }}>Today's schedule</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Today's schedule</div>
             <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.4 }}>Tap Start / Done as the day runs — it tracks reality, not the clock.</div>
           </div>
           {driftLabel && (
@@ -23356,7 +23960,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
           </div>
         ) : (
           <>
-            {nowItem && <Section label="Now" color={C.warn} items={[nowItem]} kind="now" />}
+            {nowItem && <Section label="Now" color={C.muted} items={[nowItem]} kind="now" />}
             {nextItems.length > 0 && <Section label="Next up" color={C.accent2} items={nextItems} kind="next" />}
             {laterItems.length > 0 && <Section label="Later" color={C.muted} items={laterItems} kind="later" />}
             {doneItems.length > 0 && <Section label={`Done · ${doneItems.length}`} color={C.success} items={doneItems} dim kind="done" />}
@@ -23371,6 +23975,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
       {modalEntry && (
         <ROSModal
           entry={modalEntry}
+          ownerOptions={ownerOptions}
           onClose={() => setModalId(null)}
           onChange={(key, val) => upd(modalId, key, val)}
           onDelete={() => del(modalId)}
@@ -23422,8 +24027,8 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         const mine = (ros || []).filter(r => { const o = (r.owner || '').trim().toLowerCase(); return o && (o === hn || o === first || first === o.split(' ')[0]); });
         if (!mine.length) return null;
         return (
-          <div style={{ ...s.card, marginBottom: 14, padding: '11px 14px', borderLeft: `3px solid ${C.warn}`, background: `${C.warn}12`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span aria-hidden style={{ color: C.warn, fontWeight: 800 }}>⚠</span>
+          <div style={{ ...s.card, marginBottom: 14, padding: '11px 14px', borderLeft: `3px solid ${C.muted}`, background: `${C.muted}12`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span aria-hidden style={{ color: C.muted, fontWeight: 800 }}>⚠</span>
             <span style={{ fontSize: 12.5, color: C.text, lineHeight: 1.45, flex: 1, minWidth: 180 }}>
               <strong>{honoree}</strong> is running {mine.length} moment{mine.length !== 1 ? 's' : ''} — they should be <em>celebrating</em>, not working. Reassign so they can enjoy their night.
             </span>
@@ -23460,7 +24065,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <StatCard label="Total Segments"  value={ros.length} />
         <StatCard label="Vendor Arrivals" value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
-        <StatCard label="Prep Blocks"     value={ros.filter(r => r.type === 'prep').length}   color={C.warn} />
+        <StatCard label="Prep Blocks"     value={ros.filter(r => r.type === 'prep').length}   color={C.muted} />
         <StatCard label="Unconfirmed"     value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub="vendor slots" />
       </div>
 
@@ -23480,9 +24085,9 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         const steelTopROS = C.accentTopGrad || C.accent;
         const issues = [
           { key: 'overlaps',          n: readiness.overlaps,          label: 'Time overlap',       color: C.danger },
-          { key: 'vendorUnconfirmed', n: readiness.vendorUnconfirmed, label: 'Vendor unconfirmed', color: C.warn   },
-          { key: 'missingTime',       n: readiness.missingTime,       label: 'Missing time',       color: C.warn   },
-          { key: 'missingOwner',      n: readiness.missingOwner,      label: 'Missing owner',      color: C.warn   },
+          { key: 'vendorUnconfirmed', n: readiness.vendorUnconfirmed, label: 'Vendor unconfirmed', color: C.muted   },
+          { key: 'missingTime',       n: readiness.missingTime,       label: 'Missing time',       color: C.muted   },
+          { key: 'missingOwner',      n: readiness.missingOwner,      label: 'Missing owner',      color: C.muted   },
           { key: 'missingLocation',   n: readiness.missingLocation,   label: 'Missing location',   color: C.muted  },
         ].filter(i => i.n > 0);
         const allClear = issues.length === 0;
@@ -23557,11 +24162,11 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         {rosActionMsg && (
           <div role="status" style={{
             display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 14,
-            background: `${rosActionMsg.kind === 'err' ? C.warn : C.success}14`,
-            border: `1px solid ${rosActionMsg.kind === 'err' ? C.warn : C.success}44`,
+            background: `${rosActionMsg.kind === 'err' ? C.muted : C.success}14`,
+            border: `1px solid ${rosActionMsg.kind === 'err' ? C.muted : C.success}44`,
             borderRadius: 8, padding: '8px 12px', fontSize: 12.5, color: C.text,
           }}>
-            <span aria-hidden style={{ color: rosActionMsg.kind === 'err' ? C.warn : C.success, fontWeight: 800, flexShrink: 0 }}>{rosActionMsg.kind === 'err' ? '⚠' : '✓'}</span>
+            <span aria-hidden style={{ color: rosActionMsg.kind === 'err' ? C.muted : C.success, fontWeight: 800, flexShrink: 0 }}>{rosActionMsg.kind === 'err' ? '⚠' : '✓'}</span>
             <span style={{ flex: 1 }}>{rosActionMsg.text}</span>
             <button onClick={() => setRosActionMsg(null)} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}>×</button>
           </div>
@@ -23606,11 +24211,11 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                         <span style={s.pill(typeColor)}>{entry.type}</span>
-                        {entry.aiDraft && <span style={{ fontSize: 10, fontWeight: 700, color: C.warn, letterSpacing: '0.04em' }}>AI DRAFT</span>}
+                        {entry.aiDraft && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
                         {entry.location && <span style={{ fontSize: 11, color: C.muted }}>{entry.location}</span>}
                         {entry.owner    && <span style={{ fontSize: 11, color: C.muted }}>{entry.owner}</span>}
                         {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: 11, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
-                        {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: 11, color: C.warn }}>⚠ Unconfirmed</span>}
+                        {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: 11, color: C.muted }}>⚠ Unconfirmed</span>}
                       </div>
                     </div>
                     <span style={{ color: C.muted, fontSize: 16, flexShrink: 0, marginTop: 2 }}>›</span>
@@ -23638,10 +24243,6 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
             {/* "In charge" dropdown options — the people who can own a run-of-show
                 item: standard day-of roles + each vendor (and their on-site contact).
                 A datalist keeps it a dropdown while still allowing a custom name. */}
-            <datalist id="ros-incharge-options">
-              {['You', 'Day-of Coordinator', 'Venue manager', 'Catering captain'].map(o => <option key={o} value={o} />)}
-              {[...new Set((vendors || []).flatMap(v => [v.onSiteContactName, v.name].filter(Boolean)))].map(o => <option key={o} value={o} />)}
-            </datalist>
 
             {sorted.length === 0 && (
               <div style={{ textAlign: 'center', padding: '36px 16px', color: C.muted }}>
@@ -23686,7 +24287,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
                   <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
                     <div>
                       <input style={{ ...qInput, padding: '6px 8px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} onFocus={qFocus} onBlur={qBlur} value={entry.time} placeholder="09:00" onChange={e => upd(entry.id, 'time', e.target.value)} />
-                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: 8.5, fontWeight: 800, color: C.warn, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
+                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: 8.5, fontWeight: 800, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
                     </div>
                     <div style={{ width: 3, minHeight: 36, borderRadius: 99, background: typeColor, marginTop: 4 }} />
                     <div>
@@ -23698,7 +24299,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
                       <option value="vendor">Vendor</option>
                       <option value="prep">Prep</option>
                     </select>
-                    <input style={qInput} onFocus={qFocus} onBlur={qBlur} value={entry.owner} placeholder="In charge" list="ros-incharge-options" onChange={e => upd(entry.id, 'owner', e.target.value)} />
+                    <OwnerSelect value={entry.owner} options={ownerOptions} onChange={v => upd(entry.id, 'owner', v)} style={qInput} />
                     <input style={qInput} onFocus={qFocus} onBlur={qBlur} value={entry.notes} placeholder="Notes / cues" onChange={e => upd(entry.id, 'notes', e.target.value)} />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 6 }}>
                       {isVendor ? (
@@ -23752,7 +24353,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
                   <td style={{ ...s.td, color: v.loadInOrder ? C.text : C.muted, fontSize: 12 }}>{v.loadInOrder || '—'}</td>
                   <td style={{ ...s.td, color: C.muted, fontSize: 12 }}>{v.arrivalTime || '—'}</td>
                   {/* On-site cell, flagged if it falls back to the office line. */}
-                  <td style={{ ...s.td, fontFamily: 'monospace', color: v.onSitePhone ? C.accent2 : C.warn }}>{dayOfPhone(v)}{v.onSitePhone ? <span style={{ color: C.success, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>on-site</span> : <span style={{ color: C.warn, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>office</span>}</td>
+                  <td style={{ ...s.td, fontFamily: 'monospace', color: v.onSitePhone ? C.accent2 : C.muted }}>{dayOfPhone(v)}{v.onSitePhone ? <span style={{ color: C.success, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>on-site</span> : <span style={{ color: C.muted, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>office</span>}</td>
                   {/* COI gate dot — venue can refuse entry at a glance. */}
                   <td style={s.td}>{coi ? <span title={coi.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: coi.c }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: coi.c, display: 'inline-block', flexShrink: 0 }} />{coi.c === C.success ? 'Valid' : coi.c === C.danger ? 'Missing' : 'Unverified'}</span> : <span style={{ color: C.muted, fontSize: 11 }}>—</span>}</td>
                   <td style={s.td}><span style={s.pill(stageCLR[v.status] || C.muted)}>{v.status}</span></td>
@@ -23922,7 +24523,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
 
   vendors.forEach(v => {
     if (v.payDueDate && !v.balancePaid && v.name)
-      add(v.payDueDate, { label: `${v.name} payment`, color: C.warn, type: 'payment' });
+      add(v.payDueDate, { label: `${v.name} payment`, color: C.muted, type: 'payment' });
   });
 
   const arrivingVendors = eventDate
@@ -24005,7 +24606,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {criticalCount > 0 && <span style={s.pill(C.danger)}>{criticalCount} overdue</span>}
-          {paymentCount > 0 && <span style={s.pill(C.warn)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
+          {paymentCount > 0 && <span style={s.pill(C.muted)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
           {calView === 'month' && isEventMonth && <span style={s.pill(C.accent)}>Event this month</span>}
           {calView === 'month' && eventDate && !isEventMonth && <button style={{ ...s.btn('ghost'), fontSize: 11, color: C.accent }} onClick={goToEvent}>Jump to event →</button>}
           <button style={{ ...s.btn('ghost'), fontSize: 11, color: C.muted }} onClick={goToToday}>Today</button>
@@ -24143,7 +24744,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
             </div>
             {selectedDay === today8601() && <span style={s.pill(C.accent2)}>Today</span>}
             {selectedDay === eventDate && <span style={s.pill(C.accent)}>Event Day</span>}
-            {dayPayments.length > 0 && <span style={s.pill(C.warn)}>{dayPayments.length} payment{dayPayments.length > 1 ? 's' : ''} due</span>}
+            {dayPayments.length > 0 && <span style={s.pill(C.muted)}>{dayPayments.length} payment{dayPayments.length > 1 ? 's' : ''} due</span>}
           </div>
 
           {/* All-day items (phase tasks, payments) */}
@@ -24176,10 +24777,10 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
               {dayPayments.map(v => {
                 const bal = vendorBalance(v);
                 return (
-                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.warn}` }}>
-                    <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.muted}` }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{v.name}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>{fmtD(bal)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{fmtD(bal)}</span>
                   </div>
                 );
               })}
@@ -24262,7 +24863,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
             { color: C.success, label: 'Phase complete' },
             { color: C.accent2, label: 'Phase in progress' },
             { color: C.danger,  label: 'Overdue phase' },
-            { color: C.warn,    label: 'Payment due' },
+            { color: C.muted,    label: 'Payment due' },
           ].map(({ color, label }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
@@ -24297,6 +24898,9 @@ function MasterCalendarView({ events, onSelectEvent }) {
   // and payment due dates. Never an empty grid; always the next thing ahead.
   // Month/Week/Day remain one tap away via the toggle.
   const [calView,     setCalView]     = useState('list'); // 'month' | 'week' | 'day' | 'list'
+  // B2 runway: This Week + This Month open (the operative horizon — avoids the empty
+  // void the board flagged); Later folded.
+  const [calBands,    setCalBands]    = useState({ week: true, month: true, later: false });
 
   const fmtTime12 = (t) => { if (!t) return ''; const [h, m] = t.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; const hr = h % 12 || 12; return `${hr}:${String(m || 0).padStart(2, '0')} ${ampm}`; };
 
@@ -24338,7 +24942,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
     // Payments
     (ev.vendors || []).forEach(v => {
       if (v.payDueDate && !v.balancePaid && v.name)
-        addItem(v.payDueDate, { type: 'payment', label: `${v.name}`, color: C.warn, eventId: ev.id, eventName: ev.name, vendor: v });
+        addItem(v.payDueDate, { type: 'payment', label: `${v.name}`, color: C.muted, eventId: ev.id, eventName: ev.name, vendor: v });
     });
 
     // Vendor arrivals chip on event day
@@ -24446,7 +25050,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {bp !== 'mobile' && criticalCount > 0 && <span style={s.pill(C.danger)}>{criticalCount} overdue</span>}
-          {bp !== 'mobile' && paymentCount  > 0 && <span style={s.pill(C.warn)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
+          {bp !== 'mobile' && paymentCount  > 0 && <span style={s.pill(C.muted)}>{paymentCount} payment{paymentCount > 1 ? 's' : ''} due</span>}
           {bp !== 'mobile' && eventDays     > 0 && <span style={s.pill(C.accent)}>{eventDays} event{eventDays > 1 ? 's' : ''} this month</span>}
           <button style={{ ...s.btn('ghost'), fontSize: 11, color: C.muted }} onClick={goToToday}>Today</button>
           {/* View toggle — Sprint 49: added List alongside Month / Week / Day */}
@@ -24515,7 +25119,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
               { color: C.success, label: 'Phase complete' },
               { color: C.accent2, label: 'Vendor / in progress' },
               { color: C.danger,  label: 'Overdue phase' },
-              { color: C.warn,    label: 'Payment due' },
+              { color: C.muted,    label: 'Payment due' },
             ].map(({ color, label }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
@@ -24591,7 +25195,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                   { color: C.success, label: 'Phase complete' },
                   { color: C.accent2, label: 'Vendor / in progress' },
                   { color: C.danger,  label: 'Overdue phase' },
-                  { color: C.warn,    label: 'Payment due' },
+                  { color: C.muted,    label: 'Payment due' },
                 ].map(it => (
                   <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, color: C.muted }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: it.color }} />
@@ -24622,15 +25226,27 @@ function MasterCalendarView({ events, onSelectEvent }) {
             dayItems.forEach(it => flat.push({ ds, ...it }));
           });
           flat.sort((a, b) => a.ds.localeCompare(b.ds));
-          // Group by month for visual separators
-          const byMonth = {};
-          flat.forEach(it => {
-            const monthKey = it.ds.slice(0, 7);
-            if (!byMonth[monthKey]) byMonth[monthKey] = [];
-            byMonth[monthKey].push(it);
-          });
-          const monthKeys = Object.keys(byMonth).sort();
+          // B2 runway: band by time-from-today (This Week / This Month / Later),
+          // collapsible, with a today-anchored "Next up" hero — not a flat month dump.
           const todayISO = today8601();
+          const t0 = today.getTime();
+          const bandOf = (ds) => {
+            const dd = Math.round((new Date(ds + 'T00:00:00').getTime() - t0) / 86400000);
+            return dd <= 7 ? 'week' : dd <= 31 ? 'month' : 'later';
+          };
+          const bands = { week: [], month: [], later: [] };
+          flat.forEach(it => bands[bandOf(it.ds)].push(it));
+          const BAND_META = [
+            { key: 'week',  label: 'This Week' },
+            { key: 'month', label: 'This Month' },
+            { key: 'later', label: 'Later' },
+          ];
+          // Next-up hero — soonest event day + its engine binding.
+          const nextEvIt = flat.find(it => it.type === 'event');
+          const nextEv   = nextEvIt ? events.find(e => e.id === nextEvIt.eventId) : null;
+          const nextDays = nextEvIt ? Math.round((new Date(nextEvIt.ds + 'T00:00:00').getTime() - t0) / 86400000) : null;
+          let nextBind = null;
+          try { if (nextEv) { const p = engineNextAction(nextEv); if (p && p.binding) nextBind = { name: p.binding.name, flag: p.flag }; } } catch (e) { /* ignore */ }
           if (flat.length === 0) {
             return (
               <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
@@ -24639,78 +25255,68 @@ function MasterCalendarView({ events, onSelectEvent }) {
               </div>
             );
           }
-          return (
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-              {monthKeys.map((mk, mIdx) => {
-                const [yy, mm] = mk.split('-');
-                const monthLabel = new Date(parseInt(yy), parseInt(mm) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                return (
-                  <div key={mk}>
-                    <div style={{
-                      padding: '10px 20px', background: C.bg,
-                      borderTop: mIdx === 0 ? 'none' : `1px solid ${C.border}`,
-                      borderBottom: `1px solid ${C.border}`,
-                      fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-                      textTransform: 'uppercase', color: C.muted,
-                    }}>{monthLabel}</div>
-                    {byMonth[mk].map((it, i) => {
-                      const isToday = it.ds === todayISO;
-                      const d = new Date(it.ds + 'T00:00:00');
-                      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
-                      const dayNum = d.getDate();
-                      return (
-                        <div
-                          key={`${it.ds}-${it.eventId}-${i}`}
-                          onClick={() => { if (it.eventId) onSelectEvent(it.eventId); else { setSelectedDay(it.ds); setCalView('day'); } }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 14,
-                            padding: '12px 20px',
-                            borderBottom: `1px solid ${C.border}`,
-                            cursor: 'pointer',
-                            background: isToday ? C.accent2 + '08' : 'transparent',
-                            transition: 'background 0.12s',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.surface; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = isToday ? C.accent2 + '08' : 'transparent'; }}
-                        >
-                          {/* Date column */}
-                          <div style={{
-                            width: 44, flexShrink: 0,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center',
-                          }}>
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, letterSpacing: '0.10em',
-                              color: isToday ? C.accent2 : C.muted,
-                            }}>{dayLabel}</span>
-                            <span style={{
-                              fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em',
-                              color: isToday ? C.accent2 : C.text, marginTop: 1, lineHeight: 1,
-                            }}>{dayNum}</span>
-                          </div>
-                          {/* Color stripe */}
-                          <div style={{ width: 3, height: 32, borderRadius: 2, background: it.color, flexShrink: 0 }} />
-                          {/* Title + meta */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: 13, fontWeight: 600, color: C.text,
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            }}>{it.title || it.label}</div>
-                            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                              {it.type === 'event' ? 'Event day'
-                                : it.type === 'task' ? 'Phase milestone'
-                                : it.type === 'payment' ? 'Payment due'
-                                : it.type === 'vendor' ? 'Vendor arrival'
-                                : it.type}
-                              {isToday && <span style={{ color: C.accent2, fontWeight: 600 }}> · today</span>}
-                            </div>
-                          </div>
-                          <span style={{ color: C.muted, fontSize: 14 }}>›</span>
-                        </div>
-                      );
-                    })}
+          const renderRow = (it, i) => {
+            const isToday = it.ds === todayISO;
+            const d = new Date(it.ds + 'T00:00:00');
+            const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
+            const dayNum = d.getDate();
+            return (
+              <div
+                key={`${it.ds}-${it.eventId}-${i}`}
+                onClick={() => { if (it.eventId) onSelectEvent(it.eventId); else { setSelectedDay(it.ds); setCalView('day'); } }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
+                  borderBottom: `1px solid ${C.border}`, cursor: 'pointer',
+                  background: isToday ? C.accent2 + '08' : 'transparent', transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.surface; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isToday ? C.accent2 + '08' : 'transparent'; }}
+              >
+                <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.10em', color: isToday ? C.accent2 : C.muted }}>{dayLabel}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: isToday ? C.accent2 : C.text, marginTop: 1, lineHeight: 1 }}>{dayNum}</span>
+                </div>
+                <div style={{ width: 3, height: 32, borderRadius: 2, background: it.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title || it.label}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                    {it.type === 'event' ? 'Event day' : it.type === 'task' ? 'Phase milestone' : it.type === 'payment' ? 'Payment due' : it.type === 'vendor' ? 'Vendor arrival' : it.type}
+                    {isToday && <span style={{ color: C.accent2, fontWeight: 600 }}> · today</span>}
                   </div>
-                );
-              })}
+                </div>
+                <span style={{ color: C.muted, fontSize: 14 }}>›</span>
+              </div>
+            );
+          };
+          return (
+            <div>
+              {nextEvIt && (
+                <div onClick={() => onSelectEvent(nextEvIt.eventId)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 12, padding: '14px 18px', marginBottom: 12, cursor: 'pointer' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 5 }}>
+                    Next up · {nextDays <= 0 ? 'today' : nextDays === 1 ? 'tomorrow' : `in ${nextDays} days`}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{nextEvIt.label}</div>
+                  {nextBind && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{nextBind.flag} Next: <span style={{ color: C.text, fontWeight: 600 }}>{nextBind.name}</span></div>}
+                </div>
+              )}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+                {BAND_META.map(b => {
+                  const list = bands[b.key];
+                  if (!list.length) return null;
+                  const open = calBands[b.key];
+                  return (
+                    <div key={b.key}>
+                      <div onClick={() => setCalBands(s => ({ ...s, [b.key]: !s[b.key] }))}
+                        style={{ padding: '10px 20px', background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>
+                        <span>{b.label} · {list.length}</span>
+                        <span style={{ fontSize: 12 }}>{open ? '▾' : '▸'}</span>
+                      </div>
+                      {open && list.map((it, i) => renderRow(it, i))}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })()
@@ -24724,7 +25330,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
             </div>
             {selectedDay === today8601() && <span style={s.pill(C.accent2)}>Today</span>}
             {selEventDay.length > 0 && <span style={s.pill(C.accent)}>{selEventDay.length} event{selEventDay.length > 1 ? 's' : ''}</span>}
-            {selPayments.length > 0 && <span style={s.pill(C.warn)}>{selPayments.length} payment{selPayments.length > 1 ? 's' : ''} due</span>}
+            {selPayments.length > 0 && <span style={s.pill(C.muted)}>{selPayments.length} payment{selPayments.length > 1 ? 's' : ''} due</span>}
           </div>
 
           {/* Events on this day */}
@@ -24787,10 +25393,10 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 const v = item.vendor;
                 const bal = v ? vendorBalance(v) : 0;
                 return (
-                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.warn}`, cursor: 'pointer' }}>
-                    <span style={{ fontSize: 11, color: C.warn, fontWeight: 700 }}>💳 Payment Due</span>
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label} · <span style={{ color: C.muted }}>{item.eventName}</span></span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>{fmtD(bal)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{fmtD(bal)}</span>
                   </div>
                 );
               })}
@@ -25323,7 +25929,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
             </div>
 
             {!anyOn && (
-              <div style={{ fontSize: 12, color: C.warn, marginTop: 14, textAlign: 'center' }}>Select at least one section to deliver</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 14, textAlign: 'center' }}>Select at least one section to deliver</div>
             )}
 
             {/* Guest list template download — always available */}
@@ -25742,7 +26348,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                 <div style={{ fontSize: 11, color: C.muted, whiteSpace: 'nowrap', flexShrink: 0 }}>{item.duration || 0} min</div>
                 {/* Vote outcome pill */}
                 {isVote && item.voteOutcome && (
-                  <span style={{ ...s.pill(item.voteOutcome === 'Passed' ? C.success : item.voteOutcome === 'Failed' ? C.danger : C.warn), fontSize: 10 }}>
+                  <span style={{ ...s.pill(item.voteOutcome === 'Passed' ? C.success : item.voteOutcome === 'Failed' ? C.danger : C.muted), fontSize: 10 }}>
                     {item.voteOutcome}
                   </span>
                 )}
@@ -25836,7 +26442,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                         />
                       </div>
                       {isVote && item.voteOutcome && (
-                        <span style={{ ...s.pill(item.voteOutcome === 'Passed' ? C.success : item.voteOutcome === 'Failed' ? C.danger : C.warn), fontSize: 12, padding: '4px 12px' }}>
+                        <span style={{ ...s.pill(item.voteOutcome === 'Passed' ? C.success : item.voteOutcome === 'Failed' ? C.danger : C.muted), fontSize: 12, padding: '4px 12px' }}>
                           {item.voteOutcome} — {item.voteYes || 0}y / {item.voteNo || 0}n / {item.voteAbstain || 0}a
                         </span>
                       )}
@@ -25958,7 +26564,7 @@ function WeatherAlert({ event, onNavTo }) {
 
   if (!shouldFetch || dismissed || loading || !wx || wx.risk === 'clear') return null;
 
-  const riskColor = wx.risk === 'high' ? C.danger : C.warn;
+  const riskColor = wx.risk === 'high' ? C.danger : C.muted;
   return (
     <div style={{
       margin: '0 0 12px', padding: '10px 16px', borderRadius: 8,
@@ -26073,8 +26679,8 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>{otherAlerts.length}</span>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px 8px 17px' : '8px 28px 8px 31px', background: C.surface, borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${a.sev === 'critical' ? C.danger : C.warn}` }}>
-              <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.warn, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px 8px 17px' : '8px 28px 8px 31px', background: C.surface, borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${a.sev === 'critical' ? C.danger : C.muted}` }}>
+              <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.muted, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
               <span style={{ flex: 1, fontSize: 13, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
               {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 40, fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
               <button onClick={() => onDismiss(a.id)} style={{ width: 32, height: 32, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -26174,7 +26780,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <StatCard label="Total"    value={arrivals.length} />
         <StatCard label="Arrived"  value={arrivals.filter(v => v.arrivalStatus === 'arrived').length}   color={C.success} />
-        <StatCard label="Pending"  value={arrivals.filter(v => !v.arrivalStatus || v.arrivalStatus === 'pending').length} color={C.warn} />
+        <StatCard label="Pending"  value={arrivals.filter(v => !v.arrivalStatus || v.arrivalStatus === 'pending').length} color={C.muted} />
         <StatCard label="Delayed"  value={arrivals.filter(v => v.arrivalStatus === 'delayed').length}   color={C.danger} />
       </div>
 
@@ -26184,8 +26790,8 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           visible AND offers a one-tap email handoff (mailto, so it's honest
           — opens the planner's email app, doesn't send anything). */}
       {missingArrivalTime.length > 0 && (
-        <div style={{ ...s.card, padding: '14px 16px', marginBottom: 16, borderLeft: `3px solid ${C.warn}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.warn, marginBottom: 6 }}>
+        <div style={{ ...s.card, padding: '14px 16px', marginBottom: 16, borderLeft: `3px solid ${C.muted}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
             Missing arrival times · {missingArrivalTime.length}
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
@@ -26242,9 +26848,9 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           else groups.comingup.push(v);
         });
         const sections = [
-          { id: 'late',     label: 'Late · needs attention', color: C.warn,    vendors: groups.late },
+          { id: 'late',     label: 'Late · needs attention', color: C.muted,    vendors: groups.late },
           { id: 'onsite',   label: 'On site',                 color: C.success, vendors: groups.onsite },
-          { id: 'enroute',  label: 'En route',                color: C.warn,    vendors: groups.enroute },
+          { id: 'enroute',  label: 'En route',                color: C.muted,    vendors: groups.enroute },
           { id: 'comingup', label: 'Coming up',               color: C.muted,   vendors: groups.comingup },
         ].filter(sec => sec.vendors.length > 0);
         return sections.map(sec => (
@@ -26269,7 +26875,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           const st     = v.arrivalStatus || 'pending';
           const vm     = parseMin(v.arrivalTime);
           const late   = isEvtDay && vm !== null && vm < nowMin - 10 && st !== 'arrived' && st !== 'completed';
-          const stColor = st === 'arrived' ? C.success : st === 'delayed' || late ? C.danger : st === 'completed' ? C.muted : C.warn;
+          const stColor = st === 'arrived' ? C.success : st === 'delayed' || late ? C.danger : st === 'completed' ? C.warn : C.muted;
           return (
             <div key={v.id} style={{ ...s.card, padding: '14px 16px', borderLeft: `3px solid ${stColor}`, borderRadius: 14, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.02), 0 4px 10px rgba(0,0,0,0.30), 0 14px 28px rgba(0,0,0,0.22)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -26284,7 +26890,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
               {/* Status tap buttons — 48px min height, thumb-friendly */}
               <div style={{ display: 'flex', gap: 6 }}>
                 {Object.entries(ARRIVAL_STATUS_CFG).map(([key, label]) => {
-                  const kColor = key === 'arrived' ? C.success : key === 'delayed' ? C.danger : key === 'completed' ? C.muted : C.warn;
+                  const kColor = key === 'arrived' ? C.success : key === 'delayed' ? C.danger : key === 'completed' ? C.warn : C.muted;
                   return (
                     <button key={key} onClick={() => setStatus(v.id, key)}
                       style={{ flex: 1, minHeight: 44, padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${st === key ? kColor : C.border}`, background: st === key ? kColor + '18' : 'transparent', color: st === key ? kColor : C.muted, fontSize: 11, fontWeight: st === key ? 700 : 400, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s' }}>
@@ -26353,7 +26959,7 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType }) {
                                 'ALL CLEAR';
   const heroLabelColor =
     heroState === 'critical'  ? C.danger :
-    heroState === 'attention' ? C.warn :
+    heroState === 'attention' ? C.muted :
                                 C.success;
   const heroHeadline =
     heroState === 'critical'  ? `${now.length} task${now.length !== 1 ? 's' : ''} need${now.length === 1 ? 's' : ''} you right now.` :
@@ -26453,12 +27059,12 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType }) {
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
         <StatCard label="Now"   value={now.length}   color={now.length   > 0 ? C.danger  : C.muted} />
-        <StatCard label="Next"  value={next.length}  color={next.length  > 0 ? C.warn    : C.muted} />
+        <StatCard label="Next"  value={next.length}  color={next.length  > 0 ? C.muted    : C.muted} />
         <StatCard label="Later" value={later.length} color={later.length > 0 ? C.muted   : C.muted} />
         <StatCard label="Done"  value={doneCount}    color={doneCount    > 0 ? C.success : C.muted} />
       </div>
       <TaskSection title="Now — Act Immediately" tasks={now}   color={C.danger} />
-      <TaskSection title="Next — Within 7 Days"  tasks={next}  color={C.warn}   />
+      <TaskSection title="Next — Within 7 Days"  tasks={next}  color={C.muted}   />
       <TaskSection title="Later"                 tasks={later} color={C.muted}  />
       {modalTask && (
         <TaskModal task={modalTask} eventDate={eventDate} onClose={() => setModalId(null)}
@@ -26612,13 +27218,39 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
   // saves a snapshot to the workspace vendor bank, and surfaces the
   // success state. No keystroke-autosave for the wizard flow — the
   // record exists only after Create.
-  const handleCreate = ({ identity, selectedPromiseKeys, saveToBank }) => {
+  const handleCreate = ({ identity, selectedPromiseKeys, saveToBank, details = {} }) => {
+    // Board #2: the wizard must capture VALUES, not just checkbox labels. A vendor
+    // born with cost:0 / no COI is a record that tracks nothing — the budget reads
+    // $0, the deposit clock never ticks, and the dock board stays dark. Persist the
+    // operational facts the planner entered so the engine lights up from creation.
+    const num = (x) => { const n = Number(x); return Number.isFinite(n) && n > 0 ? n : 0; };
+    const cost = num(details.cost);
+    const depositAmt = num(details.depositAmt);
+    const coiRequired = !!details.coiRequired;
     const newVendor = {
       id: uid(),
       name: identity.name.trim(),
       category: identity.category,
+      // Tie the new vendor into the event budget from the start — without a
+      // budgetCategory it never shows up in the Budget sections (board: "budget
+      // sections not working on vendor creation").
+      budgetCategory: identity.category,
+      cost, depositAmt, depositPaid: false, balancePaid: false,
+      payDueDate: details.payDueDate || null,
+      arrivalTime: details.arrivalTime || '',
       tags: Array.isArray(identity.tags) ? [...identity.tags] : [],
-      status: 'Considering', // Born-guilty fix: 'Unconfirmed' wasn't a valid STAGE; a brand-new vendor starts at 'Considering', not delinquent.
+      // A captured quote means the vendor is genuinely 'Quoted', not merely
+      // 'Considering' — but we never auto-promote to a committed stage (that's
+      // the planner's call as they contract).
+      status: cost > 0 ? 'Quoted' : 'Considering',
+      // COI seeded at creation so the day-of dock board + readiness gate light up
+      // now, not weeks later. 'requested' = required-but-not-yet-collected.
+      ...(coiRequired ? {
+        coiStatus: 'requested', coiVerified: false,
+        insuranceStatus: 'COI requested',
+        ...(details.coiExpiry ? { coiExpiryDate: details.coiExpiry } : {}),
+        ...(details.coiHolder ? { coiHolder: details.coiHolder.trim() } : {}),
+      } : {}),
       contact_name: (identity.contactName || '').trim(),
       contact: (identity.email || '').trim(), // VendorModal uses `contact` for email
       email: (identity.email || '').trim(),
@@ -26630,6 +27262,12 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setVendors(prev => [...(prev || []), newVendor]);
+    // Seed the event-level COI requirement so the readiness gate (event.coiNeeded)
+    // and the dock board recognize this event collects insurance — once set, every
+    // future vendor inherits the expectation.
+    if (coiRequired && typeof setEvent === 'function') {
+      setEvent(prev => (prev && prev.coiNeeded === 'required') ? prev : { ...prev, coiNeeded: 'required' });
+    }
     let savedToBank = false;
     if (saveToBank && typeof onSaveVendorToBank === 'function') {
       try { onSaveVendorToBank(newVendor); savedToBank = true; }
@@ -26764,6 +27402,29 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
     name: '', category: '', tags: [], contactName: '', email: '', phone: '', website: '',
   });
   const [saveToBank, setSaveToBank] = useState(false);
+  // Board #2: capture the operational VALUES at creation. At-home gatherings are
+  // not business engagements, so COI defaults OFF there; a venue event defaults
+  // COI ON with the venue pre-filled as the certificate holder.
+  const atHome = !!(event && isAtHomeType(event.type));
+  const [details, setDetails] = useState(() => ({
+    cost: '', depositAmt: '', payDueDate: '', arrivalTime: '',
+    coiRequired: !!(event && !atHome && event.venue),
+    coiHolder: (event && event.venue) || '',
+    coiExpiry: '',
+  }));
+  const setDet = (k, v) => setDetails(d => ({ ...d, [k]: v }));
+  const lblStyle = { display: 'block', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 };
+  // Engine-aware category scoping: only present the categories THIS event type
+  // calls for (board: "don't show options the event doesn't call for"), with an
+  // escape hatch to the full list. Derived from the same rosters the engine uses.
+  const relevantCats = useMemo(() => {
+    if (!event) return null;
+    const types = eventTypesOf(event);
+    const cats = types && types.length ? mergeVendorStubs(...types) : proposedVendorCategories(event.type);
+    return cats && cats.length ? [...new Set(cats)] : null;
+  }, [event]);
+  const [showAllCats, setShowAllCats] = useState(false);
+  const useFilteredCats = relevantCats && !showAllCats;
   // Playbook for the chosen category, derived live.
   const playbook = useMemo(() => identity.category ? getVendorPlaybook(identity.category) : null, [identity.category]);
   const evidenceSet = useMemo(() => new Set(playbook?.evidenceNeeded || []), [playbook]);
@@ -26877,6 +27538,14 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 </div>
               </div>
 
+              {/* At-home gatherings aren't full-service business events — set the
+                  expectation so the planner adds only what they're truly hiring. */}
+              {event && isAtHomeType(event.type) && (
+                <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                  🏠 <span style={{ color: C.text, fontWeight: 600 }}>Hosting at home.</span> This isn't a full-service event — add only the few vendors you're actually hiring (caterer, bar, rentals). Many at-home gatherings need none at all.
+                </div>
+              )}
+
               <div style={{ marginBottom: 12 }}>
                 <label htmlFor="av-name" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
                   Vendor name <span style={{ color: steelTop }}>*</span>
@@ -26903,19 +27572,32 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   onChange={e => setIdentity(d => ({ ...d, category: e.target.value }))}
                   style={{ ...s.input, cursor: 'pointer' }}>
                   <option value="">Choose one…</option>
-                  {CATEGORY_GROUPS.map(g => (
-                    <optgroup key={g.group} label={g.group}>
-                      {g.cats.map(c => <option key={c} value={c}>{c}</option>)}
+                  {useFilteredCats ? (
+                    <optgroup label={`Suggested for ${eventTypeLabel(event) || 'this event'}`}>
+                      {relevantCats.map(c => <option key={c} value={c}>{c}</option>)}
+                      {identity.category && !relevantCats.includes(identity.category) && <option value={identity.category}>{identity.category}</option>}
                     </optgroup>
-                  ))}
+                  ) : (
+                    CATEGORY_GROUPS.map(g => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.cats.map(c => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                    ))
+                  )}
                 </select>
+                {relevantCats && (
+                  <button type="button" onClick={() => setShowAllCats(v => !v)}
+                    style={{ background: 'none', border: 'none', padding: '6px 0 0', color: C.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {showAllCats ? `Show only ${eventTypeLabel(event) || 'relevant'} categories` : 'Need something else? Show all categories'}
+                  </button>
+                )}
                 {identity.category && playbook && (
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{playbook.plainDescription}</div>
                 )}
                 {/* Attribute tags — optional cross-cutting qualities. */}
                 <div style={{ marginTop: 12 }}>
                   <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Attributes <span style={{ opacity: 0.7 }}>(optional)</span></div>
-                  <TagChips value={identity.tags} onChange={(tags) => setIdentity(d => ({ ...d, tags }))} />
+                  <TagChips value={identity.tags} onChange={(tags) => setIdentity(d => ({ ...d, tags }))} options={attrsForVendorCategory(identity.category)} />
                 </div>
               </div>
 
@@ -27032,6 +27714,67 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   </div>
                 </>
               )}
+
+              {/* Board #2 — capture VALUES, not just checkbox labels. The few facts
+                  that drive the budget, the payment countdown, and the day-of board.
+                  All optional; skip what you don't have yet. */}
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Add what you know</div>
+                <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginBottom: 12 }}>
+                  These power the budget, the payment countdown, and the day-of board. Skip anything you don't have yet — you can add it later.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={lblStyle}>Estimated cost</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: C.muted, fontSize: 13, pointerEvents: 'none' }}>$</span>
+                      <input inputMode="decimal" value={details.cost} onChange={e => setDet('cost', e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" style={{ ...s.input, paddingLeft: 22 }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lblStyle}>Deposit</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: C.muted, fontSize: 13, pointerEvents: 'none' }}>$</span>
+                      <input inputMode="decimal" value={details.depositAmt} onChange={e => setDet('depositAmt', e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0" style={{ ...s.input, paddingLeft: 22 }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={lblStyle}>Payment due</label>
+                    <input type="date" value={details.payDueDate} onChange={e => setDet('payDueDate', e.target.value)} style={s.input} />
+                  </div>
+                  <div>
+                    <label style={lblStyle}>Arrival / load-in</label>
+                    <input type="time" value={details.arrivalTime} onChange={e => setDet('arrivalTime', e.target.value)} style={s.input} />
+                  </div>
+                </div>
+                {/* COI — only for business events; an at-home gathering doesn't ask a
+                    friend bringing food for a certificate of insurance. */}
+                {!atHome && (
+                  <div style={{ marginTop: 12, border: `1px solid ${C.border}`, borderRadius: 10, padding: '11px 13px' }}>
+                    <label onClick={() => setDet('coiRequired', !details.coiRequired)} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 4, marginTop: 1, border: `2px solid ${details.coiRequired ? C.accent : C.muted}`, background: details.coiRequired ? C.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {details.coiRequired && <span style={{ fontSize: 11, color: C.accentText || '#fff', fontWeight: 700 }}>✓</span>}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>Insurance certificate (COI) required</div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>Most venues require it. Seeds the day-of dock board and the readiness check now, not weeks later.</div>
+                      </div>
+                    </label>
+                    {details.coiRequired && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 11 }}>
+                        <div>
+                          <label style={lblStyle}>Certificate holder</label>
+                          <input value={details.coiHolder} onChange={e => setDet('coiHolder', e.target.value)} placeholder="Who must be named" style={s.input} />
+                        </div>
+                        <div>
+                          <label style={lblStyle}>Expires</label>
+                          <input type="date" value={details.coiExpiry} onChange={e => setDet('coiExpiry', e.target.value)} style={s.input} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -27044,10 +27787,11 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   { label: 'Vendor name',         value: identity.name.trim() || '—' },
                   { label: 'Category',            value: identity.category || '—' },
                   { label: 'Saved to vendor bank', value: saveToBank && bankAvailable ? (alreadyInBankHit ? 'Already in bank — no duplicate' : 'Yes') : 'No' },
+                  { label: 'Estimated cost',      value: details.cost ? fmtD(Number(details.cost)) : 'Not set yet' },
+                  { label: 'Deposit',             value: details.depositAmt ? `${fmtD(Number(details.depositAmt))}${details.payDueDate ? ` · due ${details.payDueDate}` : ''}` : (details.payDueDate ? `Due ${details.payDueDate}` : 'Not set yet') },
+                  { label: 'Insurance (COI)',     value: atHome ? 'Not required — home event' : details.coiRequired ? (details.coiHolder ? `Required · names ${details.coiHolder}${details.coiExpiry ? ` · exp ${details.coiExpiry}` : ''}` : 'Required · to collect') : 'Not required' },
                   { label: 'Promise tracker',     value: `${selectedCount} selected item${selectedCount === 1 ? '' : 's'}` },
                   { label: 'Proof needed',     value: `${evidenceCount} item${evidenceCount === 1 ? '' : 's'}` },
-                  { label: 'Messages sent',       value: 'None' },
-                  { label: 'Notifications sent',  value: 'None' },
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: i ? 8 : 0, paddingBottom: i === arr.length - 1 ? 0 : 8, borderBottom: i === arr.length - 1 ? 'none' : `1px solid ${C.border}` }}>
                     <div style={{ fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{row.label}</div>
@@ -27082,6 +27826,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 identity,
                 selectedPromiseKeys: Array.from(selectedKeys),
                 saveToBank: saveToBank && bankAvailable && !alreadyInBankHit,
+                details,
               })}>
               Create vendor
             </PrimaryButton>
@@ -27736,7 +28481,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
           padding: '10px 16px 10px 19px',
           background: C.surface,
           borderBottom: `1px solid ${C.border}`,
-          borderLeft: `3px solid ${C.warn}`,
+          borderLeft: `3px solid ${C.muted}`,
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -27790,7 +28535,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
           padding: '10px 16px 10px 19px',
           background: C.surface,
           borderBottom: `1px solid ${C.border}`,
-          borderLeft: `3px solid ${migrationResult.ok ? C.success : C.warn}`,
+          borderLeft: `3px solid ${migrationResult.ok ? C.success : C.muted}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
@@ -28096,7 +28841,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
   // amber = needs attention, neutral = informational only.
   const statusColor = (st) => {
     if (st === 'signed' || st === 'approved' || st === 'final') return C.success;
-    if (st === 'pending' || st === 'draft' || st === 'sent')    return C.warn;
+    if (st === 'pending' || st === 'draft' || st === 'sent')    return C.muted;
     return C.muted;
   };
 
@@ -28112,13 +28857,13 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
       return { label: 'Signed', color: C.success, action: hasLink ? 'Open file' : null };
     }
     if (d.kind === 'contract' && !hasLink) {
-      return { label: 'Needs upload', color: C.warn, action: 'Upload' };
+      return { label: 'Needs upload', color: C.muted, action: 'Upload' };
     }
     if (d.status === 'draft')   return { label: 'Draft',                color: C.muted, action: hasLink ? 'Open file' : 'Upload' };
-    if (d.status === 'pending') return { label: 'Needs client review',  color: C.warn,  action: hasLink ? 'Open file' : 'Upload' };
-    if (d.status === 'sent')    return { label: 'Pending',              color: C.warn,  action: hasLink ? 'Open file' : null };
+    if (d.status === 'pending') return { label: 'Needs client review',  color: C.muted,  action: hasLink ? 'Open file' : 'Upload' };
+    if (d.status === 'sent')    return { label: 'Pending',              color: C.muted,  action: hasLink ? 'Open file' : null };
     if (hasLink)                return { label: 'Linked',               color: C.success, action: 'Open file' };
-    return                              { label: 'Needs upload',        color: C.warn,  action: 'Upload' };
+    return                              { label: 'Needs upload',        color: C.muted,  action: 'Upload' };
   };
 
   const vendorDocOperationalStatus = (v) => {
@@ -28126,10 +28871,10 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
     const hasFile    = Boolean(v.contractUrl || v.contractFileName || v.contractStoragePath);
     const dsInFlight = v.docusignEnvelopeId && v.docusignStatus !== 'completed';
     if (signed && hasFile)        return { label: 'Signed',          color: C.success, action: v.contractUrl ? 'Open file' : null };
-    if (signed && !hasFile)       return { label: 'Needs upload',    color: C.warn,    action: 'Upload signed contract' };
-    if (dsInFlight)               return { label: 'Pending signature', color: C.warn,  action: 'Open contract' };
-    if (hasFile && !signed)       return { label: 'Needs signature', color: C.warn,    action: 'Request signature' };
-    return                                { label: 'Needs upload',    color: C.warn,    action: 'Upload contract' };
+    if (signed && !hasFile)       return { label: 'Needs upload',    color: C.muted,    action: 'Upload signed contract' };
+    if (dsInFlight)               return { label: 'Pending signature', color: C.muted,  action: 'Open contract' };
+    if (hasFile && !signed)       return { label: 'Needs signature', color: C.muted,    action: 'Request signature' };
+    return                                { label: 'Needs upload',    color: C.muted,    action: 'Upload contract' };
   };
 
   // Sprint 60.L F13: SectionTitle tag 11 → 12 (status-pill min);
@@ -28202,7 +28947,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
             {/* Sprint 60.L F13: top attention section reads as a banner —
                 amber-tinted section title + count chip pop above the calm
                 rows below. */}
-            <SectionTitle label="Needs attention" count={attentionCount} accent={C.warn} />
+            <SectionTitle label="Needs attention" count={attentionCount} accent={C.muted} />
             <div style={{ padding: isMobile ? '0 14px' : '0 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Sprint 60.L F13: attention rows readable on phone.
                   title 12 → 14.5, metadata 10.5 → 13, button 11 → 14. */}
@@ -28211,7 +28956,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 const op = eventDocOperationalStatus(d);
                 const opener = d.url || d.signedUrl || d.fileUrl || null;
                 return (
-                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
+                  <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
@@ -28238,7 +28983,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
               {attentionVendorDocs.map(v => {
                 const op = vendorDocOperationalStatus(v);
                 return (
-                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}`, flexWrap: 'wrap' }}>
+                  <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{v.name}</div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
@@ -28487,10 +29232,10 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
   return (
     <div style={{
       margin: '0 0 12px', padding: '10px 12px 10px 15px', borderRadius: 8,
-      background: C.surface2, borderLeft: `3px solid ${C.warn}`,
+      background: C.surface2, borderLeft: `3px solid ${C.muted}`,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.warn, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
         {sec} templates not applied
       </div>
       <div style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
@@ -28586,14 +29331,14 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           return (
             // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
             // for grandmother-readable phone brightness.
-            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.warn}` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.warn, marginBottom: 8 }}>
+            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
                 Heads up · Missing logistics
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {gaps.map(g => (
                   <li key={g} style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>
-                    <span style={{ color: C.warn, marginRight: 8 }}>•</span>{g}
+                    <span style={{ color: C.muted, marginRight: 8 }}>•</span>{g}
                   </li>
                 ))}
               </ul>
@@ -28795,7 +29540,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
       </div>
 
       {pendingApprovals > 0 && (
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.warn, background: C.warn + '14', border: `1px solid ${C.warn}44`, padding: '6px 10px', borderRadius: 7 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, background: C.muted + '14', border: `1px solid ${C.muted}44`, padding: '6px 10px', borderRadius: 7 }}>
           {pendingApprovals} pending approval{pendingApprovals !== 1 ? 's' : ''}
         </div>
       )}
@@ -29071,9 +29816,9 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
 
   const accent = caughtUp ? C.muted
     : level === 'critical' ? C.danger
-    : level === 'attention' ? C.warn
+    : level === 'attention' ? C.muted
     : C.accent2;
-  const ownerColor = owner.key === 'you' ? C.warn
+  const ownerColor = owner.key === 'you' ? C.muted
     : (owner.key === 'vendor' || owner.key === 'client') ? C.text
     : C.muted;
 
@@ -29868,7 +30613,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </span>
           )}
           {syncState === 'offline' && (
-            <span style={{ fontSize: 10, color: C.warn, fontWeight: 600 }}>● Offline</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● Offline</span>
           )}
           {syncState === 'saving' && (
             <span style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>● Saving…</span>
@@ -29880,13 +30625,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <span style={{ fontSize: 10, color: C.danger, fontWeight: 600 }}>● Sync failed</span>
           )}
           {(syncState === 'pending' || (syncState !== 'sync_failed' && pendingCount > 0)) && (
-            <span style={{ fontSize: 10, color: C.warn, fontWeight: 600 }}>● {pendingCount} pending</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● {pendingCount} pending</span>
           )}
           {/* Board: the verbose "Saved 15s ago" chip is the lowest-value pixel in
               the header and fragments onto its own line — cut. Save state is shown
               only as a transient "Saving…" / failure signal above. */}
           {(syncState === 'saved' || syncState === 'idle') && savedAt && !online && (
-            <span style={{ fontSize: 10, color: C.warn, fontWeight: 600 }}>● Offline</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● Offline</span>
           )}
           {isSidebarNav ? (
             /* Desktop/tablet-land: 3 visible + overflow ··· */
@@ -29995,8 +30740,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       </div>}
 
       {/* The Next-Step Spine — persistent on every specialist tab (L4). Hidden on
-          Command (the full NBA hero IS the expanded detail view) and in day-of
-          mode (EventDayBar owns the live strip). Full-bleed chrome, matching the
+          Command (the full NBA hero IS the expanded detail view), on Communication
+          (a messaging surface, not a next-action workspace), and in day-of mode
+          (EventDayBar owns the live strip). Full-bleed chrome, matching the
           header's gutter, so it reads as one continuous spine across the frame. */}
       {tab !== 'Command' && tab !== 'Communication' && !dayMode && (
         <NextStepSpine
@@ -30009,6 +30755,12 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             handleTabChange(route.tab, itemId, route.vendorSection ? { vendorSection: route.vendorSection } : undefined);
           }}
         />
+      )}
+
+      {/* Shadow-mode preview of the Event Intelligence backward-solve (additive; never
+          replaces the Spine). Self-guarded — renders nothing if the engine can't solve. */}
+      {tab !== 'Command' && tab !== 'Communication' && !dayMode && event && (
+        <EngineNextStep event={event} />
       )}
 
       {/* Weather risk alert — outdoor events within 14 days */}
@@ -30477,26 +31229,63 @@ export default function App() {
   // "Start fresh" or "Clear sample data"), we never auto-inject seeds again.
   // First-run users still see the welcome hero before deciding what to do.
   const [events,         setEvents]         = useState(() => {
+    // One-time injection of the per-family sample events (engine-coverage batch).
+    // Adds any not-yet-present extras even for onboarded users — but only ONCE
+    // (flag-guarded), so it never resurrects samples the user deliberately cleared.
+    const injectBatch = (arr, batch, flag) => {
+      try {
+        if (localStorage.getItem(flag) === '1') return arr;
+        const ids = new Set(arr.map(e => e.id));
+        const add = batch.filter(e => !ids.has(e.id));
+        localStorage.setItem(flag, '1');
+        return add.length ? [...arr, ...add] : arr;
+      } catch { return arr; }
+    };
+    const injectExtra = (arr) => injectBatch(
+      injectBatch(arr, SAMPLE_EVENTS_EXTRA, 'ngw-seed-extra-engine-families-v1'),
+      SAMPLE_EVENTS_DMV, 'ngw-seed-extra-dmv-aa-v1');
+    // One-time migration: replace any STORED sample-event with the fresh module
+    // version so data fixes (COI states, vendor statuses) reach already-injected
+    // users. Flag-guarded; bump the flag version to push a new round of fixes.
+    const refreshSeeds = (arr) => {
+      try {
+        if (localStorage.getItem('ngw-seed-refresh-v2') === '1') return arr;
+        const fresh = new Map([...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV].map(e => [e.id, e]));
+        localStorage.setItem('ngw-seed-refresh-v2', '1');
+        return arr.map(e => fresh.get(e.id) || e);
+      } catch { return arr; }
+    };
     try {
       const d = localStorage.getItem('ngw-events');
       const onboardDone = localStorage.getItem(ONBOARD_DONE_KEY) === '1';
-      if (!d) return onboardDone ? [] : SEED_EVENTS;
+      if (!d) return refreshSeeds(injectExtra(onboardDone ? [] : SEED_EVENTS));
       const stored = JSON.parse(d);
-      if (onboardDone) return stored;
+      if (onboardDone) return refreshSeeds(injectExtra(stored));
       // Pre-onboarding existing behavior: re-merge seeds so any deleted-then-
       // returned demo events come back. After onboard done this is a no-op.
       const storedIds = new Set(stored.map(e => e.id));
       const missing = SEED_EVENTS.filter(e => !storedIds.has(e.id));
-      return missing.length ? [...stored, ...missing] : stored;
+      return refreshSeeds(missing.length ? [...stored, ...missing] : stored);
     } catch { return localStorage.getItem(ONBOARD_DONE_KEY) === '1' ? [] : SEED_EVENTS; }
   });
   const [clients, setClients] = useState(() => {
+    // One-time injection of the pipeline sample clients (every CRM stage), incl. for onboarded users.
+    const CLI_EXTRA_FLAG = 'ngw-seed-extra-clients-pipeline-v1';
+    const injectExtra = (arr) => {
+      try {
+        if (localStorage.getItem(CLI_EXTRA_FLAG) === '1') return arr;
+        const ids = new Set(arr.map(c => c.id));
+        const add = SAMPLE_CLIENTS_EXTRA.filter(c => !ids.has(c.id));
+        localStorage.setItem(CLI_EXTRA_FLAG, '1');
+        return add.length ? [...arr, ...add] : arr;
+      } catch { return arr; }
+    };
     try {
       const d = localStorage.getItem('ngw-clients');
       const onboardDone = localStorage.getItem(ONBOARD_DONE_KEY) === '1';
-      if (!d) return onboardDone ? [] : SEED_CLIENTS;
+      if (!d) return injectExtra(onboardDone ? [] : SEED_CLIENTS);
       const stored = JSON.parse(d);
-      if (onboardDone) return stored;
+      if (onboardDone) return injectExtra(stored);
       const storedIds = new Set(stored.map(c => c.id));
       const missing = SEED_CLIENTS.filter(c => !storedIds.has(c.id));
       return missing.length ? [...stored, ...missing] : stored;
@@ -30948,7 +31737,11 @@ export default function App() {
     // creates their FIRST real event, so sample events can NEVER co-mingle with
     // a real client's data on the dashboard. The manual "Clear sample data"
     // action still exists for clearing before the first real event.
-    const isFirstReal = !isSeedEvent(ev) && !(events || []).some(e => !isSeedEvent(e));
+    // Host-aware guard: a self-host event (recordKind:'event') must NOT trip the
+    // first-real-event sample purge — a host adding their own dinner should never
+    // silently wipe the planner's demo book. Only a real CLIENT event goes "live".
+    const evIsHost = intakeFamilyConfig(ev && ev.type).recordKind === 'event';
+    const isFirstReal = !isSeedEvent(ev) && !evIsHost && !(events || []).some(e => !isSeedEvent(e));
     setEvents(evts => {
       const next = [...evts, ev];
       return isFirstReal ? next.filter(e => !isSeedEvent(e)) : next;
@@ -30988,8 +31781,15 @@ export default function App() {
     // (the event is really created; navigation waits for "Open event").
     if (navigate) setActiveId(ev.id);
   };
-  const createClient = (cl, linkedEventId, openIntake, navigate = true) => {
+  const createClient = (cl, linkedEventId, openIntake, navigate = true, stubEvent = null) => {
     setClients(cs => [...cs, cl]);
+    // Board #3 — a dated/located inquiry creates a real (stub) event, the shared
+    // hub both intakes feed. createEvent handles first-real-event purge + linking
+    // (cl.eventIds already carries the stub id from the modal). The stub holds no
+    // budget/fee rows, so no phantom $0 ledgers.
+    if (stubEvent) {
+      createEvent(stubEvent, cl.id, /* navigate */ false);
+    }
     // Sprint 60.A: first-client-created signal. Records onboarding path
     // only if no event was created first.
     if (!isSeedClient(cl)) {

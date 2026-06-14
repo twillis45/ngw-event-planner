@@ -5,7 +5,6 @@
 // estimates only; never a quote or contract.
 
 import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
-import { budgetFamilyForType } from './confidence.js';
 
 // Per-event-type per-head bands. Reflect commonly cited US bands.
 export const PER_HEAD_BY_TYPE = {
@@ -28,20 +27,6 @@ export const PER_HEAD_BY_TYPE = {
   'Networking Event':  { low:  60, high: 200 },
 };
 
-// Sprint 53 engine hardening — family-level fallback so EVERY supported type
-// resolves to an explicit OR a family band (no silent flat generic). ~19 of the
-// 24 canonical types (Elopement, Anniversary, Holiday Party, Board Meeting,
-// Product Launch, Team Retreat, Town Hall, Training, Award Ceremony, Client
-// Dinner, Wellness Retreat, Dinner Party, Housewarming, Get-Together, etc.)
-// previously fell through to { low:100, high:250 }. Family bands close that gap.
-export const PER_HEAD_BY_FAMILY = {
-  home_hosted:  { low:  30, high: 120 },  // potluck-to-catered home gatherings
-  host_driven:  { low:  60, high: 250 },  // showers, birthdays, graduations
-  full_service: { low: 200, high: 500 },  // weddings, quinces, galas
-  corporate:    { low: 150, high: 400 },  // conferences, launches, retreats
-  travel_led:   { low: 200, high: 600 },  // destination / wellness retreats
-};
-
 /**
  * Planning-grade total budget range for an event.
  * Returns { lowTotal, highTotal } rounded to the nearest $100, or null when
@@ -50,7 +35,7 @@ export const PER_HEAD_BY_FAMILY = {
 export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
-  const ph = PER_HEAD_BY_TYPE[type] || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
+  const ph = PER_HEAD_BY_TYPE[type] || { low: 100, high: 250 };
   const tod = getTimeOfDayFactor(timeOfDay);
   const datePrem = getDatePremium(date, type);
   const factor = (metroFactor || 1) * (tod.multiplier || 1) * (datePrem.multiplier || 1);
