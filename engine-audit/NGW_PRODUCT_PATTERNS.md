@@ -146,6 +146,28 @@ Only build a new engine if the capability *truly* does not exist after all four 
 
 ---
 
+## Pattern 008 — Right Surface Before New Surface
+
+**Principle.** Before adding a new feature or modifying the runtime, verify whether the capability already exists on the **correct** surface — and if the user need is mode-specific, surface it *inside that mode* rather than bolting it onto a general one.
+
+**Rule.** Match the need to the surface that owns it. A signal shown on the wrong surface (even if technically present) reads as missing. Don't promote mode-specific guidance to a global surface that another priority pre-empts.
+
+**Surface ownership (Event Planner, as a worked example):**
+- **Home Spine** → gets the user *to* the right mode ("Your event is today → Enter Day-of Mode"). It does not own granular execution detail.
+- **Event Day Schedule / Day-of Mode** → owns **NOW / NEXT** execution guidance.
+- **Command Center** → owns operational triage (decisions, vendor, readiness).
+- **My Events / Client Events** → own the host vs professional event rosters.
+
+**Relationship to 006/007.** 006 says *audit before building*; 007 says *expose authored data before re-deriving it*; **008 adds the targeting rule** — expose it on the surface that *owns* the need. Getting 006/007 right but on the wrong surface still fails the user (the data is "present" but invisible where they look).
+
+**Anti-pattern.** Forcing a signal onto a surface a higher priority owns (B.2: pushing "what's next" into the Home Spine, which the event-day hero pre-empts) instead of the surface that owns it (the Event Day Schedule's NOW/NEXT board — B2R).
+
+**Origin.** Sprint 55H-B2 → B2R: execution guidance was wired to the Home Spine (wrong surface, pre-empted, invisible); the correct surface (Event Day Schedule) already owned NOW/NEXT and just needed the B.1 data.
+
+**Future products.** Every NGW product: map each need to its owning surface/mode before building, and never let a higher-priority surface swallow a mode-specific signal.
+
+---
+
 ## How patterns relate
 
 - **002 (Spine)** is the *surface contract*; **001 (Decision-First)** is the *ordering law* that governs what the spine shows next.
