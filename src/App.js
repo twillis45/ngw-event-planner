@@ -23,7 +23,7 @@ import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
-import { isAnalyticsConfigured, identifyStudio, track, trackPageView, EVENTS } from './lib/analytics';
+import { isAnalyticsConfigured, identifyStudio, track, trackOnce, trackPageView, EVENTS } from './lib/analytics';
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
@@ -136,6 +136,64 @@ const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board'
 const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise', ...SAMPLE_CLIENT_IDS_EXTRA]);
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
+
+// Sprint 55N — first_value: the first time a user completes an engine-directed
+// action on a real (non-seed) event. Value-set: decision_resolved /
+// approval_recorded / vendor_confirmed / payment_recorded / task_completed.
+// Fires ONCE per user (the activation metric); the triggering event is carried as
+// a property. surfaced_by_engine READS the FROZEN 55M producer (selectEventNextAction)
+// — read-only, no engine/seam mutation. Seed/sample events are excluded.
+const FV_CATEGORY = {
+  decision_resolved: 'decision',
+  approval_recorded: 'approval',
+  vendor_confirmed:  'vendor',
+  payment_recorded:  'vendor',
+  task_completed:    'decision',
+};
+function recordFirstValue(valueAction, event, source) {
+  try {
+    if (!event || isSeedEvent(event)) return;            // real, non-seed events only
+    const daysSince = (iso) => {
+      const t = iso ? Date.parse(iso) : NaN;
+      return Number.isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000));
+    };
+    let surfaced = false;
+    try { const na = selectEventNextAction(event); surfaced = !!na && na.category === FV_CATEGORY[valueAction]; } catch { /* read-only */ }
+    let signupIso = null;
+    try { signupIso = localStorage.getItem('ngw-signup-iso'); } catch { /* ignore */ }
+    try { localStorage.setItem('ngw-first-value-' + event.id, '1'); } catch { /* event-level stamp */ }
+    trackOnce('ngw-first-value', EVENTS.FIRST_VALUE, {
+      value_action: valueAction,
+      first_value_source: source,
+      surfaced_by_engine: surfaced,
+      event_id: event.id,
+      event_type: event.type,
+      days_since_signup: daysSince(signupIso),
+      days_since_event_created: daysSince(event.createdAt),
+    });
+  } catch { /* analytics must never break product flow */ }
+}
+
+// Sprint 55N — activation session signals fired on SIGNED_IN: signed_up (the
+// activation DENOMINATOR, once/user) + returned_d1 / returned_d7 (retention).
+// Derived from the authoritative Supabase user.created_at; caches the signup ISO
+// so first_value can report days_since_signup. No PII (id only; provider name).
+function trackActivationSession(user) {
+  try {
+    if (!user || !user.id) return;
+    const createdIso = user.created_at || null;
+    try { if (createdIso && !localStorage.getItem('ngw-signup-iso')) localStorage.setItem('ngw-signup-iso', createdIso); } catch { /* ignore */ }
+    const createdT = createdIso ? Date.parse(createdIso) : NaN;
+    const isNew = !Number.isNaN(createdT) && (Date.now() - createdT) < 120000;
+    const days  = Number.isNaN(createdT) ? null : Math.max(0, Math.floor((Date.now() - createdT) / 86400000));
+    trackOnce('ngw-evt-signed_up-' + user.id, EVENTS.SIGNED_UP, {
+      is_new_account: isNew,
+      auth_method: (user.app_metadata && user.app_metadata.provider) || 'unknown',
+    });
+    if (days != null && days >= 1) trackOnce('ngw-returned-d1-' + user.id, EVENTS.RETURNED_D1, { days_since_signup: days });
+    if (days != null && days >= 7) trackOnce('ngw-returned-d7-' + user.id, EVENTS.RETURNED_D7, { days_since_signup: days });
+  } catch { /* analytics must never break auth flow */ }
+}
 const ONBOARD_DONE_KEY = 'ngw-onboard-done';
 // Sprint 54C — synchronous "is a Supabase session present?" check. The auth token
 // lives in localStorage under the default key sb-<project-ref>-auth-token. Used by
@@ -27334,6 +27392,10 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
   // sync + localStorage persistence all keep working.
   const onPatchVendor = (vendorId, patch) => {
     if (!vendorId || !patch) return;
+    // first_value: a vendor commitment (status → Confirmed) or a recorded payment
+    // is an engine-directed action. The user-level once-guard dedupes across both.
+    if (patch.status === 'Confirmed') recordFirstValue('vendor_confirmed', event, 'vendor_stepper');
+    if (patch.depositPaid === true || patch.balancePaid === true) recordFirstValue('payment_recorded', event, 'vendor_payment');
     setVendors(prev => (prev || []).map(v => v.id === vendorId ? { ...v, ...patch } : v));
   };
   // Sprint Add Vendor 10+ — Create handler. Runs once at the end of
@@ -28463,6 +28525,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
 
   const onResolveDecision = (taskId) => {
     track(EVENTS.APPROVAL_RECORDED, { kind: 'decision', action: 'resolved' });
+    recordFirstValue('decision_resolved', event, 'decision_panel');
     setEvent(e => ({
       ...e,
       timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: true, resolvedAt: new Date().toISOString() } : t),
@@ -28489,6 +28552,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
   };
   const onActApproval = (messageId, action) => {
     track(EVENTS.APPROVAL_RECORDED, { kind: 'approval', action });
+    recordFirstValue('approval_recorded', event, 'approval_action');
     const next = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'awaiting';
     setEvent(e => ({
       ...e,
@@ -28839,6 +28903,9 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
 
   // Toggle a task done in the canonical event.timeline (Checklist view).
   const onToggleTask = (taskId) => {
+    // first_value only on a false→true completion (not on un-checking).
+    const wasDone = (event?.timeline || []).find(t => t.id === taskId)?.done;
+    if (!wasDone) recordFirstValue('task_completed', event, 'task_toggle');
     setEvent(e => ({
       ...e,
       timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t),
@@ -31638,7 +31705,7 @@ export default function App() {
       if (data?.session && !cancelled) hydrate();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((evt, sess) => {
-      if (evt === 'SIGNED_IN' && sess?.user) hydrate();
+      if (evt === 'SIGNED_IN' && sess?.user) { hydrate(); trackActivationSession(sess.user); }
       if (evt === 'SIGNED_OUT') reset();
     });
     return () => { cancelled = true; sub?.subscription?.unsubscribe?.(); };
@@ -31663,6 +31730,26 @@ export default function App() {
           showToast('Storage full — import history cleared automatically to free space', 'warning');
         }
       }
+      // Sprint 55N — intake_committed: a real (non-seed) event first crosses from
+      // empty → has operational data (guests / vendors / budget). Once per event.
+      try {
+        (events || []).forEach(ev => {
+          if (!ev || isSeedEvent(ev)) return;
+          const signals = [
+            (ev.guests || []).length  && 'guests',
+            (ev.vendors || []).length && 'vendors',
+            (ev.budget || []).length  && 'budget',
+          ].filter(Boolean);
+          if (!signals.length) return;
+          trackOnce('ngw-intake-' + ev.id, EVENTS.INTAKE_COMMITTED, {
+            event_id: ev.id,
+            event_type: ev.type,
+            signals,
+            days_since_event_created: ev.createdAt
+              ? Math.max(0, Math.floor((Date.now() - Date.parse(ev.createdAt)) / 86400000)) : null,
+          });
+        });
+      } catch { /* analytics must never break the save path */ }
       // 2. Diff against previous snapshot to find removed ids (deletions).
       const prevIds = prevEventIdsRef.current;
       const currentIds = new Set(events.map(e => e.id));
@@ -31886,6 +31973,9 @@ export default function App() {
   };
 
   const createEvent = (ev, explicitClientId, navigate = true) => {
+    // Sprint 55N — stamp createdAt so first_value can report time-to-value
+    // (days_since_event_created). Data field only; no UI/behavior change.
+    if (ev && !ev.createdAt) ev = { ...ev, createdAt: new Date().toISOString() };
     // Board ruling (2026-06-12): auto-purge demo data the instant the planner
     // creates their FIRST real event, so sample events can NEVER co-mingle with
     // a real client's data on the dashboard. The manual "Clear sample data"
