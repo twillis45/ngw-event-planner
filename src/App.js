@@ -9,6 +9,7 @@ import EngineNextStep     from './components/EngineNextStep';
 import { SAMPLE_EVENTS_EXTRA, SAMPLE_EVENT_IDS_EXTRA } from './data/sampleEventsExtra';
 import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClientsExtra';
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
+import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -130,7 +131,7 @@ const APP_VERSION = '1.5.0';
 // Sprint 51: stable seed ids let us distinguish demo data from the planner's
 // real workspace. Used by the welcome hero, sample-data banner, and the
 // "Clear sample data" / "Load sample data" actions.
-const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf', 'ev-msg', ...SAMPLE_EVENT_IDS_EXTRA, ...SAMPLE_EVENT_IDS_DMV]);
+const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board', 'ev-quince', 'ev-gala', 'ev-sweet16', 'ev-shower', 'ev-conf', 'ev-msg', SAMPLE_HOST_DINNER_DEMO_ID, ...SAMPLE_EVENT_IDS_EXTRA, ...SAMPLE_EVENT_IDS_DMV]);
 const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise', ...SAMPLE_CLIENT_IDS_EXTRA]);
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
@@ -31321,9 +31322,20 @@ export default function App() {
         return add.length ? [...arr, ...add] : arr;
       } catch { return arr; }
     };
+    // Sprint 55D: a near-term, scaffolded Dinner Party so the playbook engine's
+    // effects are visible immediately. Date is stamped to ~3 days out at first
+    // injection so it sits inside its shopping window (the next-step can surface
+    // a sized operational buy). Flag-guarded + additive — never resurrects
+    // EXTRA/DMV samples the user cleared, never injected for signed-in users.
+    const hostDinnerDemo = (() => {
+      const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 3);
+      return { ...SAMPLE_HOST_DINNER_DEMO, date: d.toISOString().slice(0, 10) };
+    })();
     const injectExtra = (arr) => injectBatch(
-      injectBatch(arr, SAMPLE_EVENTS_EXTRA, 'ngw-seed-extra-engine-families-v1'),
-      SAMPLE_EVENTS_DMV, 'ngw-seed-extra-dmv-aa-v1');
+      injectBatch(
+        injectBatch(arr, SAMPLE_EVENTS_EXTRA, 'ngw-seed-extra-engine-families-v1'),
+        SAMPLE_EVENTS_DMV, 'ngw-seed-extra-dmv-aa-v1'),
+      [hostDinnerDemo], 'ngw-seed-host-dinner-demo-v1');
     // One-time migration: replace any STORED sample-event with the fresh module
     // version so data fixes (COI states, vendor statuses) reach already-injected
     // users. Flag-guarded; bump the flag version to push a new round of fixes.

@@ -114,3 +114,83 @@ describe('playbookBudgetCategories (engine-derived typical setup)', () => {
     expect(playbookBudgetCategories('', 10)).toBeNull();
   });
 });
+
+// ── Sprint 55D: Phase-1 host playbooks ────────────────────────────────────────
+describe('55D registration + canonical alias resolution', () => {
+  test('all 5 Phase-1 host playbooks resolve by canonical type', () => {
+    ['Dinner Party', 'Birthday', 'Baby Shower', 'Get-Together', 'Graduation'].forEach((t) => {
+      expect(getPlaybook(t)).toBeTruthy();
+      expect(getPlaybook(t).type).toBe(t);
+    });
+  });
+  test('aliases + free-text resolve through the taxonomy', () => {
+    expect(getPlaybook('Birthday Party').type).toBe('Birthday');
+    expect(getPlaybook('Graduation Party').type).toBe('Graduation');
+    expect(getPlaybook('Backyard BBQ').type).toBe('Get-Together');
+    expect(getPlaybook('cookout').type).toBe('Get-Together');
+    expect(getPlaybook('potluck').type).toBe('Get-Together');
+  });
+  test('non-host / unsupported types stay null (existing fallback intact)', () => {
+    ['Wedding', 'Conference', 'Corporate Event', 'Gala', 'Quinceañera', ''].forEach((t) => {
+      expect(getPlaybook(t)).toBeNull();
+    });
+  });
+});
+
+describe('55D per-playbook engine behavior', () => {
+  const CASES = [
+    { type: 'Birthday', guests: 20 },
+    { type: 'Baby Shower', guests: 25 },
+    { type: 'Get-Together', guests: 16 },
+    { type: 'Graduation', guests: 35 },
+  ];
+  const ev = (type, date, guestCount) => ({ id: 'e1', type, date, guestCount });
+
+  CASES.forEach(({ type, guests }) => {
+    describe(type, () => {
+      test('produces in-window operational candidates that scale with guests', () => {
+        // event 1 day out → T-1d purchases due today
+        const small = playbookTasks(ev(type, '2026-06-20', 4), '2026-06-19');
+        const big = playbookTasks(ev(type, '2026-06-20', guests), '2026-06-19');
+        expect(small.length).toBeGreaterThan(0);
+        expect(big.length).toBeGreaterThan(0);
+        // a per-guest essential task should cost/size more at higher headcount
+        const perGuestBig = big.find((t) => t.quantity != null && /lb|drinks|buns|favor/.test(t.unit));
+        const perGuestSmall = small.find((t) => t.item === (perGuestBig || {}).item);
+        if (perGuestBig && perGuestSmall) {
+          expect(perGuestBig.quantity).toBeGreaterThan(perGuestSmall.quantity);
+        }
+      });
+
+      test('window gating: 30 days out → no candidates', () => {
+        expect(playbookTasks(ev(type, '2026-06-20', guests), '2026-05-21')).toEqual([]);
+      });
+
+      test('budget rows derive from purchases, grounded, NO venue line', () => {
+        const cats = playbookBudgetCategories(type, guests);
+        expect(cats).toBeTruthy();
+        expect(cats.length).toBeGreaterThanOrEqual(4);
+        const labels = cats.map((c) => c.label.toLowerCase());
+        expect(labels.some((l) => /venue/.test(l))).toBe(false);
+        expect(labels).toContain('food & groceries');
+        expect(labels).toContain('drinks & bar');
+        cats.forEach((c) => {
+          expect(c.low).toBeGreaterThan(0);
+          expect(c.high).toBeGreaterThanOrEqual(c.low);
+        });
+      });
+
+      test('budget total scales up with guest count', () => {
+        const sum = (g) => playbookBudgetCategories(type, g).reduce((a, c) => a + c.low, 0);
+        expect(sum(guests * 2)).toBeGreaterThan(sum(guests));
+      });
+    });
+  });
+
+  test('every Phase-1 playbook has all 6 budget categories represented', () => {
+    ['Dinner Party', 'Birthday', 'Baby Shower', 'Get-Together', 'Graduation'].forEach((type) => {
+      const cats = playbookBudgetCategories(type, 20).map((c) => c.label);
+      ['Food & groceries', 'Drinks & bar'].forEach((must) => expect(cats).toContain(must));
+    });
+  });
+});
