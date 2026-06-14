@@ -24929,7 +24929,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
   events.forEach(ev => {
     const evColor  = evtCLR[ev.type] || C.muted;
     const evDate   = ev.date;
-    if (evDate) addItem(evDate, { type: 'event', label: ev.name, color: evColor, eventId: ev.id });
+    if (evDate) addItem(evDate, { type: 'event', label: ev.name, color: evColor, eventId: ev.id, venue: ev.venue || '' });
 
     // Phase milestones per event
     const phaseGroups = {};
@@ -25274,12 +25274,20 @@ function MasterCalendarView({ events, onSelectEvent }) {
             const d = new Date(it.ds + 'T00:00:00');
             const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3);
             const dayNum = d.getDate();
+            // Sprint 54E — type tagging by SHAPE + color (never color alone, for
+            // colour-blind scannability): event → calendar icon, bold title, venue ·
+            // payment → dollar icon, amount, green · milestone → clipboard, steel ·
+            // vendor arrival → store icon, steel.
+            const isEvent = it.type === 'event', isPay = it.type === 'payment', isTask = it.type === 'task', isVendor = it.type === 'vendor';
+            const accent  = isPay ? C.success : isEvent ? (it.color || C.text) : C.accent2;
+            const iconName = isEvent ? 'calendar' : isPay ? 'dollar' : isTask ? 'clipboard' : isVendor ? 'store' : 'list';
+            const amt = isPay && it.vendor ? vendorBalance(it.vendor) : 0;
             return (
               <div
                 key={`${it.ds}-${it.eventId}-${i}`}
                 onClick={() => { if (it.eventId) onSelectEvent(it.eventId); else { setSelectedDay(it.ds); setCalView('day'); } }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
                   borderBottom: `1px solid ${C.border}`, cursor: 'pointer',
                   background: isToday ? C.accent2 + '08' : 'transparent', transition: 'background 0.12s',
                 }}
@@ -25290,11 +25298,18 @@ function MasterCalendarView({ events, onSelectEvent }) {
                   <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.10em', color: isToday ? C.accent2 : C.muted }}>{dayLabel}</span>
                   <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: isToday ? C.accent2 : C.text, marginTop: 1, lineHeight: 1 }}>{dayNum}</span>
                 </div>
-                <div style={{ width: 3, height: 32, borderRadius: 2, background: it.color, flexShrink: 0 }} />
+                <div style={{ width: 3, height: 32, borderRadius: 2, background: accent, flexShrink: 0 }} />
+                <span aria-label={`${it.type} item`} title={it.type} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', color: accent }}>
+                  <Icon name={iconName} size={15} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title || it.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: isEvent ? 700 : 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {it.title || it.label}
+                    {isEvent && it.venue && <span style={{ color: C.muted, fontWeight: 400 }}> · {it.venue}</span>}
+                  </div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                    {it.type === 'event' ? 'Event day' : it.type === 'task' ? 'Phase milestone' : it.type === 'payment' ? 'Payment due' : it.type === 'vendor' ? 'Vendor arrival' : it.type}
+                    {isEvent ? 'Event day' : isTask ? 'Phase milestone' : isPay ? 'Payment due' : isVendor ? 'Vendor arrival' : it.type}
+                    {isPay && amt > 0 && <span style={{ color: C.success, fontWeight: 700 }}> · {fmtD(amt)}</span>}
                     {isToday && <span style={{ color: C.accent2, fontWeight: 600 }}> · today</span>}
                   </div>
                 </div>
