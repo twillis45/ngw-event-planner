@@ -102,6 +102,34 @@
 
 ---
 
+## Pattern 006 — Reuse Before Reinvention
+
+**Principle.** When a capability appears missing, the default assumption is that it already exists somewhere in the system and is mis-routed — not that a new engine is required.
+
+**Rule.** Before building anything new, run the four audits in order:
+1. Audit the runtime (what computes a signal today?)
+2. Audit existing intelligence (what data is already authored?)
+3. Audit existing surfaces (what already renders?)
+4. Audit existing workflows (what path already reaches the user?)
+
+Only build a new engine if the capability *truly* does not exist after all four come back empty.
+
+**Preferred path:**
+> Data → Existing Runtime → Existing Surface
+
+**Before reaching for:**
+> Data → New Engine → New UI
+
+**Anti-pattern.** Building a Planner Brain / Readiness Engine / Contingency Engine / AI Orchestrator when the capability already exists elsewhere — adding a parallel system instead of routing the one that's already there. (Every such "engine" becomes a second source of truth that can disagree with the first — see Pattern 001's two-authority problem.)
+
+**Origin.** Sprints 55C (runtime audit found ~70% already existed), 55E (quality audit: authored-but-dark intelligence), 55F (decision-first design = routing, not a new engine), 55G (shipped planner-grade behavior with zero new engines/dashboards/UI).
+
+**Evidence it works.** 55G moved the product from "Buy protein" to "Confirm final guest count" with **one gate + one cascade tier** over existing data — no new architecture. The capability was never missing; the orchestration was.
+
+**Future products.** Every NGW product. The first response to "we need an X engine" is the four audits, not a ticket to build X.
+
+---
+
 ## How patterns relate
 
 - **002 (Spine)** is the *surface contract*; **001 (Decision-First)** is the *ordering law* that governs what the spine shows next.
