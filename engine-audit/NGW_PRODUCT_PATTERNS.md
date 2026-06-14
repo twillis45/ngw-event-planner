@@ -168,6 +168,25 @@ Only build a new engine if the capability *truly* does not exist after all four 
 
 ---
 
+## Pattern 009 — Requirements Before Gaps
+
+**Principle.** A system may infer **requirements** from authored rules; it may not infer **deficits** without ground-truth inventory. State what's *needed*, never what's *missing*, unless you actually know what the user has.
+
+**Rule.** Requirements are derivable (quantity × rule); deficits require a "have" count the system doesn't possess. Until inventory exists, surface the requirement and let the human reconcile.
+
+**Allowed (requirement):** "You'll likely need **12 chairs**."
+**Not allowed (deficit):** "You're **missing 4 chairs**." / "You need to rent **2 tables**."
+
+**Relationship to 003.** Pattern 003 (Trust Before Intelligence) forbids showing uncertainty as truth; **009 is its quantitative case** — a fabricated deficit is uncertainty dressed as fact. A requirement is honest (derived from a rule); a deficit without inventory is a guess presented as a shortfall.
+
+**Anti-pattern.** Computing `need − have` when `have` is unknown and rendering the result as a shortfall ("missing N", "rent N"); inferring physical capacity that depends on unknown facts (parking spots, restroom adequacy, electrical load) as if measured.
+
+**Origin.** Sprint 55H-B3 → B3A: `rentalsGap` gives authored requirements (chairs/plates/serveware × guests); no inventory exists, so the capacity surface states needs ("Confirm seating & serveware for 12 — 12 chairs · 24 plates …"), never deficits.
+
+**Future products.** Any product that plans physical/material needs (Lighting OS gear lists, Photography Business OS kit) — derive the requirement, never assert a shortfall you can't see.
+
+---
+
 ## How patterns relate
 
 - **002 (Spine)** is the *surface contract*; **001 (Decision-First)** is the *ordering law* that governs what the spine shows next.

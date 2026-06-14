@@ -388,6 +388,44 @@ export function effectiveRos(event) {
   return playbookRunOfShow(event) || [];
 }
 
+// ── Capacity requirements (Sprint 55H-B3A · NGW Pattern 009) ──────────────────
+// Pure reader: the physical capacity a host LIKELY NEEDS, scaled from the
+// playbook's authored rentalsGap by guest count. REQUIREMENTS ONLY — never a
+// deficit. No inventory exists, so the system may state "you'll likely need 12
+// chairs" but never "you're missing 4 chairs." No parking / restrooms / power /
+// accessibility (out of scope; never inferred). null when no rentalsGap.
+function shortRental(item) {
+  const map = {
+    'Dinner plates': 'plates', 'Wine + water glasses': 'glasses', 'Flatware sets': 'flatware',
+    'Dining chairs': 'chairs', 'Serving platters + utensils': 'platters', 'Folding tables': 'tables',
+    'Coolers': 'coolers', 'Chairs': 'chairs', 'Canopy / tent': 'canopy', 'Pop-up canopy (10x10)': 'canopy',
+    'Serving platters + serving utensils': 'platters', 'Serving platters + drink dispenser': 'platters',
+    'Chafing dishes / drink dispensers': 'chafers', 'Dining chairs ': 'chairs',
+  };
+  if (map[item]) return map[item];
+  return String(item || '').split(/[(/—-]/)[0].trim().toLowerCase();
+}
+
+export function playbookCapacity(event) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !Array.isArray(playbook.rentalsGap) || !playbook.rentalsGap.length) return null;
+  const guests = guestCountOf(event, playbook);
+  const items = [];
+  for (const r of playbook.rentalsGap) {
+    let qty = null;
+    if (typeof r.qtyPerGuest === 'number') qty = Math.ceil(r.qtyPerGuest * guests);
+    else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') qty = Math.ceil(guests / r.qtyPer) * r.qtyFlat;
+    else if (typeof r.qtyFlat === 'number') qty = r.qtyFlat;
+    if (qty == null || qty <= 0) continue;
+    items.push({ item: r.item, short: shortRental(r.item), qty, note: r.note || '' });
+  }
+  if (!items.length) return null;
+  // compact summary, e.g. "12 chairs · 24 plates · 30 glasses · 12 flatware · 4 platters"
+  const summary = items.map((i) => `${i.qty} ${i.short}`).join(' · ');
+  return { guests, items, summary };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a

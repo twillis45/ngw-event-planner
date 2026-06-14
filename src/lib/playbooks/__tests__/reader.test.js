@@ -326,3 +326,48 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     expect(effectiveRos({ id: 'w', type: 'Wedding', date: '2026-06-20', ros: [] })).toEqual([]);
   });
 });
+
+// ── Sprint 55H-B3A: capacity requirements (Pattern 009) ───────────────────────
+import { playbookCapacity } from '../index';
+
+describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
+  test('Dinner Party 12 guests → scaled requirements, no deficit language', () => {
+    const c = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    expect(c).toBeTruthy();
+    expect(c.guests).toBe(12);
+    const byItem = Object.fromEntries(c.items.map(i => [i.short, i.qty]));
+    expect(byItem.plates).toBe(24);   // 2/guest
+    expect(byItem.glasses).toBe(30);  // 2.5/guest → ceil 30
+    expect(byItem.flatware).toBe(12); // 1/guest
+    expect(byItem.chairs).toBe(12);   // 1/guest
+    expect(byItem.platters).toBe(4);  // flat
+    // summary states needs, never "missing"/"rent"/"borrow N"
+    expect(c.summary).toMatch(/12 chairs/);
+    expect(c.summary).not.toMatch(/missing|deficit|rent \d|short \d/i);
+  });
+
+  test('requirements recalculate with guest count', () => {
+    const c8 = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 8 });
+    const c20 = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 20 });
+    expect(c8.items.find(i => i.short === 'chairs').qty).toBe(8);
+    expect(c20.items.find(i => i.short === 'chairs').qty).toBe(20);
+  });
+
+  test('Birthday + Graduation scale correctly', () => {
+    const bd = playbookCapacity({ id: 'b', type: 'Birthday', guestCount: 20 });
+    expect(bd).toBeTruthy();
+    expect(bd.items.find(i => i.short === 'chairs').qty).toBe(12); // 0.6/guest → ceil(12)
+    const gr = playbookCapacity({ id: 'g', type: 'Graduation', guestCount: 35 });
+    expect(gr).toBeTruthy();
+    expect(gr.items.length).toBeGreaterThan(0);
+  });
+
+  test('non-playbook (Wedding) → null (fallback unchanged)', () => {
+    expect(playbookCapacity({ id: 'w', type: 'Wedding', guestCount: 100 })).toBeNull();
+  });
+
+  test('falls back to typical guests when no count', () => {
+    const c = playbookCapacity({ id: 'e', type: 'Dinner Party' });
+    expect(c.guests).toBe(8); // typicalGuests.default
+  });
+});

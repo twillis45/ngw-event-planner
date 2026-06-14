@@ -38,7 +38,7 @@ import { summarizeCrew } from './lib/studioTeam';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, playbookCapacity } from './lib/playbooks';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -341,7 +341,20 @@ export function deriveCommandCenterData(event) {
       const dr = getDocumentsReadiness(event);
       return stat('Documents', dr.status === 'ON_TRACK' ? 'ON TRACK' : dr.status === 'AT_RISK' ? 'AT RISK' : 'ATTENTION', dr.note);
     })(),
-  ];
+    // Sprint 55H-B3A: capacity REQUIREMENTS (Pattern 009) — what the host LIKELY
+    // needs, scaled from the playbook's rentalsGap by guest count. NEVER a deficit
+    // (no inventory exists). Display-only here in Planning Health — it does NOT
+    // enter getEventReadiness, so it never escalates the next-action ladder/spine.
+    // Neutral steel ('ESTIMATE'), not a green/amber/red status. Playbook events only.
+    (() => {
+      const cap = playbookCapacity(event);
+      if (!cap) return null;
+      return {
+        label: 'Capacity', statusLabel: 'ESTIMATE', color: P.textSecondary,
+        note: `Confirm seating & serveware for ${cap.guests} guests — ${cap.summary}`,
+      };
+    })(),
+  ].filter(Boolean);
 
   // Status headline
   const headlineParts = [];
@@ -1668,7 +1681,7 @@ function DocPill({ label, status, color, onClick }) {
 // ── Planning Health row ───────────────────────────────────────────────────────
 // Each health dimension routes to the tab that owns it (board: a callout that
 // names a problem must be the handle that takes you to it).
-const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents' };
+const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents', Capacity: 'Seating' };
 function HealthRow({ h, isFirst, onTabChange }) {
   const target    = HEALTH_ROUTE[h.label];
   const clickable = !!(target && onTabChange);

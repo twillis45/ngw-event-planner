@@ -83,6 +83,17 @@ const dinnerParty = {
     { id: 'p_dish', item: 'Dish soap, sponges, trash + recycling bags', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery'], unitCostRange: [8, 15], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: extra trash bags + a recycling bag for bottles.' },
   ],
 
+  // Capacity requirements (brought into src from the canonical
+  // dinner-party.playbook.json — Sprint 55H-B3A). Authored REQUIREMENTS only,
+  // scaled by guest count; never a deficit.
+  rentalsGap: [
+    { item: 'Dinner plates', qtyPerGuest: 2, note: '1 dinner + 1 dessert/app, matching', altToBuy: 'borrow or rent if short' },
+    { item: 'Wine + water glasses', qtyPerGuest: 2.5, note: 'wine + water + a few spares for breakage' },
+    { item: 'Flatware sets', qtyPerGuest: 1, note: '+1 spare set per 4' },
+    { item: 'Dining chairs', qtyPerGuest: 1, note: 'the real capacity constraint — borrow folding chairs if short' },
+    { item: 'Serving platters + utensils', qtyFlat: 4, note: 'COMMONLY FORGOTTEN: serving spoons/tongs for each dish' },
+  ],
+
   // Day-of run-of-show schedules (brought into src from the canonical
   // dinner-party.playbook.json so the runtime can surface them — Sprint 55H-B1).
   schedules: {
