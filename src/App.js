@@ -17590,7 +17590,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           { key: 'vendors', label: 'Add your first vendor',   done: guideProgress.vendors, locked: !firstEvent, cta: 'Open it →', onClick: () => firstEvent && onSelectEvent(firstEvent.id, { tab: 'Vendors' }) },
         ];
         const doneN = steps.filter(s => s.done).length;
-        if (guideDismissed || doneN >= steps.length) return null;
+        // Sprint 54D: the onboarding launchpad shows on Home ONLY before real work
+        // begins — hidden once a real (non-seed) event exists OR the planner dismisses
+        // it OR all steps are done. It is NOT deleted: the full checklist stays
+        // reachable any time via Settings → Getting started guide (GettingStartedGuide),
+        // so Home reads as an operational dashboard once the planner is underway.
+        if (guideDismissed || doneN >= steps.length || firstEvent) return null;
         return (
           <div style={{ margin: isMobile ? '12px 14px' : '14px 16px', padding: isMobile ? '14px 16px' : '16px 18px', borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${doneN > 0 ? C.success : C.accent2}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
