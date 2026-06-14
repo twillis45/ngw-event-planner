@@ -17205,6 +17205,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   // B-AllEvents: on-track events collapse behind a count so the board opens on the
   // few that need a human (progressive disclosure).
   const [showOnTrackEvents, setShowOnTrackEvents] = useState(false);
+  // Client Events search + event-type filter (lightweight, session-only).
+  const [eventsSearch, setEventsSearch] = useState('');
+  const [eventsTypeFilter, setEventsTypeFilter] = useState('all');
   useEffect(() => { try { localStorage.setItem('ngw-events-filter', eventsFilter); } catch {} }, [eventsFilter]);
   // Sprint 58X: desktop right-rail preview panel on the Events Index
   const [previewEventId, setPreviewEventId] = useState(null);
@@ -18889,7 +18892,20 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         // Client Events excludes self-host events — those live in My Events, so a
         // host's dinner never appears in the professional portfolio (and vice versa).
         const allEvents = enrichedEvents.filter(ev => !eventIsHostFam(ev)).map(ev => ({ ev, att: getEventAttention(ev) }));
+        // Search + event-type filter. Distinct types come from the roster itself
+        // so the dropdown only ever lists types the planner actually has.
+        const eventTypeOptions = [...new Set(allEvents.map(({ ev }) => ev.type).filter(Boolean))].sort();
+        const evSearchQ = eventsSearch.trim().toLowerCase();
+        const searchHit = (ev) => {
+          if (!evSearchQ) return true;
+          const hay = [ev.name, ev.type, ev.venue, ev.honoree, ev.theme, ev.market]
+            .filter(Boolean).join(' ').toLowerCase();
+          return hay.includes(evSearchQ);
+        };
+        const isSearchingOrTyped = !!evSearchQ || eventsTypeFilter !== 'all';
         const filtered = allEvents.filter(({ ev, att }) => {
+          if (eventsTypeFilter !== 'all' && ev.type !== eventsTypeFilter) return false;
+          if (!searchHit(ev)) return false;
           const totalAtt = att.decisions + att.approvals + att.requests + att.vendorIssues;
           switch (eventsFilter) {
             case 'needs':    return totalAtt > 0;
@@ -18911,7 +18927,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         // Progressive disclosure: split into "needs you" (attention items OR engine
         // date-at-risk) vs on-track. On-track collapses behind a count unless the
         // user is explicitly filtering. Only applies to the unfiltered/needs views.
-        const collapseOnTrack = (eventsFilter === 'all' || eventsFilter === 'needs');
+        // When searching or type-filtering, show every match (don't collapse
+        // on-track behind a count — the planner is looking for something specific).
+        const collapseOnTrack = (eventsFilter === 'all' || eventsFilter === 'needs') && !isSearchingOrTyped;
         // "Needs you" = the RED band only (engine date-at-risk OR overdue decisions).
         // Approaching/awaiting rows collapse with on-track behind the count, so the
         // board opens on the few that need a human now (board: "2-3 at red").
@@ -19151,6 +19169,34 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             <div style={{ display: 'block' }}>
               {/* ── Zone 3: Event List ─────────────────────────────────── */}
               <div>
+                {/* Search + event-type filter */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    style={{ ...s.input, fontSize: 12.5, flex: isMob ? '1 1 100%' : '0 1 260px', width: 'auto' }}
+                    value={eventsSearch}
+                    onChange={e => setEventsSearch(e.target.value)}
+                    placeholder="Search events by name, type, or venue…"
+                    aria-label="Search events"
+                  />
+                  <select
+                    style={{ ...s.input, fontSize: 12.5, width: 'auto', flex: isMob ? '1 1 100%' : '0 0 auto', cursor: 'pointer' }}
+                    value={eventsTypeFilter}
+                    onChange={e => setEventsTypeFilter(e.target.value)}
+                    aria-label="Filter by event type"
+                  >
+                    <option value="all">All types</option>
+                    {eventTypeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  {isSearchingOrTyped && (
+                    <button
+                      onClick={() => { setEventsSearch(''); setEventsTypeFilter('all'); }}
+                      style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, fontFamily: 'inherit' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
                 {/* Filter chips */}
                 <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
                   {filterChips.map(chip => {
