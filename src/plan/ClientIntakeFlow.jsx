@@ -30,7 +30,13 @@ const P = {
   borderDef:    color.border.default,
   textPrimary:   '#eef0f4',
   textSecondary: color.text.secondary,
-  textTertiary:  color.text.tertiary,
+  // Intake legibility fix (2026-06-14): the global tertiary (steel-600 #527088)
+  // was too dark for the intake's small labels / placeholders / hints — it sits
+  // at ~3:1 on the matte card (#1c2227), failing AA for small text. These are
+  // form labels the host must read, so lift to the doctrine-locked readable
+  // steel (steel-400 #849eb8, ~5.9:1). Values/headings stay brighter at
+  // textPrimary, preserving the hierarchy.
+  textTertiary:  color.text.secondary,
   green:  color.status.confirmed,
   amber:  color.status.warning,
   red:    color.status.risk,
