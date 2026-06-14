@@ -1,0 +1,113 @@
+# NGW Product Operating System — Pattern Library
+
+*Reusable operating principles extracted from building the NGW Event Planner, captured as portable IP for the broader **No Guesswork Product Operating System (NGW-POS)**. Each pattern is product-agnostic: it states a principle, the rule that enforces it, the anti-pattern it kills, where it was discovered, and which NGW products it powers. The Event Planner is the proving ground; these patterns are the asset.*
+
+**Products in scope:** Event Planner · Lighting Intelligence · Photography Business OS · Studio Operations OS · FCR Command Center · future NGW products.
+
+---
+
+## Pattern 001 — Decision-First Runtime
+
+**Principle.** Prerequisite decisions always outrank dependent actions.
+
+**Rule.** A user is never instructed to execute an action before the decision that the action depends on exists. If the prerequisite decision is unresolved, surface the *decision*, not the action.
+
+**Bad (action surfaced before its decision):**
+- Buy protein · Order flowers · Reserve chairs
+
+**Before those, the decision must exist:**
+- Headcount finalized · Budget approved · Venue confirmed
+
+**Runtime priority ladder:**
+1. Solve (a constraint/date is at risk)
+2. Blocking decision (headcount, dietary, menu, venue)
+3. Vendor risk
+4. Readiness risk
+5. Operational decision (non-blocking host choices)
+6. Purchase
+7. Execution task
+8. Contingency / recovery
+
+**Anti-pattern.** Purchases (or any dependent action) appearing before the prerequisite decision is resolved — the "shopping-list" failure mode.
+
+**Enforcement note.** Gate the dependent action on observable state; where the decision's done-state is undetectable, surface it as a *prompt*, never a hard block (an undetectable hard block hides the action forever).
+
+**Origin.** Event Planner Sprint 55F (design) → 55G (implementation): the playbook reader surfaced purchases gated only by a date window; "Buy protein" could precede "Confirm final headcount."
+
+**Future products.** Event Planner · Lighting OS (don't spec fixtures before the room/throw decision) · Photography Business OS (don't quote before scope) · Studio Operations OS · FCR Command Center.
+
+---
+
+## Pattern 002 — Next Action Spine
+
+**Principle.** Every screen answers three questions, in order:
+1. What matters?
+2. Why?
+3. What should I do next?
+
+**Rule.** No primary surface ships as a passive readout. The single highest-priority next action is always present, with its justification.
+
+**Anti-pattern.** Dashboards that surface information without guidance — data the user must interpret into a decision themselves.
+
+**Origin.** NGW Event Planner (the Next-Step Spine) · NGW Lighting.
+
+**Future products.** Every NGW product's L1/home surface.
+
+---
+
+## Pattern 003 — Trust Before Intelligence
+
+**Principle.** Never show uncertain information as truth. Escalate only after certainty; never de-escalate after having displayed certainty.
+
+**Rule.** Until data is hydrated/confirmed, render the calm/neutral state. Move *up* in severity as confidence arrives — never show a red/critical or a confident value and then walk it back, and never paint sample data as if it were real.
+
+**Examples (real defects this pattern prevents):**
+- Red → Steel flash (the spine showed critical, then downgraded on hydration).
+- Sample → Real data flash (balance "600K → 200K"; whole-app sample values flashing before cloud truth).
+
+**Origin.** Spine hydration bug (gate critical accent on `eventsHydrated`) · No-seed runtime fix (`hasSupabaseSession()` — never paint samples for a signed-in user).
+
+**Future products.** Any product with async hydration, cloud sync, or sample/demo data.
+
+---
+
+## Pattern 004 — One Meaning, One Label
+
+**Principle.** One concept gets exactly one label. Users never translate terminology in their heads.
+
+**Rule.** A single canonical vocabulary maps each concept to one planner-facing label across every surface; engines and internal states may differ, but the rendered word is unified.
+
+**Anti-pattern.** The same concept under different names on different screens (status vocab drift); forcing the user to learn that "X here" = "Y there."
+
+**Origin.** Pipeline Vocabulary Unification (`STATUS_DISPLAY` / `clientStatusLabel`).
+
+**Future products.** Every product with statuses, stages, or lifecycle states.
+
+---
+
+## Pattern 005 — Operational Intelligence Layer
+
+**Principle.** Tracking dates is not planning. A system that only stores when things happen is a calendar, not an operator.
+
+**Rule.** Operational guidance must carry the full execution layer:
+- decisions · purchases · quantities · readiness · contingencies · recovery paths
+
+…derived from grounded, source-honest domain knowledge (not generated checklists), and surfaced through the existing runtime — not a new dashboard.
+
+**Anti-pattern.** A milestone/date tracker presented as "planning"; a checklist with no quantities, no dependencies, no recovery path.
+
+**Origin.** Playbook System · Dinner Party Operational Layer (the `playbooks/` reader: decisions, purchases with `qtyPerGuest`, buy windows, risks, contingencies, schedules; honest `verificationStatus`).
+
+**Future products.** Lighting OS (gear lists + power/load + fallbacks) · Photography Business OS (shoot run-of-show + deliverable pipeline) · Studio Operations OS · FCR Command Center.
+
+---
+
+## How patterns relate
+
+- **002 (Spine)** is the *surface contract*; **001 (Decision-First)** is the *ordering law* that governs what the spine shows next.
+- **005 (Operational Layer)** supplies the *content* the spine ranks; **001** ensures that content is ordered decision-before-action.
+- **003 (Trust)** governs *when* any of it is allowed to appear; **004 (One Label)** governs *how it reads*.
+
+Together they describe an NGW product that behaves like an experienced operator: it knows what matters, shows it honestly, names it once, orders decisions before actions, and carries the full operational layer — without adding another dashboard, engine, or brain.
+
+*Living document — append a new `Pattern NNN` entry each time a reusable operating principle is proven in a shipped NGW product.*
