@@ -3197,6 +3197,14 @@ const CONSULT_QUESTIONS = {
 };
 
 const CLIENT_STAGES    = ['Inquiry', 'Proposal', 'Contracted', 'Active', 'Complete'];
+// Sprint 54B — single planner-facing pipeline vocabulary. Stored client.status
+// values are UNCHANGED (the keys below); these are the ONLY stage words shown to a
+// planner, everywhere (Pipeline KPI/headers/chips/subtitle, client badges, filters,
+// roster snapshot). Kills the two collisions: "Booked" (was Contracted-friendly AND
+// the Active subtitle word) and "Planning" (was a Proposal subtitle word AND the
+// Active friendly word). Deposit Due is a derived MONEY BADGE, never a stage.
+const STATUS_DISPLAY = { Inquiry: 'Inquiry', Proposal: 'Proposal', Contracted: 'Booked', Active: 'Planning', Complete: 'Complete' };
+const clientStatusLabel = (s) => STATUS_DISPLAY[s] || s;
 const REFERRAL_OPTIONS = ['Instagram', 'Facebook', 'Google', 'The Knot', 'WeddingWire', 'Zola', 'Pinterest', 'Word of Mouth', 'Friend / Family', 'Venue Referral', 'Vendor Referral', 'LinkedIn', 'Yelp'];
 const CLIENT_CLR    = (C) => ({ Inquiry: C.muted, Proposal: C.muted, Contracted: C.accent2, Active: C.accent, Complete: C.success });
 
@@ -9896,7 +9904,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
                     {isPast ? '✓' : i + 1}
                   </div>
                   <div style={{ fontSize: 9, color: isCurrent ? clr : isPast ? clr + 'bb' : C.muted,
-                    textAlign: 'center', lineHeight: 1.3, fontWeight: isCurrent ? 700 : 400, maxWidth: 60 }}>{stage}</div>
+                    textAlign: 'center', lineHeight: 1.3, fontWeight: isCurrent ? 700 : 400, maxWidth: 60 }}>{clientStatusLabel(stage)}</div>
                 </div>
               );
             })}
@@ -10213,7 +10221,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
                         <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: doneCount === allItems.length ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{clientStatusLabel(stage)}</span>
                             <span style={{ fontSize: 10, color: doneCount === allItems.length ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -11206,7 +11214,7 @@ function ClientCard({ client, events, onClick }) {
         <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{client.name}</div>
         {nextEvent
           ? <span style={s.pill(evtCLR[nextEvent.type] || C.muted)}>{nextEvent.type}</span>
-          : <span style={s.pill(clr)}>{client.status}</span>}
+          : <span style={s.pill(clr)}>{clientStatusLabel(client.status)}</span>}
       </div>
 
       {nextEvent ? (
@@ -11610,7 +11618,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>Starting Status</label>
               <select style={s.input} value={form.status} onChange={e => set('status', e.target.value)}>
-                {CLIENT_STAGES.map(st => <option key={st}>{st}</option>)}
+                {CLIENT_STAGES.map(st => <option key={st} value={st}>{clientStatusLabel(st)}</option>)}
               </select>
             </div>
           </div>
@@ -16513,21 +16521,21 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   // lane, so mobile landed on "Nothing in this lane right now." Default to the
   // ACTIVE lane (the planner's real work, where events live).
   const [mobileLane, setMobileLane] = useState('active');
-  // Sprint 60.H: plain-language subtitles next to canonical lane names. The
-  // labels are the source-of-truth funnel; subtitles are display helpers for
-  // first-time and non-technical users.
-  // Sprint 60.J: dual-label pattern. `label` is the canonical funnel stage
-  // (Inquiry/Proposal/Contracted/...) and remains the source-of-truth lane key.
-  // `friendly` is plain-language display copy for mobile + grandmother users.
-  // `hint` is the helper sentence under the active lane. No data taxonomy change.
+  // Sprint 54B: ONE planner-facing vocabulary (clientStatusLabel / STATUS_DISPLAY).
+  // The old dual canonical/`friendly` labels are retired — each lane has a single
+  // `label`, used in the KPI, the section header, the mobile chip, and reporting.
+  // `Contracted` displays as "Booked", `Active` as "Planning". The derived
+  // deposit-pending split is NOT a stage: those cards fold into "Booked" and carry a
+  // Deposit-due MONEY BADGE (see renderCard). Lane ASSIGNMENT is unchanged — cards
+  // keep their internal card.lane ('contracted'/'deposit'); only the display groups
+  // them. `hint` is the helper sentence; `cards` is the resolved card list per stage.
   const lanes = [
-    { id: 'inquiry',    label: 'Inquiry',    friendly: 'New leads',         hint: 'New request — decide if it becomes an event',  count: newInquiries.length },
-    { id: 'proposal',   label: 'Proposal',   friendly: 'Planning offer',    hint: 'Planning the offer or details',                count: byLane('proposal').length },
-    { id: 'contracted', label: 'Contracted', friendly: 'Booked',            hint: 'Booked — setup may still be needed',           count: byLane('contracted').length },
-    { id: 'deposit',    label: 'Deposit',    friendly: 'Waiting on pay',    hint: 'Money is still due',                           count: byLane('deposit').length },
-    { id: 'active',     label: 'Active',     friendly: 'In planning',       hint: 'Booked client whose event is being planned',   count: byLane('active').length },
-    { id: 'complete',   label: 'Complete',   friendly: 'Done',              hint: 'Event is finished',                            count: byLane('complete').length },
-  ];
+    { id: 'inquiry',  label: 'Inquiry',  hint: 'New request — decide if it becomes an event',    cards: newInquiries,                              isInquiry: true },
+    { id: 'proposal', label: 'Proposal', hint: 'Planning the offer or details',                  cards: byLane('proposal') },
+    { id: 'booked',   label: 'Booked',   hint: 'Contract signed — planning may still be needed', cards: [...byLane('contracted'), ...byLane('deposit')] },
+    { id: 'active',   label: 'Planning', hint: 'Booked client whose event is being planned',     cards: byLane('active') },
+    { id: 'complete', label: 'Complete', hint: 'Event is finished',                               cards: byLane('complete') },
+  ].map(l => ({ ...l, count: l.cards.length }));
   const totalCards = newInquiries.length + cards.length;
   const isEmpty = totalCards === 0;
 
@@ -16615,6 +16623,15 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
           <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
             {ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}
           </div>
+        )}
+        {/* Sprint 54B: Deposit Due is a derived MONEY BADGE, not a stage. Shows on
+            any booked card with money still owed (the old standalone "Deposit" lane
+            folded into Booked), so the money signal survives even when the engine
+            binding replaces the reason line below. */}
+        {card.hasUnpaidMilestone && card.outstanding > 0 && (
+          <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.accent, background: C.accent + '14', border: `1px solid ${C.accent}44`, borderRadius: 5, padding: '2px 7px' }}>
+            Deposit due · {fmtD(card.outstanding)}
+          </span>
         )}
         {eng && eng.binding ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, minWidth: 0 }}>
@@ -16760,39 +16777,34 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
 
   // ── Mobile layout: lane chip row + selected lane content ─────────────
   if (isMobile) {
-    const activeLane = mobileLane;
-    const items = activeLane === 'inquiry' ? newInquiries.map(renderInquiryCard) : byLane(activeLane).map(renderCard);
+    const activeLaneObj = lanes.find(l => l.id === mobileLane) || lanes[0];
+    const activeLane = activeLaneObj.id;
+    const items = activeLaneObj.cards.map(activeLaneObj.isInquiry ? renderInquiryCard : renderCard);
     return (
       <div>
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 10, marginBottom: 12 }}>
           {lanes.map(ln => {
             const isActive = activeLane === ln.id;
-            // Sprint 60.J: dual-label chip per Frame 6 design. Friendly label
-            // (plain-language) is the primary read; canonical lane name shown
-            // as a smaller tag below. Both are visible so canonical funnel
-            // language stays anchored for pros who recognize it.
+            // Sprint 54B: single planner-facing stage label per chip (no dual label).
             return (
               <button key={ln.id} onClick={() => setMobileLane(ln.id)}
                 title={ln.hint}
                 aria-label={`${ln.label}: ${ln.hint || ''}`}
                 style={{
-                  display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  padding: '9px 14px', borderRadius: 12,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '11px 16px', borderRadius: 12,
                   minHeight: 46,
                   background: isActive ? C.accent + '22' : 'transparent',
                   border: `1px solid ${isActive ? C.accent : C.border}`,
                   cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
-                  gap: 2,
+                  gap: 6,
                 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: isActive ? C.accent : C.text }}>
-                  {ln.friendly || ln.label}
-                  {ln.count > 0 && (
-                    <span style={{ opacity: isActive ? 0.85 : 0.7, fontWeight: 700, color: isActive ? C.accent : C.muted }}>{ln.count}</span>
-                  )}
-                </span>
-                <span style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: isActive ? C.accent : C.muted, opacity: isActive ? 0.85 : 0.65 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? C.accent : C.text }}>
                   {ln.label}
                 </span>
+                {ln.count > 0 && (
+                  <span style={{ fontWeight: 700, color: isActive ? C.accent : C.muted }}>{ln.count}</span>
+                )}
               </button>
             );
           })}
@@ -16869,7 +16881,6 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
           }}>
             <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{ln.label}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: ln.count > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 2, fontFeatureSettings: '"tnum" 1' }}>{ln.count}</div>
-            <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{ln.friendly}</div>
           </div>
         ))}
       </div>
@@ -16879,11 +16890,11 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       </div>
       {/* Stages that have events — each a labeled section with a card grid */}
       {lanes.filter(ln => ln.count > 0).map(ln => {
-        const items = ln.id === 'inquiry' ? newInquiries.map(renderInquiryCard) : byLane(ln.id).map(renderCard);
+        const items = ln.cards.map(ln.isInquiry ? renderInquiryCard : renderCard);
         return (
           <div key={ln.id} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.text }}>{ln.friendly}</span>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.text }}>{ln.label}</span>
               <span style={{ fontSize: 11, color: C.muted }}>{ln.count}</span>
               {ln.hint && <span style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>· {ln.hint}</span>}
             </div>
@@ -17319,7 +17330,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     : dashView === 'clients'
     ? { title: 'Client Roster', sub: `${clients.length} client${clients.length === 1 ? '' : 's'} in your roster.` }
     : dashView === 'pipeline'
-    ? { title: 'Pipeline', sub: 'Intake → planning → contract → deposit → booked.' }
+    ? { title: 'Pipeline', sub: 'Inquiry → Proposal → Booked → Planning → Complete.' }
     : dashView === 'vendor-bank'
     ? { title: 'Vendor Bank', sub: "Your studio's trusted vendor roster — reusable across every event." }
     : { title: 'Home',       sub: 'Your events and what needs attention.' };
@@ -18260,7 +18271,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     { id: 'all',         label: 'All',         count: allClients.length },
     { id: 'outstanding', label: 'Outstanding',  count: outstandingCount,  hide: outstandingCount === 0 },
     { id: 'upcoming',    label: 'Event soon',   count: upcomingCount,     hide: upcomingCount === 0 },
-    ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: st, count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
+    ...clientStatuses.map(st => ({ id: st.toLowerCase(), label: clientStatusLabel(st), count: allClients.filter(c => c.status === st).length })).filter(f => f.count > 0),
   ].filter(f => !f.hide);
 
   // Preview client
@@ -18382,9 +18393,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         if (nextEvt && nextDays !== null) parts.push(`${nextDays} days to ${nextEvt.name}`);
         const headline = `${c.name}${parts.length ? ' — ' + parts[0] : '.'}`;
         const consequence = parts.length > 1
-          ? parts.slice(1).join(' · ') + (c.status ? ` · ${c.status} client` : '')
+          ? parts.slice(1).join(' · ') + (c.status ? ` · ${clientStatusLabel(c.status)} client` : '')
           : nextEvt
-          ? `${nextEvt.name}${nextDays !== null ? ` · ${countdownLabel(nextDays)}` : ''}${c.status ? ` · ${c.status}` : ''}`
+          ? `${nextEvt.name}${nextDays !== null ? ` · ${countdownLabel(nextDays)}` : ''}${c.status ? ` · ${clientStatusLabel(c.status)}` : ''}`
           : c.status || 'Review this client relationship.';
 
         const otherCount = priorityClients.length - 1;
@@ -18566,7 +18577,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
                         {/* Status chip — only non-Active statuses shown, Active is noise */}
                         {c.status && c.status !== 'Active' && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[c.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{c.status}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[c.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{clientStatusLabel(c.status)}</span>
                         )}
                         {SEED_CLIENT_IDS && SEED_CLIENT_IDS.has(c.id) && (
                           <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>
@@ -18799,7 +18810,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}
                           onClick={() => setClientsFilter(clientsFilter === st.toLowerCase() ? 'all' : st.toLowerCase())}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: stClr, flexShrink: 0 }} />
-                          <span style={{ color: C.muted, flex: 1 }}>{st}</span>
+                          <span style={{ color: C.muted, flex: 1 }}>{clientStatusLabel(st)}</span>
                           <span style={{ fontWeight: 600, color: C.text }}>{cnt}</span>
                         </div>
                       );
@@ -19906,7 +19917,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
             <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
             {/* Engine: a lead-pipeline status ("Inquiry") is meaningless for a
                 self-host event — the countdown carries the timing instead. */}
-            {detailCfg.pipeline && <span style={s.pill(clr)}>{client.status}</span>}
+            {detailCfg.pipeline && <span style={s.pill(clr)}>{clientStatusLabel(client.status)}</span>}
             {isMobile ? (
               /* Mobile: primary CTA + overflow */
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
