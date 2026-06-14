@@ -1,4 +1,4 @@
-import { getPlaybook, playbookTasks, topPlaybookTask } from '../index';
+import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories } from '../index';
 
 const DP = (over) => ({
   id: 'e1',
@@ -80,5 +80,37 @@ describe('non-applicability (existing behavior must be unaffected)', () => {
   });
   test('null event → []', () => {
     expect(playbookTasks(null, '2026-06-20')).toEqual([]);
+  });
+});
+
+describe('playbookBudgetCategories (engine-derived typical setup)', () => {
+  test('Dinner Party → grounded budget categories, NO venue line', () => {
+    const cats = playbookBudgetCategories('Dinner Party', 8);
+    expect(cats).toBeTruthy();
+    const labels = cats.map((c) => c.label);
+    expect(labels).toContain('Food & groceries');
+    expect(labels).toContain('Drinks & bar');
+    expect(labels.some((l) => /venue/i.test(l))).toBe(false);
+    // every row carries a positive low/high range
+    cats.forEach((c) => {
+      expect(c.high).toBeGreaterThanOrEqual(c.low);
+      expect(c.low).toBeGreaterThan(0);
+    });
+  });
+
+  test('amounts scale with guest count (16 guests cost ~2x 8 guests on food)', () => {
+    const f8 = playbookBudgetCategories('Dinner Party', 8).find((c) => c.label === 'Food & groceries');
+    const f16 = playbookBudgetCategories('Dinner Party', 16).find((c) => c.label === 'Food & groceries');
+    expect(f16.low).toBeGreaterThan(f8.low);
+    expect(f16.high).toBeGreaterThan(f8.high);
+  });
+
+  test('falls back to typical guests when count missing', () => {
+    expect(playbookBudgetCategories('Dinner Party')).toBeTruthy();
+  });
+
+  test('non-playbook type → null (caller uses share-based estimate)', () => {
+    expect(playbookBudgetCategories('Wedding', 120)).toBeNull();
+    expect(playbookBudgetCategories('', 10)).toBeNull();
   });
 });

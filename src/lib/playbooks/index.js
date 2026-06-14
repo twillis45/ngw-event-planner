@@ -152,3 +152,52 @@ export function topPlaybookTask(event, asOf) {
   const list = playbookTasks(event, asOf);
   return list.length ? list[0] : null;
 }
+
+// ── Typical-setup budget categories (engine-derived) ──────────────────────────
+// Roll the playbook's real purchases up into a handful of budget categories,
+// each with a low/high $ range computed from actual quantity × unit-cost — NOT a
+// percentage of an abstract total. This feeds the intake "Typical setup — what
+// to expect" checklist so it reflects what the event ACTUALLY needs (a Dinner
+// Party has no venue line; it has food, drinks, flowers, rentals, supplies,
+// cleanup at grounded amounts). Types without a playbook return null so the
+// caller falls back to the share-based estimate.
+const PURCHASE_CATEGORY_TO_BUDGET = {
+  food:      { key: 'pb_food',      label: 'Food & groceries' },
+  beverage:  { key: 'pb_beverage',  label: 'Drinks & bar' },
+  decor:     { key: 'pb_decor',     label: 'Flowers & decor' },
+  rental:    { key: 'pb_rental',    label: 'Linens & rentals' },
+  logistics: { key: 'pb_logistics', label: 'Paper goods & supplies' },
+  cleanup:   { key: 'pb_cleanup',   label: 'Cleanup supplies' },
+};
+const PURCHASE_CATEGORY_ORDER = ['food', 'beverage', 'decor', 'rental', 'logistics', 'cleanup'];
+
+export function playbookBudgetCategories(eventType, guestCount) {
+  const playbook = getPlaybook(eventType);
+  if (!playbook || !Array.isArray(playbook.purchases)) return null;
+  const guests = Math.max(
+    1,
+    Number(guestCount) || (playbook.meta && playbook.meta.typicalGuests && playbook.meta.typicalGuests.default) || 8,
+  );
+
+  const groups = new Map();
+  for (const p of playbook.purchases) {
+    const map = PURCHASE_CATEGORY_TO_BUDGET[p.category];
+    if (!map) continue;
+    const qty = resolveQuantity(p, guests);
+    const units = qty == null ? 1 : qty;
+    const [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+    if (!groups.has(p.category)) {
+      groups.set(p.category, { key: map.key, label: map.label, low: 0, high: 0, essential: false });
+    }
+    const g = groups.get(p.category);
+    g.low += units * uLow;
+    g.high += units * uHigh;
+    if (p.essential) g.essential = true;
+  }
+
+  const round5 = (n) => Math.max(5, Math.round(n / 5) * 5);
+  return PURCHASE_CATEGORY_ORDER.filter((k) => groups.has(k)).map((k) => {
+    const g = groups.get(k);
+    return { key: g.key, label: g.label, essential: g.essential, low: round5(g.low), high: round5(g.high) };
+  });
+}
