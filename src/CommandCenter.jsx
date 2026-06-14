@@ -39,6 +39,7 @@ import { summarizeCrew } from './lib/studioTeam';
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
+import { renderAction, personaFor } from './lib/nextActionRenderer';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -1118,7 +1119,17 @@ export function selectStudioCommand(events = []) {
 // "Review compressed tasks" CTA routing to the Planning Tasks compressed
 // filter. When the primary NBA already IS the compression tier, no
 // sub-badge is attached (it would duplicate the primary).
+// Sprint 55M — producer-side renderer seam (Pattern 011). The public producer is a
+// thin wrapper: it composes the engine action (UNCHANGED) then renders it once at the
+// single exit for the event's persona. With VOICE={} the render is the identity
+// function, so every one of the ~12 consumers receives byte-identical output today.
+// The engine (_selectEventNextActionInner) and the sub-badge composer below are not
+// touched; persona can only rephrase title/consequence/primaryCta (see nextActionRenderer).
 export function selectEventNextAction(event) {
+  return renderAction(_selectEventNextActionWithBadge(event), personaFor(event));
+}
+
+function _selectEventNextActionWithBadge(event) {
   const cmd = _selectEventNextActionInner(event);
   if (!cmd || !event) return cmd;
   // Don't double up — if compression IS the primary, no sub-badge.
