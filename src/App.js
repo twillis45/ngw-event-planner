@@ -135,6 +135,20 @@ const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
 const ONBOARD_DONE_KEY = 'ngw-onboard-done';
+// Sprint 54C — synchronous "is a Supabase session present?" check. The auth token
+// lives in localStorage under the default key sb-<project-ref>-auth-token. Used by
+// the events/clients initializers to SKIP demo-sample seeding for a signed-in user:
+// they hydrate real cloud data moments later, so painting samples first is a
+// whole-app trust-defect flash (sample $600K → real $200K). No network call.
+function hasSupabaseSession() {
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && /^sb-.*-auth-token$/.test(k) && window.localStorage.getItem(k)) return true;
+    }
+  } catch { /* localStorage blocked — treat as no session */ }
+  return false;
+}
 
 // Sprint 60.Y — single source of truth for the Vendor Bank. Both the Settings
 // directory (PreferredVendorDirectory) and the event-side "save to bank" write
@@ -31246,6 +31260,14 @@ export default function App() {
   // "Start fresh" or "Clear sample data"), we never auto-inject seeds again.
   // First-run users still see the welcome hero before deciding what to do.
   const [events,         setEvents]         = useState(() => {
+    // Sprint 54C: a signed-in user hydrates real cloud data — NEVER paint demo
+    // samples first (the whole-app sample→real flash). Return only the non-seed
+    // cached events: their real cloud cache for a returning user, empty for an
+    // incognito/new device; cloud hydration fills truth. No seed injection here.
+    if (hasSupabaseSession()) {
+      try { return JSON.parse(localStorage.getItem('ngw-events') || '[]').filter(e => !isSeedEvent(e)); }
+      catch { return []; }
+    }
     // One-time injection of the per-family sample events (engine-coverage batch).
     // Adds any not-yet-present extras even for onboarded users — but only ONCE
     // (flag-guarded), so it never resurrects samples the user deliberately cleared.
@@ -31286,6 +31308,12 @@ export default function App() {
     } catch { return localStorage.getItem(ONBOARD_DONE_KEY) === '1' ? [] : SEED_EVENTS; }
   });
   const [clients, setClients] = useState(() => {
+    // Sprint 54C: signed-in users hydrate real cloud clients — never paint sample
+    // clients first. Return only non-seed cached clients; cloud hydration fills truth.
+    if (hasSupabaseSession()) {
+      try { return JSON.parse(localStorage.getItem('ngw-clients') || '[]').filter(c => !isSeedClient(c)); }
+      catch { return []; }
+    }
     // One-time injection of the pipeline sample clients (every CRM stage), incl. for onboarded users.
     const CLI_EXTRA_FLAG = 'ngw-seed-extra-clients-pipeline-v1';
     const injectExtra = (arr) => {
