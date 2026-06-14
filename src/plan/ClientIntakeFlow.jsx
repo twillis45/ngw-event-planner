@@ -164,6 +164,42 @@ function Select({ value, onChange, options, placeholder }) {
   );
 }
 
+// Dropdown option sets for the guest-needs fields (RSVP, dietary, accessibility).
+const RSVP_METHOD_OPTIONS = ['Online form / link', 'Email', 'Text / SMS', 'Phone call', 'Mail / RSVP card', 'In person', 'Through the planner'];
+const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Nut allergy', 'Dairy-free', 'Shellfish allergy', 'Halal', 'Kosher', 'Pescatarian', 'Alcohol-free', 'No restrictions'];
+const ACCESSIBILITY_REQ_OPTIONS = ['Wheelchair access', 'Step-free / ramp entry', 'ADA restrooms', 'Reserved / priority seating', 'Hearing assistance', 'Large-print materials', 'Service animals welcome', 'Sensory-friendly space', 'Designated parking', 'None needed'];
+
+// Multi-select chips — stores the selection as a comma-joined string so the
+// underlying data field stays a plain string (no persistence/schema change).
+function ChipMulti({ value, onChange, options }) {
+  const selected = String(value || '').split(',').map(s => s.trim()).filter(Boolean);
+  const toggle = (opt) => {
+    const set = new Set(selected);
+    if (set.has(opt)) set.delete(opt); else set.add(opt);
+    onChange([...set].join(', '));
+  };
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: space[2] }}>
+      {options.map(opt => {
+        const on = selected.includes(opt);
+        return (
+          <button key={opt} type="button" onClick={() => toggle(opt)}
+            style={{
+              padding: `${space[2]}px ${space[3]}px`, borderRadius: 999, fontSize: 12,
+              fontFamily: FF, cursor: 'pointer', lineHeight: 1.2,
+              background: on ? P.green + '22' : P.card,
+              color: on ? P.textPrimary : P.textSecondary,
+              border: `1px solid ${on ? P.green : P.borderSubtle}`,
+              fontWeight: on ? type.weight.semibold : type.weight.regular,
+            }}>
+            {on ? '✓ ' : ''}{opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // City field connected to the city/state/ZIP database — type a city, or type a
 // 5-digit ZIP and it resolves to "City, ST" via the free, key-less zippopotam.us
 // API (no Google key required). Shared control so intake + event creation match.
@@ -397,16 +433,16 @@ function Step3({ data, onChange }) {
           <TextInput date value={data.rsvp_deadline} onChange={v => onChange('rsvp_deadline', v)} />
         </Field>
         <Field label="RSVP METHOD">
-          <TextInput value={data.rsvp_method} onChange={v => onChange('rsvp_method', v)} placeholder="e.g. Online form, Mail" />
+          <Select value={data.rsvp_method} onChange={v => onChange('rsvp_method', v)} options={RSVP_METHOD_OPTIONS} placeholder="How will guests RSVP?" />
         </Field>
       </TwoCol>
 
       <SectionHeading>SPECIAL NEEDS</SectionHeading>
       <Field label="DIETARY RESTRICTIONS (NOTED SO FAR)">
-        <TextInput value={data.dietary_notes} onChange={v => onChange('dietary_notes', v)} placeholder="e.g. 3 vegan, 2 gluten-free, 1 nut allergy" multiline rows={2} />
+        <ChipMulti value={data.dietary_notes} onChange={v => onChange('dietary_notes', v)} options={DIETARY_OPTIONS} />
       </Field>
       <Field label="ACCESSIBILITY REQUIREMENTS">
-        <TextInput value={data.accessibility_notes} onChange={v => onChange('accessibility_notes', v)} placeholder="e.g. 2 guests in wheelchairs" multiline rows={2} />
+        <ChipMulti value={data.accessibility_notes} onChange={v => onChange('accessibility_notes', v)} options={ACCESSIBILITY_REQ_OPTIONS} />
       </Field>
     </div>
   );
