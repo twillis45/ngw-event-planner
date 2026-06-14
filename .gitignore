@@ -21,3 +21,23 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# review screenshots / capture artifacts (not source)
+/review-artifacts/
+
+# throwaway capture / debug / probe scripts (not committed tooling).
+# Real engine tools are tracked: validateEngine.mjs, backtestEngine.mjs, engineSelfTest.mjs
+/scripts/cap*.js
+/scripts/_*
+/scripts/*Debug.js
+/scripts/probe*.js
+/scripts/checkSetup*.js
+/scripts/collectShadowDivergences.js
+/scripts/fillcheck.js
+/scripts/lightAudit.js
+/scripts/navDebug.js
+/scripts/reproVendorMobile.js
+/scripts/smoke.js
+/scripts/swapcheck.js
+/scripts/vendorProbe.js
+/scripts/assembleSampleEvents.js
