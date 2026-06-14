@@ -17006,7 +17006,7 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
   );
 }
 
-function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCompose, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact }) {
+function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCompose, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onClearSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact, eventsHydrated = true }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
   // stable strings only used by the seed objects.
@@ -17501,6 +17501,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             totalOpen={items.length}
             pad={pad}
             isMobile={isMobile}
+            eventsHydrated={eventsHydrated}
             onNavigate={(route) => {
               if (!route) return;
               const { eventId, ...nav } = route;
@@ -29789,7 +29790,7 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
 //   • Studio mode (L1 Studio Home): pass a precomputed cross-event `command`
 //     (selectStudioCommand), an `eventLabel` prefix, and `totalOpen`. The parent
 //     owns navigation (it opens the right event), so onNavigate gets the route.
-function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile, onNavigate }) {
+function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile, onNavigate, eventsHydrated = true }) {
   const C = useT();
   const s = makeS(C);
   const studio = command !== undefined;
@@ -29814,8 +29815,13 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
     }
   }, [sig]);
 
+  // Trust gate: never escalate to red (C.danger) before event data is hydrated.
+  // On first paint `events` is the localStorage cache (pre-cloud-sync), which can
+  // resolve to a false `critical` action and flash "you're late" before settling.
+  // Until hydrated, a critical level renders steel (C.accent2); steel→red after
+  // hydration is fine — red→steel on load is the trust defect we're killing.
   const accent = caughtUp ? C.muted
-    : level === 'critical' ? C.danger
+    : (level === 'critical' && eventsHydrated) ? C.danger
     : level === 'attention' ? C.muted
     : C.accent2;
   const ownerColor = owner.key === 'you' ? C.muted
@@ -32184,6 +32190,7 @@ export default function App() {
       <MainDashboard
         clients={clients}
         events={events}
+        eventsHydrated={hydratedFromCloud || !isSupabaseConfigured()}
         onSelectClient={setActiveClientId}
         onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
         profile={profile}
