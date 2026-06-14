@@ -371,3 +371,47 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
     expect(c.guests).toBe(8); // typicalGuests.default
   });
 });
+
+import { playbookInfraPrompts } from '../index';
+
+describe('55L playbookInfraPrompts (Event Reality Check — confirm prompts, never deficits)', () => {
+  const keys = (e) => (playbookInfraPrompts(e)?.prompts || []).map(p => p.key);
+
+  test('Dinner Party: universal confirms + alcohol, no grill/child/weather', () => {
+    const k = keys({ id: 'e', type: 'Dinner Party' });
+    expect(k).toEqual(expect.arrayContaining(['food', 'power', 'trash', 'emergency', 'alcohol']));
+    expect(k).not.toContain('grill');
+    expect(k).not.toContain('child');
+    expect(k).not.toContain('minors');
+    expect(k).not.toContain('weather'); // indoor dinner — "grain" must NOT trip \brain\b
+  });
+
+  test('Backyard BBQ: grill + child supervision + weather surfaced', () => {
+    const k = keys({ id: 'b', type: 'Get-Together' });
+    expect(k).toEqual(expect.arrayContaining(['grill', 'child', 'weather', 'food', 'power', 'emergency']));
+  });
+
+  test('Graduation: weather + power + trash (no grill — no fuel purchased)', () => {
+    const k = keys({ id: 'g', type: 'Graduation' });
+    expect(k).toEqual(expect.arrayContaining(['weather', 'power', 'trash']));
+    expect(k).not.toContain('grill');
+  });
+
+  test('Birthday: child supervision (kid party) even without a grill', () => {
+    expect(keys({ id: 'bd', type: 'Birthday' })).toContain('child');
+  });
+
+  test('never an adequacy/deficit claim — no number/insufficient in any detail', () => {
+    ['Dinner Party', 'Get-Together', 'Graduation', 'Birthday', 'Baby Shower'].forEach((type) => {
+      const ps = playbookInfraPrompts({ id: 'x', type })?.prompts || [];
+      ps.forEach((p) => {
+        expect(p.detail.toLowerCase()).not.toMatch(/insufficient|not enough|parking spaces|restroom/);
+        expect(p.detail).not.toMatch(/\bneed \d|\d+ spaces|\d+ outlets|\d+ amps/);
+      });
+    });
+  });
+
+  test('non-playbook (Wedding) → null (unchanged)', () => {
+    expect(playbookInfraPrompts({ id: 'w', type: 'Wedding' })).toBeNull();
+  });
+});
