@@ -38,6 +38,7 @@ import { summarizeCrew } from './lib/studioTeam';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
+import { topPlaybookTask } from './lib/playbooks';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -999,6 +1000,36 @@ export function selectStudioCommand(events = []) {
   // future-planning language. See the LIVE · ACT NOW / TODAY · LIVE
   // branches at the start of this function.
 
+  // Tier 6.7: operational playbook step (Sprint 55C-1).
+  // For an otherwise-clear upcoming event, surface the single top operational
+  // task from its playbook (e.g. "Buy ice — 18 lbs today") through the existing
+  // per-event selector — the documented selectStudioCommand → selectEventNextAction
+  // path. This sits BELOW every critical/attention tier above (a real buy never
+  // pre-empts a blocker, an awaiting approval, a vendor issue, or an inbound
+  // request) and ABOVE the generic "N events upcoming / on track" time-fillers
+  // below, because a sized, dated action is more useful than "all clear".
+  const opCandidate = active
+    .map(ev => ({ ev, days: daysFrom(ev.date) }))
+    .filter(x => x.days !== null && x.days >= 0)
+    .sort((a, b) => a.days - b.days)
+    .map(x => ({ ev: x.ev, na: selectEventNextAction(x.ev) }))
+    .find(x => x.na && x.na.category === 'operational');
+  if (opCandidate) {
+    const { ev, na } = opCandidate;
+    return {
+      level: na.level,
+      category: 'operational',
+      eventId: ev.id,
+      eventName: ev.name,
+      title: na.title,
+      consequence: na.consequence,
+      primaryCta: na.primaryCta,
+      primaryRoute: { eventId: ev.id, ...na.primaryRoute },
+      secondaryCta: 'View all events',
+      secondaryAction: 'events',
+    };
+  }
+
   // Tier 7: upcoming events. Sprint 60.O Addendum: split single vs. multi.
   // 2+ events in next 60 days → summary headline. Single → "next event on track".
   const upcomingIn60 = active
@@ -1288,6 +1319,28 @@ function _selectEventNextActionInner(event) {
       consequence: `"${(r.preview || r.title || '').slice(0, 100)}" — ${r.relative || 'awaiting response'}. A short reply often unblocks more than its size suggests.`,
       primaryCta: 'Reply',
       primaryRoute: { tab: 'Communication', commId: r.id },
+      contextLine: daysSub,
+    };
+  }
+
+  // Tier 6.5: operational playbook task (Sprint 55C-1).
+  // A dated, quantity-resolved buy from the event's playbook — eligible only
+  // inside its shopping window (the reader gates timing + quantity). It is
+  // SUBORDINATE to every reactive item above (caterer / decision / approval /
+  // vendor / compression / timeline risk / inbound comm): it surfaces only when
+  // nothing urgent is open. It ranks ABOVE the generic "prep for the next
+  // milestone" calendar tier because it names a concrete, sized action. The
+  // reader returns the candidate; this cascade does the ranking (one priority
+  // system, not two).
+  const opTask = topPlaybookTask(event);
+  if (opTask) {
+    return {
+      level: opTask.level,
+      category: 'operational',
+      title: opTask.title,
+      consequence: opTask.consequence,
+      primaryCta: opTask.primaryCta,
+      primaryRoute: { tab: 'Planning Tasks' },
       contextLine: daysSub,
     };
   }

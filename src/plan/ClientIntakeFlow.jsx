@@ -19,6 +19,7 @@ import US_CITIES from '../lib/usCities';
 // Sprint 61.G — shared budget hint
 import BudgetEstimateHint from '../lib/budgetEstimator/BudgetEstimateHint';
 import { breakdownByCategory, estimateTotalRange } from '../lib/budgetEstimator';
+import { playbookBudgetCategories } from '../lib/playbooks';
 import { proposedVendorCategories } from '../lib/vendorCategoriesByType';
 
 const P = {
@@ -463,9 +464,16 @@ function Step4({ data, onChange }) {
           and a pre-filled-but-editable budget in one. */}
       {(() => {
         const guestCount = data.guestEstimate || (data.guests || []).length;
+        // Sprint 55C-1: when the event type has a playbook, the typical-setup rows
+        // come from the ENGINE — real purchases rolled into budget categories at
+        // grounded quantity × unit-cost amounts (a Dinner Party gets food/drinks/
+        // flowers/rentals/supplies/cleanup, NOT an invented venue line). Types
+        // without a playbook keep the share-based estimate.
+        const pbCats = (data.type && Number(guestCount) >= 1)
+          ? playbookBudgetCategories(data.type, guestCount) : null;
         const range = data.type ? estimateTotalRange({ type: data.type, guestCount, date: data.date, timeOfDay: data.timeOfDay || 'afternoon' }) : null;
-        if (!range) return null;
-        const cats = breakdownByCategory(range.lowTotal, range.highTotal, data.type);
+        const cats = pbCats || (range ? breakdownByCategory(range.lowTotal, range.highTotal, data.type) : null);
+        if (!cats || !cats.length) return null;
         const rowFor = (label) => budget.find(r => r.category === label);
         const mid = (c) => Math.round(((c.low + c.high) / 2) / 100) * 100;
         const toggle = (c) => {
