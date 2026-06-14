@@ -118,6 +118,47 @@ const dinnerParty = {
       { when: 'T0 +4h', what: 'Leftovers into containers (send some home), run dishwasher, hand-wash delicates, bottles to recycling, linens to soak' },
     ],
   },
+
+  // Optional vendor upgrades (brought into src from the canonical
+  // dinner-party.playbook.json — Sprint 55K parity backfill). All optional;
+  // the host-run DIY path is the default.
+  vendors: [
+    { category: 'Catering', required: false, altToDIY: 'Drop-off catering for one course (e.g. the main or dessert) removes the riskiest cook step', when: 'T-10d', proofRequired: ['headcount confirmed', 'delivery window'], costRange: [15, 40], costUnit: 'per guest' },
+    { category: 'Bar / Beverage', required: false, altToDIY: 'A bartender for 8-12 guests (~$150-250) lets the host stay out of the kitchen-bar shuffle', when: 'T-10d', proofRequired: ['insurance if serving alcohol'], costRange: [150, 300], costUnit: 'flat' },
+    { category: 'Cleaning', required: false, altToDIY: 'Post-party cleaner (~$100-180) is the highest-ROI spend for host sanity', when: 'T-7d', costRange: [100, 180], costUnit: 'flat' },
+    { category: 'Florals', required: false, altToDIY: 'DIY grocery-store flowers vs a $40-60 florist arrangement', when: 'T-3d', costRange: [40, 80], costUnit: 'flat' },
+  ],
+
+  // Risks (canonical dinner-party.playbook.json — Sprint 55K parity backfill).
+  risks: [
+    { id: 'r_dietary', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
+    { id: 'r_headcount', trigger: 'Final headcount not confirmed by T-3d', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
+    { id: 'r_overcook', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
+    { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
+    { id: 'r_capacity', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at T-7d; secure a borrow/rent source before invites over-fill.' },
+    { id: 'r_cleanup', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: "Stage a bus tub + empty dishwasher pre-party; clear into the tub, don't wash mid-party; consider a cleaner." },
+  ],
+
+  // Contingencies (canonical dinner-party.eos.json — Sprint 55K parity backfill).
+  contingencies: [
+    { id: 'c_dishflop', trigger: "A dish burns / breaks / doesn't set", plan: "Keep a rescue course in the pantry — good dried pasta + a jar of quality sauce + parmesan is a respectable plate in 15 minutes. Don't announce the failure; just serve the pivot.", severity: 'high' },
+    { id: 'c_plusone', trigger: 'A guest brings an uninvited +1', plan: 'You already set 1–2 buffer place settings and bought ~10% extra; stretch the meal with more bread, salad, and sides. A gracious host never lets the guest feel the math.', severity: 'med' },
+    { id: 'c_behind', trigger: "You're running 30+ minutes behind", plan: 'Pour another round and serve the most complex course family-style instead of plated, or cut it entirely. Guests remember the mood, never the missing course.', severity: 'med' },
+    { id: 'c_shortfood', trigger: 'Not enough food', plan: "Open with bread + cheese, stretch with a fast pasta or a big salad, and slow the pacing. Calm reframes 'short' as 'relaxed'.", severity: 'med' },
+    { id: 'c_oven', trigger: 'Oven or a key appliance fails', plan: 'Pivot to stovetop / grill / no-cook (charcuterie + salad + pasta). Know in advance which dish is your appliance-independent fallback.', severity: 'high' },
+    { id: 'c_unknownallergy', trigger: "A guest reveals a restriction you didn't know about", plan: 'The plated vegetarian main + a side of plain protein/grain is your universal safe plate. This is exactly why one safe veg main is non-negotiable.', severity: 'critical' },
+    { id: 'c_winelow', trigger: 'Wine/drinks running low', plan: 'The ½-bottle-per-drinker rule should prevent this; if it happens, the nearest store run or the BYOB ask covers it. Never let it run fully dry — switch to a punch/spritz to stretch.', severity: 'low' },
+    { id: 'c_spill', trigger: 'Spill or breakage', plan: 'Club soda + the spare place setting you kept aside. Reset and move on without a fuss — your calm sets the table’s mood.', severity: 'low' },
+  ],
+
+  // Knowledge / provenance (source-verified — see canonical
+  // dinner-party.knowledge.json for the full cited principles + sources).
+  knowledge: {
+    governanceVersion: '1.1.0',
+    verificationStatus: 'cited',
+    note: 'Source-verified in the 2026-06-13 foreground pass: quantities + food-safety/culinary practices are established-consensus / trade-heuristic and cited; coaching / ROI claims are labeled synthesized. Full cited principles and sources live in engine-audit/playbooks/dinner-party.knowledge.json.',
+    sources: [],
+  },
 };
 
 export default dinnerParty;
