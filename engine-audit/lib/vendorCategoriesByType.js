@@ -18,7 +18,6 @@
 // the type-aware budget-share buckets so every type still gets a sensible list.
 
 import { getCategoryShares } from './budgetEstimator';
-import { curatedRosterKeyFor } from './eventTaxonomyAdapter';
 
 // Budget-share keys → vendor-bookable labels (fallback path only).
 const SHARE_LABELS = {
@@ -77,16 +76,24 @@ export const CURATED_VENDORS = {
   'Other':             ['Venue', 'Catering', 'Bar / Beverage', 'Photography', 'Entertainment', 'Decor', 'Rentals', 'AV / Tech'],
 };
 
+// Normalize intake/public-form + modal type vocabularies to a curated key.
+const ALIASES = {
+  'Corporate Event': 'Conference',          // intake's general corporate ≈ conference roster
+  'Corporate': 'Conference',
+  'Conference / Summit': 'Conference',
+  'Gala / Fundraiser': 'Fundraiser / Gala',
+  'Birthday Party': 'Birthday',
+  'Graduation Party': 'Graduation',
+};
+
 /**
  * The proposed vendor categories for an event type.
  * Returns the curated, on-trend roster when available; otherwise derives a
  * sensible list from the type-aware budget-share buckets so nothing is empty.
- * Type→roster-key normalisation (intake/public-form + modal vocabularies, plus
- * off-taxonomy names) runs through the canonical taxonomy's shared resolver, so
- * a curated key is found whenever any other engine recognises the same name.
  */
 export function proposedVendorCategories(eventType) {
-  const key = curatedRosterKeyFor(eventType);
-  if (key && CURATED_VENDORS[key]) return CURATED_VENDORS[key];
+  if (CURATED_VENDORS[eventType]) return CURATED_VENDORS[eventType];
+  const aliased = ALIASES[eventType];
+  if (aliased && CURATED_VENDORS[aliased]) return CURATED_VENDORS[aliased];
   return Object.keys(getCategoryShares(eventType)).map(k => SHARE_LABELS[k]).filter(Boolean);
 }

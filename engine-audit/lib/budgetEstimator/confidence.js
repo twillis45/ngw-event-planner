@@ -6,10 +6,6 @@
 // We never claim "exact." The hint surface always shows a range + a
 // confidence chip + a "Not included" line.
 
-// Canonical taxonomy import MUST be at module top (ESLint import/first) — it was
-// previously placed mid-file next to budgetFamilyForType, which crashed the build.
-import { budgetFamilyFor } from '../eventTaxonomyAdapter';
-
 /**
  * Score 0–100, then map to:
  *   high   (≥75) — ±10%
@@ -75,13 +71,24 @@ export const NOT_INCLUDED_BY_FAMILY = {
   ],
 };
 
-// Budget family = the SAME 5-family axis as App.js intakeFamily. Previously this
-// lib carried a verbatim mirror of that map (the genuine same-axis duplication the
-// Sprint 53 audit flagged); it now derives from the canonical taxonomy so the two
-// can never drift. Unknown types still resolve to the middle-weight 'host_driven',
-// never the maximal family. (Import hoisted to module top — see header.)
+// Lightweight family classifier for the estimator lib (mirrors App.js intakeFamily;
+// kept self-contained so the budget lib never imports the app entry). Never falls
+// to the maximal family — unknown types resolve to the middle-weight host_driven.
+const _FAMILY_BY_TYPE = {
+  'Dinner Party': 'home_hosted', 'Housewarming': 'home_hosted', 'Get-Together': 'home_hosted',
+  'Wedding': 'full_service', 'Quinceañera': 'full_service', 'Sweet 16': 'full_service', 'Vow Renewal': 'full_service', 'Fundraiser / Gala': 'full_service',
+  'Holiday Party': 'corporate', 'Board Meeting': 'corporate', 'Conference': 'corporate', 'Product Launch': 'corporate', 'Team Retreat': 'corporate', 'Town Hall': 'corporate', 'Training / Workshop': 'corporate', 'Award Ceremony': 'corporate', 'Client Dinner': 'corporate', 'Networking Event': 'corporate',
+  'Elopement': 'travel_led', 'Wellness Retreat': 'travel_led',
+};
 export function budgetFamilyForType(type) {
-  return budgetFamilyFor(type);
+  if (!type) return 'host_driven';
+  if (_FAMILY_BY_TYPE[type]) return _FAMILY_BY_TYPE[type];
+  const t = String(type).toLowerCase();
+  if (/\b(dinner|brunch|lunch|potluck|housewarming|game ?night|book club|cookout|bbq|barbecue|backyard|cocktail|happy hour)\b/.test(t)) return 'home_hosted';
+  if (/\b(retreat|getaway|destination|honeymoon|elopement|cruise)\b/.test(t)) return 'travel_led';
+  if (/\b(conference|summit|offsite|off-site|launch|meeting|board|town ?hall|training|workshop|networking|corporate|client|kickoff|kick-off|all[- ]?hands|seminar|expo|trade ?show|panel|mixer)\b/.test(t)) return 'corporate';
+  if (/\b(wedding|gala|quince|sweet ?16|vow|fundrais)\b/.test(t)) return 'full_service';
+  return 'host_driven';
 }
 
 // Resolve the exclusion list from an explicit family key OR an event type.
