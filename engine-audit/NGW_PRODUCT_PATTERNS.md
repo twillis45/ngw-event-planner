@@ -183,7 +183,25 @@ Only build a new engine if the capability *truly* does not exist after all four 
 
 **Origin.** Sprint 55H-B3 → B3A: `rentalsGap` gives authored requirements (chairs/plates/serveware × guests); no inventory exists, so the capacity surface states needs ("Confirm seating & serveware for 12 — 12 chairs · 24 plates …"), never deficits.
 
-**Future products.** Any product that plans physical/material needs (Lighting OS gear lists, Photography Business OS kit) — derive the requirement, never assert a shortfall you can't see.
+**Refinement (Sprint 55H-B3 / 55I) — the Never-Infer boundary.** Some facts are not merely un-derivable, they are **unsafe to infer**: physical **load** (electrical/circuit), and the **adequacy of a physical space or duty** (parking capacity, restroom adequacy, room capacity, child-safety supervision, accessibility readiness). These must **never** be estimated — a fabricated "you need 8 parking spots" is worse than silence because it reads as measured. The only honest move is a **prompt to confirm** ("confirm your parking plan", "plan outlets — don't overload one circuit"), never a number, deficit, or adequacy claim. Requirements derive from a rule; these depend on the specific venue/wiring/people, which the system does not know.
+
+**Future products.** Any product that plans physical/material needs (Lighting OS gear lists, Photography Business OS kit) — derive the requirement, never assert a shortfall you can't see, and never infer a load or adequacy.
+
+---
+
+## Pattern 010 — Inform Without Escalating
+
+**Principle.** A surface may render an **informational / requirement** signal without that signal entering the **priority / escalation** computation. Being on the right surface (Pattern 008) is necessary but not sufficient — a requirement must not also become a *blocker*.
+
+**Rule.** Informational signals (capacity requirements, infra prompts, reference/provenance data) render on their owning surface but must **not** feed the action-priority math (the next-action cascade, the hero/spine, the attention count). If they do, they inflate urgency and crowd out true blockers — a "you'll likely need 12 chairs" must never pre-empt "the venue isn't confirmed."
+
+**Anti-pattern.** Routing a requirement/informational item into the priority engine (`getEventReadiness`, the next-action cascade) so it raises the attention/risk count and escalates the hero. (B.2 did the inverse error — forcing execution detail onto the Home Spine, where the event-day hero correctly pre-empted it; B2R moved it to the surface that owns it.)
+
+**Evidence.** Sprint 55H-B3A: the **Capacity** row is appended to the *display* `health` array (`CommandCenter.jsx` `deriveCommandCenterData`, ~line 353) and is rendered in Planning Health — but it is **deliberately NOT** added to `getEventReadiness` (4 axes: `decision, vendor, timeline, document`, ~line 784), which the next-action cascade is the only thing that counts (`[r.decision, r.vendor, r.timeline, r.document]`, ~line 959). So capacity **informs** (Planning Health) without **escalating** (the ladder/spine never sees it). Verified: adding the capacity row caused zero change to the surfaced next-step across QA.
+
+**Relationship.** 008 says *put it on the surface that owns it*; **010 adds: keep it out of the priority system if it's informational.** Together they let a product be rich (lots of helpful signals) without being noisy (everything screaming for action). Protects Patterns 001/002 (the decision-first ladder and the single hero) from informational inflation.
+
+**Future products.** Any product with a priority/triage surface plus reference/requirement panels — render the reference data without letting it escalate the triage.
 
 ---
 
@@ -195,4 +213,24 @@ Only build a new engine if the capability *truly* does not exist after all four 
 
 Together they describe an NGW product that behaves like an experienced operator: it knows what matters, shows it honestly, names it once, orders decisions before actions, and carries the full operational layer — without adding another dashboard, engine, or brain.
 
-*Living document — append a new `Pattern NNN` entry each time a reusable operating principle is proven in a shipped NGW product.*
+---
+
+## Anti-Pattern Library
+
+*Failure modes proven in a shipped NGW product. Each is evidenced, not opinion.*
+
+### AP-001 — Silent Data Subset (two sources of truth for authored data)
+
+**Failure.** Authored data lives in two places — a **canonical** source and a **runtime copy** — and the runtime copy is a **subset** that silently drifts. A reader appears healthy (other records have the field) but **silently no-ops** for the subset record; the gap is invisible until a feature is built on the missing field.
+
+**Evidence.** The canonical Dinner Party playbook (`engine-audit/playbooks/dinner-party.playbook.json`) had `schedules` and `rentalsGap`; the runtime copy (`src/lib/playbooks/data/dinnerParty.js`), migrated as a *subset* in Sprint 55C-1, shipped **without** them. **Cost: two separate sprints discovered the gap mid-build** — 55H-B1 found the run-of-show empty for Dinner Party (missing `schedules`) and 55H-B3A found capacity empty (missing `rentalsGap`), each requiring an unplanned backfill. The other 4 playbooks had both fields, so the readers "worked" — masking the defect.
+
+**Why it's insidious.** It's the data-layer corollary of **Pattern 004 (One Meaning, One Label)**: one concept, one source. A partial copy passes every test that doesn't happen to touch the missing field.
+
+**Fix (EXECUTE).** One source of truth for authored data — import the canonical JSON directly into `src`, **or** generate the `src` modules from canonical, **or** add a parity test that fails when any `src` playbook lacks a field present in its canonical JSON. Until then, treat "field present in N−1 of N records" as a smell.
+
+**Future products.** Any product with authored content mirrored between an authoring store and a runtime bundle (Lighting OS fixtures, Photography templates) — generate or validate parity; never hand-maintain a subset.
+
+---
+
+*Living document — append a new `Pattern NNN` (or `AP-NNN`) entry each time a reusable operating principle, or failure mode, is **proven with evidence** in a shipped NGW product. Do not create doctrine from opinion.*
