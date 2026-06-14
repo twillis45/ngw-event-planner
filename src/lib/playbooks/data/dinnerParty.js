@@ -82,6 +82,31 @@ const dinnerParty = {
     { id: 'p_paper', item: 'Paper goods (cocktail napkins, parchment, foil, food storage containers for leftovers)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Costco'], unitCostRange: [10, 20], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: leftover containers for sending food home.' },
     { id: 'p_dish', item: 'Dish soap, sponges, trash + recycling bags', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery'], unitCostRange: [8, 15], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: extra trash bags + a recycling bag for bottles.' },
   ],
+
+  // Day-of run-of-show schedules (brought into src from the canonical
+  // dinner-party.playbook.json so the runtime can surface them — Sprint 55H-B1).
+  schedules: {
+    purchasing: [
+      { when: 'T-3d', what: 'Pantry, alcohol, paper goods, candles, non-perishables, dish/cleanup kit' },
+      { when: 'T-1d', what: 'Proteins, produce, bread, dairy, dessert ingredients, flowers' },
+      { when: 'T0', what: 'Ice + any last-minute fresh herbs/garnish' },
+    ],
+    cooking: [
+      { when: 'T-1d evening', what: 'Braises/sauces/soup, dessert, full mise en place, marinate proteins' },
+      { when: 'T0 -4h', what: 'Slow-cook/roast items; prep salad components (dress later)' },
+      { when: 'T0 -1h', what: 'Reheat make-ahead; bring proteins to room temp' },
+      { when: 'guests arrive', what: 'Plate appetizer; finish/plate mains; dress salad' },
+    ],
+    setup: [
+      { when: 'T0 -3h', what: 'Set the table: linens, plates, glasses, flatware, place cards, centerpiece, candles' },
+      { when: 'T0 -3h', what: 'Chill whites/sparkling; build the drinks station + ice tub' },
+      { when: 'T0 -2h', what: 'Empty dishwasher, stage bus tub + trash/recycling, light candles 15 min before' },
+    ],
+    cleanup: [
+      { when: 'during', what: 'Clear courses into the staged bus tub; do NOT wash mid-party' },
+      { when: 'T0 +4h', what: 'Leftovers into containers (send some home), run dishwasher, hand-wash delicates, bottles to recycling, linens to soak' },
+    ],
+  },
 };
 
 export default dinnerParty;

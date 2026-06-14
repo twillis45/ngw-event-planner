@@ -130,6 +130,22 @@ Only build a new engine if the capability *truly* does not exist after all four 
 
 ---
 
+## Pattern 007 — Surface Before Building
+
+**Principle.** When a capability seems missing, assume the intelligence already exists and the job is to *expose* it — not to create another engine to produce it.
+
+**Rule.** The first move for any "we need X" is to **surface** authored-but-dark data through an existing surface, and only escalate to building if surfacing proves the data genuinely isn't there. Surfacing is cheap, reversible, and never adds a second source of truth; building does the opposite.
+
+**Relationship to 006.** Pattern 006 (Reuse Before Reinvention) is the *audit discipline* — look before you build. Pattern 007 is the *bias for action it produces* — when the audit finds dark data, route it to a surface; don't model it again. 006 says "check first"; 007 says "expose, don't re-derive."
+
+**Anti-pattern.** Authoring a parallel data model / engine for intelligence that is already written down somewhere and merely unrendered (e.g. building a "run-of-show generator" when the playbook already contains setup/cook/cleanup schedules).
+
+**Origin.** Sprint 55H-B1: the playbook run-of-show was fully authored (`schedules`) and invisible; the Event Day Schedule tab seeded generic content. The fix surfaced the authored schedules through the existing tab — no generator, no new surface, ~one reader function.
+
+**Future products.** Lighting OS (surface the authored shot/gear list before building a planner), Photography Business OS (surface the deliverable pipeline before a workflow engine), every NGW product.
+
+---
+
 ## How patterns relate
 
 - **002 (Spine)** is the *surface contract*; **001 (Decision-First)** is the *ordering law* that governs what the spine shows next.

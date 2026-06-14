@@ -11,6 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
+import { effectiveRos, getPlaybook as getEventPlaybook } from './lib/playbooks';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { callAiFeature, isAiProxyConfigured } from './lib/aiProxy';
@@ -7956,7 +7957,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       honoreeSong: (form.honoreeSong || '').trim(), honoreeDrink: (form.honoreeDrink || '').trim(),
       tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon',
       guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline,
-      ros: kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon', form.theme, form.honoree, form.honoreeSong) : [],
+      // Sprint 55H-B1: a playbook event is born with an EMPTY ros so the Event
+      // Day Schedule derives a real, playbook-specific run-of-show at read-time
+      // (and inherits playbook changes). Non-playbook types keep the generic
+      // starter so their day-of view is still born non-empty.
+      ros: getEventPlaybook(form.type) ? [] : (kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon', form.theme, form.honoree, form.honoreeSong) : []),
     }, selectedClientId || null, false);
     setCreatedId(newId);
     setStep('success');
@@ -26667,7 +26672,7 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
 
   const days    = daysUntil(event.date);
   const nowMin  = now.getHours() * 60 + now.getMinutes();
-  const nextSeg = (event.ros || [])
+  const nextSeg = effectiveRos(event)
     .filter(r => r.time && r.segment)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     .find(r => { const m = parseMin(r.time); return m !== null && m >= nowMin; });
@@ -30162,7 +30167,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const vendorCount  = (event.vendors  || []).length;
   const taskDone     = (event.timeline || []).filter(t => t.done).length;
   const taskTotal    = (event.timeline || []).length;
-  const rosCount     = (event.ros      || []).length;
+  const rosCount     = effectiveRos(event).length; // 55H-B1: includes the derived playbook run-of-show
   const overdueCount = (event.timeline || []).filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
   const agendaCount  = (event.agenda   || []).length;
   // Sprint 50 friction fix #10: badges for the Sprint 49 promoted tabs so the
@@ -30442,7 +30447,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             openId={openVendorId}
             openSection={openVendorSection}
             sectionPing={vendorSectionPing}
-            ros={event.ros}
+            ros={effectiveRos(event)}
             profile={profile}
             allEvents={allEvents}
             isMobile={isMobile}
@@ -30520,7 +30525,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           onBack={() => handleTabChange('Command')}
         />
       )}
-      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={event.ros} onTabChange={setTab} eventName={event.name} /></>}
+      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={effectiveRos(event)} onTabChange={setTab} eventName={event.name} /></>}
       {tab === 'Event Day Schedule' && (
         <>
           <LegacyTabHeader label="Event Day Schedule" hint="The event-day schedule. What happens, when, and who's responsible." onBack={() => handleTabChange('Command')} />
@@ -30539,7 +30544,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={event.ros} setRos={wrap('ros')} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
         </>
       )}
       {tab === 'Agenda'      && <>
