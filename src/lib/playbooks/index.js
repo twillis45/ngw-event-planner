@@ -295,6 +295,99 @@ export function topPlaybookDecision(event, asOf) {
   return null;
 }
 
+// ── Run-of-Show seeding (Sprint 55H-B1) ──────────────────────────────────────
+// Surface authored playbook execution intelligence through the EXISTING Event
+// Day Schedule (event.ros) — no new engine, surface, or storage (Pattern 006/007).
+// Derives a DAY-OF run-of-show from the playbook's authored day-of schedules
+// (cooking/preparation/setup/cleanup), anchored on the event's time of day.
+// Returns ros-shaped segments tagged { source:'playbook', generated:true,
+// playbookType } (Rule 2). Derived at read-time, never persisted, so a playbook
+// timing change flows through automatically (Rule 5). Pre-day shopping
+// (purchasing, T-1d/T-3d) is intentionally excluded — it's planning, not day-of.
+const ROS_ANCHOR_HOUR = { morning: 10, afternoon: 15, evening: 18 };
+// kind → segment type; both 'cooking' (Dinner Party) and 'preparation' (others).
+const ROS_SCHEDULE_KINDS = [
+  { key: 'cooking', segType: 'event' },
+  { key: 'preparation', segType: 'event' },
+  { key: 'setup', segType: 'prep' },
+  { key: 'cleanup', segType: 'prep' },
+];
+
+// A day-of `when` token → minutes offset from the anchor. null for pre-day /
+// non-clock tokens (T-1d, T-3d, 'during', 'ongoing') so they're skipped.
+function rosWhenOffset(when) {
+  const w = String(when || '').trim();
+  if (/^T-\d+d/i.test(w)) return null;          // pre-day shopping/prep
+  if (/during|ongoing/i.test(w)) return null;   // not a point in time
+  if (/guests?\s*arrive/i.test(w)) return 0;    // at the anchor
+  const m = /^T0\s*([+-])\s*(\d+)(?::(\d+))?\s*h?/i.exec(w);
+  if (m) {
+    const sign = m[1] === '-' ? -1 : 1;
+    const h = parseInt(m[2], 10);
+    const min = m[3] != null ? parseInt(m[3], 10) : 0;
+    return sign * (m[3] != null ? h * 60 + min : h * 60);
+  }
+  if (/^T0\b/i.test(w)) return 0;               // bare T0 → anchor
+  return null;
+}
+
+const rosPad2 = (n) => String(((n % 24) + 24) % 24).padStart(2, '0');
+
+export function playbookRunOfShow(event) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !playbook.schedules) return null;
+  const tod = String(event.timeOfDay || '').toLowerCase();
+  const base = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
+  const baseMin = base * 60;
+
+  const rows = [];
+  let seq = 0;
+  for (const kind of ROS_SCHEDULE_KINDS) {
+    const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
+    for (const entry of list) {
+      const off = rosWhenOffset(entry.when);
+      if (off === null) continue;
+      const total = baseMin + off;
+      rows.push({
+        id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
+        time: `${rosPad2(Math.floor(total / 60))}:${String(((total % 60) + 60) % 60).padStart(2, '0')}`,
+        _min: total,
+        segment: entry.what,
+        location: '',
+        type: kind.segType,
+        owner: 'Host',
+        confirmed: false,
+        notes: '',
+        source: 'playbook',
+        generated: true,
+        playbookType: playbook.type,
+      });
+    }
+  }
+  if (!rows.length) return null;
+  // Anchor a "Guests arrive" hero segment unless an entry already lands there.
+  if (!rows.some((r) => r._min === baseMin)) {
+    rows.push({
+      id: `pb-ros-${event.id}-arrival`, time: `${rosPad2(base)}:00`, _min: baseMin,
+      segment: 'Guests arrive', location: '', type: 'event', owner: 'Host',
+      confirmed: false, notes: '', source: 'playbook', generated: true, playbookType: playbook.type,
+    });
+  }
+  rows.sort((a, b) => a._min - b._min);
+  return rows.map(({ _min, ...r }) => r); // drop the sort helper
+}
+
+// The run-of-show a surface should show: the user's own schedule if any exists
+// (Rule 1: never overwrite manual/imported), otherwise the playbook-derived
+// run-of-show (Rule 5). Pure; derived rows are never auto-persisted — once the
+// host edits (which seeds + saves them), the saved schedule wins.
+export function effectiveRos(event) {
+  const stored = event && Array.isArray(event.ros) ? event.ros : [];
+  if (stored.length) return stored;
+  return playbookRunOfShow(event) || [];
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a

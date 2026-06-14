@@ -262,3 +262,67 @@ describe('55G decision-first gate', () => {
     expect(topPlaybookDecision(ev, ASOF).decision).toBe('guestCount');
   });
 });
+
+// ── Sprint 55H-B1: run-of-show seeding ────────────────────────────────────────
+import { playbookRunOfShow, effectiveRos } from '../index';
+
+describe('55H-B1 playbookRunOfShow', () => {
+  const dp = (over) => ({ id: 'e1', type: 'Dinner Party', date: '2026-06-20', timeOfDay: 'evening', ...over });
+
+  test('Dinner Party derives a sorted day-of run-of-show, tagged generated (Rule 2)', () => {
+    const ros = playbookRunOfShow(dp());
+    expect(Array.isArray(ros)).toBe(true);
+    expect(ros.length).toBeGreaterThanOrEqual(4);
+    // metadata on every row
+    ros.forEach((r) => {
+      expect(r.source).toBe('playbook');
+      expect(r.generated).toBe(true);
+      expect(r.playbookType).toBe('Dinner Party');
+      expect(r.time).toMatch(/^\d{2}:\d{2}$/);
+    });
+    // sorted by time
+    const mins = ros.map((r) => Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3)));
+    expect(mins).toEqual([...mins].sort((a, b) => a - b));
+    // includes the arrival hero + real day-of segments
+    expect(ros.some((r) => /guests arrive|plate appetizer/i.test(r.segment))).toBe(true);
+    expect(ros.some((r) => /set the table|chill|drinks/i.test(r.segment))).toBe(true);
+  });
+
+  test('excludes pre-day items (no T-1d shopping/prep in the day-of schedule)', () => {
+    const ros = playbookRunOfShow(dp());
+    // none of the rows should be the T-1d evening make-ahead or any shopping run
+    expect(ros.some((r) => /pantry|alcohol run|buy .*non-perishable/i.test(r.segment))).toBe(false);
+  });
+
+  test('evening anchor (18:00) places arrival at 18:00', () => {
+    const ros = playbookRunOfShow(dp({ timeOfDay: 'evening' }));
+    expect(ros.some((r) => r.time === '18:00')).toBe(true);
+  });
+
+  test('Birthday derives its own run-of-show', () => {
+    const ros = playbookRunOfShow({ id: 'b', type: 'Birthday', date: '2026-06-20', timeOfDay: 'afternoon' });
+    expect(ros.length).toBeGreaterThan(0);
+    expect(ros.every((r) => r.playbookType === 'Birthday')).toBe(true);
+  });
+
+  test('non-playbook (Wedding) → null', () => {
+    expect(playbookRunOfShow({ id: 'w', type: 'Wedding', date: '2026-06-20' })).toBeNull();
+  });
+});
+
+describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
+  const dp = { id: 'e1', type: 'Dinner Party', date: '2026-06-20', timeOfDay: 'evening' };
+
+  test('empty ros → derives the playbook run-of-show', () => {
+    const r = effectiveRos({ ...dp, ros: [] });
+    expect(r.length).toBeGreaterThan(0);
+    expect(r[0].generated).toBe(true);
+  });
+  test('manual/imported ros (non-empty) → returned verbatim, never overwritten', () => {
+    const manual = [{ id: 'm1', time: '19:00', segment: 'My own segment' }];
+    expect(effectiveRos({ ...dp, ros: manual })).toBe(manual);
+  });
+  test('non-playbook with empty ros → empty (current behavior unchanged)', () => {
+    expect(effectiveRos({ id: 'w', type: 'Wedding', date: '2026-06-20', ros: [] })).toEqual([]);
+  });
+});
