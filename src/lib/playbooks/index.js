@@ -108,8 +108,55 @@ function daysToEvent(eventDate, asOf) {
   return Math.ceil((new Date(eventDate + 'T00:00:00') - base) / 86400000);
 }
 
+// ── Decision-first gating (NGW Product Pattern 001) ───────────────────────────
+// Prerequisite decisions outrank dependent actions. A per-guest purchase cannot
+// be sized until the final guest count is locked; a food purchase shouldn't be
+// bought before dietary/allergies are collected (where the playbook models a
+// dietary decision). The gate reads ONLY event state we can actually observe —
+// an undetectable decision never hard-blocks (that would hide the action
+// forever). This is a filter over authored data, not a new system.
+
+function guestCountResolved(event) {
+  const n = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests || []).length || 0;
+  if (n <= 0) return { resolved: false, pending: 0, reason: 'no-count' };
+  const list = event.guests || [];
+  // A "final" count means no still-pending RSVPs. Only a real guest list can
+  // tell us this; an estimate-only event is treated as resolved (we can't see
+  // maybes, and we won't block a host who already gave a number).
+  const pending = list.filter((g) => {
+    const r = String((g && g.rsvp) || '').trim().toLowerCase();
+    return r === 'maybe' || r === '';
+  }).length;
+  if (list.length > 0 && pending > 0) return { resolved: false, pending, reason: 'pending-rsvps' };
+  return { resolved: true, pending: 0 };
+}
+
+function dietaryResolved(event) {
+  const list = event.guests || [];
+  if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
+  const recorded = list.some((g) => {
+    const needs = String((g && g.needs) || '').trim();
+    const meal = String((g && g.meal) || '').trim();
+    return needs || (meal && !/^(standard|—|-|none)$/i.test(meal));
+  });
+  return { resolved: recorded };
+}
+
+function playbookHasDietaryDecision(playbook) {
+  return (playbook.decisions || []).some((d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || ''));
+}
+
+// Which prerequisite decision (if any) blocks this purchase. null = not blocked.
+function purchaseGate(p, playbook, gc, di) {
+  const perGuest = typeof p.qtyPerGuest === 'number' || typeof p.qtyPer === 'number';
+  if (perGuest && !gc.resolved) return 'guestCount';
+  if (p.category === 'food' && playbookHasDietaryDecision(playbook) && !di.resolved) return 'dietary';
+  return null;
+}
+
 // ── Reader ────────────────────────────────────────────────────────────────────
 // playbookTasks(event, asOf) → OperationalTask[]  (pure; soonest-due first).
+// Purchases blocked by an unresolved prerequisite decision are suppressed.
 export function playbookTasks(event, asOf) {
   if (!event) return [];
   const playbook = getPlaybook(event.type);
@@ -118,6 +165,8 @@ export function playbookTasks(event, asOf) {
   if (dte === null) return [];
 
   const guests = guestCountOf(event, playbook);
+  const gc = guestCountResolved(event);
+  const di = dietaryResolved(event);
   const tasks = [];
 
   for (const p of playbook.purchases) {
@@ -126,6 +175,10 @@ export function playbookTasks(event, asOf) {
     const dueInDays = dte + offset;
     // Window gate — eligible only today..WINDOW_LEAD ahead; never past-due.
     if (dueInDays < 0 || dueInDays > WINDOW_LEAD) continue;
+    // Decision-first gate — suppress a purchase whose prerequisite decision
+    // (final count / dietary) is unresolved. The decision surfaces instead
+    // via topPlaybookDecision().
+    if (purchaseGate(p, playbook, gc, di)) continue;
 
     const qty = resolveQuantity(p, guests);
     const name = shortItem(p.item);
@@ -171,6 +224,75 @@ export function playbookTasks(event, asOf) {
 export function topPlaybookTask(event, asOf) {
   const list = playbookTasks(event, asOf);
   return list.length ? list[0] : null;
+}
+
+// The blocking decision that should surface INSTEAD of a purchase (Pattern 001).
+// Returns a decision candidate only when a prerequisite decision is unresolved
+// AND it actually blocks an in-window purchase — so it never nags about a fuzzy
+// count when there is nothing imminent to buy. Priority: a locked guest count is
+// the master quantity input, so it surfaces before dietary.
+export function topPlaybookDecision(event, asOf) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !Array.isArray(playbook.purchases)) return null;
+  const dte = daysToEvent(event.date, asOf);
+  if (dte === null) return null;
+
+  const gc = guestCountResolved(event);
+  const di = dietaryResolved(event);
+  if (gc.resolved && di.resolved) return null;
+
+  // Only surface a decision that blocks something in the current buy window.
+  let blocksCount = false;
+  let blocksDietary = false;
+  for (const p of playbook.purchases) {
+    const offset = buyOffsetDays(p.buyAt);
+    if (offset === null) continue;
+    const dueInDays = dte + offset;
+    if (dueInDays < 0 || dueInDays > WINDOW_LEAD) continue;
+    const g = purchaseGate(p, playbook, gc, di);
+    if (g === 'guestCount') blocksCount = true;
+    if (g === 'dietary') blocksDietary = true;
+  }
+
+  if (blocksCount) {
+    const pendingMsg = gc.reason === 'pending-rsvps'
+      ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the locked count.`
+      : 'Add a final guest count so every quantity is sized before you shop.';
+    return {
+      id: `pb-decision-${event.id}-guestCount`,
+      kind: 'decision',
+      category: 'decision',
+      decision: 'guestCount',
+      title: 'Confirm final guest count',
+      consequence: `Food, drinks, ice, and rentals all scale from headcount. ${pendingMsg}`,
+      level: 'attention',
+      primaryCta: gc.reason === 'pending-rsvps' ? 'Chase RSVPs' : 'Set guest count',
+      primaryRoute: { eventId: event.id, tab: 'Guests' },
+      eventId: event.id,
+      owner: 'host',
+      provenance: { source: `${playbook.type} playbook`, rule: 'decision-first: count before quantity' },
+    };
+  }
+
+  if (blocksDietary) {
+    return {
+      id: `pb-decision-${event.id}-dietary`,
+      kind: 'decision',
+      category: 'decision',
+      decision: 'dietary',
+      title: 'Collect dietary restrictions & allergies',
+      consequence: 'Lock the menu only after allergies are in — one unflagged allergy is a safety issue, not a courtesy. Collect from your guest list before buying food.',
+      level: 'attention',
+      primaryCta: 'Collect dietary needs',
+      primaryRoute: { eventId: event.id, tab: 'Guests' },
+      eventId: event.id,
+      owner: 'host',
+      provenance: { source: `${playbook.type} playbook`, rule: 'decision-first: dietary before menu/food' },
+    };
+  }
+
+  return null;
 }
 
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────

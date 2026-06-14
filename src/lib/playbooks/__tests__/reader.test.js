@@ -1,4 +1,4 @@
-import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories } from '../index';
+import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision } from '../index';
 
 const DP = (over) => ({
   id: 'e1',
@@ -38,13 +38,14 @@ describe('quantity-resolved operational candidate (the success condition)', () =
     expect(t.title).toBe('Buy ice — 12 lbs today');
   });
 
-  test('falls back to playbook typical guests when no count present', () => {
-    const t = topPlaybookTask(
-      { id: 'e1', type: 'Dinner Party', date: '2026-06-20' },
-      '2026-06-20',
-    );
-    // default 8 guests → 12 lbs ice
-    expect(t.title).toBe('Buy ice — 12 lbs today');
+  test('no guest count present → decision-first: suppress the buy, ask for the count (55G)', () => {
+    // Pre-55G this surfaced "Buy ice — 12 lbs" against the typical-guests
+    // fallback. Decision-first now refuses to size a buy with no headcount and
+    // surfaces the prerequisite decision instead. (Budget categories still use
+    // the typical-guests fallback — see playbookBudgetCategories tests.)
+    const ev = { id: 'e1', type: 'Dinner Party', date: '2026-06-20' };
+    expect(topPlaybookTask(ev, '2026-06-20')).toBeNull();
+    expect(topPlaybookDecision(ev, '2026-06-20').decision).toBe('guestCount');
   });
 });
 
@@ -192,5 +193,72 @@ describe('55D per-playbook engine behavior', () => {
       const cats = playbookBudgetCategories(type, 20).map((c) => c.label);
       ['Food & groceries', 'Drinks & bar'].forEach((must) => expect(cats).toContain(must));
     });
+  });
+});
+
+// ── Sprint 55G: decision-first gating (Pattern 001) ───────────────────────────
+describe('55G decision-first gate', () => {
+  const guests = (over) => Array.from({ length: 12 }, (_, i) => ({ id: 'g' + i, name: 'G' + i, rsvp: 'Yes', meal: 'Standard', needs: '', ...(over ? over(i) : {}) }));
+  // 1 day out → T-1d per-guest purchases (protein etc.) are in-window today.
+  const dp = (over) => ({ id: 'e1', type: 'Dinner Party', date: '2026-06-20', guestCount: 12, ...over });
+  const ASOF = '2026-06-19';
+
+  test('unresolved headcount (a pending Maybe) → surface "Confirm final guest count", block per-guest buys', () => {
+    const ev = dp({ guests: guests((i) => (i === 11 ? { rsvp: 'Maybe' } : {})) });
+    const d = topPlaybookDecision(ev, ASOF);
+    expect(d).toBeTruthy();
+    expect(d.category).toBe('decision');
+    expect(d.title).toBe('Confirm final guest count');
+    expect(d.primaryRoute.tab).toBe('Guests');
+    // protein (per-guest, food) must NOT surface as a buy while the count is open
+    const tasks = playbookTasks(ev, ASOF);
+    expect(tasks.some((t) => /protein/i.test(t.title))).toBe(false);
+  });
+
+  test('no count at all → still surfaces the count decision', () => {
+    const ev = { id: 'e1', type: 'Dinner Party', date: '2026-06-20', guestCount: 0, guestEstimate: '', guests: [] };
+    // no guest list + no count → count unresolved, but dietary "no-list" resolved
+    const d = topPlaybookDecision(ev, ASOF);
+    expect(d && d.decision).toBe('guestCount');
+  });
+
+  test('resolved headcount (all Yes, dietary recorded) → no decision, buy surfaces', () => {
+    const ev = dp({ guests: guests((i) => (i === 3 ? { needs: 'Nut allergy' } : {})) });
+    expect(topPlaybookDecision(ev, ASOF)).toBeNull();
+    expect(topPlaybookTask(ev, ASOF)).toBeTruthy();
+  });
+
+  test('dietary unresolved (count locked, no meal/needs) → surface "Collect dietary", block food', () => {
+    const ev = dp({ guests: guests((i) => ({ meal: 'Standard', needs: '' })) }); // all Yes, nothing recorded
+    const d = topPlaybookDecision(ev, ASOF);
+    expect(d && d.decision).toBe('dietary');
+    expect(d.title).toMatch(/dietary/i);
+    const tasks = playbookTasks(ev, ASOF);
+    expect(tasks.some((t) => t.phase === 'food')).toBe(false);
+  });
+
+  test('dietary resolved (a guest has a recorded need) → no dietary decision', () => {
+    const ev = dp({ guests: guests((i) => (i === 0 ? { needs: 'Vegan' } : {})) });
+    expect(topPlaybookDecision(ev, ASOF)).toBeNull();
+  });
+
+  test('estimate-only event (no guest list) is NOT falsely blocked', () => {
+    const ev = { id: 'e1', type: 'Dinner Party', date: '2026-06-20', guestEstimate: '12', guests: [] };
+    expect(topPlaybookDecision(ev, ASOF)).toBeNull();
+    expect(topPlaybookTask(ev, ASOF)).toBeTruthy();
+  });
+
+  test('gate only fires when a purchase is actually in window (far-out event → no nag)', () => {
+    const ev = dp({ date: '2026-07-20', guests: guests((i) => (i === 11 ? { rsvp: 'Maybe' } : {})) });
+    expect(topPlaybookDecision(ev, '2026-06-19')).toBeNull(); // 31 days out, nothing in window
+  });
+
+  test('non-playbook event → no decision (existing behavior intact)', () => {
+    expect(topPlaybookDecision({ id: 'e', type: 'Wedding', date: '2026-06-20', guests: [{ rsvp: 'Maybe' }] }, ASOF)).toBeNull();
+  });
+
+  test('priority: when BOTH count and dietary are open, guest count wins', () => {
+    const ev = dp({ guests: guests((i) => ({ rsvp: i === 11 ? 'Maybe' : 'Yes', meal: 'Standard', needs: '' })) });
+    expect(topPlaybookDecision(ev, ASOF).decision).toBe('guestCount');
   });
 });
