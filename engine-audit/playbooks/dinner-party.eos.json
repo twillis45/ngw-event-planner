@@ -1,0 +1,153 @@
+{
+  "type": "Dinner Party",
+  "version": "1.0.0",
+  "composes": {
+    "playbook": "./dinner-party.playbook.json",
+    "note": "The Playbook layer (timeline, decisions, shopping, quantities, purchase/cooking/setup/cleanup schedules, vendor options) lives in dinner-party.playbook.json. This EOS file adds the Readiness, Experience, Guest-Management, and Host-Mindset layers that sit on top of it."
+  },
+
+  "_comment": "eventState fields referenced by predicates (deterministic). Some exist today (guests, vendors, date, budget); the new ones (menu.locked, dietary.collected, recipes.new, seating.capacity, help.hired) are the signals to start capturing. Engine degrades gracefully: an unknown field reads as 'unmet/unknown', never a false 'ready'.",
+
+  "guestManagement": {
+    "rsvpStrategy": { "askBy": "T-7d", "method": ["text", "email", "in-app"], "track": ["attending", "dietary", "plusOne"], "chaseMaybesAt": "T-3d" },
+    "communications": [
+      { "id": "gm_invite", "when": "T-18d", "to": "all guests", "message": "Invite with date, time, full address, what-to-bring (or 'nothing — just yourself'), and a one-line dietary/allergy ask. Set a soft RSVP-by date." },
+      { "id": "gm_dietary", "when": "T-18d", "to": "all guests", "message": "Collect allergies + restrictions IN the invite — never after the menu is set." },
+      { "id": "gm_logistics", "when": "T-2d", "to": "all guests", "message": "Arrival window ('come at 7, we'll eat around 7:45'), parking instructions, and whether to bring anything. Removes the early-arrival-while-cooking trap." },
+      { "id": "gm_byob", "when": "T-7d", "to": "all guests", "message": "If BYOB or 'bring a bottle', say so explicitly so the alcohol plan and the guests align." }
+    ],
+    "seatingPlan": { "trigger": "guests >= 8", "rule": "Assign seats (place cards) for 8+; seat complementary energies together; split known conflicts; put the shy guest next to the connector, not the wall." },
+    "conflictHandling": [
+      { "trigger": "known guest conflict on the list", "guidance": "Seat them apart, brief no one, and have a co-host or yourself anchor the table that needs steadying." }
+    ]
+  },
+
+  "readiness": {
+    "mental": [
+      { "id": "rm_menu", "label": "Menu is fully finalized (incl. a vegetarian main + allergy swaps)", "predicate": { "field": "menu.locked", "op": "isTrue" }, "severity": "high", "window": "T-14d", "fix": "Lock all three courses; write the dish list down. Everything downstream depends on this." },
+      { "id": "rm_headcount", "label": "Guest count is stable (RSVPs in, no churn)", "predicate": { "field": "headcount.stable", "op": "isTrue" }, "severity": "high", "window": "T-3d", "fix": "Chase the maybes; treat the locked number as final for shopping." },
+      { "id": "rm_budget", "label": "Budget is realistic for the guest count", "predicate": { "field": "budget.perHeadOver", "op": "isFalse" }, "severity": "med", "window": "T-10d", "fix": "Sanity-check against ~$30–120/guest; trade the protein down a tier before cutting the wine." },
+      { "id": "rm_capacity", "label": "You know your oven/stove + fridge can actually run this menu", "predicate": { "field": "kitchen.capacityChecked", "op": "isTrue" }, "severity": "med", "window": "T-7d", "fix": "Map each dish to a burner/oven slot + temp; if two dishes need different oven temps at the same time, change one." },
+      { "id": "rm_read", "label": "You've read every recipe start-to-finish", "predicate": { "field": "recipes.read", "op": "isTrue" }, "severity": "med", "window": "T-7d", "fix": "Read for hidden time-sinks ('marinate overnight', 'rest 1h') BEFORE you build the cook schedule." }
+    ],
+    "physical": [
+      { "id": "rp_seating", "label": "Enough chairs for everyone", "predicate": { "field": "seating.capacity", "op": "gte", "ref": "guests" }, "severity": "high", "window": "T-7d", "fix": "Count chairs vs RSVPs; borrow or rent folding chairs now, not the day-of." },
+      { "id": "rp_settings", "label": "Enough matching place settings (plates, glasses, flatware)", "predicate": { "field": "settings.count", "op": "gte", "ref": "guests" }, "severity": "high", "window": "T-7d", "fix": "Need ~2 plates + 2.5 glasses + 1 flatware set per guest (with breakage spares); borrow/rent the gap." },
+      { "id": "rp_serveware", "label": "Serving platters AND serving utensils for every dish", "predicate": { "field": "serveware.complete", "op": "isTrue" }, "severity": "med", "window": "T-2d", "fix": "One serving spoon/tongs per dish — the single most-forgotten item. Lay them out the afternoon-of." },
+      { "id": "rp_fridge", "label": "Fridge space for ingredients + chilling drinks", "predicate": { "field": "fridge.ok", "op": "isTrue" }, "severity": "med", "window": "T-2d", "fix": "Clear a shelf; use a cooler + ice for drinks so the fridge holds food." },
+      { "id": "rp_ice", "label": "Ice on the day-of list (~1.5 lb/guest)", "predicate": { "field": "purchases.includes", "op": "contains", "value": "p_ice" }, "severity": "med", "window": "T0", "fix": "Buy ice the morning-of; pre-chill whites 3h ahead." },
+      { "id": "rp_parking", "label": "Parking / arrival logistics are clear", "predicate": { "field": "logistics.parkingCommunicated", "op": "isTrue" }, "severity": "low", "window": "T-2d", "fix": "Tell guests where to park; one sentence prevents ten texts." }
+    ],
+    "emotional": [
+      { "id": "re_firsttimer", "label": "First-time-host nerves", "normalAt": "always", "severity": "low", "reassurance": "Nerves mean you care. Your guests came for your company, not a restaurant. A relaxed host beats a flawless plate every time.", "redirectTo": "Pick a make-ahead-heavy menu so you can actually be at the table." },
+      { "id": "re_ambition", "label": "Menu-ambition pressure", "trigger": { "field": "recipes.new", "op": "gte", "value": 2 }, "severity": "high", "reassurance": "Wanting to impress is normal — but trying 2+ new recipes the same night is the #1 dinner-party regret.", "redirectTo": "Keep at most ONE new dish; make it a course you can finish early. Cook the rest from things you've made before." },
+      { "id": "re_perfectionism", "label": "Tablescape / comparison spiral", "trigger": { "field": "timeSpent.decor", "op": "high" }, "severity": "med", "reassurance": "The internet's tablescapes are styled for cameras, not dinners. Candles + flowers + clean glasses is genuinely enough.", "redirectTo": "Stop polishing decor; the bigger lever is whatever readiness gap is still open." },
+      { "id": "re_decisionfatigue", "label": "Decision fatigue", "trigger": { "field": "decisions.openCount", "op": "gte", "value": 4 }, "severity": "med", "reassurance": "Too many small choices is draining and normal. Defaulting is a strategy, not a failure.", "redirectTo": "Take the recommended default on the low-stakes calls (one cocktail, open seating under 8) and save energy for the menu." },
+      { "id": "re_scarcity", "label": "Fear of running out of food/drink", "normalAt": "T-3d", "severity": "low", "reassurance": "Almost every host over-buys. Plan ~10% over on proteins and ½ bottle of wine per drinker — that's plenty, and leftovers are a gift.", "redirectTo": "Buy the planned quantities; resist the panic-buy." }
+    ],
+    "social": [
+      { "id": "rs_dietary", "label": "Dietary/allergy collected from ALL guests", "predicate": { "field": "dietary.collected", "op": "isTrue" }, "severity": "critical", "window": "T-14d", "fix": "One unflagged severe allergy is the only thing here that can hurt someone. Collect with the invite; confirm at RSVP close; always plate one safe vegetarian main." },
+      { "id": "rs_arrival", "label": "Arrival expectations communicated", "predicate": { "field": "logistics.arrivalCommunicated", "op": "isTrue" }, "severity": "med", "window": "T-2d", "fix": "'Come at 7, dinner ~7:45' stops the early-arrival-while-you're-cooking scramble." },
+      { "id": "rs_alcohol", "label": "Alcohol expectations are clear (host-provides vs BYOB)", "predicate": { "field": "decisions.alcohol", "op": "exists" }, "severity": "low", "window": "T-7d", "fix": "Say it in the invite; always have a great zero-proof option for non-drinkers/DDs/pregnant guests." },
+      { "id": "rs_conflict", "label": "Known guest conflicts are managed (seating)", "predicate": { "field": "seating.conflictsHandled", "op": "isTrue" }, "severity": "low", "window": "T-2d", "fix": "Seat apart; don't announce it; anchor the table yourself." }
+    ]
+  },
+
+  "experience": [
+    { "id": "ex_newrecipe", "category": "first-timer", "trigger": { "field": "recipes.new", "op": "gte", "value": 1, "and": { "field": "recipes.newScheduledDayOf", "op": "isTrue" } }, "severity": "high", "what": "Cooking a never-before-tried recipe live, with guests watching", "why": "Untested recipes hide time-sinks and failure points; discovering them at 7pm with 8 guests is the classic disaster.", "fix": "Test it once beforehand, or move the new dish to a make-ahead course you can redo if it flops." },
+    { "id": "ex_alaminute", "category": "sequencing", "trigger": { "field": "menu.alaMinuteCourses", "op": "gte", "value": 2 }, "severity": "high", "what": "Two or more courses that must be cooked à-la-minute", "why": "You end up trapped at the stove instead of with your guests — the most common host regret.", "fix": "Design so ≥2 of 3 courses are make-ahead/reheat; you should PLATE, not COOK, once guests arrive." },
+    { "id": "ex_ice", "category": "forgotten-purchase", "trigger": { "field": "purchases.includes", "op": "missing", "value": "p_ice" }, "severity": "med", "what": "No ice on the list", "why": "Warm drinks, no way to chill the just-arrived rosé. Almost always forgotten.", "fix": "Add ~1.5 lb ice/guest to the day-of run." },
+    { "id": "ex_serveutensils", "category": "forgotten-purchase", "trigger": { "field": "serveware.complete", "op": "isFalse" }, "severity": "med", "what": "No serving spoons/tongs staged", "why": "Plated, beautiful food and nothing to serve it with — a day-of scramble.", "fix": "Lay out one serving utensil per dish during table setup." },
+    { "id": "ex_seating", "category": "common-mistake", "trigger": { "field": "seating.capacity", "op": "lt", "ref": "guests" }, "severity": "high", "what": "More RSVPs than chairs/place settings", "why": "There is no graceful recovery at 7pm for a missing chair.", "fix": "Reconcile capacity vs RSVPs at T-7d; borrow/rent before the count over-fills." },
+    { "id": "ex_oventemp", "category": "hidden-risk", "trigger": { "field": "kitchen.capacityChecked", "op": "isFalse" }, "severity": "med", "what": "Two dishes need the oven at different temperatures at the same time", "why": "A real constraint hosts discover mid-cook with no fix.", "fix": "Map dishes to oven/burner slots in advance; stagger or swap a dish." },
+    { "id": "ex_perishearly", "category": "sequencing", "trigger": { "field": "purchases.freshBoughtEarly", "op": "isTrue" }, "severity": "low", "what": "Buying produce/proteins too early", "why": "Wilted greens, off fish, sad herbs.", "fix": "Buy fresh 24–36h out, after headcount locks; pantry/alcohol can go earlier." },
+    { "id": "ex_solohost", "category": "first-timer", "trigger": { "field": "help.hired", "op": "isFalse", "and": { "field": "guests", "op": "gte", "value": 8 } }, "severity": "low", "what": "Hosting + cooking + bartending + cleaning solo for 8+", "why": "No single person enjoys their own party doing all four jobs.", "fix": "Recruit a co-host for drinks, or spend $100–180 on a post-party cleaner — the highest-ROI sanity move." },
+    { "id": "ex_lateSetup", "category": "sequencing", "trigger": { "field": "setup.startsWithin1h", "op": "isTrue" }, "severity": "low", "what": "Starting table setup an hour before", "why": "You're plating decor while guests ring the bell.", "fix": "Set the table in the afternoon; light candles 15 min before." }
+  ],
+
+  "mindset": {
+    "philosophy": "The goal is not a longer to-do list — it's a calmer, more confident host. Each week, surface the ONE thing that matters most, normalize the feeling, and redirect energy away from low-stakes busywork toward the real lever.",
+    "rules": [
+      "Rank open concerns by severity × time-pressure; coach the single highest, not the whole list.",
+      "If the host is spending time on a low-severity item (decor, extra cocktails) while a higher-severity readiness check is unmet, name the swap explicitly.",
+      "Always pair a redirect with reassurance — tell them what's normal at this stage.",
+      "Critical social/safety gaps (dietary/allergy) outrank everything, at every stage."
+    ],
+    "phases": [
+      {
+        "window": "T-21d to T-14d", "title": "Decide", "focus": "Lock the menu and collect dietary restrictions.",
+        "mental": "The menu is the spine — shopping, quantities, and your cook schedule all flow from it. Decide it and write it down.",
+        "emotional": "It's normal to feel ambitious. Choosing a menu where 2 of 3 courses are make-ahead isn't a cop-out — it's the pro move that lets you be at the table.",
+        "social": "Ask for allergies and restrictions NOW, in the invite. Never after the menu is set.",
+        "physical": "Glance at chair + place-setting counts so you know if there's a gap to fill.",
+        "reassurance": "You don't need the final shopping list yet. One good decision this week (the menu) is the whole job.",
+        "redirectFrom": "Comparing centerpieces, tablecloths, or playlists."
+      },
+      {
+        "window": "T-14d to T-3d", "title": "Plan", "focus": "Confirm headcount, build the shopping plan, decide on any help.",
+        "mental": "With the menu locked, this is mechanical: list what to buy and when, and reserve any rentals/help.",
+        "emotional": "Decision fatigue is real this stretch. Take the recommended defaults on small calls (one signature cocktail, open seating under 8) and save your energy.",
+        "social": "Send arrival-time + parking logistics so no one shows up 30 minutes early while you're cooking.",
+        "physical": "Secure the chair/serveware gap now — borrowing the day-of is how parties go sideways.",
+        "reassurance": "Almost every host over-buys; plan ~10% over on proteins and ½ bottle of wine per drinker and stop there.",
+        "redirectFrom": "Adding a third cocktail option or a more elaborate dessert."
+      },
+      {
+        "window": "T-3d to T-1d", "title": "Acquire & Prep", "focus": "Pantry/alcohol shop, then fresh, then make-ahead cooking.",
+        "mental": "Buy non-perishables + alcohol first; buy fresh 24–36h out after headcount locks.",
+        "emotional": "This is the busy stretch, and that's expected. The make-ahead cooking you do tonight is exactly what lets you relax tomorrow.",
+        "social": "Confirm the final count and re-check the one allergy you flagged.",
+        "physical": "Do full mise en place — chop, marinate, portion. A staged kitchen is a calm host.",
+        "reassurance": "Feeling behind the night before is normal; the braise in the fridge means you're actually ahead.",
+        "redirectFrom": "Re-cleaning rooms guests won't see."
+      },
+      {
+        "window": "T0", "title": "Execute", "focus": "Set up in the afternoon; plate (don't cook) when guests arrive; stage cleanup.",
+        "mental": "Reheat make-ahead, finish the one live dish, dress the salad last. Plate — don't start cooking — once the bell rings.",
+        "emotional": "Whatever isn't perfect, your guests won't notice. They came for you. A host who sits down beats a host who hides in the kitchen.",
+        "social": "Greet, pour a drink, point to the bathroom. Warmth is the whole job now.",
+        "physical": "Empty the dishwasher and stage a bus tub before anyone arrives; clear courses into it — don't wash mid-party.",
+        "reassurance": "Something small will go a little wrong at every dinner party ever thrown. That's not failure — that's a dinner party.",
+        "redirectFrom": "Last-minute new dishes or re-plating for looks."
+      }
+    ],
+    "flagshipExample": {
+      "situation": "Host has spent two evenings comparing centerpieces; 14 guests invited; dietary not yet collected.",
+      "coaching": "Centerpieces are the fun part — but the real risk right now is that you haven't heard back on dietary restrictions from 14 guests, and your menu locks this week. Send the allergy ask today; the table can wait. (This is normal — decor feels productive because it's pleasant; the engine's job is to point you at the lever that actually matters.)"
+    }
+  },
+
+  "contingencies": [
+    { "id": "c_dishflop", "trigger": "A dish burns / breaks / doesn't set", "plan": "Keep a rescue course in the pantry — good dried pasta + a jar of quality sauce + parmesan is a respectable plate in 15 minutes. Don't announce the failure; just serve the pivot.", "severity": "high" },
+    { "id": "c_plusone", "trigger": "A guest brings an uninvited +1", "plan": "You already set 1–2 buffer place settings and bought ~10% extra; stretch the meal with more bread, salad, and sides. A gracious host never lets the guest feel the math.", "severity": "med" },
+    { "id": "c_behind", "trigger": "You're running 30+ minutes behind", "plan": "Pour another round and serve the most complex course family-style instead of plated, or cut it entirely. Guests remember the mood, never the missing course.", "severity": "med" },
+    { "id": "c_shortfood", "trigger": "Not enough food", "plan": "Open with bread + cheese, stretch with a fast pasta or a big salad, and slow the pacing. Calm reframes 'short' as 'relaxed'.", "severity": "med" },
+    { "id": "c_oven", "trigger": "Oven or a key appliance fails", "plan": "Pivot to stovetop / grill / no-cook (charcuterie + salad + pasta). Know in advance which dish is your appliance-independent fallback.", "severity": "high" },
+    { "id": "c_unknownallergy", "trigger": "A guest reveals a restriction you didn't know about", "plan": "The plated vegetarian main + a side of plain protein/grain is your universal safe plate. This is exactly why one safe veg main is non-negotiable.", "severity": "critical" },
+    { "id": "c_winelow", "trigger": "Wine/drinks running low", "plan": "The ½-bottle-per-drinker rule should prevent this; if it happens, the nearest store run or the BYOB ask covers it. Never let it run fully dry — switch to a punch/spritz to stretch.", "severity": "low" },
+    { "id": "c_spill", "trigger": "Spill or breakage", "plan": "Club soda + the spare place setting you kept aside. Reset and move on without a fuss — your calm sets the table's mood.", "severity": "low" }
+  ],
+
+  "plannerLens": {
+    "purpose": "What a senior planner is actually thinking about — the meta-level the checklist never shows. The engine surfaces this so the user borrows a pro's judgment, not just their tasks.",
+    "successDeterminants": [
+      "The food is SAFE (allergies) and ON TIME — everything else is taste.",
+      "The HOST is present and relaxed — a host trapped in the kitchen is the failure mode, not an imperfect plate.",
+      "Guests feel TAKEN CARE OF — greeted, a drink in hand, told where the bathroom is."
+    ],
+    "alwaysBuffers": [
+      "+10% food over the headcount",
+      "+1–2 place settings for surprise +1s and breakage",
+      "+20 minutes of slack in the cook schedule",
+      "one appliance-independent rescue course"
+    ],
+    "thinkingByPhase": [
+      { "phase": "Decide", "proWeighs": "Can this menu be cooked by ONE person while also hosting? If not, simplify or get help — before falling in love with the dishes." },
+      { "phase": "Plan", "proWeighs": "Where are the single points of failure (one oven, one host, one protein source)? Add a buffer or a backup to each." },
+      { "phase": "Acquire & Prep", "proWeighs": "What can move earlier? Every make-ahead task done the night before is risk pulled out of the live window." },
+      { "phase": "Execute", "proWeighs": "Read the room over the plan. If guests are happy and slow, let the timeline drift. The schedule serves the party, not the reverse." }
+    ],
+    "theOneThing": "A relaxed, present host with safe, on-time food will throw a 'successful' dinner party every time — even if three small things go wrong. Optimize for that, not for perfection.",
+    "nextActionContract": "At any moment the engine answers 'what would an experienced planner do next?' by taking the single highest-severity OPEN item across Solve (timing), Readiness (gaps), Experience (likely failure), and Mindset (focus) — time-weighted — and stating it with the WHY and the reassurance. Never a flat list; always the one next move."
+  }
+}
