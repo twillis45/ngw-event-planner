@@ -24,6 +24,7 @@ import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendFor
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
 import { isAnalyticsConfigured, identifyStudio, track, trackOnce, trackPageView, EVENTS } from './lib/analytics';
+import { presentationVoiceOn } from './lib/nextActionRenderer'; // Sprint 57A-B: pi.voice flag gates the audience capture (presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
@@ -7878,7 +7879,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // shown. The KITS table below is the single source of truth for both
   // Step 2's expanded selected-card AND the Success "Created for you" panel.
   const [step,    setStep]    = useState(1);                 // 1 | 2 | 3 | 'success'
-  const [form,    setForm]    = useState({ name: '', type: '', secondaryType: '', date: '', venue: '', theme: '', honoree: '', honoreeSong: '', honoreeDrink: '', guestCount: '', totalBudget: '', market: '', timeOfDay: 'afternoon' });
+  const [form,    setForm]    = useState({ name: '', type: '', secondaryType: '', date: '', venue: '', theme: '', honoree: '', honoreeSong: '', honoreeDrink: '', guestCount: '', totalBudget: '', market: '', timeOfDay: 'afternoon', audience: '' });
   const [kit,     setKit]     = useState(() => kitForEventType('Wedding'));
   // Intelligence Gap PR #1 — kit auto-suggestion is gated on whether the
   // user has manually picked a card. Once they do, the suggestion stops
@@ -8014,6 +8015,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       theme: (form.theme || '').trim(), honoree: (form.honoree || '').trim(),
       honoreeSong: (form.honoreeSong || '').trim(), honoreeDrink: (form.honoreeDrink || '').trim(),
       tables: tableCount, catererCount: 0, timeOfDay: form.timeOfDay || 'afternoon',
+      // Sprint 57A-B (Phase 0): self-declared audience drives presentation voice only
+      // (pi.voice flag); never planning/permissions/workflow. Additive nullable field.
+      audience: form.audience || '',
       guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline,
       // Sprint 55H-B1: a playbook event is born with an EMPTY ros so the Event
       // Day Schedule derives a real, playbook-specific run-of-show at read-time
@@ -8240,6 +8244,23 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   </select>
                 </div>
               </div>
+
+              {/* Sprint 57A-B (Phase 0): audience capture — drives presentation voice
+                  ONLY (pi.voice). Flag OFF ⇒ not rendered ⇒ modal byte-identical to today. */}
+              {presentationVoiceOn() && (
+                <div style={{ marginTop: 12 }}>
+                  <label style={ui.label} htmlFor="ce-audience">Who are you planning this event for?</label>
+                  <select id="ce-audience" data-testid="ce-audience" style={ui.field(false)} value={form.audience} onChange={e => upd('audience', e.target.value)}>
+                    <option value="">Choose…</option>
+                    <option value="self_family">Myself / My family</option>
+                    <option value="friend">A friend or loved one</option>
+                    <option value="client">A client</option>
+                    <option value="organization">My organization</option>
+                    <option value="professional">I plan events professionally</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              )}
 
               {/* Lean into the STORY (board 2026-06-12): the moment a planner picks
                   the occasion, the flow warms up and names what they're celebrating —
