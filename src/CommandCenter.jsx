@@ -40,6 +40,7 @@ import { summarizeCrew } from './lib/studioTeam';
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
 import { renderAction, personaFor } from './lib/nextActionRenderer';
+import { labelFor } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -1461,8 +1462,10 @@ const SECTION_SUBTITLES = {
   'Documents':            'Contracts, COIs, signed docs',
 };
 
-function SectionHeader({ label, count, countColor, action, onAction }) {
-  const subtitle = SECTION_SUBTITLES[label];
+function SectionHeader({ label, count, countColor, action, onAction, event }) {
+  const subtitle = SECTION_SUBTITLES[label];          // lookup on the canonical label
+  const dispLabel = labelFor(label, event);           // Phase 2: host display label
+  const dispSub   = labelFor(subtitle, event);        // …and host subtitle
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1470,7 +1473,7 @@ function SectionHeader({ label, count, countColor, action, onAction }) {
         <span style={{
           fontSize: 10.5, fontWeight: 800, color: P.steelBlue, fontFamily: FF,
           letterSpacing: '0.16em', textTransform: 'uppercase',
-        }}>{label}</span>
+        }}>{dispLabel}</span>
         {count !== undefined && count > 0 && (
           <span style={{ fontSize: 11, fontWeight: 600, color: countColor || P.textSecondary, fontFamily: FF }}>{count}</span>
         )}
@@ -1486,7 +1489,7 @@ function SectionHeader({ label, count, countColor, action, onAction }) {
         <div style={{
           fontSize: 10, color: P.textTertiary, fontFamily: FF,
           fontStyle: 'italic', marginTop: 2, lineHeight: 1.4,
-        }}>{subtitle}</div>
+        }}>{dispSub}</div>
       )}
     </div>
   );
@@ -1707,17 +1710,19 @@ function DocPill({ label, status, color, onClick }) {
 // Each health dimension routes to the tab that owns it (board: a callout that
 // names a problem must be the handle that takes you to it).
 const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents', Capacity: 'Seating' };
-function HealthRow({ h, isFirst, onTabChange }) {
-  const target    = HEALTH_ROUTE[h.label];
+function HealthRow({ h, isFirst, onTabChange, event }) {
+  const target    = HEALTH_ROUTE[h.label];              // route keyed on the CANONICAL label
   const clickable = !!(target && onTabChange);
+  const dispLabel  = labelFor(h.label, event);          // Phase 2: host display label
+  const dispStatus = labelFor(h.statusLabel, event);    // …and host status badge
   const inner = (
     <>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: h.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{h.label}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
         <div style={{ fontSize: 11, color: P.textSecondary }}>{h.note}</div>
       </div>
-      <span style={{ fontSize: 9.5, fontWeight: 600, color: h.color, letterSpacing: '0.10em', flexShrink: 0 }}>{h.statusLabel}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: h.color, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
       {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: 15, flexShrink: 0, marginLeft: 2 }}>›</span>}
     </>
   );
@@ -2278,9 +2283,9 @@ function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, b
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Planning Health */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <SectionHeader label="Planning Health" />
+              <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} />)}
+                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} />)}
               </div>
             </div>
 
