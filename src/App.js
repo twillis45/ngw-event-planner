@@ -25,6 +25,7 @@ import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps
 import US_CITIES from './lib/usCities';
 import { isAnalyticsConfigured, identifyStudio, track, trackOnce, trackPageView, EVENTS } from './lib/analytics';
 import { presentationVoiceOn } from './lib/nextActionRenderer'; // Sprint 57A-B: pi.voice flag gates the audience capture (presentation-only)
+import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
@@ -30364,6 +30365,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       : PLANNER_TABS,
     [event.type]
   );
+  // Sprint 57E-A: host nav reduction (pi.nav). Identity when not host / flag-off,
+  // so planner + operator + flag-off all keep the full nav. Recomputed each render
+  // (cheap array filter) so reveal-when-data (vendors/docs/messages) stays live.
+  const navTabs = hostNav(plannerTabs, event);
 
   // Keyboard shortcut: Cmd/Ctrl+1–8 to switch tabs
   useEffect(() => {
@@ -30412,7 +30417,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         <span style={{ width: 20, display: 'flex', justifyContent: 'center', flexShrink: 0, color: active ? color : C.muted, opacity: active ? 1 : 0.65 }}>
           <Icon name={TAB_ICONS[t] || 'home'} size={active ? 17 : 16} />
         </span>
-        {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{TAB_LABELS[t] || t}</span>}
+        {!collapsed && <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hostTabLabel(t, event) || TAB_LABELS[t] || t}</span>}
         {!collapsed && badge != null && (() => {
           // Attention System: a count is evidence, not an alarm. Resting badges
           // are ghost (tier3) with no fill — they whisper. A badge lights to the
@@ -30460,9 +30465,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // (preceding a tab in TAB_GROUP_HEADERS) or the tab item itself.
   const renderTabListWithHeaders = (tabs, collapsed) => {
     const out = [];
+    const flat = hostNavActive(event); // Sprint 57E-A: host mode = flat nav (no group headers)
     tabs.forEach(t => {
       const hdr = TAB_GROUP_HEADERS[t];
-      if (hdr) out.push(renderTabGroupHeader(hdr, collapsed));
+      if (hdr && !flat) out.push(renderTabGroupHeader(hdr, collapsed));
       out.push(renderEvtNavItem(t, collapsed));
     });
     return out;
@@ -31024,7 +31030,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={evtNavCollapsed ? 'chevronRight' : 'chevronLeft'} size={15} /></button>
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {renderTabListWithHeaders(plannerTabs, evtNavCollapsed)}
+            {renderTabListWithHeaders(navTabs, evtNavCollapsed)}
             </div>
             {bp === 'desktop' && !evtNavCollapsed && (
               <div style={{ flexShrink: 0, paddingTop: 14, marginLeft: 2, marginRight: 2 }}>
@@ -31106,7 +31112,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Event'}</div>
               <button onClick={() => setEvtDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
-            {renderTabListWithHeaders(plannerTabs, false)}
+            {renderTabListWithHeaders(navTabs, false)}
           </div>
         </>
       )}

@@ -103,10 +103,16 @@ const AUDIENCE_VOICE = {
   other: 'host',
 };
 
-export function personaFor(event) {
-  if (!presentationVoiceOn()) return 'planner';        // flag OFF ⇒ identity ⇒ today
+// Flag-FREE audience → persona (shared by voice + labels + nav, each gated by its
+// own flag). Unset / 'other' / unknown ⇒ 'host' (the safer default).
+export function audiencePersona(event) {
   const a = event && event.audience;
-  return AUDIENCE_VOICE[a] || 'host';                  // flag ON ⇒ audience-driven; unset ⇒ host
+  return AUDIENCE_VOICE[a] || 'host';
+}
+
+export function personaFor(event) {
+  if (!presentationVoiceOn()) return 'planner';        // pi.voice OFF ⇒ identity ⇒ today
+  return audiencePersona(event);                       // pi.voice ON ⇒ audience-driven
 }
 
 // Pure projection. Returns the SAME cmd reference when there is no override (preserves
