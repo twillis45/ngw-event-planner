@@ -27,6 +27,12 @@ import reunion from './data/reunion';
 import bacheloretteParty from './data/bacheloretteParty';
 import bachelorParty from './data/bachelorParty';
 import vowRenewal from './data/vowRenewal';
+import theCookout from './data/theCookout';
+import fishFry from './data/fishFry';
+import cardParty from './data/cardParty';
+import sundayDinner from './data/sundayDinner';
+import dayParty from './data/dayParty';
+import juneteenthCookout from './data/juneteenthCookout';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 
 // ── Registry ────────────────────────────────────────────────────────────────
@@ -34,7 +40,7 @@ import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal];
+const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
