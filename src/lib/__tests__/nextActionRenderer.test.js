@@ -103,7 +103,7 @@ describe('57A-B personaFor — T6 audience mapping behind pi.voice flag', () => 
     test('self_family → host', () => expect(personaFor({ audience: 'self_family' })).toBe('host'));
     test('friend → host', () => expect(personaFor({ audience: 'friend' })).toBe('host'));
     test('client → planner', () => expect(personaFor({ audience: 'client' })).toBe('planner'));
-    test('organization → planner', () => expect(personaFor({ audience: 'organization' })).toBe('planner'));
+    test('organization → operator (Sprint 57I)', () => expect(personaFor({ audience: 'organization' })).toBe('operator'));
     test('professional → planner', () => expect(personaFor({ audience: 'professional' })).toBe('planner'));
     test('unset / other / unknown → host (safer default)', () => {
       expect(personaFor({ audience: '' })).toBe('host');
