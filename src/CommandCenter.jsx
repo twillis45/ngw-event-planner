@@ -56,6 +56,9 @@ import { labelFor } from './lib/presentationLabels'; // Sprint 57C Phase 2: voca
 // Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
 // (pi.because flag, presentation-only; `because` strings are built from real factors).
 import { becauseActive } from './lib/becauseLayer';
+// Sprint 57K: Value-Level Confidence — Pattern 014 certainty attached to a value
+// (pi.valueConfidence flag, presentation-only; classified by provenance).
+import { valueConfidence, valueConfidenceActive, valueWord } from './lib/valueConfidence';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -370,6 +373,7 @@ export function deriveCommandCenterData(event) {
         label: 'Capacity', statusLabel: 'ESTIMATE', color: P.textSecondary,
         note: `Confirm seating & serveware for ${cap.guests} guests — ${cap.summary}`,
         because: cap.because, // Sprint 57H: existing reasoning, exposed (presentation-only)
+        valueLevel: valueConfidence('capacity', event), // Sprint 57K: Likely (count final) / Estimated
       };
     })(),
     // Sprint 55L: the Infrastructure-check prompts ("Reality Check") — the
@@ -1745,7 +1749,19 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotC, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
-        <div style={{ fontSize: 11, color: P.textSecondary }}>{h.note}</div>
+        <div style={{ fontSize: 11, color: P.textSecondary }}>
+          {/* Sprint 57K: Value-Level Confidence — Pattern 014 word travels WITH the
+              value (small steel pill before the number), only when pi.valueConfidence
+              is on AND this row's value provenance is classifiable. */}
+          {valueConfidenceActive() && h.valueLevel && (
+            <span style={{
+              display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+              color: P.textSecondary, border: `1px solid ${P.borderSubtle}`, borderRadius: 4,
+              padding: '0px 4px', marginRight: 6, verticalAlign: '1px', textTransform: 'uppercase',
+            }}>{valueWord(h.valueLevel, event)}</span>
+          )}
+          {h.note}
+        </div>
         {/* Sprint 57H: existing reasoning, exposed. Quiet steel line, one notch below
             the note (tier-3 whisper); renders only when pi.because is on AND this row
             carries a traceable `because`. */}
