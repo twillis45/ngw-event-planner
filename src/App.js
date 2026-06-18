@@ -1363,7 +1363,7 @@ const LONG_LEAD_TYPES = new Set(['Wedding', 'Vow Renewal', 'Quinceañera', 'Fund
 const HOME_HOSTABLE_CELEBRATIONS = new Set([
   'Birthday', 'Sweet 16', 'Graduation', 'Baby Shower', 'Bridal Shower', 'Engagement Party',
   'Gender Reveal', 'Anniversary', 'Retirement Party', 'Reunion', 'Bachelorette Party',
-  'Bachelor Party', 'Holiday Party',
+  'Bachelor Party', 'Holiday Party', 'Juneteenth Cookout', 'Kwanzaa Gathering',
 ]);
 const isHomeHostable = (t) => isAtHomeType(t) || HOME_HOSTABLE_CELEBRATIONS.has(t);
 const quickPicksForType = (type) => {
@@ -2110,7 +2110,14 @@ const EVT_CATEGORIES = {
   'At-Home Gatherings': [
     'Dinner Party', 'Cocktail Party', 'Backyard BBQ', 'Brunch',
     'Game Night', 'Watch Party', 'Super Bowl Party', 'Game Day Party',
-    'Housewarming', 'Get-Together',
+    'The Cookout', 'Fish Fry', 'Card Party', 'Sunday Dinner', 'Day Party',
+    'Repast', 'Housewarming', 'Get-Together',
+  ],
+  // Heritage / community celebrations — ethnicity-NEUTRAL + expandable (Juneteenth,
+  // Kwanzaa now; Diwali / Hanukkah / Lunar New Year / Día de los Muertos later).
+  // Culture is an opt-in overlay the host invokes, never auto-applied by type name.
+  'Holidays & Heritage': [
+    'Juneteenth Cookout', 'Kwanzaa Gathering',
   ],
 };
 const EVT_TYPES  = Object.values(EVT_CATEGORIES).flat();

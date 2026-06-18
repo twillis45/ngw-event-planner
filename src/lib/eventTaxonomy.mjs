@@ -76,6 +76,17 @@ const EVENT_TAXONOMY = {
   'Game Night':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Housewarming':       { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Get-Together':       { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  // Popular African American hosted at-home events (board-recruited 2026-06-18).
+  // home_hosted; a community overlay (cited from insider experts) is opt-in, never
+  // auto-applied by type name. Repast is a somber after-funeral gathering.
+  'The Cookout':        { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Fish Fry':           { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Card Party':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Sunday Dinner':      { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Day Party':          { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Repast':             { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Juneteenth Cookout': { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Kwanzaa Gathering':  { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
 };
 
 // recordKind is a pure function of family.
