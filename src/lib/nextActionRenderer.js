@@ -103,8 +103,9 @@ const AUDIENCE_VOICE = {
   other: 'host',
 };
 
-// Flag-FREE audience → persona (shared by voice + labels, each gated by its own flag).
-// Unset / 'other' / unknown ⇒ 'host' (the safer default).
+// Flag-FREE audience → persona (shared by voice + labels + nav + attention +
+// confidence, each gated by its own flag). Unset / 'other' / unknown ⇒ 'host'
+// (the safer default).
 export function audiencePersona(event) {
   const a = event && event.audience;
   return AUDIENCE_VOICE[a] || 'host';
