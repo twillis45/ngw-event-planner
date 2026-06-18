@@ -7890,6 +7890,96 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
   );
 }
 
+// Studio Matte date picker — an inline, dark month-grid that replaces the
+// native mm/dd/yyyy field and its white OS calendar popup. Steel selection,
+// a today ring, forward-only month nav (no past months for a new event), and
+// the same breathing ring as the live field. Used in the host create panel.
+function MatteDatePicker({ value, onChange, active = false, autoOpen = false, isMobile = false }) {
+  const C = useT();
+  const steel = C.accentTopGrad || C.accent;
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const today = getToday();
+  const todayKey = ymd(today);
+  const sel = value ? new Date(value + 'T00:00:00') : null;
+  const [view, setView] = useState(() => { const b = sel || today; return { y: b.getFullYear(), m: b.getMonth() }; });
+  const [open, setOpen] = useState(false);
+  // The panel takes the host to this step → open the grid so they can pick at once.
+  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
+  // Keep the visible month aligned if the value is set/changed elsewhere.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (value) { const d = new Date(value + 'T00:00:00'); setView({ y: d.getFullYear(), m: d.getMonth() }); } }, [value]);
+
+  const firstDow = new Date(view.y, view.m, 1).getDay();
+  const dim = new Date(view.y, view.m + 1, 0).getDate();
+  const monthLabel = new Date(view.y, view.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const atCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= dim; d++) cells.push(d);
+
+  const fmt = sel ? sel.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  const triggerStyle = {
+    width: '100%', boxSizing: 'border-box', minHeight: 54, padding: '14px 16px', fontSize: 16,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer',
+    color: C.text, background: C.bg, borderRadius: 12, outline: 'none', fontFamily: 'inherit', textAlign: 'left',
+    border: `1px solid ${active || open ? steel : value ? `${steel}99` : C.border}`,
+    transition: 'border-color 220ms ease',
+    ...(active && !open ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
+  };
+  const navBtn = (disabled) => ({ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: disabled ? `${C.muted}66` : C.text, fontSize: 18, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' });
+  const pick = (d) => { onChange(ymd(new Date(view.y, view.m, d))); setOpen(false); };
+
+  return (
+    <div>
+      <button id="ce-date" data-testid="ce-date" type="button" onClick={() => setOpen(o => !o)} style={triggerStyle} aria-haspopup="dialog" aria-expanded={open}>
+        <span style={{ color: value ? C.text : C.muted }}>{value ? fmt : 'Choose the date'}</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active || open ? steel : C.muted} strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <rect x="3" y="4.5" width="18" height="16.5" rx="2" /><path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+        </svg>
+      </button>
+
+      {open && (
+        <div role="dialog" aria-label="Choose a date" style={{ marginTop: 10, padding: isMobile ? 12 : 14, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, boxShadow: '0 14px 40px rgba(0,0,0,0.45)', animation: 'ceRise 320ms ease-out both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <button type="button" aria-label="Previous month" disabled={atCurrentMonth} onClick={() => { if (!atCurrentMonth) setView(v => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 })); }} style={navBtn(atCurrentMonth)}>‹</button>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>{monthLabel}</span>
+            <button type="button" aria-label="Next month" onClick={() => setView(v => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 }))} style={navBtn(false)}>›</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.muted, padding: '4px 0' }}>{w}</div>)}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+            {cells.map((d, i) => {
+              if (d === null) return <span key={i} />;
+              const key = ymd(new Date(view.y, view.m, d));
+              const isSel = key === value;
+              const isToday = key === todayKey;
+              const isPast = key < todayKey;
+              return (
+                <button key={i} type="button" disabled={isPast} onClick={() => pick(d)}
+                  style={{
+                    minHeight: isMobile ? 38 : 40, borderRadius: 9, fontSize: 14, fontFamily: 'inherit',
+                    cursor: isPast ? 'default' : 'pointer',
+                    color: isSel ? '#fff' : isPast ? `${C.muted}55` : C.text,
+                    fontWeight: isSel || isToday ? 700 : 500,
+                    background: isSel ? steel : 'transparent',
+                    border: `1px solid ${isSel ? steel : isToday ? `${steel}80` : 'transparent'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 140ms ease, border-color 140ms ease',
+                  }}
+                  onMouseEnter={e => { if (!isPast && !isSel) e.currentTarget.style.background = `${steel}22`; }}
+                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddClient, clients = [], profile = null }) {
   const C        = useT();
   const s        = makeS(C);
@@ -8296,7 +8386,13 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
                     <div style={{ marginBottom: dateDone ? (isMobile ? 22 : 28) : 0 }}>
                       <label htmlFor="ce-date" style={qLabel}>{dateDone && check}When is it?</label>
-                      <input id="ce-date" data-testid="ce-date" {...dateInputProps} style={sfield(active === 'date', dateDone, (showErr || touched.date) && reqDate)} value={form.date} onChange={e => upd('date', e.target.value)} onBlur={() => setTouched(t => ({ ...t, date: true }))} />
+                      <MatteDatePicker
+                        value={form.date}
+                        onChange={iso => { upd('date', iso); setTouched(t => ({ ...t, date: true })); }}
+                        active={active === 'date'}
+                        autoOpen={typeDone && !dateDone}
+                        isMobile={isMobile}
+                      />
                       {!dateDone && <div style={sub}>Your date sets the countdown and every deadline.</div>}
                       {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
                     </div>
