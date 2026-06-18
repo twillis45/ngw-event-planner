@@ -13535,6 +13535,19 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           {/* ── STUDIO IDENTITY ── */}
           <SectionHead label="Studio" ownership="workspace" anchor="studio" collapsible defaultOpen />
           <Collapse open={secOpen('Studio', true)}>
+          {/* Sprint UX-2 — account identity (durable, explicit). Drives the L1
+              front door: 'host' ⇒ Host Home; 'planner'/'operator' ⇒ full cockpit.
+              Auto-detect = host unless you have real clients. */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>How you use Event Boss</label>
+            <select style={s.input} value={profile?.accountType || ''}
+              onChange={e => { const v = e.target.value; onChange('accountType', v); try { track(EVENTS.ACCOUNT_TYPE_SELECTED, { account_type: v || 'auto' }); } catch {} }}>
+              <option value="">Auto-detect (host unless you have clients)</option>
+              <option value="host">I’m hosting my own event</option>
+              <option value="planner">I’m a planner — I work with clients</option>
+              <option value="operator">I run events for an organization</option>
+            </select>
+          </div>
           <PMRow2>
             <PMField C={C} s={s} profile={profile} onChange={onChange} fkey="businessName" label="Studio Name"   ph="Events by Jane" clientFacing />
             <div>
