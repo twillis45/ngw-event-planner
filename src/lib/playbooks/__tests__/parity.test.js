@@ -21,8 +21,14 @@ import genderReveal from '../data/genderReveal';
 import engagementParty from '../data/engagementParty';
 import anniversary from '../data/anniversary';
 import holidayParty from '../data/holidayParty';
+import sweet16 from '../data/sweet16';
+import retirementParty from '../data/retirementParty';
+import reunion from '../data/reunion';
+import bacheloretteParty from '../data/bacheloretteParty';
+import bachelorParty from '../data/bachelorParty';
+import vowRenewal from '../data/vowRenewal';
 
-const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty };
+const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal };
 
 // The authored sections every host playbook must carry. Dropping any of these is
 // the AP-001 failure mode.
