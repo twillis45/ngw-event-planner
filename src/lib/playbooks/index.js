@@ -15,6 +15,12 @@ import backyardBbq from './data/backyardBbq';
 import graduation from './data/graduation';
 import watchParty from './data/watchParty';
 import gameNight from './data/gameNight';
+import housewarming from './data/housewarming';
+import bridalShower from './data/bridalShower';
+import genderReveal from './data/genderReveal';
+import engagementParty from './data/engagementParty';
+import anniversary from './data/anniversary';
+import holidayParty from './data/holidayParty';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 
 // ── Registry ────────────────────────────────────────────────────────────────
@@ -22,7 +28,7 @@ import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight];
+const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
