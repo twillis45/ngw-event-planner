@@ -724,6 +724,9 @@ function GlobalStyles() {
       // prefers-reduced-motion rule below.
       '@keyframes ceRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
+      // Calendar life: cells cascade in on month change; the chosen day pops.
+      '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
+      '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',
       // Focus indicator for keyboard navigation. The :focus-visible polyfill
       // is built into all modern browsers (Chrome 86+, Firefox 85+, Safari 15.4+).
       'button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }',
@@ -1332,6 +1335,56 @@ const addMonthsISO = (n) => {
   // Guard end-of-month overflow (e.g., Mar 31 + 1 month → May 1 in JS)
   if (target.getMonth() !== ((m + n) % 12 + 12) % 12) target.setDate(0);
   return target.toISOString().slice(0, 10);
+};
+// nextFridayISO(): the next Friday strictly after today (a common party night).
+const nextFridayISO = () => {
+  const day = getToday().getDay(); // 0 Sun..6 Sat
+  let add = (5 - day + 7) % 7;
+  if (add === 0) add = 7;
+  return addDaysISO(today8601(), add);
+};
+// seasonISO(monthIdx, day): a representative date in the next occurrence of a
+// season, at least ~30 days out. Couples/committees think in seasons, not exact
+// days — this only POSITIONS the grid; the host still commits the exact day.
+const seasonISO = (monthIdx, day) => {
+  const t = getToday();
+  let cand = new Date(t.getFullYear(), monthIdx, day);
+  if ((cand - t) / 86400000 < 30) cand = new Date(t.getFullYear() + 1, monthIdx, day);
+  return `${cand.getFullYear()}-${String(monthIdx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+// Board ruling (unanimous): tailor WHICH relative quick-picks appear to the
+// event type's plausible planning horizon — never preselect a date, never label
+// one "recommended." Labels stay literal time spans; the host commits every date.
+const LONG_LEAD_TYPES = new Set(['Wedding', 'Vow Renewal', 'Quinceañera', 'Fundraiser / Gala', 'Anniversary', 'Sweet 16', 'Bachelorette Party', 'Bachelor Party']);
+const quickPicksForType = (type) => {
+  const P = {
+    wknd:    { label: 'This weekend', iso: nextWeekendISO() },
+    nextWk:  { label: 'Next weekend', iso: followingWeekendISO() },
+    nextFri: { label: 'Next Friday',  iso: nextFridayISO() },
+    wk2:     { label: 'In 2 weeks',   iso: addDaysISO(today8601(), 14) },
+    m1:      { label: 'In a month',   iso: addMonthsISO(1) },
+    m3:      { label: 'In 3 months',  iso: addMonthsISO(3) },
+    m6:      { label: 'In 6 months',  iso: addMonthsISO(6) },
+    m9:      { label: 'In 9 months',  iso: addMonthsISO(9) },
+    y1:      { label: 'In a year',    iso: addMonthsISO(12) },
+    m18:     { label: 'In 18 months', iso: addMonthsISO(18) },
+    summer:  { label: 'Next summer',  iso: seasonISO(5, 20) },
+    fall:    { label: 'Next fall',    iso: seasonISO(8, 22) },
+  };
+  if (!type)                     return [P.wknd, P.nextWk, P.wk2, P.m1, P.m3, P.m6];
+  if (isAtHomeType(type))        return [P.wknd, P.nextWk, P.nextFri, P.wk2, P.m1, P.m3];
+  if (isCorporateType(type))     return [P.wk2, P.m1, P.m3, P.m6, P.m9, P.y1];
+  if (LONG_LEAD_TYPES.has(type)) return [P.m6, P.m9, P.y1, P.m18, P.summer, P.fall];
+  return [P.wknd, P.nextWk, P.wk2, P.m1, P.m3, P.m6]; // other celebrations (birthday, showers, grad…)
+};
+// Honest, CATEGORY-LEVEL timeline orientation shown BEFORE a date is picked
+// (board-allowed: falsifiable, never second-person, never "recommended").
+const leadTimeHintForType = (type) => {
+  if (!type) return '';
+  if (isAtHomeType(type))     return 'These usually come together in a week or two — no rush.';
+  if (isCorporateType(type))  return 'Corporate events typically lock a weekday a few months out.';
+  if (LONG_LEAD_TYPES.has(type)) return 'Weddings and big celebrations are usually planned 9–12 months ahead — but pick whatever fits.';
+  return 'A few weeks to a couple of months is a comfortable runway.';
 };
 
 // Phase → days-before-event offset
@@ -7894,7 +7947,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 // native mm/dd/yyyy field and its white OS calendar popup. Steel selection,
 // a today ring, forward-only month nav (no past months for a new event), and
 // the same breathing ring as the live field. Used in the host create panel.
-function MatteDatePicker({ value, onChange, active = false, autoOpen = false, isMobile = false }) {
+function MatteDatePicker({ value, onChange, active = false, autoOpen = false, isMobile = false, eventType = '' }) {
   const C = useT();
   const steel = C.accentTopGrad || C.accent;
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -7903,8 +7956,10 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
   const sel = value ? new Date(value + 'T00:00:00') : null;
   const [view, setView] = useState(() => { const b = sel || today; return { y: b.getFullYear(), m: b.getMonth() }; });
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState('days');  // 'days' | 'months' — fast year/month nav
+  const [draft, setDraft] = useState(null);  // quick-pick is TENTATIVE — calendar stays open until confirmed
   // The panel takes the host to this step → open the grid so they can pick at once.
-  useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen]);
+  useEffect(() => { if (autoOpen) { setMode('days'); setDraft(null); setOpen(true); } }, [autoOpen]);
   // Keep the visible month aligned if the value is set/changed elsewhere.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (value) { const d = new Date(value + 'T00:00:00'); setView({ y: d.getFullYear(), m: d.getMonth() }); } }, [value]);
@@ -7918,6 +7973,10 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
   for (let d = 1; d <= dim; d++) cells.push(d);
 
   const fmt = sel ? sel.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  // Board ruling — the two facts a host decides on: weekday + how many days out.
+  const daysOut = sel ? Math.round((sel - today) / 86400000) : null;
+  const weekdayLong = sel ? sel.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+  const countLabel = daysOut === 0 ? 'today' : daysOut === 1 ? 'tomorrow' : daysOut > 1 ? `${daysOut} days out` : daysOut < 0 ? `${-daysOut} days ago` : '';
   const triggerStyle = {
     width: '100%', boxSizing: 'border-box', minHeight: 54, padding: '14px 16px', fontSize: 16,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer',
@@ -7928,52 +7987,180 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
   };
   const navBtn = (disabled) => ({ width: 36, height: 36, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: disabled ? `${C.muted}66` : C.text, fontSize: 18, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' });
   const pick = (d) => { onChange(ymd(new Date(view.y, view.m, d))); setOpen(false); };
+  // Relative quick-picks — tailored to the event type's plausible horizon
+  // (board ruling B); never preselected, host commits every date.
+  const chips = quickPicksForType(eventType);
+  // Quick-pick is TENTATIVE: draft the date + jump the grid to it, but keep the
+  // calendar OPEN until the host confirms (taps the day, or the Confirm bar).
+  const chipPick = (iso) => { setDraft(iso); const d = new Date(iso + 'T00:00:00'); setView({ y: d.getFullYear(), m: d.getMonth() }); };
+  const commitDraft = () => { if (draft) { onChange(draft); setOpen(false); } };
+  const shownSel = draft || value;  // what the grid highlights (draft wins until committed)
+  const draftObj = draft ? new Date(draft + 'T00:00:00') : null;
+  const draftDaysOut = draftObj ? Math.round((draftObj - today) / 86400000) : null;
+  const draftLabel = draftObj ? draftObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+  const draftCount = draftDaysOut === 0 ? 'today' : draftDaysOut === 1 ? 'tomorrow' : draftDaysOut > 1 ? `${draftDaysOut} days out` : '';
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const atCurrentYear = view.y <= today.getFullYear();
+  const gridKey = `${view.y}-${view.m}`;  // remount per month → cells cascade in (alive)
 
   return (
     <div>
-      <button id="ce-date" data-testid="ce-date" type="button" onClick={() => setOpen(o => !o)} style={triggerStyle} aria-haspopup="dialog" aria-expanded={open}>
+      <button id="ce-date" data-testid="ce-date" type="button" onClick={() => { setMode('days'); setDraft(null); setOpen(o => !o); }} style={triggerStyle} aria-haspopup="dialog" aria-expanded={open}>
         <span style={{ color: value ? C.text : C.muted }}>{value ? fmt : 'Choose the date'}</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active || open ? steel : C.muted} strokeWidth="2" strokeLinecap="round" aria-hidden>
           <rect x="3" y="4.5" width="18" height="16.5" rx="2" /><path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
         </svg>
       </button>
 
+      {/* The single accent: weekday + honest countdown. Keyed on value so it
+          animates ONLY when the chosen date changes, never idly (board rule). */}
+      {value && (
+        <div key={value} style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9, animation: 'ceRise 360ms ease-out both' }}>
+          <span aria-hidden style={{ width: 5, height: 5, borderRadius: '50%', background: steel }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: steel, letterSpacing: '0.01em' }}>{weekdayLong} · {countLabel}</span>
+        </div>
+      )}
+
       {open && (
-        <div role="dialog" aria-label="Choose a date" style={{ marginTop: 10, padding: isMobile ? 12 : 14, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, boxShadow: '0 14px 40px rgba(0,0,0,0.45)', animation: 'ceRise 320ms ease-out both' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <button type="button" aria-label="Previous month" disabled={atCurrentMonth} onClick={() => { if (!atCurrentMonth) setView(v => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 })); }} style={navBtn(atCurrentMonth)}>‹</button>
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>{monthLabel}</span>
-            <button type="button" aria-label="Next month" onClick={() => setView(v => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 }))} style={navBtn(false)}>›</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.muted, padding: '4px 0' }}>{w}</div>)}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-            {cells.map((d, i) => {
-              if (d === null) return <span key={i} />;
-              const key = ymd(new Date(view.y, view.m, d));
-              const isSel = key === value;
-              const isToday = key === todayKey;
-              const isPast = key < todayKey;
+        <div role="dialog" aria-label="Choose a date" style={{
+          marginTop: 10, padding: isMobile ? 12 : 16, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
+          boxShadow: '0 18px 48px rgba(0,0,0,0.5)', animation: 'ceRise 300ms cubic-bezier(.2,.7,.2,1) both',
+          width: isMobile ? 'auto' : 'fit-content', maxWidth: '100%',
+        }}>
+          {/* Two balanced columns on desktop: quick-picks rail · calendar. Stacks on mobile. */}
+          <div style={{ display: isMobile ? 'block' : 'flex', gap: isMobile ? 0 : 18, alignItems: 'stretch' }}>
+          {/* Quick picks — a left rail on desktop, a wrapping row on mobile */}
+          <div style={isMobile
+            ? { display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }
+            : { display: 'flex', flexDirection: 'column', gap: 8, width: 162, flexShrink: 0 }}>
+            {!isMobile && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: C.muted, margin: '2px 0 4px 2px' }}>QUICK PICKS</div>}
+            {chips.map((c, ci) => {
+              const isSelChip = c.iso === shownSel;
               return (
-                <button key={i} type="button" disabled={isPast} onClick={() => pick(d)}
+                <button key={c.label} type="button" onClick={() => chipPick(c.iso)}
                   style={{
-                    minHeight: isMobile ? 38 : 40, borderRadius: 9, fontSize: 14, fontFamily: 'inherit',
-                    cursor: isPast ? 'default' : 'pointer',
-                    color: isSel ? '#fff' : isPast ? `${C.muted}55` : C.text,
-                    fontWeight: isSel || isToday ? 700 : 500,
-                    background: isSel ? steel : 'transparent',
-                    border: `1px solid ${isSel ? steel : isToday ? `${steel}80` : 'transparent'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 140ms ease, border-color 140ms ease',
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    padding: isMobile ? '9px 13px' : '10px 13px', borderRadius: 10,
+                    textAlign: isMobile ? 'center' : 'left',
+                    color: isSelChip ? '#fff' : C.text,
+                    background: isSelChip ? steel : C.bg,
+                    border: `1px solid ${isSelChip ? steel : C.border}`,
+                    boxShadow: isSelChip ? `0 3px 10px ${steel}44` : 'none',
+                    transition: 'background 150ms ease, border-color 150ms ease, transform 150ms ease',
+                    animation: 'ceCellIn 300ms ease-out both', animationDelay: `${60 + ci * 35}ms`,
                   }}
-                  onMouseEnter={e => { if (!isPast && !isSel) e.currentTarget.style.background = `${steel}22`; }}
-                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}>
-                  {d}
+                  onMouseEnter={e => { if (!isSelChip) { e.currentTarget.style.borderColor = `${steel}aa`; e.currentTarget.style.background = `${steel}14`; } e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={e => { if (!isSelChip) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.bg; } e.currentTarget.style.transform = 'none'; }}>
+                  {c.label}
                 </button>
               );
             })}
           </div>
+
+          {/* Calendar — fast month/year nav via the tappable header */}
+          <div style={{ width: isMobile ? 'auto' : 300, ...(isMobile ? {} : { borderLeft: `1px solid ${C.border}`, paddingLeft: 18 }) }}>
+            {mode === 'days' ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <button type="button" aria-label="Previous month" disabled={atCurrentMonth} onClick={() => { if (!atCurrentMonth) setView(v => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 })); }} style={navBtn(atCurrentMonth)}>‹</button>
+                  <button type="button" onClick={() => setMode('months')} title="Jump to month / year"
+                    style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.01em', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 9, transition: 'background 140ms ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = `${steel}1a`; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                    {monthLabel} <span style={{ fontSize: 9, color: C.muted }}>▼</span>
+                  </button>
+                  <button type="button" aria-label="Next month" onClick={() => setView(v => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 }))} style={navBtn(false)}>›</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 5 }}>
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => {
+                    const wkndHdr = i === 0 || i === 5 || i === 6;  // Sun / Fri / Sat
+                    return <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: wkndHdr ? `${steel}cc` : C.muted, padding: '4px 0' }}>{w}</div>;
+                  })}
+                </div>
+                <div key={gridKey} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                  {cells.map((d, i) => {
+                    if (d === null) return <span key={i} />;
+                    const key = ymd(new Date(view.y, view.m, d));
+                    const isSel = key === shownSel;
+                    const isToday = key === todayKey;
+                    const isPast = key < todayKey;
+                    // Weekend emphasis — most host events land Fri–Sun. Steel tint only,
+                    // never a second accent colour (board non-negotiable).
+                    const dow = new Date(view.y, view.m, d).getDay();
+                    const weekend = dow === 0 || dow === 5 || dow === 6;
+                    const baseBg = isSel ? steel : (weekend && !isPast ? `${steel}14` : 'transparent');
+                    return (
+                      <button key={i} type="button" disabled={isPast} onClick={() => pick(d)}
+                        style={{
+                          minHeight: 44, borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
+                          cursor: isPast ? 'default' : 'pointer',
+                          color: isSel ? '#fff' : isPast ? `${C.muted}55` : C.text,
+                          fontWeight: isSel || isToday ? 700 : weekend && !isPast ? 600 : 500,
+                          background: baseBg,
+                          border: `1px solid ${isSel ? steel : isToday ? `${steel}80` : 'transparent'}`,
+                          boxShadow: isSel ? `0 3px 10px ${steel}55` : 'none',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'background 140ms ease, border-color 140ms ease, transform 140ms ease',
+                          animation: isSel ? 'cePop 360ms ease-out both' : 'ceCellIn 300ms ease-out both',
+                          animationDelay: isSel ? '0ms' : `${i * 6}ms`,
+                        }}
+                        onMouseEnter={e => { if (!isPast && !isSel) e.currentTarget.style.background = `${steel}2e`; if (!isPast) e.currentTarget.style.transform = 'scale(1.10)'; }}
+                        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = baseBg; e.currentTarget.style.transform = 'none'; }}>
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Months mode — fast year + month jump */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <button type="button" aria-label="Previous year" disabled={atCurrentYear} onClick={() => { if (!atCurrentYear) setView(v => ({ ...v, y: v.y - 1 })); }} style={navBtn(atCurrentYear)}>‹</button>
+                  <button type="button" onClick={() => setMode('days')} title="Back to days" style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: C.text, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9 }}>{view.y}</button>
+                  <button type="button" aria-label="Next year" onClick={() => setView(v => ({ ...v, y: v.y + 1 }))} style={navBtn(false)}>›</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                  {MONTHS.map((mn, mi) => {
+                    const disabled = view.y === today.getFullYear() && mi < today.getMonth();
+                    const isViewM = mi === view.m;
+                    const isSelM = sel && sel.getFullYear() === view.y && sel.getMonth() === mi;
+                    return (
+                      <button key={mn} type="button" disabled={disabled} onClick={() => { setView(v => ({ ...v, m: mi })); setMode('days'); }}
+                        style={{
+                          fontFamily: 'inherit', fontSize: 13, fontWeight: (isViewM || isSelM) ? 700 : 600,
+                          cursor: disabled ? 'default' : 'pointer', padding: '14px 0', borderRadius: 10,
+                          color: isSelM ? '#fff' : disabled ? `${C.muted}55` : C.text,
+                          background: isSelM ? steel : 'transparent',
+                          border: `1px solid ${isSelM ? steel : isViewM ? `${steel}80` : 'transparent'}`,
+                          transition: 'background 140ms ease, transform 140ms ease',
+                          animation: 'ceCellIn 300ms ease-out both', animationDelay: `${mi * 12}ms`,
+                        }}
+                        onMouseEnter={e => { if (!disabled && !isSelM) e.currentTarget.style.background = `${steel}22`; if (!disabled) e.currentTarget.style.transform = 'scale(1.06)'; }}
+                        onMouseLeave={e => { if (!isSelM) e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'none'; }}>
+                        {mn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+          </div>
+
+          {/* Quick-pick confirmation — a tentative date stays open until the host
+              commits it here (or by tapping the day). Honest: nothing is set yet. */}
+          {draft && draft !== value && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>
+                <span style={{ color: steel }}>{draftLabel}</span>{draftCount ? <span style={{ color: C.muted, fontWeight: 500 }}> · {draftCount}</span> : null}
+              </span>
+              <button type="button" onClick={commitDraft}
+                style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 22px', cursor: 'pointer', boxShadow: `0 3px 12px ${steel}55` }}>
+                Confirm
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -8083,13 +8270,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const step1Valid = !reqDate && !!form.type && (hostMode || !reqName);
   const dirty      = Boolean(form.name.trim() || form.date || form.venue || form.guestCount || form.totalBudget);
   const kitCfg     = KITS.find(k => k.id === kit) || KITS[0];
+  const [hostScreen, setHostScreen] = useState(1);  // host panel screen: 1 = type/date/name · 2 = optional guests/location
 
   // Lead the host forward — when an answer lands, the panel TAKES them to the
   // next live question (focus + smooth-scroll) instead of leaving the revealed
   // field for them to find. Host create only; never yanks focus mid-edit.
   // Declared after hostMode so the deps array isn't in its temporal dead zone.
   useEffect(() => {
-    if (!hostMode || step !== 1) return;
+    if (!hostMode || step !== 1 || hostScreen !== 1) return;
     const target = form.type && !form.date ? 'ce-date'
                  : form.type && form.date  ? 'ce-name'
                  : null;
@@ -8102,7 +8290,20 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     }, 280);  // let the reveal mount + ceRise begin before we move them
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.type, form.date, hostMode, step]);
+  }, [form.type, form.date, hostMode, step, hostScreen]);
+  // Same lead, screen 2: guests → location.
+  useEffect(() => {
+    if (!hostMode || step !== 1 || hostScreen !== 2) return;
+    const target = !(form.guestCount && Number(form.guestCount) > 0) ? 'ce-guests' : 'ce-loc';
+    const id = setTimeout(() => {
+      const el = document.getElementById(target);
+      if (!el || document.activeElement === el) return;
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* older browsers */ }
+      el.focus({ preventScroll: true });
+    }, 280);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.guestCount, hostMode, step, hostScreen]);
 
   const attemptClose = () => { if (dirty && step !== 'success') setConfirmDiscard(true); else onClose(); };
   const continue1    = () => { if (!step1Valid) { setShowErr(true); return; } setShowErr(false); setStep(2); };
@@ -8306,7 +8507,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
           {/* UX — host create splash: the alive, minimal "name it · date it ·
               pick the type" entry. Planner keeps the full Step 1 below. */}
-          {step === 1 && hostMode && (() => {
+          {step === 1 && hostMode && hostScreen === 1 && (() => {
             const typeDone = !!form.type;
             const dateDone = !!form.date;
             const nameDone = !!(form.name && form.name.trim());
@@ -8392,8 +8593,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         active={active === 'date'}
                         autoOpen={typeDone && !dateDone}
                         isMobile={isMobile}
+                        eventType={form.type}
                       />
-                      {!dateDone && <div style={sub}>Your date sets the countdown and every deadline.</div>}
+                      {!dateDone && <div style={sub}>{leadTimeHintForType(form.type) || 'Your date sets the countdown and every deadline.'}</div>}
                       {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
                     </div>
                     </div>
@@ -8405,9 +8607,76 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 {typeDone && dateDone && (
                   <div style={reveal(40)}>
                     <label htmlFor="ce-name" style={qLabel}>Give it a name <span style={{ ...bopt, fontSize: 13 }}>· optional</span></label>
-                    <input id="ce-name" data-testid="ce-name" style={sfield(active === 'name', false, false)} placeholder={`My ${form.type}`} value={form.name} onChange={e => upd('name', e.target.value)} />
+                    <input id="ce-name" data-testid="ce-name" style={sfield(active === 'name', false, false)} placeholder={`My ${form.type}`} value={form.name}
+                      onChange={e => upd('name', e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && step1Valid) { e.preventDefault(); createNow(); } }} />
                     <div style={sub}>
-                      {nameDone ? 'Perfect — you’re ready. Create it and I’ll start the plan.' : `Leave it blank and I’ll call it “My ${form.type}” — or create it now and rename anytime.`}
+                      {nameDone ? 'Perfect — press Create and I’ll start the plan.' : `Leave it blank and I’ll call it “My ${form.type}.” Create now, or add a few details first.`}
+                    </div>
+
+                    {/* The panel doesn't dead-end: create now (exits to your plan), or —
+                        if willing — step to a second screen for a couple more details. */}
+                    <div style={{ marginTop: 18 }}>
+                      <button type="button" data-testid="ce-add-more" onClick={() => setHostScreen(2)}
+                        style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '11px 16px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'border-color 150ms ease' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = `${steelTop}99`; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                        Add guest count &amp; location <span style={bopt}>· optional</span> <span aria-hidden style={{ color: steelTop }}>→</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── HOST SCREEN 2 — optional guests → location, same guided rules as
+               screen 1: one live breathing question, answered ones dim, reveal the
+               next only when the current is filled, the panel leads forward. ── */}
+          {step === 1 && hostMode && hostScreen === 2 && (() => {
+            const guestsDone = !!(form.guestCount && Number(form.guestCount) > 0);
+            const locDone = !!form.market;
+            const active = !guestsDone ? 'guests' : 'loc';
+            const steel = steelTop;
+            const sfield = (isActive, isDone, bad) => ({
+              width: '100%', boxSizing: 'border-box', minHeight: 54, padding: '14px 16px', fontSize: 16,
+              color: C.text, background: C.bg, borderRadius: 12, outline: 'none', fontFamily: 'inherit',
+              border: `1px solid ${bad ? C.danger : isActive ? steel : isDone ? `${steel}99` : C.border}`,
+              transition: 'border-color 240ms ease',
+              ...(isActive ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
+            });
+            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
+            const sub    = { fontSize: 13, color: C.muted, marginTop: 9, lineHeight: 1.5 };
+            const bopt   = { color: C.muted, fontWeight: 500, fontSize: 12 };
+            const dot    = (on) => ({ width: 7, height: 7, borderRadius: '50%', background: on ? steel : 'transparent', border: `1.5px solid ${on ? steel : C.border}`, transition: 'all 260ms ease' });
+            const reveal = (delay = 0) => ({ animation: 'ceRise 520ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${delay}ms` });
+            const groupDim = (isActiveGroup) => ({ opacity: isActiveGroup ? 1 : 0.42, transition: 'opacity 340ms ease' });
+            const check = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: 800, marginRight: 7 }}>✓</span>;
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 20, ...reveal(0) }}>
+                  <span style={dot(guestsDone)} /><span style={dot(locDone)} />
+                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>A FEW MORE DETAILS · OPTIONAL</span>
+                </div>
+
+                {/* QUESTION 1 — guest count */}
+                <div style={{ marginBottom: guestsDone ? (isMobile ? 22 : 28) : 0, ...groupDim(active === 'guests') }}>
+                  <label htmlFor="ce-guests" style={qLabel}>{guestsDone && check}About how many guests?</label>
+                  <input id="ce-guests" data-testid="ce-guests" type="number" min="0" inputMode="numeric" style={sfield(active === 'guests', guestsDone, false)} placeholder="e.g. 40"
+                    value={form.guestCount || ''} onChange={e => upd('guestCount', e.target.value)} />
+                  {!guestsDone && <div style={sub}>A rough number is fine — it sizes your budget, food and seating.</div>}
+                </div>
+
+                {/* QUESTION 2 — location, revealed once guests are entered */}
+                {guestsDone && (
+                  <div style={reveal(40)}>
+                    <div style={groupDim(active === 'loc')}>
+                      <label htmlFor="ce-loc" style={qLabel}>{locDone && check}Where is it?</label>
+                      <select id="ce-loc" data-testid="ce-loc" style={sfield(active === 'loc', locDone, false)} value={form.market} onChange={e => upd('market', e.target.value)}>
+                        <option value="">Select the city…</option>
+                        {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                      </select>
+                      <div style={sub}>Sets local pricing for your budget estimate. You can change it anytime.</div>
                     </div>
                   </div>
                 )}
@@ -9293,14 +9562,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
             <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
               <button
                 data-testid="ce-cancel"
-                onClick={attemptClose}
+                onClick={() => { if (hostMode && hostScreen === 2) setHostScreen(1); else attemptClose(); }}
                 style={{
                   background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44, minWidth: 96,
                   fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'inherit',
-                }}>Cancel</button>
+                }}>{hostMode && hostScreen === 2 ? '← Back' : 'Cancel'}</button>
               {/* Sprint UX-7 — No-intake host flow. A host account creates straight from
                   Step 1 (type · date · name): no kit step, no review, no intake. The kit
                   auto-derives from the type; everything else is collected later, in context.
