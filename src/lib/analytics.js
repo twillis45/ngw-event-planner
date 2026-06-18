@@ -88,6 +88,9 @@ export async function identifyStudio(profile) {
  */
 export async function track(event, properties = {}) {
   if (analyticsOptedOut()) return;
+  // Dev-only observability tap (IS_LOCAL ⇒ PostHog is disabled). Lets validation /
+  // QA confirm events actually fire on localhost. No-op in production.
+  try { if (IS_LOCAL && typeof window !== 'undefined') { (window.__NGW_TRACK__ = window.__NGW_TRACK__ || []).push({ event, ...properties }); } } catch (e) { /* ignore */ }
   const ph = await getPostHog();
   if (!ph) return;
   ph.capture(event, {
