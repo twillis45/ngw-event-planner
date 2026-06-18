@@ -36,6 +36,9 @@ import { summarizeCrew } from './lib/studioTeam';
 // Sprint 57F-A: Positive Attention — the read-only "You're Set On ✓" reader over
 // existing readiness (pi.attention flag, host-only, presentation-only).
 import { attentionActive, positiveAttention } from './lib/positiveAttention';
+// Sprint 60B: Event Identity — a reader over the meaning ALREADY captured at intake
+// (pi.identity flag, presentation-only; orients planning, no engine/store/workflow).
+import { identityOn, eventIdentity } from './lib/eventIdentity';
 // Sprint 57G: Confidence Grammar (Pattern 014) — remaps the Planning Health status
 // WORD + COLOR by actual certainty, per persona (pi.confidence flag, presentation-only).
 import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
@@ -1766,6 +1769,41 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
   );
 }
 
+// ── Sprint 60B: Event Identity — "what this really is" ────────────────────────
+// A reader over the meaning captured at intake. Orients planning by stating the
+// event's purpose, surfacing the must-have moment as a tracked priority, and naming
+// what success means — persona-NEUTRAL (the meaning is the event's, not the
+// audience's), so host/operator/planner all see the same. Renders nothing when the
+// flag is off or no meaning was captured (graceful degrade to today).
+function EventIdentityBlock({ event, isMobile }) {
+  if (!identityOn()) return null;
+  const id = eventIdentity(event);
+  if (!id) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 14 : 18 }}>
+      <SectionHeader label="What this is" />
+      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: P.textPrimary, lineHeight: 1.45 }}>{id.reallyIs}</div>
+        {id.intent && <div style={{ fontSize: 11.5, color: P.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{id.intent}</div>}
+        {id.mustHaveMoment && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary }}>The one thing that must happen</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary, marginTop: 3 }}>{id.mustHaveMoment}</div>
+          </div>
+        )}
+        {id.success && id.success.length > 0 && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 4 }}>What success looks like</div>
+            {id.success.slice(0, 5).map((b, i) => (
+              <div key={i} style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.55 }}>· {b}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Sprint 57F-A: Positive Attention — "You're Set On ✓" ──────────────────────
 // Read-only reassurance: the dimensions a host can stop worrying about, derived
 // ONLY from existing readiness (the positiveAttention reader). Quiet by design —
@@ -2145,6 +2183,8 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, onTabChange, 
         })()}
 
         {/* Sprint 57F-A: Positive Attention — reassurance right beneath what needs you. */}
+        {/* Sprint 60B: Event Identity — what this really is + the must-have */}
+        <EventIdentityBlock event={event} isMobile />
         <YoureSetOn items={setItems} isMobile />
 
         {/* Next Up */}
@@ -2338,6 +2378,8 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, onTabChange,
             })()}
 
             {/* Sprint 57F-A: Positive Attention — reassurance below the Needs You queue. */}
+            {/* Sprint 60B: Event Identity — what this really is + the must-have */}
+            <EventIdentityBlock event={event} />
             <YoureSetOn items={setItems} />
           </div>
 
