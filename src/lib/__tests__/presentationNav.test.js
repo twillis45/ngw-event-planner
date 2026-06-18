@@ -10,8 +10,9 @@ const PLANNER = { audience: 'client' };
 
 beforeEach(() => { try { localStorage.clear(); } catch {} }); // pi.nav OFF by default
 
-describe('57E-A hostNav — T1 flag OFF is identity (= today)', () => {
-  test('host audience but flag off ⇒ full nav unchanged', () => {
+describe('57E-A hostNav — T1 off-switch is identity (= today)', () => {
+  test('host audience but pi-off=nav ⇒ full nav unchanged', () => {
+    try { localStorage.setItem('ngw-pi-nav', '0'); } catch {}
     expect(hostNav(TABS, HOST)).toBe(TABS);
     expect(hostNavActive(HOST)).toBe(false);
   });

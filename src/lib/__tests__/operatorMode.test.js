@@ -17,8 +17,9 @@ describe('57I persona mapping', () => {
     expect(audiencePersona(HOST)).toBe('host');
     expect(audiencePersona(PLAN)).toBe('planner');
   });
-  test('personaFor honors pi.voice gate: OFF ⇒ planner (identity), ON ⇒ operator', () => {
-    expect(personaFor(OP)).toBe('planner');                 // flag OFF ⇒ identity
+  test('personaFor honors pi.voice gate: off-switch ⇒ planner identity, default ⇒ operator', () => {
+    try { localStorage.setItem('ngw-pi-voice', '0'); } catch {}
+    expect(personaFor(OP)).toBe('planner');                 // off-switch ⇒ identity
     try { localStorage.setItem('ngw-pi-voice', '1'); } catch {}
     expect(personaFor(OP)).toBe('operator');
   });
@@ -62,8 +63,8 @@ describe('57I operator labels — distinct vocabulary', () => {
     expect(labelFor('Capacity', HOST)).toBe('Seating & supplies');   // host differs
     expect(labelFor('Capacity', PLAN)).toBe('Capacity');             // planner identity
   });
-  test('flag OFF ⇒ identity for operator too', () => {
-    try { localStorage.removeItem('ngw-pi-labels'); } catch {}
+  test('off-switch ⇒ identity for operator too', () => {
+    try { localStorage.setItem('ngw-pi-labels', '0'); } catch {}
     expect(labelFor('Capacity', OP)).toBe('Capacity');
   });
 });

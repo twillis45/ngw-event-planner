@@ -17,11 +17,21 @@ import { audiencePersona } from './nextActionRenderer';
 // pi.attention flag (default OFF). Enable via ?pi=attention / localStorage
 // 'ngw-pi-attention'='1' / REACT_APP_PI_ATTENTION='true'. Same triad as pi.voice/pi.nav.
 export function attentionOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=attention / localStorage 'ngw-pi-attention'='0' / REACT_APP_PI_ATTENTION='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=attention\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-attention') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=attention\b/.test(q)) return true;
+      if (/[?&]pi-off=attention\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-attention');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_ATTENTION === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_ATTENTION === 'false');
 }
 
 // Active only for the HOST audience with the flag on. Planner/operator unchanged

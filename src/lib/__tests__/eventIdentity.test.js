@@ -15,7 +15,7 @@ const wanda = {
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('60B flag gate', () => {
-  test('identityOn default OFF', () => { expect(identityOn()).toBe(false); });
+  test('identityOn default ON (Host Activation v1)', () => { expect(identityOn()).toBe(true); });
   test('ON via localStorage', () => { localStorage.setItem('ngw-pi-identity', '1'); expect(identityOn()).toBe(true); });
 });
 

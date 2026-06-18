@@ -12,11 +12,21 @@ import { audiencePersona } from './nextActionRenderer';
 // pi.nav flag (default OFF). Enable via ?pi=nav / localStorage 'ngw-pi-nav' /
 // REACT_APP_PI_NAV='true'. OFF ⇒ hostNav is the identity function.
 export function navOn() {
+  // Host Activation v1: default ON, persona-gated downstream (hostNavActive).
+  // QA off: ?pi-off=nav / localStorage 'ngw-pi-nav'='0' / REACT_APP_PI_NAV='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=nav\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-nav') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=nav\b/.test(q)) return true;
+      if (/[?&]pi-off=nav\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-nav');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_NAV === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_NAV === 'false');
 }
 
 // Host nav active only for the HOST audience with the flag on. Operator/planner keep

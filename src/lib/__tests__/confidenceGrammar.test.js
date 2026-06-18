@@ -10,8 +10,9 @@ const PLANNER = { audience: 'client' };
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('57G flag gating', () => {
-  test('confidenceOn default OFF; confidencePersona null when off', () => {
-    expect(confidenceOn()).toBe(false);
+  test('confidenceOn default ON; off-switch ⇒ confidencePersona null', () => {
+    expect(confidenceOn()).toBe(true);
+    try { localStorage.setItem('ngw-pi-confidence', '0'); } catch {}
     expect(confidencePersona(HOST)).toBeNull();
   });
   test('flag ON ⇒ persona drives vocabulary', () => {

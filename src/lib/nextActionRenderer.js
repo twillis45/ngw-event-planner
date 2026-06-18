@@ -151,11 +151,21 @@ export const VOICE = {
 // QA/operators enable via `?pi=voice`, localStorage 'ngw-pi-voice'='1', or
 // REACT_APP_PI_VOICE='true'.
 export function presentationVoiceOn() {
+  // Host Activation v1: default ON ⇒ personaFor resolves by audience (unset ⇒ host).
+  // QA off: ?pi-off=voice / localStorage 'ngw-pi-voice'='0' / REACT_APP_PI_VOICE='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=voice\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-voice') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=voice\b/.test(q)) return true;
+      if (/[?&]pi-off=voice\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-voice');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_VOICE === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_VOICE === 'false');
 }
 
 // Self-declared audience → voice (Phase 0). NOT recordKind. Unset / 'other' / unknown

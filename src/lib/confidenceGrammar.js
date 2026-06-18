@@ -18,11 +18,21 @@ import { audiencePersona } from './nextActionRenderer';
 // pi.confidence flag (default OFF). Enable via ?pi=confidence / localStorage
 // 'ngw-pi-confidence'='1' / REACT_APP_PI_CONFIDENCE='true'. Same triad as the others.
 export function confidenceOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=confidence / localStorage 'ngw-pi-confidence'='0' / REACT_APP_PI_CONFIDENCE='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=confidence\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-confidence') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=confidence\b/.test(q)) return true;
+      if (/[?&]pi-off=confidence\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-confidence');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_CONFIDENCE === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_CONFIDENCE === 'false');
 }
 
 // Confidence grammar is UNIVERSAL when on (Pattern 014 serves every persona); only

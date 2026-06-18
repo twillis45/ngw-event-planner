@@ -11,11 +11,21 @@ import { audiencePersona } from './nextActionRenderer';
 // pi.labels flag (default OFF). Enable via ?pi=labels / localStorage 'ngw-pi-labels'
 // / REACT_APP_PI_LABELS='true'. OFF ⇒ labelFor is the identity function.
 export function labelsOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=labels / localStorage 'ngw-pi-labels'='0' / REACT_APP_PI_LABELS='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=labels\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-labels') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=labels\b/.test(q)) return true;
+      if (/[?&]pi-off=labels\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-labels');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_LABELS === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_LABELS === 'false');
 }
 
 // Translate planner INTENT, not just words (grandmother test). Only jargon is mapped;

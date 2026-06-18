@@ -8,11 +8,12 @@ const PLANNER = { audience: 'client' };
 
 beforeEach(() => { try { localStorage.clear(); } catch {} }); // pi.labels OFF by default
 
-describe('57C labelFor — T1 flag OFF is identity (= today, byte-identical)', () => {
-  test('every mapped term returns unchanged when flag off', () => {
+describe('57C labelFor — T1 off-switch is identity (= today, byte-identical)', () => {
+  test('every mapped term returns unchanged with pi-off=labels', () => {
+    try { localStorage.setItem('ngw-pi-labels', '0'); } catch {}
     Object.keys(HOST_LABEL_MAP).forEach((term) => {
-      expect(labelFor(term, HOST)).toBe(term);     // host audience but flag OFF ⇒ identity
-      expect(labelFor(term, PLANNER)).toBe(term);
+      expect(labelFor(term, HOST)).toBe(term);     // off-switch ⇒ identity
+      expect(labelFor(term, PLANNER)).toBe(term);  // planner ⇒ identity even default ON
     });
   });
 });

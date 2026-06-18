@@ -10,11 +10,21 @@
 // pi.identity flag (default OFF). ?pi=identity / localStorage 'ngw-pi-identity' /
 // REACT_APP_PI_IDENTITY='true'.
 export function identityOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=identity / localStorage 'ngw-pi-identity'='0' / REACT_APP_PI_IDENTITY='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=identity\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-identity') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=identity\b/.test(q)) return true;
+      if (/[?&]pi-off=identity\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-identity');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_IDENTITY === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_IDENTITY === 'false');
 }
 
 // What an event TYPE really is — the essence beneath the format (a graduation party

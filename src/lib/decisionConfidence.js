@@ -18,11 +18,21 @@ import { guestCountResolved } from './playbooks';
 import { summarizeCrew } from './studioTeam';
 
 export function decisionsOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=decisions / localStorage 'ngw-pi-decisions'='0' / REACT_APP_PI_DECISIONS='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=decisions\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-decisions') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=decisions\b/.test(q)) return true;
+      if (/[?&]pi-off=decisions\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-decisions');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_DECISIONS === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_DECISIONS === 'false');
 }
 export function decisionsActive() { return decisionsOn(); }
 

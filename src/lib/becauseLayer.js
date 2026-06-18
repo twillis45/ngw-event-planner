@@ -17,11 +17,21 @@
 // pi.because flag (default OFF). Enable via ?pi=because / localStorage
 // 'ngw-pi-because'='1' / REACT_APP_PI_BECAUSE='true'. Same triad as the others.
 export function becauseOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=because / localStorage 'ngw-pi-because'='0' / REACT_APP_PI_BECAUSE='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=because\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-because') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=because\b/.test(q)) return true;
+      if (/[?&]pi-off=because\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-because');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_BECAUSE === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_BECAUSE === 'false');
 }
 
 // Active for any persona when the flag is on (reasoning is universal). Returns a

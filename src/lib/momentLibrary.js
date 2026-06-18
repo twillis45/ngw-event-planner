@@ -13,11 +13,21 @@
 // REACT_APP_PI_MOMENTS='true'.
 
 export function momentsOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=moments / localStorage 'ngw-pi-moments'='0' / REACT_APP_PI_MOMENTS='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=moments\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-moments') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=moments\b/.test(q)) return true;
+      if (/[?&]pi-off=moments\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-moments');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_MOMENTS === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_MOMENTS === 'false');
 }
 
 // A moment: { id, label, owner, support, match[], note? }

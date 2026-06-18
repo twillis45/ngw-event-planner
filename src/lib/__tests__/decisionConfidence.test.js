@@ -13,7 +13,7 @@ const get = (items, key) => items.find((i) => i.key === key);
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('57J flag gate', () => {
-  test('default OFF', () => { expect(decisionsOn()).toBe(false); expect(decisionsActive()).toBe(false); });
+  test('default ON (Host Activation v1)', () => { expect(decisionsOn()).toBe(true); expect(decisionsActive()).toBe(true); });
   test('ON via localStorage', () => { localStorage.setItem('ngw-pi-decisions', '1'); expect(decisionsActive()).toBe(true); });
 });
 

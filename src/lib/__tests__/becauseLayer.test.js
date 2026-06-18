@@ -9,9 +9,9 @@ import { playbookCapacity, playbookInfraPrompts } from '../playbooks';
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('57H flag gating', () => {
-  test('becauseOn / becauseActive default OFF', () => {
-    expect(becauseOn()).toBe(false);
-    expect(becauseActive()).toBe(false);
+  test('becauseOn / becauseActive default ON (Host Activation v1)', () => {
+    expect(becauseOn()).toBe(true);
+    expect(becauseActive()).toBe(true);
   });
   test('flag ON ⇒ active', () => {
     try { localStorage.setItem('ngw-pi-because', '1'); } catch {}

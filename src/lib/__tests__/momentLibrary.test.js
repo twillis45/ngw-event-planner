@@ -10,7 +10,7 @@ import {
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('60F flag gate', () => {
-  test('momentsOn default OFF', () => { expect(momentsOn()).toBe(false); });
+  test('momentsOn default ON (Host Activation v1)', () => { expect(momentsOn()).toBe(true); });
   test('ON via localStorage', () => { localStorage.setItem('ngw-pi-moments', '1'); expect(momentsOn()).toBe(true); });
 });
 

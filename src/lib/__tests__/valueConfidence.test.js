@@ -9,7 +9,7 @@ import { valueConfidenceOn, valueConfidenceActive, valueConfidence, valueWord, V
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('57K flag gate', () => {
-  test('default OFF', () => { expect(valueConfidenceOn()).toBe(false); expect(valueConfidenceActive()).toBe(false); });
+  test('default ON (Host Activation v1)', () => { expect(valueConfidenceOn()).toBe(true); expect(valueConfidenceActive()).toBe(true); });
   test('ON via localStorage', () => { localStorage.setItem('ngw-pi-valueConfidence', '1'); expect(valueConfidenceActive()).toBe(true); });
 });
 

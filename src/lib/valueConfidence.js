@@ -19,11 +19,21 @@ import { audiencePersona } from './nextActionRenderer';
 import { guestCountResolved } from './playbooks';
 
 export function valueConfidenceOn() {
+  // Host Activation v1: default ON (persona-gated downstream). QA off-switch:
+  // ?pi-off=valueConfidence / localStorage 'ngw-pi-valueConfidence'='0' / REACT_APP_PI_VALUE_CONFIDENCE='false'.
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=valueConfidence\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-valueConfidence') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=valueConfidence\b/.test(q)) return true;
+      if (/[?&]pi-off=valueConfidence\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-valueConfidence');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_VALUE_CONFIDENCE === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_VALUE_CONFIDENCE === 'false');
 }
 export function valueConfidenceActive() { return valueConfidenceOn(); }
 

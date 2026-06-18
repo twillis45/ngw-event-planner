@@ -90,8 +90,9 @@ describe('55M renderAction — T3/T4/T5 override hygiene', () => {
   });
 });
 
-describe('57A-B personaFor — T6 audience mapping behind pi.voice flag', () => {
-  test('FLAG OFF (default): every audience → planner (= today, identity)', () => {
+describe('57A-B personaFor — T6 audience mapping (default ON; off-switch = identity)', () => {
+  test('OFF-switch (pi-off=voice): every audience → planner (= identity)', () => {
+    try { localStorage.setItem('ngw-pi-voice', '0'); } catch {}
     ['self_family', 'friend', 'client', 'organization', 'professional', 'other', undefined].forEach((a) => {
       expect(personaFor({ audience: a })).toBe('planner');
     });
@@ -127,13 +128,14 @@ describe('57A-B — T7 shipped VOICE shape', () => {
 });
 
 describe('57A-B — T7b producer wiring: flag OFF is byte-identical (integration)', () => {
-  test('selectEventNextAction renders planner (identity) when flag off', () => {
+  test('selectEventNextAction renders planner (identity) when voice off-switched', () => {
+    try { localStorage.setItem('ngw-pi-voice', '0'); } catch {}
     // eslint-disable-next-line global-require
     const { selectEventNextAction } = require('../../CommandCenter');
     const ev = { id: 't', type: 'Dinner Party', date: '2030-01-01' };
     const na = selectEventNextAction(ev);
     expect(na).toBeTruthy();
     expect(typeof na.category).toBe('string');
-    expect(personaFor(ev)).toBe('planner'); // flag off ⇒ today's voice
+    expect(personaFor(ev)).toBe('planner'); // off-switch ⇒ today's voice
   });
 });

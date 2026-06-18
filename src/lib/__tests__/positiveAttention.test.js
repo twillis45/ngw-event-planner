@@ -23,12 +23,13 @@ function ev(extra) {
 beforeEach(() => { try { localStorage.clear(); } catch {} });
 
 describe('57F-A flag gating', () => {
-  test('attentionOn default OFF', () => { expect(attentionOn()).toBe(false); });
+  test('attentionOn default ON (Host Activation v1)', () => { expect(attentionOn()).toBe(true); });
   test('attentionActive needs flag AND host audience', () => {
-    expect(attentionActive(ev())).toBe(false);                 // flag off
+    try { localStorage.setItem('ngw-pi-attention', '0'); } catch {}
+    expect(attentionActive(ev())).toBe(false);                 // off-switch
     try { localStorage.setItem('ngw-pi-attention', '1'); } catch {}
     expect(attentionActive(ev())).toBe(true);                  // host + flag
-    expect(attentionActive(ev({ audience: 'client' }))).toBe(false); // planner stays off
+    expect(attentionActive(ev({ audience: 'client' }))).toBe(false); // planner stays off (even default ON)
   });
 });
 
