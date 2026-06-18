@@ -25,6 +25,8 @@ import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps
 import US_CITIES from './lib/usCities';
 import { isAnalyticsConfigured, identifyStudio, track, trackOnce, trackPageView, EVENTS } from './lib/analytics';
 import { presentationVoiceOn } from './lib/nextActionRenderer'; // Sprint 57A-B: pi.voice flag gates the audience capture (presentation-only)
+// Sprint 58C: Decision Memory v1 — persist WHY a planning decision was made (pi.memory).
+import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisionRecord, getDecisions, DECISION_TYPE_LABEL, latestRationaleForSubject } from './lib/decisionMemory';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -20425,7 +20427,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections }) {
+function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -20629,7 +20631,19 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     setModalId(nr.id);
   };
   const del = (id) => { setBudget(b => b.filter(r => r.id !== id)); setModalId(null); };
-  const upd = (id, key, val) => setBudget(b => b.map(r => r.id === id ? { ...r, [key]: key === 'budgeted' || key === 'actual' ? Number(val) || 0 : val } : r));
+  const upd = (id, key, val) => {
+    // Sprint 58C — Decision Memory: a meaningful budget reallocation (the budgeted
+    // amount moves) is worth a reason. Non-blocking; only when the value changes.
+    if (key === 'budgeted' && promptDecision) {
+      const row = (budget || []).find(r => r.id === id);
+      const nv = Number(val) || 0;
+      if (row && Number(row.budgeted || 0) !== nv && (Number(row.budgeted || 0) > 0 || nv > 0)) {
+        promptDecision({ decisionType: 'budget_reallocation', subjectId: id, subjectLabel: row.category || 'category',
+          decision: `${row.category || 'Category'}: ${fmtD(Number(row.budgeted || 0))} → ${fmtD(nv)}`, question: 'Why shift this budget?' });
+      }
+    }
+    setBudget(b => b.map(r => r.id === id ? { ...r, [key]: key === 'budgeted' || key === 'actual' ? Number(val) || 0 : val } : r));
+  };
   const modalRow = budget.find(r => r.id === modalId);
 
   const [est, setEst] = useState({ guests: confirmedCount > 0 ? String(confirmedCount) : '', eventType: eventType || 'Wedding' });
@@ -27369,7 +27383,7 @@ const normalizeEventTabRoute = (rawTab, itemId) => {
 // from Command Center routing. This is the single source of truth for vendor
 // work — the PLAN-overlay Vendors sidebar entry is being deprecated in the
 // same sprint.
-function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSection, sectionPing, ros, profile, allEvents, isMobile, onBack, onRouteToLinked, onSaveVendorToBank }) {
+function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSection, sectionPing, ros, profile, allEvents, isMobile, onBack, onRouteToLinked, onSaveVendorToBank, promptDecision }) {
   const [editingVendor, setEditingVendor] = useState(null);
   // Sprint Add Vendor 10+ — wizard state. Replaces the single-shot
   // Add → VendorModal path with a 3-step flow that previews the
@@ -27418,6 +27432,13 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
     // is an engine-directed action. The user-level once-guard dedupes across both.
     if (patch.status === 'Confirmed') recordFirstValue('vendor_confirmed', event, 'vendor_stepper');
     if (patch.depositPaid === true || patch.balancePaid === true) recordFirstValue('payment_recorded', event, 'vendor_payment');
+    // Sprint 58C — Decision Memory: a vendor commitment is a meaningful decision.
+    // Prompt for the rationale (non-blocking; the status change applies regardless).
+    const oldV = (event.vendors || []).find(v => v.id === vendorId);
+    if (patch.status === 'Confirmed' && oldV && oldV.status !== 'Confirmed' && promptDecision) {
+      promptDecision({ decisionType: 'vendor_selection', subjectId: vendorId, subjectLabel: oldV.name || 'this vendor',
+        decision: `Confirmed ${oldV.name || 'vendor'}${oldV.category ? ' (' + oldV.category + ')' : ''}`, question: 'Why this vendor?' });
+    }
     setVendors(prev => (prev || []).map(v => v.id === vendorId ? { ...v, ...patch } : v));
   };
   // Sprint Add Vendor 10+ — Create handler. Runs once at the end of
@@ -28497,7 +28518,7 @@ function EventClientIntakeTab({ event, setEvent, isMobile, intakeMode, onBack })
   );
 }
 
-function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteToLinked }) {
+function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteToLinked, promptDecision }) {
   const C = useT();
   const [copied, setCopied] = useState(false);
   // Sprint 66: client approvals from portal (stored in localStorage by client)
@@ -28556,6 +28577,13 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
   // Decision actions so a planner can act ON the decision inline (no hunting):
   // Extend pushes the deadline a week (snooze); Reassign changes the owner.
   const onExtendDecision = (taskId) => {
+    // Sprint 58C — Decision Memory: deferring an engine-flagged decision is a
+    // planner override. Capture why (non-blocking; the snooze applies regardless).
+    if (promptDecision) {
+      const t = (event.timeline || []).find(x => x.id === taskId);
+      promptDecision({ decisionType: 'planner_override', subjectId: taskId, subjectLabel: (t && t.task) || 'this item',
+        decision: `Deferred 7 days: ${(t && t.task) || 'item'}`, question: 'Why defer this now?' });
+    }
     setEvent(e => ({
       ...e,
       timeline: (e.timeline || []).map(t => {
@@ -29674,6 +29702,8 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.55, maxWidth: 560 }}>
           Day-of view reads these notes on event day. Vendors check this for load-in instructions. Keep them short and explicit.
         </div>
+        {/* Sprint 58C — Decision Memory read surface */}
+        <DecisionHistory event={event} />
       </div>
       </div>
     </>
@@ -30124,6 +30154,62 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
   );
 }
 
+// Sprint 58C — Decision Memory capture modal. One short question, one optional
+// answer. Never blocks: "Skip" records nothing and proceeds. The decision itself
+// already happened; this only captures the WHY.
+function RationaleModal({ prompt, onSave, onSkip }) {
+  const C = useT();
+  const [text, setText] = useState('');
+  useEffect(() => { setText(''); }, [prompt]);
+  if (!prompt) return null;
+  return (
+    <div onClick={onSkip} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 94vw)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Decision noted</div>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: C.text, marginTop: 4 }}>{prompt.question || 'Why this decision?'}</div>
+        {prompt.decision && <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{prompt.decision}</div>}
+        <textarea autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="A sentence is plenty — your future self will thank you."
+          rows={3} style={{ width: '100%', marginTop: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.4, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onSave(text); }} />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+          <button onClick={onSkip} style={{ ...makeS(C).btn('ghost'), fontSize: 13 }}>Skip</button>
+          <button onClick={() => onSave(text)} disabled={!text.trim()} style={{ ...makeS(C).btn('primary'), fontSize: 13, opacity: text.trim() ? 1 : 0.5, cursor: text.trim() ? 'pointer' : 'default' }}>Save reason</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sprint 58C — Decision Memory read surface. A plain, reverse-chronological log of
+// captured decisions for THIS event. Renders nothing when memory is off / empty.
+function DecisionHistory({ event }) {
+  const C = useT();
+  if (!decisionMemoryOn()) return null;
+  const list = getDecisions(event);
+  if (!list.length) return null;
+  const fmtWhen = (iso) => { try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ''; } };
+  return (
+    <div style={{ padding: '20px 0 8px', borderTop: `1px solid ${C.border}`, marginTop: 18 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Decision History</div>
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>Why the calls were made — captured as you went.</div>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+        {list.slice().reverse().map((d, i) => (
+          <div key={d.id} style={{ padding: '12px 16px', borderTop: i === 0 ? 'none' : `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{d.decision || d.subjectLabel}</div>
+              <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{(DECISION_TYPE_LABEL[d.decisionType] || 'Decision')}{d.createdAt ? ' · ' + fmtWhen(d.createdAt) : ''}</div>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>
+              <span style={{ fontWeight: 700, color: C.text, opacity: 0.8 }}>Because</span> {d.rationale}
+              {d.createdBy ? <span style={{ opacity: 0.7 }}> — {d.createdBy}</span> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank, team = [], setTeam }) {
   const C      = useT();
   const s      = makeS(C);
@@ -30134,6 +30220,21 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // URL, persisted state, third-party trigger, Home/CommandCenter Sprint-57f
   // compressed routes) is normalized at mount so we land in the right
   // surface + view from the very first render.
+  // Sprint 58C — Decision Memory v1: a single lightweight rationale-capture prompt
+  // hosted here (EventPlanner has event + setEvent + renders every tab). The three
+  // capture points (vendor selection, budget change, override) call `promptDecision`;
+  // saving appends a persisted record onto event.decisionMemory[]. Gated by pi.memory.
+  const [decPrompt, setDecPrompt] = useState(null);
+  const promptDecision = (cfg) => { if (decisionMemoryOn() && cfg) setDecPrompt(cfg); };
+  const saveDecision = (rationale) => {
+    if (decPrompt && rationale && rationale.trim()) {
+      setEvent(e => appendDecision(e, makeDecisionRecord(
+        { ...decPrompt, eventId: e.id, rationale, createdBy: profile?.name || profile?.email || undefined },
+        new Date().toISOString(),
+      )));
+    }
+    setDecPrompt(null);
+  };
   const _initialNorm = normalizeEventTabRoute(initialNav?.tab, initialNav?.taskId || initialNav?.timelineId);
   const [tab,             setTab]            = useState(_initialNorm.tab || 'Command');
   // Sprint 59B: which view inside the merged Planning tab is active. Seeded
@@ -30538,6 +30639,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
   const tabContent = (
     <ErrorBoundary>
+      {/* Sprint 58C — Decision Memory capture prompt (fixed overlay; renders on any tab) */}
+      <RationaleModal prompt={decPrompt} onSave={saveDecision} onSkip={() => setDecPrompt(null)} />
       {tab === 'Command'     && (
         <CommandCenter
           event={event}
@@ -30557,7 +30660,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
@@ -30598,6 +30701,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             onBack={() => handleTabChange('Command')}
             onRouteToLinked={(targetTab, itemId) => handleTabChange(targetTab, itemId)}
             onSaveVendorToBank={onSaveVendorToBank}
+            promptDecision={promptDecision}
           />
         </Suspense></>
       )}
@@ -30611,6 +30715,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             isMobile={isMobile}
             onBack={() => handleTabChange('Command')}
             onRouteToLinked={(t, id) => handleTabChange(t, id)}
+            promptDecision={promptDecision}
           />
         </Suspense></>
       )}
