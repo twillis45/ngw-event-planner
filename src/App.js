@@ -7979,9 +7979,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       t: false, v: false, b: false, r: false },
   ];
 
+  // Sprint UX-5/UX-9 — host account: name is OPTIONAL (auto-named at create), and the
+  // whole flow is direct-to-value (no kit/review/success interstitial).
+  const hostMode = accountTypeOf(profile, clients) === 'host';
   const reqName    = !form.name.trim();
   const reqDate    = !form.date;
-  const step1Valid = !reqName && !reqDate && !!form.type;
+  const step1Valid = !reqDate && !!form.type && (hostMode || !reqName);
   const dirty      = Boolean(form.name.trim() || form.date || form.venue || form.guestCount || form.totalBudget);
   const kitCfg     = KITS.find(k => k.id === kit) || KITS[0];
 
@@ -8033,8 +8036,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     const newId = uid();
     // navigate=false: create the event for real, but stay here so the success
     // state can show. Navigation happens when the planner taps "Open event".
+    // UX-9 — host name is optional; auto-name from the type ("My Graduation Party").
+    const eventName = form.name.trim() || (hostMode ? `My ${form.type}` : '');
     onCreate({
-      id: newId, rsvpCode: uid(), name: form.name.trim(), type: form.type,
+      id: newId, rsvpCode: uid(), name: eventName, type: form.type,
       secondaryType: form.secondaryType || '', date: form.date, venue: form.venue, venueTags: form.venueTags || [],
       theme: (form.theme || '').trim(), honoree: (form.honoree || '').trim(),
       honoreeSong: (form.honoreeSong || '').trim(), honoreeDrink: (form.honoreeDrink || '').trim(),
@@ -8050,7 +8055,15 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       ros: getEventPlaybook(form.type) ? [] : (kitCfg.r ? buildStarterROS(form.type, form.timeOfDay || 'afternoon', form.theme, form.honoree, form.honoreeSong) : []),
     }, selectedClientId || null, false);
     setCreatedId(newId);
-    setStep('success');
+    // UX-9 — Direct to value: a host lands on Host Home immediately (no success
+    // interstitial). The "we've already started planning for you" receipt is relocated
+    // to a one-time Host Home card, flagged here. Planners keep the success step.
+    if (hostMode) {
+      try { localStorage.setItem('ngw-host-welcome', newId); } catch (e) { /* storage blocked */ }
+      onClose();
+    } else {
+      setStep('success');
+    }
   };
 
   const resetForAnother = () => {
@@ -8092,8 +8105,6 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // drawer; tablet steps up to 640px; desktop to 720px (success: 560/600px).
   // No floating-phone-modal on desktop.
   const isSuccess = step === 'success';
-  // Sprint UX-5 — a self-host account gets a host-framed finish (no client/intake fork).
-  const hostMode = accountTypeOf(profile, clients) === 'host';
   let desktopWidth;
   if (isSuccess) {
     desktopWidth = isTablet ? 'min(560px, calc(100vw - 48px))' : 'min(600px, calc(100vw - 64px))';
@@ -8205,12 +8216,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={ui.label} htmlFor="ce-name">Event name <span style={ui.req}>· required</span></label>
+                <label style={ui.label} htmlFor="ce-name">Event name <span style={hostMode ? ui.opt : ui.req}>· {hostMode ? 'optional' : 'required'}</span></label>
                 <input id="ce-name" data-testid="ce-name" autoFocus style={ui.field((showErr || touched.name) && reqName)} placeholder="e.g. Maya's 30th Birthday"
                   value={form.name}
                   onChange={e => upd('name', e.target.value)}
                   onBlur={() => setTouched(t => ({ ...t, name: true }))} />
-                {(showErr || touched.name) && reqName && <div style={ui.hint}>Event name is required.</div>}
+                {!hostMode && (showErr || touched.name) && reqName && <div style={ui.hint}>Event name is required.</div>}
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={ui.label} htmlFor="ce-date">Event date <span style={ui.req}>· required</span></label>
@@ -8219,7 +8230,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     string; none use relative storage. Subtext beneath
                     shows the resolved date so the planner can confirm
                     what the chip picked. */}
-                <DateChipRow
+                {/* UX-9 — single date paradigm. Hosts know their exact date, so they get
+                    the precise picker only; the relative chips stay for planner accounts. */}
+                {!hostMode && <DateChipRow
                   C={C}
                   testId="ce-date-chip"
                   selectedId={ceDateChipMeta && ceDateChipMeta.resolved === form.date ? ceDateChipMeta.id : null}
@@ -8231,7 +8244,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     { id: 'plus-3-months', label: '+3 months',     compute: () => addMonthsISO(3) },
                     { id: 'plus-6-months', label: '+6 months',     compute: () => addMonthsISO(6) },
                   ]}
-                />
+                />}
                 <input
                   id="ce-date"
                   data-testid="ce-date"
@@ -17239,6 +17252,40 @@ function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
   );
 }
 
+// Sprint UX-9 — the create receipt, relocated from the (now-removed) success modal to a
+// one-time Host Home card: "we've already started planning for you." Dismissible; shown
+// once (a localStorage flag set at create, cleared on dismiss). Confidence without an
+// interstitial.
+function HostWelcomeCard({ ev, C, cardStyle, eyebrowStyle }) {
+  const [show, setShow] = useState(() => { try { return localStorage.getItem('ngw-host-welcome') === ev.id; } catch (e) { return false; } });
+  if (!show) return null;
+  const items = [
+    (ev.timeline || []).length > 0 && 'Planning timeline to your date',
+    (ev.budget || []).length > 0 && 'Budget outline',
+    (ev.vendors || []).length > 0 && 'Vendor categories to fill',
+    'Event-day schedule starter',
+  ].filter(Boolean);
+  const dismiss = () => { try { localStorage.removeItem('ngw-host-welcome'); } catch (e) { /* ignore */ } setShow(false); };
+  return (
+    <div style={{ ...cardStyle, border: `1px solid ${C.success}55`, background: `${C.success}0d` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div style={eyebrowStyle}>Done for you</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>We’ve already started planning for you.</div>
+        </div>
+        <button onClick={dismiss} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: 16, cursor: 'pointer', flexShrink: 0, lineHeight: 1, padding: 2 }}>✕</button>
+      </div>
+      <div style={{ marginTop: 11, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        {items.map(i => (
+          <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'center', fontSize: 12.5, color: C.text }}>
+            <span style={{ color: C.success, fontWeight: 800, flexShrink: 0 }}>✓</span> {i}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
   // The host's focus event: soonest upcoming (today→future), else most-future past,
@@ -17318,6 +17365,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             {daysLeft !== null && daysLeft >= 0 && <span style={{ color: C.text, fontWeight: 600 }}>· {daysLeft === 0 ? 'Today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} to go`}</span>}
           </div>
         </div>
+
+        {/* UX-9 · one-time create receipt (relocated from the success modal) */}
+        <HostWelcomeCard ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
 
         {/* 2 · Next Step */}
         {na && (
