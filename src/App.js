@@ -31,7 +31,7 @@ import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisio
 // Sprint 58G — Event Memory: the event lesson (one short optional string at completion).
 import { setLesson, getLesson } from './lib/eventMemory';
 // Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
-import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL } from './lib/eventIdentity';
+import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement } from './lib/eventIdentity';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
@@ -147,6 +147,18 @@ const SEED_EVENT_IDS  = new Set(['ev-wedding', 'ev-corp', 'ev-chaos', 'ev-board'
 const SEED_CLIENT_IDS = new Set(['cl-1', 'cl-chaos', 'cl-2', 'cl-3', 'cl-vega', 'cl-hope', 'cl-rivers', 'cl-emma', 'cl-rise', ...SAMPLE_CLIENT_IDS_EXTRA]);
 const isSeedEvent  = (e) => e && SEED_EVENT_IDS.has(e.id);
 const isSeedClient = (c) => c && SEED_CLIENT_IDS.has(c.id);
+
+// Sprint UX-2 — Account identity. A single durable field, explicit-wins; inference
+// is ONLY a one-time fallback for legacy/unset accounts (Part 1 rule: host unless
+// there's evidence of a planner studio — i.e. a real, non-seed client). Once
+// profile.accountType is set (signup / Settings), it is authoritative — no inference.
+const ACCOUNT_TYPES = ['host', 'planner', 'operator'];
+function accountTypeOf(profile, clients) {
+  const t = profile && profile.accountType;
+  if (ACCOUNT_TYPES.includes(t)) return t;
+  const hasRealClient = Array.isArray(clients) && clients.some(c => c && c.id && !SEED_CLIENT_IDS.has(c.id));
+  return hasRealClient ? 'planner' : 'host';
+}
 
 // Sprint 55N — first_value: the first time a user completes an engine-directed
 // action on a real (non-seed) event. Value-set: decision_resolved /
@@ -17153,6 +17165,145 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
   );
 }
 
+// ── Sprint UX-2 — Host Home (the L1 front door for accountType:'host') ─────────
+// Replaces the planner CRM for hosts: a host arrives at "my event", not "my
+// business". Five sections — Event Summary · Next Step · Progress · What Matters
+// Most · Event Day — built entirely from readers that already exist (no new engine).
+// Planner/operator accounts never see this; they keep MainDashboard untouched.
+function HostHome({ events, profile, onSelectEvent, onNew, onProfile }) {
+  const C = useT();
+  // The host's focus event: soonest upcoming (today→future), else most-future past,
+  // preferring a real (non-seed) event. A host usually has exactly one.
+  const focus = useMemo(() => {
+    const list = (events || []).filter(e => e && e.date);
+    if (!list.length) return null;
+    const score = (e) => {
+      const d = daysUntil(e.date);
+      const future = d !== null && d >= 0;
+      return (future ? 0 : 1000) + (isSeedEvent(e) ? 100 : 0) + Math.abs(d == null ? 9999 : d);
+    };
+    return [...list].sort((a, b) => score(a) - score(b))[0] || list[0];
+  }, [events]);
+
+  useEffect(() => { trackOnce('ngw-host-home-viewed', EVENTS.HOST_HOME_VIEWED, { has_event: !!focus }); }, [focus]);
+
+  const Header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: C.text }}>Event Boss</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={onNew} style={{ fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ New event</button>
+        <button onClick={onProfile} title="Settings" style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>⚙</button>
+      </div>
+    </div>
+  );
+
+  if (!focus) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg }}>
+        {Header}
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
+          <div style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — Event Boss builds the plan, the schedule, and what to do next.</div>
+          <button onClick={onNew} style={{ fontSize: 14, fontWeight: 700, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
+        </div>
+      </div>
+    );
+  }
+
+  const ev = focus;
+  const daysLeft = daysUntil(ev.date);
+  const guests = ev.guests || [];
+  const guestCount = guests.length || Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
+  const fmtDate = (() => { try { return new Date(ev.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ev.date; } })();
+  const na = (() => { try { return selectEventNextAction(ev); } catch { return null; } })();
+  const id = (() => { try { return eventIdentity(ev); } catch { return null; } })();
+
+  // Honest, percentage-free progress — presence/state of what already exists.
+  const yes = guests.filter(g => g && g.rsvp === 'Yes').length;
+  const pending = guests.filter(g => { const r = String((g && g.rsvp) || '').toLowerCase(); return r === '' || r === 'maybe'; }).length;
+  const namedVendors = (ev.vendors || []).filter(v => v && (v.name || '').trim());
+  const confirmedVendors = namedVendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked');
+  const scheduleRows = (ev.ros || ev.timeline || []);
+  const prog = [
+    { label: 'Guests',   state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
+    { label: 'Budget',   state: (ev.budget || []).length > 0 ? 'progress' : 'todo' },
+    { label: 'Food',     state: confirmedVendors.length > 0 ? 'done' : (namedVendors.length > 0 ? 'progress' : 'todo') },
+    { label: 'Schedule', state: scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo') },
+    { label: 'Venue',    state: (ev.venue || '').trim() ? 'done' : 'todo' },
+  ];
+  const stateMeta = { done: { t: '✓', c: C.success }, progress: { t: 'In progress', c: C.warn || C.accent }, todo: { t: 'To do', c: C.muted } };
+
+  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 14 };
+  const eyebrow = { fontSize: 9, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 };
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg }}>
+      {Header}
+      <div style={{ maxWidth: 620, margin: '0 auto', padding: '20px 16px 60px' }}>
+        {/* 1 · Event Summary */}
+        <div style={{ ...card, background: 'transparent', border: 'none', padding: '8px 4px 16px' }}>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15 }}>{ev.name || 'Your event'}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 8, fontSize: 13.5, color: C.muted }}>
+            <span>{fmtDate}</span>
+            {guestCount > 0 && <span>· {guestCount} guests</span>}
+            {daysLeft !== null && daysLeft >= 0 && <span style={{ color: C.text, fontWeight: 600 }}>· {daysLeft === 0 ? 'Today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} to go`}</span>}
+          </div>
+        </div>
+
+        {/* 2 · Next Step */}
+        {na && (
+          <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3 }}>
+            <div style={eyebrow}>Your next step</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>{na.title}</div>
+            {na.consequence && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
+            {na.primaryCta && (
+              <button onClick={() => { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' }); }}
+                style={{ marginTop: 12, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
+            )}
+          </div>
+        )}
+
+        {/* 3 · Progress */}
+        <div style={card}>
+          <div style={eyebrow}>How it’s coming along</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {prog.map(p => (
+              <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4 · What Matters Most */}
+        {id && (id.reallyIs || id.mustHaveMoment) && (
+          <div style={card}>
+            <div style={eyebrow}>What matters most</div>
+            {id.reallyIs && <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, lineHeight: 1.45 }}>{id.reallyIs}</div>}
+            {id.mustHaveMoment && (
+              <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 3 }}>{id.mustHaveMoment}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5 · Event Day */}
+        <button onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
+          style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
+            <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
+          </span>
+          <span style={{ fontSize: 18, color: C.muted }}>→</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, onNewClient, onCompose, onCreateFromIntake, profile, onProfile, calNotes = [], onAddCalNote, onToggleCalNote, onDeleteCalNote, onLoadSampleData, onMarkOnboardDone, onMarkTaskDone, onMarkMsgHandled, onLogVendorContact, eventsHydrated = true }) {
   // Sprint 51 onboarding: detect demo data so we can offer a "Clear sample
   // data" banner. Real workspaces never trigger this — the SEED_IDS are
@@ -32701,6 +32852,16 @@ export default function App() {
 
   return gated(
     <>
+      {accountTypeOf(profile, clients) === 'host' ? (
+        // Sprint UX-2 — hosts get the Host Home, never the planner CRM (PP-3).
+        <HostHome
+          events={events}
+          profile={profile}
+          onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
+          onNew={() => setShowNew(true)}
+          onProfile={() => setShowProfile(true)}
+        />
+      ) : (
       <MainDashboard
         clients={clients}
         events={events}
@@ -32727,6 +32888,7 @@ export default function App() {
         onMarkMsgHandled={markMsgHandled}
         onLogVendorContact={logVendorContact}
       />
+      )}
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id, opts) => { setActiveId(id); if (opts?.tab) setInitialNav({ tab: opts.tab }); }} onOpenAddClient={() => { setShowNew(false); setShowNewClient(true); }} clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
       {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events}

@@ -110,6 +110,11 @@ export const EVENTS = {
   EVENT_CREATED:          'event_created',
   EVENT_OPENED:           'event_opened',
 
+  // Host Home / account identity (UX-2)
+  ACCOUNT_TYPE_SELECTED:  'account_type_selected',
+  HOST_HOME_VIEWED:       'host_home_viewed',
+  HOST_NEXT_STEP_CLICKED: 'host_next_step_clicked',
+
   // Activation funnel (Sprint 55N) — denominator → setup → value → retention
   SIGNED_UP:              'signed_up',
   INTAKE_COMMITTED:       'intake_committed',
