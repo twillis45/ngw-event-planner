@@ -49,13 +49,48 @@ const HOST_LABELS = {
   'STALE': 'Quiet a while',
 };
 
-// labelFor(term, event) → display string. planner / flag-off ⇒ identity; host ⇒ mapped.
+// Sprint 57I — OPERATOR labels. Business-like, organized, clear; NOT host-soft
+// ("Where things stand", "Before the big day") and NOT planner event-industry
+// ("Run of Show", "Vendor Risk"). The competent organizer's vocabulary. Status
+// badges mirror the operator confidence words (On track / Action needed / …) for
+// consistency when pi.confidence is off but pi.labels is on. Unmapped ⇒ identity.
+const OPERATOR_LABELS = {
+  // section headers / subtitles
+  'Planning Health': 'Event Status',
+  'Readiness across the event': 'Status across the event',
+  // health-row + section labels
+  'Capacity': 'Attendance & Supplies',
+  'Reality Check': 'Things To Confirm',
+  'Run of Show': 'Event Schedule',
+  'Readiness': 'Preparation status',
+  'Vendor Risk': 'Vendor Follow-Up',
+  'Operational': 'Tasks & Supplies',
+  'Timeline': 'Schedule',
+  // status badges → operator state words (no alarm tokens, no false precision)
+  'AT RISK': 'Action needed',
+  'ATTENTION': 'Review',
+  'ON TRACK': 'On track',
+  'OVERDUE': 'Overdue',
+  'DUE': 'Due',
+  'AWAITING': 'Awaiting',
+  'PENDING': 'Awaiting',
+  'ESTIMATE': 'Estimate',
+  'REVIEW': 'To confirm',
+  'NEW': 'New',
+  'STALE': 'No recent activity',
+};
+
+// labelFor(term, event) → display string. flag-off / planner ⇒ identity; host ⇒
+// host vocabulary; operator ⇒ operator vocabulary. Unmapped term ⇒ identity.
 export function labelFor(term, event) {
   if (typeof term !== 'string' || !term) return term;
   if (!labelsOn()) return term;                          // flag OFF ⇒ identity ⇒ today
-  if (audiencePersona(event) !== 'host') return term;    // planner ⇒ identity
-  return HOST_LABELS[term] || term;                      // host; unmapped ⇒ identity
+  const persona = audiencePersona(event);
+  if (persona === 'host')     return HOST_LABELS[term] || term;
+  if (persona === 'operator') return OPERATOR_LABELS[term] || term;
+  return term;                                           // planner ⇒ identity
 }
 
 // Exported for tests / inventory.
 export const HOST_LABEL_MAP = HOST_LABELS;
+export const OPERATOR_LABEL_MAP = OPERATOR_LABELS;

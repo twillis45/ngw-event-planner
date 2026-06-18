@@ -36,48 +36,114 @@ export const OVERRIDE_FIELDS = ['title', 'consequence', 'primaryCta'];
 const stripDecision = (t) =>
   String(t || '').replace(/^resolve\s+/i, '').replace(/[“”"]/g, '').replace(/\.\s*$/, '');
 
+// Sprint 57I: the OPERATOR voice — competent · business-like · organized · clear.
+// Accountability-framed (confirm / route / reconcile / schedule), NOT host
+// reassurance ("let's", "your day", "the calm") and NOT planner event-industry
+// jargon ("run of show", "COI"). Same OVERRIDE_FIELDS contract as host; planner
+// still has NO entry (planner = identity = engine string).
 export const VOICE = {
-  decision: { host: (c) => ({
-    title: 'Decide: ' + (stripDecision(c && c.title) || 'the open decision') + '.',
-    consequence: "Decide this and the rest can move forward — nothing else is waiting on you first.",
-    primaryCta: 'Make the call',
-  }) },
-  caterer: { host: () => ({
-    title: "Let's lock the final headcount.",
-    consequence: "Your caterer is holding a count that doesn't match your guest list yet — matching them keeps the food and seating right.",
-    primaryCta: 'Update the count',
-  }) },
-  approval: { host: () => ({
-    consequence: "A quick send keeps things moving for you.",
-    primaryCta: 'Send it',
-  }) },
-  vendor: { host: () => ({
-    consequence: "A quick check-in keeps them on track for your day.",
-    primaryCta: 'Send a note',
-  }) },
-  compression: { host: () => ({
-    title: "Things are getting close.",
-    consequence: "A little focus now and you're in great shape.",
-    primaryCta: 'See what to do',
-  }) },
-  timeline: { host: () => ({
-    consequence: "Getting ahead of this keeps the week relaxed.",
-    primaryCta: "See what's next",
-  }) },
-  comm: { host: () => ({
-    consequence: "Someone's waiting to hear back — a quick reply keeps things moving.",
-    primaryCta: 'Reply',
-  }) },
-  operational: { host: () => ({
-    consequence: "Grabbing this now keeps the day calm.",
-  }) },
-  calendar: { host: () => ({
-    consequence: "Just so it's on your radar — nothing urgent yet.",
-  }) },
-  neutral: { host: () => ({
-    title: "You're in good shape.",
-    consequence: "Nothing needs you right now — enjoy the calm.",
-  }) },
+  decision: {
+    host: (c) => ({
+      title: 'Decide: ' + (stripDecision(c && c.title) || 'the open decision') + '.',
+      consequence: "Decide this and the rest can move forward — nothing else is waiting on you first.",
+      primaryCta: 'Make the call',
+    }),
+    operator: (c) => ({
+      title: 'Decision needed: ' + (stripDecision(c && c.title) || 'the open item') + '.',
+      consequence: "This decision is blocking the next steps — resolving it unblocks the rest.",
+      primaryCta: 'Resolve',
+    }),
+  },
+  caterer: {
+    host: () => ({
+      title: "Let's lock the final headcount.",
+      consequence: "Your caterer is holding a count that doesn't match your guest list yet — matching them keeps the food and seating right.",
+      primaryCta: 'Update the count',
+    }),
+    operator: () => ({
+      title: 'Confirm the final headcount.',
+      consequence: "The caterer's count doesn't match the confirmed list — reconcile it before it cascades into seating and meal counts.",
+      primaryCta: 'Reconcile count',
+    }),
+  },
+  approval: {
+    host: () => ({
+      consequence: "A quick send keeps things moving for you.",
+      primaryCta: 'Send it',
+    }),
+    operator: () => ({
+      consequence: "Awaiting sign-off — route it to keep the schedule moving.",
+      primaryCta: 'Route for approval',
+    }),
+  },
+  vendor: {
+    host: () => ({
+      consequence: "A quick check-in keeps them on track for your day.",
+      primaryCta: 'Send a note',
+    }),
+    operator: () => ({
+      consequence: "A check-in keeps this vendor on schedule for the event.",
+      primaryCta: 'Follow up',
+    }),
+  },
+  compression: {
+    host: () => ({
+      title: "Things are getting close.",
+      consequence: "A little focus now and you're in great shape.",
+      primaryCta: 'See what to do',
+    }),
+    operator: () => ({
+      title: "The schedule is tightening.",
+      consequence: "Several items need attention now to stay on schedule.",
+      primaryCta: 'Review priorities',
+    }),
+  },
+  timeline: {
+    host: () => ({
+      consequence: "Getting ahead of this keeps the week relaxed.",
+      primaryCta: "See what's next",
+    }),
+    operator: () => ({
+      consequence: "Handling this now keeps the schedule on track.",
+      primaryCta: 'View schedule',
+    }),
+  },
+  comm: {
+    host: () => ({
+      consequence: "Someone's waiting to hear back — a quick reply keeps things moving.",
+      primaryCta: 'Reply',
+    }),
+    operator: () => ({
+      consequence: "Someone is awaiting a response — a reply keeps things moving.",
+      primaryCta: 'Reply',
+    }),
+  },
+  operational: {
+    host: () => ({
+      consequence: "Grabbing this now keeps the day calm.",
+    }),
+    operator: () => ({
+      consequence: "Handling this now avoids a day-of scramble.",
+    }),
+  },
+  calendar: {
+    host: () => ({
+      consequence: "Just so it's on your radar — nothing urgent yet.",
+    }),
+    operator: () => ({
+      consequence: "On the radar — nothing urgent yet.",
+    }),
+  },
+  neutral: {
+    host: () => ({
+      title: "You're in good shape.",
+      consequence: "Nothing needs you right now — enjoy the calm.",
+    }),
+    operator: () => ({
+      title: "On track.",
+      consequence: "Nothing needs you right now.",
+    }),
+  },
 };
 
 // pi.voice feature flag (default OFF). When OFF, personaFor always returns 'planner'
@@ -94,11 +160,15 @@ export function presentationVoiceOn() {
 
 // Self-declared audience → voice (Phase 0). NOT recordKind. Unset / 'other' / unknown
 // → 'host' (the safer default: plain language never harms a pro; jargon harms a host).
+// Sprint 57I: `organization` now resolves to the OPERATOR persona — a competent
+// professional organizer (exec assistant, office/school/church admin, corporate /
+// volunteer coordinator) who is NOT a wedding planner. `client` / `professional`
+// stay planner (event-industry pros); self/family/friend/other stay host.
 const AUDIENCE_VOICE = {
   self_family: 'host',
   friend: 'host',
   client: 'planner',
-  organization: 'planner',
+  organization: 'operator',
   professional: 'planner',
   other: 'host',
 };
