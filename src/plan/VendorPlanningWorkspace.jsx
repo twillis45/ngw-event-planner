@@ -40,6 +40,8 @@ import {
   getActionableNextStep,
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
+// Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
+import { memoryOn, latestRationaleForSubject } from '../lib/decisionMemory';
 import {
   buildVendorCopilotContext,
   getRuleBasedPreview,
@@ -593,6 +595,16 @@ function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSe
         }}>
           {vendor.category || vendor.type || '—'}
         </div>
+        {/* Sprint 58C — Decision Memory expression: surface the captured "why this
+            vendor" back where the planner sees the vendor. */}
+        {memoryOn() && (() => {
+          const why = latestRationaleForSubject(event, vendor.id);
+          return why ? (
+            <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 2, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontStyle: 'normal', fontWeight: 700, opacity: 0.7 }}>Rationale:</span> {why}
+            </div>
+          ) : null;
+        })()}
       </div>
       {/* Board re-audit (2026-06-10): the tier chip now shows ONLY on the
           exception (critical / at-risk). When most rows share a tier the chip
