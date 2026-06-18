@@ -28,6 +28,8 @@ import { presentationVoiceOn } from './lib/nextActionRenderer'; // Sprint 57A-B:
 // Sprint 58C: Decision Memory v1 — persist WHY a planning decision was made (pi.memory).
 import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisionRecord, getDecisions, DECISION_TYPE_LABEL, latestRationaleForSubject,
   outcomeFor, isEventComplete, getEventOutcomes, setOverallOutcome, setVendorOutcome, vendorOutcome, OUTCOME_SIGNALS, OUTCOME_LABEL, outcomeTone } from './lib/decisionMemory';
+// Sprint 58G — Event Memory: the event lesson (one short optional string at completion).
+import { setLesson, getLesson } from './lib/eventMemory';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -27510,6 +27512,7 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
     <>
       <VendorPlanningWorkspace
         event={event}
+        allEvents={allEvents}
         isMobile={isMobile}
         openId={openId}
         openSection={openSection}
@@ -30274,6 +30277,14 @@ function OutcomeCapture({ event, setEvent }) {
             onPick={(val) => setEvent(e => setVendorOutcome(e, v.id, val, new Date().toISOString()))} />
         </div>
       ))}
+      {/* Sprint 58G — Event Lesson Memory: one short optional line, no form, no AI. */}
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Biggest lesson <span style={{ color: C.muted, fontWeight: 400 }}>(optional, one line)</span></div>
+        <input value={getLesson(event)} onChange={e => setEvent(ev => setLesson(ev, e.target.value))}
+          placeholder="e.g. Parking filled early · catering ran over · timeline ran long"
+          maxLength={200}
+          style={{ width: '100%', padding: '8px 12px', fontSize: 12.5, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      </div>
     </div>
   );
 }

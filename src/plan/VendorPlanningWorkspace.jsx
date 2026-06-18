@@ -42,6 +42,8 @@ import {
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
 import { memoryOn, latestRationaleForSubject } from '../lib/decisionMemory';
+// Sprint 58G — Event Memory: the private per-vendor track record, surfaced at the pick.
+import { vendorMemoryFor, summarizeVendorMemory } from '../lib/eventMemory';
 import {
   buildVendorCopilotContext,
   getRuleBasedPreview,
@@ -536,7 +538,7 @@ function getVendorLastContacted(vendor, event) {
   return daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
 }
 
-function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSelect }) {
+function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSelected, onSelect }) {
   // Sprint 61.B — Accountability tier is now the primary signal. Readiness
   // stays as a secondary chip so the existing vendor-cockpit semantics still
   // flow through. If the parent doesn't pass an accountability prop, we
@@ -605,6 +607,17 @@ function VendorRow({ vendor, event, accountability, nextAction, isSelected, onSe
             </div>
           ) : null;
         })()}
+        {/* Sprint 58G — Event Memory: the private track record from PAST events
+            (excludes this event), surfaced where the planner picks the vendor. */}
+        {memoryOn() && (() => {
+          const mem = vendorMemoryFor(allEvents, vendor.name || vendor.vendor_name, event && event.id);
+          const line = summarizeVendorMemory(mem);
+          return line ? (
+            <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontWeight: 700, opacity: 0.7 }}>Memory:</span> {line}
+            </div>
+          ) : null;
+        })()}
       </div>
       {/* Board re-audit (2026-06-10): the tier chip now shows ONLY on the
           exception (critical / at-risk). When most rows share a tier the chip
@@ -648,7 +661,7 @@ const FILTERS = [
   { key: 'all',       label: 'All' },
 ];
 
-function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, onAdd }) {
+function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, onFilter, onAdd }) {
   const [filter, setFilter] = useState('attention');
   const [tagFilter, setTagFilter] = useState(null); // attribute-tag filter
 
@@ -837,6 +850,7 @@ function VendorList({ vendors, selected, onSelect, event, isMobile, onFilter, on
                 key={x.v.id || x.v.name}
                 vendor={x.v}
                 event={event}
+                allEvents={allEvents}
                 accountability={x.acc}
                 nextAction={x.next}
                 isSelected={selected?.id === x.v.id || (selected && !x.v.id && selected.name === x.v.name)}
@@ -3634,7 +3648,7 @@ function NoSelection({ count }) {
 // ── Root export ──────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 export default function VendorPlanningWorkspace({
-  event, isMobile,
+  event, allEvents = [], isMobile,
   openId,
   // Sprint 60.B: section focus inside the vendor cockpit.
   openSection = null,
@@ -3787,6 +3801,7 @@ export default function VendorPlanningWorkspace({
             selected={selected}
             onSelect={handleSelect}
             event={event}
+            allEvents={allEvents}
             isMobile
             onAdd={onAddVendor}
           />
@@ -3845,6 +3860,7 @@ export default function VendorPlanningWorkspace({
           selected={selected}
           onSelect={handleSelect}
           event={event}
+          allEvents={allEvents}
           isMobile={false}
           onAdd={onAddVendor}
         />
