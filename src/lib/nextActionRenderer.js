@@ -113,7 +113,7 @@ export function audiencePersona(event) {
 
 export function personaFor(event) {
   if (!presentationVoiceOn()) return 'planner';        // pi.voice OFF ⇒ identity ⇒ today
-  return audiencePersona(event);                       // pi.voice ON ⇒ audience-driven
+  return audiencePersona(event);                       // pi.voice ON ⇒ audience-driven; unset ⇒ host
 }
 
 // Pure projection. Returns the SAME cmd reference when there is no override (preserves
