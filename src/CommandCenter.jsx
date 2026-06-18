@@ -1442,6 +1442,25 @@ function _selectEventNextActionInner(event) {
     };
   }
 
+  // Tier 7.5 (Host Activation v1 · Phase 4): a brand-new event with nothing planned
+  // yet gets a START HERE — never a dead "nothing urgent". The guest count is the
+  // first domino (it drives the budget, the food, and the timeline).
+  const isEmptyEvent = (event.timeline || []).length === 0
+    && (event.vendors || []).filter(v => v && (v.name || '').trim()).length === 0
+    && (event.guests || []).length === 0
+    && (event.budget || []).length === 0;
+  if (isEmptyEvent) {
+    return {
+      level: 'attention',
+      category: 'start',
+      title: 'Start here — add who’s coming.',
+      consequence: 'Your guest count is the first domino: it drives the budget, the food, and the timeline.',
+      primaryCta: 'Add guests',
+      primaryRoute: { tab: 'Guests' },
+      contextLine: daysSub,
+    };
+  }
+
   // Tier 8: neutral fallback
   return {
     level: 'neutral',
