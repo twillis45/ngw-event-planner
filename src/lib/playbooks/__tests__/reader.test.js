@@ -340,7 +340,7 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
     expect(byItem.glasses).toBe(30);  // 2.5/guest → ceil 30
     expect(byItem.flatware).toBe(12); // 1/guest
     expect(byItem.chairs).toBe(12);   // 1/guest
-    expect(byItem.platters).toBe(4);  // flat
+    expect(byItem.platters).toBe(6);  // flat (board: bumped 4→6 for a multi-course dinner)
     // summary states needs, never "missing"/"rent"/"borrow N"
     expect(c.summary).toMatch(/12 chairs/);
     expect(c.summary).not.toMatch(/missing|deficit|rent \d|short \d/i);

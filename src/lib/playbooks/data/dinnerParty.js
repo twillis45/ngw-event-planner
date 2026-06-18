@@ -74,6 +74,7 @@ const dinnerParty = {
     { id: 'p_wine', item: 'Wine', category: 'beverage', qtyPerGuest: 0.5, unit: 'bottle (½ bottle/guest rule)', where: ['Wine shop', 'Total Wine', 'Grocery'], unitCostRange: [12, 25], essential: true, buyAt: 'T-3d', note: 'Rule of thumb: ½ bottle per drinking guest for a 3-4h dinner; round up.' },
     { id: 'p_cocktail', item: 'Signature cocktail spirits + mixers + garnish', category: 'beverage', qtyFlat: 1, unit: 'batch (serves ~10)', where: ['Liquor store'], unitCostRange: [40, 70], essential: false, buyAt: 'T-3d', dependsOnDecision: 'alcohol' },
     { id: 'p_nonalc', item: 'Non-alcoholic options (sparkling water, mocktail, juice)', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery'], unitCostRange: [1, 2], essential: true, buyAt: 'T-3d', note: 'Always have a great zero-proof option — designated drivers, non-drinkers, pregnant guests.' },
+    { id: 'p_water', item: 'Table water service (pitcher / carafe, still & sparkling)', category: 'beverage', qtyFlat: 1, qtyPer: 6, unit: 'pitcher', where: ['Grocery', 'Home'], unitCostRange: [3, 8], essential: true, buyAt: 'T-1d', note: 'Board add: a seated dinner needs poured table water — ~1 pitcher/carafe per 6 guests, refilled through the meal.' },
     { id: 'p_ice', item: 'Ice', category: 'beverage', qtyPerGuest: 1.5, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0', note: 'COMMONLY FORGOTTEN. ~1.5 lb/guest for chilling + drinks.' },
     { id: 'p_coffee', item: 'Coffee + tea + cream/sugar', category: 'beverage', qtyFlat: 1, unit: 'service', where: ['Grocery'], unitCostRange: [6, 12], essential: true, buyAt: 'T-3d' },
     { id: 'p_flowers', item: 'Centerpiece flowers', category: 'decor', qtyFlat: 1, qtyPer: 6, unit: 'arrangement per 6 guests', where: ['Florist', "Trader Joe's", 'Farmers market'], unitCostRange: [15, 45], essential: false, buyAt: 'T-1d' },
@@ -91,7 +92,7 @@ const dinnerParty = {
     { item: 'Wine + water glasses', qtyPerGuest: 2.5, note: 'wine + water + a few spares for breakage' },
     { item: 'Flatware sets', qtyPerGuest: 1, note: '+1 spare set per 4' },
     { item: 'Dining chairs', qtyPerGuest: 1, note: 'the real capacity constraint — borrow folding chairs if short' },
-    { item: 'Serving platters + utensils', qtyFlat: 4, note: 'COMMONLY FORGOTTEN: serving spoons/tongs for each dish' },
+    { item: 'Serving platters + utensils', qtyFlat: 6, note: 'COMMONLY FORGOTTEN: a dish each for protein/starch/veg/salad/app/bread + serving spoons/tongs (board: 4 was thin for a multi-course dinner).' },
   ],
 
   // Day-of run-of-show schedules (brought into src from the canonical
