@@ -718,6 +718,12 @@ function GlobalStyles() {
       '@keyframes orchNumIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }',
       '@keyframes orchCueIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }',
       '@keyframes tensionPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }',
+      // UX — host create splash. ceRise: a calm, eased arrival (no bounce).
+      // ceBreathe: a single slow living focal ring on the next-incomplete field
+      // (steel, on-palette; interaction state only). Both honored by the
+      // prefers-reduced-motion rule below.
+      '@keyframes ceRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }',
+      '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
       // Focus indicator for keyboard navigation. The :focus-visible polyfill
       // is built into all modern browsers (Chrome 86+, Firefox 85+, Safari 15.4+).
       'button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }',
@@ -8125,7 +8131,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
   // Step header copy — different per step so the modal proves what it is.
   const stepCopy =
-    step === 1 ? { title: 'Create a new event', sub: 'Name, date, type. Event Boss builds the planning structure next.' } :
+    step === 1 ? (hostMode
+                   ? { title: '', sub: '' }  // host gets the breathing splash; header stays a clean top bar
+                   : { title: 'Create a new event', sub: 'Name, date, type. Event Boss builds the planning structure next.' }) :
     step === 2 ? { title: 'Create a new event', sub: 'Pick a starting point — Event Boss shows exactly what it will create.' } :
     step === 3 ? { title: 'Review and create', sub: 'Confirm what Event Boss will set up. Nothing has been created yet.' } :
                  { title: 'Event created', sub: '' };
@@ -8143,9 +8151,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
         <div style={{ padding: isMobile ? '18px 20px 14px' : '24px 28px 18px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div>
-              <h2 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>
-                {stepCopy.title}
-              </h2>
+              {stepCopy.title && (
+                <h2 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>
+                  {stepCopy.title}
+                </h2>
+              )}
               {stepCopy.sub && (
                 <div style={{ ...ui.truth, marginTop: 5, fontSize: isMobile ? 12.5 : 13.5 }}>{stepCopy.sub}</div>
               )}
@@ -8153,7 +8163,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
             <button aria-label="Close" onClick={attemptClose}
               style={{ flexShrink: 0, width: 44, height: 44, marginRight: -10, marginTop: -8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: C.muted, fontSize: 24, lineHeight: 1, cursor: 'pointer', borderRadius: 10 }}>×</button>
           </div>
-          {step !== 'success' && (
+          {step !== 'success' && !hostMode && (
             <>
               {/* Progress bars + per-step labels (Basics · Setup · Details) */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
@@ -8184,7 +8194,94 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
         {/* Body */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '20px' : '24px 28px' }}>
 
-          {step === 1 && (
+          {/* UX — host create splash: the alive, minimal "name it · date it ·
+              pick the type" entry. Planner keeps the full Step 1 below. */}
+          {step === 1 && hostMode && (() => {
+            const typeDone = !!form.type;
+            const dateDone = !!form.date;
+            const nameDone = !!(form.name && form.name.trim());
+            // ONE living focal point — the next-incomplete beat (Norman feedforward).
+            const active   = !typeDone ? 'type' : !dateDone ? 'date' : 'name';
+            const steel    = steelTop;
+            // Calm, eased arrival — staggered so the three beats settle one after another.
+            const beat = (i) => ({ animation: 'ceRise 560ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${140 + i * 90}ms`, marginBottom: isMobile ? 22 : 28 });
+            const sfield = (isActive, bad) => ({
+              width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '13px 16px', fontSize: 16,
+              color: C.text, background: C.bg, borderRadius: 12, outline: 'none', fontFamily: 'inherit',
+              border: `1px solid ${bad ? C.danger : isActive ? steel : C.border}`, transition: 'border-color 220ms ease',
+              ...(isActive ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
+            });
+            const blabel = { display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, letterSpacing: '-0.01em', marginBottom: 9 };
+            const bopt   = { color: C.muted, fontWeight: 500, fontSize: 12 };
+            const dot    = (on) => ({ width: 7, height: 7, borderRadius: '50%', background: on ? steel : 'transparent', border: `1.5px solid ${on ? steel : C.border}`, transition: 'all 260ms ease' });
+            return (
+              <div>
+                {/* Kare — iconic 3-dot cadence; fills as the host answers (alive feedback) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18, animation: 'ceRise 520ms ease-out both' }}>
+                  <span style={dot(typeDone)} /><span style={dot(dateDone)} /><span style={dot(nameDone)} />
+                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>NO GUESSWORK</span>
+                </div>
+
+                {/* Hero — a calm host saying "let's begin" (Zhuo/Saarinen) */}
+                <h1 style={{ fontSize: isMobile ? 25 : 30, fontWeight: 700, letterSpacing: '-0.025em', color: C.text, margin: '0 0 10px', lineHeight: 1.12, animation: 'ceRise 560ms cubic-bezier(.2,.7,.2,1) both', animationDelay: '40ms' }}>
+                  Let’s start your event.
+                </h1>
+                <p style={{ fontSize: isMobile ? 14 : 15, color: C.muted, lineHeight: 1.55, margin: '0 0 30px', maxWidth: 440, animation: 'ceRise 560ms ease-out both', animationDelay: '90ms' }}>
+                  Name it, date it, pick the type. Event Boss builds the timeline, budget and vendor list from there.
+                </p>
+
+                {/* BEAT 1 — pick the type (the one true prerequisite; warm opener) */}
+                <div style={beat(0)}>
+                  <label htmlFor="ce-type" style={blabel}>What are you celebrating?</label>
+                  <select id="ce-type" data-testid="ce-type" style={sfield(active === 'type', (showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
+                    <option value="" disabled>Choose an occasion…</option>
+                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
+                      <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
+                    ))}
+                  </select>
+                  {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you’re celebrating.</div>}
+
+                  {/* Progressive disclosure (Wroblewski): secondary appears only after the primary type */}
+                  {typeDone && (
+                    <div style={{ marginTop: 12, animation: 'ceRise 460ms ease-out both' }}>
+                      <label htmlFor="ce-secondary-type" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>Anything else mixed in? <span style={bopt}>· optional</span></label>
+                      <select id="ce-secondary-type" data-testid="ce-secondary-type" style={{ ...sfield(false, false), minHeight: 46, fontSize: 15 }} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
+                        <option value="">Just the one</option>
+                        {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
+                          <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Warm story line — lean into what they're celebrating */}
+                  {typeDone && occasionBlurb(form.type, form.secondaryType) && (
+                    <div style={{ marginTop: 14, padding: isMobile ? '11px 13px' : '12px 15px', borderRadius: 10, background: `${C.accent}10`, border: `1px solid ${C.accent}26`, borderLeft: `3px solid ${C.accent}`, fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, animation: 'ceRise 460ms ease-out both' }}>
+                      {occasionBlurb(form.type, form.secondaryType)}
+                    </div>
+                  )}
+                </div>
+
+                {/* BEAT 2 — date it (picker only; hosts know their date) */}
+                <div style={beat(1)}>
+                  <label htmlFor="ce-date" style={blabel}>When is it?</label>
+                  <input id="ce-date" data-testid="ce-date" {...dateInputProps} style={sfield(active === 'date', (showErr || touched.date) && reqDate)} value={form.date} onChange={e => upd('date', e.target.value)} onBlur={() => setTouched(t => ({ ...t, date: true }))} />
+                  {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
+                </div>
+
+                {/* BEAT 3 — name it (optional; auto-names if skipped) */}
+                <div style={beat(2)}>
+                  <label htmlFor="ce-name" style={blabel}>Give it a name <span style={bopt}>· optional</span></label>
+                  <input id="ce-name" data-testid="ce-name" style={sfield(active === 'name', false)} placeholder={form.type ? `My ${form.type}` : 'e.g. Maya’s 30th'} value={form.name} onChange={e => upd('name', e.target.value)} />
+                  {!nameDone && typeDone && (
+                    <div style={{ fontSize: 12.5, color: C.muted, marginTop: 7, lineHeight: 1.45 }}>We’ll call it “My {form.type}” until you rename it.</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {step === 1 && !hostMode && (
             <>
               {/* Sprint 60.U.3 10+ — NO GUESSWORK YET premium rail. Same
                   elevated treatment as NewClientModal so the concept reads
@@ -8273,6 +8370,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   </select>
                   {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you're celebrating.</div>}
                 </div>
+                {/* UX-9 — hosts see only name · type · date. Secondary type is a
+                    planner refinement; hidden on the host create. */}
+                {!hostMode && (
                 <div>
                   <label style={ui.label} htmlFor="ce-secondary-type">Secondary type <span style={ui.opt}>· optional</span></label>
                   <select id="ce-secondary-type" data-testid="ce-secondary-type" style={ui.field(false)} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
@@ -8282,11 +8382,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     ))}
                   </select>
                 </div>
+                )}
               </div>
 
               {/* Sprint 57A-B (Phase 0): audience capture — drives presentation voice
                   ONLY (pi.voice). Flag OFF ⇒ not rendered ⇒ modal byte-identical to today. */}
-              {presentationVoiceOn() && (
+              {presentationVoiceOn() && !hostMode && (
                 <div style={{ marginTop: 12 }}>
                   <label style={ui.label} htmlFor="ce-audience">Who are you planning this event for?</label>
                   <select id="ce-audience" data-testid="ce-audience" style={ui.field(false)} value={form.audience} onChange={e => upd('audience', e.target.value)}>
@@ -8316,7 +8417,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
               {/* Guest of honor — who the celebration is FOR (board: lean into the
                   story). Optional; feeds the event header + the day-of opener. */}
-              {!PROFESSIONAL_TYPES.has(form.type) && (
+              {!PROFESSIONAL_TYPES.has(form.type) && !hostMode && (
                 <div style={{ marginTop: 16 }}>
                   <label style={ui.label} htmlFor="ce-honoree">Guest of honor <span style={ui.opt}>· optional</span></label>
                   <input id="ce-honoree" data-testid="ce-honoree" style={ui.field(false)} placeholder="Who are we celebrating? e.g. Wanda Mundy" value={form.honoree || ''} onChange={e => upd('honoree', e.target.value)} />
@@ -8340,7 +8441,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
               {/* Location surfaced on step 1 (was buried in the step-3 estimator):
                   it drives the location-based budget estimate AND day-of logistics,
-                  so the planner sets it up front. Same form.market the estimator reads. */}
+                  so the planner sets it up front. Same form.market the estimator reads.
+                  UX-9 — hidden on the host create (collected later, in Money). */}
+              {!hostMode && (
               <div style={{ marginTop: 16 }}>
                 <label style={ui.label} htmlFor="ce-location">Event location <span style={ui.opt}>· optional</span></label>
                 <select id="ce-location" data-testid="ce-location" style={ui.field(false)} value={form.market} onChange={e => upd('market', e.target.value)}>
@@ -8349,6 +8452,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 </select>
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>Budget estimates are priced for this city. Change it anytime.</div>
               </div>
+              )}
 
               {/* Sprint Create Event P0 — explicit 4-line trust block.
                   Same locked pattern as Add Vendor and Budget/Payments.
