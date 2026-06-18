@@ -36,6 +36,9 @@ import { summarizeCrew } from './lib/studioTeam';
 // Sprint 57F-A: Positive Attention — the read-only "You're Set On ✓" reader over
 // existing readiness (pi.attention flag, host-only, presentation-only).
 import { attentionActive, positiveAttention } from './lib/positiveAttention';
+// Sprint 57G: Confidence Grammar (Pattern 014) — remaps the Planning Health status
+// WORD + COLOR by actual certainty, per persona (pi.confidence flag, presentation-only).
+import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // A critical COI (expired / overdue) is a hard load-in gate the venue turns
 // vendors away for — it must rank in the event's next-action ladder, not only
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
@@ -1713,19 +1716,27 @@ function DocPill({ label, status, color, onClick }) {
 // Each health dimension routes to the tab that owns it (board: a callout that
 // names a problem must be the handle that takes you to it).
 const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents', Capacity: 'Seating' };
-function HealthRow({ h, isFirst, onTabChange, event }) {
+// Sprint 57G: TIER → Studio Matte color. UNKNOWN/ESTIMATE/VERIFY render steel —
+// never green (false certainty) and never red (false alarm) for "no data".
+const CONF_TIER_COLOR = { green: P.green, amber: P.amber, red: P.red, steel: P.textSecondary };
+function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
   const target    = HEALTH_ROUTE[h.label];              // route keyed on the CANONICAL label
   const clickable = !!(target && onTabChange);
-  const dispLabel  = labelFor(h.label, event);          // Phase 2: host display label
-  const dispStatus = labelFor(h.statusLabel, event);    // …and host status badge
+  const dispLabel  = labelFor(h.label, event);          // 57C Phase 2: host display label
+  // 57G Confidence Grammar: when active, remap the status WORD + COLOR by actual
+  // certainty (Pattern 014). When off, fall back to the 57C label translation,
+  // then the raw token (identity). Confidence word wins over label translation.
+  const conf  = grammar ? confidenceFor(h, grammar) : null;
+  const dispStatus = conf ? conf.word : labelFor(h.statusLabel, event);
+  const dotC  = conf ? (CONF_TIER_COLOR[conf.tier] || h.color) : h.color;
   const inner = (
     <>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: h.color, flexShrink: 0 }} />
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotC, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
         <div style={{ fontSize: 11, color: P.textSecondary }}>{h.note}</div>
       </div>
-      <span style={{ fontSize: 9.5, fontWeight: 600, color: h.color, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 600, color: dotC, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
       {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: 15, flexShrink: 0, marginLeft: 2 }}>›</span>}
     </>
   );
@@ -2323,7 +2334,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, onTabChange,
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} />)}
+                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} grammar={confidencePersona(event)} />)}
               </div>
             </div>
 
