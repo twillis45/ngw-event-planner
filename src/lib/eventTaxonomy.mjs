@@ -101,6 +101,15 @@ const TYPE_ALIASES = {
   'Graduation Party': 'Graduation',
   'Training': 'Training / Workshop',
   'Workshop': 'Training / Workshop',
+  // New At-Home Gatherings dropdown labels → nearest canonical home_hosted type,
+  // so intake family / playbook / roster all resolve (no orphan canonical types).
+  'Cocktail Party': 'Dinner Party',
+  'Backyard BBQ': 'Get-Together',
+  'Brunch': 'Dinner Party',
+  'Game Night': 'Get-Together',
+  'Watch Party': 'Get-Together',
+  'Super Bowl Party': 'Get-Together',
+  'Game Day Party': 'Get-Together',
 };
 
 // The SINGLE ordered keyword resolver — replaces the four independent regex blocks

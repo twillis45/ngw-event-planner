@@ -1355,7 +1355,17 @@ const seasonISO = (monthIdx, day) => {
 // Board ruling (unanimous): tailor WHICH relative quick-picks appear to the
 // event type's plausible planning horizon — never preselect a date, never label
 // one "recommended." Labels stay literal time spans; the host commits every date.
-const LONG_LEAD_TYPES = new Set(['Wedding', 'Vow Renewal', 'Quinceañera', 'Fundraiser / Gala', 'Anniversary', 'Sweet 16', 'Bachelorette Party', 'Bachelor Party']);
+const LONG_LEAD_TYPES = new Set(['Wedding', 'Vow Renewal', 'Quinceañera', 'Fundraiser / Gala']);
+// Many celebrations are commonly hosted AT HOME even though their taxonomy intake
+// family isn't 'home_hosted' — a graduation/bachelorette/birthday/shower in the
+// backyard. We don't presume it (the host confirms on screen 2), but we DO tailor
+// the date horizon + offer the "at my home" option for these.
+const HOME_HOSTABLE_CELEBRATIONS = new Set([
+  'Birthday', 'Sweet 16', 'Graduation', 'Baby Shower', 'Bridal Shower', 'Engagement Party',
+  'Gender Reveal', 'Anniversary', 'Retirement Party', 'Reunion', 'Bachelorette Party',
+  'Bachelor Party', 'Holiday Party',
+]);
+const isHomeHostable = (t) => isAtHomeType(t) || HOME_HOSTABLE_CELEBRATIONS.has(t);
 const quickPicksForType = (type) => {
   const P = {
     wknd:    { label: 'This weekend', iso: nextWeekendISO() },
@@ -1372,16 +1382,16 @@ const quickPicksForType = (type) => {
     fall:    { label: 'Next fall',    iso: seasonISO(8, 22) },
   };
   if (!type)                     return [P.wknd, P.nextWk, P.wk2, P.m1, P.m3, P.m6];
-  if (isAtHomeType(type))        return [P.wknd, P.nextWk, P.nextFri, P.wk2, P.m1, P.m3];
+  if (isHomeHostable(type))      return [P.wknd, P.nextWk, P.nextFri, P.wk2, P.m1, P.m3];
   if (isCorporateType(type))     return [P.wk2, P.m1, P.m3, P.m6, P.m9, P.y1];
   if (LONG_LEAD_TYPES.has(type)) return [P.m6, P.m9, P.y1, P.m18, P.summer, P.fall];
-  return [P.wknd, P.nextWk, P.wk2, P.m1, P.m3, P.m6]; // other celebrations (birthday, showers, grad…)
+  return [P.wknd, P.nextWk, P.wk2, P.m1, P.m3, P.m6]; // other celebrations
 };
 // Honest, CATEGORY-LEVEL timeline orientation shown BEFORE a date is picked
 // (board-allowed: falsifiable, never second-person, never "recommended").
 const leadTimeHintForType = (type) => {
   if (!type) return '';
-  if (isAtHomeType(type))     return 'These usually come together in a week or two — no rush.';
+  if (isHomeHostable(type))   return 'These usually come together in a few weeks — no rush.';
   if (isCorporateType(type))  return 'Corporate events typically lock a weekday a few months out.';
   if (LONG_LEAD_TYPES.has(type)) return 'Weddings and big celebrations are usually planned 9–12 months ahead — but pick whatever fits.';
   return 'A few weeks to a couple of months is a comfortable runway.';
@@ -2098,7 +2108,9 @@ const EVT_CATEGORIES = {
     'Fundraiser / Gala', 'Networking Event', 'Wellness Retreat', 'Other',
   ],
   'At-Home Gatherings': [
-    'Dinner Party', 'Housewarming', 'Get-Together',
+    'Dinner Party', 'Cocktail Party', 'Backyard BBQ', 'Brunch',
+    'Game Night', 'Watch Party', 'Super Bowl Party', 'Game Day Party',
+    'Housewarming', 'Get-Together',
   ],
 };
 const EVT_TYPES  = Object.values(EVT_CATEGORIES).flat();
@@ -8084,18 +8096,19 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
                     const isSel = key === shownSel;
                     const isToday = key === todayKey;
                     const isPast = key < todayKey;
-                    // Weekend emphasis — most host events land Fri–Sun. Steel tint only,
-                    // never a second accent colour (board non-negotiable).
+                    // Weekend emphasis — most host events land Fri–Sun. Steel TEXT
+                    // (not filled boxes — those read as scattered selections); clean
+                    // and noticeable, steel only, never a second accent colour.
                     const dow = new Date(view.y, view.m, d).getDay();
                     const weekend = dow === 0 || dow === 5 || dow === 6;
-                    const baseBg = isSel ? steel : (weekend && !isPast ? `${steel}14` : 'transparent');
+                    const baseBg = isSel ? steel : 'transparent';
                     return (
                       <button key={i} type="button" disabled={isPast} onClick={() => pick(d)}
                         style={{
                           minHeight: 44, borderRadius: 10, fontSize: 14, fontFamily: 'inherit',
                           cursor: isPast ? 'default' : 'pointer',
-                          color: isSel ? '#fff' : isPast ? `${C.muted}55` : C.text,
-                          fontWeight: isSel || isToday ? 700 : weekend && !isPast ? 600 : 500,
+                          color: isSel ? '#fff' : isPast ? `${C.muted}55` : weekend ? steel : C.text,
+                          fontWeight: isSel || isToday ? 700 : weekend && !isPast ? 700 : 500,
                           background: baseBg,
                           border: `1px solid ${isSel ? steel : isToday ? `${steel}80` : 'transparent'}`,
                           boxShadow: isSel ? `0 3px 10px ${steel}55` : 'none',
@@ -8533,10 +8546,6 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
             // is the only thing pulling the eye (still editable; nothing is locked).
             const groupDim = (isActiveGroup) => ({ opacity: isActiveGroup ? 1 : 0.42, transition: 'opacity 340ms ease' });
             const check  = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: 800, marginRight: 7 }}>✓</span>;
-            // Intelligence — what the engine will actually scaffold for this type
-            // (kitCfg auto-derives from form.type for hosts; honest, not invented).
-            const caps = [kitCfg.t && 'a planning timeline', kitCfg.v && 'vendor categories', kitCfg.b && 'a budget outline', kitCfg.r && 'an event-day schedule'].filter(Boolean);
-            const capPhrase = caps.length <= 1 ? (caps[0] || 'your plan') : `${caps.slice(0, -1).join(', ')} and ${caps[caps.length - 1]}`;
             return (
               <div>
                 {/* Kare — the cadence map: how far down the path they are. */}
@@ -8580,9 +8589,21 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     {/* The lead: acknowledge, name what the engine will set up, ask the next question. */}
                     <div style={{ marginBottom: isMobile ? 20 : 24, padding: isMobile ? '13px 14px' : '14px 16px', borderRadius: 12, background: `${C.accent}0e`, border: `1px solid ${C.accent}24`, borderLeft: `3px solid ${C.accent}` }}>
                       {occasionBlurb(form.type, form.secondaryType) && (
-                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, marginBottom: 6 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
+                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, marginBottom: 10 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
                       )}
-                      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55 }}>I’ll set up {capPhrase} — built back from your date.</div>
+                      {/* Type-specific intelligence — the ACTUAL engine setup for this
+                          event type (kitCfg auto-derives from the type), so the host sees
+                          concretely what to expect, not a generic line. */}
+                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 8 }}>What I’ll set up for {/^[aeiou]/i.test(form.type) ? 'an' : 'a'} {form.type}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {(kitCfg.checklist || []).slice(0, 5).map((item, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
+                            <span aria-hidden style={{ color: steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginTop: 10 }}>All built back from your date — and you can change any of it.</div>
                     </div>
 
                     <div style={{ marginBottom: dateDone ? (isMobile ? 22 : 28) : 0 }}>
@@ -8668,18 +8689,38 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 </div>
 
                 {/* QUESTION 2 — location, revealed once guests are entered */}
-                {guestsDone && (
+                {guestsDone && (() => {
+                  const atHome = form.venue === "Host's home";
+                  return (
                   <div style={reveal(40)}>
                     <div style={groupDim(active === 'loc')}>
-                      <label htmlFor="ce-loc" style={qLabel}>{locDone && check}Where is it?</label>
+                      <label style={qLabel}>{locDone && check}Where is it?</label>
+                      {/* Home-hostable celebrations (graduation, bachelorette, birthday…)
+                          can be at home — offer it, never presume it (board ruling). */}
+                      {isHomeHostable(form.type) && (
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                          {[{ v: "Host's home", label: 'At my home' }, { v: '', label: 'A venue or space' }].map(opt => {
+                            const isOn = opt.v ? atHome : !atHome;
+                            return (
+                              <button key={opt.label} type="button" data-testid={opt.v ? 'ce-athome' : 'ce-atvenue'} onClick={() => upd('venue', opt.v)}
+                                style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '10px 16px', borderRadius: 10,
+                                  color: isOn ? '#fff' : C.text, background: isOn ? steel : C.bg, border: `1px solid ${isOn ? steel : C.border}`, transition: 'background 150ms ease, border-color 150ms ease' }}>
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <label htmlFor="ce-loc" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>{atHome ? 'Your city — for budget pricing' : 'City'} <span style={bopt}>· optional</span></label>
                       <select id="ce-loc" data-testid="ce-loc" style={sfield(active === 'loc', locDone, false)} value={form.market} onChange={e => upd('market', e.target.value)}>
                         <option value="">Select the city…</option>
                         {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                       </select>
-                      <div style={sub}>Sets local pricing for your budget estimate. You can change it anytime.</div>
+                      <div style={sub}>{atHome ? "We’ll plan around your space, priced for your city. Change it anytime." : 'Sets local pricing for your budget estimate. You can change it anytime.'}</div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })()}
