@@ -7994,6 +7994,26 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const dirty      = Boolean(form.name.trim() || form.date || form.venue || form.guestCount || form.totalBudget);
   const kitCfg     = KITS.find(k => k.id === kit) || KITS[0];
 
+  // Lead the host forward — when an answer lands, the panel TAKES them to the
+  // next live question (focus + smooth-scroll) instead of leaving the revealed
+  // field for them to find. Host create only; never yanks focus mid-edit.
+  // Declared after hostMode so the deps array isn't in its temporal dead zone.
+  useEffect(() => {
+    if (!hostMode || step !== 1) return;
+    const target = form.type && !form.date ? 'ce-date'
+                 : form.type && form.date  ? 'ce-name'
+                 : null;
+    if (!target) return;
+    const id = setTimeout(() => {
+      const el = document.getElementById(target);
+      if (!el || document.activeElement === el) return;
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* older browsers */ }
+      el.focus({ preventScroll: true });
+    }, 280);  // let the reveal mount + ceRise begin before we move them
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.type, form.date, hostMode, step]);
+
   const attemptClose = () => { if (dirty && step !== 'success') setConfirmDiscard(true); else onClose(); };
   const continue1    = () => { if (!step1Valid) { setShowErr(true); return; } setShowErr(false); setStep(2); };
 
@@ -8203,49 +8223,56 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
             // ONE living focal point — the next-incomplete beat (Norman feedforward).
             const active   = !typeDone ? 'type' : !dateDone ? 'date' : 'name';
             const steel    = steelTop;
-            // Calm, eased arrival — staggered so the three beats settle one after another.
-            const beat = (i) => ({ animation: 'ceRise 560ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${140 + i * 90}ms`, marginBottom: isMobile ? 22 : 28 });
-            const sfield = (isActive, bad) => ({
-              width: '100%', boxSizing: 'border-box', minHeight: 52, padding: '13px 16px', fontSize: 16,
+            // A field has three lives: active (breathing — the live question),
+            // done (calm steel, confirmed but editable), future (not rendered yet).
+            const sfield = (isActive, isDone, bad) => ({
+              width: '100%', boxSizing: 'border-box', minHeight: 54, padding: '14px 16px', fontSize: 16,
               color: C.text, background: C.bg, borderRadius: 12, outline: 'none', fontFamily: 'inherit',
-              border: `1px solid ${bad ? C.danger : isActive ? steel : C.border}`, transition: 'border-color 220ms ease',
+              border: `1px solid ${bad ? C.danger : isActive ? steel : isDone ? `${steel}99` : C.border}`,
+              transition: 'border-color 240ms ease',
               ...(isActive ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
             });
-            const blabel = { display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, letterSpacing: '-0.01em', marginBottom: 9 };
+            // The first question of each step is the hero of that step (lead with the question).
+            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
+            const sub    = { fontSize: 13, color: C.muted, marginTop: 9, lineHeight: 1.5 };
             const bopt   = { color: C.muted, fontWeight: 500, fontSize: 12 };
             const dot    = (on) => ({ width: 7, height: 7, borderRadius: '50%', background: on ? steel : 'transparent', border: `1.5px solid ${on ? steel : C.border}`, transition: 'all 260ms ease' });
+            const reveal = (delay = 0) => ({ animation: 'ceRise 520ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${delay}ms` });
+            // Dim the room — answered questions recede to a whisper so the live one
+            // is the only thing pulling the eye (still editable; nothing is locked).
+            const groupDim = (isActiveGroup) => ({ opacity: isActiveGroup ? 1 : 0.42, transition: 'opacity 340ms ease' });
+            const check  = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: 800, marginRight: 7 }}>✓</span>;
+            // Intelligence — what the engine will actually scaffold for this type
+            // (kitCfg auto-derives from form.type for hosts; honest, not invented).
+            const caps = [kitCfg.t && 'a planning timeline', kitCfg.v && 'vendor categories', kitCfg.b && 'a budget outline', kitCfg.r && 'an event-day schedule'].filter(Boolean);
+            const capPhrase = caps.length <= 1 ? (caps[0] || 'your plan') : `${caps.slice(0, -1).join(', ')} and ${caps[caps.length - 1]}`;
             return (
               <div>
-                {/* Kare — iconic 3-dot cadence; fills as the host answers (alive feedback) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18, animation: 'ceRise 520ms ease-out both' }}>
+                {/* Kare — the cadence map: how far down the path they are. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 20, ...reveal(0) }}>
                   <span style={dot(typeDone)} /><span style={dot(dateDone)} /><span style={dot(nameDone)} />
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>NO GUESSWORK</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>
+                    {!typeDone ? 'LET’S BEGIN' : !dateDone ? 'NEXT' : 'LAST ONE'}
+                  </span>
                 </div>
 
-                {/* Hero — a calm host saying "let's begin" (Zhuo/Saarinen) */}
-                <h1 style={{ fontSize: isMobile ? 25 : 30, fontWeight: 700, letterSpacing: '-0.025em', color: C.text, margin: '0 0 10px', lineHeight: 1.12, animation: 'ceRise 560ms cubic-bezier(.2,.7,.2,1) both', animationDelay: '40ms' }}>
-                  Let’s start your event.
-                </h1>
-                <p style={{ fontSize: isMobile ? 14 : 15, color: C.muted, lineHeight: 1.55, margin: '0 0 30px', maxWidth: 440, animation: 'ceRise 560ms ease-out both', animationDelay: '90ms' }}>
-                  Name it, date it, pick the type. Event Boss builds the timeline, budget and vendor list from there.
-                </p>
-
-                {/* BEAT 1 — pick the type (the one true prerequisite; warm opener) */}
-                <div style={beat(0)}>
-                  <label htmlFor="ce-type" style={blabel}>What are you celebrating?</label>
-                  <select id="ce-type" data-testid="ce-type" style={sfield(active === 'type', (showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
+                {/* ── QUESTION 1 — the live, breathing question the panel opens on ── */}
+                <div style={{ marginBottom: typeDone ? (isMobile ? 22 : 28) : 0, ...groupDim(active === 'type') }}>
+                  <label htmlFor="ce-type" style={qLabel}>{typeDone && check}What are you celebrating?</label>
+                  <select id="ce-type" data-testid="ce-type" style={sfield(active === 'type', typeDone, (showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
                     <option value="" disabled>Choose an occasion…</option>
                     {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
                       <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
                     ))}
                   </select>
+                  {!typeDone && <div style={sub}>Pick the occasion — I’ll build the whole plan around it.</div>}
                   {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you’re celebrating.</div>}
 
-                  {/* Progressive disclosure (Wroblewski): secondary appears only after the primary type */}
+                  {/* Secondary — quiet optional refinement, only once the primary is set */}
                   {typeDone && (
-                    <div style={{ marginTop: 12, animation: 'ceRise 460ms ease-out both' }}>
+                    <div style={{ marginTop: 12, ...reveal(60) }}>
                       <label htmlFor="ce-secondary-type" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>Anything else mixed in? <span style={bopt}>· optional</span></label>
-                      <select id="ce-secondary-type" data-testid="ce-secondary-type" style={{ ...sfield(false, false), minHeight: 46, fontSize: 15 }} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
+                      <select id="ce-secondary-type" data-testid="ce-secondary-type" style={{ ...sfield(false, false, false), minHeight: 46, fontSize: 15, animation: 'none' }} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
                         <option value="">Just the one</option>
                         {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
                           <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
@@ -8253,30 +8280,41 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                       </select>
                     </div>
                   )}
+                </div>
 
-                  {/* Warm story line — lean into what they're celebrating */}
-                  {typeDone && occasionBlurb(form.type, form.secondaryType) && (
-                    <div style={{ marginTop: 14, padding: isMobile ? '11px 13px' : '12px 15px', borderRadius: 10, background: `${C.accent}10`, border: `1px solid ${C.accent}26`, borderLeft: `3px solid ${C.accent}`, fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, animation: 'ceRise 460ms ease-out both' }}>
-                      {occasionBlurb(form.type, form.secondaryType)}
+                {/* ── BRIDGE + QUESTION 2 — revealed only when Q1 is answered ── */}
+                {typeDone && (
+                  <div style={reveal(40)}>
+                    <div style={groupDim(active === 'date')}>
+                    {/* The lead: acknowledge, name what the engine will set up, ask the next question. */}
+                    <div style={{ marginBottom: isMobile ? 20 : 24, padding: isMobile ? '13px 14px' : '14px 16px', borderRadius: 12, background: `${C.accent}0e`, border: `1px solid ${C.accent}24`, borderLeft: `3px solid ${C.accent}` }}>
+                      {occasionBlurb(form.type, form.secondaryType) && (
+                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, marginBottom: 6 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
+                      )}
+                      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55 }}>I’ll set up {capPhrase} — built back from your date.</div>
                     </div>
-                  )}
-                </div>
 
-                {/* BEAT 2 — date it (picker only; hosts know their date) */}
-                <div style={beat(1)}>
-                  <label htmlFor="ce-date" style={blabel}>When is it?</label>
-                  <input id="ce-date" data-testid="ce-date" {...dateInputProps} style={sfield(active === 'date', (showErr || touched.date) && reqDate)} value={form.date} onChange={e => upd('date', e.target.value)} onBlur={() => setTouched(t => ({ ...t, date: true }))} />
-                  {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
-                </div>
+                    <div style={{ marginBottom: dateDone ? (isMobile ? 22 : 28) : 0 }}>
+                      <label htmlFor="ce-date" style={qLabel}>{dateDone && check}When is it?</label>
+                      <input id="ce-date" data-testid="ce-date" {...dateInputProps} style={sfield(active === 'date', dateDone, (showErr || touched.date) && reqDate)} value={form.date} onChange={e => upd('date', e.target.value)} onBlur={() => setTouched(t => ({ ...t, date: true }))} />
+                      {!dateDone && <div style={sub}>Your date sets the countdown and every deadline.</div>}
+                      {(showErr || touched.date) && reqDate && <div style={ui.hint}>Add the date so Event Boss can build the countdown.</div>}
+                    </div>
+                    </div>
+                  </div>
+                )}
 
-                {/* BEAT 3 — name it (optional; auto-names if skipped) */}
-                <div style={beat(2)}>
-                  <label htmlFor="ce-name" style={blabel}>Give it a name <span style={bopt}>· optional</span></label>
-                  <input id="ce-name" data-testid="ce-name" style={sfield(active === 'name', false)} placeholder={form.type ? `My ${form.type}` : 'e.g. Maya’s 30th'} value={form.name} onChange={e => upd('name', e.target.value)} />
-                  {!nameDone && typeDone && (
-                    <div style={{ fontSize: 12.5, color: C.muted, marginTop: 7, lineHeight: 1.45 }}>We’ll call it “My {form.type}” until you rename it.</div>
-                  )}
-                </div>
+                {/* ── QUESTION 3 — name, optional, revealed when Q2 is answered.
+                     They can create from type + date here without naming it. ── */}
+                {typeDone && dateDone && (
+                  <div style={reveal(40)}>
+                    <label htmlFor="ce-name" style={qLabel}>Give it a name <span style={{ ...bopt, fontSize: 13 }}>· optional</span></label>
+                    <input id="ce-name" data-testid="ce-name" style={sfield(active === 'name', false, false)} placeholder={`My ${form.type}`} value={form.name} onChange={e => upd('name', e.target.value)} />
+                    <div style={sub}>
+                      {nameDone ? 'Perfect — you’re ready. Create it and I’ll start the plan.' : `Leave it blank and I’ll call it “My ${form.type}” — or create it now and rename anytime.`}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
