@@ -30,6 +30,8 @@ import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisio
   outcomeFor, isEventComplete, getEventOutcomes, setOverallOutcome, setVendorOutcome, vendorOutcome, OUTCOME_SIGNALS, OUTCOME_LABEL, outcomeTone } from './lib/decisionMemory';
 // Sprint 58G — Event Memory: the event lesson (one short optional string at completion).
 import { setLesson, getLesson } from './lib/eventMemory';
+// Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
+import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL } from './lib/eventIdentity';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -30265,11 +30267,31 @@ function OutcomeCapture({ event, setEvent }) {
         {!complete && <div style={{ fontSize: 10, color: C.muted, opacity: 0.7 }}>· best recorded after the event</div>}
       </div>
       <div style={{ fontSize: 11, color: C.muted, margin: '4px 0 12px' }}>One tap each — these turn your reasons into intelligence.</div>
-      <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
+      <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Overall</div>
         <OutcomeChips options={OUTCOME_SIGNALS.overall} value={o.overall} C={C}
           onPick={(v) => setEvent(e => setOverallOutcome(e, v, new Date().toISOString()))} />
       </div>
+      {/* Sprint 60B — Outcome alignment: did the thing that mattered most happen? */}
+      {event.must_have_moment && (
+        <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>Did the must-have happen?</div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{event.must_have_moment}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {MUST_HAVE_SIGNALS.map(opt => {
+              const on = mustHaveOutcome(event) === opt;
+              const col = opt === 'happened' ? C.success : opt === 'missed' ? C.danger : C.accent;
+              return (
+                <button key={opt} onClick={() => setEvent(e => setMustHaveOutcome(e, on ? null : opt, new Date().toISOString()))}
+                  style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+                    border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
+                  {MUST_HAVE_LABEL[opt]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {confirmedVendors.map(v => (
         <div key={v.id} style={{ marginTop: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{v.name || 'Vendor'}{v.category ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.category}</span> : null}</div>
