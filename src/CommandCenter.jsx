@@ -33,6 +33,9 @@ import { color, space, type, radius } from './design/tokens';
 // existing Timeline tab compressed-priorities filter.
 import { deriveEventCompressionSummary, classifyTemplateTaskUrgency } from './lib/workflowCompression';
 import { summarizeCrew } from './lib/studioTeam';
+// Sprint 57F-A: Positive Attention — the read-only "You're Set On ✓" reader over
+// existing readiness (pi.attention flag, host-only, presentation-only).
+import { attentionActive, positiveAttention } from './lib/positiveAttention';
 // A critical COI (expired / overdue) is a hard load-in gate the venue turns
 // vendors away for — it must rank in the event's next-action ladder, not only
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
@@ -1734,6 +1737,35 @@ function HealthRow({ h, isFirst, onTabChange }) {
   );
 }
 
+// ── Sprint 57F-A: Positive Attention — "You're Set On ✓" ──────────────────────
+// Read-only reassurance: the dimensions a host can stop worrying about, derived
+// ONLY from existing readiness (the positiveAttention reader). Quiet by design —
+// green checks that whisper beneath the one thing that still needs the host. The
+// reader already excludes adequacy/safety/estimate claims, so nothing false can
+// appear here. Renders nothing when items is empty (flag OFF / not host / nothing set).
+function YoureSetOn({ items, isMobile }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
+      <SectionHeader label="You're Set On" count={items.length} countColor={P.green} />
+      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+        {items.map((it, i) => (
+          <div key={it.key} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', fontFamily: FF,
+            borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`,
+          }}>
+            <span aria-hidden style={{ color: P.green, fontSize: 14, fontWeight: 700, flexShrink: 0, width: 16, textAlign: 'center' }}>✓</span>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
+              {it.note && <div style={{ fontSize: 11, color: P.textSecondary }}>{it.note}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 function EmptyState({ children }) {
   return (
@@ -1967,7 +1999,7 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
   );
 }
 
-function MobileCommandCenter({ event, data, crewSummary, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function MobileCommandCenter({ event, data, crewSummary, setItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
@@ -2083,6 +2115,9 @@ function MobileCommandCenter({ event, data, crewSummary, onTabChange, onBack, ba
           );
         })()}
 
+        {/* Sprint 57F-A: Positive Attention — reassurance right beneath what needs you. */}
+        <YoureSetOn items={setItems} isMobile />
+
         {/* Next Up */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
@@ -2152,7 +2187,7 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, data, crewSummary, setItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
@@ -2272,6 +2307,9 @@ function DesktopCommandCenter({ event, data, crewSummary, onTabChange, onBack, b
                 </div>
               );
             })()}
+
+            {/* Sprint 57F-A: Positive Attention — reassurance below the Needs You queue. */}
+            <YoureSetOn items={setItems} />
           </div>
 
           {/* RIGHT — operational rail */}
@@ -2347,7 +2385,15 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
   const addRequest  = onAddRequest  || (() => onTabChange?.('Communication'));
 
   const crewSummary = summarizeCrew(event);
-  const sharedProps = { event, data, crewSummary, onTabChange, onBack, backLabel,
+  // Sprint 57F-A: Positive Attention. Pure reader over existing readiness; empty
+  // ([]) when the flag is OFF or the audience isn't host ⇒ nothing renders ⇒
+  // production-identical. getEventReadiness is the SAME signal that powers the
+  // readiness score — no new calculation.
+  const setItems = useMemo(
+    () => (attentionActive(event) ? positiveAttention(event, getEventReadiness(event)).items : []),
+    [event],
+  );
+  const sharedProps = { event, data, crewSummary, setItems, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />
