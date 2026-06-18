@@ -40,6 +40,9 @@ import { summarizeCrew } from './lib/studioTeam';
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
 import { renderAction, personaFor } from './lib/nextActionRenderer';
+// Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
+// (pi.because flag, presentation-only; `because` strings are built from real factors).
+import { becauseActive } from './lib/becauseLayer';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -353,6 +356,7 @@ export function deriveCommandCenterData(event) {
       return {
         label: 'Capacity', statusLabel: 'ESTIMATE', color: P.textSecondary,
         note: `Confirm seating & serveware for ${cap.guests} guests — ${cap.summary}`,
+        because: cap.because, // Sprint 57H: existing reasoning, exposed (presentation-only)
       };
     })(),
     // Sprint 55L: the Infrastructure-check prompts ("Reality Check") — the
@@ -367,6 +371,7 @@ export function deriveCommandCenterData(event) {
       return {
         label: 'Reality Check', statusLabel: 'REVIEW', color: P.textSecondary,
         note: `Before event day, confirm: ${infra.summary}`,
+        because: infra.because, // Sprint 57H: existing reasoning, exposed (presentation-only)
       };
     })(),
   ].filter(Boolean);
@@ -1716,6 +1721,14 @@ function HealthRow({ h, isFirst, onTabChange }) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{h.label}</div>
         <div style={{ fontSize: 11, color: P.textSecondary }}>{h.note}</div>
+        {/* Sprint 57H: existing reasoning, exposed. Quiet steel line, one notch below
+            the note (tier-3 whisper); renders only when pi.because is on AND this row
+            carries a traceable `because`. */}
+        {becauseActive() && h.because && (
+          <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 1 }}>
+            <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>Because</span> {h.because}
+          </div>
+        )}
       </div>
       <span style={{ fontSize: 9.5, fontWeight: 600, color: h.color, letterSpacing: '0.10em', flexShrink: 0 }}>{h.statusLabel}</span>
       {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: 15, flexShrink: 0, marginLeft: 2 }}>›</span>}

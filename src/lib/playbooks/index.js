@@ -414,16 +414,26 @@ export function playbookCapacity(event) {
   const items = [];
   for (const r of playbook.rentalsGap) {
     let qty = null;
-    if (typeof r.qtyPerGuest === 'number') qty = Math.ceil(r.qtyPerGuest * guests);
-    else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') qty = Math.ceil(guests / r.qtyPer) * r.qtyFlat;
-    else if (typeof r.qtyFlat === 'number') qty = r.qtyFlat;
+    // Sprint 57H: capture the scaling FACTOR alongside the quantity (additive — the
+    // qty math is byte-identical). The factor IS the reasoning behind the number.
+    let factor = null, factorType = null;
+    if (typeof r.qtyPerGuest === 'number') { qty = Math.ceil(r.qtyPerGuest * guests); factor = r.qtyPerGuest; factorType = 'perGuest'; }
+    else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') { qty = Math.ceil(guests / r.qtyPer) * r.qtyFlat; factor = r.qtyFlat; factorType = 'perN'; }
+    else if (typeof r.qtyFlat === 'number') { qty = r.qtyFlat; factor = r.qtyFlat; factorType = 'flat'; }
     if (qty == null || qty <= 0) continue;
-    items.push({ item: r.item, short: shortRental(r.item), qty, note: r.note || '' });
+    items.push({ item: r.item, short: shortRental(r.item), qty, note: r.note || '', factor, factorType });
   }
   if (!items.length) return null;
   // compact summary, e.g. "12 chairs · 24 plates · 30 glasses · 12 flatware · 4 platters"
   const summary = items.map((i) => `${i.qty} ${i.short}`).join(' · ');
-  return { guests, items, summary };
+  // Sprint 57H: the "because" — built ONLY from the real factors above. Per-guest
+  // items show "N <item> each"; flat items show their count. No inference.
+  const perGuest = items.filter((i) => i.factorType === 'perGuest').map((i) => `${i.factor} ${i.short}`);
+  const flat = items.filter((i) => i.factorType !== 'perGuest').map((i) => `${i.qty} ${i.short}`);
+  let because = '';
+  if (perGuest.length) because = `${guests} guests × ${perGuest.join(' · ')} each`;
+  if (flat.length) because += `${because ? ' + ' : ''}${flat.join(' · ')} flat`;
+  return { guests, items, summary, because };
 }
 
 // ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────
@@ -467,7 +477,17 @@ export function playbookInfraPrompts(event) {
     prompts.push({ key: 'alcohol', short: 'alcohol plan', detail: 'Alcohol plan — set a cutoff and a ride-home plan.' });
 
   if (!prompts.length) return null;
-  return { prompts, summary: prompts.map((p) => p.short).join(' · ') };
+  // Sprint 57H: the "because" — built ONLY from the authored signals that fired
+  // above (no inference). Food/power/emergency are always-on basics; the rest are
+  // the specific risks the playbook flagged.
+  const triggered = [];
+  if (has(/weather|\brain\b|canopy|\bshade\b|\btent\b/)) triggered.push('a weather/rain risk');
+  if (grill) triggered.push('open flame');
+  if (minors || alcohol) triggered.push('alcohol service');
+  if (kids) triggered.push('kids present');
+  const because = `standard ${String(event.type || 'event').toLowerCase()} safety basics`
+    + (triggered.length ? ` + ${triggered.join(' + ')} in your plan` : '');
+  return { prompts, summary: prompts.map((p) => p.short).join(' · '), because };
 }
 
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
