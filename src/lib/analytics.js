@@ -117,6 +117,14 @@ export const EVENTS = {
   RETURNED_D1:            'returned_d1',
   RETURNED_D7:            'returned_d7',
 
+  // Activation back-half (Host Activation v1) — the moat-gating signals the
+  // 60C→61B arc found uninstrumented. First occurrence drives the funnel; every
+  // occurrence measures depth.
+  DECISION_CAPTURED:      'decision_captured',
+  ROS_ITEM_ADDED:         'ros_item_added',
+  EVENT_COMPLETED:        'event_completed',
+  OUTCOME_CAPTURED:       'outcome_captured',
+
   // Vendors
   VENDOR_ADDED:           'vendor_added',
   VENDOR_CONTRACT_SENT:   'vendor_contract_sent_docusign',

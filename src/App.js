@@ -23888,6 +23888,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
   };
 
   const add = () => {
+    track(EVENTS.ROS_ITEM_ADDED, { source: 'manual' });
     const nr = { id: uid(), time: '', segment: '', location: '', type: 'event', owner: '', confirmed: false, notes: '' };
     setRos(r => [...r, nr]);
     setModalId(nr.id);
@@ -24374,7 +24375,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
         {momentsOn() && !isDayOf && (() => {
           const sugg = suggestableMoments(eventType, ros);
           if (!sugg.length) return null;
-          const addMoment = (m) => setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]);
+          const addMoment = (m) => { track(EVENTS.ROS_ITEM_ADDED, { source: 'moment', moment: m.id }); setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]); };
           return (
             <div style={{ marginBottom: 16, padding: '10px 12px', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Moments that matter · one tap adds it with an owner</div>
@@ -30295,7 +30296,11 @@ function OutcomeCapture({ event, setEvent }) {
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Overall</div>
         <OutcomeChips options={OUTCOME_SIGNALS.overall} value={o.overall} C={C}
-          onPick={(v) => setEvent(e => setOverallOutcome(e, v, new Date().toISOString()))} />
+          onPick={(v) => {
+            track(EVENTS.OUTCOME_CAPTURED, { kind: 'overall' });
+            if (complete) trackOnce('ngw-evt-completed-' + event.id, EVENTS.EVENT_COMPLETED, { event_type: event.type });
+            setEvent(e => setOverallOutcome(e, v, new Date().toISOString()));
+          }} />
       </div>
       {/* Sprint 60B — Outcome alignment: did the thing that mattered most happen? */}
       {event.must_have_moment && (
@@ -30307,7 +30312,7 @@ function OutcomeCapture({ event, setEvent }) {
               const on = mustHaveOutcome(event) === opt;
               const col = opt === 'happened' ? C.success : opt === 'missed' ? C.danger : C.accent;
               return (
-                <button key={opt} onClick={() => setEvent(e => setMustHaveOutcome(e, on ? null : opt, new Date().toISOString()))}
+                <button key={opt} onClick={() => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'must_have' }); setEvent(e => setMustHaveOutcome(e, on ? null : opt, new Date().toISOString())); }}
                   style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
                     border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
                   {MUST_HAVE_LABEL[opt]}
@@ -30321,7 +30326,7 @@ function OutcomeCapture({ event, setEvent }) {
         <div key={v.id} style={{ marginTop: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{v.name || 'Vendor'}{v.category ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.category}</span> : null}</div>
           <OutcomeChips options={OUTCOME_SIGNALS.vendor_selection} value={vendorOutcome(event, v.id)} C={C}
-            onPick={(val) => setEvent(e => setVendorOutcome(e, v.id, val, new Date().toISOString()))} />
+            onPick={(val) => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'vendor' }); setEvent(e => setVendorOutcome(e, v.id, val, new Date().toISOString())); }} />
         </div>
       ))}
       {/* Sprint 58G — Event Lesson Memory: one short optional line, no form, no AI. */}
@@ -30354,6 +30359,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const promptDecision = (cfg) => { if (decisionMemoryOn() && cfg) setDecPrompt(cfg); };
   const saveDecision = (rationale) => {
     if (decPrompt && rationale && rationale.trim()) {
+      track(EVENTS.DECISION_CAPTURED, { decision_type: decPrompt.decisionType });
       setEvent(e => appendDecision(e, makeDecisionRecord(
         { ...decPrompt, eventId: e.id, rationale, createdBy: profile?.name || profile?.email || undefined },
         new Date().toISOString(),
