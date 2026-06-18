@@ -32,6 +32,8 @@ import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisio
 import { setLesson, getLesson } from './lib/eventMemory';
 // Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
 import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL } from './lib/eventIdentity';
+// Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
+import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -23832,7 +23834,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eventId, isDayOf = false, honoree = '', meaning = {} }) {
+function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {} }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -24365,6 +24367,29 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
             </div>
           )}
         </div>
+
+        {/* Sprint 60F — Moment Library (ROS-only, pi.moments). One tap puts the
+            moment a host cares about on the schedule WITH an owner. Authored menu
+            per event type; only moments not already scheduled are offered. */}
+        {momentsOn() && !isDayOf && (() => {
+          const sugg = suggestableMoments(eventType, ros);
+          if (!sugg.length) return null;
+          const addMoment = (m) => setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]);
+          return (
+            <div style={{ marginBottom: 16, padding: '10px 12px', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Moments that matter · one tap adds it with an owner</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {sugg.map(m => (
+                  <button key={m.id} onClick={() => addMoment(m)}
+                    title={m.note ? `Owner: ${m.owner} · ${m.note}` : `Owner: ${m.owner}`}
+                    style={{ fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                    + {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {rosActionMsg && (
           <div role="status" style={{
@@ -30894,7 +30919,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
         </>
       )}
       {tab === 'Agenda'      && <>
