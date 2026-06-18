@@ -52,6 +52,9 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
+// Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
+// sections relocate to the Upcoming Rail (reachable, never hidden). Planner ⇒ never dormant.
+import { isDormant, upcomingRail } from './lib/disclosure';
 import { labelFor } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
 // Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
 // (pi.because flag, presentation-only; `because` strings are built from real factors).
@@ -1942,6 +1945,33 @@ function YoureSetOn({ items, isMobile }) {
   );
 }
 
+// ── Sprint UX-4: Upcoming Rail — the reachable home for DORMANT sections. Shows what
+// EXISTS without demanding attention ("available later"); a tap routes to the real tab.
+// Renders nothing when there's nothing dormant (planner / fully-active event).
+function UpcomingRail({ items, onTabChange, isMobile }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
+      <SectionHeader label="Coming up later" />
+      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+        {items.map((r, i) => (
+          <button key={r.section} onClick={() => onTabChange?.(r.route)} style={{
+            width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 16px', background: 'transparent', border: 'none',
+            borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`, cursor: 'pointer', fontFamily: FF,
+          }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textSecondary }}>{r.label}</div>
+              <div style={{ fontSize: 11, color: P.textTertiary }}>{r.hint}</div>
+            </div>
+            <span aria-hidden style={{ color: P.textTertiary, fontSize: 14, flexShrink: 0 }}>›</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 function EmptyState({ children }) {
   return (
@@ -2175,7 +2205,7 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
   );
 }
 
-function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
@@ -2255,7 +2285,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             renderers and routing are unchanged. */}
         {(() => {
           const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
-          if (needs === 0 && hideEmpties) return null;   // UX-3: no empty "nothing needs you" for hosts
+          if (dormant('needsYou')) return null;   // UX-4: dormant ⇒ not in the main flow
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2300,7 +2330,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <DecisionsBlock items={decisionItems} isMobile />
 
         {/* Next Up */}
-        {(d.nextUp.length > 0 || !hideEmpties) && (
+        {!dormant('nextUp') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {d.nextUp.length > 0 ? (
@@ -2312,7 +2342,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         )}
 
         {/* Vendor Status */}
-        {(d.vendorRows.length > 0 || !hideEmpties) && (
+        {!dormant('vendors') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Vendors" action="All →" onAction={() => onTabChange?.('Vendors')} />
           {d.vendorRows.length > 0 ? (
@@ -2329,7 +2359,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} gap={10} />
 
         {/* Documents — Sprint 49: real status from event.documents */}
-        {((event.documents || []).length > 0 || !hideEmpties) && (
+        {!dormant('documents') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
           {(() => {
@@ -2347,6 +2377,9 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           })()}
         </div>
         )}
+
+        {/* Sprint UX-4: Upcoming Rail — dormant sections, reachable, no attention demand. */}
+        <UpcomingRail items={rail} onTabChange={onTabChange} isMobile />
       </div>
 
       {/* Sticky bottom action bar */}
@@ -2374,13 +2407,8 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
-  // UX-3: a barely-started event's Planning Health rail is all-empty noise for a host.
-  const barelyStarted = (event.guests || []).length === 0
-    && (event.vendors || []).filter(v => v && (v.name || '').trim()).length === 0
-    && (event.timeline || []).length === 0
-    && (event.budget || []).length === 0;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
       {/* Studio bar */}
@@ -2472,7 +2500,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
                 lists were hierarchy theater). One header + total; quiet sub-groups. */}
             {(() => {
               const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
-              if (needs === 0 && hideEmpties) return null;   // UX-3: no empty queue for hosts
+              if (dormant('needsYou')) return null;   // UX-4: dormant ⇒ relocated to the rail
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2512,7 +2540,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
           {/* RIGHT — operational rail */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Planning Health */}
-            {!(hideEmpties && barelyStarted) && (
+            {!dormant('planningHealth') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
@@ -2522,7 +2550,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
             )}
 
             {/* Next Up */}
-            {(d.nextUp.length > 0 || !hideEmpties) && (
+            {!dormant('nextUp') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {d.nextUp.length > 0 ? (
@@ -2534,7 +2562,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
             )}
 
             {/* Vendors */}
-            {(d.vendorRows.length > 0 || !hideEmpties) && (
+            {!dormant('vendors') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Vendors" action="Manage all →" onAction={() => onTabChange?.('Vendors')} />
               {d.vendorRows.length > 0 ? (
@@ -2551,7 +2579,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
             <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} />
 
             {/* Documents — Sprint 49: real status from event.documents */}
-            {((event.documents || []).length > 0 || !hideEmpties) && (
+            {!dormant('documents') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
               {(() => {
@@ -2569,6 +2597,9 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
               })()}
             </div>
             )}
+
+            {/* Sprint UX-4: Upcoming Rail — dormant sections, reachable, no attention demand. */}
+            <UpcomingRail items={rail} onTabChange={onTabChange} />
           </div>
         </div>
       </div>
@@ -2604,10 +2635,17 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
     () => (decisionsActive() ? decisionConfidence(event, getEventReadiness(event)) : []),
     [event],
   );
-  // Sprint UX-3 — Progressive disclosure for HOSTS only (planner cockpit unchanged):
-  // empty "No X yet" sections are Stage-1 noise; suppress them until they have data.
-  const hideEmpties = audiencePersona(event) === 'host';
-  const sharedProps = { event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel,
+  // Sprint UX-4 — every host-facing section routes through the ONE disclosure resolver.
+  // Dormant ⇒ not in the main flow (it moves to the Upcoming Rail). Planner ⇒ never
+  // dormant (full cockpit preserved). Populated/urgent content is never dormant.
+  const sig = useMemo(() => {
+    const needs = data.decisions.length + data.approvals.length + data.requests.length + data.questions.length;
+    const criticalNeeds = (data.decisions || []).filter(x => x && (x.urgency === 'URGENT' || x.overdue)).length;
+    return { needs, criticalNeeds, decisions: data.decisions.length, approvals: data.approvals.length, requests: data.requests.length };
+  }, [data]);
+  const dormant = (section) => isDormant(section, event, sig);
+  const rail = upcomingRail(event, sig);
+  const sharedProps = { event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />

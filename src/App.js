@@ -34,6 +34,8 @@ import { setLesson, getLesson } from './lib/eventMemory';
 import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement } from './lib/eventIdentity';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
+// Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
+import { upcomingRail } from './lib/disclosure';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -17302,6 +17304,30 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile }) {
             )}
           </div>
         )}
+
+        {/* Sprint UX-4 · Upcoming Rail — what exists but hasn't earned attention yet.
+            Reachable (one tap), never hidden. Empty once everything is active. */}
+        {(() => {
+          const railItems = upcomingRail(ev);
+          if (!railItems.length) return null;
+          return (
+            <div style={card}>
+              <div style={eyebrow}>Coming up later</div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {railItems.map((r, i) => (
+                  <button key={r.section} onClick={() => onSelectEvent(ev.id, { tab: r.route })}
+                    style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '11px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.label}</span>
+                      <span style={{ fontSize: 11.5, color: C.muted }}>{r.hint}</span>
+                    </span>
+                    <span style={{ fontSize: 16, color: C.muted }}>›</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* 5 · Event Day */}
         <button onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
