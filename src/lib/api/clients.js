@@ -2,7 +2,7 @@
 // Studio-scoped mirror of events.js — rows owned by a STUDIO, not a user.
 // localStorage-first, Supabase-when-available. localStorage key: ngw-clients.
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
-import { currentStudioId } from './studio';
+import { currentStudioId, isCloudStudioId } from './studio'; // Sprint 58E-B: uuid-studio guard
 import { captureError } from '../sentry';
 
 const LOCAL_KEY = 'ngw-clients';
@@ -19,7 +19,7 @@ function writeLocal(clients) {
 export async function loadClients() {
   if (!isSupabaseConfigured() || !supabase) return readLocal();
   const sid = await currentStudioId();
-  if (!sid) return readLocal();
+  if (!sid || !isCloudStudioId(sid)) return readLocal(); // 58E-B: non-uuid (dev) ⇒ local-only
   try {
     const { data, error } = await supabase
       .from('clients')
@@ -45,7 +45,7 @@ export async function saveClient(client) {
 
   if (!isSupabaseConfigured() || !supabase) return;
   const sid = await currentStudioId();
-  if (!sid) return;
+  if (!sid || !isCloudStudioId(sid)) return; // 58E-B: non-uuid (dev) ⇒ local-only
   try {
     const { error } = await supabase
       .from('clients')
@@ -59,7 +59,7 @@ export async function deleteClient(clientId) {
   writeLocal(readLocal().filter((c) => c.id !== clientId));
   if (!isSupabaseConfigured() || !supabase) return;
   const sid = await currentStudioId();
-  if (!sid) return;
+  if (!sid || !isCloudStudioId(sid)) return; // 58E-B: non-uuid (dev) ⇒ local-only
   try {
     const { error } = await supabase
       .from('clients').delete().eq('id', clientId).eq('studio_id', sid);
@@ -71,7 +71,7 @@ export async function deleteClient(clientId) {
 export async function migrateLocalToCloud(localClients) {
   if (!isSupabaseConfigured() || !supabase) return { migrated: 0, failed: 0 };
   const sid = await currentStudioId();
-  if (!sid) return { migrated: 0, failed: 0 };
+  if (!sid || !isCloudStudioId(sid)) return { migrated: 0, failed: 0 }; // 58E-B
   let migrated = 0, failed = 0;
   for (const client of localClients) {
     try {
