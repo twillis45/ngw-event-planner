@@ -13,8 +13,10 @@ import birthday from '../data/birthday';
 import babyShower from '../data/babyShower';
 import backyardBbq from '../data/backyardBbq';
 import graduation from '../data/graduation';
+import watchParty from '../data/watchParty';
+import gameNight from '../data/gameNight';
 
-const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation };
+const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight };
 
 // The authored sections every host playbook must carry. Dropping any of these is
 // the AP-001 failure mode.

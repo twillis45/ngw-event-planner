@@ -72,6 +72,8 @@ const EVENT_TAXONOMY = {
 
   // ── At-Home Gatherings ────────────────────────────────────────────────────
   'Dinner Party':       { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Watch Party':        { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Game Night':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Housewarming':       { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Get-Together':       { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
 };
@@ -106,10 +108,10 @@ const TYPE_ALIASES = {
   'Cocktail Party': 'Dinner Party',
   'Backyard BBQ': 'Get-Together',
   'Brunch': 'Dinner Party',
-  'Game Night': 'Get-Together',
-  'Watch Party': 'Get-Together',
-  'Super Bowl Party': 'Get-Together',
-  'Game Day Party': 'Get-Together',
+  // Watch Party + Game Night are now CANONICAL (own playbooks); sports-watch
+  // variants resolve to the Watch Party playbook.
+  'Super Bowl Party': 'Watch Party',
+  'Game Day Party': 'Watch Party',
 };
 
 // The SINGLE ordered keyword resolver — replaces the four independent regex blocks
