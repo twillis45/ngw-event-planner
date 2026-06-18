@@ -9050,11 +9050,15 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}>Cancel</button>
+              {/* Sprint UX-7 — No-intake host flow. A host account creates straight from
+                  Step 1 (type · date · name): no kit step, no review, no intake. The kit
+                  auto-derives from the type; everything else is collected later, in context.
+                  Planners keep the full Basics → Setup → Review path. */}
               <button
-                data-testid="ce-continue"
-                onClick={continue1}
+                data-testid={hostMode ? 'ce-create' : 'ce-continue'}
+                onClick={() => { if (!step1Valid) { setShowErr(true); return; } if (hostMode) createNow(); else continue1(); }}
                 aria-disabled={!step1Valid}
-                style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130, ...(step1Valid ? {} : { opacity: 0.5, cursor: 'default' }) }}>Continue</button>
+                style={{ ...primaryBtn, flex: isMobile ? 1 : 'unset', minWidth: 130, ...(step1Valid ? {} : { opacity: 0.5, cursor: 'default' }) }}>{hostMode ? 'Create event' : 'Continue'}</button>
             </div>
           )}
           {step === 2 && (
@@ -9102,8 +9106,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 <button
                   data-testid="ce-open-event-host"
                   style={{ ...primaryBtn, width: '100%', textAlign: 'center' }}
-                  onClick={() => { onOpenEvent(createdId); onClose(); }}>
-                  Open your event →
+                  onClick={() => { onClose(); }}>
+                  Start planning →
                 </button>
               )}
               {!hostMode && (<>
@@ -12234,6 +12238,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
   const addVendor = () => {
     if (!draft.name.trim()) return;
     track(EVENTS.VENDOR_ADDED, { to: 'bank', category: draft.category });
+    trackOnce('ngw-first-vendor-added', EVENTS.FIRST_VENDOR_ADDED);   // UX-7 no-intake funnel
     const rec = { name: draft.name, category: draft.category, contact: draft.contact, phone: draft.phone, website: draft.website, notes: draft.notes, id: `pv-${Date.now()}`, rehireCount: 0, addedAt: new Date().toISOString() };
     if (draft.insuranceStatus) rec.insuranceStatus = draft.insuranceStatus;
     TRACK_NUM_FIELDS.forEach(k => { if (String(draft[k]).trim() !== '') rec[k] = Number(draft[k]); });
@@ -17199,7 +17204,42 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
 // business". Five sections — Event Summary · Next Step · Progress · What Matters
 // Most · Event Day — built entirely from readers that already exist (no new engine).
 // Planner/operator accounts never see this; they keep MainDashboard untouched.
-function HostHome({ events, profile, onSelectEvent, onNew, onProfile }) {
+// Sprint UX-7 — contextual meaning capture (replaces the intake meaning step). ONE
+// card on Host Home, not a wizard: a host names the moment that has to go right, in
+// place, when they want to. Powers "What matters most" + the must-have outcome check.
+function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
+  const [open, setOpen] = useState(false);
+  const [mh, setMh] = useState(ev.must_have_moment || '');
+  const [why, setWhy] = useState(ev.meaning_why || '');
+  const field = { width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', marginTop: 6 };
+  const label = { fontSize: 11, fontWeight: 600, color: C.muted, marginTop: 12 };
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px dashed ${C.border}`, background: 'transparent' }}>
+        <div style={eyebrowStyle}>What matters most</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>Tell us the one moment that has to go right.</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>We’ll keep it front and center — and check it actually happened.</div>
+        <span style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: 700, color: C.accent }}>Add it →</span>
+      </button>
+    );
+  }
+  return (
+    <div style={cardStyle}>
+      <div style={eyebrowStyle}>What matters most</div>
+      <div style={label}>The one moment that has to go right</div>
+      <textarea value={mh} onChange={e => setMh(e.target.value)} rows={2} placeholder="e.g. her whole family there for the diploma walk" style={{ ...field, resize: 'vertical', lineHeight: 1.4 }} />
+      <div style={label}>Why this matters <span style={{ fontWeight: 400 }}>· optional</span></div>
+      <input value={why} onChange={e => setWhy(e.target.value)} placeholder="the heart of the day" style={field} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <button onClick={() => { onPatchEvent(ev.id, { must_have_moment: mh.trim(), meaning_why: why.trim() }); setOpen(false); }}
+          style={{ fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Save</button>
+        <button onClick={() => setOpen(false)} style={{ fontSize: 13, fontWeight: 600, padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
   // The host's focus event: soonest upcoming (today→future), else most-future past,
   // preferring a real (non-seed) event. A host usually has exactly one.
@@ -17305,7 +17345,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile }) {
           </div>
         </div>
 
-        {/* 4 · What Matters Most */}
+        {/* 4 · What Matters Most — populated; or a contextual capture prompt when empty. */}
+        {!id && onPatchEvent && (
+          <HostMeaningPrompt ev={ev} onPatchEvent={onPatchEvent} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
+        )}
         {id && (id.reallyIs || id.mustHaveMoment) && (
           <div style={card}>
             <div style={eyebrow}>What matters most</div>
@@ -22335,6 +22378,7 @@ function Guests({ guests, setGuests, event = {} }) {
   const needsFlag  = confirmed.filter(g => g.needs);
 
   const add = () => {
+    trackOnce('ngw-first-guest-added', EVENTS.FIRST_GUEST_ADDED);   // UX-7 no-intake funnel
     const ng = { id: uid(), name: '', group: 'Friends', rsvp: '', meal: '—', table: null, plusOne: '', plusOneMeal: '—', kids: 0, needs: '', email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' };
     setGuests(g => [...g, ng]);
     setModalId(ng.id);
@@ -32913,6 +32957,7 @@ export default function App() {
           onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
           onNew={() => setShowNew(true)}
           onProfile={() => setShowProfile(true)}
+          onPatchEvent={(id, patch) => setEvents(evs => evs.map(e => e.id === id ? { ...e, ...patch } : e))}
         />
       ) : (
       <MainDashboard

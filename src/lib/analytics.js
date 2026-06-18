@@ -117,6 +117,8 @@ export const EVENTS = {
   ACCOUNT_TYPE_SELECTED:  'account_type_selected',
   HOST_HOME_VIEWED:       'host_home_viewed',
   HOST_NEXT_STEP_CLICKED: 'host_next_step_clicked',
+  FIRST_GUEST_ADDED:      'first_guest_added',     // UX-7 no-intake funnel
+  FIRST_VENDOR_ADDED:     'first_vendor_added',
 
   // Activation funnel (Sprint 55N) — denominator → setup → value → retention
   SIGNED_UP:              'signed_up',
