@@ -51,7 +51,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
-import { renderAction, personaFor } from './lib/nextActionRenderer';
+import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 import { labelFor } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
 // Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
 // (pi.because flag, presentation-only; `because` strings are built from real factors).
@@ -1209,6 +1209,29 @@ function _selectEventNextActionInner(event) {
     ? (days === 0 ? 'today' : `${daysWord(days)} until event`)
     : null;
 
+  // Tier 0 (Sprint UX-3 / ACT-1 fix): a BRAND-NEW event (no guests AND no named
+  // vendors — the host hasn't done anything real yet; the kit's seeded timeline/
+  // budget are scaffolding, not progress) gets a SIMPLE WIN as the first step:
+  // "Add your guest list." Who's coming is the first domino. This intentionally
+  // outranks the seeded-but-overdue timeline "Decide…" tasks (which read as urgent
+  // decisions on a near-term event) — but ONLY for an untouched event: the moment a
+  // guest, a guest count, or a real vendor exists, it stops firing and the normal
+  // reactive ladder resumes. Past events are exempt.
+  const brandNew = (event.guests || []).length === 0
+    && !Number(event.guestCount) && !Number(event.guestEstimate)
+    && (event.vendors || []).filter(v => v && (v.name || '').trim()).length === 0;
+  if (brandNew && (days === null || days >= 0)) {
+    return {
+      level: 'attention',
+      category: 'start',
+      title: 'Add your guest list.',
+      consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
+      primaryCta: 'Add guests',
+      primaryRoute: { tab: 'Guests' },
+      contextLine: daysSub,
+    };
+  }
+
   // Tier 1: caterer drift (already detected in deriveCommandCenterData)
   if (d.catererDrift && d.cateringVendor) {
     return {
@@ -2152,7 +2175,7 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
   );
 }
 
-function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
@@ -2232,6 +2255,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             renderers and routing are unchanged. */}
         {(() => {
           const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
+          if (needs === 0 && hideEmpties) return null;   // UX-3: no empty "nothing needs you" for hosts
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2276,6 +2300,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <DecisionsBlock items={decisionItems} isMobile />
 
         {/* Next Up */}
+        {(d.nextUp.length > 0 || !hideEmpties) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {d.nextUp.length > 0 ? (
@@ -2284,8 +2309,10 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
         </div>
+        )}
 
         {/* Vendor Status */}
+        {(d.vendorRows.length > 0 || !hideEmpties) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Vendors" action="All →" onAction={() => onTabChange?.('Vendors')} />
           {d.vendorRows.length > 0 ? (
@@ -2296,11 +2323,13 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             </div>
           ) : <EmptyState>No vendors yet.</EmptyState>}
         </div>
+        )}
 
         {/* Team — Sprint 52B */}
         <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} gap={10} />
 
         {/* Documents — Sprint 49: real status from event.documents */}
+        {((event.documents || []).length > 0 || !hideEmpties) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
           {(() => {
@@ -2317,6 +2346,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             );
           })()}
         </div>
+        )}
       </div>
 
       {/* Sticky bottom action bar */}
@@ -2344,8 +2374,13 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
+  // UX-3: a barely-started event's Planning Health rail is all-empty noise for a host.
+  const barelyStarted = (event.guests || []).length === 0
+    && (event.vendors || []).filter(v => v && (v.name || '').trim()).length === 0
+    && (event.timeline || []).length === 0
+    && (event.budget || []).length === 0;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
       {/* Studio bar */}
@@ -2437,6 +2472,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
                 lists were hierarchy theater). One header + total; quiet sub-groups. */}
             {(() => {
               const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
+              if (needs === 0 && hideEmpties) return null;   // UX-3: no empty queue for hosts
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2476,14 +2512,17 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
           {/* RIGHT — operational rail */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Planning Health */}
+            {!(hideEmpties && barelyStarted) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
                 {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} grammar={confidencePersona(event)} />)}
               </div>
             </div>
+            )}
 
             {/* Next Up */}
+            {(d.nextUp.length > 0 || !hideEmpties) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {d.nextUp.length > 0 ? (
@@ -2492,8 +2531,10 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
             </div>
+            )}
 
             {/* Vendors */}
+            {(d.vendorRows.length > 0 || !hideEmpties) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Vendors" action="Manage all →" onAction={() => onTabChange?.('Vendors')} />
               {d.vendorRows.length > 0 ? (
@@ -2504,11 +2545,13 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
                 </div>
               ) : <EmptyState>No vendors yet.</EmptyState>}
             </div>
+            )}
 
             {/* Team — Sprint 52B */}
             <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} />
 
             {/* Documents — Sprint 49: real status from event.documents */}
+            {((event.documents || []).length > 0 || !hideEmpties) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
               {(() => {
@@ -2525,6 +2568,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
                 );
               })()}
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -2560,7 +2604,10 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
     () => (decisionsActive() ? decisionConfidence(event, getEventReadiness(event)) : []),
     [event],
   );
-  const sharedProps = { event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel,
+  // Sprint UX-3 — Progressive disclosure for HOSTS only (planner cockpit unchanged):
+  // empty "No X yet" sections are Stage-1 noise; suppress them until they have data.
+  const hideEmpties = audiencePersona(event) === 'host';
+  const sharedProps = { event, data, crewSummary, setItems, decisionItems, hideEmpties, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />
