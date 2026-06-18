@@ -30740,6 +30740,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     { id: 'Arrivals',      icon: 'store',     label: 'Arrivals' },
     { id: 'Event Day Schedule',   icon: 'clipboard', label: 'Schedule' },
     { id: 'Communication', icon: 'message',   label: 'Messages' },
+  ] : hostNavActive(event) ? [
+    // Host Activation v1 · Phase 3 — mobile-first host lanes. "The Day" (the host's
+    // #1 day-of surface) is a PRIMARY lane, never buried under "More"; Messages is
+    // reveal-when-data and lives in More. Plan/Money use the host vocabulary.
+    { id: 'Command',            icon: 'zap',       label: 'Overview', target: 'Command' },
+    { id: 'Planning',           icon: 'check',     label: 'Plan',     target: 'Planning' },
+    { id: 'Event Day Schedule', icon: 'clipboard', label: 'The Day',  target: 'Event Day Schedule' },
+    { id: 'Guests',             icon: 'users',     label: 'Guests',   target: 'Guests' },
+    { id: 'Money',              icon: 'dollar',    label: 'Money',    sheet:  'money' },
   ] : [
     { id: 'Command',  icon: 'zap',     label: 'Overview',  target: 'Command' },
     { id: 'Planning', icon: 'check',   label: 'Planning', target: 'Planning' },
@@ -30763,7 +30772,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // "More" surfaces every tab that isn't in the 5 primary lanes — Decisions,
   // Calendar, Run of Show, Event Details, and (when not in day-of mode) the
   // day-of operational surfaces.
-  const PRIMARY_LANE_TABS = new Set(['Command', 'Planning', 'Communication', ...PEOPLE_TABS, ...MONEY_TABS]);
+  // Host Activation v1 · Phase 3: for hosts, "The Day" + Guests are primary lanes
+  // (so they're not in "More"); Messages/Vendors/Seating reveal in More as needed.
+  const PRIMARY_LANE_TABS = hostNavActive(event)
+    ? new Set(['Command', 'Planning', 'Event Day Schedule', 'Guests', ...MONEY_TABS])
+    : new Set(['Command', 'Planning', 'Communication', ...PEOPLE_TABS, ...MONEY_TABS]);
   const bottomMoreActive = dayMode ? !bottomNavItems.some(it => it.id === tab) : !PRIMARY_LANE_TABS.has(tab);
 
   const hPad = isMobile ? '14px 14px 0' : bp === 'tablet' ? '18px 20px 0' : '24px 28px 0';
