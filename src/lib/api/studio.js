@@ -30,6 +30,16 @@ let _devMembers = [
 ];
 let _devInvites = []; // in-memory pending invitations for dev QA
 
+// Sprint 58E-B — events/clients `studio_id` is a Postgres `uuid` column. The
+// DEV_BYPASS studio id ('dev-studio') is NOT a uuid, so any cloud write under
+// auth-bypass returns 400 (22P02 "invalid input syntax for type uuid"). Cloud
+// data-sync must therefore only run for a REAL (uuid) studio; otherwise it stays
+// local-only. Real prod studios are uuids (AUTH_BYPASS=false), so they're unaffected.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isCloudStudioId(sid) {
+  return typeof sid === 'string' && UUID_RE.test(sid);
+}
+
 export async function currentStudioId() {
   if (DEV_BYPASS) return DEV_STUDIO.id;
   if (!isSupabaseConfigured() || !supabase) return null;
