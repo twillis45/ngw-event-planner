@@ -8092,6 +8092,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // drawer; tablet steps up to 640px; desktop to 720px (success: 560/600px).
   // No floating-phone-modal on desktop.
   const isSuccess = step === 'success';
+  // Sprint UX-5 — a self-host account gets a host-framed finish (no client/intake fork).
+  const hostMode = accountTypeOf(profile, clients) === 'host';
   let desktopWidth;
   if (isSuccess) {
     desktopWidth = isTablet ? 'min(560px, calc(100vw - 48px))' : 'min(600px, calc(100vw - 64px))';
@@ -9014,13 +9016,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 maxWidth: 460, margin: '0 auto',
               }}>
                 <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.muted, marginBottom: 8 }}>NOT DONE</div>
-                {[
-                  'Client contacted: No',
-                  'Messages sent: None',
-                  'Notifications sent: None',
-                  'Payment created: No',
-                  'Money moved: None',
-                ].map((line, i) => (
+                {/* Sprint UX-5 — a self-host doesn't have clients/payments to reassure
+                    about; keep the No-Guesswork honesty in one host-plain line. */}
+                {(hostMode
+                  ? ['Nothing was sent or charged']
+                  : ['Client contacted: No', 'Messages sent: None', 'Notifications sent: None', 'Payment created: No', 'Money moved: None']
+                ).map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
                     <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 12, fontWeight: 800 }}>·</span>
                     <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>{line}</span>
@@ -9094,6 +9095,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           )}
           {step === 'success' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Sprint UX-5 — a self-host gets a clean finish: open the event or add
+                  another. The planner capture-the-vision / send-to-client fork below is
+                  gated to planner accounts (a host has no client to send to). */}
+              {hostMode && (
+                <button
+                  data-testid="ce-open-event-host"
+                  style={{ ...primaryBtn, width: '100%', textAlign: 'center' }}
+                  onClick={() => { onOpenEvent(createdId); onClose(); }}>
+                  Open your event →
+                </button>
+              )}
+              {!hostMode && (<>
               {/* With-client / without-client fork (board 2026-06-12): a real
                   planner's workflow splits here. If the client is in the room,
                   you capture the vision together as a conversation. If you're
@@ -9166,6 +9179,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   Add client
                 </button>
               </div>
+              </>)}
               <button
                 data-testid="ce-add-another"
                 style={{
