@@ -36,6 +36,9 @@ import { summarizeCrew } from './lib/studioTeam';
 // Sprint 57F-A: Positive Attention — the read-only "You're Set On ✓" reader over
 // existing readiness (pi.attention flag, host-only, presentation-only).
 import { attentionActive, positiveAttention } from './lib/positiveAttention';
+// Sprint 57J: Decision Confidence — "do we have enough to lock this?" reader over
+// existing resolvers (pi.decisions flag, presentation-only judgment layer).
+import { decisionsActive, decisionConfidence } from './lib/decisionConfidence';
 // Sprint 60B: Event Identity — a reader over the meaning ALREADY captured at intake
 // (pi.identity flag, presentation-only; orients planning, no engine/store/workflow).
 import { identityOn, eventIdentity } from './lib/eventIdentity';
@@ -1810,6 +1813,54 @@ function EventIdentityBlock({ event, isMobile }) {
 // green checks that whisper beneath the one thing that still needs the host. The
 // reader already excludes adequacy/safety/estimate claims, so nothing false can
 // appear here. Renders nothing when items is empty (flag OFF / not host / nothing set).
+// ── Sprint 57J: Decision Confidence — "Where decisions stand" ─────────────────
+// Planner judgment, not a checklist: surface the decisions you can LOCK (ready),
+// the ones BLOCKED on a prereq, and the ones running OVERDUE. Guest count always
+// shows (the headline). Pure in-progress "gathering" rows are suppressed (they're
+// not a judgment moment). Renders in the action column ⇒ reaches mobile too.
+const DEC_STATE = {
+  ready_to_lock: { word: 'Ready to lock', color: 'green' },
+  blocked:       { word: 'Blocked',       color: 'steel' },
+  overdue:       { word: 'Overdue',       color: 'red'   },
+  gathering:     { word: 'Gathering',     color: 'steel' },
+  locked:        { word: 'Locked',        color: 'green' },
+  unknown:       { word: '',              color: 'steel' },
+};
+function DecisionsBlock({ items, isMobile }) {
+  if (!items || items.length === 0) return null;
+  // Judgment, not checklist: lead with lockable/blocked/overdue; always keep guest count.
+  const shown = items.filter((it) => it.key === 'guestCount' || ['ready_to_lock', 'blocked', 'overdue'].includes(it.state));
+  if (!shown.length) return null;
+  const colorOf = (s) => ({ green: P.green, red: P.red, steel: P.textSecondary }[(DEC_STATE[s] || {}).color] || P.textSecondary);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
+      <SectionHeader label="Decisions" />
+      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+        {shown.map((it, i) => {
+          const col = colorOf(it.state);
+          return (
+            <div key={it.key} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', fontFamily: FF,
+              borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
+                <div style={{ fontSize: 11, color: P.textSecondary }}>
+                  {it.confidence ? <span style={{ color: col, fontWeight: 600 }}>{it.confidence} </span> : null}{it.reason}
+                </div>
+              </div>
+              <span style={{ fontSize: 9.5, fontWeight: 600, color: col, letterSpacing: '0.08em', flexShrink: 0 }}>
+                {(DEC_STATE[it.state] || {}).word}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function YoureSetOn({ items, isMobile }) {
   if (!items || items.length === 0) return null;
   return (
@@ -2066,7 +2117,7 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
   );
 }
 
-function MobileCommandCenter({ event, data, crewSummary, setItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
@@ -2186,6 +2237,8 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, onTabChange, 
         {/* Sprint 60B: Event Identity — what this really is + the must-have */}
         <EventIdentityBlock event={event} isMobile />
         <YoureSetOn items={setItems} isMobile />
+        {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?" */}
+        <DecisionsBlock items={decisionItems} isMobile />
 
         {/* Next Up */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -2256,7 +2309,7 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, crewSummary, setItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
@@ -2381,6 +2434,8 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, onTabChange,
             {/* Sprint 60B: Event Identity — what this really is + the must-have */}
             <EventIdentityBlock event={event} />
             <YoureSetOn items={setItems} />
+            {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?" */}
+            <DecisionsBlock items={decisionItems} />
           </div>
 
           {/* RIGHT — operational rail */}
@@ -2464,7 +2519,13 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
     () => (attentionActive(event) ? positiveAttention(event, getEventReadiness(event)).items : []),
     [event],
   );
-  const sharedProps = { event, data, crewSummary, setItems, onTabChange, onBack, backLabel,
+  // Sprint 57J: Decision Confidence. Pure reader over the SAME getEventReadiness +
+  // existing resolvers; empty when pi.decisions is off ⇒ production-identical.
+  const decisionItems = useMemo(
+    () => (decisionsActive() ? decisionConfidence(event, getEventReadiness(event)) : []),
+    [event],
+  );
+  const sharedProps = { event, data, crewSummary, setItems, decisionItems, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />

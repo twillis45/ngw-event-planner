@@ -116,7 +116,9 @@ function daysToEvent(eventDate, asOf) {
 // an undetectable decision never hard-blocks (that would hide the action
 // forever). This is a filter over authored data, not a new system.
 
-function guestCountResolved(event) {
+// Exported (Sprint 57J) so the Decision Confidence reader can reuse the SAME
+// resolver — no parallel guest-count math. Behavior unchanged.
+export function guestCountResolved(event) {
   const n = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests || []).length || 0;
   if (n <= 0) return { resolved: false, pending: 0, reason: 'no-count' };
   const list = event.guests || [];
