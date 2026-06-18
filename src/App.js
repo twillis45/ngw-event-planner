@@ -26,7 +26,8 @@ import US_CITIES from './lib/usCities';
 import { isAnalyticsConfigured, identifyStudio, track, trackOnce, trackPageView, EVENTS } from './lib/analytics';
 import { presentationVoiceOn } from './lib/nextActionRenderer'; // Sprint 57A-B: pi.voice flag gates the audience capture (presentation-only)
 // Sprint 58C: Decision Memory v1 — persist WHY a planning decision was made (pi.memory).
-import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisionRecord, getDecisions, DECISION_TYPE_LABEL, latestRationaleForSubject } from './lib/decisionMemory';
+import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisionRecord, getDecisions, DECISION_TYPE_LABEL, latestRationaleForSubject,
+  outcomeFor, isEventComplete, getEventOutcomes, setOverallOutcome, setVendorOutcome, vendorOutcome, OUTCOME_SIGNALS, OUTCOME_LABEL, outcomeTone } from './lib/decisionMemory';
 import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
@@ -29702,7 +29703,9 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         <div style={{ fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.55, maxWidth: 560 }}>
           Day-of view reads these notes on event day. Vendors check this for load-in instructions. Keep them short and explicit.
         </div>
-        {/* Sprint 58C — Decision Memory read surface */}
+        {/* Sprint 58E — Outcome Capture (1-tap; completes the loop) */}
+        <OutcomeCapture event={event} setEvent={setEvent} />
+        {/* Sprint 58C — Decision Memory read surface (now shows derived/captured outcomes) */}
         <DecisionHistory event={event} />
       </div>
       </div>
@@ -30203,9 +30206,74 @@ function DecisionHistory({ event }) {
               <span style={{ fontWeight: 700, color: C.text, opacity: 0.8 }}>Because</span> {d.rationale}
               {d.createdBy ? <span style={{ opacity: 0.7 }}> — {d.createdBy}</span> : null}
             </div>
+            {/* Sprint 58E — Outcome: completes the triple. Captured (vendor/overall)
+                or derived (budget variance / timeline slip), shown when known. */}
+            {(() => {
+              const o = outcomeFor(event, d);
+              if (!o) return null;
+              const col = o.tone === 'good' ? C.success : o.tone === 'bad' ? C.danger : C.muted;
+              return (
+                <div style={{ fontSize: 11.5, color: col, marginTop: 3 }}>
+                  <span style={{ fontWeight: 700 }}>→ Outcome:</span> {o.label}
+                  <span style={{ color: C.muted, opacity: 0.7 }}> ({o.source})</span>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Sprint 58E — Outcome Capture. The few signals that can't be derived: overall
+// event + per-confirmed-vendor execution. One tap each, never a survey. Shown when
+// pi.memory is on (best recorded after the event — hint says so). Writes to
+// event.outcomes via the existing save path. Budget/timeline outcomes are NOT here
+// (they derive automatically and show in Decision History).
+function OutcomeChips({ options, value, onPick, C }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {options.map(opt => {
+        const on = value === opt;
+        const tone = outcomeTone(opt);
+        const col = tone === 'good' ? C.success : tone === 'bad' ? C.danger : C.accent;
+        return (
+          <button key={opt} onClick={() => onPick(on ? null : opt)} style={{
+            fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+            border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent',
+            color: on ? col : C.muted,
+          }}>{OUTCOME_LABEL[opt] || opt}</button>
+        );
+      })}
+    </div>
+  );
+}
+function OutcomeCapture({ event, setEvent }) {
+  const C = useT();
+  if (!decisionMemoryOn()) return null;
+  const confirmedVendors = (event.vendors || []).filter(v => v.status === 'Confirmed' || v.status === 'Booked');
+  const o = getEventOutcomes(event);
+  const complete = isEventComplete(event);
+  return (
+    <div style={{ padding: '20px 0 8px', borderTop: `1px solid ${C.border}`, marginTop: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>How did it go?</div>
+        {!complete && <div style={{ fontSize: 10, color: C.muted, opacity: 0.7 }}>· best recorded after the event</div>}
+      </div>
+      <div style={{ fontSize: 11, color: C.muted, margin: '4px 0 12px' }}>One tap each — these turn your reasons into intelligence.</div>
+      <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Overall</div>
+        <OutcomeChips options={OUTCOME_SIGNALS.overall} value={o.overall} C={C}
+          onPick={(v) => setEvent(e => setOverallOutcome(e, v, new Date().toISOString()))} />
+      </div>
+      {confirmedVendors.map(v => (
+        <div key={v.id} style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{v.name || 'Vendor'}{v.category ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.category}</span> : null}</div>
+          <OutcomeChips options={OUTCOME_SIGNALS.vendor_selection} value={vendorOutcome(event, v.id)} C={C}
+            onPick={(val) => setEvent(e => setVendorOutcome(e, v.id, val, new Date().toISOString()))} />
+        </div>
+      ))}
     </div>
   );
 }
