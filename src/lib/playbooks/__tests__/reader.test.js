@@ -527,3 +527,22 @@ describe('60F — menu choice drives the spread (whenChoice gate)', () => {
     expect(ids(null)).toContain('p_chicken');
   });
 });
+
+describe('60H — checked-off items feed spent (food ↔ budget)', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('nothing bought → spent 0', () => {
+    const p = playbookFoodPlan(base);
+    expect(p.spentLow).toBe(0);
+    expect(p.spentHigh).toBe(0);
+    expect(p.boughtCount).toBe(0);
+    expect(p.itemCount).toBeGreaterThan(0);
+  });
+  test('checking off an item raises spent (and only that item counts)', () => {
+    const p0 = playbookFoodPlan(base);
+    const firstId = p0.list[0].id;
+    const p1 = playbookFoodPlan({ ...base, foodGot: { [firstId]: true } });
+    expect(p1.boughtCount).toBe(1);
+    expect(p1.spentHigh).toBeGreaterThan(0);
+    expect(p1.spentHigh).toBeLessThanOrEqual(p1.foodHigh);
+  });
+});

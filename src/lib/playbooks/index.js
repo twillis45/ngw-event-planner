@@ -636,6 +636,11 @@ export function playbookFoodPlan(event, opts = {}) {
     });
   const sum = (k) => list.reduce((s, i) => s + i[k], 0);
   const di = dietaryResolved(event);
+  // 60H — what the host has actually bought (checked off on the shopping list). This
+  // is what connects the food plan to the budget: spent updates as items are ticked.
+  const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
+  const gotSum = (k) => list.filter((i) => got[i.id]).reduce((s, i) => s + i[k], 0);
+  const boughtCount = list.filter((i) => got[i.id]).length;
 
   return {
     type: playbook.type,
@@ -646,6 +651,10 @@ export function playbookFoodPlan(event, opts = {}) {
     groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
+    spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
+    spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
+    boughtCount,
+    itemCount: list.length,
     dietaryResolved: di.resolved,
     priceFactor: pf,
     priceContext: pf !== 1 ? (opts.priceContext || null) : null,

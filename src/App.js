@@ -8046,6 +8046,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
         </div>
+        {/* 60H — bought-so-far updates live as the host checks off the shopping list,
+            and feeds the budget's Food line. */}
+        {plan.boughtCount > 0 && (
+          <div style={{ fontSize: 13.5, marginTop: 6 }}>
+            <span style={{ color: C.muted }}>Bought so far: </span>
+            <span style={{ color: C.success, fontWeight: 700 }}>{money(plan.spentLow, plan.spentHigh)}</span>
+            <span style={{ color: C.muted }}> · {plan.boughtCount} of {plan.itemCount} items</span>
+          </div>
+        )}
         {!plan.guestCountResolved && (
           <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
             Set your guest count to size this exactly →
