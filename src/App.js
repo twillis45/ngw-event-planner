@@ -8285,9 +8285,17 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     if (!focusId) return undefined;
     setShowFullSpread(true);
     setHighlightId(focusId);
-    const t1 = setTimeout(() => { const el = document.getElementById(`foodrow-${focusId}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 160);
-    const t2 = setTimeout(() => { setHighlightId(null); onFocusConsumed(); }, 2800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    // Poll for the row — the spread has to expand + render first, so a single 160ms
+    // timeout can miss it. Retry every 120ms up to ~1.4s, then stop.
+    let tries = 0;
+    const iv = setInterval(() => {
+      tries += 1;
+      const el = document.getElementById(`foodrow-${focusId}`);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(iv); }
+      else if (tries > 12) clearInterval(iv);
+    }, 120);
+    const t2 = setTimeout(() => { setHighlightId(null); onFocusConsumed(); }, 3400);
+    return () => { clearInterval(iv); clearTimeout(t2); };
   }, [focusId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
@@ -18942,14 +18950,16 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             <HostMeaningPrompt ev={ev} onPatchEvent={onPatchEvent} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
           </div>
         )}
+        {/* #17 — the heart of the event. NOT receded: the must-have is the why behind
+            everything, a persistent bright anchor the whole plan serves. */}
         {id && (id.reallyIs || id.mustHaveMoment) && (
-          <div className="hp-recede" style={card}>
-            <div style={eyebrow}>What matters most</div>
-            {id.reallyIs && <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, lineHeight: 1.45 }}>{id.reallyIs}</div>}
+          <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
+            <div style={{ ...eyebrow, color: C.accent }}>The heart of {ev.name || 'your event'}</div>
+            {id.reallyIs && <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{id.reallyIs}</div>}
             {id.mustHaveMoment && (
               <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 3 }}>{id.mustHaveMoment}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
               </div>
             )}
           </div>

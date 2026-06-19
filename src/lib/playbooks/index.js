@@ -212,9 +212,14 @@ export function playbookTasks(event, asOf) {
   const guests = guestCountOf(event, playbook);
   const gc = guestCountResolved(event);
   const di = dietaryResolved(event);
+  // Already bought (checked off) or swapped out → no longer a task, so clearing the
+  // CTA (buying the item) advances the next-step to the next thing.
+  const got  = (event.foodGot  && typeof event.foodGot  === 'object') ? event.foodGot  : {};
+  const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
   const tasks = [];
 
   for (const p of playbook.purchases) {
+    if (got[p.id] || skip[p.id]) continue; // done / swapped out → advance past it
     const offset = buyOffsetDays(p.buyAt);
     if (offset === null) continue;
     const dueInDays = dte + offset;

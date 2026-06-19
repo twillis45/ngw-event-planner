@@ -1502,7 +1502,9 @@ function _selectEventNextActionInner(event) {
       title: opTask.title,
       consequence: opTask.consequence,
       primaryCta: opTask.primaryCta,
-      primaryRoute: { tab: 'Planning Tasks' },
+      // #12: use the task's OWN route — it carries foodFocus (the line id) so
+      // "Take me to it" lands on the exact item, not just the Planning tab.
+      primaryRoute: opTask.primaryRoute || { tab: 'Planning' },
       contextLine: daysSub,
     };
   }

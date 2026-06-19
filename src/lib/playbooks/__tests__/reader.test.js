@@ -34,6 +34,13 @@ describe('quantity-resolved operational candidate (the success condition)', () =
     expect(t.primaryRoute.tab).toBe('Planning');
     expect(t.primaryRoute.foodFocus).toBeTruthy();
   });
+  test('buying it (foodGot) advances past it — clearing the CTA changes the next step', () => {
+    const ev = DP({ date: '2026-06-20' });
+    const before = topPlaybookTask(ev, '2026-06-20');
+    const iceId = before.primaryRoute.foodFocus;
+    const after = topPlaybookTask({ ...ev, foodGot: { [iceId]: true } }, '2026-06-20');
+    expect(after === null || after.primaryRoute.foodFocus !== iceId).toBe(true);
+  });
 
   test('quantity scales with guest count (8 guests → 12 lbs ice)', () => {
     const t = topPlaybookTask(DP({ date: '2026-06-20', guestCount: 8 }), '2026-06-20');
