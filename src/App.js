@@ -1425,7 +1425,7 @@ const PHASE_FOCUS = {
   '2 Months Out':  'Final Details',
   '1 Month Out':   'Confirmations',
   '3 Weeks Out':   'Lock Plans',
-  '2 Weeks Out':   'Final Prep',
+  '2 Weeks Out':   'Lock It In',
   '10 Days Out':   'Confirm & Shop',
   'Week Of':       'Final Prep',
   '5 Days Out':    'Shop & Prep',
@@ -2490,6 +2490,7 @@ const playbookTimelineEntries = (eventType) => {
     .filter(m => m && m.id !== 'event' && m.category !== 'event' && m.name)
     .map(m => ({
       week:  offsetDaysToPhase(m.offsetDays),
+      offsetDays: typeof m.offsetDays === 'number' ? m.offsetDays : null,  // 60G: keep the real timing
       task:  m.name,
       owner: m.owner === 'host' ? 'Host' : (m.owner || ''),
       notes: m.risk?.ifDelayed ? `If delayed: ${m.risk.ifDelayed}` : '',
@@ -24679,6 +24680,9 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
     }
     return defaultPhase;
   });
+  // 60G — elapsed phases collapse under a "N earlier steps" line (host choice b),
+  // so an imminent event doesn't show a wall of past-dated, undone phases.
+  const [showPastPhases, setShowPastPhases] = useState(false);
 
   // Tasks for currently selected phase, optionally filtered by search.
   // Sprint 57f.1: '__compressed__' is a virtual phase showing do_now +
@@ -24735,12 +24739,37 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
             const knownPhases = phaseOrder.filter(p => allPhases.includes(p));
             const customPhases = allPhases.filter(p => !phaseOrder.includes(p));
             const steppablePhases = knownPhases; // custom phases shown separately
+            // 60G — split elapsed vs live by the phase's REAL date and collapse the
+            // elapsed ones, so an imminent event shows what's left, not a past wall.
+            const _today0 = getToday(); _today0.setHours(0, 0, 0, 0);
+            const phaseIsPast = (phase) => {
+              if (!eventDate || !(phase in PHASE_OFFSET)) return false;
+              const d = new Date(eventDate + 'T00:00:00');
+              d.setDate(d.getDate() + PHASE_OFFSET[phase]);
+              return d < _today0;
+            };
+            const pastPhases = steppablePhases.filter(phaseIsPast);
+            let livePhases = steppablePhases.filter(p => !phaseIsPast(p));
+            if (!livePhases.length) livePhases = steppablePhases.slice(-1); // never hide everything
+            const shownPhases = showPastPhases ? steppablePhases : livePhases;
             return (
               <div style={{ marginBottom: 20 }}>
+                {/* 60G — collapsed elapsed-steps line (honest, expandable) */}
+                {pastPhases.length > 0 && (
+                  <button onClick={() => setShowPastPhases(v => !v)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 11.5, fontWeight: 600,
+                  }}>
+                    <span style={{ fontSize: 10 }}>{showPastPhases ? '▾' : '▸'}</span>
+                    {showPastPhases
+                      ? `Hide ${pastPhases.length} earlier step${pastPhases.length === 1 ? '' : 's'}`
+                      : `${pastPhases.length} earlier step${pastPhases.length === 1 ? '' : 's'} — the window passed`}
+                  </button>
+                )}
                 {/* Stepper row — scroll horizontally */}
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 'max-content', padding: '4px 4px 0', position: 'relative' }}>
-                    {steppablePhases.map((phase, idx) => {
+                    {shownPhases.map((phase, idx) => {
                       const tasks  = timeline.filter(t => t.week === phase);
                       const pDone  = tasks.filter(t => t.done).length;
                       const pOver  = tasks.some(isOverdue);
@@ -24750,7 +24779,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                       const pDate  = phaseDate(phase, eventDate);
                       const abbr      = phase.replace(' Months Out', 'mo').replace(' Month Out', 'mo').replace(' Weeks Out', 'wk').replace('Week Of', 'WK');
                       const focusLbl  = PHASE_FOCUS[phase] || '';
-                      const isLast    = idx === steppablePhases.length - 1;
+                      const isLast    = idx === shownPhases.length - 1;
                       return (
                         <div key={phase} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
                           <button onClick={() => setSelectedPhase(phase)} title={focusLbl ? `${phase} — ${focusLbl}` : phase} style={{
