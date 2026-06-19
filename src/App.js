@@ -8048,6 +8048,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
         </div>
+        {/* Honesty: if the estimate is scaled to the local region, say so (regional, not per-store). */}
+        {plan.priceContext && (
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+            Adjusted to <span style={{ color: C.text }}>{plan.priceContext}</span>.
+          </div>
+        )}
         {/* 60H — bought-so-far updates live as the host checks off the shopping list,
             and feeds the budget's Food line. */}
         {plan.boughtCount > 0 && (
