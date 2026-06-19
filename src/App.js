@@ -21474,9 +21474,110 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
   );
 }
 
+// ─── HostSpendingPlan ─────────────────────────────────────────────────────────
+// A self-host (recordKind:'event') sees a SPENDING PLAN — "what will this cost
+// me" — not the planner's AR/fee/vendor cockpit (DL-005 / DL-009 / RA-4 / PP-3).
+// The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
+// tracks the shopping checkoffs; the other costs are build-up (what a host adds),
+// not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
+function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav }) {
+  const C = useT();
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const money = (lo, hi) => {
+    const f = (n) => '$' + Math.round(Number(n) || 0).toLocaleString();
+    return (hi == null || hi === lo) ? f(lo) : `${f(lo)}–${f(hi)}`;
+  };
+  const rows = budget || [];
+  // Food is owned by the food plan — exclude any food/drink budget rows so the
+  // total isn't double-counted.
+  // Match food/drink categories so they don't double-count the food plan. No
+  // trailing \b on the stems — "Groceries"/"Drinks"/"Catering" must still match.
+  const isFoodRow = (r) => /food|drink|cater|grocer|beverage|\bbar\b/i.test(r.category || '');
+  const otherRows = rows.filter((r) => !isFoodRow(r));
+  const otherBudgeted = otherRows.reduce((s, r) => s + (Number(r.budgeted) || 0), 0);
+  const otherActual = otherRows.reduce((s, r) => s + (Number(r.actual) || 0), 0);
+
+  const foodLow = foodPlan ? foodPlan.foodLow : 0;
+  const foodHigh = foodPlan ? foodPlan.foodHigh : 0;
+  const foodSpent = foodPlan ? (foodPlan.spentHigh || 0) : 0;
+
+  const totalLow = foodLow + otherBudgeted;
+  const totalHigh = foodHigh + otherBudgeted;
+  const spentSoFar = foodSpent + otherActual;
+
+  const patchRow = (id, key, val) =>
+    setBudget((b) => (b || []).map((r) => (r.id === id ? { ...r, [key]: key === 'category' ? val : (Number(val) || 0) } : r)));
+  const addRow = () =>
+    setBudget((b) => [...(b || []), { id: uid(), category: '', budgeted: 0, actual: 0, notes: '' }]);
+  const removeRow = (id) => setBudget((b) => (b || []).filter((r) => r.id !== id));
+
+  const card = { background: C.surface || C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 16 : 20 };
+  const label = { fontSize: 12, fontWeight: 700, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
+  const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const ghostBtn = { background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 };
+
+  return (
+    <div style={{ display: 'grid', gap: 16, maxWidth: 760, margin: '0 auto' }}>
+      {/* HERO — the honest total. ONE hero per screen (SM-2). */}
+      <div style={{ ...card, padding: isMobile ? 18 : 24 }}>
+        <div style={label}>Your spending plan</div>
+        <div style={{ fontSize: isMobile ? 28 : 34, fontWeight: 800, color: C.text, marginTop: 6, lineHeight: 1.1 }}>
+          About {money(totalLow, totalHigh)}
+        </div>
+        <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>
+          for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
+          {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>{money(spentSoFar)}</span> spent so far</> : null}
+        </div>
+      </div>
+
+      {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={label}>Food &amp; drink</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(foodLow, foodHigh)}</div>
+        </div>
+        <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+          {foodPlan
+            ? (<>Estimated from your menu for {foodPlan.guests} guests
+                {foodPlan.priceContext ? <> · <span style={{ color: C.text, fontWeight: 600 }}>{foodPlan.priceContext}</span></> : null}.
+                {foodSpent > 0
+                  ? <> You've bought <span style={{ color: C.success, fontWeight: 700 }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
+                  : <> Nothing checked off yet.</>}</>)
+            : (<>Set your menu in the food plan to estimate this.</>)}
+        </div>
+        <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
+          Open the food plan →
+        </button>
+      </div>
+
+      {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={label}>Other costs</div>
+          {otherBudgeted > 0 ? <div style={{ fontSize: 13.5, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}
+        </div>
+        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+          {otherRows.length === 0
+            ? <div style={{ fontSize: 13, color: C.muted }}>Decor, rentals, cake, extras — add anything you'll spend on beyond food.</div>
+            : otherRows.map((r) => (
+              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 90px 32px' : '1fr 120px 120px 32px', gap: 8, alignItems: 'center' }}>
+                <input value={r.category || ''} onChange={(e) => patchRow(r.id, 'category', e.target.value)} placeholder="e.g. Decorations" style={inp} />
+                <input value={r.budgeted || ''} onChange={(e) => patchRow(r.id, 'budgeted', e.target.value)} placeholder="Planned $" inputMode="numeric" style={inp} />
+                {!isMobile && <input value={r.actual || ''} onChange={(e) => patchRow(r.id, 'actual', e.target.value)} placeholder="Spent $" inputMode="numeric" style={inp} />}
+                <button type="button" onClick={() => removeRow(r.id)} aria-label="Remove cost" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+        </div>
+        <button type="button" onClick={addRow} style={{ ...ghostBtn, marginTop: 12 }}>+ Add a cost</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision }) {
+function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision, event, onNav }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -21783,6 +21884,21 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     committedPct > 90    ? { text: 'ATTENTION',     color: C.muted,    headline: 'Almost fully booked — little room left' } :
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
                            { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
+
+  // ─── Persona gate (RA-4 / DL-009) ── a self-host (recordKind:'event') gets a
+  // spending plan, never the planner's fee/Stripe/vendor/AR cockpit below.
+  const isHostBudget = (intakeFamilyConfig(eventType) || {}).recordKind === 'event';
+  if (isHostBudget) {
+    return (
+      <HostSpendingPlan
+        foodPlan={event ? playbookFoodPlan(event) : null}
+        budget={budget}
+        setBudget={setBudget}
+        plannedGuests={plannedGuests}
+        onNav={onNav}
+      />
+    );
+  }
 
   return (
     <div>
@@ -32011,7 +32127,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
