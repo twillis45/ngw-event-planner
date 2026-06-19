@@ -1254,7 +1254,11 @@ function _selectEventNextActionInner(event) {
   // this stops firing. Past events are exempt.
   const hasGuestSignal = (event.guests || []).length > 0
     || Number(event.guestCount) > 0 || Number(event.guestEstimate) > 0;
-  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
+  // A host sets a single "What's your budget?" number (event.totalBudget); a planner
+  // builds category rows. Either counts as the budget being set — so the spine
+  // advances off "Set your budget" the moment they enter one.
+  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0
+    || Number(event.totalBudget) > 0;
   if (hasGuestSignal && !budgetIsSet && (days === null || days >= 0)) {
     return {
       level: 'attention',

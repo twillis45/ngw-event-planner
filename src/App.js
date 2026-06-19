@@ -18402,7 +18402,8 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const scheduleRows = (ev.ros || ev.timeline || []);
   // Budget readiness is about MONEY actually set, not seeded $0 template rows.
   // (Empty category rows were reading as "In progress" with $0 planned.)
-  const budgetSet = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
+  const budgetSet = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0
+    || Number(ev.totalBudget) > 0;
   const prog = [
     { label: 'Guests',   tab: 'Guests', state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
     { label: 'Budget',   tab: 'Budget', state: budgetSet ? 'progress' : 'todo' },
@@ -21909,13 +21910,17 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
               onBlur={() => onSetTotalBudget && onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0)))}
               style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 20, fontWeight: 800, fontFamily: 'inherit' }} />
           </span>
-          {Number(budgetDraft) > 0 && (
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: (totalLow + totalHigh) / 2 > Number(budgetDraft) ? C.danger : C.success }}>
-              {(totalLow + totalHigh) / 2 > Number(budgetDraft)
-                ? `Estimate runs ${money(totalLow, totalHigh)} — over`
-                : `Estimate ${money(totalLow, totalHigh)} — on track`}
-            </span>
-          )}
+          {Number(budgetDraft) > 0 && (() => {
+            // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
+            // budget lands inside the estimate; COVERED if it clears the premium (high) end.
+            const bd = Number(budgetDraft);
+            const state = bd < totalLow ? 'over' : bd < totalHigh ? 'range' : 'covered';
+            const color = state === 'over' ? C.danger : state === 'covered' ? C.success : C.text;
+            const msg = state === 'over' ? `Estimate ${money(totalLow, totalHigh)} — over even the value plan`
+              : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — covered`
+              : `Estimate ${money(totalLow, totalHigh)} — in range; shop the value end to stay under`;
+            return <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{msg}</span>;
+          })()}
         </div>
       </div>
 
