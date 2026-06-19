@@ -582,8 +582,14 @@ export function playbookBudgetCategories(eventType, guestCount) {
 // gate. Pure reader over authored data — the "make an intelligent food choice"
 // surface (FoodPlan) renders this. The host's picks live on event.foodChoices.
 const FOOD_GROUP = { food: 'Food', beverage: 'Drinks' };
-export function playbookFoodPlan(event) {
+// opts.priceFactor (default 1) scales the synthesized national unit-cost ranges to
+// the event's local area when a real, current regional factor is supplied by the
+// backend (BLS Average Price). opts.priceContext carries { region, month, source }
+// so the UI can label it honestly ("adjusted for {region}") — never claim "live"
+// without a real factor. With no factor it is a 1.0 no-op (today's behavior).
+export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
+  const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   const guests = guestCountOf(event, playbook);
@@ -610,7 +616,7 @@ export function playbookFoodPlan(event) {
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
-        low: Math.round(units * uLow), high: Math.round(units * uHigh),
+        low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
       };
     });
@@ -627,5 +633,39 @@ export function playbookFoodPlan(event) {
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
     dietaryResolved: di.resolved,
+    priceFactor: pf,
+    priceContext: pf !== 1 ? (opts.priceContext || null) : null,
+  };
+}
+
+// playbookSetupPreview(type) — the richer "What I'll set up" bridge for the create
+// panel. Surfaces the playbook's REAL, named intelligence (its actual milestones,
+// food/decision counts, whether it carries a meaning/program element) so the host
+// sees the product gets THIS specific day — e.g. for a Juneteenth Cookout: "Plan
+// the meaning/program element", "Book Black-owned caterer/baker", "Build the music
+// (Black artists across eras)". Honest by construction — it reflects the authored
+// playbook, invents nothing. Returns null for types without a playbook.
+export function playbookSetupPreview(type) {
+  const pb = getPlaybook(type);
+  if (!pb) return null;
+  const ms = (Array.isArray(pb.milestones) ? pb.milestones : []).filter((m) => m.category !== 'event');
+  const purchases = Array.isArray(pb.purchases) ? pb.purchases : [];
+  const foodCount = purchases.filter((p) => p.category === 'food' || p.category === 'beverage').length;
+  const decisions = Array.isArray(pb.decisions) ? pb.decisions : [];
+  const steps = ms.map((m) => ({
+    name: m.name,
+    owner: m.owner || 'host',
+    category: m.category || 'planning',
+    daysBefore: typeof m.offsetDays === 'number' ? m.offsetDays : null,
+    critical: !!(m.risk && m.risk.severity === 'high'),
+  }));
+  const hasMeaning = ms.some((m) => /meaning|program|reflect|honor|tribute|toast|reading/i.test(m.name || ''));
+  return {
+    type: pb.type,
+    steps,                       // the real, named plan — the event-specific intelligence
+    stepCount: steps.length,
+    foodCount,                   // sized food + drink items
+    decisionCount: decisions.length,
+    hasMeaning,                  // carries a program/reflection element
   };
 }
