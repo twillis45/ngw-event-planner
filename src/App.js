@@ -18808,7 +18808,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             onNavigate={(route) => {
               if (!route) return;
               const { eventId, ...nav } = route;
-              if (eventId) onSelectEvent(eventId, nav);
+              // A cross-event action should carry its eventId; if one slips through
+              // without it (e.g. the "Set budget" next-step → {tab:'Budget'}), fall
+              // back to the only/first live event so the CTA navigates instead of
+              // dying silently.
+              const targetId = eventId || ((events || []).find(e => !e.archived) || {}).id;
+              if (targetId) onSelectEvent(targetId, nav);
             }}
           />
         );
