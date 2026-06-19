@@ -8060,7 +8060,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
             {foodPP.hasRegion
               ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
-              : <button type="button" onClick={() => onNav('Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{foodPP.priceNote} →</button>}
+              : <button type="button" onClick={() => onNav('Event Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.accent, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{foodPP.priceNote} →</button>}
           </div>
         )}
         {/* 60H — bought-so-far updates live as the host checks off the shopping list,
@@ -8528,6 +8528,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     const id = setTimeout(() => {
       const el = document.getElementById(target);
       if (!el || document.activeElement === el) return;
+      // Never yank focus mid-edit: typing the first digit flips target to ce-loc,
+      // which used to kick the host out of the guest-count field after one keystroke.
+      // If they're still in ce-guests, leave them there — they'll Tab on when ready.
+      const active = document.activeElement;
+      if (active && active.id === 'ce-guests') return;
       try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* older browsers */ }
       el.focus({ preventScroll: true });
     }, 280);
@@ -21664,7 +21669,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>
             {hasRegion
               ? <span style={{ color: C.text, fontWeight: 600 }}>{priceNote}.</span>
-              : <button type="button" onClick={() => onNav && onNav('Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{priceNote} →</button>}
+              : <button type="button" onClick={() => onNav && onNav('Event Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.accent, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{priceNote} →</button>}
           </div>
         )}
         <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
