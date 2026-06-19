@@ -12861,6 +12861,37 @@ const METRO_MARKETS = [
   { id: 'other', label: 'Other / International',     region: 'Other',        tier: 4, factor: 1.00 },
 ];
 
+// Representative city + 2-letter state per metro, so the host's metro pick feeds
+// the regional APIs: BLS food pricing (needs a state) + weather geocoding (needs a
+// clean "City, ST"). rural/other have no fixed point → no geo.
+const METRO_GEO = {
+  nyc: { city: 'New York', state: 'NY' },     sf:  { city: 'San Francisco', state: 'CA' },
+  la:  { city: 'Los Angeles', state: 'CA' },  bos: { city: 'Boston', state: 'MA' },
+  dc:  { city: 'Washington', state: 'DC' },   sea: { city: 'Seattle', state: 'WA' },
+  chi: { city: 'Chicago', state: 'IL' },      mia: { city: 'Miami', state: 'FL' },
+  sd:  { city: 'San Diego', state: 'CA' },    den: { city: 'Denver', state: 'CO' },
+  aus: { city: 'Austin', state: 'TX' },       dal: { city: 'Dallas', state: 'TX' },
+  atl: { city: 'Atlanta', state: 'GA' },      phi: { city: 'Philadelphia', state: 'PA' },
+  por: { city: 'Portland', state: 'OR' },     nas: { city: 'Nashville', state: 'TN' },
+  min: { city: 'Minneapolis', state: 'MN' },  phx: { city: 'Phoenix', state: 'AZ' },
+  hou: { city: 'Houston', state: 'TX' },      tam: { city: 'Tampa', state: 'FL' },
+  cha: { city: 'Charlotte', state: 'NC' },    slc: { city: 'Salt Lake City', state: 'UT' },
+  col: { city: 'Columbus', state: 'OH' },     pit: { city: 'Pittsburgh', state: 'PA' },
+  ind: { city: 'Indianapolis', state: 'IN' }, kc:  { city: 'Kansas City', state: 'MO' },
+  stl: { city: 'St. Louis', state: 'MO' },
+};
+
+// Best "City, ST" string for an event, for weather geocoding: structured city/state
+// first, then the picked metro, then free-text venue. Empty when truly unknown.
+function eventGeoQuery(event) {
+  if (!event) return '';
+  const st = String(event.state || '').trim().toUpperCase();
+  if (event.city && US_STATES.includes(st)) return `${event.city}, ${st}, US`;
+  const g = event.market && METRO_GEO[event.market];
+  if (g) return `${g.city}, ${g.state}, US`;
+  return String(event.venue || event.city || '').trim();
+}
+
 const METRO_TIER_LABEL = {
   1: { icon: '💎', label: 'Premium Market',       color: '#a78bfa' },
   2: { icon: '📈', label: 'Above-Average Market', color: '#60a5fa' },
@@ -13462,6 +13493,8 @@ function resolveEventState(event, profile) {
   if (!event) return null;
   const direct = String(event.state || '').trim().toUpperCase();
   if (US_STATES.includes(direct)) return direct;
+  // The metro the host picked carries a representative state.
+  if (event.market && METRO_GEO[event.market]) return METRO_GEO[event.market].state;
   const hay = [event.city, event.venue, event.location, event.address, event.market,
     profile && profile.city, profile && profile.market]
     .filter(Boolean).join(' , ');
@@ -28225,7 +28258,9 @@ function WeatherAlert({ event, onNavTo }) {
     setLoading(true);
     (async () => {
       try {
-        const coords = await geocodeVenue(event.venue);
+        // Geocode a clean "City, ST, US" (structured city/state → picked metro →
+        // venue) so OpenWeather resolves it; free-text venues alone often don't.
+        const coords = await geocodeVenue(eventGeoQuery(event) || event.venue);
         if (!coords || cancelled) return;
         const risk = await getEventWeatherRisk(coords.lat, coords.lon, event.date);
         if (!cancelled) setWx(risk);
