@@ -99,29 +99,42 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
     const tempMin = Math.round(eventDay.temp?.min || 0);
     const tempMax = Math.round(eventDay.temp?.max || 0);
 
-    // Risk classification
+    // Risk classification. Heat is a first-class risk now (board #2): a dry 95°F
+    // day used to read as "clear" and drive nothing, even though it dictates ice,
+    // shade, and water for an outdoor event.
     const isThunder = conditions.toLowerCase().includes('thunderstorm');
     const isHeavyRain = conditions.toLowerCase().includes('rain') && pop >= 70;
     const isRain = conditions.toLowerCase().includes('rain') && pop >= 40;
     const isSnow = conditions.toLowerCase().includes('snow');
-    const isExtreme = tempMax >= 100 || tempMin <= 20;
+    const isHotExtreme = tempMax >= 100;
+    const isColdExtreme = tempMin <= 20;
+    const isHot = tempMax >= 95;   // plan ice/shade/water now
+    const isWarm = tempMax >= 90;  // worth planning extra
 
     let risk = 'clear';
     let summary = `Clear forecast — ${tempMin}°–${tempMax}°F, ${pop}% precipitation`;
 
-    if (isThunder || isSnow || isExtreme) {
+    if (isThunder || isSnow || isHotExtreme || isColdExtreme) {
       risk = 'high';
       summary = isThunder
         ? `Thunderstorms forecast (${pop}% chance) — have an indoor backup ready`
         : isSnow
         ? `Snow forecast — confirm vendor arrival times and guest logistics`
-        : `Extreme temperature forecast (${tempMax >= 100 ? tempMax + '°F high' : tempMin + '°F low'}) — plan accordingly`;
+        : isHotExtreme
+        ? `Extreme heat (${tempMax}°F) — ice, shade, and water are not optional`
+        : `Extreme cold (${tempMin}°F) — plan heat and guest comfort`;
     } else if (isHeavyRain) {
       risk = 'high';
       summary = `Heavy rain likely (${pop}%) — rain plan required`;
+    } else if (isHot) {
+      risk = 'high';
+      summary = `Hot day forecast (${tempMax}°F) — plan ice, shade, and water`;
     } else if (isRain) {
       risk = 'medium';
       summary = `Rain possible (${pop}%) — monitor and prepare a rain plan`;
+    } else if (isWarm) {
+      risk = 'medium';
+      summary = `Warm day (${tempMax}°F) — plan extra ice and some shade`;
     } else if (pop >= 30) {
       risk = 'low';
       summary = `Light precipitation possible (${pop}%) — worth monitoring`;
@@ -131,6 +144,7 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
       date: eventDateIso,
       daysOut,
       risk,
+      kind: (isHot || isWarm || isHotExtreme) && !isHeavyRain && !isThunder ? 'heat' : (isHeavyRain || isRain || isThunder ? 'rain' : (isColdExtreme ? 'cold' : (isSnow ? 'snow' : 'mixed'))),
       summary,
       temp: { min: tempMin, max: tempMax, unit: '°F' },
       precipitation: pop,
@@ -141,4 +155,48 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
   } catch {
     return null;
   }
+}
+
+/**
+ * weatherLogistics — board #2: turn a forecast into CONCRETE day-of adjustments,
+ * not just an alert banner. Heat bumps the ice math + promotes shade/water; rain
+ * promotes the tent/canopy. Grounded in standard outdoor-event rules of thumb
+ * (cookout ice ≈ 1.5 lb/guest baseline; ~2–2.5 lb/guest on a hot day for drink
+ * coolers + cold-holding). Pure + synchronous so it's testable and the UI can
+ * call it the moment a forecast lands. Returns [] when nothing is actionable.
+ *
+ * @param {object} wx     the getEventWeatherRisk result
+ * @param {object} opts   { guests }
+ * @returns {Array<{key,icon,text}>}
+ */
+export function weatherLogistics(wx, opts = {}) {
+  if (!wx) return [];
+  const guests = Math.max(0, Number(opts.guests) || 0);
+  const tmax = wx.temp && Number.isFinite(wx.temp.max) ? wx.temp.max : null;
+  const pop = Number(wx.precipitation) || 0;
+  const round5 = (n) => Math.max(10, Math.round(n / 5) * 5);
+  const out = [];
+
+  // Heat → ice math + shade + water
+  if (tmax != null && tmax >= 90) {
+    const hot = tmax >= 95;
+    const perGuest = hot ? 2.5 : 2;
+    out.push({
+      key: 'ice', icon: '🧊',
+      text: guests > 0
+        ? `Bump ice to ~${round5(guests * perGuest)} lbs (≈${perGuest} lb/guest) — ${tmax}° empties drink coolers fast and the food has to stay cold.`
+        : `Plan extra ice (~${perGuest} lb/guest) — ${tmax}° empties drink coolers fast and the food has to stay cold.`,
+    });
+    out.push({ key: 'shade', icon: '⛱️', text: `Set up shade or a canopy — ${tmax}° with no cover is rough on guests and the food table.` });
+    out.push({ key: 'water', icon: '💧', text: `Put out extra water — ${tmax}° pushes hydration, especially for elders and kids.` });
+  }
+
+  // Rain → cover/tent
+  if (pop >= 70) {
+    out.push({ key: 'tent', icon: '⛺', text: `Get the tent/canopy up — ${pop}% rain is a cover-the-food-and-guests call, not a maybe.` });
+  } else if (pop >= 50) {
+    out.push({ key: 'tent', icon: '⛺', text: `Have the canopy ready to raise — ${pop}% rain means you may need cover fast.` });
+  }
+
+  return out;
 }

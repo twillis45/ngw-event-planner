@@ -20,7 +20,7 @@ import { isSentryConfigured, captureError } from './lib/sentry';
 import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet, saveVersion as dvSave, renameVersion as dvRename, deleteVersion as dvDelete, setActiveVersion as dvSetActive, updateActiveVersion as dvUpdateActive } from './lib/draftVersions';
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
-import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk } from './lib/weather';
+import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics } from './lib/weather';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
@@ -28754,22 +28754,39 @@ function WeatherAlert({ event, onNavTo }) {
   if (!shouldFetch || dismissed || loading || !wx || wx.risk === 'clear') return null;
 
   const riskColor = wx.risk === 'high' ? C.danger : C.muted;
+  // Board #2 — the forecast drives concrete day-of adjustments (ice, shade, water,
+  // tent), not just a banner. Sized to this event's guest count.
+  const guests = Number(event?.guestCount) || (Array.isArray(event?.guests) ? event.guests.length : 0);
+  const adjustments = weatherLogistics(wx, { guests });
+  const wxIcon = wx.kind === 'heat' ? '☀️' : wx.kind === 'snow' ? '❄️' : wx.kind === 'cold' ? '🥶' : wx.risk === 'high' ? '⛈' : '🌧';
   return (
     <div style={{
       margin: '0 0 12px', padding: '10px 16px', borderRadius: 8,
       background: riskColor + '12', border: `1px solid ${riskColor}44`,
-      display: 'flex', alignItems: 'center', gap: 10,
     }}>
-      <span style={{ fontSize: 16 }}>{wx.risk === 'high' ? '⛈' : '🌧'}</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: riskColor, marginBottom: 2 }}>
-          Weather forecast · {wx.daysOut}d out
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 16 }}>{wxIcon}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: riskColor, marginBottom: 2 }}>
+            Weather forecast · {wx.daysOut}d out
+          </div>
+          <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
         </div>
-        <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
+        {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: 600, flexShrink: 0 }}>Review vendors →</button>}
+        <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: 12, color: C.muted }}>×</button>
       </div>
-      {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: 600, flexShrink: 0 }}>Review vendors →</button>}
-      <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: 12, color: C.muted }}>×</button>
+      {adjustments.length > 0 && (
+        <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${riskColor}22`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: riskColor }}>What that changes</div>
+          {adjustments.map((a) => (
+            <div key={a.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>
+              <span aria-hidden style={{ flexShrink: 0 }}>{a.icon}</span>
+              <span>{a.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

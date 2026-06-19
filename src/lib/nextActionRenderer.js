@@ -88,9 +88,9 @@ export const VOICE = {
   },
   compression: {
     host: () => ({
-      title: "Things are getting close.",
-      consequence: "A little focus now and you're in great shape.",
-      primaryCta: 'See what to do',
+      title: "A few things need you around the same time.",
+      consequence: "Knock them out one at a time now and the final stretch stays calm.",
+      primaryCta: "See what's first",
     }),
     operator: () => ({
       title: "The schedule is tightening.",
