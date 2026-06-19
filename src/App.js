@@ -672,7 +672,7 @@ async function askClaude(apiKey, prompt, { maxTokens = 700, onChunk, signal, sys
 // returns ''. `feature` must be one of AI_FEATURES. Non-streaming on the proxy
 // path — onChunk (if given) is called once with the full text so callers that
 // were written for streaming still render.
-async function askAI(feature, prompt, { onChunk, context = null, aiKey, maxTokens = 700, system } = {}) {
+async function askNGW(feature, prompt, { onChunk, context = null, aiKey, maxTokens = 700, system } = {}) {
   if (isAiProxyConfigured()) {
     const r = await callAiFeature(feature, prompt, context);
     const text = ((r && r.text) || '').trim();
@@ -5302,7 +5302,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
     setLogSummLoad(true); setLogSumm('');
     const logText = [...(vendor.log||[])].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`${e.date}: ${e.text}`).join('\n');
     const prompt = `Summarize this vendor relationship in 2-3 sentences for an event planner. Include stage, key commitments (deposits, contracts, amounts), and any outstanding items. Use specific numbers/dates from the log.\n\nVendor: ${vendor.name} (${vendor.category})\nStage: ${vendor.status}\nCost: $${(vendor.cost||0).toLocaleString()}, Deposit paid: ${vendor.depositPaid?'Yes':'No'}\n\nLog:\n${logText}\n\nSummary:`;
-    try { await askAI('document_summary', prompt, { maxTokens: 120, onChunk: t => setLogSumm(t), aiKey }); }
+    try { await askNGW('document_summary', prompt, { maxTokens: 120, onChunk: t => setLogSumm(t), aiKey }); }
     catch(e) { setLogSumm('⚠ Check API key in Profile.'); }
     setLogSummLoad(false);
   };
@@ -5313,7 +5313,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
     const logText = [...(vendor.log||[])].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`${e.date}: ${e.text}`).join('\n');
     const prompt = `Extract the key operational notes for this vendor into a short, scannable paragraph. Include: contract terms, payment amounts/dates, headcount requirements, dietary flags, special instructions, and any day-of logistics mentioned. Only include facts from the log — no filler.\n\nVendor: ${vendor.name} (${vendor.category})\nStage: ${vendor.status}\nCost: $${(vendor.cost||0).toLocaleString()}\nDeposit paid: ${vendor.depositPaid?'Yes':'No'}\n\nLog:\n${logText || '(none)'}\nExisting notes: ${vendor.notes || '(none)'}\n\nDraft notes:`;
     try {
-      await askAI('checklist_help', prompt, { maxTokens: 200, onChunk: t => onChange('notes', t), aiKey });
+      await askNGW('checklist_help', prompt, { maxTokens: 200, onChunk: t => onChange('notes', t), aiKey });
     } catch(e) { /* silent */ }
     setNotesDraftLoad(false);
   };
@@ -7434,7 +7434,7 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
     if (!aiInputOn(aiKey)) return;
     setTaskNotesLoad(true);
     const prompt = `You are an event planning assistant. Write a brief, practical note (2-4 sentences) for this planning task. Include: who should own it, how to execute it, and any key questions to answer. Be specific and actionable.\n\nTask: "${task.task}"\nPhase: ${task.week}\nCurrent owner: ${task.owner || 'not set'}\nCurrent notes: ${task.notes || '(none)'}\n\nWrite the note:`;
-    try { await askAI('checklist_help', prompt, { maxTokens: 120, onChunk: t => onChange('notes', t), aiKey }); }
+    try { await askNGW('checklist_help', prompt, { maxTokens: 120, onChunk: t => onChange('notes', t), aiKey }); }
     catch(e) { /* silent */ }
     setTaskNotesLoad(false);
   };
@@ -9965,7 +9965,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     setProposalLoad(true); setProposalDraft(''); setShowProposal(true);
     const answerLines = Object.entries(answers).map(([k,v])=>`${k}: ${v}`).join('\n');
     const prompt = `Write a short, professional event planning proposal (3-4 paragraphs) based on these intake answers. Address the client by the event name. Cover: what you'll do, how it addresses their specific needs, why it'll be great. End with clear next steps. Use a warm, confident tone.\n\nEvent type: ${eventTypeLabel(event) || event.type}\nEvent name: ${event.name}\nDate: ${event.date||'TBD'}\nVenue: ${event.venue||'TBD'}\nBudget: ${event.budget||'TBD'}\nPlanner: ${event.profile?.name||'Your Planner'}, ${event.profile?.businessName||''}\n\nIntake answers:\n${answerLines}\n\nProposal:`;
-    try { await askAI('vendor_followup', prompt, { maxTokens: 500, onChunk: t => setProposalDraft(t), aiKey }); }
+    try { await askNGW('proposal', prompt, { maxTokens: 500, onChunk: t => setProposalDraft(t), aiKey }); }
     catch(e) { setProposalDraft('⚠ Check your API key in Profile.'); }
     setProposalLoad(false);
   };
@@ -21345,7 +21345,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     const total = budget.reduce ? budget.reduce((s,r)=>s+(r.budgeted||0),0) : 0;
     const prompt = `Generate a realistic event budget breakdown as a JSON array. Each item: { category (string), planned (number in dollars), notes (string, 1 short sentence) }. Base allocations on industry norms for this event type and guest count. Return ONLY the JSON array.\n\nEvent type: ${eventType}\nGuest count: ${confirmedCount||'unknown'}\nTotal budget: $${total||'unknown'}\n\nJSON:`;
     try {
-      const raw = await askAI('document_summary', prompt, { maxTokens: 600, aiKey });
+      const raw = await askNGW('budget', prompt, { maxTokens: 600, aiKey });
       const match = raw.match(/\[[\s\S]*\]/);
       if (match) {
         const items = JSON.parse(match[0]);
@@ -24120,7 +24120,7 @@ function VendorScriptsPanel({ profile, event }) {
     if (!aiInputOn(aiKey)) return;
     setPersonalizing(true); setPersonalizedText('');
     const prompt = `Personalize this vendor outreach ${mode} for the specific event. Fill in all placeholders with realistic specifics. Keep the same professional tone. Return only the personalized text, no explanation.\n\nTemplate:\n${filled}\n\nEvent details:\n- Type: ${eventType||'social event'}\n- Venue: ${event?.venue||'TBD'}\n- Date: ${event?.date||'TBD'}\n- Est. guests: ${event?.guestEstimate||event?.guests?.length||'TBD'}\n- Planner: ${plannerName}, ${businessName}\n\nPersonalized version:`;
-    try { await askAI('vendor_followup', prompt, { maxTokens: 400, onChunk: t => setPersonalizedText(t), aiKey }); }
+    try { await askNGW('vendor_followup', prompt, { maxTokens: 400, onChunk: t => setPersonalizedText(t), aiKey }); }
     catch(e) { setPersonalizedText('⚠ Check API key in Profile.'); }
     setPersonalizing(false);
   };
@@ -24724,7 +24724,7 @@ function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eve
     const existingSegments = ros.map(r=>`${r.time||'?'} — ${r.segment}`).join('\n');
     const prompt = `Generate a complete event-day schedule as JSON array. Each item: { time (HH:MM 24h), segment (string), type ("setup"|"ceremony"|"reception"|"vendor"|"break"|"event"), owner (string), notes (string) }. Include vendor arrivals, setup windows, key event moments, and wind-down. Times should be realistic and sequential. Return ONLY the JSON array, no explanation.\n\nVendors:\n${vendorLines||'(none yet)'}\nExisting segments:\n${existingSegments||'(none)'}\nEvent context: ${ros.length > 0 ? 'Extend/fill gaps in the existing schedule' : 'Create a complete schedule for a full event day'}\n\nJSON:`;
     try {
-      const raw = await askAI('checklist_help', prompt, { maxTokens: 900, aiKey });
+      const raw = await askNGW('schedule', prompt, { maxTokens: 900, aiKey });
       const match = raw.match(/\[[\s\S]*\]/);
       const items = match ? JSON.parse(match[0]) : [];
       if (Array.isArray(items) && items.length > 0) {
@@ -28286,7 +28286,7 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
   const aiKey = useAIKey();
   const aiAvailable = aiInputOn(aiKey);
   const onAskAi = aiAvailable
-    ? (prompt) => askAI('event_brief', prompt, { maxTokens: 1200, aiKey })
+    ? (prompt) => askNGW('readiness', prompt, { maxTokens: 1200, aiKey })
     : null;
   // Sprint 50 gap fix #15: append entries to the targeted vendor's log so the
   // F Activity tab can write back to host state. Uses today's date (ISO date

@@ -7,7 +7,11 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
-export const AI_FEATURES = ['event_brief', 'vendor_followup', 'document_summary', 'checklist_help'];
+// Must stay in sync with backend FEATURE_SYSTEM_PROMPTS (routers/ai.py). The
+// Sprint 60D dedicated features (proposal/budget/schedule/readiness) share the
+// same OPENAI_API_KEY — they only add tuned server-side system prompts.
+export const AI_FEATURES = ['event_brief', 'vendor_followup', 'document_summary', 'checklist_help',
+  'proposal', 'budget', 'schedule', 'readiness'];
 
 export function isAiProxyConfigured() {
   return !!BASE;
