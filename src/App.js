@@ -8254,7 +8254,7 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
         <div role="dialog" aria-label="Choose a date" style={{
           marginTop: 10, padding: isMobile ? 12 : 16, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
           boxShadow: '0 18px 48px rgba(0,0,0,0.5)', animation: 'ceRise 300ms cubic-bezier(.2,.7,.2,1) both',
-          width: isMobile ? 'auto' : 'fit-content', maxWidth: '100%',
+          width: '100%', maxWidth: '100%', boxSizing: 'border-box',
         }}>
           {/* Two balanced columns on desktop: quick-picks rail · calendar. Stacks on mobile. */}
           <div style={{ display: isMobile ? 'block' : 'flex', gap: isMobile ? 0 : 18, alignItems: 'stretch' }}>
@@ -8286,8 +8286,8 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
             })}
           </div>
 
-          {/* Calendar — fast month/year nav via the tappable header */}
-          <div style={{ width: isMobile ? 'auto' : 300, ...(isMobile ? {} : { borderLeft: `1px solid ${C.border}`, paddingLeft: 18 }) }}>
+          {/* Calendar — flexes to fill the panel width so it lines up under the field */}
+          <div style={{ flex: isMobile ? undefined : 1, minWidth: 0, ...(isMobile ? {} : { borderLeft: `1px solid ${C.border}`, paddingLeft: 18 }) }}>
             {mode === 'days' ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
