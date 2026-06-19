@@ -8529,7 +8529,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="your price"
                           onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
                           onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
-                          style={{ width: 64, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
+                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
                       </span>
                       {i.locked != null && <button type="button" onClick={clearLock} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
                       </div>
@@ -33082,11 +33082,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Planning'       && (
         <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} />
       )}
+      {/* Attention pass (host): the food plan is the one bright thing on Plan;
+          Seating & supplies and the planning views recede until reached. */}
       {/* Board ruling: "Seating & supplies" lives in Plan (not buried on the Overview). */}
       {tab === 'Planning' && isHostEvt && (
-        <CapacityPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+        <div className="hp-recede">
+          <CapacityPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+        </div>
       )}
       {tab === 'Planning'       && (
+        <div className={isHostEvt ? 'hp-recede' : undefined}>
         <Suspense fallback={<SpecialistFallback />}>
           <EventPlanningTab
             event={event}
@@ -33100,6 +33105,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             openTimelineId={openTimelineId}
           />
         </Suspense>
+        </div>
       )}
       {/* Sprint 59E: Documents L4 — one home for files, links, vendor
           contracts, DocuSign envelopes. Routes vendor-owned rows to the
