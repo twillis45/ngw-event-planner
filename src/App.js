@@ -10453,7 +10453,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     const budgetAns = answers['range'];
     const midpoint  = parseBudgetMidpoint(budgetAns);
     if (midpoint) {
-      const currentTotal = event.budget.reduce((s, r) => s + r.budgeted, 0);
+      const currentTotal = (event.budget || []).reduce((s, r) => s + r.budgeted, 0);
       if (currentTotal === 0 || Math.abs(currentTotal - midpoint) / midpoint > 0.25) {
         list.push({
           id: 'budgetScale',
@@ -10461,7 +10461,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           sub: currentTotal > 0 ? `Currently budgeted: ${fmtD(currentTotal)}` : 'No budget set yet — distribute evenly across categories',
           apply: (e) => {
             if (e.budget.length === 0) return e;
-            const oldTotal = e.budget.reduce((s, r) => s + r.budgeted, 0) || 1;
+            const oldTotal = (e.budget || []).reduce((s, r) => s + r.budgeted, 0) || 1;
             const ratio    = midpoint / oldTotal;
             return {
               ...e,
@@ -10819,8 +10819,8 @@ function EventCard({ event, onClick }) {
   const days             = daysUntil(event.date);
   const statusLabel = !event.date ? null : days === null ? null : days > 0 ? null : days > -30 ? 'Just wrapped' : 'Past';
   const isArchived  = event.archived;
-  const totalBudgeted    = event.budget.reduce((s, r) => s + r.budgeted, 0);
-  const totalActual      = event.budget.reduce((s, r) => s + r.actual, 0);
+  const totalBudgeted    = (event.budget || []).reduce((s, r) => s + r.budgeted, 0);
+  const totalActual      = (event.budget || []).reduce((s, r) => s + r.actual, 0);
   const budgetPct        = totalBudgeted ? Math.round((totalActual / totalBudgeted) * 100) : 0;
   const confirmedGuests  = event.guests.filter(g => g.rsvp === 'Yes').length;
   const confirmedVendors = event.vendors.filter(v => v.status === 'Confirmed').length;
@@ -22129,7 +22129,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const suggestBudget = async () => {
     if (!aiInputOn(aiKey)) return;
     setBudgetAILoad(true);
-    const total = budget.reduce ? budget.reduce((s,r)=>s+(r.budgeted||0),0) : 0;
+    const total = budget.reduce ? (budget || []).reduce((s,r)=>s+(r.budgeted||0),0) : 0;
     const prompt = `Generate a realistic event budget breakdown as a JSON array. Each item: { category (string), planned (number in dollars), notes (string, 1 short sentence) }. Base allocations on industry norms for this event type and guest count. Return ONLY the JSON array.\n\nEvent type: ${eventType}\nGuest count: ${confirmedCount||'unknown'}\nTotal budget: $${total||'unknown'}\n\nJSON:`;
     try {
       const raw = await askNGW('budget', prompt, { maxTokens: 600, aiKey });
@@ -22258,12 +22258,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     });
   };
 
-  const totalBudgeted  = budget.reduce((s, r) => s + r.budgeted, 0);
-  const totalActual    = budget.reduce((s, r) => s + r.actual, 0);
+  const totalBudgeted  = (budget || []).reduce((s, r) => s + r.budgeted, 0);
+  const totalActual    = (budget || []).reduce((s, r) => s + r.actual, 0);
 
   const getCommitted   = (cat) => (vendors || []).filter(v => (v.budgetCategory || v.category) === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
   // Sum per-row committed (keeps total row consistent with what each category row shows)
-  const totalCommitted = budget.reduce((s, r) => s + getCommitted(r.category), 0);
+  const totalCommitted = (budget || []).reduce((s, r) => s + getCommitted(r.category), 0);
 
   // ── Vendor-truth money (board rework: Budget → Promised → Paid → Still to pay).
   // Everything below derives from vendorPaid/vendorBalance which RECONCILE exactly
@@ -22274,7 +22274,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const overdueBalance = (vendors || []).filter(v => vendorIsCommitted(v) && v.payDueDate && vendorBalance(v) > 0 && daysUntil(v.payDueDate) < 0).reduce((s, v) => s + vendorBalance(v), 0);
   // Projected final = what's booked + the budget estimate of categories not yet booked
   // (where you'll LAND, not just where you are — the number a planner tells the client).
-  const projectedFinal = budget.reduce((s, r) => s + Math.max(getCommitted(r.category), (r.budgeted || 0)), 0);
+  const projectedFinal = (budget || []).reduce((s, r) => s + Math.max(getCommitted(r.category), (r.budgeted || 0)), 0);
   const overCommitted  = totalCommitted > totalBudgeted;        // busted the budget at SIGNING
   const projectedOver  = projectedFinal > totalBudgeted;
   const overCats       = budget.filter(r => (r.budgeted || 0) > 0 && getCommitted(r.category) > (r.budgeted || 0)).length;
@@ -27616,8 +27616,8 @@ function buildClientText(event, client, sections) {
   }
 
   if (sections.budget && budget.length > 0) {
-    const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
-    const totalSpent    = budget.reduce((s, r) => s + (r.actual   || 0), 0);
+    const totalBudgeted = (budget || []).reduce((s, r) => s + (r.budgeted || 0), 0);
+    const totalSpent    = (budget || []).reduce((s, r) => s + (r.actual   || 0), 0);
     lines.push(`BUDGET SUMMARY`);
     lines.push(`─────────────────────────────────`);
     budget.forEach(r => {
@@ -27856,10 +27856,10 @@ async function exportClientPackage(event, client, sections) {
 
   // ── Budget summary ─────────────────────────────────────────────────────────
   if (sections.budget && budget.length > 0) {
-    const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
-    const totalSpent    = budget.reduce((s, r) => s + (r.actual   || 0), 0);
+    const totalBudgeted = (budget || []).reduce((s, r) => s + (r.budgeted || 0), 0);
+    const totalSpent    = (budget || []).reduce((s, r) => s + (r.actual   || 0), 0);
     const getPkgComm    = (cat) => vendors.filter(v => (v.budgetCategory || v.category) === cat && STAGES.indexOf(v.status) >= 2).reduce((s, v) => s + (v.cost || 0), 0);
-    const totalComm     = budget.reduce((s, r) => s + getPkgComm(r.category), 0);
+    const totalComm     = (budget || []).reduce((s, r) => s + getPkgComm(r.category), 0);
     const rows = budget.map(r => {
       const comm = getPkgComm(r.category);
       return {
@@ -28065,8 +28065,8 @@ async function exportEventToSheets(event, client) {
   const confirmed   = guests.filter(g => g.rsvp === 'Yes').length;
   const declined    = guests.filter(g => g.rsvp === 'No').length;
   const awaiting    = guests.filter(g => !g.rsvp || g.rsvp === 'Maybe' || g.rsvp === '').length;
-  const totalBudget = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
-  const totalSpent  = budget.reduce((s, r) => s + (r.actual   || 0), 0);
+  const totalBudget = (budget || []).reduce((s, r) => s + (r.budgeted || 0), 0);
+  const totalSpent  = (budget || []).reduce((s, r) => s + (r.actual   || 0), 0);
   const tasksDone   = timeline.filter(t => t.done).length;
   const vConf       = vendors.filter(v => v.status === 'Confirmed').length;
 
