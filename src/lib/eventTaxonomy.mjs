@@ -88,6 +88,9 @@ const EVENT_TAXONOMY = {
   'Crab Feast':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Crawfish Boil':      { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Low Country Boil':   { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  // DMV community gatherings (largest Salvadoran community in the US; DC's U Street Ethiopian community).
+  'Pupusa Gathering':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Ethiopian Coffee Ceremony':{ parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Repast':             { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Juneteenth Cookout': { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Kwanzaa Gathering':  { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },

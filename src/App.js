@@ -31,7 +31,7 @@ import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisio
 // Sprint 58G — Event Memory: the event lesson (one short optional string at completion).
 import { setLesson, getLesson } from './lib/eventMemory';
 // Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
-import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement } from './lib/eventIdentity';
+import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement, setFeelingOutcome, feelingOutcome, FEELING_SIGNALS, FEELING_LABEL, identityReflection } from './lib/eventIdentity';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -2112,6 +2112,7 @@ const EVT_CATEGORIES = {
     'Game Night', 'Watch Party', 'Super Bowl Party', 'Game Day Party',
     'The Cookout', 'Fish Fry', 'Card Party', 'Sunday Dinner', 'Day Party',
     'Crab Feast', 'Crawfish Boil', 'Low Country Boil',
+    'Pupusa Gathering', 'Ethiopian Coffee Ceremony',
     'Repast', 'Housewarming', 'Get-Together',
   ],
   // Heritage / community celebrations — ethnicity-NEUTRAL + expandable (Juneteenth,
@@ -31140,6 +31141,7 @@ function OutcomeCapture({ event, setEvent }) {
   const confirmedVendors = (event.vendors || []).filter(v => v.status === 'Confirmed' || v.status === 'Booked');
   const o = getEventOutcomes(event);
   const complete = isEventComplete(event);
+  const refl = identityReflection(event);   // Sprint 60C #1 — feeling + why framing
   return (
     <div style={{ padding: '20px 0 8px', borderTop: `1px solid ${C.border}`, marginTop: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -31170,6 +31172,31 @@ function OutcomeCapture({ event, setEvent }) {
                   style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
                     border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
                   {MUST_HAVE_LABEL[opt]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* Sprint 60C #1 — Outcome reflection: why it mattered + did guests feel it */}
+      {refl && refl.why && (
+        <div style={{ fontSize: 11, color: C.muted, margin: '0 0 12px', lineHeight: 1.5, fontStyle: 'italic' }}>
+          Why it mattered: {refl.why}
+        </div>
+      )}
+      {refl && refl.feeling && (
+        <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>Did guests feel it?</div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{refl.feeling}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {FEELING_SIGNALS.map(opt => {
+              const on = feelingOutcome(event) === opt;
+              const col = opt === 'yes' ? C.success : opt === 'no' ? C.danger : C.accent;
+              return (
+                <button key={opt} onClick={() => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'feeling' }); setEvent(e => setFeelingOutcome(e, on ? null : opt, new Date().toISOString())); }}
+                  style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+                    border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
+                  {FEELING_LABEL[opt]}
                 </button>
               );
             })}
