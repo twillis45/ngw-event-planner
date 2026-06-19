@@ -9456,14 +9456,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16 }}>
                 <div>
                   <label style={ui.label} htmlFor="ce-type">Event type <span style={ui.req}>· required</span></label>
-                  <select id="ce-type" data-testid="ce-type" style={ui.field((showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
-                    {/* No default to Wedding (board 2026-06-12) — the planner picks the
-                        occasion, which is what warms up the flow and tells the real story. */}
-                    <option value="" disabled>What are you celebrating?</option>
-                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
-                      <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
-                    ))}
-                  </select>
+                  {/* Searchable picker — no default to Wedding (board); ~50 types, type to filter. */}
+                  <TypePicker value={form.type} onChange={(t) => { upd('type', t); setTouched(tt => ({ ...tt, type: true })); }}
+                    placeholder="What are you celebrating?" testId="ce-type" C={C} isMobile={isMobile}
+                    fieldStyle={ui.field((showErr || touched.type) && !form.type)} />
                   {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you're celebrating.</div>}
                 </div>
                 {/* UX-9 — hosts see only name · type · date. Secondary type is a
@@ -9471,12 +9467,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 {!hostMode && (
                 <div>
                   <label style={ui.label} htmlFor="ce-secondary-type">Secondary type <span style={ui.opt}>· optional</span></label>
-                  <select id="ce-secondary-type" data-testid="ce-secondary-type" style={ui.field(false)} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
-                    <option value="">None</option>
-                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
-                      <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
-                    ))}
-                  </select>
+                  <TypePicker value={form.secondaryType} onChange={(t) => upd('secondaryType', t)}
+                    placeholder="None" emptyOption="None" excludeValue={form.type} testId="ce-secondary-type" C={C} isMobile={isMobile}
+                    fieldStyle={ui.field(false)} />
                 </div>
                 )}
               </div>
