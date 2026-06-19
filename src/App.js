@@ -12,6 +12,7 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan } from './lib/playbooks';
+import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { callAiFeature, isAiProxyConfigured } from './lib/aiProxy';
@@ -8027,7 +8028,8 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
 function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {} }) {
   const C = useT();
-  const plan = playbookFoodPlan(event);
+  const foodPP = useFoodPriceFactor(event);
+  const plan = playbookFoodPlan(event, foodPP);
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
@@ -13391,6 +13393,44 @@ const US_CITY_SUGGESTIONS = US_CITIES;
 // US states (+ DC) — the Service Area / intake "City" must be accompanied by a
 // State (board/user 2026-06-12) so locality is unambiguous on contracts & estimates.
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
+// Resolve a 2-letter US state from an event for regional food pricing. Prefers the
+// structured `event.state` (Service-Area field), then scans the "City, ST" label
+// and venue free-text for a state token. Null when unknown → neutral pricing.
+function resolveEventState(event) {
+  if (!event) return null;
+  const direct = String(event.state || '').trim().toUpperCase();
+  if (US_STATES.includes(direct)) return direct;
+  const hay = `${event.city || ''} ${event.venue || ''}`.toUpperCase();
+  const tokens = hay.match(/\b[A-Z]{2}\b/g);
+  if (tokens) { const hit = tokens.reverse().find((t) => US_STATES.includes(t)); if (hit) return hit; }
+  return null;
+}
+
+// ─── useFoodPriceFactor ──────────────────────────────────────────────────────
+// Fetches the current BLS Average-Price regional factor for an event's area so the
+// food plan / spending plan scale national estimates locally. Honest: REGIONAL (4
+// census regions), labeled as such; degrades to neutral (factor 1, no label, no
+// claim) whenever location is unknown or the backend/BLS is unavailable. Returns
+// the exact opts shape playbookFoodPlan(event, opts) consumes.
+function useFoodPriceFactor(event) {
+  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null });
+  const state = resolveEventState(event);
+  useEffect(() => {
+    let cancelled = false;
+    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null }); return undefined; }
+    getFoodPriceFactor({ state }).then((d) => {
+      if (cancelled) return;
+      const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
+      const priceContext = factor !== 1
+        ? `current ${d.regionLabel} prices · ${d.source}${d.month ? ` ${d.month}` : ''}`
+        : null;
+      setPp({ priceFactor: factor, priceContext });
+    });
+    return () => { cancelled = true; };
+  }, [state]);
+  return pp;
+}
 
 // Sprint 60.Y — Service Area field: city autocomplete + ZIP resolution. Type a
 // city (native datalist) or a 5-digit ZIP — on blur/Enter a ZIP resolves to
@@ -21598,6 +21638,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   // also mirror the scalar event.totalBudget for onboarding/checklist truthfulness.
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalDraft, setTotalDraft] = useState('');
+  // Regional food pricing (BLS) — surfaced in the host Spending Plan's Food line.
+  const foodPP = useFoodPriceFactor(event);
   const commitTotalBudget = () => {
     const newTotal = Math.max(0, Math.round(Number(totalDraft) || 0));
     setEditingTotal(false);
@@ -21891,7 +21933,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   if (isHostBudget) {
     return (
       <HostSpendingPlan
-        foodPlan={event ? playbookFoodPlan(event) : null}
+        foodPlan={event ? playbookFoodPlan(event, foodPP) : null}
         budget={budget}
         setBudget={setBudget}
         plannedGuests={plannedGuests}
