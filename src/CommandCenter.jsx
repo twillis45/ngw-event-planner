@@ -2460,6 +2460,10 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
+  const width = useWindowWidth();
+  // Tablet / narrow desktop: the two columns cramp below ~1024, so collapse to a
+  // single readable column. Wide: the rail sits beside the action stream.
+  const twoCol = width >= 1024;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
       {/* Studio bar */}
@@ -2541,8 +2545,8 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
           isMobile={false}
         />
 
-        {/* Two-column body */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 20, alignItems: 'start' }}>
+        {/* Body — two columns on wide, one on tablet/narrow. */}
+        <div style={{ display: 'grid', gridTemplateColumns: twoCol ? 'minmax(0, 1fr) 380px' : '1fr', gap: twoCol ? 28 : 20, alignItems: 'start' }}>
 
           {/* LEFT — action stream. Attention System: each section recedes until
               reached; the Up Next hero above is the one bright thing. */}
