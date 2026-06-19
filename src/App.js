@@ -8149,36 +8149,86 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
 // surface as dollars in Money. Full detail lives here, not as an Overview footer.
 function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
   const C = useT();
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addQty, setAddQty] = useState('');
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
   if (!cap || !cap.items || !cap.items.length) return null;
   const checked = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
-  const done = cap.items.filter((it) => checked[it.short]).length;
-  const allDone = done === cap.items.length;
+  const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
+  const added = (Array.isArray(event.capacityAdd) ? event.capacityAdd : []).filter((a) => a && a.name);
+  // Merged list: playbook items (with host qty override) + host-added items.
+  const items = [
+    ...cap.items.map((it) => ({ key: it.short, name: it.short, qty: (it.short in qtyOv) ? qtyOv[it.short] : it.qty, note: it.note, added: false })),
+    ...added.map((a) => ({ key: a.id, name: a.name, qty: Math.max(0, Number(a.qty) || 0), note: '', added: true })),
+  ];
+  const done = items.filter((it) => checked[it.key]).length;
+  const allDone = items.length > 0 && done === items.length;
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityChecked: next }); };
+  const setQty = (it, v) => {
+    const n = Math.max(0, Math.round(Number(v) || 0));
+    if (it.added) { onPatch({ capacityAdd: added.map((a) => (a.id === it.key ? { ...a, qty: n } : a)) }); }
+    else { onPatch({ capacityQty: { ...qtyOv, [it.key]: n } }); }
+  };
+  const removeAdded = (key) => onPatch({ capacityAdd: added.filter((a) => a.id !== key) });
+  const commitAdd = () => {
+    const name = addName.trim(); if (!name) return;
+    const id = 'cap-' + Date.now().toString(36);
+    onPatch({ capacityAdd: [...added, { id, name, qty: Math.max(1, Math.round(Number(addQty) || 1)) }] });
+    setAddName(''); setAddQty(''); setAddOpen(false);
+  };
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  const qtyBox = { display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '3px 8px', flexShrink: 0 };
+  const qtyInp = { width: 40, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center' };
   return (
     <div style={card}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>Seating &amp; supplies</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${done} of ${cap.items.length} ready`}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${done} of ${items.length} ready`}</div>
       </div>
-      <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Sized for {cap.guests} guests — tap each once you have it. These flow into your Spending Plan as costs.</div>
+      <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Sized for {cap.guests} guests — change a count or add your own. Tap the box once you have it.</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {cap.items.map((it, i) => {
-          const on = !!checked[it.short];
+        {items.map((it, i) => {
+          const on = !!checked[it.key];
           return (
-            <button key={it.short} type="button" onClick={() => toggle(it.short)}
-              style={{ display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
-              <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>
-                  <span style={{ fontWeight: 800 }}>{it.qty}</span> {it.short}
-                </span>
-                {it.note && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{it.note}</span>}
+            <div key={it.key} style={{ display: 'flex', alignItems: 'center', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '10px 0', opacity: on ? 0.6 : 1 }}>
+              <button type="button" onClick={() => toggle(it.key)} aria-label={on ? 'Got it' : 'Mark as got'}
+                style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
+              <span style={qtyBox}>
+                <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
+                  onBlur={(e) => setQty(it, e.currentTarget.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setQty(it, e.currentTarget.value); e.currentTarget.blur(); } }}
+                  style={qtyInp} />
               </span>
-            </button>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                {it.note && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
+              </span>
+              {it.added && <button type="button" onClick={() => removeAdded(it.key)} aria-label="Remove" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: '2px 4px' }}>×</button>}
+            </div>
           );
         })}
+      </div>
+      {/* Add your own item */}
+      <div style={{ marginTop: 10 }}>
+        {addOpen ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: 12, border: `1px solid ${C.border}`, borderRadius: 10, background: C.bg }}>
+            <span style={qtyBox}>
+              <input type="number" inputMode="numeric" min="1" placeholder="1" value={addQty} onChange={(e) => setAddQty(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }} style={qtyInp} />
+            </span>
+            <input autoFocus placeholder="Item — e.g. extra ice chest, string lights" value={addName} onChange={(e) => setAddName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+              style={{ flex: 1, minWidth: 160, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 11px', color: C.text, fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }} />
+            <button type="button" onClick={commitAdd} disabled={!addName.trim()}
+              style={{ fontSize: 13, fontWeight: 700, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6, fontFamily: 'inherit' }}>Add</button>
+            <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddQty(''); }}
+              style={{ fontSize: 13, fontWeight: 600, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Cancel</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAddOpen(true)}
+            style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: C.accentTopGrad || C.accent, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item</button>
+        )}
       </div>
       {cap.because && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: 700 }}>How we sized it:</span> {cap.because}</div>}
     </div>
