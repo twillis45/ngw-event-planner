@@ -623,3 +623,29 @@ describe('Sprint 64 — region-gated DMV dishes', () => {
     expect(atl.list.some(i => i.id === 'p_halfsmokes')).toBe(false);
   });
 });
+
+describe('#4 — add a dish (foodAdd)', () => {
+  const base = { id: 'c', type: 'The Cookout', guestCount: 40, guests: [] };
+  test('an added dish becomes a real line item (owner carried, itemCount up)', () => {
+    const p0 = playbookFoodPlan(base);
+    const p1 = playbookFoodPlan({ ...base, foodAdd: [{ id: 'add-1', name: "Auntie's potato salad", owner: 'Auntie', cost: 0 }] });
+    const line = p1.list.find(i => i.id === 'add-1');
+    expect(line).toBeTruthy();
+    expect(line.added).toBe(true);
+    expect(line.item).toBe("Auntie's potato salad");
+    expect(line.owner).toBe('Auntie');
+    expect(p1.itemCount).toBe(p0.itemCount + 1);
+  });
+  test('a $0 dish adds nothing to the total; a priced dish adds its cost', () => {
+    const p0 = playbookFoodPlan(base);
+    const free = playbookFoodPlan({ ...base, foodAdd: [{ id: 'a', name: 'Brought pie', owner: 'Sam', cost: 0 }] });
+    const paid = playbookFoodPlan({ ...base, foodAdd: [{ id: 'a', name: 'Catered wings', cost: 120 }] });
+    expect(free.foodLow).toBe(p0.foodLow);
+    expect(paid.foodLow).toBe(p0.foodLow + 120);
+    expect(paid.foodHigh).toBe(p0.foodHigh + 120);
+  });
+  test('a checked-off priced dish flows into spent', () => {
+    const p = playbookFoodPlan({ ...base, foodAdd: [{ id: 'a', name: 'Catered wings', cost: 120 }], foodGot: { a: true } });
+    expect(p.spentLow).toBeGreaterThanOrEqual(120);
+  });
+});

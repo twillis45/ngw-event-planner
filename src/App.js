@@ -8116,6 +8116,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
+  // #4 — "add a dish": a named line the host commits (their own dish, or someone's
+  // bringing it). Owner + cost optional. Stored on event.foodAdd, merged by the engine.
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addOwner, setAddOwner] = useState('');
+  const [addCost, setAddCost] = useState('');
+  const commitAdd = () => {
+    const name = addName.trim();
+    if (!name) return;
+    const id = 'add-' + Date.now().toString(36);
+    onPatch({ foodAdd: [...(event.foodAdd || []), { id, name, owner: addOwner.trim(), cost: Math.max(0, Number(addCost) || 0) }] });
+    setAddName(''); setAddOwner(''); setAddCost(''); setAddOpen(false);
+  };
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
@@ -8294,6 +8307,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
               const setQty = (n) => { const next = { ...(event.foodQty || {}) }; const v = Math.max(0, Number(n) || 0); if (v > 0) next[i.id] = v; else delete next[i.id]; onPatch({ foodQty: next }); };
               const resetQty = () => { const next = { ...(event.foodQty || {}) }; delete next[i.id]; onPatch({ foodQty: next }); };
+              // Added dishes are fully host-authored — removing one DELETES it (no struck-through ghost).
+              const removeAdded = (e) => { e.stopPropagation(); onPatch({ foodAdd: (event.foodAdd || []).filter((a) => a.id !== i.id) }); };
               const lockOpen = openLockId === i.id;
               const lkBtn = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
@@ -8304,7 +8319,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                        {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
+                        {i.added && i.owner && <span style={{ fontSize: 11, fontWeight: 600, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
+                        {i.added && !i.owner && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}
+                        {!i.essential && !i.added && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
                         {i.where && i.where.length > 0 && (
                           <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
@@ -8321,20 +8338,27 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       </span>
                       <span style={{ flexShrink: 0, textAlign: 'right' }}>
                         {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
-                        {i.locked != null
+                        {i.added && i.low === 0
+                          ? <span style={{ fontSize: 11.5, color: C.muted }}>they're bringing it</span>
+                          : i.locked != null
                           ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success }}>${i.locked.toLocaleString()} locked</span>
                           : <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>}
                         {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
                       </span>
                     </button>
-                    {!skipped && (
+                    {!skipped && !i.added && (
                       <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Lock a cost" aria-label="Lock a cost"
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: 15, fontWeight: 800, lineHeight: 1, padding: '4px 5px' }}>$</button>
                     )}
-                    <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
-                      style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
-                      {skipped ? '+ add' : '×'}
-                    </button>
+                    {i.added ? (
+                      <button type="button" onClick={removeAdded} title="Remove this dish" aria-label="Remove this dish"
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: '4px 4px' }}>×</button>
+                    ) : (
+                      <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
+                        {skipped ? '+ add' : '×'}
+                      </button>
+                    )}
                   </div>
                   {lockOpen && !skipped && (
                     <div style={{ padding: '0 0 12px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -8370,6 +8394,37 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             })}
           </div>
         ))}
+        {/* #4 — add your own dish: closes the remove/add asymmetry. A named line +
+            who's bringing it; cost optional (a dish someone brings is $0 to you). */}
+        <div style={{ marginTop: 4 }}>
+          {addOpen ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, border: `1px solid ${C.border}`, borderRadius: 10, background: C.bg }}>
+              <input autoFocus placeholder="Dish — e.g. Auntie's potato salad" value={addName} onChange={(e) => setAddName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+                style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 11px', color: C.text, fontSize: 14, fontFamily: 'inherit', outline: 'none' }} />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input placeholder="Who's bringing it (optional)" value={addOwner} onChange={(e) => setAddOwner(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+                  style={{ flex: 1, minWidth: 150, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 11px', color: C.text, fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '0 11px' }}>
+                  <span style={{ color: C.muted, fontSize: 13 }}>$</span>
+                  <input type="number" inputMode="numeric" placeholder="cost" value={addCost} onChange={(e) => setAddCost(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+                    style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit' }} />
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={commitAdd} disabled={!addName.trim()}
+                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6 }}>Add to plan</button>
+                <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddOwner(''); setAddCost(''); }}
+                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setAddOpen(true)}
+              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: '11px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a dish</button>
+          )}
+        </div>
         </div>
         )}
       </div>

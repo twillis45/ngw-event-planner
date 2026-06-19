@@ -679,6 +679,28 @@ export function playbookFoodPlan(event, opts = {}) {
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
       };
     });
+
+  // #4 — host-authored dishes (event.foodAdd): "Auntie's potato salad" + who's
+  // bringing it. A named line the host commits, closing the remove/add asymmetry
+  // (you could swap items out but never add your own). Cost is OPTIONAL: a potluck
+  // dish someone else brings is $0 to the host; an entered cost flows into the food
+  // total + budget like any other line. Reuses skip (struck-through) + got (checkoff).
+  const added = (Array.isArray(event.foodAdd) ? event.foodAdd : [])
+    .filter((a) => a && a.name)
+    .map((a) => {
+      const cost = Math.max(0, Math.round(Number(a.cost) || 0));
+      return {
+        id: a.id, group: 'Food', item: a.name, short: a.name,
+        owner: String(a.owner || '').trim(), qty: null, unit: '', essential: false,
+        where: [], qtyOverridden: false, baseQty: null,
+        low: cost, high: cost, units: 1, unitBase: '',
+        perUnitLow: cost, perUnitHigh: cost,
+        skipped: !!skip[a.id], locked: null,
+        note: '', forgotten: false, added: true,
+      };
+    });
+  list.push(...added);
+
   // A locked cost is fixed — it collapses the item's range to one committed number.
   const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
   // Skipped (swapped-out) items leave every total.
