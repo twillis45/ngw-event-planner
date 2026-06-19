@@ -605,9 +605,23 @@ export function playbookFoodPlan(event, opts = {}) {
     })
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 
+  // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase
+  // tagged whenChoice:{id,in:[...]} appears only when the effective pick for that
+  // decision is in the set; untagged purchases always appear (today's behavior).
+  // pickFor falls back to the decision's default so the spread is right on first
+  // render; an unknown pick shows the item (never hide on missing data).
+  const _decById = {};
+  (playbook.decisions || []).forEach((d) => { _decById[d.id] = d; });
+  const pickFor = (id) => picks[id] || (_decById[id] && _decById[id].default) || null;
+  const purchaseShown = (p) => {
+    if (!p.whenChoice || !p.whenChoice.id) return true;
+    const v = pickFor(p.whenChoice.id);
+    return v == null ? true : (Array.isArray(p.whenChoice.in) ? p.whenChoice.in : []).includes(v);
+  };
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
-    .filter((p) => p.category === 'food' || p.category === 'beverage')
+    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
     .map((p) => {
       const qty = resolveQuantity(p, guests);
       const unit = shortUnit(p.unit, qty);

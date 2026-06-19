@@ -495,3 +495,35 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
     expect(playbookFoodPlan({ id: 'o', type: 'Other', guestCount: 10 })).toBeNull();
   });
 });
+
+describe('60F — menu choice drives the spread (whenChoice gate)', () => {
+  const ids = (menu) => playbookFoodPlan({
+    id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [],
+    foodChoices: menu ? { menu } : {},
+  }).list.map((i) => i.id);
+
+  test('default menu → ribs + chicken + links; not brisket/seafood', () => {
+    const l = ids(null);
+    expect(l).toEqual(expect.arrayContaining(['p_ribs', 'p_chicken', 'p_links']));
+    expect(l).not.toContain('p_brisket');
+    expect(l).not.toContain('p_seafood');
+  });
+  test('brisket menu → brisket + chicken; not ribs/links/seafood', () => {
+    const l = ids('Smoked brisket + chicken + the sides');
+    expect(l).toEqual(expect.arrayContaining(['p_brisket', 'p_chicken']));
+    ['p_ribs', 'p_links', 'p_seafood'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('mixed grill + seafood → ribs + chicken + seafood; not links/brisket', () => {
+    const l = ids('Mixed grill + seafood + the sides');
+    expect(l).toEqual(expect.arrayContaining(['p_ribs', 'p_chicken', 'p_seafood']));
+    ['p_links', 'p_brisket'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('lighter spread → chicken only (no ribs/links/brisket/seafood)', () => {
+    const l = ids('Lighter spread: chicken + sides + plenty of red foods');
+    expect(l).toContain('p_chicken');
+    ['p_ribs', 'p_links', 'p_brisket', 'p_seafood'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('untagged items (e.g. chicken) always appear', () => {
+    expect(ids(null)).toContain('p_chicken');
+  });
+});
