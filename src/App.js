@@ -33333,7 +33333,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             {/* Host width parity (board ruling 2026-06-19): a self-host lives in ONE
                 760 column across every tab; the planner keeps the content-aware
                 measureFor tiers. Communication stays full-bleed for both. */}
-            <div style={{ maxWidth: tab === 'Communication' ? 'none' : (isHostEvt ? 760 : measureFor('standard', isWideScreen)), margin: '0 auto', height: (tab === 'Vendors' || tab === 'Communication') ? '100%' : undefined }}>
+            <div style={{ maxWidth: tab === 'Communication' ? 'none' : (isHostEvt ? (tab === 'Command' ? measureFor('content', isWideScreen) : 760) : measureFor('standard', isWideScreen)), margin: '0 auto', height: (tab === 'Vendors' || tab === 'Communication') ? '100%' : undefined }}>
               {tabContent}
             </div>
           </div>
