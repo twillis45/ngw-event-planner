@@ -132,6 +132,45 @@ const CommunicationHub        = lazy(() => import('./plan/CommunicationHub'));
 const TimelineBuilder         = lazy(() => import('./plan/TimelineBuilder'));
 const ChecklistGenerator      = lazy(() => import('./plan/ChecklistGenerator'));
 const ClientIntakeFlow        = lazy(() => import('./plan/ClientIntakeFlow'));
+
+// ?demo=1 — one-URL demo. Seeds a fully-configured self-host event (Atlanta metro so
+// BLS pricing + weather + local retailers all light up; mixed RSVPs; some food bought;
+// a task with checkable subtasks) BEFORE React reads localStorage, then strips the
+// param so edits persist across refresh. Testing/demo convenience — no effect otherwise.
+(() => {
+  try {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') !== '1') return;
+    const d = new Date(); d.setDate(d.getDate() + 14);
+    const demo = {
+      id: 'demo-jun', name: 'Juneteenth Cookout', type: 'Juneteenth Cookout',
+      date: d.toISOString().slice(0, 10), market: 'atl', guestCount: 30,
+      guests: Array.from({ length: 18 }, (_, i) => ({ id: 'g' + i, rsvp: i < 12 ? 'Yes' : '' })),
+      foodChoices: {}, foodGot: { p_ribs: true, p_chicken: true },
+      budget: [
+        { id: 'b1', category: 'Decorations', budgeted: 120, actual: 45, notes: '' },
+        { id: 'b2', category: 'Rentals & chairs', budgeted: 200, actual: 0, notes: '' },
+      ],
+      timeline: [{
+        id: 't1', week: '2 Weeks Out', done: false, owner: 'Host',
+        task: 'Book the Black-owned caterer or confirm the host-cooks plan and lock the final headcount',
+        subtasks: [
+          { id: 's1', text: 'Call 2–3 caterers for quotes', done: true },
+          { id: 's2', text: 'Confirm headcount with RSVPs', done: false },
+          { id: 's3', text: 'Put down the deposit', done: false },
+        ],
+      }],
+    };
+    localStorage.setItem('ngw-onboard-done', '1');
+    localStorage.setItem('ngw-events', JSON.stringify([demo]));
+    localStorage.setItem('ngw-clients', '[]');
+    params.delete('demo');
+    const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    window.history.replaceState({}, '', url);
+  } catch { /* demo seed is best-effort */ }
+})();
+
 // Lightweight fallback for lazy-loaded specialists.
 const SpecialistFallback = () => (
   <div style={{ padding: 40, color: '#849eb8', fontSize: 13, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif" }}>
