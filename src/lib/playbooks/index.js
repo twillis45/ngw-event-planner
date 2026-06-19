@@ -694,6 +694,25 @@ export function playbookFoodPlan(event, opts = {}) {
   };
 }
 
+// playbookAbout(type) — the event-type EDUCATION surface, for a host who wants to
+// understand what this kind of event is + why its choices matter. Pure passthrough of
+// the playbook's AUTHORED knowledge (summary, cultural/historical note, decision whys)
+// — invents nothing. Returns null for types without a playbook.
+export function playbookAbout(type) {
+  const pb = getPlaybook(type);
+  if (!pb) return null;
+  const summary = String(pb.summary || (pb.meta && pb.meta.summary) || '').trim();
+  const note = String((pb.knowledge && pb.knowledge.note) || (pb.meta && pb.meta.note) || '').trim();
+  if (!summary && !note) return null;
+  return {
+    type: pb.type,
+    summary,
+    note,
+    // The decisions that carry real "why it matters" prose — the practical knowledge.
+    whys: (pb.decisions || []).filter((d) => d.why).map((d) => ({ label: d.label, why: d.why })),
+  };
+}
+
 // playbookSetupPreview(type) — the richer "What I'll set up" bridge for the create
 // panel. Surfaces the playbook's REAL, named intelligence (its actual milestones,
 // food/decision counts, whether it carries a meaning/program element) so the host

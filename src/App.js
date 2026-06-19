@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -18345,6 +18345,40 @@ function HostWelcomeCard({ ev, C, cardStyle, eyebrowStyle }) {
   );
 }
 
+// Event-type EDUCATION — opt-in, collapsed. Surfaces the playbook's AUTHORED knowledge
+// (what this kind of event is + the cultural/historical background + why its choices
+// matter) for a host who wants to learn. Invents nothing; renders nothing without a
+// playbook. Last + lowest-priority card so it never competes with the live work.
+function AboutEventType({ type, C, cardStyle, eyebrowStyle }) {
+  const [open, setOpen] = useState(false);
+  const about = useMemo(() => { try { return playbookAbout(type); } catch { return null; } }, [type]);
+  if (!about) return null;
+  const teaser = (about.summary.split(/(?<=[.!?])\s/)[0] || about.summary).slice(0, 150);
+  return (
+    <div style={cardStyle}>
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ ...eyebrowStyle, marginBottom: 0 }}>About a {about.type.toLowerCase()}</span>
+          {!open && <span style={{ display: 'block', fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{teaser}…</span>}
+        </span>
+        <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 15, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}>{about.summary}</div>
+          {about.note && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 5 }}>The background</div>
+              <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>{about.note}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
   // The host's focus event: soonest upcoming (today→future), else most-future past,
@@ -18554,6 +18588,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           <span style={{ fontSize: 18, color: C.muted }}>→</span>
         </button>
       </div>
+      <AboutEventType type={ev.type} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
     </div>
   );
 }
