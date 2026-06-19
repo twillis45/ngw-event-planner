@@ -32795,6 +32795,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     if (initialNav.decisionId && initialNav.decisionId !== openDecisionId) setOpenDecisionId(initialNav.decisionId);
     if (initialNav.commId     && initialNav.commId     !== openCommId)     setOpenCommId(initialNav.commId);
     if (initialNav.timelineId && initialNav.timelineId !== openTimelineId) setOpenTimelineId(initialNav.timelineId);
+    // #12 deep-link: re-entering a mounted event with a food target (e.g. "Buy ice"
+    // from the Home spine) must sync openFoodId so the food plan scrolls to the line.
+    if (initialNav.foodFocus) setOpenFoodId(initialNav.foodFocus);
     // Sprint 60.B: re-fire vendor section focus on every initialNav update
     // even if the section repeats (planner clicked the same issue twice).
     if (initialNav.vendorSection) {
