@@ -614,3 +614,12 @@ describe('Sprint 64 — quantity override (foodQty) wired to cost', () => {
     expect(p1.foodHigh).toBeGreaterThan(p0.foodHigh);
   });
 });
+
+describe('Sprint 64 — region-gated DMV dishes', () => {
+  test('half-smokes show only for a DMV event, not Atlanta', () => {
+    const dmv = playbookFoodPlan({ id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [], state: 'DC' });
+    const atl = playbookFoodPlan({ id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [], market: 'atl' });
+    expect(dmv.list.some(i => i.id === 'p_halfsmokes')).toBe(true);
+    expect(atl.list.some(i => i.id === 'p_halfsmokes')).toBe(false);
+  });
+});

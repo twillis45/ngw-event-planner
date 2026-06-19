@@ -629,6 +629,17 @@ export function playbookFoodPlan(event, opts = {}) {
     return v == null ? true : (Array.isArray(p.whenChoice.in) ? p.whenChoice.in : []).includes(v);
   };
 
+  // 64-#5 — region-gated items (whenRegion:['DMV']) commit a LOCAL dish (half-smokes,
+  // mumbo sauce) only for events in that region — so localness is on the plate, not a
+  // prompt. Region resolves from the metro/state; untagged items always show.
+  const eventRegion = (() => {
+    const st = String(event.state || '').trim().toUpperCase();
+    const mkt = String(event.market || '').trim().toLowerCase();
+    if (['DC', 'MD', 'VA'].includes(st) || ['dc', 'dmv'].includes(mkt)) return 'DMV';
+    return null;
+  })();
+  const regionShown = (p) => !p.whenRegion || (eventRegion != null && p.whenRegion.includes(eventRegion));
+
   // 60I — items the host swapped out / won't buy. Kept in the list (struck-through,
   // reversible) but MARKED skipped so they leave every total — the plan honestly
   // reflects what they're actually getting, without losing the line.
@@ -643,7 +654,7 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
-    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
+    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p))
     .map((p) => {
       const baseQty = resolveQuantity(p, guests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
