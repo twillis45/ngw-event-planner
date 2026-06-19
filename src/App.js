@@ -18360,9 +18360,27 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           </div>
         )}
 
-        {/* Food plan — the playbook's grounded food choices + scaled shopping list,
-            surfaced where the host lives. Renders nothing without a playbook. */}
-        <FoodPlan event={ev} onPatch={onPatchEvent ? (patch) => onPatchEvent(ev.id, patch) : undefined} onNav={(tab) => onSelectEvent(ev.id, { tab })} profile={profile} />
+        {/* Food plan — a COMPACT summary on the home (Attention System: one glance,
+            not the whole plan). The full choices + spread + shopping list live on the
+            Plan tab; the home shows the estimate + progress + a way in. */}
+        {(() => {
+          const fp = (() => { try { return playbookFoodPlan(ev); } catch { return null; } })();
+          if (!fp) return null;
+          const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
+          return (
+            <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Planning' })}
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <span style={eyebrow}>Food plan</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+                {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
+              </div>
+            </button>
+          );
+        })()}
 
         {/* Sprint UX-4 · Upcoming Rail — what exists but hasn't earned attention yet.
             Reachable (one tap), never hidden. Empty once everything is active. */}
