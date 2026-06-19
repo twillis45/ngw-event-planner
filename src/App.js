@@ -771,6 +771,12 @@ function GlobalStyles() {
       '.hp-recede { opacity: 0.5; transition: opacity 320ms ease; }',
       '.hp-recede:hover, .hp-recede:focus-within, .hp-recede:active { opacity: 1; }',
       '@media (hover: none) { .hp-recede { opacity: 0.6; } }',
+      // hp-recede-group — one wrapper, every DIRECT child recedes independently and
+      // un-dims when you reach for it. For surfaces with a stack of sections below a
+      // single hero (Overview, planner cockpit) so the hero is the one bright thing.
+      '.hp-recede-group > * { opacity: 0.5; transition: opacity 320ms ease; }',
+      '.hp-recede-group > *:hover, .hp-recede-group > *:focus-within { opacity: 1; }',
+      '@media (hover: none) { .hp-recede-group > * { opacity: 0.62; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
       '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
       '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',

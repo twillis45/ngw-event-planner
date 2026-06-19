@@ -2071,6 +2071,9 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
       borderRadius: radius.lg,
       overflow: 'hidden',
       fontFamily: FF,
+      // Attention System: the hero breathes when something actually needs you;
+      // stays still when you're clear (neutral) so "all good" reads as calm.
+      animation: command.level === 'neutral' ? undefined : 'ceBreathe 3.4s ease-in-out infinite',
     }}>
       {/* Editorial accent strip — single source of light, Studio Matte compliant */}
       <div style={{
@@ -2321,6 +2324,11 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           isMobile={true}
         />
 
+        {/* Attention System: everything below the hero recedes (.hp-recede-group)
+            and brightens as you reach for it — the Up Next panel is the one bright
+            thing on the Overview. */}
+        <div className="hp-recede-group" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
         {/* NEEDS YOU — one unified queue (board: four parallel "waiting on you"
             lists were hierarchy theater). Decisions / Approvals / Requests /
             Questions share one header + total; each is a quiet sub-group. Row
@@ -2422,6 +2430,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
 
         {/* Sprint UX-4: Upcoming Rail — dormant sections, reachable, no attention demand. */}
         <UpcomingRail items={rail} onTabChange={onTabChange} isMobile />
+        </div>{/* /hp-recede-group */}
       </div>
 
       {/* Sticky bottom action bar */}
@@ -2535,8 +2544,9 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
         {/* Two-column body */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 20, alignItems: 'start' }}>
 
-          {/* LEFT — action stream */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* LEFT — action stream. Attention System: each section recedes until
+              reached; the Up Next hero above is the one bright thing. */}
+          <div className="hp-recede-group" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Open Decisions */}
             {/* NEEDS YOU — unified queue (board: four parallel "waiting on you"
                 lists were hierarchy theater). One header + total; quiet sub-groups. */}
@@ -2579,8 +2589,8 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
             <DecisionsBlock items={decisionItems} />
           </div>
 
-          {/* RIGHT — operational rail */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* RIGHT — operational rail (recedes section-by-section). */}
+          <div className="hp-recede-group" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Planning Health */}
             {!dormant('planningHealth') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
