@@ -8048,10 +8048,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
         </div>
-        {/* Honesty: if the estimate is scaled to the local region, say so (regional, not per-store). */}
-        {plan.priceContext && (
+        {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
+        {plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
-            Adjusted to <span style={{ color: C.text }}>{plan.priceContext}</span>.
+            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> if you shop value (grocery / store brands) · <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> at specialty &amp; butcher. Per-item prices are below.
+          </div>
+        )}
+        {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
+            can resolve the area; national + a nudge to add a location otherwise. */}
+        {foodPP.priceNote && (
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+            {foodPP.hasRegion
+              ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
+              : <button type="button" onClick={() => onNav('Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{foodPP.priceNote} →</button>}
           </div>
         )}
         {/* 60H — bought-so-far updates live as the host checks off the shopping list,
@@ -8112,7 +8121,17 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Quantities scaled to {plan.guests} guests. Tap an item to check it off as you shop.</div>
         {plan.groups.map((g) => (
           <div key={g} style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>{g}</div>
+            {/* 60J — group subtotal breaks the total range into Food vs Drinks. */}
+            {(() => {
+              const gi = plan.list.filter((i) => i.group === g && !i.skipped);
+              const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
+              return (
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>{money(gl, gh)}</span>
+                </div>
+              );
+            })()}
             {plan.list.filter((i) => i.group === g).map((i) => {
               const got = (event.foodGot || {})[i.id] && !i.skipped;
               const skipped = i.skipped;
@@ -13458,18 +13477,24 @@ function resolveEventState(event, profile) {
 // claim) whenever location is unknown or the backend/BLS is unavailable. Returns
 // the exact opts shape playbookFoodPlan(event, opts) consumes.
 function useFoodPriceFactor(event, profile) {
-  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null });
+  // priceNote is ALWAYS set so the pricing source is never invisible: national when
+  // we can't resolve a region (with a nudge to add a location), regional once we can.
+  const NATIONAL_NOTE = 'Based on national average prices — add your event’s city & state for local pricing';
+  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false });
   const state = resolveEventState(event, profile);
   useEffect(() => {
     let cancelled = false;
-    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null }); return undefined; }
+    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false }); return undefined; }
     getFoodPriceFactor({ state }).then((d) => {
       if (cancelled) return;
       const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
-      const priceContext = factor !== 1
-        ? `current ${d.regionLabel} prices · ${d.source}${d.month ? ` ${d.month}` : ''}`
-        : null;
-      setPp({ priceFactor: factor, priceContext });
+      const src = `${d.source}${d.month ? ` ${d.month}` : ''}`;
+      const priceContext = factor !== 1 ? `current ${d.regionLabel} prices · ${src}` : null;
+      // Regional note whether or not the factor moved (region resolved either way).
+      const priceNote = factor !== 1
+        ? `Adjusted to current ${d.regionLabel} prices · ${src}`
+        : `In line with current ${d.regionLabel} prices · ${src}`;
+      setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
   }, [state]);
@@ -21564,7 +21589,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav }) {
+function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion }) {
   const C = useT();
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
@@ -21623,13 +21648,20 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         </div>
         <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
           {foodPlan
-            ? (<>Estimated from your menu for {foodPlan.guests} guests
-                {foodPlan.priceContext ? <> · <span style={{ color: C.text, fontWeight: 600 }}>{foodPlan.priceContext}</span></> : null}.
+            ? (<>Estimated from your menu for {foodPlan.guests} guests.
                 {foodSpent > 0
                   ? <> You've bought <span style={{ color: C.success, fontWeight: 700 }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
                   : <> Nothing checked off yet.</>}</>)
             : (<>Set your menu in the food plan to estimate this.</>)}
         </div>
+        {/* Pricing source — ALWAYS shown (regional when resolved, national + nudge otherwise). */}
+        {priceNote && (
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>
+            {hasRegion
+              ? <span style={{ color: C.text, fontWeight: 600 }}>{priceNote}.</span>
+              : <button type="button" onClick={() => onNav && onNav('Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{priceNote} →</button>}
+          </div>
+        )}
         <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
           Open the food plan →
         </button>
@@ -21982,6 +22014,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         setBudget={setBudget}
         plannedGuests={plannedGuests}
         onNav={onNav}
+        priceNote={foodPP.priceNote}
+        hasRegion={foodPP.hasRegion}
       />
     );
   }
