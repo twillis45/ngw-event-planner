@@ -8166,15 +8166,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
         <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
-          Sized for {plan.guests} guests{!plan.guestCountResolved ? ' (estimate)' : ''}
+          Enough food for {plan.guests} guests{!plan.guestCountResolved ? ' — your best guess for now' : ''}
         </div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-          Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
+          You'll likely spend <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> on food and drinks — I've sized it to what a day like this really needs.
         </div>
         {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
         {plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
-            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> if you shop value (grocery / store brands) · <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> at specialty &amp; butcher. Per-item prices are below.
+            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> if you keep it simple at the grocery store · <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> if you go all-out (butcher, specialty shops). Tap any item below to see its price.
           </div>
         )}
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
@@ -13851,7 +13851,7 @@ function resolveEventState(event, profile) {
 function useFoodPriceFactor(event, profile) {
   // priceNote is ALWAYS set so the pricing source is never invisible: national when
   // we can't resolve a region (with a nudge to add a location), regional once we can.
-  const NATIONAL_NOTE = 'Based on national average prices — add your event’s city & state for local pricing';
+  const NATIONAL_NOTE = 'Using national average prices for now — add your city & state and I’ll match what groceries cost near you';
   const [pp, setPp] = useState({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false });
   const state = resolveEventState(event, profile);
   useEffect(() => {
@@ -13868,9 +13868,12 @@ function useFoodPriceFactor(event, profile) {
       const tail = pm ? ` (${pm})` : '';
       const priceContext = factor !== 1 ? `${d.regionLabel}-region grocery prices${tail}` : null;
       // Regional note whether or not the factor moved (region resolved either way).
+      // Host-speak: plain reassurance these are real local prices, not a clinical
+      // "adjusted to South-region grocery prices" line.
+      const where = `${d.regionLabel}${pm ? ` · ${pm}` : ''}`;
       const priceNote = factor !== 1
-        ? `Adjusted to current ${d.regionLabel}-region grocery prices${tail}`
-        : `In line with current ${d.regionLabel}-region grocery prices${tail}`;
+        ? `These match what groceries actually cost near you right now — ${where}`
+        : `Right in line with grocery prices near you — ${where}`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
