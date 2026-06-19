@@ -1246,6 +1246,27 @@ function _selectEventNextActionInner(event) {
     };
   }
 
+  // Tier 0.5 (foundational setup): the host has started — a guest count or guest
+  // list exists — but no real money is set on the budget. Setting the budget is
+  // the next foundational domino (it frames every food + vendor decision), so the
+  // guided workflow leads them there before the routine reactive ladder. Seeded
+  // $0 template rows do NOT count as set; the moment any real amount is entered,
+  // this stops firing. Past events are exempt.
+  const hasGuestSignal = (event.guests || []).length > 0
+    || Number(event.guestCount) > 0 || Number(event.guestEstimate) > 0;
+  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
+  if (hasGuestSignal && !budgetIsSet && (days === null || days >= 0)) {
+    return {
+      level: 'attention',
+      category: 'readiness',
+      title: 'Set your budget.',
+      consequence: 'With your headcount in, a budget frames every food and vendor choice — Event Boss can size a starting point for you.',
+      primaryCta: 'Set budget',
+      primaryRoute: { tab: 'Budget' },
+      contextLine: daysSub,
+    };
+  }
+
   // Tier 1: caterer drift (already detected in deriveCommandCenterData)
   if (d.catererDrift && d.cateringVendor) {
     return {

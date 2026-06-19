@@ -12,6 +12,7 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan } from './lib/playbooks';
+import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { callAiFeature, isAiProxyConfigured } from './lib/aiProxy';
@@ -1398,11 +1399,19 @@ const leadTimeHintForType = (type) => {
 };
 
 // Phase → days-before-event offset
+// Ordered far → near. The near-term buckets (3 Weeks Out … Event Day) exist so
+// playbook-engine milestones — whose real cadence is weekly-then-daily in the
+// final stretch — land on accurate dates instead of collapsing into one or two
+// coarse phases. Only phases that actually have tasks are ever rendered, so
+// long-lead events (weddings) never show these extra near-term nodes.
 const PHASE_OFFSET = {
   '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
   '6 Months Out': -182,  '5 Months Out': -152,  '4 Months Out': -121,
   '3 Months Out': -91,   '2 Months Out': -61,   '1 Month Out':  -30,
-  '2 Weeks Out':  -14,   'Week Of':      -7,
+  '3 Weeks Out':  -21,   '2 Weeks Out':  -14,    '10 Days Out':  -10,
+  'Week Of':      -7,     '5 Days Out':   -5,     '4 Days Out':   -4,
+  '3 Days Out':   -3,     '2 Days Out':   -2,     'Day Before':   -1,
+  'Event Day':     0,
 };
 
 // Phase → primary workflow focus label (shown on stepper nodes)
@@ -1416,8 +1425,16 @@ const PHASE_FOCUS = {
   '3 Months Out':  'Headcount',
   '2 Months Out':  'Final Details',
   '1 Month Out':   'Confirmations',
-  '2 Weeks Out':   'Final Prep',
-  'Week Of':       'Go Time',
+  '3 Weeks Out':   'Lock Plans',
+  '2 Weeks Out':   'Lock It In',
+  '10 Days Out':   'Confirm & Shop',
+  'Week Of':       'Final Prep',
+  '5 Days Out':    'Shop & Prep',
+  '4 Days Out':    'Shop & Prep',
+  '3 Days Out':    'Final Shopping',
+  '2 Days Out':    'Prep & Cook',
+  'Day Before':    'Setup & Cook',
+  'Event Day':     'Go Time',
 };
 
 const phaseDate = (week, eventDate) => {
@@ -2021,6 +2038,12 @@ const CLIENT_INTAKE_QUESTIONS = [
 ];
 const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.muted, Maybe: C.muted }); // Red audit: a decline is a fact, not a crisis — neutral, not red.
 const SPECIAL_NEEDS_OPTIONS = ['Nut allergy', 'Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Kosher', 'Halal', 'Wheelchair access', 'Kids meal'];
+// Guest-facing RSVP allergy/access chips. Deliberately EXCLUDES Vegetarian/Vegan/
+// Gluten-free — those are the *meal choice* (a selection), captured separately
+// above. This list is *constraints the kitchen must honor regardless of plate*
+// (allergies + access), so a guest never encodes the same diet twice and the
+// caterer gets one unambiguous signal per axis. (Board: the double-entry trap.)
+const RSVP_ALLERGY_OPTIONS = ['Nut allergy', 'Shellfish', 'Dairy-free', 'Egg', 'Kosher', 'Halal', 'Wheelchair access'];
 const CATS      = ['Venue', 'Catering', 'Bar / Beverage', 'Photography', 'Videography', 'Florals', 'Entertainment', 'Photo Booth', 'Coordinator', 'Officiant', 'Invitations', 'AV / Tech', 'Lighting', 'Transport', 'Hair & Makeup', 'Decor', 'Cake', 'Rentals', 'Tent / Structures', 'Staffing', 'Security', 'Valet / Parking', 'Childcare', 'Calligraphy / Stationery', 'Dance Floor / Staging', 'Draping', 'Restroom Trailers', 'Generator / Power', 'Coffee / Specialty Cart', 'Food Truck', 'Live Painter', 'Send-off / Sparklers', 'Content Creator', 'Lodging / Concierge', 'Animals / Petting Zoo', 'Favors', 'Printing / Signage', 'Activities', 'Misc', 'Other'];
 // Grouped view of CATS for the category dropdown — a flat 40-item list was too
 // long to scan (Grandmother audit). Native <optgroup> keeps it one tap + adds
@@ -2443,6 +2466,39 @@ const mergeTimelineTemplate = (...types) => {
   }
   return out;
 };
+
+// ── Playbook → planning-timeline bridge ───────────────────────────────────────
+// The static TIMELINE_TEMPLATES only cover legacy types. The 39 playbooks ARE
+// the canonical planning intelligence (milestones with real offsetDays timings,
+// owners, and delay-risk). For any type a playbook covers but a template does
+// NOT, derive the Planning-tab timeline straight from the playbook so the list
+// is never empty and the timings come from the engine — not a parallel table.
+// offsetDays (POSITIVE days-before-event) maps to the nearest PHASE_OFFSET
+// bucket so the existing phase ordering + urgency classification keep working.
+const offsetDaysToPhase = (offsetDays) => {
+  const target = -(Number(offsetDays) || 0);
+  let best = 'Week Of', bestDist = Infinity;
+  for (const [week, off] of Object.entries(PHASE_OFFSET)) {
+    const d = Math.abs(target - off);
+    if (d < bestDist) { bestDist = d; best = week; }
+  }
+  return best;
+};
+const playbookTimelineEntries = (eventType) => {
+  const pb = getEventPlaybook(eventType);
+  if (!pb || !Array.isArray(pb.milestones)) return [];
+  return pb.milestones
+    .filter(m => m && m.id !== 'event' && m.category !== 'event' && m.name)
+    .map(m => ({
+      week:  offsetDaysToPhase(m.offsetDays),
+      offsetDays: typeof m.offsetDays === 'number' ? m.offsetDays : null,  // 60G: keep the real timing
+      task:  m.name,
+      owner: m.owner === 'host' ? 'Host' : (m.owner || ''),
+      notes: m.risk?.ifDelayed ? `If delayed: ${m.risk.ifDelayed}` : '',
+      milestoneId: m.id,
+    }));
+};
+
 const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.muted, event: C.accent });
 const EVT_CLR   = (C) => {
   const isLight = C.surface === '#ffffff';
@@ -7972,7 +8028,8 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
 function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {} }) {
   const C = useT();
-  const plan = playbookFoodPlan(event);
+  const foodPP = useFoodPriceFactor(event);
+  const plan = playbookFoodPlan(event, foodPP);
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
@@ -7991,6 +8048,21 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
         </div>
+        {/* Honesty: if the estimate is scaled to the local region, say so (regional, not per-store). */}
+        {plan.priceContext && (
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+            Adjusted to <span style={{ color: C.text }}>{plan.priceContext}</span>.
+          </div>
+        )}
+        {/* 60H — bought-so-far updates live as the host checks off the shopping list,
+            and feeds the budget's Food line. */}
+        {plan.boughtCount > 0 && (
+          <div style={{ fontSize: 13.5, marginTop: 6 }}>
+            <span style={{ color: C.muted }}>Bought so far: </span>
+            <span style={{ color: C.success, fontWeight: 700 }}>{money(plan.spentLow, plan.spentHigh)}</span>
+            <span style={{ color: C.muted }}> · {plan.boughtCount} of {plan.itemCount} items</span>
+          </div>
+        )}
         {!plan.guestCountResolved && (
           <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
             Set your guest count to size this exactly →
@@ -8042,22 +8114,36 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div key={g} style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>{g}</div>
             {plan.list.filter((i) => i.group === g).map((i) => {
-              const got = (event.foodGot || {})[i.id];
+              const got = (event.foodGot || {})[i.id] && !i.skipped;
+              const skipped = i.skipped;
+              // 60I — the per-unit math behind the line total ("$4–$8/lb"), regional-adjusted.
+              const pu = (n) => (n >= 10 ? `$${Math.round(n)}` : (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`));
+              const perUnit = i.perUnitHigh > 0
+                ? (i.perUnitLow === i.perUnitHigh ? pu(i.perUnitLow) : `${pu(i.perUnitLow)}–${pu(i.perUnitHigh)}`)
+                : null;
+              const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
               return (
-                <button key={i.id} type="button" onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
-                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: got ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                    {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
-                    {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
-                    {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
-                  </span>
-                  <span style={{ flexShrink: 0, textAlign: 'right' }}>
-                    {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
-                    <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
-                  </span>
-                </button>
+                <div key={i.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
+                  <button type="button" disabled={skipped} onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
+                    style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
+                    <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                      {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
+                      {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                      {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
+                    </span>
+                    <span style={{ flexShrink: 0, textAlign: 'right' }}>
+                      {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                      <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
+                      {perUnit && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
+                    </span>
+                  </button>
+                  <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
+                    style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
+                    {skipped ? '+ add' : '×'}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -8441,11 +8527,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     // is already satisfied — mark it done so the checklist/timeline doesn't nag.
     const gaveBudget = (Number(form.totalBudget) || 0) > 0;
     const gaveGuests = (Number(form.guestCount) || 0) > 0;
+    // Planning timeline comes from the PLAYBOOK ENGINE (its milestones + real
+    // offsetDays timings) whenever the type has a playbook — not a static table.
+    // The legacy TIMELINE_TEMPLATES is only a fallback for types no playbook
+    // covers yet.
+    const rawTimeline = getEventPlaybook(form.type)
+      ? playbookTimelineEntries(form.type)
+      : (mergeTimelineTemplate(...types) || []);
     const timeline = kitCfg.t
-      ? (mergeTimelineTemplate(...types) || []).map(t => {
+      ? rawTimeline.map(t => {
           const u = classifyTemplateTaskUrgency(t, days, form.type, PHASE_OFFSET);
           const txt = (t.task || '').toLowerCase();
-          const autoDone = /set budget/.test(txt) && /guest count/.test(txt) && gaveBudget && gaveGuests;
+          const autoDone = /set budget|guest count|headcount/.test(txt) && /guest|headcount|budget/.test(txt) && gaveBudget && gaveGuests;
           return { ...t, id: uid(), done: autoDone, urgency: u.urgency };
         })
       : [];
@@ -13321,6 +13414,44 @@ const US_CITY_SUGGESTIONS = US_CITIES;
 // State (board/user 2026-06-12) so locality is unambiguous on contracts & estimates.
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
 
+// Resolve a 2-letter US state from an event for regional food pricing. Prefers the
+// structured `event.state` (Service-Area field), then scans the "City, ST" label
+// and venue free-text for a state token. Null when unknown → neutral pricing.
+function resolveEventState(event) {
+  if (!event) return null;
+  const direct = String(event.state || '').trim().toUpperCase();
+  if (US_STATES.includes(direct)) return direct;
+  const hay = `${event.city || ''} ${event.venue || ''}`.toUpperCase();
+  const tokens = hay.match(/\b[A-Z]{2}\b/g);
+  if (tokens) { const hit = tokens.reverse().find((t) => US_STATES.includes(t)); if (hit) return hit; }
+  return null;
+}
+
+// ─── useFoodPriceFactor ──────────────────────────────────────────────────────
+// Fetches the current BLS Average-Price regional factor for an event's area so the
+// food plan / spending plan scale national estimates locally. Honest: REGIONAL (4
+// census regions), labeled as such; degrades to neutral (factor 1, no label, no
+// claim) whenever location is unknown or the backend/BLS is unavailable. Returns
+// the exact opts shape playbookFoodPlan(event, opts) consumes.
+function useFoodPriceFactor(event) {
+  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null });
+  const state = resolveEventState(event);
+  useEffect(() => {
+    let cancelled = false;
+    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null }); return undefined; }
+    getFoodPriceFactor({ state }).then((d) => {
+      if (cancelled) return;
+      const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
+      const priceContext = factor !== 1
+        ? `current ${d.regionLabel} prices · ${d.source}${d.month ? ` ${d.month}` : ''}`
+        : null;
+      setPp({ priceFactor: factor, priceContext });
+    });
+    return () => { cancelled = true; };
+  }, [state]);
+  return pp;
+}
+
 // Sprint 60.Y — Service Area field: city autocomplete + ZIP resolution. Type a
 // city (native datalist) or a 5-digit ZIP — on blur/Enter a ZIP resolves to
 // "City, ST" via the free, key-less zippopotam.us API. Degrades to plain free
@@ -18000,12 +18131,15 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const namedVendors = (ev.vendors || []).filter(v => v && (v.name || '').trim());
   const confirmedVendors = namedVendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked');
   const scheduleRows = (ev.ros || ev.timeline || []);
+  // Budget readiness is about MONEY actually set, not seeded $0 template rows.
+  // (Empty category rows were reading as "In progress" with $0 planned.)
+  const budgetSet = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
   const prog = [
-    { label: 'Guests',   state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
-    { label: 'Budget',   state: (ev.budget || []).length > 0 ? 'progress' : 'todo' },
-    { label: 'Food',     state: confirmedVendors.length > 0 ? 'done' : (namedVendors.length > 0 ? 'progress' : 'todo') },
-    { label: 'Schedule', state: scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo') },
-    { label: 'Venue',    state: (ev.venue || '').trim() ? 'done' : 'todo' },
+    { label: 'Guests',   tab: 'Guests', state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
+    { label: 'Budget',   tab: 'Budget', state: budgetSet ? 'progress' : 'todo' },
+    { label: 'Food',     tab: 'Vendors', state: confirmedVendors.length > 0 ? 'done' : (namedVendors.length > 0 ? 'progress' : 'todo') },
+    { label: 'Schedule', tab: 'Planning', state: scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo') },
+    { label: 'Venue',    tab: 'Event Details', state: (ev.venue || '').trim() ? 'done' : 'todo' },
   ];
   const stateMeta = { done: { t: '✓', c: C.success }, progress: { t: 'In progress', c: C.warn || C.accent }, todo: { t: 'To do', c: C.muted } };
 
@@ -18045,12 +18179,19 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* 3 · Progress */}
         <div style={card}>
           <div style={eyebrow}>How it’s coming along</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {prog.map(p => (
-              <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button key={p.label} type="button"
+                onClick={() => onSelectEvent(ev.id, { tab: p.tab })}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
                 <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
-              </div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+                  <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
+                </span>
+              </button>
             ))}
           </div>
         </div>
@@ -21393,9 +21534,110 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
   );
 }
 
+// ─── HostSpendingPlan ─────────────────────────────────────────────────────────
+// A self-host (recordKind:'event') sees a SPENDING PLAN — "what will this cost
+// me" — not the planner's AR/fee/vendor cockpit (DL-005 / DL-009 / RA-4 / PP-3).
+// The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
+// tracks the shopping checkoffs; the other costs are build-up (what a host adds),
+// not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
+function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav }) {
+  const C = useT();
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const money = (lo, hi) => {
+    const f = (n) => '$' + Math.round(Number(n) || 0).toLocaleString();
+    return (hi == null || hi === lo) ? f(lo) : `${f(lo)}–${f(hi)}`;
+  };
+  const rows = budget || [];
+  // Food is owned by the food plan — exclude any food/drink budget rows so the
+  // total isn't double-counted.
+  // Match food/drink categories so they don't double-count the food plan. No
+  // trailing \b on the stems — "Groceries"/"Drinks"/"Catering" must still match.
+  const isFoodRow = (r) => /food|drink|cater|grocer|beverage|\bbar\b/i.test(r.category || '');
+  const otherRows = rows.filter((r) => !isFoodRow(r));
+  const otherBudgeted = otherRows.reduce((s, r) => s + (Number(r.budgeted) || 0), 0);
+  const otherActual = otherRows.reduce((s, r) => s + (Number(r.actual) || 0), 0);
+
+  const foodLow = foodPlan ? foodPlan.foodLow : 0;
+  const foodHigh = foodPlan ? foodPlan.foodHigh : 0;
+  const foodSpent = foodPlan ? (foodPlan.spentHigh || 0) : 0;
+
+  const totalLow = foodLow + otherBudgeted;
+  const totalHigh = foodHigh + otherBudgeted;
+  const spentSoFar = foodSpent + otherActual;
+
+  const patchRow = (id, key, val) =>
+    setBudget((b) => (b || []).map((r) => (r.id === id ? { ...r, [key]: key === 'category' ? val : (Number(val) || 0) } : r)));
+  const addRow = () =>
+    setBudget((b) => [...(b || []), { id: uid(), category: '', budgeted: 0, actual: 0, notes: '' }]);
+  const removeRow = (id) => setBudget((b) => (b || []).filter((r) => r.id !== id));
+
+  const card = { background: C.surface || C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 16 : 20 };
+  const label = { fontSize: 12, fontWeight: 700, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
+  const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const ghostBtn = { background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 };
+
+  return (
+    <div style={{ display: 'grid', gap: 16, maxWidth: 760, margin: '0 auto' }}>
+      {/* HERO — the honest total. ONE hero per screen (SM-2). */}
+      <div style={{ ...card, padding: isMobile ? 18 : 24 }}>
+        <div style={label}>Your spending plan</div>
+        <div style={{ fontSize: isMobile ? 28 : 34, fontWeight: 800, color: C.text, marginTop: 6, lineHeight: 1.1 }}>
+          About {money(totalLow, totalHigh)}
+        </div>
+        <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>
+          for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
+          {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>{money(spentSoFar)}</span> spent so far</> : null}
+        </div>
+      </div>
+
+      {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={label}>Food &amp; drink</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(foodLow, foodHigh)}</div>
+        </div>
+        <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+          {foodPlan
+            ? (<>Estimated from your menu for {foodPlan.guests} guests
+                {foodPlan.priceContext ? <> · <span style={{ color: C.text, fontWeight: 600 }}>{foodPlan.priceContext}</span></> : null}.
+                {foodSpent > 0
+                  ? <> You've bought <span style={{ color: C.success, fontWeight: 700 }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
+                  : <> Nothing checked off yet.</>}</>)
+            : (<>Set your menu in the food plan to estimate this.</>)}
+        </div>
+        <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
+          Open the food plan →
+        </button>
+      </div>
+
+      {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={label}>Other costs</div>
+          {otherBudgeted > 0 ? <div style={{ fontSize: 13.5, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}
+        </div>
+        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+          {otherRows.length === 0
+            ? <div style={{ fontSize: 13, color: C.muted }}>Decor, rentals, cake, extras — add anything you'll spend on beyond food.</div>
+            : otherRows.map((r) => (
+              <div key={r.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 90px 32px' : '1fr 120px 120px 32px', gap: 8, alignItems: 'center' }}>
+                <input value={r.category || ''} onChange={(e) => patchRow(r.id, 'category', e.target.value)} placeholder="e.g. Decorations" style={inp} />
+                <input value={r.budgeted || ''} onChange={(e) => patchRow(r.id, 'budgeted', e.target.value)} placeholder="Planned $" inputMode="numeric" style={inp} />
+                {!isMobile && <input value={r.actual || ''} onChange={(e) => patchRow(r.id, 'actual', e.target.value)} placeholder="Spent $" inputMode="numeric" style={inp} />}
+                <button type="button" onClick={() => removeRow(r.id)} aria-label="Remove cost" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+        </div>
+        <button type="button" onClick={addRow} style={{ ...ghostBtn, marginTop: 12 }}>+ Add a cost</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision }) {
+function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision, event, onNav }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -21416,6 +21658,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   // also mirror the scalar event.totalBudget for onboarding/checklist truthfulness.
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalDraft, setTotalDraft] = useState('');
+  // Regional food pricing (BLS) — surfaced in the host Spending Plan's Food line.
+  const foodPP = useFoodPriceFactor(event);
   const commitTotalBudget = () => {
     const newTotal = Math.max(0, Math.round(Number(totalDraft) || 0));
     setEditingTotal(false);
@@ -21464,7 +21708,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     setBudgetAILoad(false);
   };
   // Estimator auto-collapses once line items exist — open on first visit
-  const [showEstimator, setShowEstimator] = useState(budget.length === 0);
+  // Open the estimator whenever no real money is set — including the common case
+  // where the create flow seeded template categories at $0 (rows exist, but the
+  // host never entered a budget). Otherwise a host arriving to "set a budget"
+  // would land on a closed estimator with $0 rows and no guided way in.
+  const [showEstimator, setShowEstimator] = useState(
+    (budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) === 0,
+  );
   const [catsOpen, setCatsOpen] = useState(bp !== 'mobile'); // mobile: collapse the category breakdown
 
   // Sprint 64 — Stripe payment link state per fee milestone
@@ -21614,7 +21864,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   };
   const modalRow = budget.find(r => r.id === modalId);
 
-  const [est, setEst] = useState({ guests: confirmedCount > 0 ? String(confirmedCount) : '', eventType: eventType || 'Wedding' });
+  // Seed the estimator's guest count from what we already know — confirmed RSVPs
+  // first, else the planned headcount the host entered at create. The host should
+  // never re-type a number the app already has.
+  const seedGuests = confirmedCount > 0 ? confirmedCount : (Number(plannedGuests) || 0);
+  const [est, setEst] = useState({ guests: seedGuests > 0 ? String(seedGuests) : '', eventType: eventType || 'Wedding' });
   // Sprint 57g.1: factor controls + breakdown state. Same defaults and same
   // helpers as the NewEventModal estimator so a planner gets a consistent
   // budget total in both surfaces with the same inputs.
@@ -21692,6 +21946,21 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     committedPct > 90    ? { text: 'ATTENTION',     color: C.muted,    headline: 'Almost fully booked — little room left' } :
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
                            { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
+
+  // ─── Persona gate (RA-4 / DL-009) ── a self-host (recordKind:'event') gets a
+  // spending plan, never the planner's fee/Stripe/vendor/AR cockpit below.
+  const isHostBudget = (intakeFamilyConfig(eventType) || {}).recordKind === 'event';
+  if (isHostBudget) {
+    return (
+      <HostSpendingPlan
+        foodPlan={event ? playbookFoodPlan(event, foodPP) : null}
+        budget={budget}
+        setBudget={setBudget}
+        plannedGuests={plannedGuests}
+        onNav={onNav}
+      />
+    );
+  }
 
   return (
     <div>
@@ -22752,7 +23021,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
 // ─── RSVP Form View ──────────────────────────────────────────────────────────
 
 function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
-  const [name,        setName]        = useState('');
+  const [firstName,   setFirstName]   = useState('');
+  const [lastName,    setLastName]    = useState('');
   const [rsvp,        setRsvp]        = useState('');
   const [meal,        setMeal]        = useState('Standard');
   const [needs,       setNeeds]       = useState('');
@@ -22760,8 +23030,10 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   const [hasPlusOne,  setHasPlusOne]  = useState(false);
   const [plusOne,     setPlusOne]     = useState('');
   const [plusOneMeal, setPlusOneMeal] = useState('Standard');
+  const [plusOneNeeds, setPlusOneNeeds] = useState('');
   const [kids,        setKids]        = useState(0);
   const [submitted,   setSubmitted]   = useState(false);
+  const [err,         setErr]         = useState('');
 
   const mealOpts = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 
@@ -22780,10 +23052,23 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   };
 
   const submit = () => {
-    if (!name.trim() || !rsvp) return;
-    onSubmit({ name: name.trim(), rsvp, meal: rsvp === 'Yes' ? meal : '—', needs, plusOne: hasPlusOne ? plusOne : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—', kids: rsvp === 'Yes' ? kids : 0 });
+    // Validate on tap (button stays live) so the guest is never stuck at a
+    // silent grey wall. Last name is optional — only first name + an answer are
+    // required, so the casual-party RSVP isn't taxed. (Board: required last name
+    // + dead disabled button were the top friction.)
+    if (!firstName.trim()) { setErr('Add your first name to send.'); return; }
+    if (!rsvp)             { setErr('Let us know if you can make it.'); return; }
+    const fullName = lastName.trim() ? `${firstName.trim()} ${lastName.trim()}` : firstName.trim();
+    onSubmit({
+      name: fullName, firstName: firstName.trim(), lastName: lastName.trim(),
+      rsvp, meal: rsvp === 'Yes' ? meal : '—', needs,
+      plusOne: hasPlusOne ? plusOne : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—',
+      plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
+      kids: rsvp === 'Yes' ? kids : 0,
+    });
     setSubmitted(true);
   };
+  const clearErr = () => { if (err) setErr(''); };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: LC.bg, overflowY: 'auto', fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -22809,10 +23094,25 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
           {submitted ? (
             <div style={{ background: LC.surface, borderRadius: 20, padding: '40px 28px', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ fontSize: 52, marginBottom: 16 }}>{rsvp === 'Yes' ? '🎉' : '💌'}</div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {name.split(' ')[0]}!</h2>
-              <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 28px', lineHeight: 1.6 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {firstName.trim()}!</h2>
+              <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 20px', lineHeight: 1.6 }}>
                 {rsvp === 'Yes' ? "We can't wait to celebrate with you." : rsvp === 'No' ? "We'll miss you — thank you for letting us know." : "We'll keep you updated."}
               </p>
+              {rsvp === 'Yes' && (() => {
+                const party = 1 + (hasPlusOne ? 1 : 0) + kids;
+                const bits = [
+                  `${party} ${party === 1 ? 'guest' : 'guests'}`,
+                  meal && meal !== 'Standard' ? meal : null,
+                  hasPlusOne ? `+1${plusOne.trim() ? ` (${plusOne.trim()})` : ''}` : null,
+                  kids > 0 ? `${kids} ${kids === 1 ? 'child' : 'children'}` : null,
+                  (needs.trim() || plusOneNeeds.trim()) ? 'allergy noted' : null,
+                ].filter(Boolean);
+                return (
+                  <div style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 12, padding: '12px 16px', margin: '0 0 24px', fontSize: 13.5, color: LC.text }}>
+                    <span style={{ color: LC.muted }}>We've got you down for </span>{bits.join(' · ')}.
+                  </div>
+                );
+              })()}
               {!guestMode && (
                 <button onClick={onClose} style={{ background: LC.accent, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
                   ← Back to planner
@@ -22821,16 +23121,22 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
             </div>
           ) : (
             <div style={{ background: LC.surface, borderRadius: 20, padding: '28px 24px', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
-              <div style={{ marginBottom: 22 }}>
-                <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Your name</label>
-                <input style={lInput} value={name} onChange={e => setName(e.target.value)} placeholder="First & last name" autoFocus />
+              <div style={{ marginBottom: 22, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>First name</label>
+                  <input style={lInput} value={firstName} onChange={e => { setFirstName(e.target.value); clearErr(); }} placeholder="First name" autoFocus />
+                </div>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Last name <span style={{ color: LC.muted, fontWeight: 400 }}>(optional)</span></label>
+                  <input style={lInput} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
+                </div>
               </div>
 
               <div style={{ marginBottom: 22 }}>
                 <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Will you be attending?</label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[['Yes', '🎉  Attending', LC.success], ['No', "😢  Can't make it", LC.danger], ['Maybe', '🤔  Maybe', LC.muted]].map(([val, label, clr]) => (
-                    <button key={val} onClick={() => setRsvp(val)} style={{
+                    <button key={val} onClick={() => { setRsvp(val); clearErr(); }} style={{
                       flex: 1, padding: '14px 6px', borderRadius: 12,
                       border: `2px solid ${rsvp === val ? clr : LC.border}`,
                       background: rsvp === val ? clr + '22' : LC.bg,
@@ -22857,7 +23163,8 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                   </div>
 
                   <div style={{ marginBottom: 22 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Dietary restrictions or allergies</label>
+                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 4 }}>Allergies or access needs</label>
+                    <div style={{ fontSize: 12, color: LC.muted, marginBottom: 10, lineHeight: 1.4 }}>Your meal choice is above — use this only for allergies and access we must plan around. If it's a real allergy, tap <strong style={{ color: LC.text }}>Other</strong> and tell us exactly.</div>
                     {(() => {
                       const needsParts = needs.split(',').map(s => s.trim()).filter(Boolean);
                       const togglePreset = (opt) => {
@@ -22865,11 +23172,11 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                         const next = active ? needsParts.filter(p => p !== opt) : [...needsParts, opt];
                         setNeeds(next.join(', '));
                       };
-                      const customText = needsParts.filter(p => !SPECIAL_NEEDS_OPTIONS.includes(p)).join(', ');
+                      const customText = needsParts.filter(p => !RSVP_ALLERGY_OPTIONS.includes(p)).join(', ');
                       return (
                         <>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: showNeedsCustom ? 10 : 0 }}>
-                            {SPECIAL_NEEDS_OPTIONS.map(opt => {
+                            {RSVP_ALLERGY_OPTIONS.map(opt => {
                               const active = needsParts.includes(opt);
                               return (
                                 <button key={opt} onClick={() => togglePreset(opt)} style={{
@@ -22888,9 +23195,9 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             }}>Other</button>
                           </div>
                           {showNeedsCustom && (
-                            <input style={lInput} value={customText} placeholder="Describe additional needs..."
+                            <input style={lInput} value={customText} placeholder="Tell us exactly — e.g. severe peanut allergy, EpiPen"
                               onChange={e => {
-                                const presets = needsParts.filter(p => SPECIAL_NEEDS_OPTIONS.includes(p));
+                                const presets = needsParts.filter(p => RSVP_ALLERGY_OPTIONS.includes(p));
                                 const custom = e.target.value;
                                 setNeeds([...presets, ...(custom.trim() ? [custom.trim()] : [])].join(', '));
                               }} />
@@ -22924,6 +23231,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             ))}
                           </div>
                         </div>
+                        <input style={lInput} value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} placeholder="Any allergy for your plus-one? (optional)" />
                       </div>
                     )}
                   </div>
@@ -22946,15 +23254,15 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                 </div>
               )}
 
+              {err && (
+                <div style={{ fontSize: 13, color: LC.danger, marginBottom: 10, fontWeight: 600, textAlign: 'center' }}>{err}</div>
+              )}
               <button
                 onClick={submit}
-                disabled={!name.trim() || !rsvp}
                 style={{
                   width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-                  background: name.trim() && rsvp ? LC.accent : LC.border,
-                  color: '#fff', fontSize: 16, fontWeight: 800,
-                  cursor: name.trim() && rsvp ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.15s', opacity: name.trim() && rsvp ? 1 : 0.5, letterSpacing: '-0.01em',
+                  background: LC.accent, color: '#fff', fontSize: 16, fontWeight: 800,
+                  cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '-0.01em',
                 }}
               >
                 {rsvp === 'No' ? 'Send my regrets' : 'Submit RSVP →'}
@@ -23074,8 +23382,8 @@ function Guests({ guests, setGuests, event = {} }) {
             if (first.length >= 4 && gFirst === first) return true;
             return false;
           });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, kids: data.kids || g.kids } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }];
+          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids } : g);
+          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }];
         });
       });
       localStorage.removeItem(key);
@@ -23120,11 +23428,11 @@ function Guests({ guests, setGuests, event = {} }) {
     });
     if (existing) {
       setGuests(gs => gs.map(g => g.id === existing.id
-        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, kids: data.kids || g.kids }
+        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids }
         : g
       ));
     } else {
-      setGuests(gs => [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, kids: data.kids, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }]);
+      setGuests(gs => [...gs, { id: uid(), name: data.name, firstName: data.firstName || '', lastName: data.lastName || '', group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, plusOneNeeds: data.plusOneNeeds || '', kids: data.kids, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }]);
     }
   };
 
@@ -23237,6 +23545,45 @@ function Guests({ guests, setGuests, event = {} }) {
         const copyRsvp = () => {
           if (rsvpUrl) navigator.clipboard?.writeText(rsvpUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
         };
+        // Bulk RSVP request — the front-door blast to everyone we still need a
+        // firm yes/no from (rsvp not Yes/No). Distinct from the ≤90-day
+        // non-responder *reminder* below: this is always available and worded
+        // as the initial invitation. Same honest delivery path: real send when
+        // email is configured, mailto draft (BCC) otherwise.
+        const needRsvp   = guests.filter(g => g.rsvp !== 'Yes' && g.rsvp !== 'No');
+        const blastList  = needRsvp.filter(g => g.email);
+        const noEmail    = needRsvp.length - blastList.length;
+        const emailReady = isEmailConfigured();
+        const evName     = event?.name || 'our event';
+        const whenStr    = event?.date ? ` on ${fmtDate(event.date)}` : '';
+        const first      = (g) => g.firstName || (g.name || '').split(' ')[0] || 'there';
+        const bodyFor    = (g) => `Hi ${first(g)},\n\nYou're invited to ${evName}${whenStr}! Please let us know if you can make it.${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nHope to see you there!`;
+        const mailtoBlast = `mailto:?bcc=${blastList.map(g => g.email).join(',')}&subject=${encodeURIComponent(`You're invited — ${evName}`)}&body=${encodeURIComponent(`Hi all,\n\nYou're invited to ${evName}${whenStr}! Please let us know if you can make it.${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nHope to see you there!`)}`;
+        const sendBlast = async () => {
+          if (!blastList.length) return;
+          if (!window.confirm(`Email an RSVP request to ${blastList.length} guest${blastList.length === 1 ? '' : 's'}?`)) return;
+          let delivered = 0, loggedOnly = 0, failedToPost = 0;
+          for (const g of blastList) {
+            try {
+              const r = await commApi.createMessage(event.id, 'CLIENT', {
+                message_type: 'standard',
+                author_role: 'planner',
+                body: bodyFor(g),
+                deliver_email: true,
+                recipient_email: g.email,
+                recipient_name: g.name,
+                subject: `You're invited — ${evName} · please RSVP`,
+              });
+              if (r?.metadata?.delivery?.status === 'sent') delivered++;
+              else loggedOnly++;
+            } catch { failedToPost++; }
+          }
+          const parts = [];
+          if (delivered)    parts.push(`${delivered} request${delivered === 1 ? '' : 's'} sent`);
+          if (loggedOnly)   parts.push(`${loggedOnly} logged to thread only — those guests were NOT notified`);
+          if (failedToPost) parts.push(`${failedToPost} failed to post`);
+          alert(parts.length ? parts.join(' · ') + '.' : 'No requests sent.');
+        };
         return (
           <div style={{ ...s.card, padding: '14px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
@@ -23250,6 +23597,27 @@ function Guests({ guests, setGuests, event = {} }) {
                 <button style={s.btn(copied ? 'teal' : 'default')} onClick={copyRsvp}>{copied ? '✓ Copied!' : 'Copy Link'}</button>
               </div>
             </div>
+            {blastList.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontSize: 12, color: C.muted }}>
+                  Send the RSVP request to {blastList.length} guest{blastList.length === 1 ? '' : 's'} who haven't replied
+                  {noEmail > 0 && <span> · {noEmail} have no email on file</span>}
+                </div>
+                {emailReady ? (
+                  <button style={{ ...s.btn('primary'), flexShrink: 0 }} onClick={sendBlast}>
+                    Send RSVP request ({blastList.length})
+                  </button>
+                ) : (
+                  <a
+                    href={mailtoBlast}
+                    title="Opens your email app with all recipients on BCC. Nothing is sent until you send the draft."
+                    style={{ ...s.btn('primary'), flexShrink: 0, textDecoration: 'none' }}
+                  >
+                    Email RSVP request ({blastList.length})
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -24499,6 +24867,9 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
     }
     return defaultPhase;
   });
+  // 60G — elapsed phases collapse under a "N earlier steps" line (host choice b),
+  // so an imminent event doesn't show a wall of past-dated, undone phases.
+  const [showPastPhases, setShowPastPhases] = useState(false);
 
   // Tasks for currently selected phase, optionally filtered by search.
   // Sprint 57f.1: '__compressed__' is a virtual phase showing do_now +
@@ -24555,12 +24926,37 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
             const knownPhases = phaseOrder.filter(p => allPhases.includes(p));
             const customPhases = allPhases.filter(p => !phaseOrder.includes(p));
             const steppablePhases = knownPhases; // custom phases shown separately
+            // 60G — split elapsed vs live by the phase's REAL date and collapse the
+            // elapsed ones, so an imminent event shows what's left, not a past wall.
+            const _today0 = getToday(); _today0.setHours(0, 0, 0, 0);
+            const phaseIsPast = (phase) => {
+              if (!eventDate || !(phase in PHASE_OFFSET)) return false;
+              const d = new Date(eventDate + 'T00:00:00');
+              d.setDate(d.getDate() + PHASE_OFFSET[phase]);
+              return d < _today0;
+            };
+            const pastPhases = steppablePhases.filter(phaseIsPast);
+            let livePhases = steppablePhases.filter(p => !phaseIsPast(p));
+            if (!livePhases.length) livePhases = steppablePhases.slice(-1); // never hide everything
+            const shownPhases = showPastPhases ? steppablePhases : livePhases;
             return (
               <div style={{ marginBottom: 20 }}>
+                {/* 60G — collapsed elapsed-steps line (honest, expandable) */}
+                {pastPhases.length > 0 && (
+                  <button onClick={() => setShowPastPhases(v => !v)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 11.5, fontWeight: 600,
+                  }}>
+                    <span style={{ fontSize: 10 }}>{showPastPhases ? '▾' : '▸'}</span>
+                    {showPastPhases
+                      ? `Hide ${pastPhases.length} earlier step${pastPhases.length === 1 ? '' : 's'}`
+                      : `${pastPhases.length} earlier step${pastPhases.length === 1 ? '' : 's'} — the window passed`}
+                  </button>
+                )}
                 {/* Stepper row — scroll horizontally */}
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 'max-content', padding: '4px 4px 0', position: 'relative' }}>
-                    {steppablePhases.map((phase, idx) => {
+                    {shownPhases.map((phase, idx) => {
                       const tasks  = timeline.filter(t => t.week === phase);
                       const pDone  = tasks.filter(t => t.done).length;
                       const pOver  = tasks.some(isOverdue);
@@ -24570,7 +24966,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
                       const pDate  = phaseDate(phase, eventDate);
                       const abbr      = phase.replace(' Months Out', 'mo').replace(' Month Out', 'mo').replace(' Weeks Out', 'wk').replace('Week Of', 'WK');
                       const focusLbl  = PHASE_FOCUS[phase] || '';
-                      const isLast    = idx === steppablePhases.length - 1;
+                      const isLast    = idx === shownPhases.length - 1;
                       return (
                         <div key={phase} style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
                           <button onClick={() => setSelectedPhase(phase)} title={focusLbl ? `${phase} — ${focusLbl}` : phase} style={{
@@ -31335,6 +31731,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
   const { savedAt, online, syncState, pendingCount } = useContext(SaveCtx);
+  // RA-4 / DL-009 — a self-host has no client: gate the planner-only chrome
+  // (Share-with-client, Consult Script) and relabel the money tab off this axis.
+  const isHostEvt = (intakeFamilyConfig(event.type) || {}).recordKind === 'event';
   // Sprint 51 Path B + Sprint 59B: any legacy tab name from initialNav (stale
   // URL, persisted state, third-party trigger, Home/CommandCenter Sprint-57f
   // compressed routes) is normalized at mount so we land in the right
@@ -31793,7 +32192,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
@@ -32112,9 +32511,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   <Icon name="eye" size={13} /> Client View
                 </button>
               )}
-              <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Icon name="send" size={13} /> Share with client
-              </button>
+              {!isHostEvt && (
+                <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Icon name="send" size={13} /> Share with client
+                </button>
+              )}
               {/* Sprint 49 closure: 'Manage Event' surface — labeled
                   entry-point for secondary + destructive actions. Replaces
                   the bare '···' button so Day Mode / Duplicate / Archive /
@@ -32370,8 +32771,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               // Sprint 59D: mobile drawer copy locked to Day-of/Full event view.
               { icon: 'zap',      label: dayMode ? 'Full event view' : 'Day-of view', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
               // Sprint 51 follow-up: ConsultScriptModal trigger restored after Overview retirement.
-              { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
-              { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
+              !isHostEvt && { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
+              !isHostEvt && { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
               client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
               { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
               { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
@@ -33208,6 +33609,31 @@ export default function App() {
 
   const setEvent  = (fn) => setEvents(evts => evts.map(e => e.id === activeId          ? (typeof fn === 'function' ? fn(e) : fn) : e));
   const setClient = (fn) => setClients(cs  => cs.map(c  => c.id === activeClient?.id   ? (typeof fn === 'function' ? fn(c) : fn) : c));
+
+  // Backfill the planning timeline from the PLAYBOOK ENGINE for any event whose
+  // type a playbook covers but whose timeline is empty — e.g. a "Juneteenth
+  // Cookout" with no static TIMELINE_TEMPLATE, or an event created before its
+  // playbook existed. Runs app-wide (not per-surface) so the host home, Plan
+  // tab, Command Center, and Calendar all see the same engine-derived tasks
+  // with correct offsetDays timings. Idempotent: only fills empty timelines, so
+  // it never overwrites user edits and never loops (the fill makes the guard
+  // false). Fires again after the cloud load replaces `events`.
+  useEffect(() => {
+    let changed = false;
+    const next = (events || []).map(ev => {
+      if (Array.isArray(ev?.timeline) && ev.timeline.length > 0) return ev;
+      const entries = playbookTimelineEntries(ev?.type);
+      if (!entries.length) return ev;
+      const d = daysUntil(ev?.date);
+      changed = true;
+      return { ...ev, timeline: entries.map(t => ({
+        ...t, id: uid(), done: false,
+        urgency: classifyTemplateTaskUrgency(t, d, ev?.type, PHASE_OFFSET).urgency,
+      })) };
+    });
+    if (changed) setEvents(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
   // Update guests for any event (used by ClientPortal so the client can manage the guest list)
   const updateEventGuests = (evId, fn) => setEvents(evts => evts.map(e => e.id === evId ? { ...e, guests: typeof fn === 'function' ? fn(e.guests || []) : fn } : e));
 

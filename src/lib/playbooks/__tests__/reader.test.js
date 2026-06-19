@@ -495,3 +495,73 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
     expect(playbookFoodPlan({ id: 'o', type: 'Other', guestCount: 10 })).toBeNull();
   });
 });
+
+describe('60F — menu choice drives the spread (whenChoice gate)', () => {
+  const ids = (menu) => playbookFoodPlan({
+    id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [],
+    foodChoices: menu ? { menu } : {},
+  }).list.map((i) => i.id);
+
+  test('default menu → ribs + chicken + links; not brisket/seafood', () => {
+    const l = ids(null);
+    expect(l).toEqual(expect.arrayContaining(['p_ribs', 'p_chicken', 'p_links']));
+    expect(l).not.toContain('p_brisket');
+    expect(l).not.toContain('p_seafood');
+  });
+  test('brisket menu → brisket + chicken; not ribs/links/seafood', () => {
+    const l = ids('Smoked brisket + chicken + the sides');
+    expect(l).toEqual(expect.arrayContaining(['p_brisket', 'p_chicken']));
+    ['p_ribs', 'p_links', 'p_seafood'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('mixed grill + seafood → ribs + chicken + seafood; not links/brisket', () => {
+    const l = ids('Mixed grill + seafood + the sides');
+    expect(l).toEqual(expect.arrayContaining(['p_ribs', 'p_chicken', 'p_seafood']));
+    ['p_links', 'p_brisket'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('lighter spread → chicken only (no ribs/links/brisket/seafood)', () => {
+    const l = ids('Lighter spread: chicken + sides + plenty of red foods');
+    expect(l).toContain('p_chicken');
+    ['p_ribs', 'p_links', 'p_brisket', 'p_seafood'].forEach((id) => expect(l).not.toContain(id));
+  });
+  test('untagged items (e.g. chicken) always appear', () => {
+    expect(ids(null)).toContain('p_chicken');
+  });
+});
+
+describe('60H — checked-off items feed spent (food ↔ budget)', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('nothing bought → spent 0', () => {
+    const p = playbookFoodPlan(base);
+    expect(p.spentLow).toBe(0);
+    expect(p.spentHigh).toBe(0);
+    expect(p.boughtCount).toBe(0);
+    expect(p.itemCount).toBeGreaterThan(0);
+  });
+  test('checking off an item raises spent (and only that item counts)', () => {
+    const p0 = playbookFoodPlan(base);
+    const firstId = p0.list[0].id;
+    const p1 = playbookFoodPlan({ ...base, foodGot: { [firstId]: true } });
+    expect(p1.boughtCount).toBe(1);
+    expect(p1.spentHigh).toBeGreaterThan(0);
+    expect(p1.spentHigh).toBeLessThanOrEqual(p1.foodHigh);
+  });
+});
+
+describe('60I — swap-out (skip) + per-item breakdown', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('items carry the per-unit breakdown', () => {
+    const p = playbookFoodPlan(base);
+    const item = p.list.find((i) => i.units != null && i.perUnitHigh > 0);
+    expect(item).toBeTruthy();
+    expect(item.unitBase).toBeTruthy();
+    expect(item.perUnitHigh).toBeGreaterThanOrEqual(item.perUnitLow);
+  });
+  test('skipping an item drops it from totals + count but keeps the line', () => {
+    const p0 = playbookFoodPlan(base);
+    const id = p0.list[0].id;
+    const p1 = playbookFoodPlan({ ...base, foodSkip: { [id]: true } });
+    expect(p1.list.find((i) => i.id === id).skipped).toBe(true); // line still present
+    expect(p1.itemCount).toBe(p0.itemCount - 1);                 // out of the count
+    expect(p1.foodHigh).toBeLessThan(p0.foodHigh);               // out of the total
+  });
+});

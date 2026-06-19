@@ -582,8 +582,14 @@ export function playbookBudgetCategories(eventType, guestCount) {
 // gate. Pure reader over authored data — the "make an intelligent food choice"
 // surface (FoodPlan) renders this. The host's picks live on event.foodChoices.
 const FOOD_GROUP = { food: 'Food', beverage: 'Drinks' };
-export function playbookFoodPlan(event) {
+// opts.priceFactor (default 1) scales the synthesized national unit-cost ranges to
+// the event's local area when a real, current regional factor is supplied by the
+// backend (BLS Average Price). opts.priceContext carries { region, month, source }
+// so the UI can label it honestly ("adjusted for {region}") — never claim "live"
+// without a real factor. With no factor it is a 1.0 no-op (today's behavior).
+export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
+  const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   const guests = guestCountOf(event, playbook);
@@ -599,9 +605,28 @@ export function playbookFoodPlan(event) {
     })
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 
+  // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase
+  // tagged whenChoice:{id,in:[...]} appears only when the effective pick for that
+  // decision is in the set; untagged purchases always appear (today's behavior).
+  // pickFor falls back to the decision's default so the spread is right on first
+  // render; an unknown pick shows the item (never hide on missing data).
+  const _decById = {};
+  (playbook.decisions || []).forEach((d) => { _decById[d.id] = d; });
+  const pickFor = (id) => picks[id] || (_decById[id] && _decById[id].default) || null;
+  const purchaseShown = (p) => {
+    if (!p.whenChoice || !p.whenChoice.id) return true;
+    const v = pickFor(p.whenChoice.id);
+    return v == null ? true : (Array.isArray(p.whenChoice.in) ? p.whenChoice.in : []).includes(v);
+  };
+
+  // 60I — items the host swapped out / won't buy. Kept in the list (struck-through,
+  // reversible) but MARKED skipped so they leave every total — the plan honestly
+  // reflects what they're actually getting, without losing the line.
+  const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
-    .filter((p) => p.category === 'food' || p.category === 'beverage')
+    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
     .map((p) => {
       const qty = resolveQuantity(p, guests);
       const unit = shortUnit(p.unit, qty);
@@ -610,12 +635,24 @@ export function playbookFoodPlan(event) {
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
-        low: Math.round(units * uLow), high: Math.round(units * uHigh),
+        low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
+        // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
+        // host understands the price, and sees the regional (pf) adjustment in it.
+        units, unitBase: p.unit || '',
+        perUnitLow: Math.round(uLow * pf * 100) / 100,
+        perUnitHigh: Math.round(uHigh * pf * 100) / 100,
+        skipped: !!skip[p.id],
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
       };
     });
-  const sum = (k) => list.reduce((s, i) => s + i[k], 0);
+  // Skipped (swapped-out) items leave every total.
+  const sum = (k) => list.filter((i) => !i.skipped).reduce((s, i) => s + i[k], 0);
   const di = dietaryResolved(event);
+  // 60H — what the host has actually bought (checked off on the shopping list). This
+  // is what connects the food plan to the budget: spent updates as items are ticked.
+  const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
+  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + i[k], 0);
+  const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
 
   return {
     type: playbook.type,
@@ -626,6 +663,44 @@ export function playbookFoodPlan(event) {
     groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
+    spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
+    spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
+    boughtCount,
+    itemCount: list.filter((i) => !i.skipped).length,
     dietaryResolved: di.resolved,
+    priceFactor: pf,
+    priceContext: pf !== 1 ? (opts.priceContext || null) : null,
+  };
+}
+
+// playbookSetupPreview(type) — the richer "What I'll set up" bridge for the create
+// panel. Surfaces the playbook's REAL, named intelligence (its actual milestones,
+// food/decision counts, whether it carries a meaning/program element) so the host
+// sees the product gets THIS specific day — e.g. for a Juneteenth Cookout: "Plan
+// the meaning/program element", "Book Black-owned caterer/baker", "Build the music
+// (Black artists across eras)". Honest by construction — it reflects the authored
+// playbook, invents nothing. Returns null for types without a playbook.
+export function playbookSetupPreview(type) {
+  const pb = getPlaybook(type);
+  if (!pb) return null;
+  const ms = (Array.isArray(pb.milestones) ? pb.milestones : []).filter((m) => m.category !== 'event');
+  const purchases = Array.isArray(pb.purchases) ? pb.purchases : [];
+  const foodCount = purchases.filter((p) => p.category === 'food' || p.category === 'beverage').length;
+  const decisions = Array.isArray(pb.decisions) ? pb.decisions : [];
+  const steps = ms.map((m) => ({
+    name: m.name,
+    owner: m.owner || 'host',
+    category: m.category || 'planning',
+    daysBefore: typeof m.offsetDays === 'number' ? m.offsetDays : null,
+    critical: !!(m.risk && m.risk.severity === 'high'),
+  }));
+  const hasMeaning = ms.some((m) => /meaning|program|reflect|honor|tribute|toast|reading/i.test(m.name || ''));
+  return {
+    type: pb.type,
+    steps,                       // the real, named plan — the event-specific intelligence
+    stepCount: steps.length,
+    foodCount,                   // sized food + drink items
+    decisionCount: decisions.length,
+    hasMeaning,                  // carries a program/reflection element
   };
 }
