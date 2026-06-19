@@ -8252,6 +8252,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
+  const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
   // #4 — "add a dish": a named line the host commits (their own dish, or someone's
   // bringing it). Owner + cost optional. Stored on event.foodAdd, merged by the engine.
   const [addOpen, setAddOpen] = useState(false);
@@ -8443,7 +8444,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const FRAC = { 0.5: '½', 0.25: '¼', 0.75: '¾', 0.33: '⅓', 0.34: '⅓', 0.67: '⅔', 0.2: '⅕' };
               const fmtPG = (n) => { if (n == null) return ''; if (FRAC[n]) return FRAC[n]; if (Number.isInteger(n)) return String(n); const w = Math.floor(n); const f = Math.round((n - w) * 100) / 100; return (w > 0 && FRAC[f]) ? `${w}${FRAC[f]}` : String(n); };
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
-              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); onPatch({ foodLocked: next }); setOpenLockId(null); };
+              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); const patch = { foodLocked: next }; if (checkAfterLock === i.id) { patch.foodGot = { ...(event.foodGot || {}), [i.id]: true }; } onPatch(patch); setOpenLockId(null); setCheckAfterLock(null); };
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
               const setQty = (n) => { const next = { ...(event.foodQty || {}) }; const v = Math.max(0, Number(n) || 0); if (v > 0) next[i.id] = v; else delete next[i.id]; onPatch({ foodQty: next }); };
               const resetQty = () => { const next = { ...(event.foodQty || {}) }; delete next[i.id]; onPatch({ foodQty: next }); };
@@ -8454,7 +8455,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               return (
                 <div key={i.id} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
                   <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                    <button type="button" disabled={skipped} onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
+                    <button type="button" disabled={skipped} onClick={() => {
+                        // You can't cross it off until its cost is locked against the budget.
+                        // Tapping an unpriced item opens the lock control; pricing it checks it off.
+                        if (!got && i.locked == null && !i.added) { setCheckAfterLock(i.id); setOpenLockId(i.id); return; }
+                        onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } });
+                      }}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
                       <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
@@ -8521,7 +8527,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: C.muted }}>Set what this'll cost — pick one or enter your own:</span>
+                      <span style={{ fontSize: 12, color: checkAfterLock === i.id ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === i.id ? 700 : 400 }}>{checkAfterLock === i.id ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this'll cost — pick one or enter your own:"}</span>
                       <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
                       <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
