@@ -50,7 +50,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
 // sections relocate to the Upcoming Rail (reachable, never hidden). Planner ⇒ never dormant.
@@ -326,7 +326,16 @@ export function deriveCommandCenterData(event) {
   const yesGuests = guests.filter(g => g.rsvp === 'Yes').length;
   const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
   const totalActual   = budget.reduce((s, r) => s + (r.actual   || 0), 0);
-  const budgetPct = totalBudgeted > 0 ? totalActual / totalBudgeted : 0;
+  // Owner bug: the Budget row ignored food-plan spend, so it disagreed with the
+  // Spending Plan. For a HOST, track the Spending Plan reality — category actuals +
+  // food bought so far, against the host's total budget (or the food+categories
+  // estimate). Planner budget stays category-only (food plan null/0 → unchanged).
+  const _isHostBudget = audiencePersona(event) === 'host';
+  let _foodSpent = 0, _foodEst = 0;
+  if (_isHostBudget) { try { const _fp = playbookFoodPlan(event); if (_fp) { _foodSpent = _fp.spentHigh || 0; _foodEst = _fp.foodHigh || 0; } } catch (e) { /* non-fatal */ } }
+  const billedActual = totalActual + _foodSpent;
+  const billedBudget = (_isHostBudget && Number(event.totalBudget) > 0) ? Number(event.totalBudget) : (totalBudgeted + _foodEst);
+  const budgetPct = billedBudget > 0 ? billedActual / billedBudget : 0;
 
   const stat = (label, status, note) => ({
     label, statusLabel: status,
@@ -354,11 +363,11 @@ export function deriveCommandCenterData(event) {
       guests.length > 0 ? `${yesGuests} confirmed of ${guests.length} invited`
         : event.guestEstimate ? `${event.guestEstimate} estimated · no RSVPs` : 'No guests yet'),
     stat('Budget',
-      totalBudgeted === 0 ? 'AT RISK'
+      billedBudget === 0 ? 'AT RISK'
         : budgetPct >= 0.9 ? 'AT RISK'
         : budgetPct >= 0.7 ? 'ATTENTION'
         : 'ON TRACK',
-      totalBudgeted > 0 ? `${fmtMoney(totalActual)} of ${fmtMoney(totalBudgeted)} · ${Math.round(budgetPct*100)}%` : 'No budget set'),
+      billedBudget > 0 ? `${fmtMoney(billedActual)} of ${fmtMoney(billedBudget)} · ${Math.round(budgetPct*100)}%` : 'No budget set'),
     // Sprint 49: real documents readiness (was previously placeholder)
     (() => {
       const dr = getDocumentsReadiness(event);
@@ -422,7 +431,7 @@ export function deriveCommandCenterData(event) {
   const metaParts = [
     event.venue,
     resolvedGuests > 0 ? `${resolvedGuests} guests` : null,
-    totalBudgeted > 0 ? `${fmtMoney(totalActual)} of ${fmtMoney(totalBudgeted)} budget` : null,
+    billedBudget > 0 ? `${fmtMoney(billedActual)} of ${fmtMoney(billedBudget)} budget` : null,
   ].filter(Boolean);
 
   // Days from
