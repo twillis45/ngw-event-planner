@@ -8030,11 +8030,20 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
+  // 64-#2 — the spread is summary-first. It auto-expands once shopping is live
+  // (something bought, or inside the ~1-week shop window); otherwise it stays a
+  // glanceable summary while the host is still planning.
+  const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
+  const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
   const money = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
   const setChoice = (id, val) => onPatch({ foodChoices: { ...(event.foodChoices || {}), [id]: val } });
+  // Hero preview — what the spread actually IS, at a glance (the essentials/mains).
+  const _spreadActive = plan.list.filter((i) => !i.skipped);
+  const _heroItems = _spreadActive.filter((i) => i.essential);
+  const heroNames = (_heroItems.length ? _heroItems : _spreadActive).slice(0, 6).map((i) => i.short || i.item);
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 20, marginBottom: 14 };
 
   return (
@@ -8115,10 +8124,28 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
       )}
 
-      {/* the grounded shopping list */}
+      {/* the grounded shopping list — summary-first; expand for the full checklist */}
       <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>The spread — what to get</div>
-        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Quantities scaled to {plan.guests} guests. Tap an item to check it off as you shop.</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>The spread</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>
+        </div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}
+        </div>
+        {heroNames.length > 0 && (
+          <div style={{ fontSize: 13.5, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
+            {heroNames.join(' · ')}
+            {plan.itemCount > heroNames.length ? <span style={{ color: C.muted }}> · +{plan.itemCount - heroNames.length} more</span> : null}
+          </div>
+        )}
+        <button type="button" onClick={() => setShowFullSpread((v) => !v)}
+          style={{ marginTop: 12, background: 'transparent', border: `1px solid ${C.border}`, color: steel, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 }}>
+          {showFullSpread ? 'Hide the shopping list' : 'Show the full shopping list →'}
+        </button>
+        {showFullSpread && (
+        <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Tap an item to check it off as you shop.</div>
         {plan.groups.map((g) => (
           <div key={g} style={{ marginBottom: 14 }}>
             {/* 60J — group subtotal breaks the total range into Food vs Drinks. */}
@@ -8167,6 +8194,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             })}
           </div>
         ))}
+        </div>
+        )}
       </div>
     </div>
   );
