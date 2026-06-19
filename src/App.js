@@ -2148,6 +2148,25 @@ const VENUE_TAGS = [
   'Sustainability-certified',
   'Bring-your-own vendors',
 ];
+// Venue attributes match the venue KIND (board/owner): a home/backyard has nothing
+// to do with "in-house catering" or "on-site lodging" — it has a kitchen, a yard,
+// street parking. Each kind surfaces only the attributes that actually apply.
+const VENUE_KINDS = [
+  { value: 'home',       label: 'Home / backyard' },
+  { value: 'venue',      label: 'Event venue / banquet hall' },
+  { value: 'restaurant', label: 'Restaurant / private room' },
+  { value: 'outdoor',    label: 'Park / outdoor space' },
+  { value: 'rented',     label: 'Rented hall / community space' },
+  { value: 'other',      label: 'Other' },
+];
+const VENUE_TAGS_BY_KIND = {
+  home:       ['Indoor space', 'Backyard / patio', 'Home kitchen to cook in', 'Street parking', 'Driveway parking', 'Limited restrooms', 'Bring everything (BYO)', 'Neighbors close by', 'Pets on site', 'ADA accessible'],
+  venue:      ['All-inclusive', 'Blank canvas', 'In-house catering', 'In-house bar', 'On-site lodging', 'Tables & chairs included', 'Venue coordinator', 'Bring-your-own vendors', 'ADA accessible'],
+  restaurant: ['Private room', 'In-house food & bar', 'Set menu / package', 'Their staff serves', 'Minimum spend', 'No outside food', 'ADA accessible'],
+  outdoor:    ['Open field / lawn', 'Pavilion / shelter', 'Permit required', 'No power on site', 'Public restrooms', 'No restrooms — bring some', 'Bring everything (BYO)', 'Rain plan needed'],
+  rented:     ['Blank canvas', 'Kitchen access', 'Tables & chairs included', 'Bring-your-own vendors', 'Time limit + cleanup', 'Parking lot', 'ADA accessible'],
+  other:      VENUE_TAGS,
+};
 // Attributes relevant to a vendor's CATEGORY — venue qualities surface only for a
 // Venue, dietary only for food vendors, "travels" only for service pros, etc.
 // (board: "venue attributes should only surface for the venue related").
@@ -31822,10 +31841,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           );
         })()}
 
-        {/* Venue attributes — all-inclusive ↔ blank-canvas etc. (board: type vs attribute). */}
+        {/* Venue KIND first → the attributes below adapt to it (a home shows kitchen /
+            yard / parking, not "in-house catering"). */}
+        <EDTRow isMobile={isMobile}>
+          <EDTField C={C} s={s} label="What kind of place is it?" value={event.venueKind || 'home'} onChange={v => upd('venueKind', v)} options={VENUE_KINDS} />
+          <div />
+        </EDTRow>
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Venue attributes</div>
-          <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS} />
+          <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS_BY_KIND[event.venueKind || 'home'] || VENUE_TAGS} />
         </div>
 
         {/* Sprint 60.L F15: quick-action chips. Restrained steel chips
