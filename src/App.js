@@ -1398,11 +1398,19 @@ const leadTimeHintForType = (type) => {
 };
 
 // Phase → days-before-event offset
+// Ordered far → near. The near-term buckets (3 Weeks Out … Event Day) exist so
+// playbook-engine milestones — whose real cadence is weekly-then-daily in the
+// final stretch — land on accurate dates instead of collapsing into one or two
+// coarse phases. Only phases that actually have tasks are ever rendered, so
+// long-lead events (weddings) never show these extra near-term nodes.
 const PHASE_OFFSET = {
   '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
   '6 Months Out': -182,  '5 Months Out': -152,  '4 Months Out': -121,
   '3 Months Out': -91,   '2 Months Out': -61,   '1 Month Out':  -30,
-  '2 Weeks Out':  -14,   'Week Of':      -7,
+  '3 Weeks Out':  -21,   '2 Weeks Out':  -14,    '10 Days Out':  -10,
+  'Week Of':      -7,     '5 Days Out':   -5,     '4 Days Out':   -4,
+  '3 Days Out':   -3,     '2 Days Out':   -2,     'Day Before':   -1,
+  'Event Day':     0,
 };
 
 // Phase → primary workflow focus label (shown on stepper nodes)
@@ -1416,8 +1424,16 @@ const PHASE_FOCUS = {
   '3 Months Out':  'Headcount',
   '2 Months Out':  'Final Details',
   '1 Month Out':   'Confirmations',
+  '3 Weeks Out':   'Lock Plans',
   '2 Weeks Out':   'Final Prep',
-  'Week Of':       'Go Time',
+  '10 Days Out':   'Confirm & Shop',
+  'Week Of':       'Final Prep',
+  '5 Days Out':    'Shop & Prep',
+  '4 Days Out':    'Shop & Prep',
+  '3 Days Out':    'Final Shopping',
+  '2 Days Out':    'Prep & Cook',
+  'Day Before':    'Setup & Cook',
+  'Event Day':     'Go Time',
 };
 
 const phaseDate = (week, eventDate) => {
@@ -2021,6 +2037,12 @@ const CLIENT_INTAKE_QUESTIONS = [
 ];
 const RSVP_CLR  = (C) => ({ Yes: C.success, No: C.muted, Maybe: C.muted }); // Red audit: a decline is a fact, not a crisis — neutral, not red.
 const SPECIAL_NEEDS_OPTIONS = ['Nut allergy', 'Gluten-free', 'Dairy-free', 'Vegetarian', 'Vegan', 'Kosher', 'Halal', 'Wheelchair access', 'Kids meal'];
+// Guest-facing RSVP allergy/access chips. Deliberately EXCLUDES Vegetarian/Vegan/
+// Gluten-free — those are the *meal choice* (a selection), captured separately
+// above. This list is *constraints the kitchen must honor regardless of plate*
+// (allergies + access), so a guest never encodes the same diet twice and the
+// caterer gets one unambiguous signal per axis. (Board: the double-entry trap.)
+const RSVP_ALLERGY_OPTIONS = ['Nut allergy', 'Shellfish', 'Dairy-free', 'Egg', 'Kosher', 'Halal', 'Wheelchair access'];
 const CATS      = ['Venue', 'Catering', 'Bar / Beverage', 'Photography', 'Videography', 'Florals', 'Entertainment', 'Photo Booth', 'Coordinator', 'Officiant', 'Invitations', 'AV / Tech', 'Lighting', 'Transport', 'Hair & Makeup', 'Decor', 'Cake', 'Rentals', 'Tent / Structures', 'Staffing', 'Security', 'Valet / Parking', 'Childcare', 'Calligraphy / Stationery', 'Dance Floor / Staging', 'Draping', 'Restroom Trailers', 'Generator / Power', 'Coffee / Specialty Cart', 'Food Truck', 'Live Painter', 'Send-off / Sparklers', 'Content Creator', 'Lodging / Concierge', 'Animals / Petting Zoo', 'Favors', 'Printing / Signage', 'Activities', 'Misc', 'Other'];
 // Grouped view of CATS for the category dropdown — a flat 40-item list was too
 // long to scan (Grandmother audit). Native <optgroup> keeps it one tap + adds
@@ -2443,6 +2465,38 @@ const mergeTimelineTemplate = (...types) => {
   }
   return out;
 };
+
+// ── Playbook → planning-timeline bridge ───────────────────────────────────────
+// The static TIMELINE_TEMPLATES only cover legacy types. The 39 playbooks ARE
+// the canonical planning intelligence (milestones with real offsetDays timings,
+// owners, and delay-risk). For any type a playbook covers but a template does
+// NOT, derive the Planning-tab timeline straight from the playbook so the list
+// is never empty and the timings come from the engine — not a parallel table.
+// offsetDays (POSITIVE days-before-event) maps to the nearest PHASE_OFFSET
+// bucket so the existing phase ordering + urgency classification keep working.
+const offsetDaysToPhase = (offsetDays) => {
+  const target = -(Number(offsetDays) || 0);
+  let best = 'Week Of', bestDist = Infinity;
+  for (const [week, off] of Object.entries(PHASE_OFFSET)) {
+    const d = Math.abs(target - off);
+    if (d < bestDist) { bestDist = d; best = week; }
+  }
+  return best;
+};
+const playbookTimelineEntries = (eventType) => {
+  const pb = getEventPlaybook(eventType);
+  if (!pb || !Array.isArray(pb.milestones)) return [];
+  return pb.milestones
+    .filter(m => m && m.id !== 'event' && m.category !== 'event' && m.name)
+    .map(m => ({
+      week:  offsetDaysToPhase(m.offsetDays),
+      task:  m.name,
+      owner: m.owner === 'host' ? 'Host' : (m.owner || ''),
+      notes: m.risk?.ifDelayed ? `If delayed: ${m.risk.ifDelayed}` : '',
+      milestoneId: m.id,
+    }));
+};
+
 const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.muted, event: C.accent });
 const EVT_CLR   = (C) => {
   const isLight = C.surface === '#ffffff';
@@ -8441,11 +8495,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     // is already satisfied — mark it done so the checklist/timeline doesn't nag.
     const gaveBudget = (Number(form.totalBudget) || 0) > 0;
     const gaveGuests = (Number(form.guestCount) || 0) > 0;
+    // Planning timeline comes from the PLAYBOOK ENGINE (its milestones + real
+    // offsetDays timings) whenever the type has a playbook — not a static table.
+    // The legacy TIMELINE_TEMPLATES is only a fallback for types no playbook
+    // covers yet.
+    const rawTimeline = getEventPlaybook(form.type)
+      ? playbookTimelineEntries(form.type)
+      : (mergeTimelineTemplate(...types) || []);
     const timeline = kitCfg.t
-      ? (mergeTimelineTemplate(...types) || []).map(t => {
+      ? rawTimeline.map(t => {
           const u = classifyTemplateTaskUrgency(t, days, form.type, PHASE_OFFSET);
           const txt = (t.task || '').toLowerCase();
-          const autoDone = /set budget/.test(txt) && /guest count/.test(txt) && gaveBudget && gaveGuests;
+          const autoDone = /set budget|guest count|headcount/.test(txt) && /guest|headcount|budget/.test(txt) && gaveBudget && gaveGuests;
           return { ...t, id: uid(), done: autoDone, urgency: u.urgency };
         })
       : [];
@@ -18000,12 +18061,15 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const namedVendors = (ev.vendors || []).filter(v => v && (v.name || '').trim());
   const confirmedVendors = namedVendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked');
   const scheduleRows = (ev.ros || ev.timeline || []);
+  // Budget readiness is about MONEY actually set, not seeded $0 template rows.
+  // (Empty category rows were reading as "In progress" with $0 planned.)
+  const budgetSet = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0;
   const prog = [
-    { label: 'Guests',   state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
-    { label: 'Budget',   state: (ev.budget || []).length > 0 ? 'progress' : 'todo' },
-    { label: 'Food',     state: confirmedVendors.length > 0 ? 'done' : (namedVendors.length > 0 ? 'progress' : 'todo') },
-    { label: 'Schedule', state: scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo') },
-    { label: 'Venue',    state: (ev.venue || '').trim() ? 'done' : 'todo' },
+    { label: 'Guests',   tab: 'Guests', state: guestCount > 0 ? (pending === 0 && guests.length > 0 ? 'done' : 'progress') : 'todo' },
+    { label: 'Budget',   tab: 'Budget', state: budgetSet ? 'progress' : 'todo' },
+    { label: 'Food',     tab: 'Vendors', state: confirmedVendors.length > 0 ? 'done' : (namedVendors.length > 0 ? 'progress' : 'todo') },
+    { label: 'Schedule', tab: 'Planning', state: scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo') },
+    { label: 'Venue',    tab: 'Event Details', state: (ev.venue || '').trim() ? 'done' : 'todo' },
   ];
   const stateMeta = { done: { t: '✓', c: C.success }, progress: { t: 'In progress', c: C.warn || C.accent }, todo: { t: 'To do', c: C.muted } };
 
@@ -18045,12 +18109,19 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* 3 · Progress */}
         <div style={card}>
           <div style={eyebrow}>How it’s coming along</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {prog.map(p => (
-              <div key={p.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button key={p.label} type="button"
+                onClick={() => onSelectEvent(ev.id, { tab: p.tab })}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
                 <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
-              </div>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+                  <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
+                </span>
+              </button>
             ))}
           </div>
         </div>
@@ -21395,7 +21466,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision }) {
+function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -21464,7 +21535,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     setBudgetAILoad(false);
   };
   // Estimator auto-collapses once line items exist — open on first visit
-  const [showEstimator, setShowEstimator] = useState(budget.length === 0);
+  // Open the estimator whenever no real money is set — including the common case
+  // where the create flow seeded template categories at $0 (rows exist, but the
+  // host never entered a budget). Otherwise a host arriving to "set a budget"
+  // would land on a closed estimator with $0 rows and no guided way in.
+  const [showEstimator, setShowEstimator] = useState(
+    (budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) === 0,
+  );
   const [catsOpen, setCatsOpen] = useState(bp !== 'mobile'); // mobile: collapse the category breakdown
 
   // Sprint 64 — Stripe payment link state per fee milestone
@@ -21614,7 +21691,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   };
   const modalRow = budget.find(r => r.id === modalId);
 
-  const [est, setEst] = useState({ guests: confirmedCount > 0 ? String(confirmedCount) : '', eventType: eventType || 'Wedding' });
+  // Seed the estimator's guest count from what we already know — confirmed RSVPs
+  // first, else the planned headcount the host entered at create. The host should
+  // never re-type a number the app already has.
+  const seedGuests = confirmedCount > 0 ? confirmedCount : (Number(plannedGuests) || 0);
+  const [est, setEst] = useState({ guests: seedGuests > 0 ? String(seedGuests) : '', eventType: eventType || 'Wedding' });
   // Sprint 57g.1: factor controls + breakdown state. Same defaults and same
   // helpers as the NewEventModal estimator so a planner gets a consistent
   // budget total in both surfaces with the same inputs.
@@ -22752,7 +22833,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
 // ─── RSVP Form View ──────────────────────────────────────────────────────────
 
 function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
-  const [name,        setName]        = useState('');
+  const [firstName,   setFirstName]   = useState('');
+  const [lastName,    setLastName]    = useState('');
   const [rsvp,        setRsvp]        = useState('');
   const [meal,        setMeal]        = useState('Standard');
   const [needs,       setNeeds]       = useState('');
@@ -22760,8 +22842,10 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   const [hasPlusOne,  setHasPlusOne]  = useState(false);
   const [plusOne,     setPlusOne]     = useState('');
   const [plusOneMeal, setPlusOneMeal] = useState('Standard');
+  const [plusOneNeeds, setPlusOneNeeds] = useState('');
   const [kids,        setKids]        = useState(0);
   const [submitted,   setSubmitted]   = useState(false);
+  const [err,         setErr]         = useState('');
 
   const mealOpts = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 
@@ -22780,10 +22864,23 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   };
 
   const submit = () => {
-    if (!name.trim() || !rsvp) return;
-    onSubmit({ name: name.trim(), rsvp, meal: rsvp === 'Yes' ? meal : '—', needs, plusOne: hasPlusOne ? plusOne : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—', kids: rsvp === 'Yes' ? kids : 0 });
+    // Validate on tap (button stays live) so the guest is never stuck at a
+    // silent grey wall. Last name is optional — only first name + an answer are
+    // required, so the casual-party RSVP isn't taxed. (Board: required last name
+    // + dead disabled button were the top friction.)
+    if (!firstName.trim()) { setErr('Add your first name to send.'); return; }
+    if (!rsvp)             { setErr('Let us know if you can make it.'); return; }
+    const fullName = lastName.trim() ? `${firstName.trim()} ${lastName.trim()}` : firstName.trim();
+    onSubmit({
+      name: fullName, firstName: firstName.trim(), lastName: lastName.trim(),
+      rsvp, meal: rsvp === 'Yes' ? meal : '—', needs,
+      plusOne: hasPlusOne ? plusOne : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—',
+      plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
+      kids: rsvp === 'Yes' ? kids : 0,
+    });
     setSubmitted(true);
   };
+  const clearErr = () => { if (err) setErr(''); };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: LC.bg, overflowY: 'auto', fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -22809,10 +22906,25 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
           {submitted ? (
             <div style={{ background: LC.surface, borderRadius: 20, padding: '40px 28px', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ fontSize: 52, marginBottom: 16 }}>{rsvp === 'Yes' ? '🎉' : '💌'}</div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {name.split(' ')[0]}!</h2>
-              <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 28px', lineHeight: 1.6 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {firstName.trim()}!</h2>
+              <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 20px', lineHeight: 1.6 }}>
                 {rsvp === 'Yes' ? "We can't wait to celebrate with you." : rsvp === 'No' ? "We'll miss you — thank you for letting us know." : "We'll keep you updated."}
               </p>
+              {rsvp === 'Yes' && (() => {
+                const party = 1 + (hasPlusOne ? 1 : 0) + kids;
+                const bits = [
+                  `${party} ${party === 1 ? 'guest' : 'guests'}`,
+                  meal && meal !== 'Standard' ? meal : null,
+                  hasPlusOne ? `+1${plusOne.trim() ? ` (${plusOne.trim()})` : ''}` : null,
+                  kids > 0 ? `${kids} ${kids === 1 ? 'child' : 'children'}` : null,
+                  (needs.trim() || plusOneNeeds.trim()) ? 'allergy noted' : null,
+                ].filter(Boolean);
+                return (
+                  <div style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 12, padding: '12px 16px', margin: '0 0 24px', fontSize: 13.5, color: LC.text }}>
+                    <span style={{ color: LC.muted }}>We've got you down for </span>{bits.join(' · ')}.
+                  </div>
+                );
+              })()}
               {!guestMode && (
                 <button onClick={onClose} style={{ background: LC.accent, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
                   ← Back to planner
@@ -22821,16 +22933,22 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
             </div>
           ) : (
             <div style={{ background: LC.surface, borderRadius: 20, padding: '28px 24px', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
-              <div style={{ marginBottom: 22 }}>
-                <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Your name</label>
-                <input style={lInput} value={name} onChange={e => setName(e.target.value)} placeholder="First & last name" autoFocus />
+              <div style={{ marginBottom: 22, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>First name</label>
+                  <input style={lInput} value={firstName} onChange={e => { setFirstName(e.target.value); clearErr(); }} placeholder="First name" autoFocus />
+                </div>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Last name <span style={{ color: LC.muted, fontWeight: 400 }}>(optional)</span></label>
+                  <input style={lInput} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
+                </div>
               </div>
 
               <div style={{ marginBottom: 22 }}>
                 <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Will you be attending?</label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[['Yes', '🎉  Attending', LC.success], ['No', "😢  Can't make it", LC.danger], ['Maybe', '🤔  Maybe', LC.muted]].map(([val, label, clr]) => (
-                    <button key={val} onClick={() => setRsvp(val)} style={{
+                    <button key={val} onClick={() => { setRsvp(val); clearErr(); }} style={{
                       flex: 1, padding: '14px 6px', borderRadius: 12,
                       border: `2px solid ${rsvp === val ? clr : LC.border}`,
                       background: rsvp === val ? clr + '22' : LC.bg,
@@ -22857,7 +22975,8 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                   </div>
 
                   <div style={{ marginBottom: 22 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Dietary restrictions or allergies</label>
+                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 4 }}>Allergies or access needs</label>
+                    <div style={{ fontSize: 12, color: LC.muted, marginBottom: 10, lineHeight: 1.4 }}>Your meal choice is above — use this only for allergies and access we must plan around. If it's a real allergy, tap <strong style={{ color: LC.text }}>Other</strong> and tell us exactly.</div>
                     {(() => {
                       const needsParts = needs.split(',').map(s => s.trim()).filter(Boolean);
                       const togglePreset = (opt) => {
@@ -22865,11 +22984,11 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                         const next = active ? needsParts.filter(p => p !== opt) : [...needsParts, opt];
                         setNeeds(next.join(', '));
                       };
-                      const customText = needsParts.filter(p => !SPECIAL_NEEDS_OPTIONS.includes(p)).join(', ');
+                      const customText = needsParts.filter(p => !RSVP_ALLERGY_OPTIONS.includes(p)).join(', ');
                       return (
                         <>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: showNeedsCustom ? 10 : 0 }}>
-                            {SPECIAL_NEEDS_OPTIONS.map(opt => {
+                            {RSVP_ALLERGY_OPTIONS.map(opt => {
                               const active = needsParts.includes(opt);
                               return (
                                 <button key={opt} onClick={() => togglePreset(opt)} style={{
@@ -22888,9 +23007,9 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             }}>Other</button>
                           </div>
                           {showNeedsCustom && (
-                            <input style={lInput} value={customText} placeholder="Describe additional needs..."
+                            <input style={lInput} value={customText} placeholder="Tell us exactly — e.g. severe peanut allergy, EpiPen"
                               onChange={e => {
-                                const presets = needsParts.filter(p => SPECIAL_NEEDS_OPTIONS.includes(p));
+                                const presets = needsParts.filter(p => RSVP_ALLERGY_OPTIONS.includes(p));
                                 const custom = e.target.value;
                                 setNeeds([...presets, ...(custom.trim() ? [custom.trim()] : [])].join(', '));
                               }} />
@@ -22924,6 +23043,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                             ))}
                           </div>
                         </div>
+                        <input style={lInput} value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} placeholder="Any allergy for your plus-one? (optional)" />
                       </div>
                     )}
                   </div>
@@ -22946,15 +23066,15 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                 </div>
               )}
 
+              {err && (
+                <div style={{ fontSize: 13, color: LC.danger, marginBottom: 10, fontWeight: 600, textAlign: 'center' }}>{err}</div>
+              )}
               <button
                 onClick={submit}
-                disabled={!name.trim() || !rsvp}
                 style={{
                   width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-                  background: name.trim() && rsvp ? LC.accent : LC.border,
-                  color: '#fff', fontSize: 16, fontWeight: 800,
-                  cursor: name.trim() && rsvp ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.15s', opacity: name.trim() && rsvp ? 1 : 0.5, letterSpacing: '-0.01em',
+                  background: LC.accent, color: '#fff', fontSize: 16, fontWeight: 800,
+                  cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '-0.01em',
                 }}
               >
                 {rsvp === 'No' ? 'Send my regrets' : 'Submit RSVP →'}
@@ -23074,8 +23194,8 @@ function Guests({ guests, setGuests, event = {} }) {
             if (first.length >= 4 && gFirst === first) return true;
             return false;
           });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, kids: data.kids || g.kids } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }];
+          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids } : g);
+          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }];
         });
       });
       localStorage.removeItem(key);
@@ -23120,11 +23240,11 @@ function Guests({ guests, setGuests, event = {} }) {
     });
     if (existing) {
       setGuests(gs => gs.map(g => g.id === existing.id
-        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, kids: data.kids || g.kids }
+        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids }
         : g
       ));
     } else {
-      setGuests(gs => [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, kids: data.kids, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }]);
+      setGuests(gs => [...gs, { id: uid(), name: data.name, firstName: data.firstName || '', lastName: data.lastName || '', group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, plusOneNeeds: data.plusOneNeeds || '', kids: data.kids, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: '' }]);
     }
   };
 
@@ -23237,6 +23357,45 @@ function Guests({ guests, setGuests, event = {} }) {
         const copyRsvp = () => {
           if (rsvpUrl) navigator.clipboard?.writeText(rsvpUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
         };
+        // Bulk RSVP request — the front-door blast to everyone we still need a
+        // firm yes/no from (rsvp not Yes/No). Distinct from the ≤90-day
+        // non-responder *reminder* below: this is always available and worded
+        // as the initial invitation. Same honest delivery path: real send when
+        // email is configured, mailto draft (BCC) otherwise.
+        const needRsvp   = guests.filter(g => g.rsvp !== 'Yes' && g.rsvp !== 'No');
+        const blastList  = needRsvp.filter(g => g.email);
+        const noEmail    = needRsvp.length - blastList.length;
+        const emailReady = isEmailConfigured();
+        const evName     = event?.name || 'our event';
+        const whenStr    = event?.date ? ` on ${fmtDate(event.date)}` : '';
+        const first      = (g) => g.firstName || (g.name || '').split(' ')[0] || 'there';
+        const bodyFor    = (g) => `Hi ${first(g)},\n\nYou're invited to ${evName}${whenStr}! Please let us know if you can make it.${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nHope to see you there!`;
+        const mailtoBlast = `mailto:?bcc=${blastList.map(g => g.email).join(',')}&subject=${encodeURIComponent(`You're invited — ${evName}`)}&body=${encodeURIComponent(`Hi all,\n\nYou're invited to ${evName}${whenStr}! Please let us know if you can make it.${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nHope to see you there!`)}`;
+        const sendBlast = async () => {
+          if (!blastList.length) return;
+          if (!window.confirm(`Email an RSVP request to ${blastList.length} guest${blastList.length === 1 ? '' : 's'}?`)) return;
+          let delivered = 0, loggedOnly = 0, failedToPost = 0;
+          for (const g of blastList) {
+            try {
+              const r = await commApi.createMessage(event.id, 'CLIENT', {
+                message_type: 'standard',
+                author_role: 'planner',
+                body: bodyFor(g),
+                deliver_email: true,
+                recipient_email: g.email,
+                recipient_name: g.name,
+                subject: `You're invited — ${evName} · please RSVP`,
+              });
+              if (r?.metadata?.delivery?.status === 'sent') delivered++;
+              else loggedOnly++;
+            } catch { failedToPost++; }
+          }
+          const parts = [];
+          if (delivered)    parts.push(`${delivered} request${delivered === 1 ? '' : 's'} sent`);
+          if (loggedOnly)   parts.push(`${loggedOnly} logged to thread only — those guests were NOT notified`);
+          if (failedToPost) parts.push(`${failedToPost} failed to post`);
+          alert(parts.length ? parts.join(' · ') + '.' : 'No requests sent.');
+        };
         return (
           <div style={{ ...s.card, padding: '14px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
@@ -23250,6 +23409,27 @@ function Guests({ guests, setGuests, event = {} }) {
                 <button style={s.btn(copied ? 'teal' : 'default')} onClick={copyRsvp}>{copied ? '✓ Copied!' : 'Copy Link'}</button>
               </div>
             </div>
+            {blastList.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontSize: 12, color: C.muted }}>
+                  Send the RSVP request to {blastList.length} guest{blastList.length === 1 ? '' : 's'} who haven't replied
+                  {noEmail > 0 && <span> · {noEmail} have no email on file</span>}
+                </div>
+                {emailReady ? (
+                  <button style={{ ...s.btn('primary'), flexShrink: 0 }} onClick={sendBlast}>
+                    Send RSVP request ({blastList.length})
+                  </button>
+                ) : (
+                  <a
+                    href={mailtoBlast}
+                    title="Opens your email app with all recipients on BCC. Nothing is sent until you send the draft."
+                    style={{ ...s.btn('primary'), flexShrink: 0, textDecoration: 'none' }}
+                  >
+                    Email RSVP request ({blastList.length})
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -31793,7 +31973,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
@@ -33208,6 +33388,31 @@ export default function App() {
 
   const setEvent  = (fn) => setEvents(evts => evts.map(e => e.id === activeId          ? (typeof fn === 'function' ? fn(e) : fn) : e));
   const setClient = (fn) => setClients(cs  => cs.map(c  => c.id === activeClient?.id   ? (typeof fn === 'function' ? fn(c) : fn) : c));
+
+  // Backfill the planning timeline from the PLAYBOOK ENGINE for any event whose
+  // type a playbook covers but whose timeline is empty — e.g. a "Juneteenth
+  // Cookout" with no static TIMELINE_TEMPLATE, or an event created before its
+  // playbook existed. Runs app-wide (not per-surface) so the host home, Plan
+  // tab, Command Center, and Calendar all see the same engine-derived tasks
+  // with correct offsetDays timings. Idempotent: only fills empty timelines, so
+  // it never overwrites user edits and never loops (the fill makes the guard
+  // false). Fires again after the cloud load replaces `events`.
+  useEffect(() => {
+    let changed = false;
+    const next = (events || []).map(ev => {
+      if (Array.isArray(ev?.timeline) && ev.timeline.length > 0) return ev;
+      const entries = playbookTimelineEntries(ev?.type);
+      if (!entries.length) return ev;
+      const d = daysUntil(ev?.date);
+      changed = true;
+      return { ...ev, timeline: entries.map(t => ({
+        ...t, id: uid(), done: false,
+        urgency: classifyTemplateTaskUrgency(t, d, ev?.type, PHASE_OFFSET).urgency,
+      })) };
+    });
+    if (changed) setEvents(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
   // Update guests for any event (used by ClientPortal so the client can manage the guest list)
   const updateEventGuests = (evId, fn) => setEvents(evts => evts.map(e => e.id === evId ? { ...e, guests: typeof fn === 'function' ? fn(e.guests || []) : fn } : e));
 
