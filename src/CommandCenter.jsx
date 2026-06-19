@@ -2458,12 +2458,13 @@ const actionBtnStyle = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   const width = useWindowWidth();
-  // Tablet / narrow desktop: the two columns cramp below ~1024, so collapse to a
-  // single readable column. Wide: the rail sits beside the action stream.
-  const twoCol = width >= 1024;
+  // A self-host lives in ONE calm 760 column (owner directive) — so the Overview is
+  // a single column for hosts, never a cramped 2-col board in 760. The planner keeps
+  // the wide two-column cockpit, collapsing only on tablet/narrow.
+  const twoCol = !isHost && width >= 1024;
   return (
     <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
       {/* Studio bar */}
@@ -2666,7 +2667,7 @@ function DesktopCommandCenter({ event, data, crewSummary, setItems, decisionItem
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT — routes to mobile/desktop based on viewport
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CommandCenter({ event, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+export default function CommandCenter({ event, isHost = false, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const width = useWindowWidth();
   const isMobile = width < 768;
   const data = useMemo(() => deriveCommandCenterData(event), [event]);
@@ -2701,7 +2702,7 @@ export default function CommandCenter({ event, onTabChange, onBack, backLabel, o
   }, [data]);
   const dormant = (section) => isDormant(section, event, sig);
   const rail = upcomingRail(event, sig);
-  const sharedProps = { event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel,
+  const sharedProps = { event, isHost, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel,
     onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />
