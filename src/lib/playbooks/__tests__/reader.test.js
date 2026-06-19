@@ -624,6 +624,22 @@ describe('Sprint 64 — region-gated DMV dishes', () => {
   });
 });
 
+describe('#2 — guest-count satisfaction (headcount mode + lock)', () => {
+  const { guestCountResolved } = require('../index');
+  test('a list with pending RSVPs is NOT resolved', () => {
+    const ev = { guests: [{ rsvp: 'Yes' }, { rsvp: '' }, { rsvp: 'Maybe' }] };
+    expect(guestCountResolved(ev).resolved).toBe(false);
+    expect(guestCountResolved(ev).reason).toBe('pending-rsvps');
+  });
+  test('headcount mode + a count RESOLVES it (the "lock it" / headcount-only out)', () => {
+    const ev = { guestMode: 'count', guestCount: 30, guests: [{ rsvp: '' }, { rsvp: 'Maybe' }] };
+    expect(guestCountResolved(ev).resolved).toBe(true);
+  });
+  test('no count at all is unresolved (reason no-count)', () => {
+    expect(guestCountResolved({ guests: [] }).reason).toBe('no-count');
+  });
+});
+
 describe('board ruling — per-guest rate on food lines', () => {
   test('per-guest-scaled items expose perGuest; flat items do not', () => {
     const p = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [] });

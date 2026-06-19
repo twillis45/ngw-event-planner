@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -23927,15 +23927,18 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests, setGuests, event = {}, setGuestCount = () => {} }) {
+function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGuestMode = () => {}, focusCount = false }) {
   const C      = useT();
   const s      = makeS(C);
   const rsvpCLR = RSVP_CLR(C);
   const bp = useContext(BpCtx);
   // Guest-list-optional: casual events (cookout, watch party) just want a headcount,
   // not a roster. Show a calm number-only view until they choose to track RSVPs.
-  const [showList, setShowList] = useState(false);
+  // Default to the roster when a list already exists (unless the host committed to
+  // headcount-only mode); brand-new / no-list events open on the calm headcount field.
+  const [showList, setShowList] = useState(() => guests.length > 0 && event.guestMode !== 'count');
   const [hcDraft, setHcDraft] = useState(() => { const n = Number(event.guestCount) || Number(event.guestEstimate) || 0; return n ? String(n) : ''; });
+  const [lockDraft, setLockDraft] = useState(''); // the "lock final count" field on the roster
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
@@ -24110,27 +24113,37 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {} }) {
       return (a.name || '').localeCompare(b.name || '');
     });
 
-  // Headcount-only view — no roster, just the number that sizes the food + budget.
-  if (!guests.length && !showList) {
+  // Headcount-only view — the "just a number" out, reachable for ANY host event
+  // (board ruling). Renders whenever we're not showing the roster. Setting the
+  // number commits headcount mode, which SATISFIES the "confirm guest count" step
+  // (guestCountResolved honors guestMode='count') so that next-step stops nagging.
+  if (!showList) {
     const hcCard = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, maxWidth: 760, margin: '0 auto' };
+    const hasList = guests.length > 0;
+    const commit = (v) => { setGuestCount(v); setGuestMode('count'); };
+    const autofocus = !!focusCount;
     return (
       <div style={{ padding: '8px 0' }}>
         <div style={hcCard}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Headcount</div>
-          <div style={{ fontSize: 14, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>Just need a number? Set how many you expect — your food plan and budget size to it. No guest list required.</div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Your headcount</div>
+          <div style={{ fontSize: 14, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
+            {hasList
+              ? `You've got ${guests.length} on the list. Prefer to just go by a number you expect (like a cookout)? Set it here — your food plan and budget size to it, and that's your final count.`
+              : 'Just need a number? Set how many you expect — your food plan and budget size to it. No guest list required.'}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 16, color: C.text }}>About</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '6px 14px' }}>
-              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder="0"
-                onChange={e => setHcDraft(e.target.value)} onBlur={() => setGuestCount(hcDraft)}
-                onKeyDown={e => { if (e.key === 'Enter') { setGuestCount(hcDraft); e.currentTarget.blur(); } }}
+            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '6px 14px' }}>
+              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder="0" autoFocus={autofocus}
+                onChange={e => setHcDraft(e.target.value)} onBlur={() => commit(hcDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') { commit(hcDraft); e.currentTarget.blur(); } }}
                 style={{ width: 90, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 26, fontWeight: 800, fontFamily: 'inherit' }} />
             </span>
             <span style={{ fontSize: 16, color: C.text }}>guests</span>
           </div>
-          <button type="button" onClick={() => setShowList(true)}
+          <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
             style={{ marginTop: 20, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '9px 15px', borderRadius: 9 }}>
-            Track who's coming (RSVPs) →
+            {hasList ? 'Back to the guest list →' : "Track who's coming (RSVPs) →"}
           </button>
         </div>
       </div>
@@ -24200,6 +24213,35 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {} }) {
           </div>
         </>
       )}
+
+      {/* CONFIRM FINAL COUNT — the action the "Confirm guest count" next-step lands on.
+          Until the count is locked, this is the explicit control: lock the number you're
+          cooking/buying for (clears the nag), or drop the list and go by a headcount. */}
+      {!guestCountResolved(event).resolved && (() => {
+        const suggested = yes || guests.length || Number(event.guestEstimate) || 0;
+        const lockVal = Math.max(0, Math.round(Number(lockDraft || suggested) || 0));
+        const lock = () => { if (lockVal > 0) { setGuestCount(lockVal); setGuestMode('count'); } };
+        return (
+          <div style={{ background: C.surface, border: `1px solid ${(C.warn || C.accent)}66`, borderLeft: `3px solid ${C.warn || C.accent}`, borderRadius: 12, padding: 16, marginBottom: 18, maxWidth: 760 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text }}>Confirm your final guest count</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+              {yes} confirmed{maybe > 0 ? ` · ${maybe} still awaiting` : ''}. Lock the number you're cooking and buying for — that becomes your final count everywhere.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '6px 12px' }}>
+                <span style={{ fontSize: 12.5, color: C.muted }}>Final count</span>
+                <input type="number" inputMode="numeric" min="0" value={lockDraft} placeholder={String(suggested)}
+                  onChange={(e) => setLockDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lock(); }}
+                  style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 16, fontWeight: 800, fontFamily: 'inherit' }} />
+              </span>
+              <button type="button" onClick={lock}
+                style={{ fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Lock it</button>
+              <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
+                style={{ fontSize: 13, fontWeight: 600, padding: '9px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Just go by a headcount →</button>
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
@@ -32898,7 +32940,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
       {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
