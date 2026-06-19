@@ -599,3 +599,18 @@ describe('Sprint 64 — lock a food cost (foodLocked)', () => {
     expect(p1.foodHigh).toBeLessThanOrEqual(p0.foodHigh); // locked end no longer at premium
   });
 });
+
+describe('Sprint 64 — quantity override (foodQty) wired to cost', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('overriding an item quantity recomputes its cost (and flows to the total)', () => {
+    const p0 = playbookFoodPlan(base);
+    const it0 = p0.list.find(i => i.id === 'p_ribs');
+    const p1 = playbookFoodPlan({ ...base, foodQty: { p_ribs: it0.qty * 2 } });
+    const it1 = p1.list.find(i => i.id === 'p_ribs');
+    expect(it1.qty).toBe(it0.qty * 2);
+    expect(it1.qtyOverridden).toBe(true);
+    expect(it1.baseQty).toBe(it0.qty);
+    expect(it1.high).toBeGreaterThan(it0.high);
+    expect(p1.foodHigh).toBeGreaterThan(p0.foodHigh);
+  });
+});

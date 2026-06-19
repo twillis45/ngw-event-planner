@@ -8286,6 +8286,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
               const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); onPatch({ foodLocked: next }); setOpenLockId(null); };
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
+              const setQty = (n) => { const next = { ...(event.foodQty || {}) }; const v = Math.max(0, Number(n) || 0); if (v > 0) next[i.id] = v; else delete next[i.id]; onPatch({ foodQty: next }); };
+              const resetQty = () => { const next = { ...(event.foodQty || {}) }; delete next[i.id]; onPatch({ foodQty: next }); };
               const lockOpen = openLockId === i.id;
               const lkBtn = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
@@ -8298,7 +8300,18 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
                         {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
-                        {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
+                        {i.where && i.where.length > 0 && (
+                          <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
+                            {i.where.slice(0, 3).map((w, wi) => (
+                              <span key={w}>
+                                {wi > 0 ? ' · ' : ''}
+                                <span role="link" tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); if (shopAnchor) window.open(mapsUrl(w), '_blank', 'noopener'); }}
+                                  style={{ cursor: shopAnchor ? 'pointer' : 'default', color: shopAnchor ? C.accent : C.muted, textDecoration: shopAnchor ? 'underline dotted' : 'none' }}>{w}</span>
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </span>
                       <span style={{ flexShrink: 0, textAlign: 'right' }}>
                         {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
@@ -8318,7 +8331,20 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     </button>
                   </div>
                   {lockOpen && !skipped && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '0 0 12px 28px' }}>
+                    <div style={{ padding: '0 0 12px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {/* 64-#3 — change the quantity; it recomputes the cost + the budget. */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: C.muted }}>Quantity:</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: C.bg, border: `1px solid ${i.qtyOverridden ? C.accent : C.border}`, borderRadius: 8, padding: '4px 9px' }}>
+                          <input type="number" inputMode="decimal" defaultValue={i.qty != null ? i.qty : ''} placeholder={i.baseQty != null ? String(i.baseQty) : '—'}
+                            onKeyDown={(e) => { if (e.key === 'Enter') setQty(e.currentTarget.value); }}
+                            onBlur={(e) => setQty(e.currentTarget.value)}
+                            style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
+                          <span style={{ color: C.muted, fontSize: 12 }}>{i.unitBase || i.unit}</span>
+                        </span>
+                        {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: C.muted }}>Lock this cost — value vs specialty, or your own:</span>
                       <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
                       <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
@@ -8330,6 +8356,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           style={{ width: 64, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
                       </span>
                       {i.locked != null && <button type="button" onClick={clearLock} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -28616,6 +28643,12 @@ const computeDayAlerts = (event) => {
 };
 
 // ─── WeatherAlert — Sprint 63: outdoor event weather risk ────────────────────
+// Event types that are outdoor by nature (the weather check shouldn't depend only on
+// venue keywords for these). Cookouts, BBQs, fish fries, boils, day parties, picnics.
+function isOutdoorEventType(type) {
+  return /cookout|bbq|barbecue|fish fry|crab feast|crawfish|low ?country boil|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i.test(String(type || ''));
+}
+
 function WeatherAlert({ event, onNavTo }) {
   const C = useT();
   const s = makeS(C);
@@ -28624,7 +28657,10 @@ function WeatherAlert({ event, onNavTo }) {
   const [dismissed, setDismissed] = useState(false);
 
   const days = event?.date ? daysUntil(event.date) : null;
-  const outdoor = isLikelyOutdoor(event?.venue, event?.notes);
+  // Outdoor by venue keyword OR by event TYPE — a cookout/BBQ/fish fry is outdoor by
+  // nature even if the venue is just "Atlanta, GA". (Board audit #3: the cookout was
+  // silently getting no forecast because the gate only read venue keywords.)
+  const outdoor = isLikelyOutdoor(event?.venue, event?.notes) || isOutdoorEventType(event?.type);
   const shouldFetch = isWeatherConfigured() && outdoor && days !== null && days >= 0 && days <= 14;
 
   useEffect(() => {

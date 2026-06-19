@@ -637,18 +637,26 @@ export function playbookFoodPlan(event, opts = {}) {
   // 64 — costs the host has LOCKED: event.foodLocked[id] = a committed dollar amount
   // (they picked a source/price). A locked item is a fixed cost, not a range.
   const lockedMap = (event.foodLocked && typeof event.foodLocked === 'object') ? event.foodLocked : {};
+  // Host quantity overrides: event.foodQty[id] = a number that replaces the
+  // guest-scaled quantity (and recomputes that item's cost from it).
+  const qtyMap = (event.foodQty && typeof event.foodQty === 'object') ? event.foodQty : {};
 
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
     .map((p) => {
-      const qty = resolveQuantity(p, guests);
+      const baseQty = resolveQuantity(p, guests);
+      // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
+      // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
+      const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
+      const qty = qOver != null ? qOver : baseQty;
       const unit = shortUnit(p.unit, qty);
       const [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
       const units = qty == null ? 1 : qty;
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
+        qtyOverridden: qOver != null, baseQty,
         low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
         // host understands the price, and sees the regional (pf) adjustment in it.
