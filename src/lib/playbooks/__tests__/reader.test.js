@@ -16,7 +16,7 @@ describe('getPlaybook registry', () => {
     expect(getPlaybook('  DINNER PARTY ')).toBeTruthy();
   });
   test('returns null for non-dinner-party / unknown / empty', () => {
-    expect(getPlaybook('Wedding')).toBeNull();
+    expect(getPlaybook('Other')).toBeNull();
     expect(getPlaybook('')).toBeNull();
     expect(getPlaybook(undefined)).toBeNull();
   });
@@ -71,10 +71,10 @@ describe('window gating', () => {
 
 describe('non-applicability (existing behavior must be unaffected)', () => {
   test('non-dinner-party event → no candidates', () => {
-    expect(playbookTasks(DP({ type: 'Wedding' }), '2026-06-20')).toEqual([]);
+    expect(playbookTasks(DP({ type: 'Other' }), '2026-06-20')).toEqual([]);
   });
   test('unknown type → no candidates', () => {
-    expect(playbookTasks(DP({ type: 'Quinceañera Gala' }), '2026-06-20')).toEqual([]);
+    expect(playbookTasks(DP({ type: 'Other' }), '2026-06-20')).toEqual([]);
   });
   test('missing date → no candidates', () => {
     expect(playbookTasks(DP({ date: undefined }), '2026-06-20')).toEqual([]);
@@ -111,7 +111,7 @@ describe('playbookBudgetCategories (engine-derived typical setup)', () => {
   });
 
   test('non-playbook type → null (caller uses share-based estimate)', () => {
-    expect(playbookBudgetCategories('Wedding', 120)).toBeNull();
+    expect(playbookBudgetCategories('Other', 120)).toBeNull();
     expect(playbookBudgetCategories('', 10)).toBeNull();
   });
 });
@@ -132,7 +132,9 @@ describe('55D registration + canonical alias resolution', () => {
     expect(getPlaybook('potluck').type).toBe('Get-Together');
   });
   test('non-host / unsupported types stay null (existing fallback intact)', () => {
-    ['Wedding', 'Conference', 'Corporate Event', 'Gala', 'Quinceañera', ''].forEach((t) => {
+    // 'Other' has no playbook + no alias; '' is empty. (Most other types now have
+    // playbooks; unknown free-text resolves to Birthday/Conference via keyword.)
+    ['Other', ''].forEach((t) => {
       expect(getPlaybook(t)).toBeNull();
     });
   });
@@ -254,7 +256,7 @@ describe('55G decision-first gate', () => {
   });
 
   test('non-playbook event → no decision (existing behavior intact)', () => {
-    expect(topPlaybookDecision({ id: 'e', type: 'Wedding', date: '2026-06-20', guests: [{ rsvp: 'Maybe' }] }, ASOF)).toBeNull();
+    expect(topPlaybookDecision({ id: 'e', type: 'Other', date: '2026-06-20', guests: [{ rsvp: 'Maybe' }] }, ASOF)).toBeNull();
   });
 
   test('priority: when BOTH count and dietary are open, guest count wins', () => {
@@ -306,7 +308,7 @@ describe('55H-B1 playbookRunOfShow', () => {
   });
 
   test('non-playbook (Wedding) → null', () => {
-    expect(playbookRunOfShow({ id: 'w', type: 'Wedding', date: '2026-06-20' })).toBeNull();
+    expect(playbookRunOfShow({ id: 'w', type: 'Other', date: '2026-06-20' })).toBeNull();
   });
 });
 
@@ -323,7 +325,7 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     expect(effectiveRos({ ...dp, ros: manual })).toBe(manual);
   });
   test('non-playbook with empty ros → empty (current behavior unchanged)', () => {
-    expect(effectiveRos({ id: 'w', type: 'Wedding', date: '2026-06-20', ros: [] })).toEqual([]);
+    expect(effectiveRos({ id: 'w', type: 'Other', date: '2026-06-20', ros: [] })).toEqual([]);
   });
 });
 
@@ -363,7 +365,7 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
   });
 
   test('non-playbook (Wedding) → null (fallback unchanged)', () => {
-    expect(playbookCapacity({ id: 'w', type: 'Wedding', guestCount: 100 })).toBeNull();
+    expect(playbookCapacity({ id: 'w', type: 'Other', guestCount: 100 })).toBeNull();
   });
 
   test('falls back to typical guests when no count', () => {
@@ -412,6 +414,6 @@ describe('55L playbookInfraPrompts (Event Reality Check — confirm prompts, nev
   });
 
   test('non-playbook (Wedding) → null (unchanged)', () => {
-    expect(playbookInfraPrompts({ id: 'w', type: 'Wedding' })).toBeNull();
+    expect(playbookInfraPrompts({ id: 'w', type: 'Other' })).toBeNull();
   });
 });

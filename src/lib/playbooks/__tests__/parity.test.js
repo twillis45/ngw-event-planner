@@ -38,8 +38,14 @@ import crawfishBoil from '../data/crawfishBoil';
 import lowCountryBoil from '../data/lowCountryBoil';
 import pupusaGathering from '../data/pupusaGathering';
 import ethiopianCoffeeCeremony from '../data/ethiopianCoffeeCeremony';
+import wedding from '../data/wedding';
+import elopement from '../data/elopement';
+import quinceanera from '../data/quinceanera';
+import surpriseProposal from '../data/surpriseProposal';
+import repast from '../data/repast';
+import kwanzaaGathering from '../data/kwanzaaGathering';
 
-const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony };
+const SRC_PLAYBOOKS = { dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering };
 
 // The authored sections every host playbook must carry. Dropping any of these is
 // the AP-001 failure mode.
