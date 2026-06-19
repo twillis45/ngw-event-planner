@@ -18323,25 +18323,40 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           </div>
         )}
 
-        {/* 3 · Progress */}
-        <div style={card}>
-          <div style={eyebrow}>How it’s coming along</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {prog.map(p => (
-              <button key={p.label} type="button"
-                onClick={() => onSelectEvent(ev.id, { tab: p.tab })}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
-                  <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* 3 · What still needs you — Attention System: HIDE what's on-track (done
+            collapses to a count), show only the areas being worked, and reward an
+            empty list. No wall of green checks competing with the live action. */}
+        {(() => {
+          const live = prog.filter(p => p.state !== 'done');
+          const doneCount = prog.length - live.length;
+          return (
+            <div style={card}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <div style={eyebrow}>What still needs you</div>
+                {doneCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
+              </div>
+              {live.length === 0 ? (
+                <div style={{ fontSize: 13.5, color: C.text, marginTop: 8 }}>Everything's on track — nothing waiting on you. 🎉</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
+                  {live.map(p => (
+                    <button key={p.label} type="button"
+                      onClick={() => onSelectEvent(ev.id, { tab: p.tab })}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                      <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+                        <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 4 · What Matters Most — populated; or a contextual capture prompt when empty. */}
         {!id && onPatchEvent && (
