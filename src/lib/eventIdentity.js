@@ -119,3 +119,58 @@ export function setMustHaveOutcome(event, status, now) {
 export function mustHaveOutcome(event) {
   return (event && event.outcomes && event.outcomes.mustHave) || null;
 }
+
+// ── Sprint 60C #1 — Outcome reflection (feeling + why) ──────────────────────────
+// Extends the SAME outcomes store (event.outcomes, 58E) the must-have uses — no new
+// schema. The feeling capture mirrors the must-have capture; `meaning_why` is shown
+// as read-only framing. Pure expression, zero engine touch.
+export const FEELING_SIGNALS = ['yes', 'partly', 'no'];
+export const FEELING_LABEL = { yes: 'Yes', partly: 'Somewhat', no: 'Not really' };
+export function setFeelingOutcome(event, status, now) {
+  if (!event) return event;
+  const o = event.outcomes || {};
+  return { ...event, outcomes: { ...o, capturedAt: now || o.capturedAt || null, feeling: status } };
+}
+export function feelingOutcome(event) {
+  return (event && event.outcomes && event.outcomes.feeling) || null;
+}
+
+// identityReflection(event) → null | { why, feeling }. The post-event framing the
+// OutcomeCapture surface renders. Null when nothing reflective was captured.
+export function identityReflection(event) {
+  if (!event) return null;
+  const why = clean(event.meaning_why);
+  const feeling = clean(event.feeling_words);
+  if (!why && !feeling) return null;
+  return { why, feeling };
+}
+
+// ── Sprint 60C #2 — must-have ↔ action link (confidence-tiered, graceful) ───────
+// Pure fuzzy matcher: does a candidate action/task text confidently serve the
+// captured must-have? Returns null when nothing is captured; otherwise a confidence
+// in [0,1] + matched flag. Used ONLY post-engine to annotate (never to reorder).
+const _STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'for', 'with', 'at',
+  'in', 'on', 'my', 'our', 'your', 'their', 'his', 'her', 'is', 'are', 'be', 'will',
+  'that', 'this', 'it', 'get', 'gets', 'getting', 'have', 'has', 'do', 'does']);
+function _sig(text) {
+  return String(text || '').toLowerCase().split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !_STOP.has(w));
+}
+export function mustHaveLink(event, candidateText) {
+  const moment = clean(event && event.must_have_moment);
+  if (!moment) return null;
+  const momentSig = _sig(moment);
+  if (!momentSig.length) return { confidence: 0, matched: false, shared: [] };
+  const candSet = new Set(_sig(candidateText));
+  const shared = [...new Set(momentSig)].filter((w) => candSet.has(w));
+  const confidence = shared.length / new Set(momentSig).size;
+  return { confidence, matched: shared.length >= 1 && confidence >= 0.3, shared };
+}
+
+// mustHaveBecause(event, candidateText) → a quiet, traceable "because" string when
+// the action confidently serves the must-have; null otherwise (graceful degrade).
+export function mustHaveBecause(event, candidateText) {
+  const link = mustHaveLink(event, candidateText);
+  if (!link || !link.matched) return null;
+  return `Protecting your must-have — ${clean(event.must_have_moment)}`;
+}

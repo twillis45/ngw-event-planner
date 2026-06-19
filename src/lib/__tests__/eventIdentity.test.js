@@ -2,7 +2,8 @@
 // meaning fields; one factual statement; success bullets; must-have surfaced; graceful
 // degrade when nothing human is captured; flag gate; outcome alignment.
 
-import { identityOn, eventIdentity, identityStatement, setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS } from '../eventIdentity';
+import { identityOn, eventIdentity, identityStatement, setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS,
+  setFeelingOutcome, feelingOutcome, FEELING_SIGNALS, identityReflection, mustHaveLink, mustHaveBecause } from '../eventIdentity';
 
 const wanda = {
   type: 'Retirement', honoree: 'Wanda',
@@ -69,5 +70,58 @@ describe('60B outcome alignment — did the must-have happen? (reuses event.outc
   test('signals are the three small states', () => {
     expect(MUST_HAVE_SIGNALS).toEqual(['happened', 'partly', 'missed']);
     expect(mustHaveOutcome({})).toBeNull();
+  });
+});
+
+// ── Sprint 60C #1 — Outcome reflection (feeling + why) ──────────────────────────
+describe('60C #1 — feeling outcome (same store, no new schema)', () => {
+  test('setFeelingOutcome writes immutably to event.outcomes; reader reads it', () => {
+    const ev = { id: 'e1', outcomes: { mustHave: 'happened' } };
+    const next = setFeelingOutcome(ev, 'yes', 'now');
+    expect(next).not.toBe(ev);
+    expect(next.outcomes.feeling).toBe('yes');
+    expect(next.outcomes.mustHave).toBe('happened');   // coexists, not clobbered
+    expect(feelingOutcome(next)).toBe('yes');
+    expect(feelingOutcome({})).toBeNull();
+  });
+  test('feeling signals are yes/partly/no', () => {
+    expect(FEELING_SIGNALS).toEqual(['yes', 'partly', 'no']);
+  });
+});
+
+describe('60C #1 — identityReflection', () => {
+  test('returns why + feeling when captured', () => {
+    expect(identityReflection(wanda)).toEqual({
+      why: 'Honor her service before she moves to Florida', feeling: 'proud · warm',
+    });
+  });
+  test('why-only and feeling-only', () => {
+    expect(identityReflection({ meaning_why: 'X' })).toEqual({ why: 'X', feeling: '' });
+    expect(identityReflection({ feeling_words: 'joyful' })).toEqual({ why: '', feeling: 'joyful' });
+  });
+  test('GRACEFUL: nothing reflective ⇒ null', () => {
+    expect(identityReflection({ type: 'Dinner Party' })).toBeNull();
+    expect(identityReflection(null)).toBeNull();
+  });
+});
+
+// ── Sprint 60C #2 — must-have ↔ action link (annotation only) ───────────────────
+describe('60C #2 — mustHaveLink / mustHaveBecause', () => {
+  test('no captured must-have ⇒ null (graceful, never annotates)', () => {
+    expect(mustHaveLink({ type: 'x' }, 'Confirm final guest count')).toBeNull();
+    expect(mustHaveBecause({ type: 'x' }, 'Confirm final guest count')).toBeNull();
+  });
+  test('confident textual link ⇒ matched + traceable because', () => {
+    const link = mustHaveLink(wanda, 'Draft the video tribute schedule');
+    expect(link.matched).toBe(true);
+    expect(link.confidence).toBeGreaterThanOrEqual(0.3);
+    expect(mustHaveBecause(wanda, 'Draft the video tribute schedule'))
+      .toBe('Protecting your must-have — A video tribute from her unit at dinner');
+  });
+  test('unrelated operational action ⇒ not matched ⇒ no annotation (today\'s behavior)', () => {
+    expect(mustHaveLink(wanda, 'Confirm final guest count').matched).toBe(false);
+    expect(mustHaveBecause(wanda, 'Confirm final guest count')).toBeNull();
+    // a single weak shared token stays below threshold (no false positive)
+    expect(mustHaveBecause(wanda, 'Notes from the planner')).toBeNull();
   });
 });

@@ -41,7 +41,7 @@ import { attentionActive, positiveAttention } from './lib/positiveAttention';
 import { decisionsActive, decisionConfidence } from './lib/decisionConfidence';
 // Sprint 60B: Event Identity — a reader over the meaning ALREADY captured at intake
 // (pi.identity flag, presentation-only; orients planning, no engine/store/workflow).
-import { identityOn, eventIdentity } from './lib/eventIdentity';
+import { identityOn, eventIdentity, mustHaveBecause } from './lib/eventIdentity';
 // Sprint 57G: Confidence Grammar (Pattern 014) — remaps the Planning Health status
 // WORD + COLOR by actual certainty, per persona (pi.confidence flag, presentation-only).
 import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
@@ -1151,7 +1151,18 @@ export function selectStudioCommand(events = []) {
 // The engine (_selectEventNextActionInner) and the sub-badge composer below are not
 // touched; persona can only rephrase title/consequence/primaryCta (see nextActionRenderer).
 export function selectEventNextAction(event) {
-  return renderAction(_selectEventNextActionWithBadge(event), personaFor(event));
+  const rendered = renderAction(_selectEventNextActionWithBadge(event), personaFor(event));
+  // Sprint 60C #2 — identity whisper (annotation only, post-engine). When this
+  // action confidently serves the captured must-have AND the engine attached no
+  // reasoning, expose the meaning link through the EXISTING `because` channel.
+  // Never enters _selectEventNextActionInner, never reorders (60C audit guardrail);
+  // shows only when pi.identity is on AND a confident textual link exists (else
+  // graceful no-op). Renders only where `because` already renders (pi.because).
+  if (identityOn() && rendered && !rendered.because) {
+    const because = mustHaveBecause(event, rendered.title);
+    if (because) return { ...rendered, because, becauseFromIdentity: true };
+  }
+  return rendered;
 }
 
 function _selectEventNextActionWithBadge(event) {
