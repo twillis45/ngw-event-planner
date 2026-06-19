@@ -13984,13 +13984,17 @@ function useFoodPriceFactor(event, profile) {
       const pm = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
       const pmFull = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON_FULL[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
       const tail = pm ? ` (${pm})` : '';
+      // The honest regional source stays in priceContext; the host-facing note names
+      // the LOCAL (their city/state) — "in Atlanta, GA", not the abstract "the South".
       const priceContext = factor !== 1 ? `${d.regionLabel}-region grocery prices${tail}` : null;
-      // Regional note in plain host-speak — "in the South this June", not "South · Jun 2026".
-      const region = /^(the )/i.test(d.regionLabel) ? d.regionLabel : `the ${d.regionLabel}`;
+      const STATE_FULL = Object.fromEntries(Object.entries(STATE_NAME_TO_ABBR).map(([n, a]) => [a, n.replace(/\b\w/g, (c) => c.toUpperCase())]));
+      const cityMetro = event && event.market && METRO_GEO[event.market] ? METRO_GEO[event.market].city : '';
+      const city = String((event && event.city) || '').trim() || cityMetro;
+      const local = city ? `${city}, ${state}` : (STATE_FULL[state] || `the ${d.regionLabel}`);
       const when = pmFull ? ` right now (${pmFull})` : ' right now';
       const priceNote = factor !== 1
-        ? `These match what groceries really cost in ${region}${when}`
-        : `Right in line with grocery prices in ${region}${when}`;
+        ? `These match what groceries really cost in ${local}${when}`
+        : `Right in line with grocery prices in ${local}${when}`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
