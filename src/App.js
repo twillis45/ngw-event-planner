@@ -22127,6 +22127,9 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         </div>
       </div>
 
+      {/* Attention System: the honest total above is the hero; the breakdown
+          recedes until you reach for it. */}
+      <div className="hp-recede-group" style={{ display: 'grid', gap: 16 }}>
       {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
@@ -22175,6 +22178,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         </div>
         <button type="button" onClick={addRow} style={{ ...ghostBtn, marginTop: 12 }}>+ Add a cost</button>
       </div>
+      </div>{/* /hp-recede-group */}
     </div>
   );
 }
