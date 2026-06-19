@@ -764,6 +764,12 @@ function GlobalStyles() {
       // prefers-reduced-motion rule below.
       '@keyframes ceRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
+      // Attention System: everything that is NOT the one live thing recedes to ~0.5 and
+      // brightens the moment you reach for it (hover / focus / tap-within). Same spirit as
+      // the create panel's groupDim — but reachable, not hidden.
+      '.hp-recede { opacity: 0.5; transition: opacity 320ms ease; }',
+      '.hp-recede:hover, .hp-recede:focus-within, .hp-recede:active { opacity: 1; }',
+      '@media (hover: none) { .hp-recede { opacity: 0.6; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
       '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
       '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',
@@ -18471,6 +18477,7 @@ function AboutEventType({ type, C, cardStyle, eyebrowStyle }) {
 
 function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
+  const isMobile = useContext(BpCtx) === 'mobile';
   // The host's focus event: soonest upcoming (today→future), else most-future past,
   // preferring a real (non-seed) event. A host usually has exactly one.
   const focus = useMemo(() => {
@@ -18559,9 +18566,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
         {/* 2 · Next Step */}
         {na && (
-          <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3 }}>
+          // Attention System: the ONE live thing — it BREATHES (ceBreathe ring) and runs
+          // bigger, the way the create panel's active question dominates. Everything below
+          // recedes (.hp-recede) until you act, then the next thing lights up.
+          <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
             <div style={eyebrow}>Your next step</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>{na.title}</div>
+            <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
             {na.consequence && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
             {na.primaryCta && (
               <button onClick={() => { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' }); }}
@@ -18577,7 +18587,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           const live = prog.filter(p => p.state !== 'done');
           const doneCount = prog.length - live.length;
           return (
-            <div style={card}>
+            <div className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
                 <div style={eyebrow}>What still needs you</div>
                 {doneCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
@@ -18607,10 +18617,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
         {/* 4 · What Matters Most — populated; or a contextual capture prompt when empty. */}
         {!id && onPatchEvent && (
-          <HostMeaningPrompt ev={ev} onPatchEvent={onPatchEvent} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
+          <div className="hp-recede">
+            <HostMeaningPrompt ev={ev} onPatchEvent={onPatchEvent} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
+          </div>
         )}
         {id && (id.reallyIs || id.mustHaveMoment) && (
-          <div style={card}>
+          <div className="hp-recede" style={card}>
             <div style={eyebrow}>What matters most</div>
             {id.reallyIs && <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, lineHeight: 1.45 }}>{id.reallyIs}</div>}
             {id.mustHaveMoment && (
@@ -18630,7 +18642,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (!fp) return null;
           const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
           return (
-            <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Planning' })}
+            <button type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning' })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Food plan</span>
@@ -18650,7 +18662,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           const railItems = upcomingRail(ev);
           if (!railItems.length) return null;
           return (
-            <div style={card}>
+            <div className="hp-recede" style={card}>
               <div style={eyebrow}>Coming up later</div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {railItems.map((r, i) => (
@@ -18669,7 +18681,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         })()}
 
         {/* 5 · Event Day */}
-        <button onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
+        <button className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
           style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>
             <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
@@ -18678,7 +18690,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           <span style={{ fontSize: 18, color: C.muted }}>→</span>
         </button>
       </div>
-      <AboutEventType type={ev.type} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
+      <div className="hp-recede">
+        <AboutEventType type={ev.type} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
+      </div>
     </div>
   );
 }

@@ -1496,7 +1496,13 @@ function _selectEventNextActionInner(event) {
       // ~230), NOT `title`/`relative` — so this CTA was showing a generic
       // "Prep for 'next milestone'. Coming up soon." placeholder instead of the
       // real task. Use the actual fields so it names the real milestone.
-      title: `Prep for "${(nextUp.label || 'the next milestone').slice(0, 80)}".`,
+      // Title is the screen's brightest element (host home hero) — never cut it
+      // mid-word. Trim to a word boundary and keep the ellipsis inside the quote.
+      title: (() => {
+        const lbl = nextUp.label || 'the next milestone';
+        if (lbl.length <= 72) return `Prep for "${lbl}".`;
+        return `Prep for "${lbl.slice(0, 72).replace(/\s+\S*$/, '')}…"`;
+      })(),
       consequence: `${nextUp.sub ? `Coming up: ${nextUp.sub}. ` : ''}Staying ahead by one step makes the rest of the timeline feel quiet.`,
       primaryCta: 'Get ahead',
       primaryRoute: { tab: 'Timeline', timelineId: nextUp.id },
