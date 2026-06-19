@@ -369,14 +369,17 @@ export function deriveCommandCenterData(event) {
     // (no inventory exists). Display-only here in Planning Health — it does NOT
     // enter getEventReadiness, so it never escalates the next-action ladder/spine.
     // Neutral steel ('ESTIMATE'), not a green/amber/red status. Playbook events only.
+    // Board ruling: the FULL seating/supplies detail now lives in Plan. The Overview
+    // keeps ONE collapsed echo line (count + link), no computed detail, no "because".
     (() => {
       const cap = playbookCapacity(event);
       if (!cap) return null;
+      const cc = event.capacityChecked || {};
+      const done = cap.items.filter((it) => cc[it.short]).length;
+      const allDone = done === cap.items.length;
       return {
-        label: 'Capacity', statusLabel: 'ESTIMATE', color: P.textSecondary,
-        note: `Confirm seating & serveware for ${cap.guests} guests — ${cap.summary}`,
-        because: cap.because, // Sprint 57H: existing reasoning, exposed (presentation-only)
-        valueLevel: valueConfidence('capacity', event), // Sprint 57K: Likely (count final) / Estimated
+        label: 'Capacity', statusLabel: allDone ? 'ALL SET' : 'IN PLAN', color: P.textSecondary,
+        note: allDone ? `Seating & supplies for ${cap.guests} — all set` : `Seating & supplies for ${cap.guests} guests`,
       };
     })(),
     // Sprint 55L: the Infrastructure-check prompts ("Reality Check") — the
@@ -385,13 +388,19 @@ export function deriveCommandCenterData(event) {
     // Same Pattern 010 treatment as Capacity: display-only here, NOT in
     // getEventReadiness, so it informs without escalating. Neutral steel
     // ('REVIEW'), never a deficit, never an adequacy claim. Playbook events only.
+    // Board ruling (unanimous): the day-of safety walkthrough now lives at the top of
+    // The Day. The Overview keeps ONE live echo — "not yet confirmed" carries amber
+    // (the only off-track item allowed color), green once cleared — linking to The Day.
     (() => {
       const infra = playbookInfraPrompts(event);
       if (!infra) return null;
+      const sc = event.safetyChecked || {};
+      const done = infra.prompts.filter((p) => sc[p.key]).length;
+      const all = infra.prompts.length;
+      const allDone = done >= all;
       return {
-        label: 'Reality Check', statusLabel: 'REVIEW', color: P.textSecondary,
-        note: `Before event day, confirm: ${infra.summary}`,
-        because: infra.because, // Sprint 57H: existing reasoning, exposed (presentation-only)
+        label: 'Reality Check', statusLabel: allDone ? 'CONFIRMED' : 'CONFIRM', color: allDone ? P.green : P.amber,
+        note: allDone ? 'Day-of safety — all confirmed' : (done > 0 ? `Day-of safety — ${done} of ${all} confirmed` : 'Day-of safety — not yet confirmed'),
       };
     })(),
   ].filter(Boolean);
@@ -406,10 +415,13 @@ export function deriveCommandCenterData(event) {
   const headline = totalNeeds === 0 ? 'All quiet — nothing urgent' : headlineParts.join(' · ');
   const headlineColor = totalNeeds === 0 ? P.green : P.amber;
 
-  // Meta line (sub-header)
+  // Meta line (sub-header). Board trust-fix: bind the displayed count to the SAME
+  // resolution the food/seating engine uses (guestCount → estimate → list length),
+  // so the header can never say "18 guests" while Seating computes for 30.
+  const resolvedGuests = Number(event.guestCount) || Number(event.guestEstimate) || guests.length || 0;
   const metaParts = [
     event.venue,
-    event.guestEstimate ? `${event.guestEstimate} guests` : (guests.length > 0 ? `${guests.length} guests` : null),
+    resolvedGuests > 0 ? `${resolvedGuests} guests` : null,
     totalBudgeted > 0 ? `${fmtMoney(totalActual)} of ${fmtMoney(totalBudgeted)} budget` : null,
   ].filter(Boolean);
 
@@ -1817,7 +1829,9 @@ function DocPill({ label, status, color, onClick }) {
 // ── Planning Health row ───────────────────────────────────────────────────────
 // Each health dimension routes to the tab that owns it (board: a callout that
 // names a problem must be the handle that takes you to it).
-const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents', Capacity: 'Seating' };
+// Board ruling: Capacity ("Seating & supplies") → Plan; Reality Check ("Before the
+// big day") → The Day. The Overview row is now a collapsed echo that LINKS to the home.
+const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests', Budget: 'Budget', Documents: 'Documents', Capacity: 'Planning', 'Reality Check': 'Event Day Schedule' };
 // Sprint 57G: TIER → Studio Matte color. UNKNOWN/ESTIMATE/VERIFY render steel —
 // never green (false certainty) and never red (false alarm) for "no data".
 const CONF_TIER_COLOR = { green: P.green, amber: P.amber, red: P.red, steel: P.textSecondary };

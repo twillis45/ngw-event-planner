@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -8103,6 +8103,85 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
         </div>
       </div>
     </>
+  );
+}
+
+// ── RealityCheckPanel — "Before the big day" → relocated to The Day (board ruling,
+// 8/8 unanimous). The pre-event safety/logistics gate the host clears the morning of:
+// a real checkable list with the full guidance, not a dim Overview footer.
+function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
+  const C = useT();
+  const rc = (() => { try { return playbookInfraPrompts(event); } catch { return null; } })();
+  if (!rc || !rc.prompts || !rc.prompts.length) return null;
+  const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+  const done = rc.prompts.filter((p) => checked[p.key]).length;
+  const allDone = done === rc.prompts.length;
+  const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ safetyChecked: next }); };
+  const card = { background: C.surface, border: `1px solid ${allDone ? (C.success || C.border) : C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All confirmed ✓' : `${done} of ${rc.prompts.length} confirmed`}</div>
+      </div>
+      <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Your day-of safety walkthrough — tap each as you confirm it. Most matter most for an open-flame backyard cookout.</div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {rc.prompts.map((p, i) => {
+          const on = !!checked[p.key];
+          return (
+            <button key={p.key} type="button" onClick={() => toggle(p.key)}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
+              <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, marginTop: 1, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{p.detail}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── CapacityPanel — "Seating & supplies" → relocated to Plan (board ruling, 6/8).
+// The confirm-the-quantities checklist the host works before the day; counts also
+// surface as dollars in Money. Full detail lives here, not as an Overview footer.
+function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
+  const C = useT();
+  const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
+  if (!cap || !cap.items || !cap.items.length) return null;
+  const checked = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
+  const done = cap.items.filter((it) => checked[it.short]).length;
+  const allDone = done === cap.items.length;
+  const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityChecked: next }); };
+  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>Seating &amp; supplies</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${done} of ${cap.items.length} ready`}</div>
+      </div>
+      <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Sized for {cap.guests} guests — tap each once you have it. These flow into your Spending Plan as costs.</div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {cap.items.map((it, i) => {
+          const on = !!checked[it.short];
+          return (
+            <button key={it.short} type="button" onClick={() => toggle(it.short)}
+              style={{ display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
+              <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>
+                  <span style={{ fontWeight: 800 }}>{it.qty}</span> {it.short}
+                </span>
+                {it.note && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{it.note}</span>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {cap.because && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: 700 }}>How we sized it:</span> {cap.because}</div>}
+    </div>
   );
 }
 
@@ -25788,7 +25867,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType }) {
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros, setRos, vendors, eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {} }) {
+function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {} }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -32884,6 +32963,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Planning'       && (
         <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} />
       )}
+      {/* Board ruling: "Seating & supplies" lives in Plan (not buried on the Overview). */}
+      {tab === 'Planning' && isHostEvt && (
+        <CapacityPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+      )}
       {tab === 'Planning'       && (
         <Suspense fallback={<SpecialistFallback />}>
           <EventPlanningTab
@@ -32938,6 +33021,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Event Day Schedule' && (
         <>
           <LegacyTabHeader label="Event Day Schedule" hint="The event-day schedule. What happens, when, and who's responsible." onBack={() => handleTabChange('Command')} />
+          {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
+          {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"
