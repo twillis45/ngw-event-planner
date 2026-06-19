@@ -23968,9 +23968,10 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
   // not a roster. Show a calm number-only view until they choose to track RSVPs.
   // Default to the roster when a list already exists (unless the host committed to
   // headcount-only mode); brand-new / no-list events open on the calm headcount field.
-  const [showList, setShowList] = useState(() => guests.length > 0 && event.guestMode !== 'count');
+  // Unresolved count → lead with the single confirm-count attention panel (before the
+  // roster). Resolved + a real list → straight to the roster. (owner preference)
+  const [showList, setShowList] = useState(() => guestCountResolved(event).resolved && guests.length > 0 && event.guestMode !== 'count');
   const [hcDraft, setHcDraft] = useState(() => { const n = Number(event.guestCount) || Number(event.guestEstimate) || 0; return n ? String(n) : ''; });
-  const [lockDraft, setLockDraft] = useState(''); // the "lock final count" field on the roster
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
@@ -24149,33 +24150,41 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
   // (board ruling). Renders whenever we're not showing the roster. Setting the
   // number commits headcount mode, which SATISFIES the "confirm guest count" step
   // (guestCountResolved honors guestMode='count') so that next-step stops nagging.
+  // SINGLE ATTENTION PANEL for the count (owner preference): when the count isn't
+  // locked yet, this is ALL the host sees on the Guests screen — confirm the final
+  // count first, then the roster. Locking sets guestMode='count' (clears the nag).
   if (!showList) {
-    const hcCard = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, maxWidth: 760, margin: '0 auto' };
     const hasList = guests.length > 0;
-    const commit = (v) => { setGuestCount(v); setGuestMode('count'); };
-    const autofocus = !!focusCount;
+    const accent = C.warn || C.accent;
+    const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); if (hasList) setShowList(true); } };
+    const card = { background: C.surface, border: `1px solid ${accent}55`, borderLeft: `3px solid ${accent}`, borderRadius: 14, padding: 24, maxWidth: 760, margin: '0 auto' };
     return (
       <div style={{ padding: '8px 0' }}>
-        <div style={hcCard}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Your headcount</div>
-          <div style={{ fontSize: 14, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
+        <div style={card}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
+          <div style={{ fontSize: 14.5, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: 600 }}>
             {hasList
-              ? `You've got ${guests.length} on the list. Prefer to just go by a number you expect (like a cookout)? Set it here — your food plan and budget size to it, and that's your final count.`
-              : 'Just need a number? Set how many you expect — your food plan and budget size to it. No guest list required.'}
+              ? `${yes} confirmed${maybe > 0 ? ` · ${maybe} still out` : ''} of ${guests.length} invited.`
+              : 'How many are you planning for?'}
+          </div>
+          <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
+            Lock the number you're cooking and buying for — it becomes your final count everywhere (food plan, budget, seating).
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 16, color: C.text }}>About</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '6px 14px' }}>
-              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder="0" autoFocus={autofocus}
-                onChange={e => setHcDraft(e.target.value)} onBlur={() => commit(hcDraft)}
+              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder={String(yes || guests.length || 0)} autoFocus
+                onChange={e => setHcDraft(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { commit(hcDraft); e.currentTarget.blur(); } }}
                 style={{ width: 90, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 26, fontWeight: 800, fontFamily: 'inherit' }} />
             </span>
             <span style={{ fontSize: 16, color: C.text }}>guests</span>
+            <button type="button" onClick={() => commit(hcDraft || yes || guests.length)}
+              style={{ fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Lock it</button>
           </div>
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
-            style={{ marginTop: 20, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '9px 15px', borderRadius: 9 }}>
-            {hasList ? 'Back to the guest list →' : "Track who's coming (RSVPs) →"}
+            style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
+            {hasList ? 'Open the full guest list →' : "Track who's coming with RSVPs instead →"}
           </button>
         </div>
       </div>
@@ -24246,34 +24255,8 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         </>
       )}
 
-      {/* CONFIRM FINAL COUNT — the action the "Confirm guest count" next-step lands on.
-          Until the count is locked, this is the explicit control: lock the number you're
-          cooking/buying for (clears the nag), or drop the list and go by a headcount. */}
-      {!guestCountResolved(event).resolved && (() => {
-        const suggested = yes || guests.length || Number(event.guestEstimate) || 0;
-        const lockVal = Math.max(0, Math.round(Number(lockDraft || suggested) || 0));
-        const lock = () => { if (lockVal > 0) { setGuestCount(lockVal); setGuestMode('count'); } };
-        return (
-          <div style={{ background: C.surface, border: `1px solid ${(C.warn || C.accent)}66`, borderLeft: `3px solid ${C.warn || C.accent}`, borderRadius: 12, padding: 16, marginBottom: 18, maxWidth: 760 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text }}>Confirm your final guest count</div>
-            <div style={{ fontSize: 13, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-              {yes} confirmed{maybe > 0 ? ` · ${maybe} still awaiting` : ''}. Lock the number you're cooking and buying for — that becomes your final count everywhere.
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '6px 12px' }}>
-                <span style={{ fontSize: 12.5, color: C.muted }}>Final count</span>
-                <input type="number" inputMode="numeric" min="0" value={lockDraft} placeholder={String(suggested)}
-                  onChange={(e) => setLockDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lock(); }}
-                  style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 16, fontWeight: 800, fontFamily: 'inherit' }} />
-              </span>
-              <button type="button" onClick={lock}
-                style={{ fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Lock it</button>
-              <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
-                style={{ fontSize: 13, fontWeight: 600, padding: '9px 12px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Just go by a headcount →</button>
-            </div>
-          </div>
-        );
-      })()}
+      {/* The confirm-final-count control now lives in the single attention panel that
+          precedes the roster (showList=false), per owner preference — no inline banner. */}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
