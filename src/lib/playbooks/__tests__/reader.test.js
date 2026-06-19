@@ -30,7 +30,9 @@ describe('quantity-resolved operational candidate (the success condition)', () =
     expect(t.quantity).toBe(18);
     expect(t.category).toBe('operational');
     expect(t.level).toBe('attention');
-    expect(t.primaryRoute.tab).toBe('Planning Tasks');
+    // #12 deep-link: lands on the food plan AND targets the exact line (foodFocus).
+    expect(t.primaryRoute.tab).toBe('Planning');
+    expect(t.primaryRoute.foodFocus).toBeTruthy();
   });
 
   test('quantity scales with guest count (8 guests → 12 lbs ice)', () => {
@@ -621,6 +623,15 @@ describe('Sprint 64 — region-gated DMV dishes', () => {
     const atl = playbookFoodPlan({ id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [], market: 'atl' });
     expect(dmv.list.some(i => i.id === 'p_halfsmokes')).toBe(true);
     expect(atl.list.some(i => i.id === 'p_halfsmokes')).toBe(false);
+  });
+});
+
+describe('#14 — dietary workflow in headcount mode', () => {
+  const p = playbookFoodPlan;
+  test('headcount mode demands a note (not per-guest), satisfied by dietaryNoted', () => {
+    const base = { id: 'c', type: 'The Cookout', guestCount: 30, guestMode: 'count', guests: [{ rsvp: 'Yes' }] };
+    expect(p(base).dietaryResolved).toBe(false);
+    expect(p({ ...base, dietaryNoted: true }).dietaryResolved).toBe(true);
   });
 });
 

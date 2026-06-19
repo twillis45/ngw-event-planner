@@ -2167,6 +2167,8 @@ const VENUE_TAGS_BY_KIND = {
   rented:     ['Blank canvas', 'Kitchen access', 'Tables & chairs included', 'Bring-your-own vendors', 'Time limit + cleanup', 'Parking lot', 'ADA accessible'],
   other:      VENUE_TAGS,
 };
+// Common allergies / diets for the headcount-mode dietary note (pick what applies).
+const DIET_TAGS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy', 'Egg allergy', 'Soy allergy', 'Halal', 'Kosher', 'Pescatarian', 'Diabetic-friendly'];
 // Attributes relevant to a vendor's CATEGORY — venue qualities surface only for a
 // Venue, dietary only for food vendors, "travels" only for service pros, etc.
 // (board: "venue attributes should only surface for the venue related").
@@ -8378,15 +8380,30 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         )}
       </div>
 
-      {/* dietary gate (decision-first) */}
-      {!plan.dietaryResolved && (
+      {/* dietary gate (decision-first) — two workflows. Headcount/locked mode: there's
+          no per-guest list, so the host NOTES the allergies they know of. List mode:
+          collect per-guest in the roster. */}
+      {!plan.dietaryResolved && (event.guestMode === 'count' ? (
+        <div style={{ ...card, borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
+          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, marginBottom: 12 }}>
+            <strong>Any allergies or diets to plan around?</strong> You're going by a headcount, so just pick what applies — one unflagged allergy is a safety issue.
+          </div>
+          <TagChips value={Array.isArray(event.knownAllergies) ? event.knownAllergies : []} onChange={(t) => onPatch({ knownAllergies: t })} options={DIET_TAGS} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+            <button type="button" onClick={() => onPatch({ dietaryNoted: true })}
+              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: steel, border: 'none', borderRadius: 9, padding: '9px 16px', cursor: 'pointer' }}>Save these</button>
+            <button type="button" onClick={() => onPatch({ knownAllergies: [], dietaryNoted: true })}
+              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: C.muted, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 6px' }}>None I know of</button>
+          </div>
+        </div>
+      ) : (
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
           <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
             <strong>Collect allergies & dietary needs first.</strong> One unflagged allergy is a safety issue — lock the menu after.
           </div>
           <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
         </div>
-      )}
+      ))}
 
       {/* the menu CHOICES */}
       {plan.choices.length > 0 && (

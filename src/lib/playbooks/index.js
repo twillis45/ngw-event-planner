@@ -172,6 +172,11 @@ export function guestCountResolved(event) {
 }
 
 function dietaryResolved(event) {
+  // Host explicitly noted allergies (the headcount-mode workflow) → done.
+  if (event.dietaryNoted) return { resolved: true, reason: 'noted' };
+  // Headcount / locked-count mode: there's no per-guest list to collect from, so the
+  // host just NOTES the allergies they know of (free-text) instead of chasing the list.
+  if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
   const list = event.guests || [];
   if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
   const recorded = list.some((g) => {
