@@ -21916,9 +21916,9 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             const bd = Number(budgetDraft);
             const state = bd < totalLow ? 'over' : bd < totalHigh ? 'range' : 'covered';
             const color = state === 'over' ? C.danger : state === 'covered' ? C.success : C.text;
-            const msg = state === 'over' ? `Estimate ${money(totalLow, totalHigh)} — over even the value plan`
-              : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — covered`
-              : `Estimate ${money(totalLow, totalHigh)} — in range; shop the value end to stay under`;
+            const msg = state === 'over' ? `Estimate ${money(totalLow, totalHigh)} — over your budget (cheapest plan is ${money(totalLow, totalLow)})`
+              : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — your budget covers it`
+              : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
             return <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{msg}</span>;
           })()}
         </div>
