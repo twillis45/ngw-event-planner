@@ -8108,6 +8108,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // glanceable summary while the host is still planning.
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
+  const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
@@ -8188,25 +8189,43 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {plan.choices.length > 0 && (
         <div style={card}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>Your choices</div>
-          <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Pick the direction — the spread + budget below adjust to fit.</div>
-          {plan.choices.map((c) => (
-            <div key={c.id} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text, marginBottom: 8 }}>{c.label}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {c.options.map((o) => {
-                  const on = o === c.chosen;
-                  return (
-                    <button key={o} type="button" onClick={() => setChoice(c.id, o)}
-                      style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
-                        color: on ? '#fff' : C.text, background: on ? steel : C.bg, border: `1px solid ${on ? steel : C.border}`, transition: 'background 140ms ease, border-color 140ms ease' }}>
-                      {o}
-                    </button>
-                  );
-                })}
-              </div>
-              {c.why && <div style={{ fontSize: 12, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>{c.why}</div>}
-            </div>
-          ))}
+          <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
+          {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
+              no wall of every option for every decision). */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {plan.choices.map((c) => {
+              const open = openChoice === c.id;
+              return (
+                <div key={c.id} style={{ borderTop: `1px solid ${C.border}` }}>
+                  <button type="button" onClick={() => setOpenChoice(open ? null : c.id)}
+                    style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '11px 2px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 11, color: C.muted }}>{c.label}</span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: c.chosen ? C.text : steel, marginTop: 2, lineHeight: 1.3 }}>{c.chosen || 'Choose →'}</span>
+                    </span>
+                    <span aria-hidden style={{ flexShrink: 0, marginTop: 2, color: C.muted, fontSize: 15, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
+                  </button>
+                  {open && (
+                    <div style={{ padding: '0 2px 12px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {c.options.map((o) => {
+                          const on = o === c.chosen;
+                          return (
+                            <button key={o} type="button" onClick={() => { setChoice(c.id, o); setOpenChoice(null); }}
+                              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
+                                color: on ? '#fff' : C.text, background: on ? steel : C.bg, border: `1px solid ${on ? steel : C.border}`, transition: 'background 140ms ease, border-color 140ms ease' }}>
+                              {o}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {c.why && <div style={{ fontSize: 12, color: C.muted, marginTop: 9, lineHeight: 1.5 }}>{c.why}</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
