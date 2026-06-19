@@ -31731,6 +31731,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const evtCLR = EVT_CLR(C);
   const bp  = useContext(BpCtx);
   const { savedAt, online, syncState, pendingCount } = useContext(SaveCtx);
+  // RA-4 / DL-009 — a self-host has no client: gate the planner-only chrome
+  // (Share-with-client, Consult Script) and relabel the money tab off this axis.
+  const isHostEvt = (intakeFamilyConfig(event.type) || {}).recordKind === 'event';
   // Sprint 51 Path B + Sprint 59B: any legacy tab name from initialNav (stale
   // URL, persisted state, third-party trigger, Home/CommandCenter Sprint-57f
   // compressed routes) is normalized at mount so we land in the right
@@ -32189,7 +32192,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label="Budget" onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
@@ -32508,9 +32511,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   <Icon name="eye" size={13} /> Client View
                 </button>
               )}
-              <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Icon name="send" size={13} /> Share with client
-              </button>
+              {!isHostEvt && (
+                <button onClick={() => setShowSendClient(true)} style={{ ...s.btn('primary'), fontSize: 11, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Icon name="send" size={13} /> Share with client
+                </button>
+              )}
               {/* Sprint 49 closure: 'Manage Event' surface — labeled
                   entry-point for secondary + destructive actions. Replaces
                   the bare '···' button so Day Mode / Duplicate / Archive /
@@ -32766,8 +32771,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               // Sprint 59D: mobile drawer copy locked to Day-of/Full event view.
               { icon: 'zap',      label: dayMode ? 'Full event view' : 'Day-of view', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
               // Sprint 51 follow-up: ConsultScriptModal trigger restored after Overview retirement.
-              { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
-              { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
+              !isHostEvt && { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
+              !isHostEvt && { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
               client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
               { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
               { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
