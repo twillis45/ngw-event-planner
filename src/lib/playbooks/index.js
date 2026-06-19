@@ -574,3 +574,58 @@ export function playbookBudgetCategories(eventType, guestCount) {
     return { key: g.key, label: g.label, essential: g.essential, low: round5(g.low), high: round5(g.high) };
   });
 }
+
+// ── Food / Menu plan (host-facing food intelligence) ──────────────────────────
+// Surfaces the playbook's FOOD CHOICES (the menu/drinks/potluck decisions) +
+// the grounded shopping list (purchases scaled by guest count, with cost ranges
+// + where to buy + the commonly-forgotten flags) + the food budget + the dietary
+// gate. Pure reader over authored data — the "make an intelligent food choice"
+// surface (FoodPlan) renders this. The host's picks live on event.foodChoices.
+const FOOD_GROUP = { food: 'Food', beverage: 'Drinks' };
+export function playbookFoodPlan(event) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !Array.isArray(playbook.purchases)) return null;
+  const guests = guestCountOf(event, playbook);
+  const gc = guestCountResolved(event);
+  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+
+  // The food/drink CHOICES the host should make (menu style, host-vs-potluck, drinks…).
+  const choices = (playbook.decisions || [])
+    .filter((d) => {
+      const hay = `${d.id || ''} ${d.label || ''} ${(d.blocks || []).join(' ')}`.toLowerCase();
+      return Array.isArray(d.options) && d.options.length > 0
+        && /food|menu|drink|beverage|potluck|cater|spread|bar|dish|fish|fillings?|meat|protein|reveal/.test(hay);
+    })
+    .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
+
+  // The grounded shopping list, scaled by guest count, grouped + costed.
+  const list = playbook.purchases
+    .filter((p) => p.category === 'food' || p.category === 'beverage')
+    .map((p) => {
+      const qty = resolveQuantity(p, guests);
+      const unit = shortUnit(p.unit, qty);
+      const [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+      const units = qty == null ? 1 : qty;
+      return {
+        id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
+        qty, unit, essential: !!p.essential, where: p.where || [],
+        low: Math.round(units * uLow), high: Math.round(units * uHigh),
+        note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
+      };
+    });
+  const sum = (k) => list.reduce((s, i) => s + i[k], 0);
+  const di = dietaryResolved(event);
+
+  return {
+    type: playbook.type,
+    guests,
+    guestCountResolved: gc.resolved,
+    choices,
+    list,
+    groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
+    foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
+    foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
+    dietaryResolved: di.resolved,
+  };
+}

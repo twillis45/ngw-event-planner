@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan } from './lib/playbooks';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 import { callAiFeature, isAiProxyConfigured } from './lib/aiProxy';
@@ -7961,6 +7961,109 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
         </div>
       </div>
     </>
+  );
+}
+
+// FoodPlan — the host-facing "make an intelligent food choice" surface. Renders
+// the playbook's food intelligence (playbookFoodPlan): the menu/drinks CHOICES,
+// the grounded shopping list scaled to guest count (qty · cost · where + the
+// commonly-forgotten flags), the food budget, and the dietary gate. The host's
+// picks persist on event.foodChoices; checked-off items on event.foodGot.
+// Renders nothing when the event type has no playbook (planner CRM unaffected).
+function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {} }) {
+  const C = useT();
+  const plan = playbookFoodPlan(event);
+  if (!plan) return null;
+  const steel = C.accentTopGrad || C.accent;
+  const warn = C.warn || steel;
+  const money = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
+  const setChoice = (id, val) => onPatch({ foodChoices: { ...(event.foodChoices || {}), [id]: val } });
+  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 20, marginBottom: 14 };
+
+  return (
+    <div style={{ marginBottom: 20, maxWidth: 760 }}>
+      {/* header + budget */}
+      <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
+        <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
+          Sized for {plan.guests} guests{!plan.guestCountResolved ? ' (estimate)' : ''}
+        </div>
+        <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+          Estimated food + drink: <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> — grounded in what this event actually needs.
+        </div>
+        {!plan.guestCountResolved && (
+          <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+            Set your guest count to size this exactly →
+          </button>
+        )}
+      </div>
+
+      {/* dietary gate (decision-first) */}
+      {!plan.dietaryResolved && (
+        <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
+          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+            <strong>Collect allergies & dietary needs first.</strong> One unflagged allergy is a safety issue — lock the menu after.
+          </div>
+          <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
+        </div>
+      )}
+
+      {/* the menu CHOICES */}
+      {plan.choices.length > 0 && (
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>Your choices</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Pick the direction — the spread + budget below adjust to fit.</div>
+          {plan.choices.map((c) => (
+            <div key={c.id} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text, marginBottom: 8 }}>{c.label}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {c.options.map((o) => {
+                  const on = o === c.chosen;
+                  return (
+                    <button key={o} type="button" onClick={() => setChoice(c.id, o)}
+                      style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
+                        color: on ? '#fff' : C.text, background: on ? steel : C.bg, border: `1px solid ${on ? steel : C.border}`, transition: 'background 140ms ease, border-color 140ms ease' }}>
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
+              {c.why && <div style={{ fontSize: 12, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>{c.why}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* the grounded shopping list */}
+      <div style={card}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>The spread — what to get</div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Quantities scaled to {plan.guests} guests. Tap an item to check it off as you shop.</div>
+        {plan.groups.map((g) => (
+          <div key={g} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>{g}</div>
+            {plan.list.filter((i) => i.group === g).map((i) => {
+              const got = (event.foodGot || {})[i.id];
+              return (
+                <button key={i.id} type="button" onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: got ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                    {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
+                    {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                    {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
+                  </span>
+                  <span style={{ flexShrink: 0, textAlign: 'right' }}>
+                    {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                    <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -17968,6 +18071,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             )}
           </div>
         )}
+
+        {/* Food plan — the playbook's grounded food choices + scaled shopping list,
+            surfaced where the host lives. Renders nothing without a playbook. */}
+        <FoodPlan event={ev} onPatch={onPatchEvent ? (patch) => onPatchEvent(ev.id, patch) : undefined} onNav={(tab) => onSelectEvent(ev.id, { tab })} />
 
         {/* Sprint UX-4 · Upcoming Rail — what exists but hasn't earned attention yet.
             Reachable (one tap), never hidden. Empty once everything is active. */}
@@ -31750,6 +31857,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           truth. Suspense wrapper handles the lazy-loaded plan/ modules
           (TimelineBuilder, ChecklistGenerator) used by the Timeline and
           Checklist views. */}
+      {tab === 'Planning'       && (
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} />
+      )}
       {tab === 'Planning'       && (
         <Suspense fallback={<SpecialistFallback />}>
           <EventPlanningTab

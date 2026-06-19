@@ -1,4 +1,4 @@
-import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision, playbookRunOfShow, playbookCapacity, playbookInfraPrompts, effectiveRos } from '../index';
+import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision, playbookRunOfShow, playbookCapacity, playbookInfraPrompts, effectiveRos, playbookFoodPlan } from '../index';
 
 const DP = (over) => ({
   id: 'e1',
@@ -457,5 +457,41 @@ describe('event-type wiring (create → event → reader)', () => {
     expect(getPlaybook('Cocktail Party').type).toBe('Dinner Party');
     expect(getPlaybook('Brunch').type).toBe('Dinner Party');
     expect(getPlaybook('Backyard BBQ').type).toBe('Get-Together');
+  });
+});
+
+// ── Food / Menu plan (host-facing food intelligence) ──────────────────────────
+describe('playbookFoodPlan (the food-choice surface data)', () => {
+  test('The Cookout → menu choices + a scaled, costed shopping list + food budget', () => {
+    const plan = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [] });
+    expect(plan).toBeTruthy();
+    expect(plan.guests).toBe(40);
+    // food choices the host can make
+    expect(plan.choices.length).toBeGreaterThan(0);
+    plan.choices.forEach((c) => { expect(Array.isArray(c.options)).toBe(true); expect(c.chosen).toBeTruthy(); });
+    // grounded list (food + drinks), each with a quantity + cost range + group
+    expect(plan.list.length).toBeGreaterThan(0);
+    const ribs = plan.list.find((i) => /rib/i.test(i.item));
+    expect(ribs).toBeTruthy();
+    expect(ribs.qty).toBeGreaterThan(0);        // 0.5 lb/guest × 40 = 20
+    expect(ribs.high).toBeGreaterThanOrEqual(ribs.low);
+    expect(plan.groups).toContain('Food');
+    expect(plan.foodHigh).toBeGreaterThan(plan.foodLow);
+  });
+
+  test('quantities + budget scale with guest count', () => {
+    const a = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 20, guests: [] });
+    const b = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 60, guests: [] });
+    expect(b.foodHigh).toBeGreaterThan(a.foodHigh);
+  });
+
+  test("the host's pick on event.foodChoices is reflected as chosen", () => {
+    const plan = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [], foodChoices: { drinks: 'BYOB' } });
+    const drinks = plan.choices.find((c) => c.id === 'drinks');
+    if (drinks) expect(drinks.chosen).toBe('BYOB');
+  });
+
+  test('non-playbook type → null', () => {
+    expect(playbookFoodPlan({ id: 'o', type: 'Other', guestCount: 10 })).toBeNull();
   });
 });
