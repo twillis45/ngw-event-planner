@@ -2111,6 +2111,7 @@ const EVT_CATEGORIES = {
     'Dinner Party', 'Cocktail Party', 'Backyard BBQ', 'Brunch',
     'Game Night', 'Watch Party', 'Super Bowl Party', 'Game Day Party',
     'The Cookout', 'Fish Fry', 'Card Party', 'Sunday Dinner', 'Day Party',
+    'Crab Feast', 'Crawfish Boil', 'Low Country Boil',
     'Repast', 'Housewarming', 'Get-Together',
   ],
   // Heritage / community celebrations — ethnicity-NEUTRAL + expandable (Juneteenth,

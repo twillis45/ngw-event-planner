@@ -84,6 +84,10 @@ const EVENT_TAXONOMY = {
   'Card Party':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Sunday Dinner':      { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Day Party':          { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  // Regional seafood-boil hosted events (DMV crab feast + the boil family).
+  'Crab Feast':         { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Crawfish Boil':      { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
+  'Low Country Boil':   { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Repast':             { parent: 'At-Home Gatherings', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Juneteenth Cookout': { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
   'Kwanzaa Gathering':  { parent: 'Holidays & Heritage', solveFamily: 'home_gathering', family: 'home_hosted', shareFamily: 'fallback' },
