@@ -1,4 +1,4 @@
-import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision } from '../index';
+import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision, playbookRunOfShow, playbookCapacity, playbookInfraPrompts, effectiveRos } from '../index';
 
 const DP = (over) => ({
   id: 'e1',
@@ -266,7 +266,6 @@ describe('55G decision-first gate', () => {
 });
 
 // ── Sprint 55H-B1: run-of-show seeding ────────────────────────────────────────
-import { playbookRunOfShow, effectiveRos } from '../index';
 
 describe('55H-B1 playbookRunOfShow', () => {
   const dp = (over) => ({ id: 'e1', type: 'Dinner Party', date: '2026-06-20', timeOfDay: 'evening', ...over });
@@ -330,7 +329,6 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
 });
 
 // ── Sprint 55H-B3A: capacity requirements (Pattern 009) ───────────────────────
-import { playbookCapacity } from '../index';
 
 describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
   test('Dinner Party 12 guests → scaled requirements, no deficit language', () => {
@@ -374,7 +372,6 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
   });
 });
 
-import { playbookInfraPrompts } from '../index';
 
 describe('55L playbookInfraPrompts (Event Reality Check — confirm prompts, never deficits)', () => {
   const keys = (e) => (playbookInfraPrompts(e)?.prompts || []).map(p => p.key);
@@ -415,5 +412,50 @@ describe('55L playbookInfraPrompts (Event Reality Check — confirm prompts, nev
 
   test('non-playbook (Wedding) → null (unchanged)', () => {
     expect(playbookInfraPrompts({ id: 'w', type: 'Other' })).toBeNull();
+  });
+});
+
+// ── Wiring guarantee: every registered event type surfaces through the reader ──
+// Proves the create → event → getPlaybook path resolves for every type the app
+// offers, and that all the runtime consumption points (CommandCenter next-action,
+// Event-Day run-of-show, capacity, infra prompts) run cleanly for each. Catches a
+// new dropdown type shipped without a playbook, or a playbook field that breaks
+// the reader. (The Event-Day run-of-show rendering was also verified live.)
+describe('event-type wiring (create → event → reader)', () => {
+  const SAMPLE = [
+    // at-home + AA + regional + DMV
+    'The Cookout', 'Fish Fry', 'Card Party', 'Sunday Dinner', 'Day Party', 'Juneteenth Cookout',
+    'Kwanzaa Gathering', 'Repast', 'Crab Feast', 'Crawfish Boil', 'Low Country Boil',
+    'Pupusa Gathering', 'Ethiopian Coffee Ceremony', 'Housewarming', 'Watch Party', 'Game Night',
+    // celebrations + full-service
+    'Bridal Shower', 'Gender Reveal', 'Engagement Party', 'Anniversary', 'Retirement Party',
+    'Reunion', 'Bachelorette Party', 'Bachelor Party', 'Sweet 16', 'Vow Renewal',
+    'Wedding', 'Elopement', 'Quinceañera', 'Surprise Proposal',
+    // corporate
+    'Holiday Party', 'Board Meeting', 'Conference', 'Team Retreat',
+  ];
+  const ev = (type) => ({ id: 'w', type, date: '2026-09-19', guestCount: 30, timeOfDay: 'afternoon', vendors: [], guests: [], ros: [] });
+
+  SAMPLE.forEach((type) => {
+    test(`${type}: resolves by type + reader runs cleanly`, () => {
+      const pb = getPlaybook(type);
+      expect(pb).toBeTruthy();
+      expect(pb.type).toBe(type);
+      // every runtime consumption point must run without throwing
+      expect(() => playbookTasks(ev(type), '2026-09-18')).not.toThrow();
+      expect(() => topPlaybookDecision(ev(type), '2026-09-18')).not.toThrow();
+      expect(() => playbookCapacity(ev(type))).not.toThrow();
+      expect(() => playbookInfraPrompts(ev(type))).not.toThrow();
+      expect(() => playbookRunOfShow(ev(type))).not.toThrow();
+      expect(Array.isArray(effectiveRos(ev(type)))).toBe(true);
+    });
+  });
+
+  test('aliases resolve to their base playbook', () => {
+    expect(getPlaybook('Super Bowl Party').type).toBe('Watch Party');
+    expect(getPlaybook('Game Day Party').type).toBe('Watch Party');
+    expect(getPlaybook('Cocktail Party').type).toBe('Dinner Party');
+    expect(getPlaybook('Brunch').type).toBe('Dinner Party');
+    expect(getPlaybook('Backyard BBQ').type).toBe('Get-Together');
   });
 });
