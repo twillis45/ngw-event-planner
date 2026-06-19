@@ -243,8 +243,10 @@ export function playbookTasks(event, asOf) {
       consequence:
         p.note ||
         `${p.qtyPerGuest != null ? `~${p.qtyPerGuest}/guest × ${guests} guests. ` : ''}A small buy now keeps the day-of calm.`,
-      primaryCta: 'Open checklist',
-      primaryRoute: { eventId: event.id, tab: 'Planning Tasks' },
+      primaryCta: 'Take me to it',
+      // Deep-link: land on the food plan AND target this exact line (foodFocus = the
+      // purchase id, same id the food-plan list uses) so the host can price/check it.
+      primaryRoute: { eventId: event.id, tab: 'Planning', foodFocus: p.id },
       eventId: event.id,
       owner: 'host',
       provenance: { source: `${playbook.type} playbook`, buyAt: p.buyAt },

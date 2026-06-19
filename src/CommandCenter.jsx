@@ -2067,12 +2067,13 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
 
   const handleCta = () => {
     if (!command.primaryRoute) return;
-    const { tab, vendorSection, ...rest } = command.primaryRoute;
-    // Find first non-falsy id in the route (decisionId / vendorId / commId / timelineId)
+    // Pull section/focus hints + eventId OUT of rest so `idKey` only ever picks a
+    // real item id (decisionId / vendorId / commId / timelineId).
+    const { tab, vendorSection, foodFocus, eventId, ...rest } = command.primaryRoute;
     const idKey = Object.keys(rest)[0];
-    // Sprint 60.B — forward vendorSection as the third opts arg so the
-    // EventPlanner route chain can land the planner in the right section.
-    const opts = vendorSection ? { vendorSection } : undefined;
+    // Forward vendorSection / foodFocus as the third opts arg so the EventPlanner
+    // route chain lands in the right section, or scrolls to the right food line (#12).
+    const opts = (vendorSection || foodFocus) ? { vendorSection, foodFocus } : undefined;
     onTabChange && onTabChange(tab, rest[idKey] || null, opts);
   };
 

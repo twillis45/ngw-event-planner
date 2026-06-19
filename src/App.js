@@ -8248,7 +8248,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
 // commonly-forgotten flags), the food budget, and the dietary gate. The host's
 // picks persist on event.foodChoices; checked-off items on event.foodGot.
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
-function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile }) {
+function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile, focusId = null, onFocusConsumed = () => {} }) {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
@@ -8257,6 +8257,17 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // glanceable summary while the host is still planning.
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
+  // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
+  // expand the spread, scroll to it, and flash a highlight so the host sees it.
+  const [highlightId, setHighlightId] = useState(null);
+  useEffect(() => {
+    if (!focusId) return undefined;
+    setShowFullSpread(true);
+    setHighlightId(focusId);
+    const t1 = setTimeout(() => { const el = document.getElementById(`foodrow-${focusId}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 160);
+    const t2 = setTimeout(() => { setHighlightId(null); onFocusConsumed(); }, 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [focusId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
   const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
@@ -8460,7 +8471,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const lockOpen = openLockId === i.id;
               const lkBtn = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
-                <div key={i.id} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
+                <div key={i.id} id={`foodrow-${i.id}`} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1, background: highlightId === i.id ? `${C.accent}1f` : 'transparent', borderRadius: highlightId === i.id ? 8 : 0, boxShadow: highlightId === i.id ? `0 0 0 2px ${C.accent}66` : 'none', transition: 'background 400ms ease, box-shadow 400ms ease', margin: highlightId === i.id ? '0 -6px' : 0, padding: highlightId === i.id ? '0 6px' : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'stretch' }}>
                     <button type="button" disabled={skipped} onClick={() => {
                         // You can't cross it off until its cost is locked against the budget.
@@ -32615,6 +32626,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [openTaskId,      setOpenTaskId]     = useState(_initialNorm.planningView === 'list' ? (_initialNorm.openId || null) : (initialNav?.taskId || null));
   // Sprint 49: decision id (timeline task id or approval message id)
   const [openDecisionId,  setOpenDecisionId] = useState(initialNav?.decisionId || null);
+  const [openFoodId,      setOpenFoodId]     = useState(initialNav?.foodFocus || null); // deep-link: a food line to scroll to + highlight
   // Sprint 49: comm thread id (message id used to lookup the containing thread)
   const [openCommId,      setOpenCommId]     = useState(initialNav?.commId || null);
   // Sprint 49: timeline item id (task id from Next Up routing). Sprint 59B:
@@ -32714,6 +32726,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     setOpenCommId(resolvedTab === 'Communication'    ? (itemId || null) : null);
     // Planning · Timeline inherits the timeline item id (Sprint 49 Next-Up).
     setOpenTimelineId(resolvedView === 'timeline'    ? (norm.openId || null) : null);
+    // Deep-link a specific food line on the Planning tab (foodFocus carried via opts).
+    setOpenFoodId(resolvedTab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
     if (resolvedView) setPlanningView(resolvedView);
     // Sprint 60.B: vendor-section landing target. Reset to null whenever
     // we leave the Vendors tab.
@@ -33093,7 +33107,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           (TimelineBuilder, ChecklistGenerator) used by the Timeline and
           Checklist views. */}
       {tab === 'Planning'       && (
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
       )}
       {/* Attention pass (host): the food plan is the one bright thing on Plan;
           Seating & supplies and the planning views recede until reached. */}
