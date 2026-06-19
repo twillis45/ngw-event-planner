@@ -18774,6 +18774,60 @@ function HostWelcomeCard({ ev, C, cardStyle, eyebrowStyle }) {
 // (what this kind of event is + the cultural/historical background + why its choices
 // matter) for a host who wants to learn. Invents nothing; renders nothing without a
 // playbook. Last + lowest-priority card so it never competes with the live work.
+// What each venue kind means you're taking on (grounded, not fabricated).
+const VENUE_BRIEF = {
+  home:       "You're hosting at home — you provide everything: cooking space, seating, parking, restrooms, and cleanup. More control, more on your plate.",
+  venue:      "A booked venue carries a lot — often tables, staff, and a coordinator. Your job is mostly choices and timing, not logistics.",
+  restaurant: "A restaurant handles food, drink, and service. You bring the people and the moment; they bring the room.",
+  outdoor:    "An open/outdoor space means you bring the infrastructure — power, shade, restrooms, and a weather plan are on you.",
+  rented:     "A rented hall gives you walls and (often) a kitchen, but you bring the vendors, the setup, and the cleanup.",
+  other:      "Confirm what your space provides vs. what you bring — that's the line between a calm day and a scramble.",
+};
+function seasonBriefText(event) {
+  if (!event || !event.date) return null;
+  const m = new Date(event.date + 'T00:00:00').getMonth();
+  const season = (m >= 5 && m <= 7) ? 'summer heat' : (m === 11 || m <= 1) ? 'winter cold' : (m >= 2 && m <= 4) ? 'spring (rain is in play)' : 'fall — cooler, shorter days';
+  const outdoor = isOutdoorEventType(event.type) || isLikelyOutdoor(event.venue, event.notes);
+  if (outdoor) return `Outdoors in ${season} — the weather is a real factor: ${(m >= 5 && m <= 7) ? 'shade, extra ice, and water matter' : 'warmth, cover, and an indoor fallback matter'}.`;
+  return `Mostly indoors, so weather's less of a factor — but ${season} still shapes the mood and the menu.`;
+}
+
+// EventBriefing — "what you're getting into": a synthesized read from the event type,
+// venue, scale, season/weather, and the heart. Composes existing grounded readers;
+// invents nothing.
+function EventBriefing({ ev, C, cardStyle, eyebrowStyle }) {
+  const about = useMemo(() => { try { return playbookAbout(ev.type); } catch { return null; } }, [ev.type]);
+  const fp = useMemo(() => { try { return playbookFoodPlan(ev); } catch { return null; } }, [ev]);
+  const cap = useMemo(() => { try { return playbookCapacity(ev); } catch { return null; } }, [ev]);
+  const venueKind = ev.venueKind || 'home';
+  const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
+  const points = [];
+  if (about && about.summary) points.push({ k: 'what', icon: '🎯', label: 'What this is', text: about.summary.split(/(?<=[.!?])\s/).slice(0, 2).join(' ') });
+  points.push({ k: 'venue', icon: '📍', label: 'Your setting', text: VENUE_BRIEF[venueKind] || VENUE_BRIEF.other });
+  if (fp) points.push({ k: 'scale', icon: '🍽️', label: 'The scale', text: `Feeding about ${fp.guests} — roughly ${fmtR(fp.foodLow, fp.foodHigh)} on food & drink${cap ? `, plus ${cap.summary}` : ''}.` });
+  const season = seasonBriefText(ev);
+  if (season) points.push({ k: 'day', icon: '🌤️', label: 'The day itself', text: season });
+  if (ev.must_have_moment) points.push({ k: 'heart', icon: '❤️', label: 'The heart of it', text: ev.must_have_moment });
+  else if (about && about.note) points.push({ k: 'heart', icon: '❤️', label: 'What carries it', text: about.note });
+  if (!points.length) return null;
+  return (
+    <div style={cardStyle}>
+      <div style={{ ...eyebrowStyle }}>What you're getting into</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+        {points.map((p) => (
+          <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <span aria-hidden style={{ flexShrink: 0, fontSize: 15, marginTop: 1 }}>{p.icon}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
+              <span style={{ display: 'block', fontSize: 13, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AboutEventType({ type, C, cardStyle, eyebrowStyle }) {
   const [open, setOpen] = useState(false);
   const about = useMemo(() => { try { return playbookAbout(type); } catch { return null; } }, [type]);
@@ -19021,6 +19075,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           <span style={{ fontSize: 18, color: C.muted }}>→</span>
         </button>
       </div>
+      {/* What you're getting into — the synthesized briefing (event · venue · scale ·
+          weather · heart). Orientation, so it stays legible (not receded). */}
+      <EventBriefing ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
       <div className="hp-recede">
         <AboutEventType type={ev.type} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
       </div>
