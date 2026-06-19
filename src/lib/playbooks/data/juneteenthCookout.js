@@ -52,8 +52,9 @@ const juneteenthCookout = {
   ],
 
   tasks: [
-    { id: 't_program_plan', milestoneId: 'jt_program', phase: 'planning', label: 'Choose the meaning moment (reading / reflection / kids\' element); print or save the words; ask one person to lead it', when: 'T-18d' },
-    { id: 't_source', milestoneId: 'jt_source', phase: 'planning', label: 'Find + book a Black-owned bakery/caterer (red velvet cake, red drink, mains) or confirm the cook-it-yourself plan', when: 'T-16d' },
+    { id: 't_program_plan', milestoneId: 'jt_program', phase: 'planning', label: 'Lock the MEANING MOMENT and who leads it: print the words of General Order No. 3 (or a short reflection / a kids\' history element), pick the person, and decide the libation. A named moment with an owner — not a maybe.', when: 'T-18d' },
+    { id: 't_local', milestoneId: 'jt_program', phase: 'planning', label: 'Make it LOCAL, not anonymous: add your region’s own Black food + music tradition. DMV: go-go (Chuck Brown, Rare Essence, EU) + half-smokes + mumbo sauce (Capital City Mambo Sauce); Louisiana: zydeco + crawfish; Lowcountry: Gullah-Geechee red rice. Pick one local dish + a local playlist anchor.', when: 'T-12d' },
+    { id: 't_source', milestoneId: 'jt_source', phase: 'planning', label: 'Find + book a Black-owned bakery/caterer (red velvet cake, red drink, mains) or confirm the cook-it-yourself plan — but keep the potato salad and one or two sides HAND-MADE at home; that’s the dish that says whose house this is', when: 'T-16d' },
     { id: 't_invite', milestoneId: 'jt_invite', phase: 'guest', label: 'Send invites; note it\'s a Juneteenth gathering; assign potluck dishes/drinks if shared', when: 'T-14d' },
     { id: 't_playlist', milestoneId: 'jt_playlist', phase: 'planning', label: 'Build a playlist celebrating Black artists (blues, soul, funk, hip-hop, gospel, contemporary); collect the reading/quotes', when: 'T-7d' },
     { id: 't_weather', milestoneId: 'jt_rsvp', phase: 'guest', label: 'Confirm headcount; check the forecast; lock the shade + heat + rain plan', when: 'T-4d' },
@@ -62,8 +63,9 @@ const juneteenthCookout = {
     { id: 't_fresh_shop', milestoneId: 'jt_shop_fresh', phase: 'shopping', label: 'Ribs, chicken, links, sides produce, watermelon, strawberries; pick up the cake', when: 'T-1d' },
     { id: 't_prep', milestoneId: 'jt_setup', phase: 'food', label: 'Rub/marinate proteins overnight; make cold sides + potato salad; chill the red drink + watermelon', when: 'T-1d evening' },
     { id: 't_smoke', milestoneId: 'event', phase: 'food', label: 'Start the smoke/grill early (ribs take hours); cook in batches; keep mains warm', when: 'T0 -4:00' },
-    { id: 't_moment', milestoneId: 'event', phase: 'event', label: 'BEFORE the first plates: gather everyone, pause the music, share the Juneteenth history/reflection, then bless the food — the meaning lands before anyone eats', when: 'T0 +0:30' },
-    { id: 't_togo', milestoneId: 'event', phase: 'event', label: 'Set out to-go containers / foil so guests can fix a plate to take home (a cookout tradition)', when: 'T0 +3:30' },
+    { id: 't_elders', milestoneId: 'event', phase: 'event', label: 'Make the ELDERS’ plates FIRST — covered, walked over to shaded seats with a real glass of red drink, before the line opens. No grandmother stands in June heat in a line; give the kids the job of carrying them.', when: 'T0 +0:25' },
+    { id: 't_moment', milestoneId: 'event', phase: 'event', label: 'THE MEANING MOMENT (before the first plates, ~5pm so it lands before the food coma): pause the music; the host or the eldest reads General Order No. 3 (Galveston, June 19, 1865) and names that freedom came two and a half years after the Emancipation Proclamation; pour a libation — a little red drink on the ground, or say the names of family no longer here; toast, then bless the food. One minute, a real voice — a named moment, not a maybe.', when: 'T0 +0:30' },
+    { id: 't_togo', milestoneId: 'event', phase: 'event', label: 'Set out to-go containers / foil so everyone fixes a plate to take home — and make TWO EXTRA: one for a neighbor who’s alone, one for someone who couldn’t come. On Juneteenth the plate gets shared down the street.', when: 'T0 +3:30' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill/smoker, pack leftovers, bag trash + recycling, fold chairs/canopies, take down decor', when: 'T0 +5:00' },
   ],
 
