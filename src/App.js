@@ -8044,6 +8044,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const _spreadActive = plan.list.filter((i) => !i.skipped);
   const _heroItems = _spreadActive.filter((i) => i.essential);
   const heroNames = (_heroItems.length ? _heroItems : _spreadActive).slice(0, 6).map((i) => i.short || i.item);
+  // "Where to shop near you" — turn the playbook's sourcing types (grocery, butcher,
+  // farmers market…) into a REAL local search near the event's city. Honest: we don't
+  // invent store names; we deep-link a live Google Maps search. Needs a resolvable city.
+  const _shopGeo = (event.market && METRO_GEO[event.market]) || null;
+  const _shopState = resolveEventState(event, profile);
+  // Clean label for the title (only when we have a real city); search anchor is the
+  // best available location string so the card still works off a venue/metro.
+  const shopCity = _shopGeo ? `${_shopGeo.city}, ${_shopGeo.state}`
+    : (event.city && _shopState) ? (String(event.city).includes(',') ? event.city : `${event.city}, ${_shopState}`)
+    : '';
+  const shopAnchor = eventGeoQuery(event) || String(event.venue || '').trim();
+  const shopSources = shopAnchor ? [...new Set(_spreadActive.flatMap((i) => i.where || []))].filter(Boolean).slice(0, 8) : [];
+  const mapsUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(`${q} near ${shopAnchor}`)}`;
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 20, marginBottom: 14 };
 
   return (
@@ -8197,6 +8210,24 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
         )}
       </div>
+
+      {/* Where to shop — the spread's sourcing types, as LIVE local searches. Honest:
+          real Google Maps results near the event city, no invented store names. */}
+      {shopSources.length > 0 && (
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Where to shop{shopCity ? ` near ${shopCity}` : ''}</div>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, marginBottom: 12 }}>The sourcing this spread calls for — tap to find it near you.</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {shopSources.map((src) => (
+              <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 13px', textDecoration: 'none' }}>
+                {src} <span style={{ color: steel }}>↗</span>
+              </a>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>Opens a live map search — real listings near you, not endorsements.</div>
+        </div>
+      )}
     </div>
   );
 }
