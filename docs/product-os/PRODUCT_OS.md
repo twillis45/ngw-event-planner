@@ -64,6 +64,7 @@ Reskinning copy over an unchanged CRM/sales skeleton does NOT make a product ser
 | DL-006 | Off-taxonomy resolves to the safe middle, never the maximal family | **Doctrine** | Sprint 53 | keyword-fallback parity tests | ALL |
 | DL-007 | Bless is gated not summed; one structural blocker caps the score | **Doctrine** | standing | host-host 6.5 capped by shell blocker | ALL |
 | DL-008 | Identity informs by **annotation, never computation** — expression before expansion; meaning changes emphasis/explanation, never the math/set | **Candidate** | Sprint 60C | 60C audit: Event Identity earns a whisper in 4 existing surfaces (Outcomes/Spine/Vendor/Event-Day) via the renderAction seam + becauseLayer, **0 new engine**; forbidden from scores/quantities/deadlines (`engine-audit/SPRINT_60C_PLANNING_ALIGNMENT.md`) | EB |
+| DL-009 | **Cost surfaces are persona-split:** a host gets a *spending plan* (what it costs me); a planner gets the *AR/fee/vendor cockpit* (getting paid). Never show the host the ledger — gate on `recordKind`, own shell not a relabel (reinforces DL-005 / RA-4 / PP-3) | **Candidate** | Sprint 60E | Host Budget audit: the `Budget` component renders Stripe collection links, fee schedule, vendor committed/uncontracted, client/AR with **no recordKind branch** — while `home_hosted` is `diy/no-vendors/no-deposit/no-fee` (`engine-audit/SPRINT_60E_HOST_BUDGET_AUDIT.md`) | EB |
 
 ---
 
