@@ -21632,9 +21632,10 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion }) {
+function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget }) {
   const C = useT();
   const bp = useContext(BpCtx);
+  const [budgetDraft, setBudgetDraft] = useState(totalBudget ? String(totalBudget) : '');
   const isMobile = bp === 'mobile';
   const money = (lo, hi) => {
     const f = (n) => '$' + Math.round(Number(n) || 0).toLocaleString();
@@ -21680,6 +21681,26 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>
           for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
           {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>{money(spentSoFar)}</span> spent so far</> : null}
+        </div>
+        {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
+            The host types a target; we show the estimate against it (on track / over). */}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <label htmlFor="hsp-budget" style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>What's your budget?</label>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${Number(budgetDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '6px 12px' }}>
+            <span style={{ color: C.muted, fontSize: 17, fontWeight: 700 }}>$</span>
+            <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0"
+              value={budgetDraft}
+              onChange={(e) => setBudgetDraft(e.target.value)}
+              onBlur={() => onSetTotalBudget && onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0)))}
+              style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 20, fontWeight: 800, fontFamily: 'inherit' }} />
+          </span>
+          {Number(budgetDraft) > 0 && (
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: (totalLow + totalHigh) / 2 > Number(budgetDraft) ? C.danger : C.success }}>
+              {(totalLow + totalHigh) / 2 > Number(budgetDraft)
+                ? `Estimate runs ${money(totalLow, totalHigh)} — over`
+                : `Estimate ${money(totalLow, totalHigh)} — on track`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -22059,6 +22080,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         onNav={onNav}
         priceNote={foodPP.priceNote}
         hasRegion={foodPP.hasRegion}
+        totalBudget={event ? Number(event.totalBudget) || 0 : 0}
+        onSetTotalBudget={onSetTotalBudget}
       />
     );
   }
