@@ -44,8 +44,8 @@ const stripDecision = (t) =>
 export const VOICE = {
   decision: {
     host: (c) => ({
-      title: 'Decide: ' + (stripDecision(c && c.title) || 'the open decision') + '.',
-      consequence: "Decide this and the rest can move forward — nothing else is waiting on you first.",
+      title: 'One call to make: ' + (stripDecision(c && c.title) || 'the open decision') + '.',
+      consequence: "Make it and everything waiting on it can move — it's the only thing in your way. I've got the rest.",
       primaryCta: 'Make the call',
     }),
     operator: (c) => ({
@@ -56,8 +56,8 @@ export const VOICE = {
   },
   caterer: {
     host: () => ({
-      title: "Let's lock the final headcount.",
-      consequence: "Your caterer is holding a count that doesn't match your guest list yet — matching them keeps the food and seating right.",
+      title: "Let's lock in your final headcount.",
+      consequence: "Your caterer's holding a number that doesn't match your list yet. Give me the count and I'll keep the food and seating right.",
       primaryCta: 'Update the count',
     }),
     operator: () => ({
@@ -68,7 +68,7 @@ export const VOICE = {
   },
   approval: {
     host: () => ({
-      consequence: "A quick send keeps things moving for you.",
+      consequence: "Someone needs your okay to keep going — one tap and I'll carry it from here.",
       primaryCta: 'Send it',
     }),
     operator: () => ({
@@ -78,7 +78,7 @@ export const VOICE = {
   },
   vendor: {
     host: () => ({
-      consequence: "A quick check-in keeps them on track for your day.",
+      consequence: "A quick hello keeps them on track for your day — I'll keep an eye on them after that.",
       primaryCta: 'Send a note',
     }),
     operator: () => ({
@@ -88,8 +88,8 @@ export const VOICE = {
   },
   compression: {
     host: () => ({
-      title: "A few things need you around the same time.",
-      consequence: "Knock them out one at a time now and the final stretch stays calm.",
+      title: "A few things land around the same time.",
+      consequence: "We'll take them one at a time — do this one now and the home stretch stays calm. I've got the order.",
       primaryCta: "See what's first",
     }),
     operator: () => ({
@@ -100,7 +100,7 @@ export const VOICE = {
   },
   timeline: {
     host: () => ({
-      consequence: "Getting ahead of this keeps the week relaxed.",
+      consequence: "No rush — knock this out early and your week stays easy. I'll flag the next one right when it's time.",
       primaryCta: "See what's next",
     }),
     operator: () => ({
@@ -110,7 +110,7 @@ export const VOICE = {
   },
   comm: {
     host: () => ({
-      consequence: "Someone's waiting to hear back — a quick reply keeps things moving.",
+      consequence: "Someone's waiting to hear back — reply and I'll keep the thread moving for you.",
       primaryCta: 'Reply',
     }),
     operator: () => ({
@@ -120,7 +120,7 @@ export const VOICE = {
   },
   operational: {
     host: () => ({
-      consequence: "Grabbing this now keeps the day calm.",
+      consequence: "Grab this now and the day stays smooth — I'll remind you about the rest right when it matters.",
     }),
     operator: () => ({
       consequence: "Handling this now avoids a day-of scramble.",
@@ -128,7 +128,7 @@ export const VOICE = {
   },
   calendar: {
     host: () => ({
-      consequence: "Just so it's on your radar — nothing urgent yet.",
+      consequence: "Just so you know it's coming — nothing to do yet, I'm watching it for you.",
     }),
     operator: () => ({
       consequence: "On the radar — nothing urgent yet.",
@@ -137,7 +137,7 @@ export const VOICE = {
   neutral: {
     host: () => ({
       title: "You're in good shape.",
-      consequence: "Nothing needs you right now — enjoy the calm.",
+      consequence: "Nothing needs you right now — I'm keeping an eye on everything. Go enjoy this.",
     }),
     operator: () => ({
       title: "On track.",

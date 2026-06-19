@@ -51,7 +51,7 @@ describe('57A-B renderAction — T1b HOST applies voice, logic untouched', () =>
   test('host decision title is plain (no "Resolve" jargon)', () => {
     const out = renderAction({ ...mkCmd('decision'), title: 'Resolve "Collect dietary".' }, 'host');
     expect(out.title.startsWith('Resolve')).toBe(false);
-    expect(out.title).toMatch(/Decide:/);
+    expect(out.title).toMatch(/One call to make:/);
     expect(out.primaryCta).toBe('Make the call');
   });
 });
