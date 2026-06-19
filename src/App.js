@@ -8114,22 +8114,36 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div key={g} style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>{g}</div>
             {plan.list.filter((i) => i.group === g).map((i) => {
-              const got = (event.foodGot || {})[i.id];
+              const got = (event.foodGot || {})[i.id] && !i.skipped;
+              const skipped = i.skipped;
+              // 60I — the per-unit math behind the line total ("$4–$8/lb"), regional-adjusted.
+              const pu = (n) => (n >= 10 ? `$${Math.round(n)}` : (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`));
+              const perUnit = i.perUnitHigh > 0
+                ? (i.perUnitLow === i.perUnitHigh ? pu(i.perUnitLow) : `${pu(i.perUnitLow)}–${pu(i.perUnitHigh)}`)
+                : null;
+              const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
               return (
-                <button key={i.id} type="button" onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
-                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: got ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                    {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
-                    {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
-                    {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
-                  </span>
-                  <span style={{ flexShrink: 0, textAlign: 'right' }}>
-                    {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
-                    <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
-                  </span>
-                </button>
+                <div key={i.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
+                  <button type="button" disabled={skipped} onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
+                    style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
+                    <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                      {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
+                      {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                      {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
+                    </span>
+                    <span style={{ flexShrink: 0, textAlign: 'right' }}>
+                      {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                      <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
+                      {perUnit && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
+                    </span>
+                  </button>
+                  <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
+                    style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
+                    {skipped ? '+ add' : '×'}
+                  </button>
+                </div>
               );
             })}
           </div>

@@ -546,3 +546,22 @@ describe('60H — checked-off items feed spent (food ↔ budget)', () => {
     expect(p1.spentHigh).toBeLessThanOrEqual(p1.foodHigh);
   });
 });
+
+describe('60I — swap-out (skip) + per-item breakdown', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('items carry the per-unit breakdown', () => {
+    const p = playbookFoodPlan(base);
+    const item = p.list.find((i) => i.units != null && i.perUnitHigh > 0);
+    expect(item).toBeTruthy();
+    expect(item.unitBase).toBeTruthy();
+    expect(item.perUnitHigh).toBeGreaterThanOrEqual(item.perUnitLow);
+  });
+  test('skipping an item drops it from totals + count but keeps the line', () => {
+    const p0 = playbookFoodPlan(base);
+    const id = p0.list[0].id;
+    const p1 = playbookFoodPlan({ ...base, foodSkip: { [id]: true } });
+    expect(p1.list.find((i) => i.id === id).skipped).toBe(true); // line still present
+    expect(p1.itemCount).toBe(p0.itemCount - 1);                 // out of the count
+    expect(p1.foodHigh).toBeLessThan(p0.foodHigh);               // out of the total
+  });
+});

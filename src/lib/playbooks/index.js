@@ -619,6 +619,11 @@ export function playbookFoodPlan(event, opts = {}) {
     return v == null ? true : (Array.isArray(p.whenChoice.in) ? p.whenChoice.in : []).includes(v);
   };
 
+  // 60I — items the host swapped out / won't buy. Kept in the list (struck-through,
+  // reversible) but MARKED skipped so they leave every total — the plan honestly
+  // reflects what they're actually getting, without losing the line.
+  const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
@@ -631,16 +636,23 @@ export function playbookFoodPlan(event, opts = {}) {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
         low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
+        // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
+        // host understands the price, and sees the regional (pf) adjustment in it.
+        units, unitBase: p.unit || '',
+        perUnitLow: Math.round(uLow * pf * 100) / 100,
+        perUnitHigh: Math.round(uHigh * pf * 100) / 100,
+        skipped: !!skip[p.id],
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
       };
     });
-  const sum = (k) => list.reduce((s, i) => s + i[k], 0);
+  // Skipped (swapped-out) items leave every total.
+  const sum = (k) => list.filter((i) => !i.skipped).reduce((s, i) => s + i[k], 0);
   const di = dietaryResolved(event);
   // 60H — what the host has actually bought (checked off on the shopping list). This
   // is what connects the food plan to the budget: spent updates as items are ticked.
   const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
-  const gotSum = (k) => list.filter((i) => got[i.id]).reduce((s, i) => s + i[k], 0);
-  const boughtCount = list.filter((i) => got[i.id]).length;
+  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + i[k], 0);
+  const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
 
   return {
     type: playbook.type,
@@ -654,7 +666,7 @@ export function playbookFoodPlan(event, opts = {}) {
     spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
     boughtCount,
-    itemCount: list.length,
+    itemCount: list.filter((i) => !i.skipped).length,
     dietaryResolved: di.resolved,
     priceFactor: pf,
     priceContext: pf !== 1 ? (opts.priceContext || null) : null,
