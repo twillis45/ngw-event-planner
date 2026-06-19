@@ -29545,11 +29545,11 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType }) {
                                 C.success;
   const heroHeadline =
     heroState === 'critical'  ? `${now.length} task${now.length !== 1 ? 's' : ''} need${now.length === 1 ? 's' : ''} you right now.` :
-    heroState === 'attention' ? `${next.length} task${next.length !== 1 ? 's' : ''} coming up this week.` :
+    heroState === 'attention' ? `${next.length} thing${next.length !== 1 ? 's' : ''} still ahead today.` :
                                 `${greet}. Day-of operations are running smoothly.`;
   const heroBody =
-    heroState === 'critical'  ? 'These tasks are overdue or unscheduled. Knock them out before anything downstream blocks.' :
-    heroState === 'attention' ? 'No immediate blockers — but these are next in line. Keep moving while you have the time.' :
+    heroState === 'critical'  ? 'These need you now — knock them out before anything downstream stalls.' :
+    heroState === 'attention' ? "Nothing's blocking this minute — these are next in your run of show. Stay ahead of the clock." :
                                 doneCount > 0 ? `${doneCount} task${doneCount !== 1 ? 's' : ''} complete. Nothing outstanding right now.` : 'No outstanding tasks.';
   const panelRaise = [
     'inset 0 1px 0 rgba(255,255,255,0.05)',
