@@ -18255,8 +18255,8 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
     return (
       <div style={{ minHeight: '100vh', background: C.bg }}>
         {Header}
-        {/* Host L1 width parity — same 620 column as the with-event home below. */}
-        <div style={{ maxWidth: 620, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
+        {/* Host width parity (board ruling 760) — same column as every host surface. */}
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
           <div style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — Event Boss builds the plan, the schedule, and what to do next.</div>
           <button onClick={onNew} style={{ fontSize: 14, fontWeight: 700, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
@@ -18297,7 +18297,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
       {Header}
-      <div style={{ maxWidth: 620, margin: '0 auto', padding: '20px 16px 60px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '20px 16px 60px' }}>
         {/* 1 · Event Summary */}
         <div style={{ ...card, background: 'transparent', border: 'none', padding: '8px 4px 16px' }}>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15 }}>{ev.name || 'Your event'}</div>
@@ -32939,7 +32939,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 it fills the content area at every viewport (the conversation
                 breathes at wide instead of leaving dead margins). Column tabs keep
                 the centered `standard` measure. */}
-            <div style={{ maxWidth: tab === 'Communication' ? 'none' : measureFor('standard', isWideScreen), margin: '0 auto', height: (tab === 'Vendors' || tab === 'Communication') ? '100%' : undefined }}>
+            {/* Host width parity (board ruling 2026-06-19): a self-host lives in ONE
+                760 column across every tab; the planner keeps the content-aware
+                measureFor tiers. Communication stays full-bleed for both. */}
+            <div style={{ maxWidth: tab === 'Communication' ? 'none' : (isHostEvt ? 760 : measureFor('standard', isWideScreen)), margin: '0 auto', height: (tab === 'Vendors' || tab === 'Communication') ? '100%' : undefined }}>
               {tabContent}
             </div>
           </div>
