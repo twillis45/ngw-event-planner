@@ -8540,6 +8540,40 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             ))}
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>Opens a live map search — real listings near you, not endorsements.</div>
+          {/* #9 — the best ONLINE options for meat + groceries (real, reputable
+              national retailers; delivered, not endorsements). Shown only for the
+              sourcing types this spread actually calls for. */}
+          {(() => {
+            const ONLINE_MEAT = [
+              { name: 'ButcherBox', url: 'https://www.butcherbox.com' },
+              { name: 'Crowd Cow', url: 'https://www.crowdcow.com' },
+              { name: 'Porter Road', url: 'https://porterroad.com' },
+              { name: 'Snake River Farms', url: 'https://www.snakeriverfarms.com' },
+            ];
+            const ONLINE_GROCERY = [
+              { name: 'Instacart', url: 'https://www.instacart.com' },
+              { name: 'Amazon Fresh', url: 'https://www.amazon.com/fresh' },
+              { name: 'Walmart Grocery', url: 'https://www.walmart.com/cp/grocery/5431943' },
+            ];
+            const hasMeat = shopSources.some((s) => /butcher|meat/i.test(s));
+            const hasGrocery = shopSources.some((s) => /grocer|grocery|store|market|costco|sam'?s/i.test(s));
+            const online = [...(hasMeat ? ONLINE_MEAT : []), ...(hasGrocery ? ONLINE_GROCERY : [])];
+            if (!online.length) return null;
+            return (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>Or get it delivered</div>
+                <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2, marginBottom: 10 }}>{hasMeat ? 'Top online butchers' : 'Top online grocers'}{hasMeat && hasGrocery ? ' + grocery delivery' : ''} — ships nationwide.</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {online.map((o) => (
+                    <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 13px', textDecoration: 'none' }}>
+                      {o.name} <span style={{ color: steel }}>↗</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
