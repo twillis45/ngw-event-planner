@@ -13765,12 +13765,17 @@ function useFoodPriceFactor(event, profile) {
     getFoodPriceFactor({ state }).then((d) => {
       if (cancelled) return;
       const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
-      const src = `${d.source}${d.month ? ` ${d.month}` : ''}`;
-      const priceContext = factor !== 1 ? `current ${d.regionLabel} prices · ${src}` : null;
+      // Host-friendly: plain "grocery prices" + a readable month, not "BLS Average
+      // Price 2026-06" jargon. (It IS BLS regional grocery data — kept honest, just
+      // said in plain words.)
+      const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const pm = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
+      const tail = pm ? ` (${pm})` : '';
+      const priceContext = factor !== 1 ? `${d.regionLabel}-region grocery prices${tail}` : null;
       // Regional note whether or not the factor moved (region resolved either way).
       const priceNote = factor !== 1
-        ? `Adjusted to current ${d.regionLabel} prices · ${src}`
-        : `In line with current ${d.regionLabel} prices · ${src}`;
+        ? `Adjusted to current ${d.regionLabel}-region grocery prices${tail}`
+        : `In line with current ${d.regionLabel}-region grocery prices${tail}`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
