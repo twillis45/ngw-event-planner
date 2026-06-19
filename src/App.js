@@ -18255,7 +18255,8 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
     return (
       <div style={{ minHeight: '100vh', background: C.bg }}>
         {Header}
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
+        {/* Host L1 width parity — same 620 column as the with-event home below. */}
+        <div style={{ maxWidth: 620, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
           <div style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — Event Boss builds the plan, the schedule, and what to do next.</div>
           <button onClick={onNew} style={{ fontSize: 14, fontWeight: 700, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
