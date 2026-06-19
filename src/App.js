@@ -13946,16 +13946,17 @@ function useFoodPriceFactor(event, profile) {
       // Price 2026-06" jargon. (It IS BLS regional grocery data — kept honest, just
       // said in plain words.)
       const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const MON_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const pm = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
+      const pmFull = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON_FULL[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
       const tail = pm ? ` (${pm})` : '';
       const priceContext = factor !== 1 ? `${d.regionLabel}-region grocery prices${tail}` : null;
-      // Regional note whether or not the factor moved (region resolved either way).
-      // Host-speak: plain reassurance these are real local prices, not a clinical
-      // "adjusted to South-region grocery prices" line.
-      const where = `${d.regionLabel}${pm ? ` · ${pm}` : ''}`;
+      // Regional note in plain host-speak — "in the South this June", not "South · Jun 2026".
+      const region = /^(the )/i.test(d.regionLabel) ? d.regionLabel : `the ${d.regionLabel}`;
+      const when = pmFull ? ` right now (${pmFull})` : ' right now';
       const priceNote = factor !== 1
-        ? `These match what groceries actually cost near you right now — ${where}`
-        : `Right in line with grocery prices near you — ${where}`;
+        ? `These match what groceries really cost in ${region}${when}`
+        : `Right in line with grocery prices in ${region}${when}`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
