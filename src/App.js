@@ -23623,11 +23623,15 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests, setGuests, event = {} }) {
+function Guests({ guests, setGuests, event = {}, setGuestCount = () => {} }) {
   const C      = useT();
   const s      = makeS(C);
   const rsvpCLR = RSVP_CLR(C);
   const bp = useContext(BpCtx);
+  // Guest-list-optional: casual events (cookout, watch party) just want a headcount,
+  // not a roster. Show a calm number-only view until they choose to track RSVPs.
+  const [showList, setShowList] = useState(false);
+  const [hcDraft, setHcDraft] = useState(() => { const n = Number(event.guestCount) || Number(event.guestEstimate) || 0; return n ? String(n) : ''; });
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
@@ -23801,6 +23805,33 @@ function Guests({ guests, setGuests, event = {} }) {
       if (gSort === 'meal')  return (a.meal || '').localeCompare(b.meal || '');
       return (a.name || '').localeCompare(b.name || '');
     });
+
+  // Headcount-only view — no roster, just the number that sizes the food + budget.
+  if (!guests.length && !showList) {
+    const hcCard = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, maxWidth: 760, margin: '0 auto' };
+    return (
+      <div style={{ padding: '8px 0' }}>
+        <div style={hcCard}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Headcount</div>
+          <div style={{ fontSize: 14, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>Just need a number? Set how many you expect — your food plan and budget size to it. No guest list required.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 16, color: C.text }}>About</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '6px 14px' }}>
+              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder="0"
+                onChange={e => setHcDraft(e.target.value)} onBlur={() => setGuestCount(hcDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') { setGuestCount(hcDraft); e.currentTarget.blur(); } }}
+                style={{ width: 90, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 26, fontWeight: 800, fontFamily: 'inherit' }} />
+            </span>
+            <span style={{ fontSize: 16, color: C.text }}>guests</span>
+          </div>
+          <button type="button" onClick={() => setShowList(true)}
+            style={{ marginTop: 20, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '9px 15px', borderRadius: 9 }}>
+            Track who's coming (RSVPs) →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -32536,7 +32567,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
       {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
