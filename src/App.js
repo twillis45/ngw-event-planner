@@ -7503,7 +7503,12 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
             <button onClick={() => onChange('done', !task.done)} style={{ flexShrink: 0, marginTop: 3, width: 24, height: 24, borderRadius: '50%', border: `2px solid ${task.done ? C.success : C.border}`, background: task.done ? C.success + '22' : 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.success, fontSize: 12 }}>
               {task.done ? '✓' : ''}
             </button>
-            <input style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1, textDecoration: task.done ? 'line-through' : 'none', color: task.done ? C.muted : C.text }} value={task.task} onChange={e => onChange('task', e.target.value)} placeholder="Task name" />
+            {/* Title — a wrapping, auto-growing field so a long task is fully readable
+                (was a single-line input that truncated). */}
+            <textarea rows={1} value={task.task} placeholder="Task name"
+              ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+              onChange={e => { onChange('task', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1, lineHeight: 1.35, resize: 'none', overflow: 'hidden', minHeight: 38, textDecoration: task.done ? 'line-through' : 'none', color: task.done ? C.muted : C.text }} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           {task.done && <div style={{ fontSize: 11, color: C.success, fontWeight: 600, paddingLeft: 34 }}>Completed ✓</div>}
@@ -7556,6 +7561,35 @@ function TaskModal({ task, eventDate, onClose, onChange, onDelete }) {
             )}
             <input style={s.input} value={task.owner || ''} placeholder="Planner, Couple, Vendor…" onChange={e => { onChange('owner', e.target.value); onChange('ownerId', ''); }} />
           </div>
+          {/* Steps — checkable subtasks. Break the task into the actual to-dos; each
+              checks off with live progress. Persists on task.subtasks. */}
+          {(() => {
+            const subs = Array.isArray(task.subtasks) ? task.subtasks : [];
+            const doneN = subs.filter(x => x.done).length;
+            const setSubs = (next) => onChange('subtasks', next);
+            const patchSub = (id, patch) => setSubs(subs.map(x => x.id === id ? { ...x, ...patch } : x));
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: C.muted }}>Steps</label>
+                  {subs.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {subs.map(sub => (
+                    <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button type="button" onClick={() => patchSub(sub.id, { done: !sub.done })} aria-label={sub.done ? 'Mark step not done' : 'Mark step done'}
+                        style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${sub.done ? C.success : C.border}`, background: sub.done ? C.success + '22' : 'transparent', color: C.success, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sub.done ? '✓' : ''}</button>
+                      <input value={sub.text} placeholder="Step…" onChange={e => patchSub(sub.id, { text: e.target.value })}
+                        style={{ ...s.input, flex: 1, textDecoration: sub.done ? 'line-through' : 'none', color: sub.done ? C.muted : C.text }} />
+                      <button type="button" onClick={() => setSubs(subs.filter(x => x.id !== sub.id))} aria-label="Remove step" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
+                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
+              </div>
+            );
+          })()}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
               <label style={{ fontSize: 11, color: C.muted }}>Notes</label>
