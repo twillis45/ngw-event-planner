@@ -634,6 +634,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // reflects what they're actually getting, without losing the line.
   const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
 
+  // 64 — costs the host has LOCKED: event.foodLocked[id] = a committed dollar amount
+  // (they picked a source/price). A locked item is a fixed cost, not a range.
+  const lockedMap = (event.foodLocked && typeof event.foodLocked === 'object') ? event.foodLocked : {};
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p))
@@ -652,16 +656,21 @@ export function playbookFoodPlan(event, opts = {}) {
         perUnitLow: Math.round(uLow * pf * 100) / 100,
         perUnitHigh: Math.round(uHigh * pf * 100) / 100,
         skipped: !!skip[p.id],
+        locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
       };
     });
+  // A locked cost is fixed — it collapses the item's range to one committed number.
+  const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
   // Skipped (swapped-out) items leave every total.
-  const sum = (k) => list.filter((i) => !i.skipped).reduce((s, i) => s + i[k], 0);
+  const sum = (k) => list.filter((i) => !i.skipped).reduce((s, i) => s + eff(i, k), 0);
+  const lockedTotal = list.filter((i) => !i.skipped && i.locked != null).reduce((s, i) => s + i.locked, 0);
+  const lockedCount = list.filter((i) => !i.skipped && i.locked != null).length;
   const di = dietaryResolved(event);
   // 60H — what the host has actually bought (checked off on the shopping list). This
   // is what connects the food plan to the budget: spent updates as items are ticked.
   const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
-  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + i[k], 0);
+  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + eff(i, k), 0);
   const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
 
   return {
@@ -677,6 +686,8 @@ export function playbookFoodPlan(event, opts = {}) {
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
     boughtCount,
     itemCount: list.filter((i) => !i.skipped).length,
+    lockedTotal: Math.max(0, Math.round(lockedTotal)),
+    lockedCount,
     dietaryResolved: di.resolved,
     priceFactor: pf,
     priceContext: pf !== 1 ? (opts.priceContext || null) : null,

@@ -8109,6 +8109,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
+  const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
   const warn = C.warn || steel;
@@ -8237,6 +8238,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
         <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
           {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}
+          {plan.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>${plan.lockedTotal.toLocaleString()} locked</span></> : null}
         </div>
         {heroNames.length > 0 && (
           <div style={{ fontSize: 13.5, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
@@ -8273,27 +8275,54 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                 ? (i.perUnitLow === i.perUnitHigh ? pu(i.perUnitLow) : `${pu(i.perUnitLow)}–${pu(i.perUnitHigh)}`)
                 : null;
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
+              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); onPatch({ foodLocked: next }); setOpenLockId(null); };
+              const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
+              const lockOpen = openLockId === i.id;
+              const lkBtn = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
-                <div key={i.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
-                  <button type="button" disabled={skipped} onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
-                    style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                    <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                      {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
-                      {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
-                      {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
-                    </span>
-                    <span style={{ flexShrink: 0, textAlign: 'right' }}>
-                      {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
-                      <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>
-                      {perUnit && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
-                    </span>
-                  </button>
-                  <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
-                    style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 10, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
-                    {skipped ? '+ add' : '×'}
-                  </button>
+                <div key={i.id} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                    <button type="button" disabled={skipped} onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } })}
+                      style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
+                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                        {!i.essential && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
+                        {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                        {i.where && i.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{i.where.slice(0, 3).join(' · ')}</span>}
+                      </span>
+                      <span style={{ flexShrink: 0, textAlign: 'right' }}>
+                        {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                        {i.locked != null
+                          ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success }}>${i.locked.toLocaleString()} locked</span>
+                          : <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>}
+                        {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
+                      </span>
+                    </button>
+                    {!skipped && (
+                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Lock a cost" aria-label="Lock a cost"
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: 15, fontWeight: 800, lineHeight: 1, padding: '4px 5px' }}>$</button>
+                    )}
+                    <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
+                      style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
+                      {skipped ? '+ add' : '×'}
+                    </button>
+                  </div>
+                  {lockOpen && !skipped && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '0 0 12px 28px' }}>
+                      <span style={{ fontSize: 12, color: C.muted }}>Lock this cost — value vs specialty, or your own:</span>
+                      <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
+                      <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
+                        <span style={{ color: C.muted, fontSize: 13 }}>$</span>
+                        <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="custom"
+                          onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
+                          onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
+                          style={{ width: 64, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
+                      </span>
+                      {i.locked != null && <button type="button" onClick={clearLock} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -21899,6 +21928,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
           {foodPlan
             ? (<>Estimated from your menu for {foodPlan.guests} guests.
+                {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
                 {foodSpent > 0
                   ? <> You've bought <span style={{ color: C.success, fontWeight: 700 }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
                   : <> Nothing checked off yet.</>}</>)

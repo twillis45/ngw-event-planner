@@ -585,3 +585,17 @@ describe('Sprint 64 — stage-aware guest-count nag (host next-step ranking)', (
     expect(d && d.decision).toBe('guestCount');
   });
 });
+
+describe('Sprint 64 — lock a food cost (foodLocked)', () => {
+  const base = { id: 'j', type: 'Juneteenth Cookout', guestCount: 30, guests: [] };
+  test('locking an item collapses its range to the fixed amount + feeds lockedTotal', () => {
+    const p0 = playbookFoodPlan(base);
+    const id = p0.list[0].id;
+    const p1 = playbookFoodPlan({ ...base, foodLocked: { [id]: 90 } });
+    const item = p1.list.find(x => x.id === id);
+    expect(item.locked).toBe(90);
+    expect(p1.lockedTotal).toBe(90);
+    expect(p1.lockedCount).toBe(1);
+    expect(p1.foodHigh).toBeLessThanOrEqual(p0.foodHigh); // locked end no longer at premium
+  });
+});
