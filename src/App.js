@@ -8340,6 +8340,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> for food and drinks, scaled to your count.
         </div>
+        {/* #16 — diet counts the plan is accounting for (drives the plant-based line + budget). */}
+        {plan.specialDiets && plan.specialDiets.length > 0 && (
+          <div style={{ fontSize: 12.5, color: steel, marginTop: 4, fontWeight: 600 }}>
+            Planning for {plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}.
+          </div>
+        )}
         {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
         {plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
@@ -8388,7 +8394,28 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, marginBottom: 12 }}>
             <strong>Any allergies or diets to plan around?</strong> You're going by a headcount, so just pick what applies — one unflagged allergy is a safety issue.
           </div>
-          <TagChips value={Array.isArray(event.knownAllergies) ? event.knownAllergies : []} onChange={(t) => onPatch({ knownAllergies: t })} options={DIET_TAGS} />
+          {/* #16 — a COUNT per diet/allergy, so the host says how many people each
+              represents. Counts drive the food plan (plant-based main) + the budget. */}
+          {(() => {
+            const counts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+            const setCount = (diet, v) => { const n = Math.max(0, Math.round(Number(v) || 0)); const next = { ...counts }; if (n > 0) next[diet] = n; else delete next[diet]; onPatch({ dietCounts: next }); };
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
+                {DIET_TAGS.map((diet) => {
+                  const n = Number(counts[diet]) || 0;
+                  return (
+                    <div key={diet} style={{ display: 'flex', alignItems: 'center', gap: 8, background: n > 0 ? `${steel}14` : C.bg, border: `1px solid ${n > 0 ? steel : C.border}`, borderRadius: 9, padding: '6px 8px 6px 11px' }}>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
+                      <input type="number" inputMode="numeric" min="0" defaultValue={n || ''} placeholder="0"
+                        onBlur={(e) => setCount(diet, e.currentTarget.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setCount(diet, e.currentTarget.value); e.currentTarget.blur(); } }}
+                        style={{ width: 40, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: 13.5, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
             <button type="button" onClick={() => onPatch({ dietaryNoted: true })}
               style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: steel, border: 'none', borderRadius: 9, padding: '9px 16px', cursor: 'pointer' }}>Save these</button>

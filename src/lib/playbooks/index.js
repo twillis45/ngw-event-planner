@@ -715,6 +715,25 @@ export function playbookFoodPlan(event, opts = {}) {
     });
   list.push(...added);
 
+  // #16 — special-diet COUNTS drive food + budget. Vegetarians/vegans need a real
+  // plant-based main; size it to their count and let it flow into the totals so the
+  // budget reflects it. (Meat stays sized to all guests — qty is editable to trim.)
+  const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
+  const vegN = dietCnt('Vegetarian') + dietCnt('Vegan');
+  if (vegN > 0) {
+    list.push({
+      id: 'diet-veg', group: 'Food', item: `Plant-based main (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
+      short: `Plant-based main · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+      qtyOverridden: false, baseQty: vegN, perGuest: null,
+      low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
+      perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
+      skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, Math.round(Number(lockedMap['diet-veg']) || 0)) : null,
+      note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
+    });
+  }
+  const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
+
   // A locked cost is fixed — it collapses the item's range to one committed number.
   const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
   // Skipped (swapped-out) items leave every total.
@@ -744,6 +763,7 @@ export function playbookFoodPlan(event, opts = {}) {
     lockedTotal: Math.max(0, Math.round(lockedTotal)),
     lockedCount,
     dietaryResolved: di.resolved,
+    specialDiets, // [{diet, count}] — drives the plant-based line + the host-facing note
     priceFactor: pf,
     priceContext: pf !== 1 ? (opts.priceContext || null) : null,
   };

@@ -635,6 +635,23 @@ describe('#14 — dietary workflow in headcount mode', () => {
   });
 });
 
+describe('#16 — diet counts drive food + budget', () => {
+  const base = { id: 'c', type: 'The Cookout', guestCount: 30, guests: [] };
+  test('veg/vegan counts add a plant-based main sized to them + raise the total', () => {
+    const p0 = playbookFoodPlan(base);
+    const p1 = playbookFoodPlan({ ...base, dietCounts: { Vegetarian: 2, Vegan: 1 } });
+    const line = p1.list.find((i) => i.id === 'diet-veg');
+    expect(line).toBeTruthy();
+    expect(line.dietDerived).toBe(true);
+    expect(line.qty).toBe(3); // 2 veg + 1 vegan
+    expect(p1.foodHigh).toBeGreaterThan(p0.foodHigh); // flows into the budget
+  });
+  test('specialDiets exposes the counts for the host-facing note', () => {
+    const p = playbookFoodPlan({ ...base, dietCounts: { Vegetarian: 2, 'Nut allergy': 1 } });
+    expect(p.specialDiets).toEqual(expect.arrayContaining([{ diet: 'Vegetarian', count: 2 }, { diet: 'Nut allergy', count: 1 }]));
+  });
+});
+
 describe('#2 — guest-count satisfaction (headcount mode + lock)', () => {
   const { guestCountResolved } = require('../index');
   test('a list with pending RSVPs is NOT resolved', () => {
