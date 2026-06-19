@@ -8578,6 +8578,61 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
   );
 }
 
+// Searchable event-type picker — replaces the unruly native <select> (~50 types across
+// many optgroups). A field-styled button opens a panel with a search box that filters
+// the grouped types; type "june" → Juneteenth Cookout. Closes on pick or outside-click.
+function TypePicker({ value, onChange, placeholder = 'Choose…', fieldStyle, excludeValue, emptyOption, testId, C, isMobile }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const k = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', h); document.addEventListener('keydown', k);
+    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('keydown', k); };
+  }, [open]);
+  const ql = q.trim().toLowerCase();
+  const groups = Object.entries(EVT_CATEGORIES)
+    .map(([cat, types]) => [cat, types.filter((t) => t !== excludeValue && (!ql || t.toLowerCase().includes(ql)))])
+    .filter(([, t]) => t.length);
+  const pick = (t) => { onChange(t); setOpen(false); setQ(''); };
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" data-testid={testId} onClick={() => setOpen((o) => !o)}
+        style={{ ...fieldStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
+        <span style={{ color: value ? C.text : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || placeholder}</span>
+        <span aria-hidden style={{ color: C.muted, fontSize: 11, marginLeft: 8, flexShrink: 0 }}>▾</span>
+      </button>
+      {open && (
+        // In-flow (not absolute) so a scrollable modal body never clips the list —
+        // it pushes content down and the modal scrolls to it.
+        <div style={{ marginTop: 6, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', maxHeight: isMobile ? 300 : 340, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: 10, borderBottom: `1px solid ${C.border}` }}>
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search event types…" style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '8px 11px', outline: 'none', fontFamily: 'inherit' }} />
+          </div>
+          <div style={{ overflowY: 'auto', padding: 6 }}>
+            {emptyOption && !ql && (
+              <button type="button" onClick={() => pick('')} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px', background: !value ? `${C.accent}1a` : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, color: C.muted, fontFamily: 'inherit' }}>{emptyOption}</button>
+            )}
+            {groups.length === 0
+              ? <div style={{ padding: 14, fontSize: 13, color: C.muted, lineHeight: 1.5 }}>No exact match — pick the closest and Event Boss adapts the plan.</div>
+              : groups.map(([cat, types]) => (
+                <div key={cat} style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, padding: '7px 8px 3px' }}>{cat}</div>
+                  {types.map((t) => (
+                    <button key={t} type="button" onClick={() => pick(t)}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px', background: t === value ? `${C.accent}22` : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, fontWeight: t === value ? 700 : 500, color: C.text, fontFamily: 'inherit' }}>{t}</button>
+                  ))}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddClient, clients = [], profile = null }) {
   const C        = useT();
   const s        = makeS(C);
@@ -8969,12 +9024,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 {/* ── QUESTION 1 — the live, breathing question the panel opens on ── */}
                 <div style={{ marginBottom: typeDone ? (isMobile ? 22 : 28) : 0, ...groupDim(active === 'type') }}>
                   <label htmlFor="ce-type" style={qLabel}>{typeDone && check}What are you celebrating?</label>
-                  <select id="ce-type" data-testid="ce-type" style={sfield(active === 'type', typeDone, (showErr || touched.type) && !form.type)} value={form.type} onChange={e => { upd('type', e.target.value); setTouched(t => ({ ...t, type: true })); }}>
-                    <option value="" disabled>Choose an occasion…</option>
-                    {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
-                      <optgroup key={cat} label={cat}>{types.map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
-                    ))}
-                  </select>
+                  <TypePicker value={form.type} onChange={(t) => { upd('type', t); setTouched(tt => ({ ...tt, type: true })); }}
+                    placeholder="Choose an occasion…" testId="ce-type" C={C} isMobile={isMobile}
+                    fieldStyle={sfield(active === 'type', typeDone, (showErr || touched.type) && !form.type)} />
                   {!typeDone && <div style={sub}>Pick the occasion — I’ll build the whole plan around it.</div>}
                   {(showErr || touched.type) && !form.type && <div style={ui.hint}>Pick what you’re celebrating.</div>}
 
@@ -8982,12 +9034,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   {typeDone && (
                     <div style={{ marginTop: 12, ...reveal(60) }}>
                       <label htmlFor="ce-secondary-type" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>Anything else mixed in? <span style={bopt}>· optional</span></label>
-                      <select id="ce-secondary-type" data-testid="ce-secondary-type" style={{ ...sfield(false, false, false), minHeight: 46, fontSize: 15, animation: 'none' }} value={form.secondaryType} onChange={e => upd('secondaryType', e.target.value)}>
-                        <option value="">Just the one</option>
-                        {Object.entries(EVT_CATEGORIES).map(([cat, types]) => (
-                          <optgroup key={cat} label={cat}>{types.filter(t => t !== form.type).map(t => <option key={t} value={t}>{t}</option>)}</optgroup>
-                        ))}
-                      </select>
+                      <TypePicker value={form.secondaryType} onChange={(t) => upd('secondaryType', t)}
+                        placeholder="Just the one" emptyOption="Just the one" excludeValue={form.type} testId="ce-secondary-type" C={C} isMobile={isMobile}
+                        fieldStyle={{ ...sfield(false, false, false), minHeight: 46, fontSize: 15, animation: 'none' }} />
                     </div>
                   )}
                 </div>
