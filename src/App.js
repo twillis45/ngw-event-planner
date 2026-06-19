@@ -8309,6 +8309,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const perUnit = i.perUnitHigh > 0
                 ? (i.perUnitLow === i.perUnitHigh ? pu(i.perUnitLow) : `${pu(i.perUnitLow)}–${pu(i.perUnitHigh)}`)
                 : null;
+              // Board ruling: lead with the per-guest rate as a human fraction (½, 1½),
+              // anchored by "typical". The total already shows on the right.
+              const FRAC = { 0.5: '½', 0.25: '¼', 0.75: '¾', 0.33: '⅓', 0.34: '⅓', 0.67: '⅔', 0.2: '⅕' };
+              const fmtPG = (n) => { if (n == null) return ''; if (FRAC[n]) return FRAC[n]; if (Number.isInteger(n)) return String(n); const w = Math.floor(n); const f = Math.round((n - w) * 100) / 100; return (w > 0 && FRAC[f]) ? `${w}${FRAC[f]}` : String(n); };
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
               const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); onPatch({ foodLocked: next }); setOpenLockId(null); };
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
@@ -8330,6 +8334,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         {i.added && !i.owner && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                        {i.perGuest != null && (
+                          <span style={{ display: 'block', fontSize: 11.5, marginTop: 2 }}>
+                            <span style={{ color: steel, fontWeight: 600 }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
+                            <span style={{ color: C.muted }}> · typical</span>
+                          </span>
+                        )}
                         {i.where && i.where.length > 0 && (
                           <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
                             {i.where.slice(0, 3).map((w, wi) => (

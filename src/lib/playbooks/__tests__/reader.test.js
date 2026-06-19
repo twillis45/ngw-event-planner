@@ -624,6 +624,17 @@ describe('Sprint 64 — region-gated DMV dishes', () => {
   });
 });
 
+describe('board ruling — per-guest rate on food lines', () => {
+  test('per-guest-scaled items expose perGuest; flat items do not', () => {
+    const p = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [] });
+    const scaled = p.list.filter((i) => i.perGuest != null);
+    expect(scaled.length).toBeGreaterThan(0);
+    // a per-guest item's total tracks rate × guests (within rounding)
+    const it = scaled[0];
+    if (it.baseQty != null) expect(Math.abs(it.baseQty - it.perGuest * 40)).toBeLessThanOrEqual(it.perGuest * 40 * 0.5 + 1);
+  });
+});
+
 describe('#4 — add a dish (foodAdd)', () => {
   const base = { id: 'c', type: 'The Cookout', guestCount: 40, guests: [] };
   test('an added dish becomes a real line item (owner carried, itemCount up)', () => {

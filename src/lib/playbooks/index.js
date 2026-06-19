@@ -156,6 +156,10 @@ export function guestCountResolved(event) {
   const n = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests || []).length || 0;
   if (n <= 0) return { resolved: false, pending: 0, reason: 'no-count' };
   const list = event.guests || [];
+  // Headcount-only events (a cookout/BBQ you BUDGET for, not an RSVP list): an
+  // explicit expected count IS the final number — there's no list to be "pending".
+  // The host opted out of a roster, so the count decision is satisfied.
+  if (event.guestMode === 'count' && Number(event.guestCount) > 0) return { resolved: true, pending: 0 };
   // A "final" count means no still-pending RSVPs. Only a real guest list can
   // tell us this; an estimate-only event is treated as resolved (we can't see
   // maybes, and we won't block a host who already gave a number).
@@ -667,6 +671,9 @@ export function playbookFoodPlan(event, opts = {}) {
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
+        // Board ruling: lead each line with the PER-GUEST rate (the typical amount).
+        // Only per-guest-scaled items carry a rate; flat items (1 grill) don't.
+        perGuest: typeof p.qtyPerGuest === 'number' ? p.qtyPerGuest : null,
         qtyOverridden: qOver != null, baseQty,
         low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
