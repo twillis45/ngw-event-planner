@@ -21,6 +21,7 @@ import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet,
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics } from './lib/weather';
+import { getToday, daysUntil } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
@@ -1311,8 +1312,8 @@ const measureFor = (tier, wide) =>
 // ─── Utilities ───────────────────────────────────────────────────────────────
 const fmtD     = (n) => '$' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const uid      = () => Math.random().toString(36).slice(2, 8);
-const getToday  = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
-const daysUntil = (d) => d ? Math.ceil((new Date(d + 'T00:00:00') - getToday()) / 86400000) : null;
+// getToday + daysUntil now live in ./lib/dates (single source — see import above),
+// so the weather window and every countdown agree on the day count.
 // Sprint 51 Figma parity: canonical countdown text per CYlmJqDCXEaacCuz9wW3bd
 // frames K Command Center (655:60 "104 days from now") and B Event Dashboard
 // (548:34 "15 days to event"). Single source of truth — replaces 5 inline

@@ -9,6 +9,8 @@
  * Outdoor events only — indoor events skip the check.
  */
 
+import { daysUntil } from './dates';
+
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
 const BASE = 'https://api.openweathermap.org/data/3.0/onecall';
 // Sprint 52B — prefer the backend weather proxy (key stays server-side). Falls
@@ -73,8 +75,10 @@ export async function geocodeVenue(venue) {
 export async function getEventWeatherRisk(lat, lon, eventDateIso) {
   if ((!API_KEY && !PROXY) || !lat || !lon || !eventDateIso) return null;
 
-  const daysOut = Math.ceil((new Date(eventDateIso) - new Date()) / (1000 * 60 * 60 * 24));
-  if (daysOut < 0 || daysOut > 14) return null; // outside forecast window
+  // Canonical day count (./dates) — same math the WeatherAlert uses to gate the
+  // fetch, so the two never disagree at the 14-day boundary.
+  const daysOut = daysUntil(eventDateIso);
+  if (daysOut == null || daysOut < 0 || daysOut > 14) return null; // outside forecast window
 
   try {
     const res = PROXY
