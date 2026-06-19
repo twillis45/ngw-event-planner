@@ -23968,7 +23968,10 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
   // headcount-only mode); brand-new / no-list events open on the calm headcount field.
   // Unresolved count → lead with the single confirm-count attention panel (before the
   // roster). Resolved + a real list → straight to the roster. (owner preference)
-  const [showList, setShowList] = useState(() => guestCountResolved(event).resolved && guests.length > 0 && event.guestMode !== 'count');
+  // Show the roster once the count is resolved AND there's a list — including when
+  // we LOCKED on a number (guestMode='count'): the host then sees the roster with a
+  // "locked at N" indicator. Unresolved + a list → the single confirm-count panel.
+  const [showList, setShowList] = useState(() => guestCountResolved(event).resolved && guests.length > 0);
   const [hcDraft, setHcDraft] = useState(() => { const n = Number(event.guestCount) || Number(event.guestEstimate) || 0; return n ? String(n) : ''; });
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
@@ -24253,8 +24256,19 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         </>
       )}
 
-      {/* The confirm-final-count control now lives in the single attention panel that
-          precedes the roster (showList=false), per owner preference — no inline banner. */}
+      {/* The confirm-final-count control lives in the single attention panel that
+          precedes the roster. Once the host LOCKED on a number, the roster shows this
+          indicator + the option to go back to tracking RSVPs. */}
+      {event.guestMode === 'count' && Number(event.guestCount) > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${(C.success || C.accent)}55`, borderLeft: `3px solid ${C.success || C.accent}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
+          <span aria-hidden style={{ fontSize: 15 }}>📌</span>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: C.text, lineHeight: 1.5 }}>
+            <span style={{ fontWeight: 700 }}>Locked at {Number(event.guestCount)} guests</span> — that's your final count for food, budget &amp; seating. RSVPs below are just for tracking.
+          </div>
+          <button type="button" onClick={() => { setGuestMode('list'); }}
+            style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
