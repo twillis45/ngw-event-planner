@@ -8245,15 +8245,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
         <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
-          Enough food for {plan.guests} guests{!plan.guestCountResolved ? ' — your best guess for now' : ''}
+          Food for {plan.guests} guests{!plan.guestCountResolved ? ' (estimate)' : ''}
         </div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-          You'll likely spend <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> on food and drinks — I've sized it to what a day like this really needs.
+          <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> for food and drinks, scaled to your count.
         </div>
         {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
         {plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
-            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> if you keep it simple at the grocery store · <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> if you go all-out (butcher, specialty shops). Tap any item below to see its price.
+            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart, <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> going all-out. Tap any item for its price.
           </div>
         )}
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
@@ -8471,12 +8471,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: C.muted }}>Lock this cost — value vs specialty, or your own:</span>
+                      <span style={{ fontSize: 12, color: C.muted }}>Set what this'll cost — pick one or enter your own:</span>
                       <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
                       <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
                         <span style={{ color: C.muted, fontSize: 13 }}>$</span>
-                        <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="custom"
+                        <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="your price"
                           onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
                           onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
                           style={{ width: 64, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
@@ -13992,9 +13992,7 @@ function useFoodPriceFactor(event, profile) {
       const city = String((event && event.city) || '').trim() || cityMetro;
       const local = city ? `${city}, ${state}` : (STATE_FULL[state] || `the ${d.regionLabel}`);
       const when = pmFull ? ` right now (${pmFull})` : ' right now';
-      const priceNote = factor !== 1
-        ? `These match what groceries really cost in ${local}${when}`
-        : `Right in line with grocery prices in ${local}${when}`;
+      const priceNote = `What groceries cost in ${local}${when}`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
