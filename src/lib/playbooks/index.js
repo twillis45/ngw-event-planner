@@ -291,6 +291,16 @@ export function topPlaybookDecision(event, asOf) {
     if (g === 'dietary') blocksDietary = true;
   }
 
+  // Stage-awareness (Sprint 64 — host next-step ranking): a PLANNED count is enough
+  // to shop to when the event is still far out. Only press to LOCK the *final* count
+  // (pending RSVPs) once the event is near — otherwise this premature "confirm final
+  // guest count" outranks the actual next task (book caterer, buy non-perishables).
+  // A genuine 'no-count' still blocks at any range — you can't size anything.
+  const FINAL_LOCK_LEAD = 10;
+  if (blocksCount && gc.reason === 'pending-rsvps' && dte > FINAL_LOCK_LEAD) {
+    blocksCount = false;
+  }
+
   if (blocksCount) {
     const pendingMsg = gc.reason === 'pending-rsvps'
       ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the locked count.`

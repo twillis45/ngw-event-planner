@@ -565,3 +565,23 @@ describe('60I — swap-out (skip) + per-item breakdown', () => {
     expect(p1.foodHigh).toBeLessThan(p0.foodHigh);               // out of the total
   });
 });
+
+describe('Sprint 64 — stage-aware guest-count nag (host next-step ranking)', () => {
+  // Planned count of 30, but one guest hasn't RSVP'd → gc is "pending-rsvps".
+  const pendingEv = (date) => ({
+    id: 'j', type: 'Juneteenth Cookout', date, guestCount: 30,
+    guests: [{ id: 'g1', rsvp: 'Yes' }, { id: 'g2', rsvp: '' }],
+  });
+  test('near the event (≤10d) with pending RSVPs → DOES press to confirm the final count', () => {
+    const d = topPlaybookDecision(pendingEv('2026-07-06'), '2026-07-01'); // 5 days out (buy window active)
+    expect(d && d.decision).toBe('guestCount');
+  });
+  test('far out (>10d) with a planned count → does NOT nag to confirm the final count', () => {
+    const d = topPlaybookDecision(pendingEv('2026-07-15'), '2026-07-01'); // 14 days out
+    expect(d && d.decision).not.toBe('guestCount');
+  });
+  test('no count at all (near) → still blocks — nothing can be sized', () => {
+    const d = topPlaybookDecision({ id: 'j', type: 'Juneteenth Cookout', date: '2026-07-06', guests: [] }, '2026-07-01');
+    expect(d && d.decision).toBe('guestCount');
+  });
+});
