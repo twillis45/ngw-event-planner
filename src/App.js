@@ -21915,7 +21915,9 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             // budget lands inside the estimate; COVERED if it clears the premium (high) end.
             const bd = Number(budgetDraft);
             const state = bd < totalLow ? 'over' : bd < totalHigh ? 'range' : 'covered';
-            const color = state === 'over' ? C.danger : state === 'covered' ? C.success : C.text;
+            // SM-1 status mapping: over = red (at-risk), in-range = amber (reachable but
+            // tight), covered = green (on-track).
+            const color = state === 'over' ? C.danger : state === 'covered' ? C.success : (C.warn || '#ef962e');
             const msg = state === 'over' ? `Estimate ${money(totalLow, totalHigh)} — over your budget (cheapest plan is ${money(totalLow, totalLow)})`
               : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — your budget covers it`
               : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
