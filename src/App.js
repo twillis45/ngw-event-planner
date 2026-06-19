@@ -8026,9 +8026,9 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 // commonly-forgotten flags), the food budget, and the dietary gate. The host's
 // picks persist on event.foodChoices; checked-off items on event.foodGot.
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
-function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {} }) {
+function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile }) {
   const C = useT();
-  const foodPP = useFoodPriceFactor(event);
+  const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
@@ -13417,13 +13417,37 @@ const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','
 // Resolve a 2-letter US state from an event for regional food pricing. Prefers the
 // structured `event.state` (Service-Area field), then scans the "City, ST" label
 // and venue free-text for a state token. Null when unknown → neutral pricing.
-function resolveEventState(event) {
+const STATE_NAME_TO_ABBR = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA', colorado: 'CO',
+  connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA', hawaii: 'HI', idaho: 'ID',
+  illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS', kentucky: 'KY', louisiana: 'LA',
+  maine: 'ME', maryland: 'MD', massachusetts: 'MA', michigan: 'MI', minnesota: 'MN',
+  mississippi: 'MS', missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK', oregon: 'OR',
+  pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC', 'south dakota': 'SD',
+  tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT', virginia: 'VA', washington: 'WA',
+  'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY', 'district of columbia': 'DC',
+};
+// Resolve a 2-letter US state for regional food pricing. Tries (in order): the
+// structured event.state; a "City, ST" / state-token scan across every location
+// field the host might have filled (venue/city/location/address/market); a full
+// state-name match ("…, Georgia"); then the host's PROFILE city/market (a home
+// party is usually near home). Null only when we truly have no location → neutral.
+function resolveEventState(event, profile) {
   if (!event) return null;
   const direct = String(event.state || '').trim().toUpperCase();
   if (US_STATES.includes(direct)) return direct;
-  const hay = `${event.city || ''} ${event.venue || ''}`.toUpperCase();
-  const tokens = hay.match(/\b[A-Z]{2}\b/g);
+  const hay = [event.city, event.venue, event.location, event.address, event.market,
+    profile && profile.city, profile && profile.market]
+    .filter(Boolean).join(' , ');
+  if (!hay) return null;
+  // Explicit 2-letter token ("Atlanta, GA").
+  const tokens = hay.toUpperCase().match(/\b[A-Z]{2}\b/g);
   if (tokens) { const hit = tokens.reverse().find((t) => US_STATES.includes(t)); if (hit) return hit; }
+  // Full state name ("Atlanta, Georgia").
+  const low = ` ${hay.toLowerCase()} `;
+  for (const name in STATE_NAME_TO_ABBR) { if (low.includes(` ${name} `) || low.includes(`,${name} `) || low.includes(` ${name},`)) return STATE_NAME_TO_ABBR[name]; }
   return null;
 }
 
@@ -13433,9 +13457,9 @@ function resolveEventState(event) {
 // census regions), labeled as such; degrades to neutral (factor 1, no label, no
 // claim) whenever location is unknown or the backend/BLS is unavailable. Returns
 // the exact opts shape playbookFoodPlan(event, opts) consumes.
-function useFoodPriceFactor(event) {
+function useFoodPriceFactor(event, profile) {
   const [pp, setPp] = useState({ priceFactor: 1, priceContext: null });
-  const state = resolveEventState(event);
+  const state = resolveEventState(event, profile);
   useEffect(() => {
     let cancelled = false;
     if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null }); return undefined; }
@@ -18215,7 +18239,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
         {/* Food plan — the playbook's grounded food choices + scaled shopping list,
             surfaced where the host lives. Renders nothing without a playbook. */}
-        <FoodPlan event={ev} onPatch={onPatchEvent ? (patch) => onPatchEvent(ev.id, patch) : undefined} onNav={(tab) => onSelectEvent(ev.id, { tab })} />
+        <FoodPlan event={ev} onPatch={onPatchEvent ? (patch) => onPatchEvent(ev.id, patch) : undefined} onNav={(tab) => onSelectEvent(ev.id, { tab })} profile={profile} />
 
         {/* Sprint UX-4 · Upcoming Rail — what exists but hasn't earned attention yet.
             Reachable (one tap), never hidden. Empty once everything is active. */}
@@ -21659,7 +21683,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalDraft, setTotalDraft] = useState('');
   // Regional food pricing (BLS) — surfaced in the host Spending Plan's Food line.
-  const foodPP = useFoodPriceFactor(event);
+  const foodPP = useFoodPriceFactor(event, profile);
   const commitTotalBudget = () => {
     const newTotal = Math.max(0, Math.round(Number(totalDraft) || 0));
     setEditingTotal(false);
@@ -32257,7 +32281,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           (TimelineBuilder, ChecklistGenerator) used by the Timeline and
           Checklist views. */}
       {tab === 'Planning'       && (
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} />
       )}
       {tab === 'Planning'       && (
         <Suspense fallback={<SpecialistFallback />}>
