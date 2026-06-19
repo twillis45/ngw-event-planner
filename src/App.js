@@ -8111,19 +8111,24 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 // a real checkable list with the full guidance, not a dim Overview footer.
 function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   const C = useT();
+  const [expanded, setExpanded] = useState(false);
   const rc = (() => { try { return playbookInfraPrompts(event); } catch { return null; } })();
   if (!rc || !rc.prompts || !rc.prompts.length) return null;
   const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
   const done = rc.prompts.filter((p) => checked[p.key]).length;
   const allDone = done === rc.prompts.length;
+  const collapsed = allDone && !expanded; // collapse the checklist once everything's confirmed
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ safetyChecked: next }); };
   const card = { background: C.surface, border: `1px solid ${allDone ? (C.success || C.border) : C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
   return (
     <div style={card}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+      <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
+        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All confirmed ✓' : `${done} of ${rc.prompts.length} confirmed`}</div>
-      </div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.prompts.length} confirmed`}</div>
+      </button>
+      {!collapsed && (
+      <>
       <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Your day-of safety walkthrough — tap each as you confirm it. Most matter most for an open-flame backyard cookout.</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rc.prompts.map((p, i) => {
@@ -8140,6 +8145,8 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
           );
         })}
       </div>
+      </>
+      )}
     </div>
   );
 }
