@@ -8154,10 +8154,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
             can resolve the area; national + a nudge to add a location otherwise. */}
         {foodPP.priceNote && (
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {foodPP.hasRegion
               ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
-              : <button type="button" onClick={() => onNav('Event Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.accent, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{foodPP.priceNote} →</button>}
+              : (<>
+                  <span>Based on national average prices.</span>
+                  {/* Inline metro picker — set the area right here to switch to local
+                      (BLS) pricing. ~26 metros, so a native select is fine here. */}
+                  <select value={event.market || ''} onChange={(e) => onPatch({ market: e.target.value })}
+                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: 12.5, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
+                    <option value="">Set your area for local prices…</option>
+                    {METRO_MARKETS.filter((m) => METRO_GEO[m.id]).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                </>)}
           </div>
         )}
         {/* 60H — bought-so-far updates live as the host checks off the shopping list,
