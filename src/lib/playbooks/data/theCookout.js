@@ -161,7 +161,7 @@ const theCookout = {
     { id: 'r_spread_gaps', trigger: 'Duplicate sides, missing greens/mac, or an untrusted potato salad', severity: 'med', mitigation: 'Assign the spread on purpose at T-14d — one person per dish, the trusted hands on the potato salad; confirm assignments at T-3d.' },
     { id: 'r_fuel', trigger: 'Run out of charcoal/wood/propane mid-cook', severity: 'high', mitigation: 'Buy extra fuel at T-3d; keep a spare bag/tank on hand for the long cook.' },
     { id: 'r_ice', trigger: 'Ice runs out; drinks and red drink go warm', severity: 'med', mitigation: 'Buy ~2 lb/guest day-of (all-day heat melts it fast); know the nearest store for a midday ice run.' },
-    { id: 'r_foodsafe', trigger: 'Perishable sides sit out in the heat too long', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave mayo-based dishes (potato salad, slaw) out >1h above 90°F; grill meat to safe temps (chicken 165°F).' },
+    { id: 'r_foodsafe', trigger: 'Perishable sides sit out in the heat too long, or raw meat cross-contaminates cooked', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave mayo-based dishes (potato salad, slaw) out >1h above 90°F; grill meat to safe temps (chicken 165°F). Use SEPARATE platters and utensils for raw vs cooked meat — never put cooked meat back on the raw-marinade plate.' },
     { id: 'r_togo_shortfall', trigger: 'Run out of to-go containers — guests can\'t make a plate', severity: 'low', mitigation: 'Buy ~1.5 to-go containers/guest; keep foil and zip bags as backup so everybody leaves with a plate.' },
   ],
 

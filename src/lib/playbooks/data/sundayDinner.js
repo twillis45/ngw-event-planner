@@ -361,6 +361,12 @@ const sundayDinner = {
 
   risks: [
     {
+      id: 'r-foodsafe',
+      trigger: 'Undercooked chicken or cross-contamination from the raw bird',
+      severity: 'high',
+      mitigation: 'Cook chicken to 165°F internal at the thickest part (fried or baked); brine/season in the REFRIGERATOR, never on the counter; discard used brine; and wash hands, boards, and utensils after the raw bird before they touch the sides.',
+    },
+    {
       id: 'r-late-shop',
       trigger: 'Shopping slips to Sunday morning',
       severity: 'medium',

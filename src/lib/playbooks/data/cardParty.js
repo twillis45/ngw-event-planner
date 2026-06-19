@@ -96,6 +96,7 @@ const cardParty = {
   ],
 
   risks: [
+    { id: 'r_foodsafe', trigger: 'Perishable grazing food (deviled eggs, a pot of chili/gumbo, saucy wings) sits out all night', severity: 'med', mitigation: 'Deviled eggs, mayo dishes, and proteins are perishable — don\'t leave them out more than 2 hours. Keep the pot hot (slow cooker) and cold dishes cold/on ice, refresh in waves, and refrigerate leftovers promptly.' },
     { id: 'r_odd', trigger: 'Headcount not a multiple of four — a table sits a hand short', severity: 'med', mitigation: 'Count RSVPs in fours; line up a flexible fifth/sixth to fill a no-show seat, or set a rotating "next up" so nobody sits out long.' },
     { id: 'r_deck', trigger: 'A deck is worn, marked, or short a card mid-hand', severity: 'med', mitigation: 'Two complete decks per table (one in play, one shuffling); count every deck to 52/54 before guests; keep a fresh sealed deck in reserve.' },
     { id: 'r_sauce', trigger: 'Saucy wings/meatballs grease up the cards', severity: 'med', mitigation: 'Keep saucy proteins at the food station, never on the card tables; napkins on every table and plenty at the spread; dry one-hand snacks for the table.' },
