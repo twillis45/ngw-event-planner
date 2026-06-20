@@ -31903,6 +31903,9 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
 function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const C = useT();
   const s = makeS(C);
+  // #5 attention/progressive disclosure: lead with the essentials, collapse the
+  // optional personal touches (open if any are already filled).
+  const [showTouches, setShowTouches] = useState(!!(event.honoree || event.theme || event.honoreeSong || event.honoreeDrink));
   const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
   const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
   // Hot-fix: do NOT define inner-function wrappers — that re-creates the
@@ -31954,11 +31957,19 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
-          <EDTField C={C} s={s} label="Guest of honor" value={event.honoree || ''} onChange={v => upd('honoree', v)} placeholder="Who you're celebrating" />
-          <EDTField C={C} s={s} label="Theme / colors" value={event.theme || ''} onChange={v => upd('theme', v)} placeholder="e.g. gold & black" />
-          <EDTField C={C} s={s} label="Their favorite song" value={event.honoreeSong || ''} onChange={v => upd('honoreeSong', v)} placeholder="for a dedication" />
-          <EDTField C={C} s={s} label="Their signature drink" value={event.honoreeDrink || ''} onChange={v => upd('honoreeDrink', v)} placeholder="name a cocktail after them" />
         </EDTRow>
+        {/* Personal touches — optional, collapsed by default (progressive disclosure). */}
+        {showTouches ? (
+          <EDTRow isMobile={isMobile}>
+            <EDTField C={C} s={s} label="Guest of honor" value={event.honoree || ''} onChange={v => upd('honoree', v)} placeholder="Who you're celebrating" />
+            <EDTField C={C} s={s} label="Theme / colors" value={event.theme || ''} onChange={v => upd('theme', v)} placeholder="e.g. gold & black" />
+            <EDTField C={C} s={s} label="Their favorite song" value={event.honoreeSong || ''} onChange={v => upd('honoreeSong', v)} placeholder="for a dedication" />
+            <EDTField C={C} s={s} label="Their signature drink" value={event.honoreeDrink || ''} onChange={v => upd('honoreeDrink', v)} placeholder="name a cocktail after them" />
+          </EDTRow>
+        ) : (
+          <button type="button" onClick={() => setShowTouches(true)}
+            style={{ background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '9px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add personal touches (guest of honor, theme, song, drink)</button>
+        )}
       </div>
 
       <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
