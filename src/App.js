@@ -8099,6 +8099,35 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Owner / Responsible</label>
             <OwnerSelect value={entry.owner} options={ownerOptions} onChange={v => onChange('owner', v)} style={s.input} />
           </div>
+          {/* #6 — sub-tasks: break this day-of moment into the actual to-dos, each
+              checkable with live progress. Persists on entry.subtasks. */}
+          {(() => {
+            const subs = Array.isArray(entry.subtasks) ? entry.subtasks : [];
+            const doneN = subs.filter((x) => x.done).length;
+            const setSubs = (next) => onChange('subtasks', next);
+            const patchSub = (id, patch) => setSubs(subs.map((x) => x.id === id ? { ...x, ...patch } : x));
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: 11, color: C.muted }}>Steps</label>
+                  {subs.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {subs.map((sub) => (
+                    <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button type="button" onClick={() => patchSub(sub.id, { done: !sub.done })} aria-label={sub.done ? 'Mark step not done' : 'Mark step done'}
+                        style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${sub.done ? C.success : C.border}`, background: sub.done ? C.success + '22' : 'transparent', color: C.success, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sub.done ? '✓' : ''}</button>
+                      <input value={sub.text} placeholder="Step…" onChange={(e) => patchSub(sub.id, { text: e.target.value })}
+                        style={{ ...s.input, flex: 1, textDecoration: sub.done ? 'line-through' : 'none', color: sub.done ? C.muted : C.text }} />
+                      <button type="button" onClick={() => setSubs(subs.filter((x) => x.id !== sub.id))} aria-label="Remove step" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
+                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
+              </div>
+            );
+          })()}
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Notes / Cues</label>
             <textarea style={{ ...s.input, minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }} value={entry.notes} placeholder="Instructions, cues, reminders…" onChange={e => onChange('notes', e.target.value)} />
@@ -26412,12 +26441,19 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
     ].join(', ');
 
     const Card = ({ r, color, dim = false, kind }) => (
-      <div style={{ ...s.card, padding: '14px 16px 14px 19px', borderRadius: 14, borderLeft: `3px solid ${color}`, boxShadow: dim ? 'none' : panelRaise, opacity: dim ? 0.62 : 1 }}>
+      // #6 — tap any event-day item to open its editable drawer (fields + sub-tasks).
+      <div role="button" tabIndex={0} onClick={() => setModalId(r.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalId(r.id); } }}
+        style={{ ...s.card, padding: '14px 16px 14px 19px', borderRadius: 14, borderLeft: `3px solid ${color}`, boxShadow: dim ? 'none' : panelRaise, opacity: dim ? 0.62 : 1, cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: dim ? C.muted : C.text, minWidth: 72, flexShrink: 0 }}>{fmtTime12(r.time)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: dim ? C.muted : C.text }}>{r.segment || '(untitled)'}</div>
             {(r.owner || r.location) && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{[r.owner, r.location].filter(Boolean).join(' · ')}</div>}
+            {Array.isArray(r.subtasks) && r.subtasks.length > 0 && (() => {
+              const dn = r.subtasks.filter((x) => x.done).length;
+              return <div style={{ fontSize: 11.5, fontWeight: 600, color: dn === r.subtasks.length ? C.success : (C.accentTopGrad || C.accent), marginTop: 4 }}>✓ {dn} of {r.subtasks.length} steps</div>;
+            })()}
             {/* Cue notes — the coordinator's cue sheet, surfaced (was dropped before). */}
             {r.notes && <div style={{ fontSize: 12.5, color: kind === 'now' ? C.text : C.muted, marginTop: 5, lineHeight: 1.45, fontStyle: kind === 'now' ? 'normal' : 'italic' }}>{r.notes}</div>}
             {kind === 'now' && r.actualStart != null && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Started {fmtTime12(`${String(Math.floor(r.actualStart / 60)).padStart(2, '0')}:${String(r.actualStart % 60).padStart(2, '0')}`)}</div>}
@@ -26823,7 +26859,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                     </div>
                   )}
                   <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
                     <div>
                       <input style={{ ...qInput, padding: '6px 8px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} onFocus={qFocus} onBlur={qBlur} value={entry.time} placeholder="09:00" onChange={e => upd(entry.id, 'time', e.target.value)} />
                       {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: 8.5, fontWeight: 800, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
@@ -26851,6 +26887,11 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                         />
                       ) : <div />}
                     </div>
+                    {/* #6 — open the full editable side panel (full title + steps/sub-tasks). */}
+                    <button aria-label="Open steps & details" title="Steps & details" onClick={() => setModalId(entry.id)}
+                      style={{ ...s.btn('ghost'), padding: '6px 6px', fontSize: 13, position: 'relative', color: (Array.isArray(entry.subtasks) && entry.subtasks.length) ? (C.accentTopGrad || C.accent) : C.muted }}>
+                      ⤢{Array.isArray(entry.subtasks) && entry.subtasks.length > 0 && <span style={{ position: 'absolute', top: -3, right: -3, fontSize: 7.5, fontWeight: 800, background: C.accent, color: '#fff', borderRadius: 99, padding: '0 3px', lineHeight: 1.4 }}>{entry.subtasks.filter((x) => x.done).length}/{entry.subtasks.length}</span>}
+                    </button>
                     <button aria-label="Remove" style={{ ...s.btn('danger'), padding: '6px 8px' }} onClick={() => del(entry.id)}>✕</button>
                   </div>
                   {gapLabel && i < sorted.length - 1 && (
