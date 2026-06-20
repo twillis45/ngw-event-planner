@@ -1552,6 +1552,24 @@ function _selectEventNextActionInner(event) {
     };
   }
 
+  // Tier 7.9 (#17) — when nothing's urgent, the intelligence points to the HEART of
+  // the event: the captured must-have moment. Meaning is a first-class engine input,
+  // not a passive card. category 'heart' has no VOICE entry, so this copy renders as
+  // authored (already warm) instead of being overwritten by the neutral voice.
+  if (event.must_have_moment) {
+    const mh = String(event.must_have_moment).trim();
+    const mhShort = mh.length <= 64 ? mh : mh.slice(0, 64).replace(/\s+\S*$/, '') + '…';
+    return {
+      level: 'neutral',
+      category: 'heart',
+      title: `Protect the heart: "${mhShort}".`,
+      consequence: "Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in the run of show.",
+      primaryCta: 'Plan the moment',
+      primaryRoute: { tab: 'Event Day Schedule' },
+      contextLine: daysSub,
+    };
+  }
+
   // Tier 8: neutral fallback
   return {
     level: 'neutral',
