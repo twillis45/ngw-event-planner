@@ -111,7 +111,8 @@ function StatCard({ label, value, valueColor }) {
 }
 
 // ── CheckRow ──────────────────────────────────────────────────────────────────
-function CheckRow({ task, eventDate, onToggle, urgency }) {
+function CheckRow({ task, eventDate, onToggle, onOpen, urgency }) {
+  const subs = Array.isArray(task.subtasks) ? task.subtasks : [];
   const overdue = !task.done && isOverdue(task, eventDate);
   // Sprint 57f.2: when any compression urgency chip is showing, suppress
   // the OVERDUE pill. The two carry overlapping meaning ("long-lead window
@@ -132,9 +133,12 @@ function CheckRow({ task, eventDate, onToggle, urgency }) {
         {task.done && <div style={{ width: 6, height: 6, borderRadius: r.full, background: '#fff' }} />}
       </button>
 
-      <span style={{ flex: 1, minWidth: 0, fontFamily: FF, fontSize: 13, color: task.done ? P.textTertiary : P.textPrimary, textDecoration: task.done ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <button type="button" onClick={() => onOpen && onOpen(task)} disabled={!onOpen}
+        style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: onOpen ? 'pointer' : 'default', fontFamily: FF, fontSize: 13, lineHeight: 1.4, color: task.done ? P.textTertiary : P.textPrimary, textDecoration: task.done ? 'line-through' : 'none' }}>
         {task.task}
-      </span>
+        {subs.length > 0 && <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700, color: subs.filter(x => x.done).length === subs.length ? P.green : P.steelBlue || P.textSecondary, whiteSpace: 'nowrap' }}>✓ {subs.filter(x => x.done).length}/{subs.length}</span>}
+        {onOpen && <span aria-hidden style={{ marginLeft: 6, fontSize: 11, color: P.textTertiary }}>›</span>}
+      </button>
 
       {task.owner && (
         <span style={{ flexShrink: 0, fontFamily: FF, fontSize: 10, fontWeight: type.weight.medium, color: P.textTertiary, background: P.borderSubtle, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
@@ -174,6 +178,7 @@ export default function ChecklistGenerator({
   openId,
   onBack,
   onToggleTask, // (taskId) => void — if provided, persists to host event state
+  onOpenTask,   // #13: (task) => void — open the task's steps in a modal
 }) {
   const timeline  = event?.timeline || [];
   const eventDate = event?.date || null;
@@ -378,7 +383,7 @@ export default function ChecklistGenerator({
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {tabTasks.length === 0
             ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: sp[10], fontFamily: FF, fontSize: 13, color: P.textTertiary }}>{ownerFilter ? `No tasks for ${ownerFilter}` : 'No tasks in this category'}</div>
-            : tabTasks.map(t => <CheckRow key={t.id} task={t} eventDate={eventDate} onToggle={handleToggle} urgency={urgencyOf(t)} />)
+            : tabTasks.map(t => <CheckRow key={t.id} task={t} eventDate={eventDate} onToggle={handleToggle} onOpen={onOpenTask} urgency={urgencyOf(t)} />)
           }
         </div>
 

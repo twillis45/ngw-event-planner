@@ -31352,6 +31352,48 @@ function LegacyTabHeader({ label, hint, onBack }) {
 // forwarded as `openId` so the existing Timeline list opens the compressed
 // virtual phase. Switching views inside the tab does NOT clear openId — the
 // underlying components ignore it where it doesn't apply.
+// #13 — the planning task's STEPS live in a modal (not stacked on the screen). Opens
+// from the categorized checklist; shows the FULL title (no truncation) + checkable steps.
+function PlanStepModal({ task, onClose, onPatch }) {
+  const C = useT();
+  const subs = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const doneN = subs.filter((x) => x.done).length;
+  const setSubs = (next) => onPatch({ subtasks: next });
+  const patchSub = (id, p) => setSubs(subs.map((x) => x.id === id ? { ...x, ...p } : x));
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
+  const inp = { flex: 1, minWidth: 0, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '7px 10px', color: C.text, fontSize: 13, fontFamily: 'inherit', outline: 'none' };
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9990 }} />
+      <div role="dialog" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 460px)', maxHeight: '85vh', overflowY: 'auto', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 9991, padding: 22 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>{task.task}</div>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>✕</button>
+        </div>
+        {(task.owner || task.week) && <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{[task.owner, task.week].filter(Boolean).join(' · ')}</div>}
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Steps</span>
+            {subs.length > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {subs.map((sub) => (
+              <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <button type="button" onClick={() => patchSub(sub.id, { done: !sub.done })} aria-label={sub.done ? 'Mark step not done' : 'Mark step done'}
+                  style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${sub.done ? C.success : C.border}`, background: sub.done ? C.success + '22' : 'transparent', color: C.success, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sub.done ? '✓' : ''}</button>
+                <input value={sub.text} placeholder="Step…" onChange={(e) => patchSub(sub.id, { text: e.target.value })} style={{ ...inp, textDecoration: sub.done ? 'line-through' : 'none', color: sub.done ? C.muted : C.text }} />
+                <button type="button" onClick={() => setSubs(subs.filter((x) => x.id !== sub.id))} aria-label="Remove step" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 16 }}>×</button>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
+            style={{ marginTop: subs.length ? 10 : 0, background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 13px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a step</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningView, setPlanningView, openTaskId, openTimelineId }) {
   const C = useT();
   const view = PLANNING_VIEWS.includes(planningView) ? planningView : 'list';
@@ -31362,6 +31404,10 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
     return getWorkflowGuidance(event?.type, days);
   }, [event?.date, event?.type]);
 
+  // #13 — open a task's steps in a modal (full title + checkable sub-tasks).
+  const [stepTaskId, setStepTaskId] = useState(null);
+  const stepTask = stepTaskId ? (event?.timeline || []).find((t) => t.id === stepTaskId) : null;
+  const patchTask = (id, patch) => setEvent((e) => ({ ...e, timeline: (e.timeline || []).map((t) => t.id === id ? { ...t, ...patch } : t) }));
   // Toggle a task done in the canonical event.timeline (Checklist view).
   const onToggleTask = (taskId) => {
     // first_value only on a false→true completion (not on un-checking).
@@ -31456,8 +31502,10 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           isMobile={isMobile}
           onBack={onBack}
           onToggleTask={onToggleTask}
+          onOpenTask={(t) => setStepTaskId(t.id)}
         />
       )}
+      {stepTask && <PlanStepModal task={stepTask} onClose={() => setStepTaskId(null)} onPatch={(patch) => patchTask(stepTask.id, patch)} />}
     </>
   );
 }
