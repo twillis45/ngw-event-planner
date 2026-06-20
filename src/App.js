@@ -24507,11 +24507,13 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
             is evidence (steel). Declined is settled fact, not an alarm → no red.
             The one accent is amber on the open follow-ups (Awaiting, Thank-Yous). */}
+        {/* #10 — KPIs ordered by importance (the answer first), each click-through
+            filters the list below. */}
+        <StatCard label="Confirmed"      value={yes}   color={C.success} onClick={() => setGFilter('Yes')} />
+        <StatCard tier="evidence" label="Awaiting"       value={maybe} color={maybe > 0 ? C.muted : undefined} onClick={() => setGFilter('Maybe')} />
+        <StatCard tier="evidence" label="Total Invited"  value={guests.length} sub={Number(event?.guestEstimate) > 0 ? `of ${Number(event.guestEstimate)} expected` : undefined} onClick={() => setGFilter('all')} />
+        <StatCard tier="evidence" label="Declined"       value={no} onClick={() => setGFilter('No')} />
         {Number(event?.guestEstimate) > 0 && <StatCard tier="evidence" label="Expected" value={Number(event.guestEstimate)} sub="from intake" />}
-        <StatCard tier="evidence" label="Total Invited"  value={guests.length} sub={Number(event?.guestEstimate) > 0 ? `of ${Number(event.guestEstimate)} expected` : undefined} />
-        <StatCard label="Confirmed"      value={yes}   color={C.success} />
-        <StatCard tier="evidence" label="Declined"       value={no} />
-        <StatCard tier="evidence" label="Awaiting"       value={maybe} color={maybe > 0 ? C.muted : undefined} />
         {kids > 0 && <StatCard tier="evidence" label="Kids Meals" value={kids} />}
         {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
       </div>
