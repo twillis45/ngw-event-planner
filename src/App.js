@@ -19738,7 +19738,9 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               fake events is noise, and it was one of the seven competing bands the
               board flagged. Returns the instant a real event exists. */}
           {dashView === 'dashboard' && events.length > 0 && !hasOnlyDemoData && (
-            <DailyBriefing events={events} onSelectEvent={onSelectEvent} />
+            // #7 light recede: the secondary "brief me" card recedes until reached;
+            // the command panel + the dense event data below stay full weight.
+            <div className="hp-recede"><DailyBriefing events={events} onSelectEvent={onSelectEvent} /></div>
           )}
 
           {/* Sprint 52: "What needs you today" panel — first-run orchestration. Editorial
