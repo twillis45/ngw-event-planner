@@ -32909,7 +32909,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
   // Sidebar badge counts — shown next to each tab name
   const guestCount   = (event.guests   || []).length;
-  const confirmedG   = (event.guests   || []).filter(g => g.rsvp === 'Yes').length;
+  // When the host LOCKED a headcount (guestMode='count'), that number IS the expected
+  // attendance — reflect it instead of the RSVP-Yes tally (which is 0 in headcount mode).
+  const confirmedG   = (event.guestMode === 'count' && Number(event.guestCount) > 0)
+    ? Number(event.guestCount)
+    : (event.guests || []).filter(g => g.rsvp === 'Yes').length;
   const vendorCount  = (event.vendors  || []).length;
   const taskDone     = (event.timeline || []).filter(t => t.done).length;
   const taskTotal    = (event.timeline || []).length;
@@ -33697,7 +33701,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   </div>
                 )}
                 <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.7, opacity: 0.75 }}>
-                  {event.guests?.filter(g => g.rsvp === 'Yes').length || 0} confirmed
+                  {confirmedG} {event.guestMode === 'count' ? 'expected' : 'confirmed'}
                 </div>
                 <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.7, opacity: 0.75 }}>
                   {event.vendors?.filter(v => v.status === 'Confirmed').length || 0} vendors
@@ -33843,7 +33847,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               {(bottomSheet === 'people'
                 ? [
                     { id: 'Vendors', icon: 'store',   label: 'Vendors', sub: `${vendorCount} on event`, testId: 'people-sheet-vendors' },
-                    { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}`, testId: 'people-sheet-guests' },
+                    { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: event.guestMode === 'count' ? `${confirmedG} expected` : `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}`, testId: 'people-sheet-guests' },
                     { id: 'Seating', icon: 'seating', label: 'Seating', sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables', testId: 'people-sheet-seating' },
                   ]
                 : [
