@@ -33258,6 +33258,7 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
 function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const C = useT();
   const s = makeS(C);
+  const detailsIsHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
   const vph = venuePlaceholders(event.venueKind || 'home'); // Board #11 — kind-aware placeholders
   // #5 attention/progressive disclosure: lead with the essentials, collapse the
   // optional personal touches (open if any are already filled).
@@ -33272,13 +33273,13 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
 
   return (
     <>
-      <LegacyTabHeader label="Event Details" hint="The basics — name, type, date, venue, parking, rain plan. Edit anything here." onBack={onBack} />
+      <LegacyTabHeader label={detailsIsHost ? 'Where & when' : 'Event Details'} hint={detailsIsHost ? 'Where it’s happening, when, and the little touches that make it yours. Change anything anytime.' : 'The basics — name, type, date, venue, parking, rain plan. Edit anything here.'} onBack={onBack} />
       {/* Sprint 59F: bounded form width on desktop/wide. A 720-cap keeps
           the form readable on wide monitors instead of stretching to
           1700px-wide single inputs. */}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <div style={{ padding: sectionPad }}>
-        <EDTSectionHead C={C}label="Identity" hint="The basics — what the event is called, when it happens, and what kind of event it is." />
+        <EDTSectionHead C={C}label={detailsIsHost ? 'The basics' : 'Identity'} hint="The basics — what the event is called, when it happens, and what kind of event it is." />
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Event name"   value={event.name}      onChange={v => upd('name', v)} placeholder="Wedding · Birthday · Corporate offsite" />
           <EDTField C={C} s={s} label="Event type"   value={event.type}      onChange={v => upd('type', v)} options={EVT_TYPES.map(t => ({ value: t, label: t }))} />
@@ -33329,7 +33330,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
       </div>
 
       <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
-        <EDTSectionHead C={C}label="Venue" hint="Where it happens. Address, contact, and the operational notes the team will need on event day." />
+        <EDTSectionHead C={C}label={detailsIsHost ? 'Where it’s happening' : 'Venue'} hint={detailsIsHost ? 'The place, the address, and any notes for the day — parking, where to set up, a rain plan if it’s outside.' : 'Where it happens. Address, contact, and the operational notes the team will need on event day.'} />
         {/* Sprint 60: Venue logistics gaps. Surfaces only when a real gap
             applies — outdoor events without rain plan, near-event events
             without a venue contact, COI required but not on file. Quiet
