@@ -37,7 +37,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, shareOrCopy } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -19063,6 +19063,21 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
         </div>
       </div>
 
+      {/* "Do it for me" keepsake — a warm few lines the host shares round after the
+          event. The app wrote it; one tap to send to the group. Doubles as the warmest
+          word-of-mouth moment (the recap lands on everyone who was there). */}
+      {typeof onDraft === 'function' && (
+        <button type="button" onClick={() => onDraft({ title: 'Share the recap', intro: 'A warm note to send round to everyone who was there. We wrote it — make it yours, then share.', draft: draftRecap(ev, profile), shareTitle: `${ev.name || 'Our day'} — thank you`, kind: 'recap' })}
+          style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e` }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ ...eyebrowStyle, color: C.accent }}>Share the moment</span>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; share →</span>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone the recap</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A keepsake note for the people who were there — already written.</div>
+        </button>
+      )}
+
       {/* Read-only: what the day actually was. */}
       <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
         style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -19575,6 +19590,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
     setPolishing(true); setStatus(null);
     const kindLabel = kind === 'vendor' ? 'a short, friendly vendor inquiry'
       : kind === 'thankyou' ? 'a warm thank-you note'
+      : kind === 'recap' ? 'a warm recap note to share after the event'
       : 'a warm event invitation';
     const prompt = `A host will send ${kindLabel} as-is. Rewrite the message below so it reads warmer and more natural, staying short and ready-to-send.\n\nHARD RULES:\n- Do NOT add any fact that isn't already in the message — no new dates, times, addresses, places, prices, names, or details. If it isn't there, leave it out.\n- Keep every concrete detail (date, time, place, names, the sign-off) exactly as written.\n- Keep it about the same length. Keep the friendly emoji if present.\n- Return ONLY the finished message text — no preamble, no quotes, no explanation.\n\nMESSAGE:\n${text}`;
     try {
@@ -19890,11 +19906,15 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             event facts; the host just opens it and sends. Pairs with the guest-list
             hero (you invite people to build the list). Needs a date to be sendable. */}
         {!isDayOf && ev.date && (() => {
-          const d = draftInvite(ev, profile);
+          // Close the loop — carry the live RSVP page link so guests reply on the hosted
+          // page and the headcount flows straight back to this event.
+          const rsvpCode = ev.rsvpCode || ev.id;
+          const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+          const d = draftInvite(ev, profile, { rsvpUrl });
           const previewParts = (d.body || '').split('\n').map(s => s.trim()).filter(Boolean);
           const preview = (previewParts[1] || previewParts[0] || '').slice(0, 92);
           return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' })}
+            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Ready to send</span>
@@ -25169,11 +25189,15 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
             </div>
           )}
 
-          {!submitted && (
-            <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: LC.muted }}>
-              Powered by <strong style={{ color: LC.accent }}>ngw</strong>
-            </div>
-          )}
+          {/* Recruiting footer — every event broadcasts to ~35 future hosts. The guest
+              just had a warm moment with a beautiful invite; route them to make their
+              own. This is the growth loop: each event recruits the next host. Shown both
+              before AND after RSVP (the post-RSVP moment converts best). */}
+          <div style={{ textAlign: 'center', marginTop: 22, fontSize: 12.5, color: LC.muted, lineHeight: 1.5 }}>
+            <a href={`${window.location.origin}${window.location.pathname}`} style={{ color: LC.accent, fontWeight: 700, textDecoration: 'none' }}>
+              Planning something of your own? Make it with Event Boss →
+            </a>
+          </div>
         </div>
       </div>
     </div>

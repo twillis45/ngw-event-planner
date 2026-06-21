@@ -5,6 +5,9 @@
 // only ever uses what the host already told us (name, type, date, time, place,
 // honoree, head count). An AI key can polish later; the honest baseline is here.
 
+// A gathering that must carry a somber, respectful tone — never the festive template.
+const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
+
 const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MO = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -63,15 +66,31 @@ function inviteVoice(event) {
   const type = (event && event.type ? String(event.type) : '').toLowerCase();
   const honoree = (event && event.honoree ? String(event.honoree) : '').trim();
   const who = honoree || 'us';
+  // CRITICAL cultural guard: a somber gathering (memorial, shiva, funeral, celebration
+  // of life) must NEVER get the festive template — no "🎉 You're invited!", no "come
+  // celebrate," no party emoji. A generic festive invite here is the worst kind of miss.
+  if (SOMBRE_RE.test(type)) {
+    return { sombre: true, emoji: '', head: 'You’re invited to gather',
+      line: honoree
+        ? `We’re gathering to remember ${honoree}. It would mean a great deal to have you with us.`
+        : `We’re gathering to remember and support one another. It would mean a great deal to have you with us.` };
+  }
   const T = (re, v) => re.test(type) && v;
   return (
     T(/graduat/, { emoji: '🎓', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} graduation and would love you there.` }) ||
     T(/wedding/, { emoji: '💍', head: 'Save the date — you’re invited!', line: `We’re getting married and can’t imagine the day without you.` }) ||
+    // Cultural / faith milestones — named specifically, never flattened into "a party."
+    T(/(quince)/, { emoji: '👑', head: '¡Están invitados! You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} quinceañera — fifteen years — and we’d be honored to have you and your family there.` }) ||
+    T(/(bar ?mitzvah|bat ?mitzvah|b['’]?nai ?mitzvah)/, { emoji: '✡️', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'our child'} becoming a${/bat/i.test(type) ? ' bat' : ' bar'} mitzvah — please join us for this milestone.` }) ||
+    T(/(baptism|christening|first ?communion|confirmation|dedication)/, { emoji: '🕊️', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} ${/communion/i.test(type) ? 'First Communion' : /confirm/i.test(type) ? 'Confirmation' : /christen/i.test(type) ? 'christening' : 'baptism'} — we’d love to share the day with you.` }) ||
+    T(/(diwali)/, { emoji: '🪔', head: 'You’re invited!', line: `We’re celebrating Diwali and would love for you to join us for light, food, and family.` }) ||
+    T(/(eid)/, { emoji: '🌙', head: 'You’re invited!', line: `We’re celebrating Eid and would be delighted to have you join us.` }) ||
+    T(/(lunar ?new ?year|chinese ?new ?year|tết|tet)/, { emoji: '🧧', head: 'You’re invited!', line: `We’re celebrating the Lunar New Year and would love for you to join us.` }) ||
+    T(/(sweet ?16|sweet ?sixteen)/, { emoji: '✨', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'a milestone'} and would love you there.` }) ||
     T(/(^|\b)(birthday|bday)\b/, { emoji: '🎉', head: 'You’re invited!', line: `We’re throwing ${honoree ? honoree + ' a birthday party' : 'a birthday party'} and want you there.` }) ||
     T(/anniversary/, { emoji: '💛', head: 'You’re invited!', line: `We’re marking a special anniversary and would love to celebrate with you.` }) ||
     T(/(baby ?shower)/, { emoji: '👶', head: 'You’re invited!', line: `We’re showering ${honoree || 'the parents-to-be'} with love before the baby arrives — join us!` }) ||
     T(/(bridal ?shower|bachelorette)/, { emoji: '🥂', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
-    T(/(quince|sweet ?16|sweet ?sixteen)/, { emoji: '✨', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'a milestone'} and would love you there.` }) ||
     T(/(retire)/, { emoji: '🎊', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
     T(/(reunion)/, { emoji: '🤗', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
     T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '🍽️', head: 'You’re invited!', line: `We’re hosting and would love to have you over.` }) ||
@@ -81,21 +100,36 @@ function inviteVoice(event) {
 }
 
 // #1 — the guest invite. { subject, body } ready to drop into a text or email.
-export function draftInvite(event, profile) {
+// opts.rsvpUrl closes the loop: when present, the invite carries a one-tap RSVP link
+// so guests reply on the hosted page and the headcount flows back to the host (instead
+// of the host chasing replies in a group text). That's what turns the invite from a
+// dead-end message into the product's front door.
+export function draftInvite(event, profile, opts = {}) {
   if (!event) return { subject: '', body: '' };
   const v = inviteVoice(event);
   const date = fmtLongDate(event.date);
   const time = timePhrase(event);
   const place = placePhrase(event);
   const host = hostName(profile);
+  const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const when = [date, time].filter(Boolean).join(' · ');
-  const lines = [`${v.emoji} ${v.head}`, v.line, ''];
+  const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head, v.line, ''];
   if (when)  lines.push(`📅 ${when}`);
   if (place) lines.push(`📍 ${place}`);
   if (when || place) lines.push('');
-  lines.push(place ? 'Hope you can make it — let us know!' : 'Hope you can make it — details to follow. Let us know!');
-  if (host) lines.push(`— ${host}`);
-  return { subject: `You’re invited — ${subjectThing(event)}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+  // Closer follows the TONE. Somber gatherings never get "hope you can make it!"; and
+  // when there's a real RSVP page, we point them to it (one place, headcount comes back).
+  lines.push(v.sombre
+    ? (rsvpUrl ? 'Please let us know if you’ll be joining us:' : 'Please join us.')
+    : (rsvpUrl ? 'Tap to let us know if you can make it:'
+              : (place ? 'Hope you can make it — let us know!' : 'Hope you can make it — details to follow. Let us know!')));
+  if (rsvpUrl) lines.push(rsvpUrl);
+  if (host) { lines.push(''); lines.push(`— ${host}`); }
+  const honoree = (event.honoree || '').trim();
+  const subject = v.sombre
+    ? `In remembrance${honoree ? ' of ' + honoree : ''}`
+    : `You’re invited — ${subjectThing(event)}`;
+  return { subject, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
 // #2 — the vendor inquiry. Drafts the "are you available + what's your pricing" note
@@ -125,14 +159,51 @@ export function draftThankYou(event, profile) {
   if (!event) return { subject: '', body: '' };
   const honoree = (event.honoree ? String(event.honoree) : '').trim();
   const type = (event.type ? String(event.type) : 'celebration').toLowerCase();
-  const thing = honoree ? `${honoree}’s ${type}` : `our ${type}`;
   const host = hostName(profile);
+  // Somber events get gratitude for PRESENCE, never for "celebrating."
+  if (SOMBRE_RE.test(type)) {
+    const lines = [
+      `Thank you for being with us as we remembered ${honoree || 'our loved one'}.`,
+      'Your presence and kindness meant more to us than words can say.',
+    ];
+    if (host) lines.push('', `With heartfelt thanks,\n${host}`);
+    return { subject: `Thank you${honoree ? ' — remembering ' + honoree : ''}`, body: lines.join('\n').trim() };
+  }
+  const thing = honoree ? `${honoree}’s ${type}` : `our ${type}`;
   const lines = [
     `Thank you so much for celebrating ${thing} with us. 💛`,
     'It meant the world to have you there — we’re so grateful for you.',
   ];
   if (host) lines.push('', `With love,\n${host}`);
   return { subject: `Thank you — ${thing}`, body: lines.join('\n').trim() };
+}
+
+// Recap keepsake — a warm, shareable few lines the host WANTS to send round after the
+// event ("Maya's Graduation — thank you"). Grounded in the event + its heart; tone
+// follows the occasion (somber events get remembrance, not "it was everything!").
+export function draftRecap(event, profile) {
+  if (!event) return { subject: '', body: '' };
+  const v = inviteVoice(event);
+  const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
+  const date = fmtLongDate(event.date);
+  const honoree = (event.honoree ? String(event.honoree) : '').trim();
+  const host = hostName(profile);
+  const mh = (event.must_have_moment ? String(event.must_have_moment) : '').trim();
+  const mhMeaningful = mh && mh.split(/\s+/).filter(Boolean).length >= 2;
+  const lines = [v.emoji ? `${v.emoji} ${name}` : name];
+  if (date) lines.push(date);
+  lines.push('');
+  if (v.sombre) {
+    lines.push(honoree ? `We came together to remember ${honoree}.` : 'We came together to remember and hold each other close.');
+    if (mhMeaningful) lines.push(`At the heart of it: ${mh.replace(/\.$/, '')}.`);
+    lines.push('Thank you to everyone who was there — it meant everything.');
+  } else {
+    if (mhMeaningful) lines.push(`At the heart of it: ${mh.replace(/\.$/, '')}.`);
+    lines.push('What a day — and getting to share it with the people we love made it.');
+    lines.push('Thank you for being part of it. 💛');
+  }
+  if (host) { lines.push(''); lines.push(`— ${host}`); }
+  return { subject: v.sombre ? `Remembering — ${name}` : `${name} — thank you`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
