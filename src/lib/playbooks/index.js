@@ -55,7 +55,7 @@ import { audiencePersona } from '../nextActionRenderer';
 // playbooks. backyardBbq is registered under the canonical 'Get-Together' type
 // (BBQ / cookout / backyard all resolve there via the taxonomy).
 const norm = (s) => String(s || '').trim().toLowerCase();
-const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat];
+export const ALL_PLAYBOOKS = [dinnerParty, birthday, babyShower, backyardBbq, graduation, watchParty, gameNight, housewarming, bridalShower, genderReveal, engagementParty, anniversary, holidayParty, sweet16, retirementParty, reunion, bacheloretteParty, bachelorParty, vowRenewal, theCookout, fishFry, cardParty, sundayDinner, dayParty, juneteenthCookout, crabFeast, crawfishBoil, lowCountryBoil, pupusaGathering, ethiopianCoffeeCeremony, wedding, elopement, quinceanera, surpriseProposal, repast, kwanzaaGathering, boardMeeting, conference, teamRetreat];
 const REGISTRY = {};
 for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 
@@ -118,6 +118,42 @@ function shortUnit(unit, qty) {
   if (!u) return '';
   if (qty !== 1 && !/s$/.test(u)) u += 's';
   return u;
+}
+
+// ── Global buyable-unit guardrail ─────────────────────────────────────────────
+// The app must NEVER render a non-buyable "consumption unit" (e.g. "40 slices" of
+// cake) regardless of what a playbook author writes. You buy a cake, not a slice;
+// a pizza, not a slice. This table maps a whole-purchase good (matched by a
+// keyword in the item NAME) to its buyable unit + `per` = servings per unit.
+// `normalizeBuyable` is a NO-OP for anything already modeled in buyable units —
+// it only fires when the authored unit is a banned serving unit (/^slices?$/).
+const BUYABLE_UNITS = [
+  { re: /pizza/i, unit: 'pizza', per: 8 },
+  { re: /\b(bread|loaf|loaves)\b/i, unit: 'loaf', per: 20 },
+  { re: /\b(cake|cheesecake)\b/i, unit: 'cake', per: 13 }, // cupcakes excluded (already buyable each)
+  { re: /\bpie\b/i, unit: 'pie', per: 8 },
+];
+
+// normalizeBuyable(itemName, qtyServings, rawUnit, uLow, uHigh)
+// Returns a correction ONLY when rawUnit is a banned consumption unit (slice/slices)
+// AND the item name matches a buyable good. Then it converts the serving count into
+// whole purchasable units and scales the per-unit cost range so the TOTAL stays
+// consistent (you buy whole units): { qty, unit, uLow: uLow*per, uHigh: uHigh*per }.
+// Otherwise returns null (byte-identical behavior — the global safety net is inert
+// for correctly-modeled items). Intentionally narrow on 'slice' to avoid over-reach
+// on legitimate serving units like 'serving' / 'piece' / 'lb'.
+function normalizeBuyable(itemName, qtyServings, rawUnit, uLow, uHigh) {
+  const u = String(rawUnit || '').split('(')[0].trim().toLowerCase().replace(/s$/, '');
+  if (u !== 'slice') return null; // only the banned consumption unit triggers
+  const match = BUYABLE_UNITS.find((b) => b.re.test(String(itemName || '')));
+  if (!match) return null;
+  const servings = Number(qtyServings) || 0;
+  return {
+    qty: Math.max(1, Math.ceil(servings / match.per)),
+    unit: match.unit,
+    uLow: uLow * match.per,
+    uHigh: uHigh * match.per,
+  };
 }
 
 function dueLabel(dueInDays) {
@@ -690,9 +726,15 @@ export function playbookFoodPlan(event, opts = {}) {
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
       // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
       const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
-      const qty = qOver != null ? qOver : baseQty;
-      const unit = shortUnit(p.unit, qty);
-      const [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+      let qty = qOver != null ? qOver : baseQty;
+      let [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+      // Global buyable-unit guardrail — if an author left this in a non-buyable
+      // serving unit (e.g. "40 slices" of cake), convert to whole purchasable units
+      // (cakes/pizzas/loaves/pies) and scale the per-unit cost so the TOTAL is
+      // unchanged. No-op (null) for everything already modeled in buyable units.
+      const buyable = normalizeBuyable(p.item, qty, p.unit, uLow, uHigh);
+      const unit = buyable ? shortUnit(buyable.unit, buyable.qty) : shortUnit(p.unit, qty);
+      if (buyable) { qty = buyable.qty; uLow = buyable.uLow; uHigh = buyable.uHigh; }
       const units = qty == null ? 1 : qty;
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
@@ -700,13 +742,16 @@ export function playbookFoodPlan(event, opts = {}) {
         // Shopping list v2 — raw category drives aisle order; buyAt drives the day-of section.
         cat: p.category || 'other', buyAt: p.buyAt || null,
         // Board ruling: lead each line with the PER-GUEST rate (the typical amount).
-        // Only per-guest-scaled items carry a rate; flat items (1 grill) don't.
-        perGuest: typeof p.qtyPerGuest === 'number' ? p.qtyPerGuest : null,
+        // Only per-guest-scaled items carry a rate; flat items (1 grill) don't. A
+        // converted whole-good has no per-guest serving rate — null it.
+        perGuest: (!buyable && typeof p.qtyPerGuest === 'number') ? p.qtyPerGuest : null,
         qtyOverridden: qOver != null, baseQty,
         low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
         // host understands the price, and sees the regional (pf) adjustment in it.
-        units, unitBase: p.unit || '',
+        // When the guardrail converted the line, the per-unit basis is the buyable
+        // unit (cake/pizza/…) at its scaled cost — so the "× $/unit" math stays honest.
+        units, unitBase: buyable ? buyable.unit : (p.unit || ''),
         perUnitLow: Math.round(uLow * pf * 100) / 100,
         perUnitHigh: Math.round(uHigh * pf * 100) / 100,
         skipped: !!skip[p.id],

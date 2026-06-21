@@ -1,4 +1,4 @@
-import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision, playbookRunOfShow, playbookCapacity, playbookInfraPrompts, effectiveRos, playbookFoodPlan } from '../index';
+import { getPlaybook, playbookTasks, topPlaybookTask, playbookBudgetCategories, topPlaybookDecision, playbookRunOfShow, playbookCapacity, playbookInfraPrompts, effectiveRos, playbookFoodPlan, ALL_PLAYBOOKS } from '../index';
 
 const DP = (over) => ({
   id: 'e1',
@@ -709,5 +709,83 @@ describe('#4 — add a dish (foodAdd)', () => {
   test('a checked-off priced dish flows into spent', () => {
     const p = playbookFoodPlan({ ...base, foodAdd: [{ id: 'a', name: 'Catered wings', cost: 120 }], foodGot: { a: true } });
     expect(p.spentLow).toBeGreaterThanOrEqual(120);
+  });
+});
+
+// ── Global buyable-unit guardrail ─────────────────────────────────────────────
+describe('buyable-unit guardrail (food plan never renders consumption units)', () => {
+  // A deliberately mis-authored playbook: cake priced "$3–$5 per slice", 40 slices.
+  // The guardrail must turn this into whole cakes (≈ 13 servings each) at a
+  // per-cake cost, with the TOTAL unchanged.
+  // End-to-end: temporarily mis-author a real playbook's food line into the banned
+  // "slices" unit, run the LIVE reader (REGISTRY holds the same object instances as
+  // ALL_PLAYBOOKS, so an in-place edit is seen), assert the guardrail fired, restore.
+  test('a "slices" cake line is converted to whole cakes through the live reader', () => {
+    // Pick a real playbook that resolves and has a cake food line.
+    const pb = ALL_PLAYBOOKS.find((p) =>
+      getPlaybook(p.type) &&
+      (Array.isArray(p.purchases) ? p.purchases : []).some((x) => x.category === 'food' && /\bcake\b/i.test(x.item))
+    );
+    expect(pb).toBeTruthy();
+    const cakeLine = pb.purchases.find((x) => x.category === 'food' && /\bcake\b/i.test(x.item));
+    const orig = { unit: cakeLine.unit, qtyPerGuest: cakeLine.qtyPerGuest, qtyFlat: cakeLine.qtyFlat, qtyPer: cakeLine.qtyPer, unitCostRange: cakeLine.unitCostRange };
+    try {
+      // 40 servings @ $3–$5 per "slice"
+      delete cakeLine.qtyFlat; delete cakeLine.qtyPer;
+      cakeLine.qtyPerGuest = 1; cakeLine.unit = 'slices'; cakeLine.unitCostRange = [3, 5];
+      const fp = playbookFoodPlan({ id: 'g', type: pb.type, date: '2026-12-01', guestCount: 40 });
+      const line = fp.list.find((l) => l.id === cakeLine.id);
+      expect(line).toBeTruthy();
+      // Converted: ceil(40/13)=4 cakes, NOT 40 slices.
+      expect(line.unit).toBe('cakes');
+      expect(line.qty).toBe(4);
+      // Per-unit basis is now the cake at scaled cost; per-guest rate suppressed.
+      expect(line.unitBase).toBe('cake');
+      expect(line.perGuest).toBeNull();
+      // Total cost ≈ preserved (whole-unit rounding can only round UP).
+      expect(line.low).toBeGreaterThanOrEqual(40 * 3);
+      expect(line.high).toBeGreaterThanOrEqual(40 * 5);
+    } finally {
+      Object.assign(cakeLine, orig);
+      if (orig.qtyFlat === undefined) delete cakeLine.qtyFlat;
+      if (orig.qtyPer === undefined) delete cakeLine.qtyPer;
+      if (orig.qtyPerGuest === undefined) delete cakeLine.qtyPerGuest;
+    }
+  });
+
+  test('a real cake/pizza/bread line never displays a "slice" unit', () => {
+    // Any playbook with a cake/pizza/bread food line, fed through the real reader,
+    // must surface a buyable unit — never "slices".
+    for (const pb of ALL_PLAYBOOKS) {
+      const fp = playbookFoodPlan({ id: 'g', type: pb.type, date: '2026-12-01', guestCount: 30 });
+      if (!fp) continue;
+      for (const line of fp.list) {
+        expect(String(line.unit || '').toLowerCase()).not.toMatch(/^slices?$/);
+      }
+    }
+  });
+});
+
+// ── Universal guardrail-in-tests ──────────────────────────────────────────────
+// Enforce globally that NO playbook author can reintroduce a non-buyable
+// consumption unit. Every purchase (and rentalsGap) raw `unit` must not be
+// 'slice'/'slices'. Fails loudly with the offending playbook + item.
+describe('no playbook authors a banned consumption unit', () => {
+  const BANNED = /^slices?$/i;
+  const rawUnit = (u) => String(u || '').split('(')[0].trim();
+  test('no purchase or rentalsGap item uses unit "slice"/"slices"', () => {
+    const offenders = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const rows = [
+        ...(Array.isArray(pb.purchases) ? pb.purchases : []),
+        ...(Array.isArray(pb.rentalsGap) ? pb.rentalsGap : []),
+      ];
+      for (const r of rows) {
+        if (BANNED.test(rawUnit(r.unit))) {
+          offenders.push(`${pb.type} → "${r.item}" (unit: "${r.unit}")`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
