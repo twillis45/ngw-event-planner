@@ -84,18 +84,22 @@ function getOwners(tasks) {
 }
 
 // ── ProgressBar ───────────────────────────────────────────────────────────────
-function ProgressBar({ label, tasks }) {
+function ProgressBar({ label, tasks, hideBar = false }) {
   const total = tasks.length, done = tasks.filter(t => t.done).length;
   const ratio = total > 0 ? done / total : 0;
   return (
-    <div style={{ marginBottom: sp[4] }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: sp[2] }}>
+    <div style={{ marginBottom: hideBar ? sp[3] : sp[4] }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: hideBar ? 0 : sp[2] }}>
         <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.medium, color: P.textSecondary, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</span>
         <span style={{ fontFamily: FF, fontSize: 11, color: P.textTertiary }}>{done}/{total}</span>
       </div>
-      <div style={{ height: 4, background: P.borderSubtle, borderRadius: r.full, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${Math.round(ratio * 100)}%`, background: progressColor(ratio), borderRadius: r.full, transition: 'width 300ms cubic-bezier(0.2,0,0,1)' }} />
-      </div>
+      {/* UX-SAAS — a host doesn't get a project-manager completion bar; the label + count
+          is enough orientation. The planner keeps the bar. */}
+      {!hideBar && (
+        <div style={{ height: 4, background: P.borderSubtle, borderRadius: r.full, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.round(ratio * 100)}%`, background: progressColor(ratio), borderRadius: r.full, transition: 'width 300ms cubic-bezier(0.2,0,0,1)' }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -317,7 +321,7 @@ export default function ChecklistGenerator({
               ? ['Planning','Vendor','Venue','Event Day'].filter(c => (catBuckets[c] || []).length > 0)
               : ['Planning','Vendor','Venue','Client','Event Day']
             ).map(cat => (
-              <ProgressBar key={cat} label={isHost && cat === 'Event Day' ? 'The Day' : cat} tasks={catBuckets[cat] || []} />
+              <ProgressBar key={cat} label={isHost && cat === 'Event Day' ? 'The Day' : cat} tasks={catBuckets[cat] || []} hideBar={isHost} />
             ))}
           </div>
           {!isHost && owners.length > 0 && (
@@ -337,13 +341,24 @@ export default function ChecklistGenerator({
       {/* Main */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Stats row */}
-        <div style={{ flexShrink: 0, display: 'flex', gap: sp[4], padding: `${sp[5]}px ${sp[6]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-          <StatCard label="Done"          value={doneCount} valueColor={P.green} />
-          <StatCard label="Remaining"     value={remaining} />
-          <StatCard label="Overdue"       value={overdue}   valueColor={overdue > 0 ? P.red : P.textTertiary} />
-          <StatCard label={isHost ? 'Total steps' : 'From Template'} value={total} valueColor={P.textSecondary} />
-        </div>
+        {/* Stats row — UX-SAAS: a host hears "4 done · 8 to go," not a 4-tile KPI grid
+            of Done/Remaining/Overdue/Total steps. The planner keeps the dashboard. */}
+        {isHost ? (
+          <div style={{ flexShrink: 0, padding: `${sp[5]}px ${sp[6]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <div style={{ fontFamily: FF, fontSize: 16, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
+              {remaining === 0
+                ? 'You’re all set — nothing left to do. 🎉'
+                : <>{doneCount} done · {remaining} to go{overdue > 0 ? <span style={{ color: P.amber }}> · {overdue} need{overdue === 1 ? 's' : ''} a look</span> : null}</>}
+            </div>
+          </div>
+        ) : (
+          <div style={{ flexShrink: 0, display: 'flex', gap: sp[4], padding: `${sp[5]}px ${sp[6]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
+            <StatCard label="Done"          value={doneCount} valueColor={P.green} />
+            <StatCard label="Remaining"     value={remaining} />
+            <StatCard label="Overdue"       value={overdue}   valueColor={overdue > 0 ? P.red : P.textTertiary} />
+            <StatCard label="From Template" value={total}     valueColor={P.textSecondary} />
+          </div>
+        )}
 
         {/* Sprint 57f.2: section-level compression notice. Shows ONLY when
             the event is significantly compressed. Keeps the planner oriented

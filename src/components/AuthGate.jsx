@@ -141,9 +141,9 @@ function LoginScreen() {
           </>
         ) : (
           <>
-            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: D.text, marginBottom: 6 }}>Planner sign-in</div>
+            <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: D.text, marginBottom: 6 }}>Sign in</div>
             <div style={{ fontSize: 13, color: D.muted, marginBottom: 18, lineHeight: 1.55 }}>
-              Enter the email your admin added — we'll send a one-time sign-in link. No password needed.
+              Enter your email and we'll send a one-time sign-in link — no password to remember.
             </div>
 
             {googleEnabled && (
@@ -168,7 +168,7 @@ function LoginScreen() {
               <input
                 type="email" autoFocus required value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@studio.com"
+                placeholder="you@email.com"
                 style={{ ...ls.input, width: '100%', fontSize: 14, marginBottom: 12 }}
               />
               <button type="submit" disabled={status === 'sending' || !email.trim()}

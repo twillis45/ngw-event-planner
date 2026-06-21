@@ -2696,8 +2696,9 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
 
           {/* RIGHT — operational rail (recedes section-by-section). */}
           <div className="hp-recede-group" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* Planning Health */}
-            {!dormant('planningHealth') && (
+            {/* Planning Health — UX-SAAS: a host doesn't get a "Readiness across the
+                event" gauge rail (it reads as an ops cockpit). Planner keeps it. */}
+            {!isHost && !dormant('planningHealth') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
