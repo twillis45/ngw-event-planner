@@ -42,7 +42,7 @@ import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpC
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
 import { upcomingRail } from './lib/disclosure';
-import { hostNav, hostNavActive, hostTabLabel } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
+import { hostNav, hostNavActive, hostTabLabel, hostShellOn } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
@@ -34192,6 +34192,135 @@ function eventProgressStatus(event) {
   return { pct, tier, word, showPct: tier !== 'early', barFull: false };
 }
 
+// ─── HostEventShell — the host L3 over the shared core (pi.shell, default OFF) ──────
+// Host shell decision (docs/product-os/HOST_SHELL_DECISION.md): instead of routing a
+// host through the planner EventPlanner with runtime gating, give the host its OWN slim
+// L3 that REUSES the shared tab components (Guests, Budget→HostSpendingPlan, FoodPlan,
+// ChecklistGenerator, RunOfShow, EventDetailsTab, CommandCenter) and SHEDS the planner
+// machinery (vendor-section deep-links, decisions/approvals/portal/consult/send-client,
+// the next-step spine, the readiness cockpit). Host-native by construction → the leak
+// class disappears. Flag-gated OFF; the existing EventPlanner path is byte-identical
+// until pi.shell flips on. v1 covers the host journey; iterate behind the flag.
+function HostEventShell({ event, setEvent, client, setClient, allEvents = [], onBack, backLabel, initialNav, profile, onSaveVendorToBank, onOpenConnections }) {
+  const C  = useT();
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  const isEventToday = !!event.date && event.date === today8601();
+  const hasExplicitDayMode = event.dayMode === true || event.dayMode === false;
+  const dayMode = hasExplicitDayMode ? event.dayMode : isEventToday;
+
+  const _norm = normalizeEventTabRoute(initialNav?.tab, initialNav?.taskId || initialNav?.timelineId);
+  const [tab,            setTab]            = useState(_norm.tab || 'Command');
+  const [planningView,   setPlanningView]   = useState(_norm.planningView || 'list');
+  const [openTaskId,     setOpenTaskId]     = useState(_norm.planningView === 'list' ? (_norm.openId || null) : (initialNav?.taskId || null));
+  const [openTimelineId, setOpenTimelineId] = useState(_norm.planningView === 'timeline' ? (_norm.openId || null) : (initialNav?.timelineId || null));
+  const [openFoodId,     setOpenFoodId]     = useState(initialNav?.foodFocus || null);
+  const [openVendorId,   setOpenVendorId]   = useState(initialNav?.vendorId || null);
+  const [decPrompt,      setDecPrompt]      = useState(null);
+  const [moreOpen,       setMoreOpen]       = useState(false);
+
+  const promptDecision = (cfg) => { if (decisionMemoryOn() && cfg) setDecPrompt(cfg); };
+  const saveDecision = (rationale) => {
+    if (decPrompt && rationale && rationale.trim()) {
+      track(EVENTS.DECISION_CAPTURED, { decision_type: decPrompt.decisionType });
+      setEvent(e => appendDecision(e, makeDecisionRecord({ ...decPrompt, eventId: e.id, rationale, createdBy: profile?.name || profile?.email || undefined }, new Date().toISOString())));
+    }
+    setDecPrompt(null);
+  };
+  const wrap = (field) => (fn) => setEvent(e => ({ ...e, [field]: typeof fn === 'function' ? fn(e[field]) : fn }));
+  const go = (newTab, itemId, opts) => {
+    const norm = normalizeEventTabRoute(newTab, itemId);
+    setOpenTaskId(norm.planningView === 'list' ? (norm.openId || null) : null);
+    setOpenTimelineId(norm.planningView === 'timeline' ? (norm.openId || null) : null);
+    setOpenFoodId(norm.tab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
+    setOpenVendorId(norm.tab === 'Vendors' ? (itemId || null) : null);
+    if (norm.planningView) setPlanningView(norm.planningView);
+    setTab(norm.tab);
+    setMoreOpen(false);
+  };
+  useEffect(() => {
+    if (!initialNav) return;
+    if (initialNav.tab) { const n = normalizeEventTabRoute(initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
+    if (initialNav.foodFocus) setOpenFoodId(initialNav.foodFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNav?.tab, initialNav?.foodFocus]);
+
+  const has = (k) => Array.isArray(event[k]) && event[k].length > 0;
+  const moreItems = [
+    { id: 'Event Details', label: 'Where & when' },
+    ...(has('vendors')   ? [{ id: 'Vendors',       label: 'People you’re hiring' }] : []),
+    ...(has('documents') ? [{ id: 'Documents',     label: 'Files' }] : []),
+    ...((has('commClient') || has('messages')) ? [{ id: 'Communication', label: 'Messages' }] : []),
+  ];
+  const NAV = [
+    { id: 'Command',            label: 'Your event', icon: 'zap' },
+    { id: 'Planning',           label: 'Plan',       icon: 'check' },
+    { id: 'Event Day Schedule', label: 'The Day',    icon: 'clipboard' },
+    { id: 'Guests',             label: 'Guests',     icon: 'users' },
+    { id: 'Budget',             label: 'Budget',     icon: 'dollar' },
+  ];
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, paddingBottom: 76 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
+        <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.muted }}>←</button>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+      </div>
+
+      <div>
+        {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
+        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
+        {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} /><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></>}
+        {tab === 'Planning' && <>
+          <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
+          <div className="hp-recede"><CapacityPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
+          <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
+        </>}
+        {tab === 'Event Day Schedule' && <>
+          <LegacyTabHeader label="The day" hint="Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day." onBack={() => go('Command')} />
+          <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} />
+        </>}
+        {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
+        {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
+        {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
+      </div>
+
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }}>
+        {NAV.map(n => {
+          const active = tab === n.id;
+          return (
+            <button key={n.id} onClick={() => go(n.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 2px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: active ? C.accent : C.muted }}>
+              <Icon name={n.icon} size={20} />
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 600 }}>{n.label}</span>
+            </button>
+          );
+        })}
+        <button onClick={() => setMoreOpen(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 2px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: moreItems.some(m => m.id === tab) ? C.accent : C.muted }}>
+          <Icon name="ellipsis" size={20} />
+          <span style={{ fontSize: 10, fontWeight: 600 }}>More</span>
+        </button>
+      </div>
+
+      {moreOpen && (<>
+        <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 60 }} />
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '18px 18px 0 0', zIndex: 61, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <SheetGrip isMobile />
+          <div style={{ padding: '4px 12px 18px' }}>
+            {moreItems.map(m => (
+              <button key={m.id} onClick={() => go(m.id)} style={{ display: 'flex', width: '100%', textAlign: 'left', alignItems: 'center', justifyContent: 'space-between', background: tab === m.id ? (C.surface2 || C.bg) : 'transparent', border: 'none', borderRadius: 10, padding: '13px 14px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: C.text }}>
+                {m.label}<span style={{ color: C.muted }}>›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {decPrompt && <RationaleModal prompt={decPrompt} onSave={saveDecision} onSkip={() => setDecPrompt(null)} />}
+    </div>
+  );
+}
+
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank, team = [], setTeam }) {
   const C      = useT();
   const s      = makeS(C);
@@ -36721,6 +36850,32 @@ export default function App() {
   }
 
   if (activeEvent) {
+    // Host shell (pi.shell, default OFF) — a host event renders the dedicated
+    // HostEventShell instead of the planner EventPlanner. Flag off ⇒ unchanged path.
+    if (hostShellOn() && hostNavActive(activeEvent)) {
+      const saveVendorToBank = (snap) => {
+        const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
+        const newKey = k(snap);
+        if (!newKey || newKey === '|') return;
+        if (readVendorBank().some(v => k(v) === newKey)) return;
+        saveVendor({ id: snap.id || `pv-${Date.now()}`, name: snap.name || '', category: snap.category || '', contact: snap.email || snap.contact_name || '', phone: snap.phone || '', website: '', notes: '', rehireCount: 0, addedAt: new Date().toISOString() });
+      };
+      return gated(
+        <HostEventShell
+          event={activeEvent}
+          setEvent={setEvent}
+          client={activeClient}
+          setClient={setClient}
+          allEvents={events}
+          initialNav={initialNav}
+          profile={profile}
+          onBack={() => { setActiveId(null); setInitialNav(null); }}
+          backLabel={activeClient ? `← ${activeClient.name}` : '← Home'}
+          onSaveVendorToBank={saveVendorToBank}
+          onOpenConnections={() => setShowProfile(true)}
+        />
+      );
+    }
     return gated(
       <EventPlanner
         event={activeEvent}

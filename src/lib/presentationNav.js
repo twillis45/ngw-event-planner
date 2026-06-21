@@ -35,6 +35,27 @@ export function hostNavActive(event) {
   return navOn() && audiencePersona(event) === 'host';
 }
 
+// pi.shell (default OFF) — routes a host event to the dedicated HostEventShell (the
+// host L3 over the shared core) instead of the planner EventPlanner with runtime
+// gating. See docs/product-os/HOST_SHELL_DECISION.md. Enable: ?shell=1 / localStorage
+// 'ngw-pi-shell'='1' / REACT_APP_PI_SHELL='true'. OFF ⇒ the existing EventPlanner path,
+// byte-identical to today.
+export function hostShellOn() {
+  try {
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]shell=1\b/.test(q)) return true;
+      if (/[?&]shell=0\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-shell');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
+  } catch (e) { /* storage blocked */ }
+  return (typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_SHELL === 'true');
+}
+
 // Always-shown host essentials (route keys). Decisions/Client Intake/Crew/Seating/
 // Calendar are HIDDEN in host mode (still reachable by route/deep-link).
 // UX-SAAS: "Event Details" (a venue/date FORM) dropped from the primary nav — a host
