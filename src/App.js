@@ -25743,9 +25743,15 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <div style={{ ...s.card, padding: '14px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>RSVP Collection Link</div>
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 3, wordBreak: 'break-all' }}>{rsvpUrl || '—'}</div>
-                <div style={{ fontSize: 11, color: C.accent2, marginTop: 2 }}>Responses feed directly into this list</div>
+                {/* UX-SAAS — a host sees "your invite link," not an "RSVP Collection
+                    Link" with a raw URL and "responses feed into this list." */}
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{guestsIsHost ? 'Your invite link' : 'RSVP Collection Link'}</div>
+                {guestsIsHost ? (
+                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it and guests reply right here — your list updates on its own.</div>
+                ) : (<>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3, wordBreak: 'break-all' }}>{rsvpUrl || '—'}</div>
+                  <div style={{ fontSize: 11, color: C.accent2, marginTop: 2 }}>Responses feed directly into this list</div>
+                </>)}
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button style={s.btn('teal')} onClick={() => setShowRsvp(true)}>Preview →</button>
@@ -27942,7 +27948,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
 
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={s.cardTitle}>Event Day Schedule</div>
+          <div style={s.cardTitle}>{isHost ? 'Your run of the day' : 'Event Day Schedule'}</div>
           {isMobileRos ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
@@ -28067,10 +28073,13 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                         <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: C.muted, flexShrink: 0 }}>{fmtTime12(entry.time)}{entry.endTime ? `–${fmtTime12(entry.endTime)}` : ''}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={s.pill(typeColor)}>{entry.type}</span>
+                        {/* UX-SAAS — a host doesn't get "event/prep/vendor" ops tags, and
+                            "Host" on every row (they're the host) is noise. Show only a
+                            real helper's name. Planner keeps the full taxonomy. */}
+                        {!isHost && <span style={s.pill(typeColor)}>{entry.type}</span>}
                         {entry.aiDraft && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
                         {entry.location && <span style={{ fontSize: 11, color: C.muted }}>{entry.location}</span>}
-                        {entry.owner    && <span style={{ fontSize: 11, color: C.muted }}>{entry.owner}</span>}
+                        {entry.owner && !(isHost && /^(host|you)$/i.test(String(entry.owner).trim())) && <span style={{ fontSize: 11, color: C.muted }}>{entry.owner}</span>}
                         {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: 11, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
                         {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: 11, color: C.muted }}>⚠ Unconfirmed</span>}
                       </div>
@@ -34820,7 +34829,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <LegacyTabHeader
             label={hostNavActive(event) ? 'The day' : 'Event Day Schedule'}
             hint={hostNavActive(event)
-              ? 'A calm look at how your day flows. The minute-by-minute cues come alive as the day gets close — for now, just add any moments that matter to you.'
+              ? 'Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day.'
               : "The event-day schedule. What happens, when, and who's responsible."}
             onBack={() => handleTabChange('Command')} />
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
