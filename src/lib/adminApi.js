@@ -68,4 +68,9 @@ export const adminApi = {
   // ANALYTICS-1 — Executive overview (future endpoint; may 404 today — callers must
   // degrade gracefully and fall back to activation()/triage()).
   overview: ()            => req('GET', '/api/admin/metrics/overview'),
+  // ANALYTICS-1 — PostHog HogQL read proxy. Returns {configured:false} (200) until the
+  // backend has POSTHOG_QUERY_API_KEY/PROJECT_ID set + deployed; callers fall back to
+  // the PostHog link-out in that case.
+  posthogFunnel:    (days = 30)        => req('GET', `/api/admin/metrics/posthog/funnel?days=${days}`),
+  posthogBreakdown: (prop, days = 30)  => req('GET', `/api/admin/metrics/posthog/breakdown?prop=${encodeURIComponent(prop)}&days=${days}`),
 };

@@ -988,6 +988,103 @@ function PostHogLinkPanel({ title, body }) {
   );
 }
 
+// Funnel / Friction via the PostHog HogQL proxy. Tries the server proxy; if it isn't
+// configured (key absent) or errors, falls back to the honest PostHogLinkPanel.
+function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
+  const [data, setData] = useState(null);
+  const [breakdowns, setBreakdowns] = useState(null);
+  const [state, setState] = useState('loading');  // loading | native | fallback
+
+  const load = useCallback(async () => {
+    setState('loading');
+    try {
+      const f = await adminApi.posthogFunnel(30);
+      if (!f || f.configured === false || !Array.isArray(f.funnel)) { setState('fallback'); return; }
+      setData(f);
+      if (mode === 'funnel') {
+        const [voice, market, host] = await Promise.all([
+          adminApi.posthogBreakdown('voice', 30).catch(() => null),
+          adminApi.posthogBreakdown('market', 30).catch(() => null),
+          adminApi.posthogBreakdown('is_host', 30).catch(() => null),
+        ]);
+        setBreakdowns({ voice, market, host });
+      }
+      setState('native');
+    } catch { setState('fallback'); }
+  }, [mode]);
+  useEffect(() => { load(); }, [load]);
+
+  if (state === 'loading') return <div style={{ fontSize: 13, color: D.faint }}>Loading from PostHog…</div>;
+  if (state === 'fallback') {
+    return mode === 'friction'
+      ? <PostHogLinkPanel title="Friction" body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention." />
+      : <PostHogLinkPanel title="Funnel" body="Sign-up → first event → qualified → completed → second event. Each step is a server-side PostHog event; the conversion funnel is built and filtered in PostHog." />;
+  }
+
+  const funnel = data.funnel || [];
+  const top = funnel[0]?.count || 0;
+  const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : 0);
+  const bdRows = (b) => (b && b.configured && Array.isArray(b.rows)) ? b.rows : [];
+
+  if (mode === 'friction') {
+    return (
+      <div>
+        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Friction — where they drop (PostHog · 30d)</div>
+        <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
+        {funnel.slice(1).map((s, i) => {
+          const prev = funnel[i];
+          const conv = pct(s.count, prev.count);
+          const drop = 100 - conv;
+          const worst = drop >= 40;
+          return (
+            <div key={s.key} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: D.text, marginBottom: 4 }}>
+                <span>{prev.label} → {s.label}</span>
+                <span style={{ color: worst ? D.warn : D.muted, fontWeight: 700, fontFamily: D.mono }}>{conv}% kept · {drop}% lost{worst ? ' ◀ biggest leak' : ''}</span>
+              </div>
+              <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${conv}%`, background: worst ? D.warn : D.accent, borderRadius: 4 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Real-event funnel (PostHog · 30d)</div>
+      <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
+      {top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No events in this window yet.</div>}
+      {funnel.map((s, i) => (
+        <div key={s.key} style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+            <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+            <span style={{ fontSize: 11, color: D.faint, width: 96, textAlign: 'right' }}>{pct(s.count, top)}% of top{i > 0 && funnel[i - 1].count > 0 ? ` · ${pct(s.count, funnel[i - 1].count)}→` : ''}</span>
+          </div>
+          <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${pct(s.count, top)}%`, background: D.accent, borderRadius: 4 }} />
+          </div>
+        </div>
+      ))}
+      {breakdowns && ['voice', 'market', 'host'].map(k => {
+        const rows = bdRows(breakdowns[k]);
+        if (!rows.length) return null;
+        const label = k === 'host' ? 'Host vs planner' : k === 'voice' ? 'By occasion' : 'By market';
+        const map = {}; rows.forEach(r => { map[r.value] = r.count; });
+        return (
+          <div key={k} style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{label}</div>
+            <MiniBars map={map} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PlaybookPanel({ book }) {
   const c = playbookCoverage(book);
   if (c.total === 0) return (<div><BookBanner /><EmptyBook /></div>);
@@ -1100,18 +1197,8 @@ function AnalyticsSuite() {
       </div>
 
       {sub === 'Executive' && <ExecutivePanel />}
-      {sub === 'Funnel' && (
-        <PostHogLinkPanel
-          title="Funnel"
-          body="Sign-up → first event → qualified → completed → second event. Each step is a server-side PostHog event; the conversion funnel is built and filtered in PostHog."
-        />
-      )}
-      {sub === 'Friction' && (
-        <PostHogLinkPanel
-          title="Friction"
-          body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention."
-        />
-      )}
+      {sub === 'Funnel' && <PostHogPanel mode="funnel" />}
+      {sub === 'Friction' && <PostHogPanel mode="friction" />}
       {sub === 'Playbook' && <PlaybookPanel book={book} />}
       {sub === 'Memory' && <MemoryPanel book={book} />}
       {sub === 'Cultural' && <CulturalPanel book={book} />}

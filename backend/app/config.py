@@ -58,3 +58,15 @@ ALLOW_DEV_TOKEN   = os.environ.get("ALLOW_DEV_TOKEN", "").lower() == "true"
 # Never expose either value to the browser.
 STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
+
+# ── PostHog Query API (read-only analytics proxy) — ANALYTICS-1 ─────────────────
+# Server-side HogQL proxy so the admin console can render the behavioral funnel/
+# friction natively instead of linking out. The client SDK is write-only; this is the
+# ONLY read path. All values are backend-only — never shipped to the browser.
+# POSTHOG_QUERY_API_KEY: PostHog → Settings → Personal API keys → a key scoped to
+#   "Query Read" (phx_...). NOT the phc_ project write key the frontend uses.
+# POSTHOG_PROJECT_ID:    PostHog → Settings → Project → Project ID (a number).
+# POSTHOG_QUERY_HOST:    https://us.posthog.com (default) or https://eu.posthog.com.
+POSTHOG_QUERY_API_KEY = os.environ.get("POSTHOG_QUERY_API_KEY")
+POSTHOG_PROJECT_ID    = os.environ.get("POSTHOG_PROJECT_ID")
+POSTHOG_QUERY_HOST    = os.environ.get("POSTHOG_QUERY_HOST", "https://us.posthog.com")

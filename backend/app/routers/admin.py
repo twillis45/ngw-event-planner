@@ -12,10 +12,12 @@ import json as _json
 import logging
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from ..auth import require_admin
+from ..config import POSTHOG_QUERY_API_KEY, POSTHOG_PROJECT_ID, POSTHOG_QUERY_HOST
 from ..db import get_pool
 
 log = logging.getLogger("ngw.admin")
@@ -711,3 +713,103 @@ async def metrics_activation(
         "funnel": funnel,
         "new_signups": {"d7": new_7d, "d30": new_30d},
     }
+
+
+# ─── ANALYTICS-1: PostHog HogQL read proxy ─────────────────────────────────────
+# The client PostHog SDK is WRITE-ONLY; this is the only server read path. It lets the
+# admin Funnel/Friction panels render the behavioral funnel natively instead of linking
+# out. Credentials are backend-only (config.py). When unconfigured, every endpoint
+# returns {"configured": False} with HTTP 200 so the console degrades to the PostHog
+# link-out — prod is NEVER broken by an absent key.
+
+_PH_FUNNEL_STEPS = [
+    ("event_created",        "Event created"),
+    ("event_qualified",      "Qualified — real event"),
+    ("assemble_viewed",      "Saw the plan assemble"),
+    ("second_event_created", "Started a 2nd event"),
+]
+_PH_BREAKDOWN_PROPS = {"voice", "market", "is_host", "is_sombre", "is_at_home",
+                       "playbook_matched", "event_type"}
+
+
+def _posthog_ready() -> bool:
+    return bool(POSTHOG_QUERY_API_KEY and POSTHOG_PROJECT_ID)
+
+
+async def _run_hogql(query: str):
+    """POST a HogQL query to the PostHog Query API; return its 'results' list."""
+    url = f"{POSTHOG_QUERY_HOST.rstrip('/')}/api/projects/{POSTHOG_PROJECT_ID}/query/"
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {POSTHOG_QUERY_API_KEY}",
+                     "Content-Type": "application/json"},
+            json={"query": {"kind": "HogQLQuery", "query": query}},
+        )
+    r.raise_for_status()
+    return (r.json() or {}).get("results", []) or []
+
+
+@router.get("/metrics/posthog/status")
+async def posthog_status(
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    await require_admin(authorization, x_planner_token)
+    return {"configured": _posthog_ready(),
+            "host": POSTHOG_QUERY_HOST if _posthog_ready() else None}
+
+
+@router.get("/metrics/posthog/funnel")
+async def posthog_funnel(
+    days: int = 30,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Real-event behavioral funnel (distinct persons per step) from PostHog."""
+    actor = await require_admin(authorization, x_planner_token)
+    if not _posthog_ready():
+        return {"configured": False, "coverage": _COVERAGE}
+    days = max(1, min(int(days or 30), 365))
+    await audit(actor, "view_posthog_funnel", metadata={"days": days})
+    events = "', '".join(s[0] for s in _PH_FUNNEL_STEPS)
+    q = (f"SELECT event, count(DISTINCT person_id) AS people FROM events "
+         f"WHERE event IN ('{events}') AND timestamp > now() - INTERVAL {days} DAY "
+         f"GROUP BY event")
+    try:
+        rows = await _run_hogql(q)
+    except httpx.HTTPError as e:
+        log.warning("posthog funnel query failed: %s", e)
+        raise HTTPException(status_code=502, detail="PostHog query failed")
+    counts = {str(r[0]): int(r[1]) for r in rows if r and len(r) >= 2}
+    funnel = [{"key": k, "label": lbl, "count": counts.get(k, 0)} for k, lbl in _PH_FUNNEL_STEPS]
+    return {"configured": True, "days": days, "funnel": funnel}
+
+
+@router.get("/metrics/posthog/breakdown")
+async def posthog_breakdown(
+    prop: str = "voice",
+    days: int = 30,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Breakdown of qualified events by a whitelisted content prop (voice/market/…)."""
+    actor = await require_admin(authorization, x_planner_token)
+    if not _posthog_ready():
+        return {"configured": False, "coverage": _COVERAGE}
+    if prop not in _PH_BREAKDOWN_PROPS:
+        raise HTTPException(status_code=400,
+                            detail=f"Unknown prop. Allowed: {', '.join(sorted(_PH_BREAKDOWN_PROPS))}")
+    days = max(1, min(int(days or 30), 365))
+    await audit(actor, "view_posthog_breakdown", metadata={"prop": prop, "days": days})
+    q = (f"SELECT properties.{prop} AS value, count(DISTINCT person_id) AS people FROM events "
+         f"WHERE event = 'event_qualified' AND timestamp > now() - INTERVAL {days} DAY "
+         f"GROUP BY value ORDER BY people DESC LIMIT 50")
+    try:
+        rows = await _run_hogql(q)
+    except httpx.HTTPError as e:
+        log.warning("posthog breakdown query failed: %s", e)
+        raise HTTPException(status_code=502, detail="PostHog query failed")
+    out = [{"value": (str(r[0]) if r[0] is not None else "(none)"), "count": int(r[1])}
+           for r in rows if r and len(r) >= 2]
+    return {"configured": True, "prop": prop, "days": days, "rows": out}
