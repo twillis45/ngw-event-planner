@@ -19830,6 +19830,8 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
     { label: 'Venue',    tab: 'Event Details', state: (ev.venue || '').trim() ? 'done' : 'todo' },
   ];
   const stateMeta = { done: { t: '✓', c: C.success }, progress: { t: 'In progress', c: C.warn || C.accent }, todo: { t: 'To do', c: C.muted } };
+  // Caught up — every planning area is done. Drives the celebratory "exhale" reward.
+  const allProgDone = prog.length > 0 && prog.every(p => p.state === 'done');
 
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 14 };
   const eyebrow = { fontSize: 9, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 };
@@ -19893,8 +19895,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* UX-9 · one-time create receipt (relocated from the success modal) */}
         {!isPost && !isDayOf && <HostWelcomeCard ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
 
+        {/* "Caught up" = every progress area is done. The next-action engine always
+            suggests SOME optional polish, so we key the exhale off real completion, not
+            off na being empty — and when caught up we show the exhale INSTEAD of a
+            breathing next-step. */}
         {/* 2 · Next Step */}
-        {!isPost && !isDayOf && na && (
+        {!isPost && !isDayOf && !allProgDone && na && (
           // Attention System: the ONE live thing — it BREATHES (ceBreathe ring) and runs
           // bigger, the way the create panel's active question dominates. Everything below
           // recedes (.hp-recede) until you act, then the next thing lights up.
@@ -19916,6 +19922,19 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                 }}
                 style={{ marginTop: 12, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
             )}
+          </div>
+        )}
+
+        {/* The exhale — when nothing needs the host, the screen rewards being caught up
+            instead of going blank. The opposite of the breathing next-step: calm, warm,
+            celebratory. (Attention System: the empty screen IS the reward.) */}
+        {!isPost && !isDayOf && allProgDone && (
+          <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: 'ceRise 480ms cubic-bezier(.2,.7,.2,1) both' }}>
+            <div aria-hidden style={{ fontSize: 30, lineHeight: 1, marginBottom: 8 }}>🎉</div>
+            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
+              Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
+            </div>
           </div>
         )}
 
@@ -32711,9 +32730,11 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
 
   return (
     <>
-      <LegacyTabHeader label="Planning" hint="What's left to do and by when. Tap a task to open it." onBack={onBack} />
-      {/* Sprint 61.F — NO GUESSWORK rail explaining what the Planning tab is. */}
-      {(() => {
+      <LegacyTabHeader label={hostNavActive(event) ? 'Your plan' : 'Planning'} hint="What's left to do and by when. Tap a task to open it." onBack={onBack} />
+      {/* Sprint 61.F — NO GUESSWORK rail explaining what the Planning tab is.
+          UX-SAAS: a host doesn't need a "tracks owner/deadline/phase across List,
+          Timeline, and Checklist" database explainer. Planner only. */}
+      {!hostNavActive(event) && (() => {
         const steelTopPT = C.accentTopGrad || C.accent;
         return (
           <div style={{
@@ -32740,11 +32761,25 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           </div>
         );
       })()}
-      <div id="planning-subtabs" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 14px 10px' : '0 28px 12px', flexWrap: 'wrap' }}>
-        {tabPill('list',      'List',      'Edit planning tasks as a list')}
-        {tabPill('timeline',  'Timeline',  'Visual timeline by phase')}
-        {tabPill('checklist', 'Checklist', 'Quick checklist view')}
-      </div>
+      {/* UX-SAAS: a host gets ONE calm view of what's left — not three software view-
+          modes (List / Timeline / Checklist) to toggle between. The planner keeps them. */}
+      {!hostNavActive(event) && (
+        <div id="planning-subtabs" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 14px 10px' : '0 28px 12px', flexWrap: 'wrap' }}>
+          {tabPill('list',      'List',      'Edit planning tasks as a list')}
+          {tabPill('timeline',  'Timeline',  'Visual timeline by phase')}
+          {tabPill('checklist', 'Checklist', 'Quick checklist view')}
+        </div>
+      )}
+      {hostNavActive(event) ? (
+        <ChecklistGenerator
+          event={event}
+          isMobile={isMobile}
+          isHost={true}
+          onBack={onBack}
+          onToggleTask={onToggleTask}
+          onOpenTask={(t) => setStepTaskId(t.id)}
+        />
+      ) : (<>
       {view === 'list' && (
         <Timeline
           timeline={event.timeline}
@@ -32774,6 +32809,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           onOpenTask={(t) => setStepTaskId(t.id)}
         />
       )}
+      </>)}
       {stepTask && <PlanStepModal task={stepTask} onClose={() => setStepTaskId(null)} onPatch={(patch) => patchTask(stepTask.id, patch)} />}
     </>
   );
