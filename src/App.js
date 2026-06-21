@@ -27468,12 +27468,12 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                               {pDate ? (
                                 <>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>
-                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
+                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, marginTop: 1, maxWidth: 96, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{focusLbl}</div>}
                                 </>
                               ) : (
                                 <>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{abbr}</div>
-                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, whiteSpace: 'nowrap', marginTop: 1, maxWidth: 76, overflow: 'hidden', textOverflow: 'ellipsis' }}>{focusLbl}</div>}
+                                  {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, marginTop: 1, maxWidth: 96, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{focusLbl}</div>}
                                 </>
                               )}
                               <div style={{ fontSize: 8, color: allD ? C.success : pOver ? C.danger : C.border, marginTop: 1 }}>{pDone}/{tasks.length}</div>
