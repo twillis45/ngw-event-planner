@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -97,6 +97,24 @@ describe('draftVendorOutreach', () => {
     const { body } = draftVendorOutreach({ type: 'Wedding', date: '2026-09-12' }, null, {});
     expect(body).toContain('Hi there,');
     expect(body).toContain('wedding');
+  });
+});
+
+describe('draftRsvpChase', () => {
+  test('gentle nudge with the date + RSVP link', () => {
+    const url = 'https://x/?rsvp=maya7';
+    const { subject, body } = draftRsvpChase(maya, profile, { rsvpUrl: url });
+    expect(subject).toMatch(/nudge/i);
+    expect(body).toMatch(/nudge|let us know/i);
+    expect(body).toContain('Tuesday, July 7');
+    expect(body).toContain(url);
+    expect(body).toContain('Todd');
+  });
+  test('somber events get a respectful note, not "💛 friendly nudge"', () => {
+    const { body, subject } = draftRsvpChase({ type: 'Memorial', honoree: 'Joe', date: '2026-07-07' }, profile);
+    expect(body).not.toMatch(/💛|friendly nudge/i);
+    expect(body).toMatch(/gentle note|mean a great deal/i);
+    expect(subject).not.toMatch(/nudge/i);
   });
 });
 

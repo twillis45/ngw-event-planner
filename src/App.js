@@ -37,7 +37,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, shareOrCopy } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -25215,13 +25215,14 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGuestMode = () => {}, focusCount = false }) {
+function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, focusCount = false }) {
   const C      = useT();
   const s      = makeS(C);
   const rsvpCLR = RSVP_CLR(C);
   const bp = useContext(BpCtx);
   // UX-SAAS — a host should hear "18 coming, 6 yet to reply," not read a CRM KPI grid.
   const guestsIsHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
+  const [guestDraftSheet, setGuestDraftSheet] = useState(null);  // do-it-for-me hand-off (RSVP chase)
   // Guest-list-optional: casual events (cookout, watch party) just want a headcount,
   // not a roster. Show a calm number-only view until they choose to track RSVPs.
   // Default to the roster when a list already exists (unless the host committed to
@@ -25589,6 +25590,25 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
       </div>
       )}
 
+      {/* "Do it for me" — the RSVP chase. The single highest-leverage nudge: replies grow
+          the headcount that sizes everything. The app WROTE the reminder; the host sends
+          it in one tap. Host-only, shown only while people still owe a reply. */}
+      {guestsIsHost && awaiting > 0 && (() => {
+        const rsvpCode = event?.rsvpCode || event?.id || '';
+        const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+        return (
+          <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite' }); }}
+            style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, marginBottom: 16, display: 'block' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Nudge the {awaiting} who haven’t replied</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A friendly reminder — already written, with your RSVP link.</div>
+          </button>
+        );
+      })()}
+
       {(() => {
         const rsvpCode = event?.rsvpCode || event?.id || '';
         const rsvpUrl  = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
@@ -25784,7 +25804,7 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
 
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={s.cardTitle}>Guest List ({visibleGuests.length}{visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})</div>
+          <div style={s.cardTitle}>{guestsIsHost ? 'Your guests' : `Guest List (${visibleGuests.length}${visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})`}</div>
           {bp === 'mobile' ? (
             /* Mobile: primary CTA + overflow */
             <div style={{ display: 'flex', gap: 8 }}>
@@ -25825,14 +25845,16 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, marginBottom: bp === 'mobile' ? 8 : 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input style={{ ...s.input, flex: 1, minWidth: 130, maxWidth: bp === 'mobile' ? 'none' : 220 }} value={gSearch} onChange={e => setGSearch(e.target.value)} placeholder="Search name, group, meal…" />
-          {['all', 'Yes', 'No', 'Maybe'].map(f => (
+          <input style={{ ...s.input, flex: 1, minWidth: 130, maxWidth: bp === 'mobile' ? 'none' : 220 }} value={gSearch} onChange={e => setGSearch(e.target.value)} placeholder={guestsIsHost ? 'Find someone…' : 'Search name, group, meal…'} />
+          {/* UX-SAAS — a host filters by tapping the spoken summary ("3 yet to reply"),
+              not a row of database filter pills + a sort dropdown. Planner keeps the toolbar. */}
+          {!guestsIsHost && ['all', 'Yes', 'No', 'Maybe'].map(f => (
             <button key={f} onClick={() => setGFilter(f)}
               style={{ ...s.btn(gFilter === f ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 10px' }}>
               {f === 'all' ? 'All' : f === 'Yes' ? 'Confirmed' : f === 'No' ? 'Declined' : 'Awaiting'}
             </button>
           ))}
-          {bp !== 'mobile' && (
+          {!guestsIsHost && bp !== 'mobile' && (
             <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }} value={gSort} onChange={e => setGSort(e.target.value)}>
               <option value="name">Sort: Name</option>
               <option value="group">Sort: Group</option>
@@ -25842,7 +25864,7 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
             </select>
           )}
         </div>
-        {bp === 'mobile' && (
+        {!guestsIsHost && bp === 'mobile' && (
           <select style={{ ...s.input, fontSize: 12, padding: '6px 10px', marginBottom: 10 }} value={gSort} onChange={e => setGSort(e.target.value)}>
             <option value="name">Sort: Name</option>
             <option value="group">Sort: Group</option>
@@ -25864,7 +25886,10 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
             />
           </div>
         )}
-        {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet') ? (
+        {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet' || guestsIsHost) ? (
+          /* UX-SAAS — faces, not a spreadsheet. A host sees people (an initial avatar +
+             name + their answer), not Group/Meal/Table database columns. Dietary needs
+             + a plus-one still show (they matter); the planner keeps the full table. */
           <div>
             {visibleGuests.map(g => (
               <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={g.id} onClick={() => setModalId(g.id)}
@@ -25874,12 +25899,17 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
                 onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                 onMouseLeave={e => { e.currentTarget.style.background = ''; }}
               >
+                {guestsIsHost && (
+                  <span aria-hidden style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: C.surface2 || C.bg, border: `1px solid ${C.border}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14.5, fontWeight: 700, color: C.text, marginRight: 12 }}>
+                    {((g.name || '').trim().charAt(0) || '?').toUpperCase()}
+                  </span>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {g.group && <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>}
-                    {g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
-                    {g.table && <span style={{ fontSize: 11, color: C.muted }}>Table {g.table}</span>}
+                    {!guestsIsHost && g.group && <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>}
+                    {!guestsIsHost && g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
+                    {!guestsIsHost && g.table && <span style={{ fontSize: 11, color: C.muted }}>Table {g.table}</span>}
                     {g.needs && <span style={{ fontSize: 11, color: C.muted }}>⚠ {g.needs}</span>}
                     {g.plusOne && <span style={{ fontSize: 11, color: C.muted }}>+{g.plusOne}</span>}
                   </div>
@@ -25924,7 +25954,7 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
             </tbody>
           </table>
         ))}
-        {confirmed.length > 0 && (
+        {!guestsIsHost && confirmed.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
             {Object.entries(mealCounts).map(([meal, count]) => <span key={meal} style={s.pill(C.accent2)}>{meal}: {count}</span>)}
@@ -26175,6 +26205,10 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
           </div>
         );
       })()}
+      {guestDraftSheet && (
+        <DraftSheet title={guestDraftSheet.title} intro={guestDraftSheet.intro} draft={guestDraftSheet.draft} shareTitle={guestDraftSheet.shareTitle} kind={guestDraftSheet.kind}
+          onClose={() => setGuestDraftSheet(null)} C={C} isMobile={bp === 'mobile'} />
+      )}
     </div>
   );
 }
@@ -34548,7 +34582,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
       {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense

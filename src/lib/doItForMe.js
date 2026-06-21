@@ -178,6 +178,33 @@ export function draftThankYou(event, profile) {
   return { subject: `Thank you — ${thing}`, body: lines.join('\n').trim() };
 }
 
+// RSVP chase — a gentle nudge to the people who haven't replied yet. The single
+// highest-leverage do-it-for-me: replies grow the headcount that sizes everything.
+// opts.rsvpUrl points them back to the hosted page (so the count comes back).
+export function draftRsvpChase(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const v = inviteVoice(event);
+  const date = fmtLongDate(event.date);
+  const time = timePhrase(event);
+  const host = hostName(profile);
+  const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
+  const honoree = (event.honoree ? String(event.honoree) : '').trim();
+  const type = (event.type ? String(event.type) : 'get-together').toLowerCase();
+  const thing = honoree ? `${honoree}’s ${type}` : `our ${type}`;
+  const whenBit = date ? ` on ${date}${time ? ' ' + time : ''}` : '';
+  const lines = [];
+  if (v.sombre) {
+    lines.push(`Hi — just a gentle note: we’re gathering for ${thing}${whenBit}.`);
+    lines.push('If you’re able to join us it would mean a great deal — please let us know when you can.');
+  } else {
+    lines.push(`Hi! Just a friendly nudge 💛 — we’d love to have you at ${thing}${whenBit}.`);
+    lines.push('Could you let us know if you can make it when you get a sec?');
+  }
+  if (rsvpUrl) { lines.push('', 'Tap here to let us know:', rsvpUrl); }
+  if (host) { lines.push('', `Thanks!\n${host}`); }
+  return { subject: v.sombre ? `A note about ${thing}` : `Quick RSVP nudge — ${thing}`, body: lines.join('\n').trim() };
+}
+
 // Recap keepsake — a warm, shareable few lines the host WANTS to send round after the
 // event ("Maya's Graduation — thank you"). Grounded in the event + its heart; tone
 // follows the occasion (somber events get remembrance, not "it was everything!").
