@@ -13636,6 +13636,11 @@ function eventGeoQuery(event) {
   if (addr) return addr;
   const g = event.market && METRO_GEO[event.market];
   if (g) return `${g.city}, ${g.state}, US`;
+  // METRO_GEO covers fewer metros than the create-flow dropdown (METRO_MARKETS) — so a
+  // host who picked e.g. Miami/SF/Boston set event.market but METRO_GEO missed it. Resolve
+  // the picked market through the CANONICAL dropdown list so every choice yields a city.
+  const mk = event.market && METRO_MARKETS.find((m) => m.id === event.market);
+  if (mk && mk.label) return mk.label.split(/[/(]/)[0].trim(); // "San Francisco / Bay Area" → "San Francisco"
   if (city) return st ? `${city}, ${st}` : city;
   const v = String(event.venue || '').trim();
   if (v && !/^(host'?s home|our (place|home|backyard)|home)$/i.test(v)) return v;
