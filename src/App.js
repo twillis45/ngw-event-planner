@@ -18892,6 +18892,7 @@ function seasonBriefText(event) {
 // venue, scale, season/weather, and the heart. Composes existing grounded readers;
 // invents nothing.
 function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
+  const [briefOpen, setBriefOpen] = useState(false);
   const about = useMemo(() => { try { return playbookAbout(ev.type); } catch { return null; } }, [ev.type]);
   // B1 — same regional price factor as the home card / Plan / Money, so "THE SCALE"
   // food $ matches every other surface for the same event.
@@ -18915,20 +18916,32 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
   // in the … pass") that must never reach a host.
   if (ev.must_have_moment && isMeaningfulMustHave(ev.must_have_moment)) points.push({ k: 'heart', icon: '❤️', label: 'The heart of it', text: ev.must_have_moment });
   if (!points.length) return null;
+  // Host audit: this was a paragraph WALL the host skimmed past. Collapse it behind a
+  // one-line teaser so it orients on tap, never dominates. Reachable, not a dump.
+  const teaser = ((points[0] && points[0].text) || '').replace(/\s+/g, ' ').slice(0, 96).trim();
   return (
     <div style={cardStyle}>
-      <div style={{ ...eyebrowStyle }}>What you're getting into</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-        {points.map((p) => (
-          <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
-            <span aria-hidden style={{ flexShrink: 0, fontSize: 15, marginTop: 1 }}>{p.icon}</span>
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
-              <span style={{ display: 'block', fontSize: 13, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
-            </span>
-          </div>
-        ))}
-      </div>
+      <button type="button" onClick={() => setBriefOpen((o) => !o)}
+        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ ...eyebrowStyle, marginBottom: 0 }}>What you're getting into</span>
+          {!briefOpen && <span style={{ display: 'block', fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{teaser}…</span>}
+        </span>
+        <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 15, marginTop: 1, transform: briefOpen ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
+      </button>
+      {briefOpen && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+          {points.map((p) => (
+            <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+              <span aria-hidden style={{ flexShrink: 0, fontSize: 15, marginTop: 1 }}>{p.icon}</span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
+                <span style={{ display: 'block', fontSize: 13, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -33756,8 +33769,8 @@ function eventProgressStatus(event) {
   //   • after the event  → recap language ("Wrapped"); never a planning verdict.
   //   • on the event day → execution language ("Today"); never "Behind".
   //   • before the day   → planning progress vs time left.
-  if (days !== null && days < 0)  return { pct, tier: 'done',  word: 'Wrapped', showPct: false };
-  if (days === 0)                 return { pct, tier: 'today', word: 'Today',   showPct: false };
+  if (days !== null && days < 0)  return { pct, tier: 'done',  word: 'Wrapped', showPct: false, barFull: true };
+  if (days === 0)                 return { pct, tier: 'today', word: 'Today',   showPct: false, barFull: true };
   let expected;
   if (days == null)      expected = 50;
   else if (days <= 3)    expected = 90;
@@ -33777,7 +33790,9 @@ function eventProgressStatus(event) {
   else if (pct >= expected - 22)        { tier = 'behind';    word = 'Keep going'; }
   else if (host)                        { tier = 'behind';    word = 'Keep going'; }
   else                                  { tier = 'risk';      word = 'Behind'; }
-  return { pct, tier, word, showPct: true };
+  // 'early' shows no number — a leading "0%" reads as a deficiency to a host who just
+  // started. The bar still reflects the real (near-empty) pct; only the LABEL drops it.
+  return { pct, tier, word, showPct: tier !== 'early', barFull: false };
 }
 
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank, team = [], setTeam }) {
@@ -34515,7 +34530,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             (Studio Matte confidence palette — never alarming amber/red). On every tab. */}
         {(() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
           <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 4, background: C.border }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: _s.showPct ? `${_s.pct}%` : '100%', background: `linear-gradient(90deg, ${_c}cc, ${_c})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, boxShadow: `0 0 10px ${_c}aa`, transition: 'width 600ms ease' }} />
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: _s.barFull ? '100%' : `${_s.pct}%`, background: `linear-gradient(90deg, ${_c}cc, ${_c})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, boxShadow: `0 0 10px ${_c}aa`, transition: 'width 600ms ease' }} />
           </div>
         ); })()}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -35241,6 +35256,8 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
 // into "what are you celebrating?"; planner → the studio dashboard.
 function WelcomeOnboarding({ onChoose }) {
   const C = useT();
+  const bp = useContext(BpCtx);
+  const isNarrow = bp === 'mobile' || bp === 'tablet';
   const choice = (title, sub, onClick, accent) => (
     <button type="button" onClick={onClick}
       style={{ display: 'block', width: '100%', textAlign: 'left', background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${accent}`, borderRadius: 14, padding: '18px 20px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12, transition: 'border-color 0.15s, background 0.15s' }}
@@ -35253,14 +35270,17 @@ function WelcomeOnboarding({ onChoose }) {
       <div style={{ fontSize: 13, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{sub}</div>
     </button>
   );
+  // On a tall phone, dead-centering left a big black void at the top that read as
+  // "still loading" (host audit). Anchor the content in the upper third on narrow
+  // screens; keep it centered on desktop where there's no void to worry about.
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'center', padding: isNarrow ? 'max(72px, 14vh) 20px 40px' : '40px 20px' }}>
       <div style={{ maxWidth: 540, width: '100%' }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Welcome to Event Boss</div>
         <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15, marginBottom: 8 }}>What are you planning?</div>
-        <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.5, marginBottom: 24 }}>This sets up the right workspace. You can change it anytime in settings.</div>
+        <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.5, marginBottom: 24 }}>We’ll set things up to match. You can change it anytime.</div>
         {choice('My own event', "A dinner, cookout, shower, birthday, wedding — I'm hosting it. I'll build the whole plan around it.", () => onChoose('host'), C.accent)}
-        {choice('Events for clients', "I'm a planner or pro coordinating events for other people — pipeline, vendors, and contracts.", () => onChoose('planner'), C.muted)}
+        {choice('Events for clients', "I'm a planner or pro coordinating events for other people — clients, vendors, and the details.", () => onChoose('planner'), C.muted)}
       </div>
     </div>
   );
