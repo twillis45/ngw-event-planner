@@ -38,6 +38,7 @@ import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
 import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy } from './lib/doItForMe';
+import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -6889,7 +6890,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
         />
       )}
       {draftSheet && (
-        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind}
+        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems}
           onClose={() => setDraftSheet(null)} C={C} isMobile={_vmMobile} />
       )}
     </>
@@ -8512,7 +8513,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         const shopAnchorStr = (event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ') || '').trim();
         const left = shopItems.filter((i) => !i.got).length;
         return (
-          <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
+          <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
@@ -19610,12 +19611,24 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 // inquiry / thank-you), lets the host tweak it into their own voice, then sends it in
 // one tap (native share sheet on mobile, clipboard everywhere else). The work is
 // already done; the host just sends.
-function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile }) {
+function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile, orderItems }) {
   const [text, setText] = useState((draft && draft.body) || '');
   const [status, setStatus] = useState(null);
   const aiKey = useAIKey();
   const [polishing, setPolishing] = useState(false);
   const [prePolish, setPrePolish] = useState(null);  // the text before AI polish, for one-tap undo
+  const [ordering, setOrdering] = useState(false);   // Instacart cart-build in flight
+  // Send-to-store for pickup/delivery (shopping list only). Hits the backend Instacart
+  // proxy; if a pre-filled cart comes back we open it, otherwise we fall back to the
+  // Instacart search link — never a broken promise.
+  const orderDelivery = async () => {
+    if (ordering) return;
+    setOrdering(true);
+    let url = INSTACART_FALLBACK;
+    try { const r = await instacartCart(shareTitle || 'Shopping list', orderItems || []); if (r && r.url) url = r.url; } catch (e) { /* fall back */ }
+    setOrdering(false);
+    try { window.open(url, '_blank', 'noopener'); } catch (e) {}
+  };
   // Close the invite loop: when the host actually puts the invite out into the world,
   // record it — this is the top of the growth funnel (host shares → guests RSVP back).
   const trackShared = (via) => { if (kind === 'invite') { try { track(EVENTS.INVITE_SHARED, { via }); } catch {} } };
@@ -19676,6 +19689,11 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
           <button onClick={send} style={{ flex: 1, fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
           <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
         </div>
+        {Array.isArray(orderItems) && orderItems.length > 0 && (
+          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: 13.5, fontWeight: 800, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
+            🛒 {ordering ? 'Building your cart…' : 'Get it delivered (Instacart) →'}
+          </button>
+        )}
         {statusLine && <div style={{ fontSize: 12, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
       </div>
     </div>
@@ -20044,7 +20062,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             const d = draftShoppingList(ev, profile, { items: shopItems, anchor: (ev.venueAddress || [ev.venueCity, ev.venueState].filter(Boolean).join(', ') || '').trim() });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
               title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
-              sheet: { title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' } });
+              sheet: { title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) } });
           }
           if (items.length === 0) return null;
           items.sort((a, b) => b.score - a.score);
@@ -20249,7 +20267,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
       );
     })()}
     {draftSheet && (
-      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind}
+      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems}
         onClose={() => setDraftSheet(null)} C={C} isMobile={isMobile} />
     )}
     </>
