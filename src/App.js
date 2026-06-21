@@ -25429,6 +25429,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
   // "locked at N" indicator. Unresolved + a list → the single confirm-count panel.
   const [showList, setShowList] = useState(() => guestCountResolved(event).resolved && guests.length > 0);
   const [hcDraft, setHcDraft] = useState(() => { const n = Number(event.guestCount) || Number(event.guestEstimate) || 0; return n ? String(n) : ''; });
+  const [lockedCount, setLockedCount] = useState(null); // confirmation: the number just locked
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
@@ -25632,7 +25633,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
   if (!showList) {
     const hasList = guests.length > 0;
     const accent = C.warn || C.accent;
-    const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); if (hasList) setShowList(true); } };
+    const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (hasList) setShowList(true); } };
     const card = { background: C.surface, border: `1px solid ${accent}55`, borderLeft: `3px solid ${accent}`, borderRadius: 14, padding: 24, maxWidth: 760, margin: '0 auto' };
     return (
       <div style={{ padding: '8px 0' }}>
@@ -25661,9 +25662,16 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: 24, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>+</button>
             </span>
             <span style={{ fontSize: 16, color: C.text }}>guests</span>
+            {(() => { const isLocked = lockedCount != null && Number(hcDraft || 0) === lockedCount; return (
             <button type="button" onClick={() => commit(hcDraft || yes || guests.length)}
-              style={{ fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Lock it</button>
+              style={{ fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
+            ); })()}
           </div>
+          {lockedCount != null && Number(hcDraft || 0) === lockedCount && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5 }}>
+              ✓ Locked — cooking, buying, and seating for {lockedCount}. It flows everywhere now; change it anytime above.
+            </div>
+          )}
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
             style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
             {hasList ? 'Open the full guest list →' : "Track who's coming with RSVPs instead →"}
@@ -33567,6 +33575,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           if (isUpcoming && !isHomeish && !event?.venueContact) gaps.push('No venue contact for day-of');
           if (isUpcoming && !isHomeish && !event?.loadInNotes) gaps.push('No load-in notes for vendors');
           if (event?.coiNeeded === 'required') gaps.push('COI required — collect from vendors');
+          // Honest, non-specific permit heads-up. Public or large outdoor gatherings
+          // commonly need a city/park permit — but the specific permit varies by city,
+          // so we only nudge them to check, never assert a form or requirement.
+          if (outdoors && (Number(event?.guestCount) >= 50 || Number(event?.guestEstimate) >= 50 || venueKind === 'outdoor')) gaps.push('Public or large outdoor events often need a city or park permit — check with your city');
           if (gaps.length === 0) return null;
           return (
             // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
@@ -33708,6 +33720,49 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
           </EDTRow>
         )}
+        {/* Sprint — "Find local help near you". HONEST: these are live maps
+            searches anchored to the host's own city, not a curated list. We
+            never invent a vendor name, address, or distance — every chip just
+            opens a real Google Maps results page for that category. */}
+        {detailsIsHost && (() => {
+          const vendorAnchor = (event.venueCity || event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ') || '').trim();
+          const categories = ['Caterer', 'Party rentals', 'Bakery', 'Photographer', 'Bartender', 'Cleaning service'];
+          return (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>Find local help near you</div>
+              {vendorAnchor ? (
+                <>
+                  <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
+                    Real options near {vendorAnchor} — opens maps, nothing we made up.
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {categories.map(cat => (
+                      <a
+                        key={cat}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cat + ' near ' + vendorAnchor)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          minHeight: 38, padding: '7px 12px',
+                          border: `1px solid ${C.border}`, borderRadius: 999,
+                          background: 'transparent', color: C.text,
+                          fontSize: 12.5, textDecoration: 'none', fontFamily: 'inherit',
+                        }}
+                      >
+                        {cat}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
+                  Add your city above to find local help.
+                </div>
+              )}
+            </div>
+          );
+        })()}
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
           <EDTField C={C} s={s} label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />

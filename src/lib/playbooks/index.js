@@ -109,7 +109,7 @@ function resolveQuantity(p, guests) {
 
 // "Main protein (e.g. ...)" → "Main protein"; "Ice" → "Ice".
 function shortItem(item) {
-  return String(item || '').split(/[(—-]/)[0].trim();
+  return String(item || '').split(/[(—–]| - /)[0].trim();
 }
 
 // "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; pluralized by qty.
