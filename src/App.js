@@ -8510,7 +8510,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
         const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
-        const shopAnchorStr = (event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ') || '').trim();
+        const shopAnchorStr = eventGeoQuery(event); // single source — same location weather/pricing use
         const left = shopItems.filter((i) => !i.got).length;
         return (
           <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
@@ -13621,13 +13621,31 @@ const METRO_GEO = {
 
 // Best "City, ST" string for an event, for weather geocoding: structured city/state
 // first, then the picked metro, then free-text venue. Empty when truly unknown.
+// Single source of truth for "where is this event" — every location-aware feature
+// (weather, store distances, pricing) resolves through here so they never disagree.
+// Checks every place a location can land: the structured address from the wizard /
+// "Where's it happening?" (venueCity/State/Address), the city/state, the picked metro,
+// a real venue string — then defaults to the host's remembered HOME city when it's an
+// at-home event with nothing explicit. Returns '' only when truly nothing is known.
 function eventGeoQuery(event) {
   if (!event) return '';
-  const st = String(event.state || '').trim().toUpperCase();
-  if (event.city && US_STATES.includes(st)) return `${event.city}, ${st}, US`;
+  const st = String(event.state || event.venueState || '').trim().toUpperCase();
+  const city = String(event.venueCity || event.city || '').trim();
+  if (city && US_STATES.includes(st)) return `${city}, ${st}, US`;
+  const addr = String(event.venueAddress || '').trim();
+  if (addr) return addr;
   const g = event.market && METRO_GEO[event.market];
   if (g) return `${g.city}, ${g.state}, US`;
-  return String(event.venue || event.city || '').trim();
+  if (city) return st ? `${city}, ${st}` : city;
+  const v = String(event.venue || '').trim();
+  if (v && !/^(host'?s home|our (place|home|backyard)|home)$/i.test(v)) return v;
+  // Host-home default — at-home with no explicit place → the host's remembered home city.
+  try {
+    const hc = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-city')) || '';
+    const hs = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-state')) || '';
+    if (hc.trim()) return hs.trim() ? `${hc.trim()}, ${hs.trim()}` : hc.trim();
+  } catch (e) { /* storage blocked */ }
+  return '';
 }
 
 const METRO_TIER_LABEL = {
@@ -20064,7 +20082,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
             const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
             const left = shopItems.filter((i) => !i.got).length;
-            const d = draftShoppingList(ev, profile, { items: shopItems, anchor: (ev.venueAddress || [ev.venueCity, ev.venueState].filter(Boolean).join(', ') || '').trim() });
+            const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev) });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
               title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
               row: '🛒 Your shopping list', rowSub: 'every item, with amounts',
@@ -33725,7 +33743,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             never invent a vendor name, address, or distance — every chip just
             opens a real Google Maps results page for that category. */}
         {detailsIsHost && (() => {
-          const vendorAnchor = (event.venueCity || event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ') || '').trim();
+          const vendorAnchor = eventGeoQuery(event); // single source — same location the shopping list/weather use
           const categories = ['Caterer', 'Party rentals', 'Bakery', 'Photographer', 'Bartender', 'Cleaning service'];
           return (
             <div style={{ marginBottom: 14 }}>
