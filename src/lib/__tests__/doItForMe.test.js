@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -115,6 +115,21 @@ describe('draftRsvpChase', () => {
     expect(body).not.toMatch(/💛|friendly nudge/i);
     expect(body).toMatch(/gentle note|mean a great deal/i);
     expect(subject).not.toMatch(/nudge/i);
+  });
+});
+
+describe('eventCulturalMeta / isAtHome (analytics signals)', () => {
+  test('voice slug + sombre flag from the same regexes as the invite voice', () => {
+    expect(eventCulturalMeta({ type: 'Graduation' })).toEqual({ sombre: false, voice: 'graduation' });
+    expect(eventCulturalMeta({ type: 'Quinceañera' })).toEqual({ sombre: false, voice: 'quinceanera' });
+    expect(eventCulturalMeta({ type: 'Bat Mitzvah' })).toEqual({ sombre: false, voice: 'mitzvah' });
+    expect(eventCulturalMeta({ type: 'Celebration of Life' })).toEqual({ sombre: true, voice: 'remembrance' });
+    expect(eventCulturalMeta({ type: 'Something Niche' })).toEqual({ sombre: false, voice: 'other' });
+  });
+  test('isAtHome mirrors placePhrase', () => {
+    expect(isAtHome({ venue: "Host's home" })).toBe(true);
+    expect(isAtHome({ venue: 'The Grand Hall' })).toBe(false);
+    expect(isAtHome({ venue: '' })).toBe(false);
   });
 });
 

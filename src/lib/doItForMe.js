@@ -99,6 +99,32 @@ function inviteVoice(event) {
   );
 }
 
+// Cultural/voice metadata for analytics + readers — a stable occasion slug + the
+// sombre flag, computed from the SAME regexes as the invite voice (one source of
+// truth). Used as PostHog props on event_qualified and by the analytics readers.
+export function eventCulturalMeta(event) {
+  const type = (event && event.type ? String(event.type) : '').toLowerCase();
+  if (SOMBRE_RE.test(type)) return { sombre: true, voice: 'remembrance' };
+  const V = [
+    [/graduat/, 'graduation'], [/wedding/, 'wedding'], [/quince/, 'quinceanera'],
+    [/bar ?mitzvah|bat ?mitzvah|b['’]?nai ?mitzvah/, 'mitzvah'],
+    [/baptism|christen|communion|confirmation|dedication/, 'faith_milestone'],
+    [/diwali/, 'diwali'], [/eid/, 'eid'], [/lunar ?new ?year|chinese ?new ?year|tết|tet/, 'lunar_new_year'],
+    [/sweet ?16|sweet ?sixteen/, 'sweet_sixteen'], [/birthday|bday/, 'birthday'],
+    [/anniversary/, 'anniversary'], [/baby ?shower/, 'baby_shower'],
+    [/bridal ?shower|bachelorette/, 'bridal'], [/retire/, 'retirement'],
+    [/reunion/, 'reunion'], [/holiday|christmas|thanksgiving|hanukkah|new ?year/, 'holiday'],
+    [/dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm/, 'gathering'],
+  ];
+  for (const [re, slug] of V) if (re.test(type)) return { sombre: false, voice: slug };
+  return { sombre: false, voice: 'other' };
+}
+
+// isAtHome — the location signal used in invites and analytics (mirrors placePhrase).
+export function isAtHome(event) {
+  return placePhrase(event) === 'our place';
+}
+
 // #1 — the guest invite. { subject, body } ready to drop into a text or email.
 // opts.rsvpUrl closes the loop: when present, the invite carries a one-tap RSVP link
 // so guests reply on the hosted page and the headcount flows back to the host (instead

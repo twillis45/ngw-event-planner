@@ -65,4 +65,7 @@ export const adminApi = {
     req('GET', `/api/admin/errors?since_hours=${sinceHours}${source ? `&source=${encodeURIComponent(source)}` : ''}`),
   // A1 — Activation funnel
   activation: ()          => req('GET', '/api/admin/metrics/activation'),
+  // ANALYTICS-1 — Executive overview (future endpoint; may 404 today — callers must
+  // degrade gracefully and fall back to activation()/triage()).
+  overview: ()            => req('GET', '/api/admin/metrics/overview'),
 };

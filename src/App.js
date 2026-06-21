@@ -37,7 +37,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, shareOrCopy } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, eventCulturalMeta, isAtHome, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -35984,10 +35984,20 @@ export default function App() {
           const hasCount = Number(ev.guestCount) > 0 || Number(ev.guestEstimate) > 0 || (ev.guests || []).length > 0;
           if (!(hasDate && hasCount)) return;
           qualifiedCount += 1;
+          // ANALYTICS-1 — attach the content signals as PROPS on the event we already
+          // fire. This is the cheapest possible fleet instrumentation: it turns the
+          // client-only Cultural / Location / Playbook signals into real PostHog
+          // breakdowns with no new event and no new server storage. All non-PII.
+          const _cm = (() => { try { return eventCulturalMeta(ev); } catch { return { sombre: false, voice: 'other' }; } })();
           trackOnce('ngw-evt-qualified-' + ev.id, EVENTS.EVENT_QUALIFIED, {
             event_id: ev.id,
             event_type: ev.type,
             is_host: (intakeFamilyConfig(ev.type) || {}).recordKind === 'event',
+            market: ev.market || null,
+            is_sombre: _cm.sombre,
+            voice: _cm.voice,
+            is_at_home: (() => { try { return isAtHome(ev); } catch { return false; } })(),
+            playbook_matched: !!getEventPlaybook(ev.type),
             days_since_event_created: ev.createdAt
               ? Math.max(0, Math.floor((Date.now() - Date.parse(ev.createdAt)) / 86400000)) : null,
           });

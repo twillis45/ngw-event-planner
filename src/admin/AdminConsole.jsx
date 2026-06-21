@@ -8,6 +8,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
+import {
+  playbookCoverage, culturalMix, locationSpread, memoryDepth, funnelContent,
+} from '../lib/analyticsReader';
 
 // Dark palette aligned with AuthGate's login screen so the console feels native.
 const D = {
@@ -43,7 +46,7 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Metrics', 'Errors', 'Providers', 'Audit'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Metrics', 'Errors', 'Providers', 'Audit'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -797,6 +800,326 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
   );
 }
 
+// ─── Analytics suite (ANALYTICS-1) ────────────────────────────────────────────
+// One top-level tab with horizontal sub-tabs. Executive reads the SERVER funnel
+// (activation API). Funnel/Friction are LINK-OUTS to PostHog (behavioral data is
+// write-only server-side — we never fabricate it here). Playbook/Memory/Cultural/
+// Location read THIS browser's 'ngw-events' book via analyticsReader and carry a
+// loud honesty banner: book-only, not a fleet metric.
+const A_SUBTABS = ['Executive', 'Funnel', 'Friction', 'Playbook', 'Memory', 'Cultural', 'Location'];
+const POSTHOG_URL = 'https://us.posthog.com';
+
+// Read the local book once per render of a panel. Defensive parse.
+function readLocalBook() {
+  try { return JSON.parse(localStorage.getItem('ngw-events') || '[]'); }
+  catch { return []; }
+}
+
+const BOOK_ONLY_NOTE = "This browser's book only — not a fleet metric.";
+
+// Compact stat row used by the local-data panels.
+function Stat({ label, value, sub }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', gap: 10, padding: '8px 0',
+      borderBottom: `1px solid ${D.border}`,
+    }}>
+      <span style={{ fontSize: 13, color: D.text, flex: 1 }}>{label}</span>
+      {sub && <span style={{ fontSize: 11, color: D.faint }}>{sub}</span>}
+      <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{value}</span>
+    </div>
+  );
+}
+
+// Mini horizontal bar for a { key: count } map.
+function MiniBars({ map }) {
+  const entries = Object.entries(map || {}).sort((a, b) => b[1] - a[1]);
+  const top = entries.length ? Math.max(...entries.map(([, n]) => n)) : 0;
+  if (!entries.length) return <div style={{ fontSize: 12, color: D.faint }}>None.</div>;
+  return (
+    <div>
+      {entries.map(([k, n]) => (
+        <div key={k} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 3 }}>
+            <span style={{ fontSize: 12, color: D.text, flex: 1, wordBreak: 'break-word' }}>{k}</span>
+            <span style={{ fontSize: 13, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{n}</span>
+          </div>
+          <div style={{ height: 7, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${top > 0 ? Math.round((n / top) * 100) : 0}%`, background: D.accent, borderRadius: 4 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyBook() {
+  return (
+    <div style={{ fontSize: 13, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>
+      No events in this browser's book yet. Open or create an event in the app, then
+      reload this console.
+    </div>
+  );
+}
+
+const BookBanner = () => <Banner tone="warn">{BOOK_ONLY_NOTE}</Banner>;
+
+// Executive — KPI strip from the SERVER activation funnel (server-synced proxy).
+// Tries the future overview endpoint first, degrades to activation()/triage().
+function ExecutivePanel() {
+  const [data, setData] = useState(null);
+  const [triage, setTriage] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setBusy(true); setErr(null);
+    // Executive overview is a future endpoint — try it, but fall back gracefully.
+    try { await adminApi.overview(); } catch { /* expected 404 today — ignore */ }
+    try { setData(await adminApi.activation()); }
+    catch (e) { setErr(e.message); }
+    try { setTriage(await adminApi.triage()); } catch { /* optional */ }
+    setBusy(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const funnel = data?.funnel;
+  const top = funnel?.[0]?.count || 0;
+  const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : 0);
+  const triageTotal = triage?.buckets
+    ? triage.buckets.reduce((a, b) => a + (Number(b.total) || (b.items || []).length), 0)
+    : null;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Executive</div>
+        <button onClick={load} disabled={busy} style={{
+          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
+        }}>{busy ? 'loading…' : 'refresh'}</button>
+        {data?.new_signups && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}>
+            <span style={{ color: D.good, fontWeight: 700 }}>+{data.new_signups.d7}</span> in 7d
+            {' · '}<span style={{ color: D.muted, fontWeight: 700 }}>+{data.new_signups.d30}</span> in 30d
+          </span>
+        )}
+      </div>
+
+      {err && <Banner tone="bad">Error: {err}</Banner>}
+
+      {/* KPI strip — stacks on mobile via flex-wrap */}
+      {data && top > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
+          {funnel.map((s) => (
+            <div key={s.key} style={{
+              flex: '1 1 120px', minWidth: 120, background: D.surface2,
+              border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px',
+            }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{s.count}</div>
+              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>{s.label}</div>
+              <div style={{ fontSize: 10, color: D.faint, marginTop: 2 }}>{pct(s.count, top)}% of signups</div>
+            </div>
+          ))}
+          {triageTotal !== null && (
+            <div style={{
+              flex: '1 1 120px', minWidth: 120, background: D.surface2,
+              border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px',
+            }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: triageTotal > 0 ? D.warn : D.text, fontFamily: D.mono }}>{triageTotal}</div>
+              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Need attention now</div>
+              <div style={{ fontSize: 10, color: D.faint, marginTop: 2 }}>from Triage</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Funnel bars — reuse the MetricsPanel rendering. */}
+      {data && top > 0 && (
+        <div>
+          {funnel.map((s, i) => {
+            const prev = i > 0 ? funnel[i - 1].count : null;
+            return (
+              <div key={s.key} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+                  <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+                  <span style={{ fontSize: 11, color: D.faint, width: 92, textAlign: 'right' }}>
+                    {pct(s.count, top)}% of signups
+                    {prev !== null && <span style={{ color: prev > 0 && s.count < prev ? D.warn : D.faint }}> · {pct(s.count, prev)}→</span>}
+                  </span>
+                </div>
+                <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct(s.count, top)}%`, background: D.accent, borderRadius: 4 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {data && top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No signups yet.</div>}
+
+      <Banner tone="muted">
+        {data?.coverage || 'Server-synced proxy — "synced an event" cannot tell a real qualified event from the sample. The strict behavioral funnel lives in PostHog.'}
+      </Banner>
+    </div>
+  );
+}
+
+// Funnel / Friction — PostHog link-outs. Behavioral data is write-only server-side;
+// we never fabricate it. Each is a short explainer + an "Open in PostHog ↗" button.
+function PostHogLinkPanel({ title, body }) {
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{title}</div>
+      <Banner tone="muted">
+        The behavioral {title.toLowerCase()} lives in PostHog. NGW writes events to
+        PostHog server-side (write-only) — this console cannot read them back, so no
+        numbers are shown here. Open PostHog for the live charts.
+      </Banner>
+      <div style={{ fontSize: 13, color: D.muted, lineHeight: 1.6, marginBottom: 16 }}>{body}</div>
+      <a href={POSTHOG_URL} target="_blank" rel="noopener noreferrer" style={{
+        display: 'inline-block', background: D.accent, color: '#fff', textDecoration: 'none',
+        border: `1px solid ${D.accent}`, borderRadius: 6, padding: '8px 16px',
+        fontSize: 13, fontWeight: 600, fontFamily: D.ff,
+      }}>Open in PostHog ↗</a>
+    </div>
+  );
+}
+
+function PlaybookPanel({ book }) {
+  const c = playbookCoverage(book);
+  if (c.total === 0) return (<div><BookBanner /><EmptyBook /></div>);
+  const matched = c.total - c.unmatchedTypes.reduce((a, t) => a + (c.byType[t] || 0), 0);
+  const f = funnelContent(book);
+  return (
+    <div>
+      <BookBanner />
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <Stat label="Events in book" value={c.total} />
+      </div>
+      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>Events by type</div>
+      <MiniBars map={c.byType} />
+      <div style={{ marginTop: 16 }}>
+        <Stat label="Events with a matched playbook" value={matched} sub={`${c.total - matched} unmatched`} />
+      </div>
+      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>Local content completeness</div>
+      <Stat label="Qualified (has date + guest count)" value={f.qualified} sub={`of ${f.total}`} />
+      <Stat label="Has a run-of-show" value={f.withRos} sub={`of ${f.total}`} />
+      <Stat label="Has captured outcomes" value={f.withOutcomes} sub={`of ${f.total}`} />
+      <Stat label="Has recorded decisions" value={f.withDecisions} sub={`of ${f.total}`} />
+      {c.unmatchedTypes.length > 0 && (
+        <Banner tone="muted">
+          No playbook for: {c.unmatchedTypes.join(', ')}. These types fall back to the
+          generic path — candidates for a new playbook data file.
+        </Banner>
+      )}
+    </div>
+  );
+}
+
+function MemoryPanel({ book }) {
+  const m = memoryDepth(book);
+  const total = playbookCoverage(book).total;
+  if (total === 0) return (<div><BookBanner /><EmptyBook /></div>);
+  return (
+    <div>
+      <BookBanner />
+      <Stat label="Events with captured outcomes" value={m.eventsWithOutcomes} />
+      <Stat label="Events with a written lesson" value={m.eventsWithLessons} />
+      <Stat label="Confirmed vendors tracked" value={m.vendorsTracked} />
+      <Stat label="Vendors rehired (≥2 events)" value={m.rehiredVendors} />
+      <div style={{ fontSize: 11, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
+        Rehires are the compounding signal — a vendor confirmed across two or more
+        events in this private book.
+      </div>
+    </div>
+  );
+}
+
+function CulturalPanel({ book }) {
+  const m = culturalMix(book);
+  if (m.total === 0) return (<div><BookBanner /><EmptyBook /></div>);
+  return (
+    <div>
+      <BookBanner />
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ flex: '1 1 120px', minWidth: 120, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.festive}</div>
+          <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Festive</div>
+        </div>
+        <div style={{ flex: '1 1 120px', minWidth: 120, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.sombre}</div>
+          <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Sombre / remembrance</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>By voice</div>
+      <MiniBars map={m.byVoice} />
+    </div>
+  );
+}
+
+function LocationPanel({ book }) {
+  const s = locationSpread(book);
+  if (s.total === 0) return (<div><BookBanner /><EmptyBook /></div>);
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  return (
+    <div>
+      <BookBanner />
+      <Stat label="At-home share" value={pct(s.atHomeShare)} />
+      <Stat label="Missing-venue share" value={pct(s.missingVenueShare)} />
+      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>By market</div>
+      <MiniBars map={s.byMarket} />
+    </div>
+  );
+}
+
+function AnalyticsSuite() {
+  const [sub, setSub] = useState('Executive');
+  // Read the local book once per sub-tab change (cheap; panels re-derive).
+  const book = readLocalBook();
+
+  return (
+    <div>
+      {/* Sub-tabs — horizontally scrollable on mobile */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 18, paddingBottom: 6,
+        overflowX: 'auto', borderBottom: `1px solid ${D.border}`, WebkitOverflowScrolling: 'touch',
+      }}>
+        {A_SUBTABS.map(s => (
+          <button key={s} onClick={() => setSub(s)} style={{
+            flex: '0 0 auto',
+            background: sub === s ? D.surface2 : 'transparent',
+            color: sub === s ? D.text : D.muted,
+            border: `1px solid ${sub === s ? D.border : 'transparent'}`,
+            borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+            fontFamily: D.ff, whiteSpace: 'nowrap',
+          }}>{s}</button>
+        ))}
+      </div>
+
+      {sub === 'Executive' && <ExecutivePanel />}
+      {sub === 'Funnel' && (
+        <PostHogLinkPanel
+          title="Funnel"
+          body="Sign-up → first event → qualified → completed → second event. Each step is a server-side PostHog event; the conversion funnel is built and filtered in PostHog."
+        />
+      )}
+      {sub === 'Friction' && (
+        <PostHogLinkPanel
+          title="Friction"
+          body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention."
+        />
+      )}
+      {sub === 'Playbook' && <PlaybookPanel book={book} />}
+      {sub === 'Memory' && <MemoryPanel book={book} />}
+      {sub === 'Cultural' && <CulturalPanel book={book} />}
+      {sub === 'Location' && <LocationPanel book={book} />}
+    </div>
+  );
+}
+
 export default function AdminConsole() {
   const { ready, user, configured, bypass, signOut } = useAuth();
   const role = user?.app_metadata?.role;
@@ -921,6 +1244,8 @@ export default function AdminConsole() {
         {tab === 'Invitations' && <InvitationsPanel onOpenUser={goToUser} />}
 
         {tab === 'Activation' && <ActivationPanel onOpenUser={goToUser} />}
+
+        {tab === 'Analytics' && <AnalyticsSuite />}
 
         {tab === 'Metrics' && <MetricsPanel />}
 
