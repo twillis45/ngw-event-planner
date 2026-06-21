@@ -488,9 +488,14 @@ export function playbookCapacity(event) {
     // Sprint 57H: capture the scaling FACTOR alongside the quantity (additive — the
     // qty math is byte-identical). The factor IS the reasoning behind the number.
     let factor = null, factorType = null;
-    if (typeof r.qtyPerGuest === 'number') { qty = Math.ceil(r.qtyPerGuest * guests); factor = r.qtyPerGuest; factorType = 'perGuest'; }
-    else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') { qty = Math.ceil(guests / r.qtyPer) * r.qtyFlat; factor = r.qtyFlat; factorType = 'perN'; }
-    else if (typeof r.qtyFlat === 'number') { qty = r.qtyFlat; factor = r.qtyFlat; factorType = 'flat'; }
+    // Quantity comes from the ONE canonical source (resolveQuantity) so the
+    // explainer/capacity number always matches the food-plan number. The
+    // factor/factorType below describe the SCALING BASIS only — they are not a
+    // second quantity derivation (Sprint 57H reasoning is preserved verbatim).
+    qty = resolveQuantity(r, guests);
+    if (typeof r.qtyPerGuest === 'number') { factor = r.qtyPerGuest; factorType = 'perGuest'; }
+    else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') { factor = r.qtyFlat; factorType = 'perN'; }
+    else if (typeof r.qtyFlat === 'number') { factor = r.qtyFlat; factorType = 'flat'; }
     if (qty == null || qty <= 0) continue;
     items.push({ item: r.item, short: shortRental(r.item), qty, note: r.note || '', factor, factorType });
   }

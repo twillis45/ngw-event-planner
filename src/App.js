@@ -14227,11 +14227,14 @@ const STATE_NAME_TO_ABBR = {
 // party is usually near home). Null only when we truly have no location → neutral.
 function resolveEventState(event, profile) {
   if (!event) return null;
-  const direct = String(event.state || '').trim().toUpperCase();
+  // Structured host address (venueState/venueCity from the "Where's it happening?"
+  // capture) is the canonical signal — read it first so the app uses where we are.
+  const direct = String(event.state || event.venueState || '').trim().toUpperCase();
   if (US_STATES.includes(direct)) return direct;
   // The metro the host picked carries a representative state.
   if (event.market && METRO_GEO[event.market]) return METRO_GEO[event.market].state;
-  const hay = [event.city, event.venue, event.location, event.address, event.market,
+  const hay = [event.city, event.venueCity, event.venue, event.venueAddress, event.venueZip,
+    event.location, event.address, event.market,
     profile && profile.city, profile && profile.market]
     .filter(Boolean).join(' , ');
   if (!hay) return null;
@@ -14280,7 +14283,7 @@ function useFoodPriceFactor(event, profile) {
       const priceContext = factor !== 1 ? `${d.regionLabel}-region grocery prices${tail}` : null;
       const STATE_FULL = Object.fromEntries(Object.entries(STATE_NAME_TO_ABBR).map(([n, a]) => [a, n.replace(/\b\w/g, (c) => c.toUpperCase())]));
       const cityMetro = event && event.market && METRO_GEO[event.market] ? METRO_GEO[event.market].city : '';
-      const city = String((event && event.city) || '').trim() || cityMetro;
+      const city = String((event && (event.city || event.venueCity)) || '').trim() || cityMetro;
       const local = city ? `${city}, ${state}` : (STATE_FULL[state] || `the ${d.regionLabel}`);
       const when = pmFull ? ` right now (${pmFull})` : ' right now';
       const priceNote = `What groceries cost in ${local}${when}`;
@@ -33425,8 +33428,12 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
     if (!detailsIsHost) return;
     try {
       if (!String(event.venueCity || '').trim()) {
-        const remembered = localStorage.getItem('ngw-host-city');
-        if (remembered && remembered.trim()) upd('venueCity', remembered.trim());
+        const c = localStorage.getItem('ngw-host-city');
+        if (c && c.trim()) upd('venueCity', c.trim());
+      }
+      if (!String(event.venueState || '').trim()) {
+        const st = localStorage.getItem('ngw-host-state');
+        if (st && st.trim()) upd('venueState', st.trim());
       }
     } catch (e) { /* storage blocked */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -33610,6 +33617,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           const atHome = (event.venueKind || 'home') === 'home';
           const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
           const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
+          const rememberState = (v) => { upd('venueState', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-state', v.trim()); } catch (e) {} };
           const composeAddr = (o) => { const n = { street: event.venueStreet, city: event.venueCity, state: event.venueState, zip: event.venueZip, ...o }; return [n.street, [n.city, n.state].filter(Boolean).join(', '), n.zip].filter(Boolean).join(' ').replace(/\s+,/g, ',').trim(); };
           return (
             <div style={{ marginBottom: 12 }}>
@@ -33625,7 +33633,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>We’ll plan around your place. Just your city — for local pricing and the weather outlook.</div>
                   <EDTRow isMobile={isMobile}>
                     <EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={rememberCity} placeholder="e.g. Atlanta" />
-                    <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => upd('venueState', v)} placeholder="GA" />
+                    <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={rememberState} placeholder="GA" />
                   </EDTRow>
                 </>
               ) : (
@@ -33637,7 +33645,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   <div style={{ marginTop: 10 }}>
                     <EDTRow isMobile={isMobile}>
                       <EDTField C={C} s={s} label="City" value={event.venueCity || ''} onChange={v => { rememberCity(v); upd('venueAddress', composeAddr({ city: v })); }} placeholder="City" />
-                      <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => { upd('venueState', v); upd('venueAddress', composeAddr({ state: v })); }} placeholder="ST" />
+                      <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => { rememberState(v); upd('venueAddress', composeAddr({ state: v })); }} placeholder="ST" />
                     </EDTRow>
                   </div>
                   <div style={{ marginTop: 10 }}>
