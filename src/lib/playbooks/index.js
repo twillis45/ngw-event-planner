@@ -692,6 +692,8 @@ export function playbookFoodPlan(event, opts = {}) {
       return {
         id: p.id, group: FOOD_GROUP[p.category], item: p.item, short: shortItem(p.item),
         qty, unit, essential: !!p.essential, where: p.where || [],
+        // Shopping list v2 — raw category drives aisle order; buyAt drives the day-of section.
+        cat: p.category || 'other', buyAt: p.buyAt || null,
         // Board ruling: lead each line with the PER-GUEST rate (the typical amount).
         // Only per-guest-scaled items carry a rate; flat items (1 grill) don't.
         perGuest: typeof p.qtyPerGuest === 'number' ? p.qtyPerGuest : null,

@@ -326,28 +326,158 @@ export function draftRecap(event, profile) {
 
 // Shopping list — the clearest "do, don't advise" win. The food plan already computes
 // every item AND quantity; instead of making the host read it off a screen, we WRITE
-// the list they take to the store or hand to whoever's shopping. opts.items is the
-// normalized food-plan spread ({ name, qty, unit, got }) — pure, no invention; honest
-// when the menu isn't set yet.
+// the list they take to the store or hand to whoever's shopping. But a flat checklist
+// makes the host re-plan their route in their head; a STORE-GROUPED, logically-ordered
+// list does that thinking for them. opts.items is the richer food-plan spread (see
+// buildShoppingPlan). Pure, no invention; we never name a real store, price, or distance.
+
+const CATEGORY_ORDER = ['food', 'beverage', 'cleanup', 'logistics', 'rental', 'other'];
+const WAREHOUSE_RE = /costco|sam'?s|warehouse|bj'?s/i;
+
+function catRank(c) {
+  const i = CATEGORY_ORDER.indexOf((c ? String(c) : 'other').toLowerCase());
+  return i === -1 ? CATEGORY_ORDER.indexOf('other') : i;
+}
+
+// buildShoppingPlan — the pure engine. Takes the richer item spread and returns a
+// structured store-grouped plan, collapsed onto as few stores as possible (fewest
+// trips). Never invents a store name/price/distance — distance stays null for a later
+// caller to fill once we actually compute it.
+export function buildShoppingPlan(items, opts = {}) {
+  const all = (Array.isArray(items) ? items : []).filter((x) => x && String(x.name || '').trim());
+  // 1. partition day-of (grab the morning of) from the rest.
+  const dayOf = all.filter((i) => i.buyAt === 'T0');
+  const rest = all.filter((i) => i.buyAt !== 'T0');
+
+  // 2. FEWEST-TRIPS store assignment. Score each store-type by coverage (how many items
+  // list it anywhere), tie-break by earliest position seen, then alphabetical.
+  const coverage = new Map();   // store -> count of items listing it
+  const earliest = new Map();   // store -> best (lowest) index seen in a where[]
+  for (const it of rest) {
+    const where = Array.isArray(it.where) ? it.where.filter((w) => String(w || '').trim()) : [];
+    where.forEach((w, idx) => {
+      const s = String(w).trim();
+      coverage.set(s, (coverage.get(s) || 0) + 1);
+      if (!earliest.has(s) || idx < earliest.get(s)) earliest.set(s, idx);
+    });
+  }
+  const rank = (a, b) => {
+    const ca = coverage.get(a) || 0, cb = coverage.get(b) || 0;
+    if (cb !== ca) return cb - ca;                              // coverage desc
+    const ea = earliest.has(a) ? earliest.get(a) : 99, eb = earliest.has(b) ? earliest.get(b) : 99;
+    if (ea !== eb) return ea - eb;                              // earliest position
+    return a < b ? -1 : a > b ? 1 : 0;                          // alphabetical
+  };
+  // Greedily assign each item to the highest-ranked store that appears in its own where[].
+  const buckets = new Map();    // store -> [items]
+  for (const it of rest) {
+    const where = Array.isArray(it.where) ? it.where.filter((w) => String(w || '').trim()).map((w) => String(w).trim()) : [];
+    let store = 'Anywhere';
+    if (where.length) {
+      store = where.slice().sort(rank)[0];
+    }
+    if (!buckets.has(store)) buckets.set(store, []);
+    buckets.get(store).push(it);
+  }
+
+  // 3. order stores by item count desc, then store name; within a store: forgotten desc,
+  // category order, name asc.
+  const itemSort = (a, b) => {
+    const fa = a.forgotten ? 1 : 0, fb = b.forgotten ? 1 : 0;
+    if (fb !== fa) return fb - fa;
+    const ra = catRank(a.category), rb = catRank(b.category);
+    if (ra !== rb) return ra - rb;
+    const na = String(a.name).trim().toLowerCase(), nb = String(b.name).trim().toLowerCase();
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  };
+  const stores = Array.from(buckets.entries())
+    .map(([store, its]) => ({ store, distance: null, items: its.slice().sort(itemSort) }))
+    .sort((a, b) => {
+      if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+      return a.store < b.store ? -1 : a.store > b.store ? 1 : 0;
+    });
+
+  // 4. day-of order: forgotten desc, then name asc.
+  const dayOfSorted = dayOf.slice().sort((a, b) => {
+    const fa = a.forgotten ? 1 : 0, fb = b.forgotten ? 1 : 0;
+    if (fb !== fa) return fb - fa;
+    const na = String(a.name).trim().toLowerCase(), nb = String(b.name).trim().toLowerCase();
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  });
+
+  const storeCount = stores.length;
+
+  // 5. decisions — max 3, only when genuinely applicable.
+  const decisions = [];
+  if (storeCount >= 2) {
+    const [a, b] = stores;
+    decisions.push(`This is a ${storeCount}-store run: ${a.store} (${a.items.length} item${a.items.length === 1 ? '' : 's'}) + ${b.store} (${b.items.length}). Costco-type stops save the most.`);
+  }
+  const bulky = all.find((i) => Array.isArray(i.where) && i.where.some((w) => WAREHOUSE_RE.test(String(w || ''))) && Number(i.qty) >= 10);
+  if (bulky) {
+    decisions.push(`${String(bulky.name).trim()} is cheaper in bulk — a warehouse run pays off when the quantity is this large.`);
+  }
+  if (opts.headcountLoose === true) {
+    const g = (opts.guests != null && opts.guests !== '') ? opts.guests : 'your';
+    decisions.push(`Quantities assume ${g} guests — final headcount changes proteins + ice the most.`);
+  }
+  const trimmed = decisions.slice(0, 3);
+
+  // 6. est total range — MODELED, only when enough items carry both costLow + costHigh.
+  const withCost = all.filter((i) => i.costLow != null && i.costHigh != null && i.costLow !== '' && i.costHigh !== '');
+  let estTotalRange = null;
+  if (withCost.length && withCost.length >= Math.ceil(all.length / 2)) {
+    const low = withCost.reduce((s, i) => s + Number(i.costLow), 0);
+    const high = withCost.reduce((s, i) => s + Number(i.costHigh), 0);
+    if (Number.isFinite(low) && Number.isFinite(high)) estTotalRange = [low, high];
+  }
+
+  return { stores, dayOf: dayOfSorted, decisions: trimmed, estTotalRange, storeCount };
+}
+
 export function draftShoppingList(event, profile, opts = {}) {
   if (!event) return { subject: '', body: '' };
   const items = Array.isArray(opts.items) ? opts.items.filter((x) => x && String(x.name || '').trim()) : [];
   const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
-  const date = fmtLongDate(event.date);
-  const need = items.filter((i) => !i.got);
-  const done = items.length - need.length;
+  const count = headCount(event);
   const qtyOf = (i) => {
     const q = i.qty; const u = (i.unit ? String(i.unit) : '').trim();
-    return (q != null && q !== '' && Number(q) > 0) ? `${q}${u ? ' ' + u : ''} ` : '';
+    return (q != null && q !== '' && Number(q) > 0) ? `${q}${u ? ' ' + u : ''}` : '';
   };
-  const lines = [`🛒 Shopping list — ${name}${date ? ` · ${date}` : ''}`, ''];
+  // honest-empty: menu not set yet (preserve existing behavior).
   if (items.length === 0) {
-    lines.push('Your menu isn’t set yet — pick your food and I’ll build the list.');
-  } else if (need.length === 0) {
-    lines.push('Everything’s checked off — you’re ready. 💛');
-  } else {
-    for (const i of need) lines.push(`☐ ${qtyOf(i)}${String(i.name).trim()}`);
-    if (done > 0) { lines.push(''); lines.push(`(${done} already done)`); }
+    const lines = [`🛒 Shopping List — ${name}`, '', 'Your menu isn’t set yet — pick your food and I’ll build the list.'];
+    return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+  }
+  // everything already checked off → ready.
+  if (items.every((i) => i.got)) {
+    const lines = [`🛒 Shopping List — ${name}`, '', 'Everything’s checked off — you’re ready.'];
+    return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+  }
+  // build from the structured plan, rendering only what's still needed.
+  const need = items.filter((i) => !i.got);
+  const plan = buildShoppingPlan(need, opts);
+  const renderItem = (i) => {
+    const q = qtyOf(i);
+    const star = i.forgotten ? '   ⭐' : '';
+    return `[ ] ${String(i.name).trim()}${q ? ` — ${q}` : ''}${star}`;
+  };
+  const header = `🛒 Shopping List — ${name}${count ? ` (${count} guests)` : ''}`;
+  const lines = [header, ''];
+  // single most useful decision line for text.
+  if (plan.decisions.length) { lines.push(plan.decisions[0]); lines.push(''); }
+  for (const s of plan.stores) {
+    lines.push(String(s.store).toUpperCase());
+    for (const it of s.items) lines.push(renderItem(it));
+    lines.push('');
+  }
+  if (plan.dayOf.length) {
+    lines.push('DAY-OF (grab the morning of)');
+    for (const it of plan.dayOf) lines.push(renderItem(it));
+    lines.push('');
+  }
+  if (plan.estTotalRange) {
+    lines.push(`Estimated total ~$${plan.estTotalRange[0]}–$${plan.estTotalRange[1]} (modeled, not live prices)`);
   }
   return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }

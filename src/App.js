@@ -8508,7 +8508,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* "Do it for me" — the shopping list. The plan already computes every item AND
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
-        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id] }));
+        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
         const left = shopItems.filter((i) => !i.got).length;
         return (
           <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
@@ -20035,7 +20035,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           // Surface the shopping list here too — the clearest "look what it did for me,"
           // otherwise it lives a tab away. Built from the real food plan.
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
-            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id] }));
+            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
             const left = shopItems.filter((i) => !i.got).length;
             const d = draftShoppingList(ev, profile, { items: shopItems });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
@@ -33418,6 +33418,19 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const [showTouches, setShowTouches] = useState(!!(event.honoree || event.theme || event.honoreeSong || event.honoreeDrink));
   const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
   const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
+  // Location default (#55): the app remembers the host's city across events so location
+  // questions (pricing, weather, stores) have a sensible default. If this host event has
+  // no city yet, seed it from the last city they used.
+  useEffect(() => {
+    if (!detailsIsHost) return;
+    try {
+      if (!String(event.venueCity || '').trim()) {
+        const remembered = localStorage.getItem('ngw-host-city');
+        if (remembered && remembered.trim()) upd('venueCity', remembered.trim());
+      }
+    } catch (e) { /* storage blocked */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Hot-fix: do NOT define inner-function wrappers — that re-creates the
   // component type each render and remounts every <input>. Call the
   // hoisted EDTField / EDTRow / EDTSectionHead directly from the JSX
@@ -33593,10 +33606,56 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             )}
           </div>
         )}
-        <EDTRow isMobile={isMobile}>
-          <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder={vph.venue} />
-          <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
-        </EDTRow>
+        {detailsIsHost ? (() => {
+          const atHome = (event.venueKind || 'home') === 'home';
+          const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
+          const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
+          const composeAddr = (o) => { const n = { street: event.venueStreet, city: event.venueCity, state: event.venueState, zip: event.venueZip, ...o }; return [n.street, [n.city, n.state].filter(Boolean).join(', '), n.zip].filter(Boolean).join(' ').replace(/\s+,/g, ',').trim(); };
+          return (
+            <div style={{ marginBottom: 12 }}>
+              {/* Default to the host's house; standard address fields only when it's elsewhere.
+                  City/state feed local pricing + the weather outlook. */}
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Where's it happening?</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                <button type="button" onClick={() => upd('venueKind', 'home')} style={tog(atHome)}>🏠 At home · your place</button>
+                <button type="button" onClick={() => { if ((event.venueKind || 'home') === 'home') upd('venueKind', 'venue'); }} style={tog(!atHome)}>📍 Somewhere else</button>
+              </div>
+              {atHome ? (
+                <>
+                  <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>We’ll plan around your place. Just your city — for local pricing and the weather outlook.</div>
+                  <EDTRow isMobile={isMobile}>
+                    <EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={rememberCity} placeholder="e.g. Atlanta" />
+                    <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => upd('venueState', v)} placeholder="GA" />
+                  </EDTRow>
+                </>
+              ) : (
+                <>
+                  <EDTField C={C} s={s} label="Place name (optional)" value={event.venue || ''} onChange={v => upd('venue', v)} placeholder="The venue, hall, or spot" />
+                  <div style={{ marginTop: 10 }}>
+                    <EDTField C={C} s={s} label="Street address" value={event.venueStreet || ''} onChange={v => { upd('venueStreet', v); upd('venueAddress', composeAddr({ street: v })); }} placeholder="123 Main St" />
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <EDTRow isMobile={isMobile}>
+                      <EDTField C={C} s={s} label="City" value={event.venueCity || ''} onChange={v => { rememberCity(v); upd('venueAddress', composeAddr({ city: v })); }} placeholder="City" />
+                      <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => { upd('venueState', v); upd('venueAddress', composeAddr({ state: v })); }} placeholder="ST" />
+                    </EDTRow>
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <EDTRow isMobile={isMobile}>
+                      <EDTField C={C} s={s} label="ZIP" value={event.venueZip || ''} onChange={v => { upd('venueZip', v); upd('venueAddress', composeAddr({ zip: v })); }} placeholder="00000" />
+                      <div />
+                    </EDTRow>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })() : (
+          <EDTRow isMobile={isMobile}>
+            <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder={vph.venue} />
+            <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
+          </EDTRow>
+        )}
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
           <EDTField C={C} s={s} label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />

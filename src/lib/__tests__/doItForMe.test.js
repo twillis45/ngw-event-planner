@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, buildShoppingPlan, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -198,19 +198,67 @@ describe('draftThankYou', () => {
   });
 });
 
+describe('buildShoppingPlan', () => {
+  test('fewest-trips: overlapping where[] collapse onto the minimal store set', () => {
+    const items = [
+      { name: 'Buns', where: ['Grocery'], category: 'food' },
+      { name: 'Chicken', where: ['Grocery', 'Costco'], category: 'food' },
+      { name: 'Soda', where: ['Costco', 'Grocery'], category: 'beverage' },
+      { name: 'Napkins', where: ['Grocery', 'Costco'], category: 'cleanup' },
+    ];
+    const plan = buildShoppingPlan(items);
+    expect(plan.storeCount).toBe(1);               // everything covered by Grocery → one trip
+    expect(plan.stores[0].store).toBe('Grocery');
+    expect(plan.stores[0].items.map((i) => i.name).sort()).toEqual(['Buns', 'Chicken', 'Napkins', 'Soda']);
+    expect(plan.stores[0].distance).toBe(null);    // never invented
+  });
+  test('partitions day-of (T0) items out of the store sections', () => {
+    const items = [
+      { name: 'Cups', where: ['Grocery'], category: 'cleanup', buyAt: 'T-1d' },
+      { name: 'Ice', where: ['Grocery'], category: 'logistics', buyAt: 'T0' },
+    ];
+    const plan = buildShoppingPlan(items);
+    expect(plan.dayOf.map((i) => i.name)).toEqual(['Ice']);
+    expect(plan.stores.flatMap((s) => s.items.map((i) => i.name))).not.toContain('Ice');
+  });
+});
+
 describe('draftShoppingList', () => {
   const items = [
-    { name: 'Ice', qty: 18, unit: 'lbs', got: false },
-    { name: 'Chicken', qty: 4, unit: 'lbs', got: false },
-    { name: 'Buns', qty: 3, unit: 'packs', got: true },
+    { name: 'Ice', qty: 18, unit: 'lbs', got: false, category: 'logistics', where: ['Grocery'], buyAt: 'T0', forgotten: true },
+    { name: 'Chicken', qty: 4, unit: 'lbs', got: false, category: 'food', where: ['Grocery'], buyAt: 'T-1d' },
+    { name: 'Sunscreen', qty: 1, unit: '', got: false, category: 'logistics', where: ['Grocery'], buyAt: 'T-3d', forgotten: true },
+    { name: 'Buns', qty: 3, unit: 'packs', got: true, category: 'food', where: ['Grocery'], buyAt: 'T-1d' },
   ];
-  test('writes a checklist with quantities, only what is still needed', () => {
+  test('groups items under a store header, not a flat checklist', () => {
     const { subject, body } = draftShoppingList(maya, profile, { items });
     expect(subject).toContain('Shopping list');
-    expect(body).toContain('18 lbs Ice');
-    expect(body).toContain('4 lbs Chicken');
-    expect(body).not.toContain('Buns');      // already got → off the list
-    expect(body).toContain('1 already done');
+    expect(body).toContain('GROCERY');             // store-grouped section header
+    expect(body).toContain('[ ] Chicken — 4 lbs'); // checkbox + qty
+    expect(body).not.toContain('Buns');            // already got → off the list
+  });
+  test('puts a buyAt:T0 item (Ice) in the day-of section', () => {
+    const { body } = draftShoppingList(maya, profile, { items });
+    expect(body).toMatch(/DAY-OF \(grab the morning of\)/);
+    const dayOfIdx = body.indexOf('DAY-OF');
+    expect(body.indexOf('Ice')).toBeGreaterThan(dayOfIdx);  // Ice lives under day-of
+  });
+  test('marks an often-forgotten item with ⭐', () => {
+    const { body } = draftShoppingList(maya, profile, { items });
+    expect(body).toContain('⭐');
+    expect(body).toMatch(/Sunscreen.*⭐/);
+  });
+  test('never prints a per-line dollar amount', () => {
+    const priced = items.map((i) => ({ ...i, costLow: 3, costHigh: 6 }));
+    const { body } = draftShoppingList(maya, profile, { items: priced });
+    for (const line of body.split('\n').filter((l) => l.startsWith('[ ]'))) {
+      expect(line).not.toMatch(/\$\d/);
+    }
+  });
+  test('shows a modeled total line when costs are given', () => {
+    const priced = items.map((i) => ({ ...i, costLow: 3, costHigh: 6 }));
+    const { body } = draftShoppingList(maya, profile, { items: priced });
+    expect(body).toMatch(/Estimated total ~\$\d+–\$\d+ \(modeled, not live prices\)/);
   });
   test('honest when the menu is empty — never invents items', () => {
     const { body } = draftShoppingList(maya, profile, { items: [] });
