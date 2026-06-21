@@ -35,6 +35,9 @@ import { setLesson, getLesson } from './lib/eventMemory';
 // Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
 import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement, setFeelingOutcome, feelingOutcome, FEELING_SIGNALS, FEELING_LABEL, identityReflection, isMeaningfulMustHave } from './lib/eventIdentity';
 import { rosOverlapCount } from './lib/rosOverlap';
+// "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
+// from the event facts, then hands them over to send in one tap.
+import { draftInvite, draftVendorOutreach, draftThankYou, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -5288,6 +5291,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   // Sprint Date Friction Phase C — remembers the last balance-due chip
   // applied so the subtext can render the resolved date + relationship.
   const [vmBalanceChipMeta, setVmBalanceChipMeta] = useState(null);
+  // "Do it for me" #2 — the vendor inquiry the app drafts for the host to send.
+  const [draftSheet, setDraftSheet] = useState(null);
+  const _vmMobile = useContext(BpCtx) === 'mobile';
 
   // Autosave: every field change immediately persists to the vendor list.
   // The parent's onSave expects a full updated vendor object. This wrapper
@@ -5874,6 +5880,16 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 </div>
                 {vErr.website && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{vErr.website}</div>}
               </div>
+
+              {/* "Do it for me" #2 — the app drafts the availability + pricing inquiry
+                  from the event facts; the host reviews and sends in one tap. */}
+              {event && (
+                <button type="button" onClick={() => { const d = draftVendorOutreach(event, vendor, profile); setDraftSheet({ title: 'Vendor inquiry', intro: `A quick note to ${vendor.name || 'this vendor'} to check availability and pricing — drafted from your event. Make it yours, then send.`, draft: d, shareTitle: d.subject }); }}
+                  style={{ width: '100%', textAlign: 'left', background: `${C.accent}0e`, border: `1px solid ${C.accent}33`, borderRadius: 10, padding: '11px 13px', cursor: 'pointer', fontFamily: 'inherit', marginTop: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>✍️ Write the inquiry for me →</div>
+                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>A ready-to-send note asking availability + pricing, built from your event.</div>
+                </button>
+              )}
 
               {/* ── Secondary: Fax / WhatsApp / video calls — collapsed by default ── */}
               <button aria-label="Remove"
@@ -6871,6 +6887,10 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           onCancel={() => setConfirmKind(null)}
           onConfirm={doUnmarkDepositPaid}
         />
+      )}
+      {draftSheet && (
+        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle}
+          onClose={() => setDraftSheet(null)} C={C} isMobile={_vmMobile} />
       )}
     </>
   );
@@ -18953,7 +18973,7 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
 // B2 — Post-event recap. Once the date has passed, a host should NOT see "book a caterer."
 // The home flips to closing the event out: did the one thing happen, how did it feel, and
 // the handful of wrap-up tasks (thank-yous, balances, returns, photos). No planning nags.
-function PostEventRecap({ ev, daysAgoLabel, onPatchEvent, onSelectEvent, C, cardStyle, eyebrowStyle }) {
+function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent, onDraft, C, cardStyle, eyebrowStyle }) {
   const mh = (ev.must_have_moment || '').trim();
   const mhPick = mustHaveOutcome(ev);
   const feelPick = feelingOutcome(ev);
@@ -19021,12 +19041,23 @@ function PostEventRecap({ ev, daysAgoLabel, onPatchEvent, onSelectEvent, C, card
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
           {WRAP.map(w => {
             const on = !!wrap[w.id];
+            // "Do it for me" #3 — the thank-yous task doesn't just check off; the app
+            // WROTE the note. A "Write them for me →" action opens the draft to send.
+            const canDraft = w.id === 'thanks' && !on && typeof onDraft === 'function';
             return (
-              <button key={w.id} type="button" onClick={() => toggleWrap(w.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', background: 'none', border: 'none', padding: '9px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                <span style={{ width: 18, height: 18, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
-                <span style={{ fontSize: 13.5, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{w.text}</span>
-              </button>
+              <div key={w.id}>
+                <button type="button" onClick={() => toggleWrap(w.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', background: 'none', border: 'none', padding: '9px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ width: 18, height: 18, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
+                  <span style={{ fontSize: 13.5, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{w.text}</span>
+                </button>
+                {canDraft && (
+                  <button type="button" onClick={() => onDraft({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(ev, profile), shareTitle: `Thank you — ${ev.name || 'our celebration'}` })}
+                    style={{ marginLeft: 29, marginTop: 2, marginBottom: 4, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: C.accent }}>
+                    Write them for me →
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -19524,6 +19555,42 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 // list) instead of dropping them into an inert screen. Delight, and proof the app
 // did real work. Built entirely from the playbook the event already resolves to —
 // no invented data. Emits ASSEMBLE_VIEWED.
+// "Do it for me" hand-off sheet — shows the message the app WROTE (invite / vendor
+// inquiry / thank-you), lets the host tweak it into their own voice, then sends it in
+// one tap (native share sheet on mobile, clipboard everywhere else). The work is
+// already done; the host just sends.
+function DraftSheet({ title, intro, draft, shareTitle, onClose, C, isMobile }) {
+  const [text, setText] = useState((draft && draft.body) || '');
+  const [status, setStatus] = useState(null);
+  const send = async () => { setStatus(await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text })); };
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); } catch { setStatus('failed'); } };
+  const statusLine = status === 'shared' ? 'Sent to your share sheet ✓'
+    : status === 'copied' ? 'Copied — paste it into your texts, email, or group chat ✓'
+    : status === 'cancelled' ? 'No rush — it’s still here when you’re ready.'
+    : status === 'failed' ? 'Couldn’t share automatically — select the text above and copy it.'
+    : '';
+  return (
+    <div role="dialog" aria-label={title} onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 24 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: C.surface, border: `1px solid ${C.border}`, borderRadius: isMobile ? '18px 18px 0 0' : 16, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: isMobile ? '88vh' : '86vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>{title}</div>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: 20, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.text, lineHeight: 1.25, marginBottom: intro ? 6 : 12 }}>We wrote it for you.</div>
+        {intro && <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{intro}</div>}
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={isMobile ? 9 : 8}
+          style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 14, lineHeight: 1.55, padding: '13px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Tweak anything — it’s your voice. Then send it.</div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button onClick={send} style={{ flex: 1, fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
+          <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
+        </div>
+        {statusLine && <div style={{ fontSize: 12, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
+      </div>
+    </div>
+  );
+}
+
 function AssembleReveal({ ev, profile, onDone }) {
   const C = useT();
   const foodPP = useFoodPriceFactor(ev, profile);
@@ -19584,6 +19651,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const C = useT();
   const isMobile = useContext(BpCtx) === 'mobile';
   const [setupOpen, setSetupOpen] = useState(false);
+  const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
   // The host's focus event. A real (user-created) event ALWAYS outranks a sample/demo
   // event — a host must never open their own home inside someone else's seeded event
   // (the prior 100-point seed penalty was smaller than the 1000-point future/past gap,
@@ -19731,7 +19799,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         </div>
 
         {/* B2 · Post-event — recap replaces the whole planning home once the date passed. */}
-        {isPost && <PostEventRecap ev={ev} daysAgoLabel={daysAgoLabel} onPatchEvent={onPatchEvent} onSelectEvent={onSelectEvent} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
+        {isPost && <PostEventRecap ev={ev} profile={profile} daysAgoLabel={daysAgoLabel} onPatchEvent={onPatchEvent} onSelectEvent={onSelectEvent} onDraft={setDraftSheet} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
 
         {/* B3 · Day-of — the run of show IS the hero. The next timed cue, then a tap
             into the full day. The planning to-do grid is suppressed below. */}
@@ -19786,6 +19854,25 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
         {/* The entire planning home — suppressed once the event has passed (B2). */}
         {!isPost && (<>
+        {/* "Do it for me" #1 — the guest invite. The app already WROTE it from the
+            event facts; the host just opens it and sends. Pairs with the guest-list
+            hero (you invite people to build the list). Needs a date to be sendable. */}
+        {!isDayOf && ev.date && (() => {
+          const d = draftInvite(ev, profile);
+          const previewParts = (d.body || '').split('\n').map(s => s.trim()).filter(Boolean);
+          const preview = (previewParts[1] || previewParts[0] || '').slice(0, 92);
+          return (
+            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject })}
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <span style={eyebrow}>Ready to send</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Your invite — already written</div>
+              {preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{preview}…”</div>}
+            </button>
+          );
+        })()}
         {/* 3 · What still needs you — Attention System: HIDE what's on-track (done
             collapses to a count), show only the areas being worked, and reward an
             empty list. No wall of green checks competing with the live action.
@@ -19956,6 +20043,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         />
       );
     })()}
+    {draftSheet && (
+      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle}
+        onClose={() => setDraftSheet(null)} C={C} isMobile={isMobile} />
+    )}
     </>
   );
 }
