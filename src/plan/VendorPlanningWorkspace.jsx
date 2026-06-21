@@ -25,6 +25,12 @@
 
 import { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthCtx } from '../contexts/AuthContext';
+// UX-SAAS (host de-cockpit): the SAME signal the L3 nav uses to reveal this tab
+// to a host (flag-gated audience persona). When true, this surface speaks plain
+// host words and hides planner-only B2B machinery; when false the planner /
+// operator rendering is byte-identical to before. Sourced from presentationNav
+// (not App.js) so the plan module stays insulated.
+import { hostNavActive } from '../lib/presentationNav';
 import { color, space, type, radius } from '../design/tokens';
 import {
   getVendorLifecycleStage,
@@ -134,6 +140,58 @@ function levelColor(level) {
 // (Legacy STATUS_CONFIG / appStageToFigma / statusCfg / fmt* utils removed in
 // Sprint 53 — the cockpit uses readiness-level chips via LevelChip instead.
 // All formatting concerns moved into vendorIntelligence helpers.)
+
+// ── UX-SAAS host de-cockpit helpers ──────────────────────────────────────────
+// A host hiring a caterer is not running a procurement pipeline. When this
+// surface is shown to a host, swap the planner's CRM vocabulary (Lead / Booking /
+// Contracted / Quoted / Considering, "vendor readiness", "critical") for plain
+// host words. Every helper is a pure projection — planner / operator strings are
+// untouched (the call sites only branch when `isHost` is true).
+function isHostView(event) {
+  return hostNavActive(event);
+}
+// Raw vendor.status → a calm host phrase. Hosts think "are they booked or am I
+// still deciding?" — not "Contracted vs Deposit Paid vs Confirmed".
+function hostStatusWord(status) {
+  switch (status) {
+    case 'Confirmed':
+    case 'Booked':
+    case 'Deposit Paid':
+    case 'Contracted':
+      return 'Booked';
+    case 'Quoted':
+      return 'Got a price';
+    case 'Considering':
+    case 'Not Started':
+    case '':
+    case undefined:
+    case null:
+      return 'Still deciding';
+    default:
+      return 'Booked';
+  }
+}
+// Lifecycle stage word, host edition. The planner sees pipeline rungs
+// (Lead · Booking · Locked in); a host just needs booked / still deciding,
+// plus the genuinely useful time states.
+function hostStageWord(stage, vendor) {
+  if (stage === 'After the Event' || stage === 'Archived') return 'After the event';
+  if (stage === 'Event Day') return 'Event day';
+  return hostStatusWord(vendor && vendor.status);
+}
+// Accountability tier → host phrase. The planner's compliance vocabulary
+// ("Missed promise", "Needs proof", "At risk") frames a friend you hired as a
+// delinquent contractor. Hosts get the same SIGNAL in plain, calm words.
+const HOST_TIER_LABEL = {
+  on_track:        'On track',
+  needs_proof:     'Check on this',
+  needs_follow_up: 'Follow up',
+  at_risk:         'Needs a nudge',
+  missed_promise:  'Behind',
+};
+function hostTierLabel(tier) {
+  return HOST_TIER_LABEL[tier] || 'Follow up';
+}
 
 // Studio Matte: the ONE status-chip style. The board flagged ~5 slightly
 // different status-pill treatments (tint 12/14/1c/1e, border 33/40/55, radius
@@ -428,14 +486,16 @@ function getVendorArrivalConflicts(vendors) {
 // ─────────────────────────────────────────────────────────────────────────────
 function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   const summary = useMemo(() => getVendorPortfolioSummary(vendors, event), [vendors, event]);
+  const host = isHostView(event);
   if (!vendors || vendors.length === 0) return null;
 
+  // UX-SAAS: hosts get warmer count words ("needs attention", not "critical").
   const segs = [
     summary.safe ? { level: 'safe', n: summary.safe, label: 'on track' } : null,
-    summary.attention ? { level: 'attention', n: summary.attention, label: 'need follow-up' } : null,
-    summary.critical ? { level: 'critical', n: summary.critical, label: 'critical' } : null,
-    summary.notStarted ? { level: 'not_started', n: summary.notStarted, label: 'not started' } : null,
-    summary.closed ? { level: 'closed', n: summary.closed, label: 'closed' } : null,
+    summary.attention ? { level: 'attention', n: summary.attention, label: host ? 'to follow up on' : 'need follow-up' } : null,
+    summary.critical ? { level: 'critical', n: summary.critical, label: host ? 'needs attention' : 'critical' } : null,
+    summary.notStarted ? { level: 'not_started', n: summary.notStarted, label: host ? 'not started yet' : 'not started' } : null,
+    summary.closed ? { level: 'closed', n: summary.closed, label: host ? 'all done' : 'closed' } : null,
   ].filter(Boolean);
 
   // Quiet conflict flag — top conflict only; click routes to the affected
@@ -466,7 +526,7 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
           letterSpacing: '0.16em', textTransform: 'uppercase',
           color: P.textTertiary,
         }}>
-          Vendor readiness
+          {host ? 'Where things stand' : 'Vendor readiness'}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           {segs.map((s, i) => (
@@ -546,8 +606,9 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const acc = accountability || useMemo(() => quickAccountabilityForVendor(vendor, event), [vendor, event]); // eslint-disable-line react-hooks/rules-of-hooks
 
+  const host = isHostView(event);
   const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
-  const tierLabel = accountabilityLabel(acc.tier);
+  const tierLabel = host ? hostTierLabel(acc.tier) : accountabilityLabel(acc.tier);
   const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
   // The chip is reserved for the EXCEPTION — a genuinely critical vendor (red
   // readiness) or a broken/at-risk promise. Routine follow-up rows ride on the
@@ -556,7 +617,7 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
   const isCritical = readiness.level === 'critical';
   const showChip = isCritical || emphasis;
   const chipColor = isCritical ? P.red : tierColor;
-  const chipLabel = isCritical ? 'Critical' : tierLabel;
+  const chipLabel = isCritical ? (host ? 'Needs you' : 'Critical') : tierLabel;
   const leftStrip = isSelected ? P.steelBlue
     : emphasis ? P.red
     : acc.tier === 'needs_follow_up' ? P.amber
@@ -732,7 +793,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
           fontSize: 10, fontWeight: type.weight.medium,
           letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF,
         }}>
-          {vendors.length} VENDORS
+          {vendors.length} {isHostView(event) ? (vendors.length === 1 ? 'PERSON' : 'PEOPLE') : 'VENDORS'}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
           {onAdd && (
@@ -1689,7 +1750,7 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               <span style={{ color: P.borderDef }}>·</span>
               <LevelChip level={readiness.level} label={readiness.label} />
               <span style={{ color: P.borderDef }}>·</span>
-              <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{stage}</span>
+              <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{isHostView(event) ? hostStageWord(stage, vendor) : stage}</span>
             </div>
             {/* Attention-item KPIs LEAD the detail (board 2026-06-12): a glanceable,
                 clickable strip — what needs you, how locked-in, what's owed — so the
@@ -1710,8 +1771,9 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
                 </button>
               );
               const chips = [];
+              const hostHdr = isHostView(event);
               if (openCount > 0) chips.push(chip('open', `${openCount} need you`, (readiness.counts?.critical ? P.red : P.amber), () => onAddressItem && alsoItems[0] && onAddressItem(alsoItems[0])));
-              if (lockTotal > 0) chips.push(chip('lock', `${lockedIn}/${lockTotal} locked in`, lockedIn === lockTotal ? P.green : P.steelBlue, null));
+              if (lockTotal > 0) chips.push(chip('lock', `${lockedIn}/${lockTotal} ${hostHdr ? 'sorted' : 'locked in'}`, lockedIn === lockTotal ? P.green : P.steelBlue, null));
               if (balanceDue > 0) chips.push(chip('bal', `$${balanceDue.toLocaleString()} due`, P.amber, () => onAddressItem && onAddressItem({ key: 'financial' })));
               if (!chips.length) return null;
               return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>{chips}</div>;
@@ -2531,6 +2593,7 @@ function CopyableDraft({ text }) {
 }
 
 function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, onToggle }) {
+  const host = isHostView(event);
   const context = useMemo(() => buildVendorCopilotContext(vendor, event), [vendor, event]);
   const rulePreview = useMemo(() => getRuleBasedPreview(context), [context]);
 
@@ -2560,7 +2623,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
         gap: space[3], fontFamily: FF,
       }}>
         <span style={{ fontSize: 11, color: P.textTertiary, fontStyle: 'italic' }}>
-          Readiness copilot dismissed for this session.
+          {host ? 'Quick read dismissed for now.' : 'Readiness copilot dismissed for this session.'}
         </span>
         <button
           onClick={() => setDismissed(false)}
@@ -2579,11 +2642,17 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
   }
 
   const preview = aiPreview || rulePreview;
-  const sourceLabel = preview.source === 'ai'
-    ? 'AI-enhanced readiness brief · grounded in your data'
-    : (aiAvailable
-        ? 'Rule-based readiness preview · click Generate AI version to enhance'
-        : 'Rule-based readiness preview · AI connection not enabled yet');
+  const sourceLabel = host
+    ? (preview.source === 'ai'
+        ? 'A quick take, based on what you’ve entered'
+        : (aiAvailable
+            ? 'A quick take from your details · tap to write a sharper version'
+            : 'A quick take, based on what you’ve entered'))
+    : (preview.source === 'ai'
+        ? 'AI-enhanced readiness brief · grounded in your data'
+        : (aiAvailable
+            ? 'Rule-based readiness preview · click Generate AI version to enhance'
+            : 'Rule-based readiness preview · AI connection not enabled yet'));
   const sourceColor = preview.source === 'ai' ? P.green : P.textTertiary;
 
   const generate = async () => {
@@ -2860,9 +2929,9 @@ function EmptyLine({ text }) {
 // "what's wrong with this vendor and what to do about it" — not a wall of
 // readiness sections. This card sits above CommandHeader on mobile only.
 // Reads from existing challenges + nextAction data; no new source of truth.
-function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit }) {
+function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit, host = false }) {
   const cat = vendor.category || 'Vendor';
-  const status = vendor.status || 'Considering';
+  const status = host ? hostStatusWord(vendor.status) : (vendor.status || 'Considering');
 
   // Top 3 challenges in plain language from the existing intelligence layer.
   const issues = challenges
@@ -3550,6 +3619,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
             challenges={challenges}
             onPrimary={summaryPrimary}
             onEdit={onEdit}
+            host={isHostView(event)}
           />
         )}
         <CatererDriftBanner vendor={vendor} event={event} onMarkCatererUpdated={onMarkCatererUpdated} />
@@ -3782,7 +3852,7 @@ export default function VendorPlanningWorkspace({
         letterSpacing: '0.16em', textTransform: 'uppercase',
         color: P.textTertiary, fontFamily: FF,
       }}>
-        Vendors
+        {isHostView(event) ? 'People you’re hiring' : 'Vendors'}
       </span>
     </div>
   );

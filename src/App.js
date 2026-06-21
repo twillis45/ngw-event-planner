@@ -25238,6 +25238,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
   // UX-SAAS — a host should hear "18 coming, 6 yet to reply," not read a CRM KPI grid.
   const guestsIsHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
   const [guestDraftSheet, setGuestDraftSheet] = useState(null);  // do-it-for-me hand-off (RSVP chase)
+  const [newYeses, setNewYeses] = useState([]);  // names that just RSVP'd "yes" via the link — the joyful feed
   // Guest-list-optional: casual events (cookout, watch party) just want a headcount,
   // not a roster. Show a calm number-only view until they choose to track RSVPs.
   // Default to the roster when a list already exists (unless the host committed to
@@ -25327,6 +25328,9 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
     try {
       const queued = JSON.parse(localStorage.getItem(key) || '[]');
       if (!queued.length) return;
+      // The joyful feed: who just said YES via the link. Celebrate them on arrival.
+      const arrivedYeses = queued.filter(d => d && d.rsvp === 'Yes').map(d => String(d.name || '').trim()).filter(Boolean);
+      if (arrivedYeses.length) setNewYeses(arrivedYeses);
       queued.forEach(data => {
         setGuests(gs => {
           const nameParts = (data.name || '').toLowerCase().split(' ').filter(Boolean);
@@ -25350,6 +25354,13 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
       localStorage.removeItem(key);
     } catch {}
   }, [event?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The joyful moment fades on its own — it's a celebration, not a banner to manage.
+  useEffect(() => {
+    if (!newYeses.length) return undefined;
+    const t = setTimeout(() => setNewYeses([]), 9000);
+    return () => clearTimeout(t);
+  }, [newYeses]);
 
   const yes   = guests.filter(g => g.rsvp === 'Yes').length;
   const no    = guests.filter(g => g.rsvp === 'No').length;
@@ -25557,6 +25568,27 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
             style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
         </div>
       )}
+
+      {/* The joyful feed — when people say yes via the link, it should feel like a
+          celebration, not a row in a table updating. Bright, warm, and it fades on its
+          own. Host-only. */}
+      {guestsIsHost && newYeses.length > 0 && (() => {
+        const firsts = newYeses.map(n => n.split(' ')[0]).filter(Boolean);
+        const headline = firsts.length === 1 ? `${firsts[0]} just said yes!`
+          : firsts.length === 2 ? `${firsts[0]} and ${firsts[1]} just said yes!`
+          : `${firsts[0]}, ${firsts[1]} and ${firsts.length - 2} more just said yes!`;
+        const green = C.success || C.accent;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 18, maxWidth: 760, borderRadius: 14, background: `${green}14`, border: `1px solid ${green}44`, borderLeft: `3px solid ${green}`, animation: 'ceRise 420ms cubic-bezier(.2,.7,.2,1) both' }}>
+            <span aria-hidden style={{ fontSize: 22, lineHeight: 1 }}>🎉</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{headline}</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{yes} {yes === 1 ? 'person is' : 'people are'} coming so far 💛</div>
+            </div>
+            <button type="button" onClick={() => setNewYeses([])} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>×</button>
+          </div>
+        );
+      })()}
 
       {guestsIsHost ? (
         /* UX-SAAS — speak the numbers, don't tile them. One warm sentence the host
@@ -34638,7 +34670,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         // hint just restated what the VENDOR READINESS bar shows, pushing the
         // real KPI down to 3rd. Dropped — the readiness bar now rises directly
         // under the title and leads the screen.
-        <><LegacyTabHeader label="Vendors" onBack={() => handleTabChange('Command')} />
+        <><LegacyTabHeader label={hostNavActive(event) ? 'People you’re hiring' : 'Vendors'} onBack={() => handleTabChange('Command')} />
         <Suspense fallback={<SpecialistFallback />}>
           <EventVendorsTab
             event={event}
