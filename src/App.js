@@ -19624,8 +19624,12 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   const orderDelivery = async () => {
     if (ordering) return;
     setOrdering(true);
-    let url = INSTACART_FALLBACK;
-    try { const r = await instacartCart(shareTitle || 'Shopping list', orderItems || []); if (r && r.url) url = r.url; } catch (e) { /* fall back */ }
+    let url = INSTACART_FALLBACK, realCart = false;
+    try { const r = await instacartCart(shareTitle || 'Shopping list', orderItems || []); if (r && r.url) { url = r.url; realCart = true; } } catch (e) { /* fall back */ }
+    // Interim (no Instacart partner key yet): we can't pre-fill the cart server-side, so
+    // copy the list to the clipboard and open Instacart — the host pastes/adds. Honest
+    // about it; the one-tap pre-filled cart lights up the moment INSTACART_API_KEY is set.
+    if (!realCart) { try { await navigator.clipboard.writeText(text); } catch (e) {} setStatus('instacart_interim'); }
     setOrdering(false);
     try { window.open(url, '_blank', 'noopener'); } catch (e) {}
   };
@@ -19663,6 +19667,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
     : status === 'polished' ? 'Polished ✨ — read it over, it’s still yours to tweak.'
     : status === 'polishfail' ? 'Couldn’t polish just now — your draft is unchanged.'
     : status === 'failed' ? 'Couldn’t share automatically — select the text above and copy it.'
+    : status === 'instacart_interim' ? 'List copied ✓ — paste it into Instacart to add your items (one-tap cart coming soon).'
     : '';
   return (
     <div role="dialog" aria-label={title} onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 24 }}>
@@ -19691,7 +19696,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
         </div>
         {Array.isArray(orderItems) && orderItems.length > 0 && (
           <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: 13.5, fontWeight: 800, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
-            🛒 {ordering ? 'Building your cart…' : 'Get it delivered (Instacart) →'}
+            🛒 {ordering ? 'One sec…' : 'Order on Instacart →'}
           </button>
         )}
         {statusLine && <div style={{ fontSize: 12, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
