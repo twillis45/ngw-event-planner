@@ -19735,6 +19735,22 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
             🛒 {ordering ? 'One sec…' : 'Order on Instacart →'}
           </button>
         )}
+        {Array.isArray(orderItems) && orderItems.length > 0 && (() => {
+          // One-tap into a list app, no keys/auth: Things (Apple URL scheme — builds the
+          // full checklist) and email (works anywhere — send to yourself or an AnyList /
+          // Todoist project address). Apple Reminders / Google Keep are covered by the
+          // share sheet above (they have no public write API).
+          const names = orderItems.map((i) => (i && i.name ? String(i.name).trim() : '')).filter(Boolean);
+          const thingsHref = `things:///add?title=${encodeURIComponent('Shopping — ' + (shareTitle || 'list'))}&checklist-items=${encodeURIComponent(names.join('\n'))}`;
+          const mailHref = `mailto:?subject=${encodeURIComponent(shareTitle || 'Shopping list')}&body=${encodeURIComponent(text)}`;
+          const chip = { flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', fontFamily: 'inherit' };
+          return (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <a href={thingsHref} style={chip}>✓ Add to Things</a>
+              <a href={mailHref} style={chip}>✉️ Email the list</a>
+            </div>
+          );
+        })()}
         {statusLine && <div style={{ fontSize: 12, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
       </div>
     </div>
