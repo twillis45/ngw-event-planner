@@ -18808,9 +18808,9 @@ function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
     return (
       <button onClick={() => setOpen(true)} style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px dashed ${C.border}`, background: 'transparent' }}>
         <div style={eyebrowStyle}>What matters most</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>Tell us the one moment that has to go right.</div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>We’ll keep it front and center — and check it actually happened.</div>
-        <span style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: 700, color: C.accent }}>Add it →</span>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>Every event has one moment it’s really for.</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>Name yours and we’ll keep the whole plan pointed at it.</div>
+        <span style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: 700, color: C.accent }}>Name the moment →</span>
       </button>
     );
   }
@@ -19530,7 +19530,7 @@ function AssembleReveal({ ev, profile, onDone }) {
   const fp  = useMemo(() => { try { return playbookFoodPlan(ev, foodPP); } catch { return null; } }, [ev, foodPP]);
   const ros = useMemo(() => { try { return effectiveRos(ev) || []; } catch { return []; } }, [ev]);
   const stages = useMemo(() => [
-    { key: 'day',  icon: '🗓️', label: 'Building your day',        value: ros.length ? `${ros.length} moments, timed and owned` : 'A run of the day, ready to fill' },
+    { key: 'day',  icon: '🗓️', label: 'Building your day',        value: ros.length ? `${ros.length} moments, hour by hour` : 'A run of the day, ready to fill' },
     fp ? { key: 'food', icon: '🍽️', label: 'Sizing the food & drink', value: `${fp.itemCount} item${fp.itemCount === 1 ? '' : 's'} for ~${fp.guests} guests` } : null,
     fp ? { key: 'list', icon: '🛒', label: 'Writing your shopping list', value: 'Every item, ready to check off' } : null,
   ].filter(Boolean), [ros.length, fp]);
@@ -19543,7 +19543,7 @@ function AssembleReveal({ ev, profile, onDone }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (revealed >= stages.length) return undefined;
-    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 420 : 820);
+    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 240 : 460);
     return () => clearTimeout(t);
   }, [revealed, stages.length]);
   const done = revealed >= stages.length;
@@ -19568,13 +19568,13 @@ function AssembleReveal({ ev, profile, onDone }) {
             );
           })}
         </div>
-        <button type="button" onClick={onDone} disabled={!done}
-          style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: done ? 'pointer' : 'default', background: done ? C.accent : C.surface, color: done ? '#fff' : C.muted, opacity: done ? 1 : 0.6, transition: 'opacity 240ms ease, background 240ms ease' }}>
-          {done ? 'Open my event →' : 'Setting up…'}
+        {/* Never gate the host out — the button is live from the first frame, so the
+            reveal can never read as a fake loader. It just relabels once everything
+            has landed. An impatient host opens instantly; the rest watch it build. */}
+        <button type="button" onClick={onDone}
+          style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', transition: 'opacity 240ms ease' }}>
+          {done ? 'Open my event →' : 'Take me in →'}
         </button>
-        {!done && (
-          <button type="button" onClick={onDone} style={{ marginTop: 8, width: '100%', background: 'none', border: 'none', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 6 }}>Skip</button>
-        )}
       </div>
     </div>
   );
@@ -19793,15 +19793,20 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {!isDayOf && (() => {
           const live = prog.filter(p => p.state !== 'done');
           const doneCount = prog.length - live.length;
-          // Host audit #6 — a brand-new event showed all SEVEN areas as "To do" at once:
-          // a wall of anxiety. The Heart and the food "Your choices" already have their
-          // own dedicated cards below, so they don't belong in this list; and we surface
-          // at most three at a time, folding the rest, so it reads as "a couple of next
-          // things" not "you're behind on everything." Indices kept against the FULL live
-          // list so the wizard still jumps to the right step.
+          // Host audit — on a BRAND-NEW event this list was a stack of "To do" rows right
+          // under the hero, and its top row just REPEATED the hero's own task ("Add your
+          // guest list" / "Guests: To do"). The single breathing next-step already IS what
+          // needs the host; a pre-filled chore list on arrival reads as "look how much you
+          // signed up for." So the tracker stays hidden until the host has actually
+          // finished something — then it earns its place as "here's what's left," not
+          // "here's everything." We also drop the row the hero is currently driving so the
+          // same task never appears twice. (Heart / food "Your choices" have their own
+          // cards.) Indices kept against the FULL live list so the wizard still jumps right.
+          if (doneCount === 0) return null;
+          const heroTab = na && na.primaryRoute && (typeof na.primaryRoute === 'string' ? na.primaryRoute : na.primaryRoute.tab);
           const hidden = new Set(['Heart', 'Your choices']);
-          const shown = live.map((p, i) => ({ p, i })).filter(({ p }) => !hidden.has(p.label));
-          if (shown.length === 0) return null;  // only Heart/choices left → their own cards carry it
+          const shown = live.map((p, i) => ({ p, i })).filter(({ p }) => !hidden.has(p.label) && p.tab !== heroTab);
+          if (shown.length === 0) return null;  // only Heart/choices/the hero left → their own surfaces carry it
           const CAP = 3;
           const visible = shown.slice(0, CAP);
           const moreCount = shown.length - visible.length;
@@ -19863,31 +19868,24 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {!isDayOf && (() => {
           const fp = (() => { try { return playbookFoodPlan(ev, foodPP); } catch { return null; } })();
           if (!fp) return null;
+          // The food plan card only EARNS its place once there's a real head count to
+          // size from. Before that, asking "how many are coming?" here just duplicates
+          // the guest-list hero above — a second ask for the same thing (host audit).
+          // So it stays hidden until guests are known; then it shows a real plan, not a
+          // guessed "Sized for 35".
+          if (!fp.guestCountResolved) return null;
           const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
-          // Honesty (host audit #5): before the host gives a headcount, the playbook's
-          // typical count is a GUESS and the cost a 2× range. Don't present a guessed
-          // "Sized for 35 guests" as fact — invite the real number instead.
-          const known = fp.guestCountResolved;
           return (
             <button type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Food plan</span>
-                {known && <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>}
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
               </div>
-              {known ? (
-                <>
-                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
-                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
-                    {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Tell us how many are coming</div>
-                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>Add your guests and we’ll size the food and the cost to your number →</div>
-                </>
-              )}
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+                {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
+              </div>
             </button>
           );
         })()}
@@ -27693,7 +27691,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
           const addMoment = (m) => { track(EVENTS.ROS_ITEM_ADDED, { source: 'moment', moment: m.id }); setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]); };
           return (
             <div style={{ marginBottom: 16, padding: '10px 12px', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Moments that matter · one tap adds it with an owner</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{isHost ? 'Moments that matter · one tap drops it into your day' : 'Moments that matter · one tap adds it with an owner'}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {sugg.map(m => (
                   <button key={m.id} onClick={() => addMoment(m)}
@@ -34486,7 +34484,16 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={effectiveRos(event)} onTabChange={setTab} eventName={event.name} /></>}
       {tab === 'Event Day Schedule' && (
         <>
-          <LegacyTabHeader label="Event Day Schedule" hint="The event-day schedule. What happens, when, and who's responsible." onBack={() => handleTabChange('Command')} />
+          {/* Host audit — a host weeks out read the full prep schedule ("heat the
+              buffet…") as a caterer's sheet for someone else. For hosts, frame it as a
+              calm preview that comes alive on the day, and invite them to add the
+              moments they care about — agency, not an ops dump. */}
+          <LegacyTabHeader
+            label={hostNavActive(event) ? 'The day' : 'Event Day Schedule'}
+            hint={hostNavActive(event)
+              ? 'A calm look at how your day flows. The minute-by-minute cues come alive as the day gets close — for now, just add any moments that matter to you.'
+              : "The event-day schedule. What happens, when, and who's responsible."}
+            onBack={() => handleTabChange('Command')} />
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
