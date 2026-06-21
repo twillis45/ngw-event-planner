@@ -8509,9 +8509,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
         const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
+        const shopAnchorStr = (event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ') || '').trim();
         const left = shopItems.filter((i) => !i.got).length;
         return (
-          <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
+          <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
@@ -20040,7 +20041,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
             const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
             const left = shopItems.filter((i) => !i.got).length;
-            const d = draftShoppingList(ev, profile, { items: shopItems });
+            const d = draftShoppingList(ev, profile, { items: shopItems, anchor: (ev.venueAddress || [ev.venueCity, ev.venueState].filter(Boolean).join(', ') || '').trim() });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
               title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
               sheet: { title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' } });

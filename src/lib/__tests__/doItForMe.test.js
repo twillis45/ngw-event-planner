@@ -221,6 +221,25 @@ describe('buildShoppingPlan', () => {
     expect(plan.dayOf.map((i) => i.name)).toEqual(['Ice']);
     expect(plan.stores.flatMap((s) => s.items.map((i) => i.name))).not.toContain('Ice');
   });
+  test('mapLink is a live Maps search of the store type near the anchor — never a fake address', () => {
+    const items = [{ name: 'Buns', where: ['Grocery'], category: 'food' }];
+    const plan = buildShoppingPlan(items, { anchor: 'Austin, TX' });
+    const link = plan.stores[0].mapLink;
+    expect(link).toContain('maps');
+    expect(link).toContain(encodeURIComponent('Grocery'));
+    expect(link).toContain(encodeURIComponent('Austin, TX'));
+  });
+  test('mapLink degrades to null when no anchor — never invented', () => {
+    const items = [{ name: 'Buns', where: ['Grocery'], category: 'food' }];
+    expect(buildShoppingPlan(items).stores[0].mapLink).toBe(null);
+    expect(buildShoppingPlan(items, { anchor: '' }).stores[0].mapLink).toBe(null);
+  });
+  test('orderLinks always include a real Instacart entry point', () => {
+    const plan = buildShoppingPlan([{ name: 'Buns', where: ['Grocery'], category: 'food' }]);
+    const ic = plan.orderLinks.find((l) => l.label === 'Instacart');
+    expect(ic).toBeTruthy();
+    expect(ic.url).toContain('instacart.com');
+  });
 });
 
 describe('draftShoppingList', () => {
@@ -267,6 +286,17 @@ describe('draftShoppingList', () => {
   test('celebrates when everything is checked off', () => {
     const { body } = draftShoppingList(maya, profile, { items: [{ name: 'Ice', qty: 5, unit: 'lbs', got: true }] });
     expect(body).toMatch(/checked off|ready/i);
+  });
+  test('with an anchor, the text carries the live store-finder map link + an order line', () => {
+    const { body } = draftShoppingList(maya, profile, { items, anchor: 'Austin, TX' });
+    expect(body).toContain('📍 Find one near you: https://www.google.com/maps/search/?api=1&query=');
+    expect(body).toContain(encodeURIComponent('Austin, TX'));
+    expect(body).toMatch(/🛒 Order for pickup\/delivery: Instacart https?:\/\//);
+  });
+  test('no anchor → no map link line (never a fabricated store), order line still present', () => {
+    const { body } = draftShoppingList(maya, profile, { items });
+    expect(body).not.toContain('Find one near you');
+    expect(body).toMatch(/🛒 Order for pickup\/delivery: Instacart/);
   });
 });
 

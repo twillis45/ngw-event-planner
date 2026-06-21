@@ -334,6 +334,19 @@ export function draftRecap(event, profile) {
 const CATEGORY_ORDER = ['food', 'beverage', 'cleanup', 'logistics', 'rental', 'other'];
 const WAREHOUSE_RE = /costco|sam'?s|warehouse|bj'?s/i;
 
+// HONEST integrations for the shopping list. We NEVER fabricate a store name, address,
+// or distance. Instead we emit LIVE LINKS that resolve to real stores/distances at tap
+// time — a Maps search ("grocery near <host's address>") opens the actual nearby stores
+// WITH their real distances, and grocery-delivery entry points let the host send the
+// list off for pickup/delivery. NOTE: these order links open each retailer's storefront;
+// they do NOT pre-fill a cart — a true one-tap pre-filled cart requires each retailer's
+// own API (Instacart/Walmart/Amazon), which is future work.
+const ORDER_LINKS = [
+  { label: 'Instacart', url: 'https://www.instacart.com/store/s?k=' + encodeURIComponent('grocery') },
+  { label: 'Walmart', url: 'https://www.walmart.com/search?q=' + encodeURIComponent('grocery') },
+  { label: 'Amazon Fresh', url: 'https://www.amazon.com/alm/storefront' },
+];
+
 function catRank(c) {
   const i = CATEGORY_ORDER.indexOf((c ? String(c) : 'other').toLowerCase());
   return i === -1 ? CATEGORY_ORDER.indexOf('other') : i;
@@ -345,6 +358,13 @@ function catRank(c) {
 // caller to fill once we actually compute it.
 export function buildShoppingPlan(items, opts = {}) {
   const all = (Array.isArray(items) ? items : []).filter((x) => x && String(x.name || '').trim());
+  // anchor = the host's address or "City, ST" (may be empty). When present, each store
+  // section gets a real Maps search link that opens the actual nearby stores of that type
+  // WITH distances. When empty, we degrade to null — never a fabricated "Kroger 1.2 mi".
+  const anchor = String((opts && opts.anchor) || '').trim();
+  const mapLinkFor = (storeType) => anchor
+    ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(storeType) + ' near ' + anchor)
+    : null;
   // 1. partition day-of (grab the morning of) from the rest.
   const dayOf = all.filter((i) => i.buyAt === 'T0');
   const rest = all.filter((i) => i.buyAt !== 'T0');
@@ -391,7 +411,7 @@ export function buildShoppingPlan(items, opts = {}) {
     return na < nb ? -1 : na > nb ? 1 : 0;
   };
   const stores = Array.from(buckets.entries())
-    .map(([store, its]) => ({ store, distance: null, items: its.slice().sort(itemSort) }))
+    .map(([store, its]) => ({ store, distance: null, mapLink: mapLinkFor(store), items: its.slice().sort(itemSort) }))
     .sort((a, b) => {
       if (b.items.length !== a.items.length) return b.items.length - a.items.length;
       return a.store < b.store ? -1 : a.store > b.store ? 1 : 0;
@@ -432,7 +452,7 @@ export function buildShoppingPlan(items, opts = {}) {
     if (Number.isFinite(low) && Number.isFinite(high)) estTotalRange = [low, high];
   }
 
-  return { stores, dayOf: dayOfSorted, decisions: trimmed, estTotalRange, storeCount };
+  return { stores, dayOf: dayOfSorted, decisions: trimmed, estTotalRange, storeCount, orderLinks: ORDER_LINKS };
 }
 
 export function draftShoppingList(event, profile, opts = {}) {
@@ -468,6 +488,9 @@ export function draftShoppingList(event, profile, opts = {}) {
   if (plan.decisions.length) { lines.push(plan.decisions[0]); lines.push(''); }
   for (const s of plan.stores) {
     lines.push(String(s.store).toUpperCase());
+    // Honest store finder: a live Maps link that opens the real nearby stores of this
+    // type WITH distances — only when the host gave us an anchor. Never a fake address.
+    if (s.mapLink) lines.push(`📍 Find one near you: ${s.mapLink}`);
     for (const it of s.items) lines.push(renderItem(it));
     lines.push('');
   }
@@ -475,6 +498,12 @@ export function draftShoppingList(event, profile, opts = {}) {
     lines.push('DAY-OF (grab the morning of)');
     for (const it of plan.dayOf) lines.push(renderItem(it));
     lines.push('');
+  }
+  // Send-to-store: one clean delivery/pickup entry point in the text (Instacart). The
+  // other retailers ride along in the structured orderLinks for the UI to surface.
+  if (plan.orderLinks && plan.orderLinks.length) {
+    const ic = plan.orderLinks.find((l) => l.label === 'Instacart') || plan.orderLinks[0];
+    if (ic) { lines.push(`🛒 Order for pickup/delivery: ${ic.label} ${ic.url}`); lines.push(''); }
   }
   if (plan.estTotalRange) {
     lines.push(`Estimated total ~$${plan.estTotalRange[0]}–$${plan.estTotalRange[1]} (modeled, not live prices)`);
