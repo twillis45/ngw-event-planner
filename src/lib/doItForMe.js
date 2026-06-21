@@ -324,6 +324,120 @@ export function draftRecap(event, profile) {
   return { subject: v.sombre ? `Remembering — ${name}` : `${name} — thank you`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
+// Shopping list — the clearest "do, don't advise" win. The food plan already computes
+// every item AND quantity; instead of making the host read it off a screen, we WRITE
+// the list they take to the store or hand to whoever's shopping. opts.items is the
+// normalized food-plan spread ({ name, qty, unit, got }) — pure, no invention; honest
+// when the menu isn't set yet.
+export function draftShoppingList(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const items = Array.isArray(opts.items) ? opts.items.filter((x) => x && String(x.name || '').trim()) : [];
+  const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
+  const date = fmtLongDate(event.date);
+  const need = items.filter((i) => !i.got);
+  const done = items.length - need.length;
+  const qtyOf = (i) => {
+    const q = i.qty; const u = (i.unit ? String(i.unit) : '').trim();
+    return (q != null && q !== '' && Number(q) > 0) ? `${q}${u ? ' ' + u : ''} ` : '';
+  };
+  const lines = [`🛒 Shopping list — ${name}${date ? ` · ${date}` : ''}`, ''];
+  if (items.length === 0) {
+    lines.push('Your menu isn’t set yet — pick your food and I’ll build the list.');
+  } else if (need.length === 0) {
+    lines.push('Everything’s checked off — you’re ready. 💛');
+  } else {
+    for (const i of need) lines.push(`☐ ${qtyOf(i)}${String(i.name).trim()}`);
+    if (done > 0) { lines.push(''); lines.push(`(${done} already done)`); }
+  }
+  return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
+// Day-before details — the logistics blast every host sends the night before (where,
+// when, what to bring). Kills the day-of "what's the address?" texts. From venue/date/
+// time the host already gave us; opts.rsvpUrl optional. Never invents parking/bring info.
+export function draftDayBeforeDetails(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const v = inviteVoice(event);
+  const name = subjectThing(event);
+  const date = fmtLongDate(event.date);
+  const time = timePhrase(event);
+  const place = placePhrase(event);
+  const host = hostName(profile);
+  const when = [date, time].filter(Boolean).join(' · ');
+  // Only a real, host-provided "bring" note — never invented.
+  const bring = String((event.guestBring || event.whatToBring || event.bringNote || '')).trim();
+  const lines = [v.sombre ? `A few details for ${name}` : `See you soon! 💛 A few details for ${name}:`, ''];
+  if (when)  lines.push(`📅 ${when}`);
+  if (place) lines.push(`📍 ${place === 'our place' ? 'Our place' : place}`);
+  if (bring) lines.push(`🎁 ${bring}`);
+  lines.push('');
+  lines.push(v.sombre ? 'Thank you for being with us.' : 'Can’t wait to see you!');
+  if (host) { lines.push(''); lines.push(`— ${host}`); }
+  return { subject: v.sombre ? `Details — ${name}` : `See you soon — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
+// Vendor reconfirm — the day-before "still on for Saturday?" note to a BOOKED vendor.
+// Reuses the vendor + event facts; name optional (a no-name note reads "Hi there," so
+// one card can serve several vendors). Practical, anxiety-reducing.
+export function draftVendorReconfirm(event, vendor, profile) {
+  if (!event) return { subject: '', body: '' };
+  const name = (vendor && vendor.name ? String(vendor.name) : '').trim();
+  const date = fmtLongDate(event.date);
+  const time = timePhrase(event);
+  const place = placePhrase(event);
+  const host = hostName(profile);
+  const arrival = String((vendor && (vendor.arrivalTime || vendor.loadIn || vendor.arrival)) || '').trim();
+  const greeting = name ? `Hi ${name},` : 'Hi there,';
+  let confirm = `Just confirming we’re all set for ${date || 'the event'}`;
+  if (place && place !== 'our place') confirm += ` at ${place}`;
+  confirm += '.';
+  const lines = [greeting, '', confirm];
+  if (arrival) lines.push(`Planned arrival/setup: ${arrival}.`);
+  else if (time) lines.push(`Things kick off ${time}.`);
+  lines.push('Anything you need from us beforehand? Looking forward to it.', '', 'Thanks so much!');
+  if (host) lines.push(host);
+  return { subject: `Confirming ${date || 'our date'}${name ? ' — ' + name : ''}`, body: lines.join('\n').trim() };
+}
+
+// hasToastMaterial — does the host's own words give us anything to shape a toast from?
+// (We never fabricate a speech; the card only appears when there's real material.)
+export function hasToastMaterial(event) {
+  if (!event) return false;
+  return !!(String(event.honoree || '').trim() || String(event.honoree_story || '').trim()
+    || String(event.meaning_why || '').trim() || String(event.feeling_words || '').trim());
+}
+
+// The toast — the one thing hosts dread. We draft a short, warm toast from the host's
+// OWN words (honoree, the story, why it matters, the feeling) — shaping, never inventing.
+// Tone follows the occasion. The host edits/polishes; this beats a blank page.
+export function draftToast(event, profile) {
+  if (!event) return { subject: '', body: '' };
+  const honoree = String(event.honoree || '').trim();
+  const type = (event.type ? String(event.type) : 'celebration').toLowerCase();
+  const story = String(event.honoree_story || '').trim();
+  const why = String(event.meaning_why || '').trim();
+  const feeling = String(event.feeling_words || '').trim();
+  const sombre = SOMBRE_RE.test(type);
+  const end = (s) => s.replace(/\s+$/, '').replace(/\.?$/, '.');
+  const lines = [];
+  if (sombre) {
+    lines.push('If I could say a few words…');
+    lines.push(honoree ? `We’re here because of ${honoree} — and what ${honoree} meant to all of us.` : 'We’re here tonight to remember, and to hold each other close.');
+    if (story) lines.push(end(story));
+    if (why) lines.push(end(why));
+    lines.push('Thank you for being here.');
+  } else {
+    lines.push('A few words, if I can…');
+    lines.push(honoree ? `Tonight is about ${honoree}.` : 'Thank you all for being here — it means the world.');
+    if (story) lines.push(end(story));
+    if (why) lines.push(end(why));
+    if (feeling) lines.push(`Here’s to ${feeling.replace(/\.$/, '')}.`);
+    lines.push(honoree ? `So raise your glass — to ${honoree}.` : 'So raise your glass — to all of us, and to nights like this.');
+  }
+  if (hostName(profile)) { /* a toast is spoken, not signed */ }
+  return { subject: honoree ? `A toast to ${honoree}` : 'A toast', body: lines.join('\n\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
 // Returns 'shared' | 'copied' | 'cancelled' | 'failed' so the caller can confirm
 // honestly ("Shared" vs "Copied — paste it anywhere").

@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -195,5 +195,83 @@ describe('draftThankYou', () => {
     expect(body).toContain('Thank you so much');
     expect(body).toContain('Maya’s graduation');
     expect(body).toContain('Todd');
+  });
+});
+
+describe('draftShoppingList', () => {
+  const items = [
+    { name: 'Ice', qty: 18, unit: 'lbs', got: false },
+    { name: 'Chicken', qty: 4, unit: 'lbs', got: false },
+    { name: 'Buns', qty: 3, unit: 'packs', got: true },
+  ];
+  test('writes a checklist with quantities, only what is still needed', () => {
+    const { subject, body } = draftShoppingList(maya, profile, { items });
+    expect(subject).toContain('Shopping list');
+    expect(body).toContain('18 lbs Ice');
+    expect(body).toContain('4 lbs Chicken');
+    expect(body).not.toContain('Buns');      // already got → off the list
+    expect(body).toContain('1 already done');
+  });
+  test('honest when the menu is empty — never invents items', () => {
+    const { body } = draftShoppingList(maya, profile, { items: [] });
+    expect(body).toMatch(/menu isn’t set yet/i);
+  });
+  test('celebrates when everything is checked off', () => {
+    const { body } = draftShoppingList(maya, profile, { items: [{ name: 'Ice', qty: 5, unit: 'lbs', got: true }] });
+    expect(body).toMatch(/checked off|ready/i);
+  });
+});
+
+describe('draftDayBeforeDetails', () => {
+  test('logistics blast from real venue/date/time', () => {
+    const { subject, body } = draftDayBeforeDetails(maya, profile);
+    expect(subject).toMatch(/See you soon/i);
+    expect(body).toContain('Tuesday, July 7');
+    expect(body).toContain('Our place');
+    expect(body).toContain('Todd');
+  });
+  test('includes a host-provided bring note, never an invented one', () => {
+    expect(draftDayBeforeDetails(maya, profile).body).not.toMatch(/🎁/);
+    expect(draftDayBeforeDetails({ ...maya, whatToBring: 'a side dish to share' }, profile).body).toContain('a side dish to share');
+  });
+  test('somber events stay respectful', () => {
+    const { body } = draftDayBeforeDetails({ type: 'Memorial', name: 'Remembering Joe', date: '2026-07-07' }, profile);
+    expect(body).not.toMatch(/Can’t wait|💛/);
+    expect(body).toMatch(/Thank you for being with us/i);
+  });
+});
+
+describe('draftVendorReconfirm', () => {
+  test('reconfirms date/place with a booked vendor', () => {
+    const { subject, body } = draftVendorReconfirm({ ...maya, venue: 'The Grand Hall' }, { name: 'Ace Catering', arrivalTime: '3:00 PM' }, profile);
+    expect(subject).toContain('Ace Catering');
+    expect(body).toContain('Hi Ace Catering,');
+    expect(body).toContain('Tuesday, July 7');
+    expect(body).toContain('The Grand Hall');
+    expect(body).toContain('3:00 PM');
+  });
+  test('no-name vendor reads "Hi there," so one note serves several', () => {
+    expect(draftVendorReconfirm(maya, null, profile).body).toContain('Hi there,');
+  });
+});
+
+describe('draftToast', () => {
+  test('shapes the host’s own words, never fabricates', () => {
+    const ev = { ...maya, honoree_story: 'she worked two jobs to get here', meaning_why: 'this family never quits' };
+    const { subject, body } = draftToast(ev, profile);
+    expect(subject).toContain('Maya');
+    expect(body).toContain('Tonight is about Maya');
+    expect(body).toContain('she worked two jobs to get here');
+    expect(body).toContain('this family never quits');
+    expect(body).toMatch(/raise your glass/i);
+  });
+  test('hasToastMaterial gates the card on real material', () => {
+    expect(hasToastMaterial(maya)).toBe(true);                       // honoree present
+    expect(hasToastMaterial({ type: 'Dinner Party' })).toBe(false);  // nothing to shape
+  });
+  test('somber toast remembers, never "raise your glass"', () => {
+    const { body } = draftToast({ type: 'Celebration of Life', honoree: 'Joe' }, profile);
+    expect(body).toMatch(/remember|hold each other|because of Joe/i);
+    expect(body).not.toMatch(/raise your glass/i);
   });
 });

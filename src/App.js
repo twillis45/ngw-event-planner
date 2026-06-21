@@ -37,7 +37,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, eventCulturalMeta, isAtHome, shareOrCopy } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -8403,6 +8403,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
   const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
+  const [shopSheet, setShopSheet] = useState(null); // "do it for me" — the shopping list draft
   // #4 — "add a dish": a named line the host commits (their own dish, or someone's
   // bringing it). Owner + cost optional. Stored on event.foodAdd, merged by the engine.
   const [addOpen, setAddOpen] = useState(false);
@@ -8503,6 +8504,24 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           </button>
         )}
       </div>
+
+      {/* "Do it for me" — the shopping list. The plan already computes every item AND
+          quantity; we write the checklist the host takes to the store or hands off. */}
+      {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
+        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id] }));
+        const left = shopItems.filter((i) => !i.got).length;
+        return (
+          <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
+            style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: steel }}>Open &amp; share →</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>🛒 Your shopping list — already written</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
+          </button>
+        );
+      })()}
 
       {/* dietary gate (decision-first) — two workflows. Headcount/locked mode: there's
           no per-guest list, so the host NOTES the allergies they know of. List mode:
@@ -8839,6 +8858,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           })()}
         </div>
       )}
+      {shopSheet && <DraftSheet {...shopSheet} onClose={() => setShopSheet(null)} C={C} isMobile={isMobile} />}
     </div>
   );
 }
@@ -19979,6 +19999,58 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Your invite's written — send it now</div>
               {preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{preview}…”</div>}
               <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>The yeses land right back here — and the rest of the plan can wait.</div>
+            </button>
+          );
+        })()}
+        {/* "Do it for me" — the day-before details blast. From the venue/date/time the
+            host gave us; appears as the event nears so it's there when they'd send it. */}
+        {!isDayOf && ev.date && daysLeft != null && daysLeft >= 0 && daysLeft <= 7 && (() => {
+          const rsvpCode = ev.rsvpCode || ev.id;
+          const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+          const d = draftDayBeforeDetails(ev, profile, { rsvpUrl });
+          return (
+            <button type="button" onClick={() => setDraftSheet({ title: 'The final details', intro: 'A quick note to everyone coming — where, when, and anything to bring. Written from your event; make it yours and send.', draft: d, shareTitle: d.subject, kind: 'invite' })}
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <span style={eyebrow}>Ready to send</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone the final details</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Where, when, what to bring — the night-before note, already written.</div>
+            </button>
+          );
+        })()}
+        {/* "Do it for me" — vendor reconfirm. The day-before "still on for Saturday?" to
+            booked vendors. One note (personalized if there's just one) the host sends each. */}
+        {!isDayOf && ev.date && daysLeft != null && daysLeft >= 0 && daysLeft <= 10 && (() => {
+          const booked = (ev.vendors || []).filter((v) => v && /book|confirm|hired|signed|deposit/i.test(String(v.status || '')));
+          if (booked.length === 0) return null;
+          const d = draftVendorReconfirm(ev, booked.length === 1 ? booked[0] : null, profile);
+          return (
+            <button type="button" onClick={() => setDraftSheet({ title: 'Reconfirm your vendors', intro: booked.length === 1 ? 'A quick day-before check-in with your vendor — confirming the date, place, and timing. Make it yours and send.' : `A quick check-in to send each of your ${booked.length} booked vendors — confirming date, place, and timing.`, draft: d, shareTitle: d.subject, kind: 'vendor' })}
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <span style={eyebrow}>Ready to send</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Reconfirm with your {booked.length === 1 ? 'vendor' : `${booked.length} vendors`}</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>The day-before “still on?” check-in — written, with your details.</div>
+            </button>
+          );
+        })()}
+        {/* "Do it for me" — the toast. Only when the host's own words give us something
+            to shape (honoree / the story / why it matters / the feeling). Never fabricated. */}
+        {!isDayOf && hasToastMaterial(ev) && (() => {
+          const d = draftToast(ev, profile);
+          return (
+            <button type="button" onClick={() => setDraftSheet({ title: 'A toast', intro: 'The thing everyone dreads. Shaped from your own words — the person, the story, why it matters. Read it aloud once; tweak what’s yours.', draft: d, shareTitle: d.subject, kind: 'recap' })}
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                <span style={eyebrow}>Already written</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open →</span>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>🥂 A toast — a starting draft</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>From your own words. Beats staring at a blank page the night before.</div>
             </button>
           );
         })()}
