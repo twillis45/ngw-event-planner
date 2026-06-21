@@ -8510,7 +8510,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
         const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
-        const shopAnchorStr = eventGeoQuery(event); // single source — same location weather/pricing use
+        const shopAnchorStr = eventGeoQuery(event, profile); // single source — checks the event, then the host's profile home
         const left = shopItems.filter((i) => !i.got).length;
         return (
           <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
@@ -13627,7 +13627,7 @@ const METRO_GEO = {
 // "Where's it happening?" (venueCity/State/Address), the city/state, the picked metro,
 // a real venue string — then defaults to the host's remembered HOME city when it's an
 // at-home event with nothing explicit. Returns '' only when truly nothing is known.
-function eventGeoQuery(event) {
+function eventGeoQuery(event, profile) {
   if (!event) return '';
   const st = String(event.state || event.venueState || '').trim().toUpperCase();
   const city = String(event.venueCity || event.city || '').trim();
@@ -13644,7 +13644,20 @@ function eventGeoQuery(event) {
   if (city) return st ? `${city}, ${st}` : city;
   const v = String(event.venue || '').trim();
   if (v && !/^(host'?s home|our (place|home|backyard)|home)$/i.test(v)) return v;
-  // Host-home default — at-home with no explicit place → the host's remembered home city.
+  // Host-home default — an at-home event with no explicit place uses the HOST's own home
+  // location from their profile (the user's home), then the remembered city. This is what
+  // makes "default to the user's home" actually work for at-home gatherings.
+  if (profile) {
+    const pmk = profile.metroMarket || profile.market;
+    const pg = pmk && METRO_GEO[pmk];
+    if (pg) return `${pg.city}, ${pg.state}, US`;
+    const pm = pmk && METRO_MARKETS.find((m) => m.id === pmk);
+    if (pm && pm.label) return pm.label.split(/[/(]/)[0].trim();
+    const pcity = String(profile.city || '').trim();
+    if (pcity) { const pst = String(profile.state || '').trim().toUpperCase(); return pst ? `${pcity}, ${pst}` : pcity; }
+    const paddr = String(profile.address || '').trim();
+    if (paddr) return paddr;
+  }
   try {
     const hc = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-city')) || '';
     const hs = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-state')) || '';
@@ -20087,7 +20100,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
             const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
             const left = shopItems.filter((i) => !i.got).length;
-            const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev) });
+            const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev, profile) });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
               title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
               row: '🛒 Your shopping list', rowSub: 'every item, with amounts',
