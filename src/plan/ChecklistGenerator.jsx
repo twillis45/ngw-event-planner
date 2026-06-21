@@ -179,6 +179,7 @@ export default function ChecklistGenerator({
   onBack,
   onToggleTask, // (taskId) => void — if provided, persists to host event state
   onOpenTask,   // #13: (task) => void — open the task's steps in a modal
+  isHost = false, // Reality-Fix 2 P1: host sees host-language only (no CLIENT lane, no jargon)
 }) {
   const timeline  = event?.timeline || [];
   const eventDate = event?.date || null;
@@ -236,9 +237,15 @@ export default function ChecklistGenerator({
   const catBuckets = buildCategoryBuckets(tasks);
   const tabBuckets = buildTabBuckets(tasks);
   const owners     = getOwners(tasks);
-  const TABS       = ['PLANNING', 'VENDOR', 'EVENT DAY'];
+  // P1 — a self-host has no "client" concept and shouldn't see an empty VENDOR lane.
+  // Host: PLANNING + (VENDOR only if there ARE vendor tasks) + EVENT DAY (shown as "The Day").
+  const TABS       = isHost
+    ? ['PLANNING', ...(((tabBuckets.VENDOR || []).length > 0) ? ['VENDOR'] : []), 'EVENT DAY']
+    : ['PLANNING', 'VENDOR', 'EVENT DAY'];
+  const tabLabel   = (t) => (isHost && t === 'EVENT DAY') ? 'THE DAY' : t;
 
-  let tabTasks = tabBuckets[activeTab] || [];
+  const safeActiveTab = TABS.includes(activeTab) ? activeTab : TABS[0];
+  let tabTasks = tabBuckets[safeActiveTab] || [];
   if (ownerFilter) tabTasks = tabTasks.filter(t => t.owner === ownerFilter);
 
   const handleToggle = id => {
@@ -304,11 +311,16 @@ export default function ChecklistGenerator({
             <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Progress</span>
           </div>
           <div style={{ padding: `${sp[5]}px ${sp[5]}px 0` }}>
-            {['Planning','Vendor','Venue','Client','Event Day'].map(cat => (
-              <ProgressBar key={cat} label={cat} tasks={catBuckets[cat] || []} />
+            {/* P1 — host: drop the planner-only "Client" lane, hide empty Vendor/Venue
+                lanes (reveal-when-data), and speak host language ("The Day"). */}
+            {(isHost
+              ? ['Planning','Vendor','Venue','Event Day'].filter(c => (catBuckets[c] || []).length > 0)
+              : ['Planning','Vendor','Venue','Client','Event Day']
+            ).map(cat => (
+              <ProgressBar key={cat} label={isHost && cat === 'Event Day' ? 'The Day' : cat} tasks={catBuckets[cat] || []} />
             ))}
           </div>
-          {owners.length > 0 && (
+          {!isHost && owners.length > 0 && (
             <>
               <div style={{ padding: `${sp[5]}px ${sp[5]}px ${sp[3]}px`, borderTop: `1px solid ${P.borderSubtle}`, marginTop: sp[4] }}>
                 <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Filter by Owner</span>
@@ -330,7 +342,7 @@ export default function ChecklistGenerator({
           <StatCard label="Done"          value={doneCount} valueColor={P.green} />
           <StatCard label="Remaining"     value={remaining} />
           <StatCard label="Overdue"       value={overdue}   valueColor={overdue > 0 ? P.red : P.textTertiary} />
-          <StatCard label="From Template" value={total}     valueColor={P.textSecondary} />
+          <StatCard label={isHost ? 'Total steps' : 'From Template'} value={total} valueColor={P.textSecondary} />
         </div>
 
         {/* Sprint 57f.2: section-level compression notice. Shows ONLY when
@@ -369,10 +381,10 @@ export default function ChecklistGenerator({
         {/* Tabs */}
         <div style={{ flexShrink: 0, display: 'flex', borderBottom: `1px solid ${P.borderSubtle}`, background: P.base }}>
           {TABS.map(tab => {
-            const active = tab === activeTab;
+            const active = tab === safeActiveTab;
             return (
               <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: `${sp[4]}px ${sp[6]}px`, background: 'transparent', border: 'none', borderBottom: active ? `2px solid ${P.textPrimary}` : '2px solid transparent', cursor: 'pointer', fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: active ? P.textPrimary : P.textTertiary, letterSpacing: '0.07em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: sp[2] }}>
-                {tab}
+                {tabLabel(tab)}
                 <span style={{ fontSize: 10, color: active ? P.textSecondary : P.textTertiary, fontWeight: type.weight.regular }}>{(tabBuckets[tab] || []).length}</span>
               </button>
             );
@@ -387,8 +399,8 @@ export default function ChecklistGenerator({
           }
         </div>
 
-        {/* Mobile owner filter strip */}
-        {isMobile && owners.length > 0 && (
+        {/* Mobile owner filter strip — hidden for hosts (a solo host owns everything). */}
+        {!isHost && isMobile && owners.length > 0 && (
           <div style={{ flexShrink: 0, borderTop: `1px solid ${P.borderSubtle}`, padding: `${sp[3]}px ${sp[5]}px`, display: 'flex', gap: sp[3], overflowX: 'auto', background: P.base }}>
             {[null, ...owners].map(o => (
               <button key={o ?? '__all'} onClick={() => setOwnerFilter(o === ownerFilter ? null : o)} style={{ flexShrink: 0, padding: `${sp[2]}px ${sp[4]}px`, borderRadius: r.full, background: ownerFilter === o ? P.borderDef : 'transparent', border: `1px solid ${P.borderSubtle}`, cursor: 'pointer', fontFamily: FF, fontSize: 11, color: ownerFilter === o ? P.textPrimary : P.textSecondary, whiteSpace: 'nowrap' }}>

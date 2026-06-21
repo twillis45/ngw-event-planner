@@ -2,7 +2,7 @@
 // vendor outcomes + reasons across events into a private per-vendor track record;
 // counts only USED (confirmed) vendors; excludes the current event; lesson capture.
 
-import { vendorKey, vendorMemoryFor, summarizeVendorMemory, eventMemory, setLesson, getLesson } from '../eventMemory';
+import { vendorKey, vendorMemoryFor, summarizeVendorMemory, setLesson, getLesson } from '../eventMemory';
 
 // Two past events that both used "Bloom & Stem": one on-time (chosen for response),
 // one late. Plus a current event where it's only being considered.
@@ -54,14 +54,6 @@ describe('58G summarizeVendorMemory — one private line, no public rating', () 
     expect(summarizeVendorMemory(m)).toBe('Used 2× · 1 on-time, 1 late · rehired');
   });
   test('empty/null ⇒ empty string', () => { expect(summarizeVendorMemory(null)).toBe(''); });
-});
-
-describe('58G eventMemory map (for future Vendor Intelligence)', () => {
-  test('keys by normalized vendor name', () => {
-    const mem = eventMemory([e1, e2]);
-    expect(Object.keys(mem.vendors)).toEqual(['bloom & stem']);
-    expect(mem.vendors['bloom & stem'].timesUsed).toBe(2);
-  });
 });
 
 describe('58G Event Lesson Memory', () => {

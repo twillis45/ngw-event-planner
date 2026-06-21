@@ -117,10 +117,12 @@ export function isDormant(section, event, signals) {
 // EXISTS without demanding attention — "available later", never a locked/disabled state.
 // Empty for planners (they get the full cockpit). Event Day is intentionally excluded —
 // Host Home gives it its own prominent surface. ──────────────────────────────────────
+// Host-facing copy only (rail is host-only — planners get the full cockpit).
+// "Paperwork / Contracts & files" was CRM language a host reads as not-for-me, so
+// it's gone; "Vendors" is framed as the people a host actually hires, not a pipeline.
 const RAIL = [
-  { section: 'vendors',    label: 'Vendors',       hint: 'Available when planning begins',  route: 'Vendors' },
-  { section: 'foodDrinks', label: 'Food & drinks', hint: 'We’ll help with this after guests', route: 'Budget' },
-  { section: 'documents',  label: 'Paperwork',     hint: 'Contracts & files land here',      route: 'Documents' },
+  { section: 'vendors',    label: 'Anyone you’re hiring', hint: 'Caterer, photographer, rentals — add them when you have them', route: 'Vendors' },
+  { section: 'foodDrinks', label: 'Food & drinks',        hint: 'We’ll help with this once guests are in',                     route: 'Budget' },
 ];
 export function upcomingRail(event, signals) {
   if (isPlanner(event)) return [];

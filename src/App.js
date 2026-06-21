@@ -33,7 +33,8 @@ import { memoryOn as decisionMemoryOn, appendDecision, makeRecord as makeDecisio
 // Sprint 58G — Event Memory: the event lesson (one short optional string at completion).
 import { setLesson, getLesson } from './lib/eventMemory';
 // Sprint 60B — Event Identity: outcome alignment — did the must-have moment happen?
-import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement, setFeelingOutcome, feelingOutcome, FEELING_SIGNALS, FEELING_LABEL, identityReflection } from './lib/eventIdentity';
+import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL, eventIdentity, identityStatement, setFeelingOutcome, feelingOutcome, FEELING_SIGNALS, FEELING_LABEL, identityReflection, isMeaningfulMustHave } from './lib/eventIdentity';
+import { rosOverlapCount } from './lib/rosOverlap';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -18901,13 +18902,18 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
   const points = [];
   if (about && about.summary) points.push({ k: 'what', icon: '🎯', label: 'What this is', text: about.summary.split(/(?<=[.!?])\s/).slice(0, 2).join(' ') });
   points.push({ k: 'venue', icon: '📍', label: 'Your setting', text: VENUE_BRIEF[venueKind] || VENUE_BRIEF.other });
-  if (fp) points.push({ k: 'scale', icon: '🍽️', label: 'The scale', text: `Feeding about ${fp.guests} — roughly ${fmtR(fp.foodLow, fp.foodHigh)} on food & drink${cap ? `, plus ${cap.summary}` : ''}.` });
+  // Honesty (host audit #5): until the host gives a headcount, ${fp.guests} is the
+  // playbook's TYPICAL count and the cost a 2× range — present it as a typical example
+  // to size to, never as a fact about their event ("Feeding about 35").
+  if (fp) points.push({ k: 'scale', icon: '🍽️', label: 'The scale', text: fp.guestCountResolved
+    ? `Feeding about ${fp.guests} — roughly ${fmtR(fp.foodLow, fp.foodHigh)} on food & drink${cap ? `, plus ${cap.summary}` : ''}.`
+    : `An event like this typically runs ~${fp.guests} guests and roughly ${fmtR(fp.foodLow, fp.foodHigh)} on food & drink${cap ? `, plus ${cap.summary}` : ''}. Add your guests and we’ll size it to your number.` });
   const season = seasonBriefText(ev);
   if (season) points.push({ k: 'day', icon: '🌤️', label: 'The day itself', text: season });
   // #8 — only show the heart when there's a REAL must-have moment. Never render
   // about.note here: it's an internal provenance/dev note (file paths, "source-verified
   // in the … pass") that must never reach a host.
-  if (ev.must_have_moment) points.push({ k: 'heart', icon: '❤️', label: 'The heart of it', text: ev.must_have_moment });
+  if (ev.must_have_moment && isMeaningfulMustHave(ev.must_have_moment)) points.push({ k: 'heart', icon: '❤️', label: 'The heart of it', text: ev.must_have_moment });
   if (!points.length) return null;
   return (
     <div style={cardStyle}>
@@ -18927,33 +18933,9 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
   );
 }
 
-function AboutEventType({ type, C, cardStyle, eyebrowStyle }) {
-  const [open, setOpen] = useState(false);
-  const about = useMemo(() => { try { return playbookAbout(type); } catch { return null; } }, [type]);
-  if (!about) return null;
-  const teaser = (about.summary.split(/(?<=[.!?])\s/)[0] || about.summary).slice(0, 150);
-  return (
-    <div style={cardStyle}>
-      <button type="button" onClick={() => setOpen((o) => !o)}
-        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
-        <span style={{ minWidth: 0 }}>
-          <span style={{ ...eyebrowStyle, marginBottom: 0 }}>About a {about.type.toLowerCase()}</span>
-          {!open && <span style={{ display: 'block', fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{teaser}…</span>}
-        </span>
-        <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 15, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
-      </button>
-      {open && (
-        <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}>{about.summary}</div>
-          {/* about.note is an INTERNAL provenance/dev note (file paths, "source-verified
-              in the … pass", engine-audit/*.knowledge.json) — it must NEVER reach a user.
-              EventBriefing was already hardened against this; AboutEventType is its sibling
-              and was still leaking it under "The background". Removed. */}
-        </div>
-      )}
-    </div>
-  );
-}
+// (Removed: AboutEventType — the generic "About a {type}" collapsible was a redundant
+// second orientation read directly under EventBriefing on the host home. Host audit #7
+// flagged the double essay; EventBriefing carries the personalized version alone now.)
 
 // B2 — Post-event recap. Once the date has passed, a host should NOT see "book a caterer."
 // The home flips to closing the event out: did the one thing happen, how did it feel, and
@@ -19002,7 +18984,7 @@ function PostEventRecap({ ev, daysAgoLabel, onPatchEvent, onSelectEvent, C, card
       </div>
 
       {/* Did the one thing happen? — wires the existing must-have outcome store. */}
-      {mh && (
+      {isMeaningfulMustHave(mh) && (
         <div style={cardStyle}>
           <div style={eyebrowStyle}>The one thing that had to happen</div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>{mh}</div>
@@ -19637,7 +19619,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const choicesStarted = fpChoices.some(c => !!explicitPicks[c.id]);
   const prog = [
     // Heart — the must-have moment. Done once the host has set it.
-    { label: 'Heart',    tab: 'Guests', state: (ev.must_have_moment || '').trim() ? 'done' : 'todo' },
+    { label: 'Heart',    tab: 'Guests', state: isMeaningfulMustHave(ev.must_have_moment) ? 'done' : 'todo' },
     // Guests is DONE once the count is resolved — a locked headcount (guestMode='count',
     // no roster) counts, not just a fully-RSVP'd list. (Was stuck "In progress" forever
     // for headcount-mode hosts because it required guests.length > 0.)
@@ -19737,31 +19719,45 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {!isDayOf && (() => {
           const live = prog.filter(p => p.state !== 'done');
           const doneCount = prog.length - live.length;
+          // Host audit #6 — a brand-new event showed all SEVEN areas as "To do" at once:
+          // a wall of anxiety. The Heart and the food "Your choices" already have their
+          // own dedicated cards below, so they don't belong in this list; and we surface
+          // at most three at a time, folding the rest, so it reads as "a couple of next
+          // things" not "you're behind on everything." Indices kept against the FULL live
+          // list so the wizard still jumps to the right step.
+          const hidden = new Set(['Heart', 'Your choices']);
+          const shown = live.map((p, i) => ({ p, i })).filter(({ p }) => !hidden.has(p.label));
+          if (shown.length === 0) return null;  // only Heart/choices left → their own cards carry it
+          const CAP = 3;
+          const visible = shown.slice(0, CAP);
+          const moreCount = shown.length - visible.length;
           return (
             <div className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
                 <div style={eyebrow}>What still needs you</div>
                 {doneCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
               </div>
-              {live.length === 0 ? (
-                <div style={{ fontSize: 13.5, color: C.text, marginTop: 8 }}>Everything's on track — nothing waiting on you. 🎉</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
-                  {live.map((p, pi) => (
-                    <button key={p.label} type="button"
-                      onClick={() => setSetupOpen(pi)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                      <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
-                        <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
+                {visible.map(({ p, i }) => (
+                  <button key={p.label} type="button"
+                    onClick={() => setSetupOpen(i)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                    <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+                      <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
+                    </span>
+                  </button>
+                ))}
+                {moreCount > 0 && (
+                  <button type="button" onClick={() => setSetupOpen(visible[visible.length - 1].i)}
+                    style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, color: C.muted }}>
+                    +{moreCount} more, one step at a time ›
+                  </button>
+                )}
+              </div>
             </div>
           );
         })()}
@@ -19774,11 +19770,11 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         )}
         {/* #17 — the heart of the event. NOT receded: the must-have is the why behind
             everything, a persistent bright anchor the whole plan serves. */}
-        {id && (id.reallyIs || id.mustHaveMoment) && (
+        {id && (id.reallyIs || isMeaningfulMustHave(id.mustHaveMoment)) && (
           <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
             <div style={{ ...eyebrow, color: C.accent }}>The heart of {ev.name || 'your event'}</div>
             {id.reallyIs && <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{id.reallyIs}</div>}
-            {id.mustHaveMoment && (
+            {isMeaningfulMustHave(id.mustHaveMoment) && (
               <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
@@ -19790,28 +19786,41 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* Food plan — a COMPACT summary on the home (Attention System: one glance,
             not the whole plan). The full choices + spread + shopping list live on the
             Plan tab; the home shows the estimate + progress + a way in. */}
-        {(() => {
+        {!isDayOf && (() => {
           const fp = (() => { try { return playbookFoodPlan(ev, foodPP); } catch { return null; } })();
           if (!fp) return null;
           const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
+          // Honesty (host audit #5): before the host gives a headcount, the playbook's
+          // typical count is a GUESS and the cost a 2× range. Don't present a guessed
+          // "Sized for 35 guests" as fact — invite the real number instead.
+          const known = fp.guestCountResolved;
           return (
             <button type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Food plan</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
+                {known && <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>}
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
-                {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
-              </div>
+              {known ? (
+                <>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
+                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+                    {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Tell us how many are coming</div>
+                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>Add your guests and we’ll size the food and the cost to your number →</div>
+                </>
+              )}
             </button>
           );
         })()}
 
         {/* Sprint UX-4 · Upcoming Rail — what exists but hasn't earned attention yet.
             Reachable (one tap), never hidden. Empty once everything is active. */}
-        {(() => {
+        {!isDayOf && (() => {
           const railItems = upcomingRail(ev);
           if (!railItems.length) return null;
           return (
@@ -19833,22 +19842,23 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           );
         })()}
 
-        {/* 5 · Event Day */}
-        <button className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
-          style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>
-            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
-            <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
-          </span>
-          <span style={{ fontSize: 18, color: C.muted }}>→</span>
-        </button>
-        {/* What you're getting into — the synthesized briefing (event · venue · scale ·
-            weather · heart). Orientation, so it stays legible (not receded). INSIDE the
-            760 column so it holds width parity with every other card. */}
-        <EventBriefing ev={ev} foodPP={foodPP} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
-        <div className="hp-recede">
-          <AboutEventType type={ev.type} C={C} cardStyle={card} eyebrowStyle={eyebrow} />
-        </div>
+        {/* 5 · Event Day — on the day itself the hero already IS the run of show,
+            so this planning-time entry is hidden then (host audit #7). */}
+        {!isDayOf && (
+          <button className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
+            style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
+              <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
+            </span>
+            <span style={{ fontSize: 18, color: C.muted }}>→</span>
+          </button>
+        )}
+        {/* What you're getting into — the synthesized, PERSONALIZED briefing (event ·
+            venue · scale · weather · heart). The generic "About a {type}" essay that
+            used to sit under it was a redundant second read (host audit #7) and is
+            removed — this one card orients without repeating itself. Planning-time only. */}
+        {!isDayOf && <EventBriefing ev={ev} foodPP={foodPP} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
         </>)}
       </div>
     </div>
@@ -27019,7 +27029,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {} }) {
+function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {}, isHost = false }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -27165,21 +27175,15 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
   // location / vendor unconfirmed / time overlap.
   const readiness = (() => {
     const out = { missingOwner: 0, missingTime: 0, missingLocation: 0, vendorUnconfirmed: 0, overlaps: 0, total: sorted.length };
-    sorted.forEach((r, i) => {
+    sorted.forEach((r) => {
       if (!(r.owner || '').trim())    out.missingOwner++;
       if (!(r.time  || '').trim())    out.missingTime++;
       if (!(r.location || '').trim()) out.missingLocation++;
       if (r.type === 'vendor' && !r.confirmed) out.vendorUnconfirmed++;
-      const next = sorted[i + 1];
-      if (r.time && next?.time) {
-        const startA = parseMin(r.time), startB = parseMin(next.time);
-        // True interval overlap: A's END (explicit endTime, else its start point) runs
-        // past B's start — catches "11:00–13:00" colliding with a 12:00 segment, not just
-        // equal/out-of-order starts. Falls back to the old equal-start check when no end.
-        const endA = r.endTime ? parseMin(r.endTime) : startA;
-        if (startA !== null && startB !== null && ((endA !== null && endA > startB) || startA >= startB)) out.overlaps++;
-      }
     });
+    // P4 — PAIRWISE interval overlap (was adjacent-only): a long segment colliding with
+    // a non-adjacent later segment is now caught. See lib/rosOverlap.
+    out.overlaps = rosOverlapCount(sorted);
     return out;
   })();
 
@@ -27483,26 +27487,34 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         </>
       )}
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <StatCard label="Total Segments"  value={ros.length} />
-        <StatCard label="Vendor Arrivals" value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
-        <StatCard label="Prep Blocks"     value={ros.filter(r => r.type === 'prep').length}   color={C.muted} />
-        <StatCard label="Unconfirmed"     value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub="vendor slots" />
-      </div>
+      {/* The ops console (segments/arrivals/prep/unconfirmed counts) is planner
+          logistics shorthand — a host reads it as software jargon. Hidden for hosts. */}
+      {!isHost && (
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+          <StatCard label="Total Segments"  value={ros.length} />
+          <StatCard label="Vendor Arrivals" value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
+          <StatCard label="Prep Blocks"     value={ros.filter(r => r.type === 'prep').length}   color={C.muted} />
+          <StatCard label="Unconfirmed"     value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub="vendor slots" />
+        </div>
+      )}
 
-      {/* Draft versions — keep alternate schedules (e.g. a rain plan) and switch. */}
-      <DraftVersionBar
-        draftKey={`schedule:${eventId || 'event'}`}
-        content={ros}
-        onRestore={(c) => setRos(Array.isArray(c) ? c : [])}
-        saveLabel="Save this schedule"
-        emptyHint="Save the schedule to keep alternates — e.g. a rain plan — and switch between them."
-      />
+      {/* Draft versions — planner tooling (rain-plan alternates). Hidden for hosts. */}
+      {!isHost && (
+        <DraftVersionBar
+          draftKey={`schedule:${eventId || 'event'}`}
+          content={ros}
+          onRestore={(c) => setRos(Array.isArray(c) ? c : [])}
+          saveLabel="Save this schedule"
+          emptyHint="Save the schedule to keep alternates — e.g. a rain plan — and switch between them."
+        />
+      )}
 
       {/* Sprint 60.W — Readiness strip. Surfaces the rows the planner needs
           to fix before Day-of: missing owner / time / location / vendor
-          unconfirmed / overlap. Hidden when everything is clean. */}
-      {sorted.length > 0 && (() => {
+          unconfirmed / overlap. Hidden when everything is clean.
+          Host fix: an auto-generated draft flagging its own "Time overlap /
+          Missing location" reads to a host as "you broke it." Planner-only. */}
+      {!isHost && sorted.length > 0 && (() => {
         const steelTopROS = C.accentTopGrad || C.accent;
         const issues = [
           { key: 'overlaps',          n: readiness.overlaps,          label: 'Time overlap',       color: C.danger },
@@ -27585,7 +27597,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             menu below, so without this card the CTA dropped them on a schedule with no way
             to add THEIR moment ("takes me to nothing"). One tap puts it on the run of show
             and opens the editor for a time + owner. data-deeplink so the CTA scrolls to it. */}
-        {!isDayOf && meaning && String(meaning.mustHave || '').trim() && !ros.some(r => r && r.heart) && (
+        {!isDayOf && meaning && isMeaningfulMustHave(meaning.mustHave) && !ros.some(r => r && r.heart) && (
           <div data-deeplink="musthave" style={{ marginBottom: 16, padding: '14px 16px', border: `1px solid ${C.accent}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 10, background: `${C.accent}10` }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>The one thing that has to happen</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.4, marginBottom: 10 }}>{meaning.mustHave}</div>
@@ -32392,6 +32404,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
         <ChecklistGenerator
           event={event}
           isMobile={isMobile}
+          isHost={hostNavActive(event)}
           onBack={onBack}
           onToggleTask={onToggleTask}
           onOpenTask={(t) => setStepTaskId(t.id)}
@@ -33738,20 +33751,33 @@ function eventProgressPct(event) {
 function eventProgressStatus(event) {
   const pct = eventProgressPct(event);
   const days = (() => { try { return daysUntil(event && event.date); } catch { return null; } })();
+  // P2 — language follows the LIFECYCLE, not just planning %. Once the event arrives,
+  // a planning-progress judgment ("Behind") is the wrong measure:
+  //   • after the event  → recap language ("Wrapped"); never a planning verdict.
+  //   • on the event day → execution language ("Today"); never "Behind".
+  //   • before the day   → planning progress vs time left.
+  if (days !== null && days < 0)  return { pct, tier: 'done',  word: 'Wrapped', showPct: false };
+  if (days === 0)                 return { pct, tier: 'today', word: 'Today',   showPct: false };
   let expected;
   if (days == null)      expected = 50;
-  else if (days <= 0)    expected = 100;
   else if (days <= 3)    expected = 90;
   else if (days <= 7)    expected = 78;
   else if (days <= 14)   expected = 58;
   else if (days <= 30)   expected = 38;
   else                   expected = 20;
+  // A host is never handed a planning verdict ("Behind") — it reads as a failure
+  // grade on an event they may have created moments ago. A brand-new event (very
+  // low %) reads "Getting started" for everyone: honest (no green), calm (steel),
+  // never a judgment.
+  const host = (() => { try { return hostNavActive(event); } catch { return false; } })();
   let tier, word;
   if (pct >= 100)                       { tier = 'ready';     word = 'Ready'; }
   else if (pct >= expected)             { tier = 'ontrack';   word = 'On track'; }
+  else if (pct < 25)                    { tier = 'early';     word = 'Getting started'; }
   else if (pct >= expected - 22)        { tier = 'behind';    word = 'Keep going'; }
+  else if (host)                        { tier = 'behind';    word = 'Keep going'; }
   else                                  { tier = 'risk';      word = 'Behind'; }
-  return { pct, tier, word };
+  return { pct, tier, word, showPct: true };
 }
 
 function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBack, onOpenClient, backLabel, initialNav, profile, onDelete, onDuplicate, clients = [], onLinkClient, onUnlinkClient, onOpenConnections, onSaveVendorToBank, team = [], setTeam }) {
@@ -34402,7 +34428,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={hostNavActive(event)} />
         </>
       )}
       {tab === 'Agenda'      && <>
@@ -34487,9 +34513,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         {/* Overall-progress fill along the header's bottom edge — the divider line IS the
             progress bar. STATUS-COLORED: green when on-pace/ready, steel when behind
             (Studio Matte confidence palette — never alarming amber/red). On every tab. */}
-        {(() => { const _s = eventProgressStatus(event); const _c = (_s.tier === 'ready' || _s.tier === 'ontrack') ? (C.success || C.accent) : C.muted; return (
+        {(() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
           <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 4, background: C.border }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${_s.pct}%`, background: `linear-gradient(90deg, ${_c}cc, ${_c})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, boxShadow: `0 0 10px ${_c}aa`, transition: 'width 600ms ease' }} />
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: _s.showPct ? `${_s.pct}%` : '100%', background: `linear-gradient(90deg, ${_c}cc, ${_c})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, boxShadow: `0 0 10px ${_c}aa`, transition: 'width 600ms ease' }} />
           </div>
         ); })()}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -34522,11 +34548,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {/* Overall-progress readout — a small accent dot + the % beside the meta, paired
               with the fill along the header's bottom edge (below). On every tab. */}
-          {(() => { const _s = eventProgressStatus(event); const _c = (_s.tier === 'ready' || _s.tier === 'ontrack') ? (C.success || C.accent) : C.muted; return (
+          {(() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
           <span title={`Overall planning progress vs. time left — headcount, budget, place, the heart, and the day`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: C.text, whiteSpace: 'nowrap', letterSpacing: '0.01em', padding: '3px 10px', borderRadius: 999, background: `${_c}1c`, border: `1px solid ${_c}66` }}>
             <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: _c, boxShadow: `0 0 6px ${_c}`, flexShrink: 0 }} />
-            <span><span style={{ color: _c }}>{_s.pct}%</span> · {_s.word}</span>
+            <span>{_s.showPct ? <><span style={{ color: _c }}>{_s.pct}%</span> · {_s.word}</> : _s.word}</span>
           </span>
           ); })()}
           {/* Sprint 57: Day-of toggle promoted from Manage Event dropdown to
@@ -35427,10 +35453,9 @@ export default function App() {
 
   const [savedAt,          setSavedAt]          = useState(null);
   const [online,           setOnline]           = useState(() => navigator.onLine !== false);
-  const [sessionResumedAt] = useState(() => {
-    try { const v = localStorage.getItem('ngw-last-saved'); return v ? parseInt(v, 10) : null; } catch { return null; }
-  });
-  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  // (Host audit #8 — the "Session resumed · last saved …" banner was sync chrome a
+  // host never asked to see; it read as software, not help. Removed. Genuine sync
+  // problems still surface via the offline + sync-failed banners below.)
   const [syncState,        setSyncState]        = useState('idle');
   const [pendingCount,     setPendingCount]     = useState(() => getPendingCount());
   const [showMigration,    setShowMigration]    = useState(false);
@@ -36095,15 +36120,6 @@ export default function App() {
                     >
                       Retry
                     </button>
-                  </div>
-                )}
-                {/* Session recovery banner */}
-                {sessionResumedAt && !recoveryDismissed && (
-                  <div style={{ background: themeC.surface2, borderBottom: `1px solid ${themeC.border}`, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <span style={{ fontSize: 12, color: themeC.muted }}>
-                      Session resumed · last saved {new Date(sessionResumedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
-                    </span>
-                    <button onClick={() => setRecoveryDismissed(true)} style={{ fontSize: 11, color: themeC.muted, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 8px', fontFamily: 'inherit' }}>Dismiss</button>
                   </div>
                 )}
                 {/* Sprint 51 a11y: skip-link landing target + main landmark */}

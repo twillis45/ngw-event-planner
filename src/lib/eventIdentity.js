@@ -87,6 +87,16 @@ const TYPE_ESSENCE = {
 const norm = (s) => String(s || '').trim().toLowerCase();
 const clean = (s) => String(s || '').trim();
 
+// P3 — is a captured must-have meaningful enough to echo into HERO copy? A trivial
+// input ("m", "fun") must NOT render as 'Protect the heart: "m"'. Too short / one word
+// ⇒ keep it stored, but don't surface it as a hero line (prompt the host to clarify
+// instead). No interpretation, no AI cleanup — just a quality gate.
+export function isMeaningfulMustHave(s) {
+  const t = clean(s);
+  if (t.length < 6) return false;
+  return t.split(/\s+/).filter(Boolean).length >= 2;
+}
+
 function essenceOf(type) {
   const t = norm(type);
   if (TYPE_ESSENCE[t]) return TYPE_ESSENCE[t];

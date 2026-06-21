@@ -41,7 +41,7 @@ import { attentionActive, positiveAttention } from './lib/positiveAttention';
 import { decisionsActive, decisionConfidence } from './lib/decisionConfidence';
 // Sprint 60B: Event Identity — a reader over the meaning ALREADY captured at intake
 // (pi.identity flag, presentation-only; orients planning, no engine/store/workflow).
-import { identityOn, eventIdentity, mustHaveBecause } from './lib/eventIdentity';
+import { identityOn, eventIdentity, mustHaveBecause, isMeaningfulMustHave } from './lib/eventIdentity';
 // Sprint 57G: Confidence Grammar (Pattern 014) — remaps the Planning Health status
 // WORD + COLOR by actual certainty, per persona (pi.confidence flag, presentation-only).
 import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
@@ -1581,7 +1581,7 @@ function _selectEventNextActionInner(event) {
   // the event: the captured must-have moment. Meaning is a first-class engine input,
   // not a passive card. category 'heart' has no VOICE entry, so this copy renders as
   // authored (already warm) instead of being overwritten by the neutral voice.
-  if (event.must_have_moment) {
+  if (event.must_have_moment && isMeaningfulMustHave(event.must_have_moment)) {
     const mh = String(event.must_have_moment).trim();
     // CLEARS once the moment is actually on the run of show (the host planned it). A
     // next-step must update when its action is satisfied — "Protect the heart · Plan the

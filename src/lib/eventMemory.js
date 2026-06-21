@@ -64,15 +64,9 @@ export function summarizeVendorMemory(m) {
   return parts.join(' · ');
 }
 
-// Full map (built for future Vendor Intelligence; the v1 surface uses vendorMemoryFor).
-export function eventMemory(allEvents) {
-  const events = Array.isArray(allEvents) ? allEvents : [];
-  const names = new Map(); // key → first-seen display name
-  events.forEach((ev) => (ev.vendors || []).forEach((v) => { const k = vendorKey(v.name); if (k && !names.has(k)) names.set(k, v.name); }));
-  const vendors = {};
-  names.forEach((display, k) => { const m = vendorMemoryFor(events, display); if (m) vendors[k] = m; });
-  return { vendors };
-}
+// (Removed P5: the `eventMemory(allEvents)` cross-event aggregator was imagined for a
+// future Vendor Intelligence surface and had no consumer — the live v1 surface uses
+// vendorMemoryFor/summarizeVendorMemory below. Deleted rather than preserved.)
 
 // ── Event Lesson Memory (one short optional string, captured at completion) ──────
 // No AI generation, no summarization, no mandatory form — just a sentence the

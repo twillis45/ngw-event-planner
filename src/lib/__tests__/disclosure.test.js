@@ -73,11 +73,14 @@ describe('UX-4 urgency ⇒ Primary', () => {
 });
 
 describe('UX-4 Upcoming Rail — dormant sections are reachable, never hidden', () => {
-  test('brand-new host ⇒ rail lists Vendors / Food & drinks / Paperwork with routes', () => {
+  test('brand-new host ⇒ rail lists Vendors / Food & drinks with routes', () => {
     const rail = upcomingRail(HOST());
     const sections = rail.map(r => r.section);
-    expect(sections).toEqual(expect.arrayContaining(['vendors', 'foodDrinks', 'documents']));
+    expect(sections).toEqual(expect.arrayContaining(['vendors', 'foodDrinks']));
     rail.forEach(r => { expect(r.label).toBeTruthy(); expect(r.hint).toBeTruthy(); expect(r.route).toBeTruthy(); });
+  });
+  test('host audit #4 — the "Paperwork / Contracts & files" CRM rail item is gone for hosts', () => {
+    expect(upcomingRail(HOST()).map(r => r.section)).not.toContain('documents');
   });
   test('once a vendor exists, Vendors leaves the rail (it is Standard now)', () => {
     expect(upcomingRail(HOST(withVendor)).map(r => r.section)).not.toContain('vendors');
