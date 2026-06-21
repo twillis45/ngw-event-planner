@@ -5884,7 +5884,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               {/* "Do it for me" #2 — the app drafts the availability + pricing inquiry
                   from the event facts; the host reviews and sends in one tap. */}
               {event && (
-                <button type="button" onClick={() => { const d = draftVendorOutreach(event, vendor, profile); setDraftSheet({ title: 'Vendor inquiry', intro: `A quick note to ${vendor.name || 'this vendor'} to check availability and pricing — drafted from your event. Make it yours, then send.`, draft: d, shareTitle: d.subject }); }}
+                <button type="button" onClick={() => { const d = draftVendorOutreach(event, vendor, profile); setDraftSheet({ title: 'Vendor inquiry', intro: `A quick note to ${vendor.name || 'this vendor'} to check availability and pricing — drafted from your event. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'vendor' }); }}
                   style={{ width: '100%', textAlign: 'left', background: `${C.accent}0e`, border: `1px solid ${C.accent}33`, borderRadius: 10, padding: '11px 13px', cursor: 'pointer', fontFamily: 'inherit', marginTop: 2 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>✍️ Write the inquiry for me →</div>
                   <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>A ready-to-send note asking availability + pricing, built from your event.</div>
@@ -6889,7 +6889,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
         />
       )}
       {draftSheet && (
-        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle}
+        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind}
           onClose={() => setDraftSheet(null)} C={C} isMobile={_vmMobile} />
       )}
     </>
@@ -19052,7 +19052,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
                   <span style={{ fontSize: 13.5, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{w.text}</span>
                 </button>
                 {canDraft && (
-                  <button type="button" onClick={() => onDraft({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(ev, profile), shareTitle: `Thank you — ${ev.name || 'our celebration'}` })}
+                  <button type="button" onClick={() => onDraft({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(ev, profile), shareTitle: `Thank you — ${ev.name || 'our celebration'}`, kind: 'thankyou' })}
                     style={{ marginLeft: 29, marginTop: 2, marginBottom: 4, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: C.accent }}>
                     Write them for me →
                   </button>
@@ -19559,14 +19559,37 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 // inquiry / thank-you), lets the host tweak it into their own voice, then sends it in
 // one tap (native share sheet on mobile, clipboard everywhere else). The work is
 // already done; the host just sends.
-function DraftSheet({ title, intro, draft, shareTitle, onClose, C, isMobile }) {
+function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile }) {
   const [text, setText] = useState((draft && draft.body) || '');
   const [status, setStatus] = useState(null);
+  const aiKey = useAIKey();
+  const [polishing, setPolishing] = useState(false);
+  const [prePolish, setPrePolish] = useState(null);  // the text before AI polish, for one-tap undo
   const send = async () => { setStatus(await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text })); };
   const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); } catch { setStatus('failed'); } };
+  // Optional AI polish — warms the prose WITHOUT inventing anything. The honest
+  // template is always the baseline; this only rewrites what's already there. Hard
+  // rules in the prompt forbid new facts; the host can undo in one tap.
+  const polish = async () => {
+    if (polishing || !aiInputOn(aiKey)) return;
+    setPolishing(true); setStatus(null);
+    const kindLabel = kind === 'vendor' ? 'a short, friendly vendor inquiry'
+      : kind === 'thankyou' ? 'a warm thank-you note'
+      : 'a warm event invitation';
+    const prompt = `A host will send ${kindLabel} as-is. Rewrite the message below so it reads warmer and more natural, staying short and ready-to-send.\n\nHARD RULES:\n- Do NOT add any fact that isn't already in the message — no new dates, times, addresses, places, prices, names, or details. If it isn't there, leave it out.\n- Keep every concrete detail (date, time, place, names, the sign-off) exactly as written.\n- Keep it about the same length. Keep the friendly emoji if present.\n- Return ONLY the finished message text — no preamble, no quotes, no explanation.\n\nMESSAGE:\n${text}`;
+    try {
+      const out = ((await askNGW('message', prompt, { aiKey, maxTokens: 500 })) || '').trim();
+      if (out && out.length > 8) { setPrePolish(text); setText(out); setStatus('polished'); }
+      else setStatus('polishfail');
+    } catch { setStatus('polishfail'); }
+    setPolishing(false);
+  };
+  const undoPolish = () => { if (prePolish != null) { setText(prePolish); setPrePolish(null); setStatus(null); } };
   const statusLine = status === 'shared' ? 'Sent to your share sheet ✓'
     : status === 'copied' ? 'Copied — paste it into your texts, email, or group chat ✓'
     : status === 'cancelled' ? 'No rush — it’s still here when you’re ready.'
+    : status === 'polished' ? 'Polished ✨ — read it over, it’s still yours to tweak.'
+    : status === 'polishfail' ? 'Couldn’t polish just now — your draft is unchanged.'
     : status === 'failed' ? 'Couldn’t share automatically — select the text above and copy it.'
     : '';
   return (
@@ -19580,7 +19603,16 @@ function DraftSheet({ title, intro, draft, shareTitle, onClose, C, isMobile }) {
         {intro && <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{intro}</div>}
         <textarea value={text} onChange={e => setText(e.target.value)} rows={isMobile ? 9 : 8}
           style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 14, lineHeight: 1.55, padding: '13px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
-        <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Tweak anything — it’s your voice. Then send it.</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
+          {aiInputOn(aiKey) && (
+            prePolish != null
+              ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.muted }}>↺ Undo polish</button>
+              : <button type="button" onClick={polish} disabled={polishing} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: `${C.accent}14`, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 11px', cursor: polishing ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.accent, opacity: polishing ? 0.7 : 1 }}>
+                  {polishing ? <span style={{ display: 'inline-block', width: 10, height: 10, border: `2px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> : '✨'} {polishing ? 'Polishing…' : 'Polish'}
+                </button>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <button onClick={send} style={{ flex: 1, fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
           <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
@@ -19862,7 +19894,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           const previewParts = (d.body || '').split('\n').map(s => s.trim()).filter(Boolean);
           const preview = (previewParts[1] || previewParts[0] || '').slice(0, 92);
           return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject })}
+            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Ready to send</span>
@@ -20044,7 +20076,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
       );
     })()}
     {draftSheet && (
-      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle}
+      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind}
         onClose={() => setDraftSheet(null)} C={C} isMobile={isMobile} />
     )}
     </>
