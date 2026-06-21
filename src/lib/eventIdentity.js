@@ -30,24 +30,58 @@ export function identityOn() {
 // What an event TYPE really is — the essence beneath the format (a graduation party
 // is a celebration of achievement). A plain lookup; never marketing, never poetry.
 const TYPE_ESSENCE = {
+  // Full type names first — exact match wins, so the most specific reading is used
+  // (e.g. "Juneteenth Cookout" reads as freedom + community, not a generic cookout).
+  'juneteenth cookout': 'a celebration of freedom, food, and community',
+  'kwanzaa gathering': 'a celebration of heritage and community',
+  'ethiopian coffee ceremony': 'a coffee ceremony and a gathering',
+  'sunday dinner': 'a family dinner',
+  'holiday party': 'a holiday celebration',
+  'engagement party': 'a celebration of an engagement',
+  'bachelorette party': 'a celebration before the wedding',
+  'bachelor party': 'a celebration before the wedding',
+  'gender reveal': 'a celebration of a new arrival',
+  'vow renewal': 'a renewal of vows',
+  'surprise proposal': 'a proposal',
+  'low country boil': 'a seafood boil and a gathering',
+  'crawfish boil': 'a seafood boil and a gathering',
+  'crab feast': 'a seafood feast and a gathering',
+  'fish fry': 'a fish fry and a gathering',
+  'game night': 'a night of games with friends',
+  'watch party': 'a watch party with friends',
+  'card party': 'a card party with friends',
+  'day party': 'a daytime party',
+  'team retreat': 'a team gathering',
+  'baby shower': 'a welcome for a new arrival',
+  'bridal shower': 'a celebration before the wedding',
+  'dinner party': 'a gathering of friends',
+  'board meeting': 'a working session',
+  'get-together': 'a gathering',
+  // Type families / free-text fallbacks (soft contains-match below).
   graduation: 'a celebration of an achievement',
   retirement: 'recognition of a career and a new chapter',
   wedding: 'a celebration of a marriage',
+  elopement: 'a celebration of a marriage',
   anniversary: 'a celebration of a milestone together',
   birthday: 'a celebration',
-  'baby shower': 'a welcome for a new arrival',
-  'bridal shower': 'a celebration before the wedding',
   quinceañera: 'a coming-of-age celebration',
+  quinceanera: 'a coming-of-age celebration',
   'sweet 16': 'a coming-of-age celebration',
-  'dinner party': 'a gathering of friends',
-  'get-together': 'a gathering',
+  juneteenth: 'a celebration of freedom and community',
+  kwanzaa: 'a celebration of heritage and community',
+  cookout: 'a cookout with food and people you love',
+  barbecue: 'a cookout with food and people you love',
+  bbq: 'a cookout with food and people you love',
+  boil: 'a seafood boil and a gathering',
+  repast: 'a gathering to remember and honor someone',
+  reunion: 'a reunion',
   housewarming: 'a welcome to a new home',
   fundraiser: 'a fundraising event',
   gala: 'a fundraising event',
   corporate: 'a business gathering',
   conference: 'a professional gathering',
-  'board meeting': 'a working session',
   memorial: 'a remembrance',
+  party: 'a celebration',
 };
 
 const norm = (s) => String(s || '').trim().toLowerCase();
@@ -56,9 +90,15 @@ const clean = (s) => String(s || '').trim();
 function essenceOf(type) {
   const t = norm(type);
   if (TYPE_ESSENCE[t]) return TYPE_ESSENCE[t];
-  // soft contains-match for free-text types ("Birthday Party", "Retirement Dinner")
-  const hit = Object.keys(TYPE_ESSENCE).find((k) => t.includes(k));
-  return hit ? TYPE_ESSENCE[hit] : 'an event';
+  // soft WORD-BOUNDARY match for free-text types ("Birthday Party", "Retirement Dinner").
+  // Word boundaries avoid false hits like "birthday party" matching "day party".
+  const hit = Object.keys(TYPE_ESSENCE).find((k) => {
+    try { return new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(t); }
+    catch { return t.includes(k); }
+  });
+  // Never degrade to "an event" — that reads as a broken placeholder ("This is an event").
+  // A warm, true-for-anything floor instead.
+  return hit ? TYPE_ESSENCE[hit] : 'a gathering';
 }
 
 // identityStatement(event) → one factual sentence. e.g.

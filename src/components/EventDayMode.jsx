@@ -197,9 +197,12 @@ function ActiveCenter({ event, canonical, viewportW, onResolve }) {
   const primaryIsFull = primaryStyle.width === '100%';
 
   const vendorRole = active?.category || active?.name || 'Vendor';
+  // B5 — this harness has no real arrivals feed, so it must not assert fabricated
+  // durations ("18 min", "25 min behind"). Honest, non-numeric status until the view
+  // is wired to compute from real vendor arrival/ETA data.
   const subtitle = canonical === 'emergency' ? `${vendorRole} · direct action required now`
-                 : canonical === 'critical'  ? `${vendorRole} · 18 min · no contact`
-                 : `${vendorRole} · 25 min behind`;
+                 : canonical === 'critical'  ? `${vendorRole} · no contact yet`
+                 : `${vendorRole} · running behind`;
 
   return (
     <Surface role={surfaceRole} pad={6} rad="md"

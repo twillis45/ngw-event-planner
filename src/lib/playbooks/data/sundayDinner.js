@@ -25,6 +25,14 @@ const sundayDinner = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'Grace is said and every head bows at the same time.',
+    'The main comes out and the table smells exactly like it should.',
+    'An elder takes the first plate and eats without saying a word — that\'s the compliment.',
+    'The table runs long and nobody moves to clean up because the conversation is too good.',
+    'To-go plates get wrapped and pressed into everyone\'s hands on the way out the door.',
+  ],
+
   decisions: [
     {
       id: 'the-main',
@@ -177,6 +185,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-1d',
       note: 'About a half pound bone-in per person — 2 to 3 pieces an adult, 1 to 2 for a child — when hearty sides round out the plate.',
+      alternatives: ['Baked chicken thighs — cheaper than whole bird, no frying required', 'Rotisserie chicken (pickup) — zero effort, dignified option', 'Smothered pork chops — budget swap, same comfort-food role'],
       provenance: { tier: 'community', confidence: 'medium', verificationStatus: 'synthesized', note: 'Half-pound-per-person figure reflects common US soul-food portioning when multiple sides are served.' },
     },
     {
@@ -190,6 +199,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Greens cook down to roughly a quarter of their raw weight — buy generously. Better cooked a day ahead.',
+      alternatives: ['Mustard or turnip greens — milder flavor, same cook method, often cheaper', 'Frozen collard greens — if fresh unavailable, same slow-cook result'],
     },
     {
       id: 'p-smoked-meat',
@@ -202,6 +212,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-3d',
       note: 'The seasoning meat that gives the greens their depth. Skip or swap smoked turkey for a lighter pot.',
+      alternatives: ['Smoked turkey wings — widely available, cheaper than ham hocks', 'Skip entirely for a vegan pot — add extra onion, garlic, and red pepper'],
     },
     {
       id: 'p-mac',
@@ -215,6 +226,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'Baked mac and cheese is non-negotiable at most Sunday tables. Shred from blocks for a smoother bake.',
+      alternatives: ['Store-bought baked mac pan (Walmart/Costco) — if time is short', 'Stovetop mac with good cheese — faster, not the baked version; last resort'],
     },
     {
       id: 'p-yams',
@@ -227,6 +239,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-2d',
       note: 'Candied with brown sugar, butter, and warm spice.',
+      alternatives: ['Canned yams + butter + brown sugar — faster, similar result', 'Butternut squash — budget substitute, similar sweetness and color'],
     },
     {
       id: 'p-peas-rice',
@@ -251,6 +264,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'Cornbread or biscuits to sop up the pot liquor. Bake fresh Sunday or the night before.',
+      alternatives: ['Jiffy cornbread mix — quick bake, same crowd appeal', 'Canned biscuits (Pillsbury) — fastest option if oven time is taken'],
     },
     {
       id: 'p-dessert',
@@ -263,6 +277,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'One homemade dessert serves a family of this size with room for seconds and to-go slices.',
+      alternatives: ['Grocery bakery sweet potato pie — if baking time is short', 'Store-bought banana pudding cups — if no oven capacity available'],
     },
     {
       id: 'p-sweet-tea',

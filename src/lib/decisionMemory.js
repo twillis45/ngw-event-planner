@@ -10,14 +10,24 @@
 //   • The CAPTURE UI + READ surface are gated by pi.memory (default OFF ⇒ no prompts,
 //     no records, production identity). When ON, records persist for real.
 
-// pi.memory flag (default OFF). ?pi=memory / localStorage 'ngw-pi-memory' /
-// REACT_APP_PI_MEMORY='true'.
+// pi.memory flag — DEFAULT ON. The capture UI is what lets a real corpus accumulate, and
+// every read surface degrades gracefully to nothing when there's no data yet — so turning
+// it on is safe and is the PREREQUISITE for activation, not speculative intelligence.
+// Off-switch: ?pi-off=memory / localStorage 'ngw-pi-memory'='0' / REACT_APP_PI_MEMORY='false'.
 export function memoryOn() {
   try {
-    if (typeof window !== 'undefined' && /[?&]pi=memory\b/.test(window.location.search || '')) return true;
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-pi-memory') === '1') return true;
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=memory\b/.test(q)) return true;
+      if (/[?&]pi-off=memory\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-memory');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
   } catch (e) { /* storage blocked */ }
-  return typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_MEMORY === 'true';
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_MEMORY === 'false');
 }
 
 // The v1 decision types (kept deliberately small).

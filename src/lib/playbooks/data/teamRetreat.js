@@ -29,6 +29,13 @@ const teamRetreat = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The one working session that cracks something the team has been stuck on for months.',
+    'Dinner the first night — no agenda, no slides, just the team at a table.',
+    'The activity that puts two people in conversation who\'ve never really talked.',
+    'Someone says the hard thing in the room and the team actually hears it.',
+  ],
+
   decisions: [
     { id: 'purpose', label: 'Primary purpose of the retreat', options: ['Strategy / alignment', 'Team bonding / culture', 'Both (work + bond)', 'Onboarding / kickoff'], default: 'Both (work + bond)', when: 'T-90d', blocks: ['agenda', 'facilitator', 'activity', 'location'], why: 'The first and biggest lever. Purpose decides the work/bonding ratio, whether you need a facilitator, what success looks like, and how you justify the spend. Set it before anything is booked.' },
     { id: 'location', label: 'Location: local vs destination', options: ['Local (day-trip-able)', 'Regional (short flight/drive)', 'Destination (flights for most)'], default: 'Regional (short flight/drive)', when: 'T-90d', blocks: ['transport', 'lodging', 'budget'], why: 'Destination drives flights, room blocks, transfers, and most of the budget; local cuts cost and travel friction but offers less "away from it all". Choose against purpose and budget.' },
@@ -72,7 +79,7 @@ const teamRetreat = {
     { id: 'p_welcomekit', item: 'Welcome / swag kits (notebook, pen, water bottle, agenda card)', category: 'logistics', qtyPerGuest: 1, unit: 'kit', where: ['Swag vendor', 'Amazon'], unitCostRange: [15, 50], essential: false, buyAt: 'T-3d', note: 'Sets the tone on arrival; order early — custom swag has lead time.' },
     { id: 'p_session_supplies', item: 'Session supplies (flip charts, markers, sticky notes, printed worksheets)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Office store', 'Amazon'], unitCostRange: [40, 120], essential: true, buyAt: 'T-3d', note: 'The facilitator needs these for working sessions — easy to forget when travelling.' },
     { id: 'p_activity_supplies', item: 'Activity / team-building supplies (per chosen activity)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Activity vendor', 'Local store'], unitCostRange: [0, 200], essential: false, buyAt: 'T-1d', note: 'Often provided by the activity vendor — only buy if running it DIY.' },
-    { id: 'p_snacks', item: 'Session snacks + coffee/tea + water (between catered meals)', category: 'food', qtyPerGuest: 6, unit: 'servings', where: ['Grocery', 'Venue F&B'], unitCostRange: [1, 4], essential: true, buyAt: 'T-1d', note: 'Keeps energy up across multi-day sessions; venue may supply — confirm.' },
+    { id: 'p_snacks', item: 'Session snacks + coffee/tea + water (between catered meals)', category: 'food', qtyPerGuest: 6, unit: 'servings', where: ['Grocery', 'Venue F&B'], unitCostRange: [1, 4], essential: true, buyAt: 'T-1d', note: 'Keeps energy up across multi-day sessions; venue may supply — confirm.' , alternatives: ['Grocery granola bars plus fruit — cheapest snack option', 'Trail mix and nuts in bulk — budget per-serving, keeps energy up'] },
     { id: 'p_drinks', item: 'Drinks for downtime (incl. non-alcoholic / mocktail options)', category: 'beverage', qtyPerGuest: 3, unit: 'drinks', where: ['Grocery', 'Venue bar'], unitCostRange: [1, 5], essential: false, buyAt: 'T-1d', note: 'INCLUSION: not everyone drinks — always stock equal non-alcoholic options, never make alcohol the only social glue.' },
     { id: 'p_firstaid', item: 'First-aid kit + basics (sunscreen, water for active days)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Pharmacy', 'Amazon'], unitCostRange: [15, 40], essential: true, buyAt: 'T-3d', note: 'Active team-building day-of safety; commonly forgotten.' },
   ],

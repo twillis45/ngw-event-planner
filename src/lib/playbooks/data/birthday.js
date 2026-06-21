@@ -23,6 +23,14 @@ const birthday = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The song starts and everyone turns to them at once.',
+    'The candles are lit and the room goes quiet before the song.',
+    'The toast from their best friend — the one they didn\'t expect.',
+    'The moment they realize this many people came just for them.',
+    'They blow out the candles and look genuinely surprised it all came together.',
+  ],
+
   decisions: [
     { id: 'theme', label: 'Pick a theme / vibe (or "no theme")', options: ['Kids character/theme', 'Milestone (decade) theme', 'Cocktail / grown-up', 'Casual / no theme'], default: 'Casual / no theme', when: 'T-21d', blocks: ['decor', 'cake', 'favors'], why: 'Theme drives decor, cake design, favors, and invite look. Decide first so the rest is coherent.' },
     { id: 'headcount', label: 'Confirm guest count (and kids vs adults)', options: [], default: null, when: 'T-7d', blocks: ['food', 'cake', 'tableware'], why: 'Every food/cake/tableware quantity scales from this. Kids vs adults changes food and drink mix.' },
@@ -55,9 +63,9 @@ const birthday = {
   ],
 
   purchases: [
-    { id: 'p_mains', item: 'Main food (pizza / trays / grill proteins)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Pizzeria', 'Butcher'], unitCostRange: [3, 8], essential: true, buyAt: 'T-1d', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb main/guest for a casual party meal.' } },
-    { id: 'p_sides', item: 'Sides + snacks (chips, veggie tray, salad)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d' },
-    { id: 'p_cake', item: 'Cake or cupcakes', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [25, 60], essential: true, buyAt: 'T-1d', note: 'Order 3–5 days ahead; ~1 slice/guest.' },
+    { id: 'p_mains', item: 'Main food (pizza / trays / grill proteins)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Pizzeria', 'Butcher'], unitCostRange: [3, 8], essential: true, buyAt: 'T-1d', alternatives: ['Frozen pizza (Costco) — cheaper than ordering, feeds same crowd', 'Deli sub tray — easy, no cooking, often cheaper per head', 'Rotisserie chickens — quick pickup, budget protein option'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb main/guest for a casual party meal.' } },
+    { id: 'p_sides', item: 'Sides + snacks (chips, veggie tray, salad)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', alternatives: ['Bag of chips + store-bought dip — cheapest side option', 'Pre-made pasta salad from deli — if running short on prep time'] },
+    { id: 'p_cake', item: 'Cake or cupcakes', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [25, 60], essential: true, buyAt: 'T-1d', note: 'Order 3–5 days ahead; ~1 slice/guest.', alternatives: ['Grocery sheet cake — add custom message, much cheaper', 'Costco half-sheet cake — feeds 30–48, lowest cost per slice'] },
     { id: 'p_softdrinks', item: 'Soft drinks, juice, water', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery', 'Costco'], unitCostRange: [1, 2], essential: true, buyAt: 'T-3d' },
     { id: 'p_alcohol', item: 'Beer / wine (adult parties)', category: 'beverage', qtyPerGuest: 3, unit: 'drinks', where: ['Liquor store', 'Grocery'], unitCostRange: [3, 6], essential: false, buyAt: 'T-3d', dependsOnDecision: 'alcohol', note: 'Board-corrected up from 2: the host rule is ~2 drinks the first hour + 1/hour after ≈ 3-4 over a 3h adult party; 2 under-buys.' },
     { id: 'p_ice', item: 'Ice', category: 'beverage', qtyPerGuest: 1.5, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0', note: 'COMMONLY FORGOTTEN. ~1.5 lb/guest for drinks + coolers.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~1.5 lb ice/guest beverage-service heuristic.' } },

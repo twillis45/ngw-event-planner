@@ -62,7 +62,8 @@ describe('58E isEventComplete + tone', () => {
 });
 
 describe('58C flag gate', () => {
-  test('memoryOn default OFF', () => { expect(memoryOn()).toBe(false); });
+  test('memoryOn default ON (corpus capture enabled; reads degrade gracefully)', () => { expect(memoryOn()).toBe(true); });
+  test('OFF via localStorage off-switch', () => { localStorage.setItem('ngw-pi-memory', '0'); expect(memoryOn()).toBe(false); });
   test('ON via localStorage', () => { localStorage.setItem('ngw-pi-memory', '1'); expect(memoryOn()).toBe(true); });
 });
 

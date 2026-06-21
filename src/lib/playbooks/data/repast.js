@@ -30,6 +30,13 @@ const repast = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The family walks in and the food is already there — they didn\'t have to do a thing.',
+    'Someone shares a memory that makes the whole room laugh through tears.',
+    'An elder gets a seat, a full plate, and someone sits beside them.',
+    'The guest book fills up with names and words the family will keep forever.',
+  ],
+
   decisions: [
     { id: 'place', label: 'Where the repast is held', options: ['Church fellowship hall', 'A family home', 'A restaurant or banquet room', 'The funeral home'], default: 'Church fellowship hall', when: 'T-5d', blocks: ['setup', 'rentals'], why: 'A fellowship hall is the most common and gentlest choice — kitchen, tables, and a community already used to caring for one another. A home feels close; a restaurant removes all setup and cleanup from a tired family.' },
     { id: 'food_source', label: 'Who provides the food', options: ['Let the church / repast committee bring it', 'Friends and neighbors sign up to bring dishes', 'Have it catered', 'A restaurant serves it'], default: 'Let the church / repast committee bring it', when: 'T-5d', blocks: ['food', 'food_purchases'], why: 'This is the heart of a repast: the family does not cook — the community feeds them. If a committee or church offers, accept it gratefully. Catering or a restaurant is a kind option when no committee is in place, so no one is in a kitchen on a hard day.' },
@@ -59,10 +66,10 @@ const repast = {
   ],
 
   purchases: [
-    { id: 'p_protein', item: 'Comforting main dishes — fried or baked chicken, baked ham', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Brought by the community', 'Grocery', 'Caterer', 'Restaurant'], unitCostRange: [3, 7], essential: true, buyAt: 'T-1d', note: 'Usually brought by the church or committee — not cooked by the family. ~0.5 lb protein/guest is a gentle plenty.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb protein/guest repast heuristic.' } },
-    { id: 'p_sides', item: 'Familiar sides — greens, mac and cheese, potato salad, green beans', category: 'food', qtyPerGuest: 0.75, unit: 'lb', where: ['Brought by the community', 'Grocery', 'Caterer'], unitCostRange: [2, 4], essential: true, buyAt: 'T-1d', note: 'The dishes that say home. Most often these arrive from many hands.' },
-    { id: 'p_bread', item: 'Dinner rolls / cornbread', category: 'food', qtyPerGuest: 2, unit: 'pieces', where: ['Brought by the community', 'Grocery', 'Bakery'], unitCostRange: [0.3, 0.6], essential: true, buyAt: 'T-1d' },
-    { id: 'p_dessert', item: 'Sheet cake, pound cake, pies, banana pudding', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Brought by the community', 'Grocery', 'Bakery'], unitCostRange: [1, 3], essential: false, buyAt: 'T-1d', note: 'Often the most personal gift — someone\'s family recipe carried in.' },
+    { id: 'p_protein', item: 'Comforting main dishes — fried or baked chicken, baked ham', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Brought by the community', 'Grocery', 'Caterer', 'Restaurant'], unitCostRange: [3, 7], essential: true, buyAt: 'T-1d', note: 'Usually brought by the church or committee — not cooked by the family. ~0.5 lb protein/guest is a gentle plenty.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb protein/guest repast heuristic.' }, alternatives: ['Store-bought rotisserie chickens — no cooking, dignified option', 'Baked chicken (oven) — cheaper than fried, still comforting'] },
+    { id: 'p_sides', item: 'Familiar sides — greens, mac and cheese, potato salad, green beans', category: 'food', qtyPerGuest: 0.75, unit: 'lb', where: ['Brought by the community', 'Grocery', 'Caterer'], unitCostRange: [2, 4], essential: true, buyAt: 'T-1d', note: 'The dishes that say home. Most often these arrive from many hands.', alternatives: ['Deli sides (grocery) — if community hands are short', 'Canned baked beans + frozen mac — budget emergency fallback'] },
+    { id: 'p_bread', item: 'Dinner rolls / cornbread', category: 'food', qtyPerGuest: 2, unit: 'pieces', where: ['Brought by the community', 'Grocery', 'Bakery'], unitCostRange: [0.3, 0.6], essential: true, buyAt: 'T-1d', alternatives: ['Store-bought dinner rolls — same comfort, widely available', 'Grocery cornbread — if homemade isn\'t possible'] },
+    { id: 'p_dessert', item: 'Sheet cake, pound cake, pies, banana pudding', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Brought by the community', 'Grocery', 'Bakery'], unitCostRange: [1, 3], essential: false, buyAt: 'T-1d', note: 'Often the most personal gift — someone\'s family recipe carried in.', alternatives: ['Grocery sheet cake — inexpensive, feeds many, dignified presentation', 'Store-bought banana pudding cups — if baking isn\'t possible'] },
     { id: 'p_drinks', item: 'Sweet tea, lemonade, water, coffee', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery', 'Costco'], unitCostRange: [0.5, 1.5], essential: true, buyAt: 'T-1d', note: 'A repast is not a bar — gentle, familiar drinks. Coffee for the elders.' },
     { id: 'p_ice', item: 'Ice', category: 'beverage', qtyPerGuest: 1, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0' },
     { id: 'p_serveware', item: 'Sturdy plates, cups, napkins, cutlery', category: 'rental', qtyPerGuest: 1.5, unit: 'set', where: ['Grocery', 'Costco', 'Party store'], unitCostRange: [0.3, 1], essential: true, buyAt: 'T-1d' },

@@ -461,11 +461,14 @@ function shortRental(item) {
     'Dinner plates': 'plates', 'Wine + water glasses': 'glasses', 'Flatware sets': 'flatware',
     'Dining chairs': 'chairs', 'Serving platters + utensils': 'platters', 'Folding tables': 'tables',
     'Coolers': 'coolers', 'Chairs': 'chairs', 'Canopy / tent': 'canopy', 'Pop-up canopy (10x10)': 'canopy',
+    'Pop-up canopies (10x10)': 'canopies', 'Pop-up canopies': 'canopies',
     'Serving platters + serving utensils': 'platters', 'Serving platters + drink dispenser': 'platters',
     'Chafing dishes / drink dispensers': 'chafers', 'Dining chairs ': 'chairs',
   };
   if (map[item]) return map[item];
-  return String(item || '').split(/[(/—-]/)[0].trim().toLowerCase();
+  // Split on parens/slash/em-dash, and a hyphen ONLY when spaced (" - ") — never a
+  // hyphen inside a word, or "Pop-up canopies" truncates to "pop".
+  return String(item || '').split(/\s*[(/—]\s*|\s+-\s+/)[0].trim().toLowerCase();
 }
 
 export function playbookCapacity(event) {
@@ -696,6 +699,9 @@ export function playbookFoodPlan(event, opts = {}) {
         skipped: !!skip[p.id],
         locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''),
+        // alternatives: playbook-authored swap suggestions (cheaper/unavailable/dietary).
+        // Only present when the purchase carries them; undefined otherwise (no empty array noise).
+        ...(Array.isArray(p.alternatives) && p.alternatives.length > 0 ? { alternatives: p.alternatives } : {}),
       };
     });
 
@@ -772,6 +778,14 @@ export function playbookFoodPlan(event, opts = {}) {
     priceFactor: pf,
     priceContext: pf !== 1 ? (opts.priceContext || null) : null,
   };
+}
+
+// playbookHeartMoments(event) — the 3-5 "must-have moment" suggestions for this event
+// type. Pure passthrough of the playbook's AUTHORED heartMoments array — invents nothing.
+// Returns [] for types without a playbook or without heartMoments.
+export function playbookHeartMoments(event) {
+  const playbook = getPlaybook(event && event.type);
+  return (playbook && playbook.heartMoments) || [];
 }
 
 // playbookAbout(type) — the event-type EDUCATION surface, for a host who wants to

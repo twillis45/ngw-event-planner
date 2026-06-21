@@ -29,6 +29,13 @@ const bachelorParty = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The toast — the one where the best man says the thing he\'d never say sober.',
+    'The whole crew finally together, first round in hand, and nobody checks their phone.',
+    'The groom\'s face when he realizes the night is exactly what he would have picked.',
+    'The quiet end-of-night moment when everyone agrees it was a good one.',
+  ],
+
   decisions: [
     { id: 'activity', label: 'Marquee activity', options: ['Golf outing', 'Poker night (in)', 'Sports game / tailgate', 'Steakhouse dinner', 'Night out (bars / club)'], default: 'Steakhouse dinner', when: 'T-21d', blocks: ['food', 'logistics', 'transport'], why: 'The activity is the spine of the whole day — it sets the venue, the booking lead time, the transport, and how heavy the bar runs. Confirm what the GROOM actually wants (not what the crew wants) before anything else.' },
     { id: 'costsplit', label: 'Budget + cost-split (the groom never pays)', options: ['Even split among the crew', 'Best man fronts, Venmo settle after', 'Tiered (travel pay more)', 'Pooled kitty up front'], default: 'Best man fronts, Venmo settle after', when: 'T-21d', blocks: ['food', 'beverage_purchases', 'logistics'], why: 'Sets the per-head number and prevents the classic blow-up: hidden costs and an awkward end-of-night reconciliation. Agree the cap AND the method up front, and the groom is comped — the crew covers his share.' },
@@ -61,8 +68,8 @@ const bachelorParty = {
   ],
 
   purchases: [
-    { id: 'p_food', item: 'Hearty food (grill proteins, wings, or a pizza order)', category: 'food', qtyPerGuest: 0.7, unit: 'lb', where: ['Grocery', 'Costco', 'Butcher', 'Wing/pizza spot'], unitCostRange: [5, 11], essential: true, buyAt: 'T-1d', note: 'These guys eat — ~0.6–0.75 lb/guest. Food is also a SAFETY lever: a fed crew drinks slower.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'synthesized', note: '~0.6–0.75 lb hearty food/guest for a drinking crowd of men.' } },
-    { id: 'p_snacks', item: 'Bar snacks (chips, pretzels, jerky, nuts, pizza rolls)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery', 'Costco'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', note: 'Keep something salty out the WHOLE time — constant grazing paces the drinking.' },
+    { id: 'p_food', item: 'Hearty food (grill proteins, wings, or a pizza order)', category: 'food', qtyPerGuest: 0.7, unit: 'lb', where: ['Grocery', 'Costco', 'Butcher', 'Wing/pizza spot'], unitCostRange: [5, 11], essential: true, buyAt: 'T-1d', note: 'These guys eat — ~0.6–0.75 lb/guest. Food is also a SAFETY lever: a fed crew drinks slower.', alternatives: ['Frozen pizza (Costco) — cheap, feeds same crowd, no delivery wait', 'Grocery rotisserie chickens — budget pick-up option', 'Costco/Sam\'s jumbo wing tray — cheaper than ordering wings out'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'synthesized', note: '~0.6–0.75 lb hearty food/guest for a drinking crowd of men.' } },
+    { id: 'p_snacks', item: 'Bar snacks (chips, pretzels, jerky, nuts, pizza rolls)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery', 'Costco'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', note: 'Keep something salty out the WHOLE time — constant grazing paces the drinking.', alternatives: ['Store-brand chips + dip — cheapest per oz', 'Peanuts / mixed nuts in bulk — high protein, keeps people full longer'] },
     { id: 'p_beer', item: 'Beer', category: 'beverage', qtyPerGuest: 6, unit: 'cans/bottles', where: ['Grocery', 'Costco', 'Liquor store'], unitCostRange: [1.5, 3.5], essential: true, buyAt: 'T-3d', note: '~1 drink/guest/hour over the hosted hours; beer is the workhorse. Buy a little long, not short.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'synthesized', note: '~1 drink/guest/hour; ~2 in hour one then ~1/hr is the common US party heuristic.' } },
     { id: 'p_whiskey', item: 'Whiskey / spirits', category: 'beverage', qtyPerGuest: 0.2, unit: 'bottle (750ml)', where: ['Liquor store', 'Costco'], unitCostRange: [18, 45], essential: false, buyAt: 'T-3d', note: '~1 bottle per ~5 guests (≈16 pours each, cut with mixers). A whiskey for the groom\'s toast is a nice touch.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'synthesized', note: '~1 750ml bottle of spirits per ~5 guests when mixed.' } },
     { id: 'p_mixers', item: 'Mixers (soda, tonic, cola, ginger ale)', category: 'beverage', qtyPerGuest: 1, unit: 'liter', where: ['Grocery', 'Costco'], unitCostRange: [1, 2.5], essential: false, buyAt: 'T-3d' },

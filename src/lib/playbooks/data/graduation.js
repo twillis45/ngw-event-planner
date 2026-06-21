@@ -23,6 +23,14 @@ const graduation = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The grad walks in and sees everyone who came — just for them.',
+    'The toast from a parent that says what they\'ve been meaning to say for years.',
+    'Someone pulls up the photo wall and the whole family gathers around it.',
+    'The grad catches someone looking proud of them and doesn\'t quite know what to do.',
+    'The handshake or hug from the person who pushed them hardest to get here.',
+  ],
+
   decisions: [
     { id: 'format', label: 'Open house or set-time party?', options: ['Open house (drop-in)', 'Set-time party', 'Joint party (multiple grads)'], default: 'Open house (drop-in)', when: 'T-21d', blocks: ['food', 'tableware'], why: 'Open houses see more total heads with churn — plan self-serve food that holds, and over-provision.' },
     { id: 'headcount', label: 'Estimate peak + total headcount', options: [], default: null, when: 'T-10d', blocks: ['food', 'cake', 'tableware'], why: 'Open-house RSVPs are fuzzy — estimate both peak-at-once and total-through-the-day; quantities key off total + a buffer.' },
@@ -54,9 +62,9 @@ const graduation = {
   ],
 
   purchases: [
-    { id: 'p_food', item: 'Main food (BBQ / buffet trays / taco bar)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer', 'Butcher'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', note: 'Over-provision ~10-15% for a drop-in crowd.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb main/guest + a 10-15% drop-in buffer.' } },
-    { id: 'p_sides', item: 'Sides + snacks (chips, salads, fruit, dips)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery', 'Costco'], unitCostRange: [2, 5], essential: true, buyAt: 'T-3d' },
-    { id: 'p_cake', item: 'Sheet cake / cupcakes', category: 'food', qtyFlat: 1, qtyPer: 20, unit: 'sheet cake (serves ~20)', where: ['Bakery', 'Grocery', 'Costco'], unitCostRange: [40, 90], essential: true, buyAt: 'T-1d', note: 'Order 3–5 days ahead; sheet cakes scale cheaply for crowds.' },
+    { id: 'p_food', item: 'Main food (BBQ / buffet trays / taco bar)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer', 'Butcher'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', note: 'Over-provision ~10-15% for a drop-in crowd.', alternatives: ['Costco deli trays — cheaper per head, no cooking required', 'Pizza order — easiest crowd-pleaser, especially for teen grads', 'Taco kit (grocery) — budget option, guests build their own'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb main/guest + a 10-15% drop-in buffer.' } },
+    { id: 'p_sides', item: 'Sides + snacks (chips, salads, fruit, dips)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery', 'Costco'], unitCostRange: [2, 5], essential: true, buyAt: 'T-3d', alternatives: ['Bag of chips + store-bought dip — cheapest side option', 'Pre-made pasta salad from deli — if running short on time'] },
+    { id: 'p_cake', item: 'Sheet cake / cupcakes', category: 'food', qtyFlat: 1, qtyPer: 20, unit: 'sheet cake (serves ~20)', where: ['Bakery', 'Grocery', 'Costco'], unitCostRange: [40, 90], essential: true, buyAt: 'T-1d', note: 'Order 3–5 days ahead; sheet cakes scale cheaply for crowds.', alternatives: ['Costco half-sheet — lowest cost per slice, feeds 48, no lead time', 'Cupcakes from grocery bakery — easy to serve, no cutting required'] },
     { id: 'p_drinks', item: 'Soft drinks, water, lemonade', category: 'beverage', qtyPerGuest: 4, unit: 'drinks', where: ['Grocery', 'Costco'], unitCostRange: [1, 2], essential: true, buyAt: 'T-3d', note: 'Board-corrected up from 3: an outdoor open house with drop-in churn + summer heat runs ~1 drink/guest/hour.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~1 drink/guest/hour ≈ 4/guest over a 4h outdoor open house.' } },
     { id: 'p_alcohol', item: 'Beer / wine (adults only)', category: 'beverage', qtyPerGuest: 1.5, unit: 'drinks', where: ['Liquor store', 'Grocery'], unitCostRange: [3, 6], essential: false, buyAt: 'T-3d', dependsOnDecision: 'alcohol' },
     { id: 'p_ice', item: 'Ice', category: 'beverage', qtyPerGuest: 2, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0', note: 'COMMONLY FORGOTTEN. Board-corrected to ~2 lb/guest — this is an OUTDOOR event (matches the BBQ playbook); ice melts faster in the heat.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~2 lb ice/guest for outdoor beverage service (heat-adjusted).' } },

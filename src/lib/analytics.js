@@ -4,11 +4,13 @@
  * Tracks key planner actions for product learning.
  * Privacy-first: no PII sent, all events are behavioral.
  *
- * Activate: set REACT_APP_POSTHOG_KEY in .env.local
- * Free tier: posthog.com — 1M events/month free
+ * Active by default in any DEPLOYED build: a public, write-only PostHog ingestion
+ * key (phc_…, safe to ship) is hardcoded below as a fallback, and REACT_APP_POSTHOG_KEY
+ * overrides it. Free tier: posthog.com — 1M events/month free.
  *
- * CTA truthfulness: analytics only fires when key is set.
- * No fake tracking. No silent data collection.
+ * Truthfulness: behavioral only, never PII. NEVER fires from local dev (IS_LOCAL),
+ * and a session can opt out (`?noanalytics=1` or `ngw-analytics-optout=1`) — when it
+ * does, track()/trackOnce() no-op. So: on by default in prod, off in dev, opt-out honored.
  */
 
 // PostHog project keys (phc_…) are PUBLIC, write-only ingestion keys — designed to

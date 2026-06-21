@@ -32,6 +32,13 @@ const conference = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The keynote lands and the room is genuinely still — no phones, no side conversations.',
+    'A speaker says the thing that shifts how someone thinks about their work.',
+    'Two strangers meet in the hallway between sessions and end up starting something.',
+    'The closing moment — people leave with more than they came with.',
+  ],
+
   decisions: [
     { id: 'format', label: 'In-person, hybrid, or virtual?', options: ['In-person only', 'Hybrid (in-person + streamed)', 'Virtual only'], default: 'In-person only', when: 'T-180d', blocks: ['vendors', 'av_production', 'registration'], why: 'The single biggest scope lever. Hybrid roughly doubles the AV/production line (capture, streaming, a virtual platform, a remote-moderator workflow) and changes registration + sponsor packages.' },
     { id: 'tracks', label: 'Single-track or multi-track agenda?', options: ['Single track (one room)', 'Two tracks', 'Multi-track (3+ breakouts)'], default: 'Multi-track (3+ breakouts)', when: 'T-150d', blocks: ['agenda', 'venue_rooms', 'av_production'], why: 'Drives how many breakout rooms you contract, how many AV kits + techs you need, and the room-set / turnover plan. Multi-track multiplies AV and signage.' },

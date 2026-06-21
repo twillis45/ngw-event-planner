@@ -18,40 +18,9 @@ export default function EngineNextStep({ event }) {
     ? norm(p.binding.name).split(/\W+/).some(w => w.length > 3 && norm(spineTitle).includes(w))
     : null;
 
-  // shadow-mode comparison log (builds the dataset for the promote decision).
-  // Records EVERY comparison (not just divergences) so we get a real agreement
-  // base-rate. Deduped by event+binding+spine, persisted to localStorage so it
-  // survives navigation/reloads, and exposed on window for the collector harness.
-  try {
-    const rec = {
-      eventKey: String((event && (event.id || event.name)) || 'unknown'),
-      eventName: (event && event.name) || null,
-      daysOut: p.daysOut != null ? p.daysOut : null,
-      family: p.family || null,
-      flag: p.flag || null,
-      dateAtRisk: !!p.dateAtRisk,
-      engineBinding: p.binding.name,
-      delivery: p.delivery || null,
-      spine: spineTitle || null,
-      agree, // true / false / null(no spine)
-    };
-    const KEY = 'ngw_engine_shadow_v1';
-    const k = `${rec.eventKey}|${rec.engineBinding}|${rec.spine}`;
-    const log = JSON.parse(localStorage.getItem(KEY) || '[]');
-    if (!log.some(r => r._k === k)) {
-      log.push({ ...rec, _k: k });
-      localStorage.setItem(KEY, JSON.stringify(log));
-    }
-    window.__engineShadowLog = log;
-    window.__dumpEngineShadow = () => JSON.parse(localStorage.getItem(KEY) || '[]');
-    window.__clearEngineShadow = () => { localStorage.removeItem(KEY); window.__engineShadowLog = []; };
-    console.debug('[engine-shadow]', rec);
-  } catch (e) {}
-
   // The visible side-by-side is a DEVELOPER shadow-mode tool, not end-user UI —
   // it leaked to production on every non-Command tab (Grandmother caught the
-  // "ENGINE PREVIEW binding: … vs Spine: … ⚑ differs" bar). Gate the overlay to
-  // explicit opt-in; the comparison logging above still runs to build the dataset.
+  // "ENGINE PREVIEW binding: … vs Spine: … ⚑ differs" bar). Gate to explicit opt-in.
   let showPreview = false;
   try {
     showPreview = typeof window !== 'undefined' && (
@@ -59,7 +28,39 @@ export default function EngineNextStep({ event }) {
       /[?&]enginePreview=1/.test(window.location.search)
     );
   } catch (e) { showPreview = false; }
+
   if (!showPreview) return null;
+
+  // shadow-mode comparison log — only reached when showPreview is true (dev opt-in).
+  // B6: the __DEV__ guard ensures terser eliminates this entire block from the prod
+  // bundle via dead-code elimination on the `false &&` branch.
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const rec = {
+        eventKey: String((event && (event.id || event.name)) || 'unknown'),
+        eventName: (event && event.name) || null,
+        daysOut: p.daysOut != null ? p.daysOut : null,
+        family: p.family || null,
+        flag: p.flag || null,
+        dateAtRisk: !!p.dateAtRisk,
+        engineBinding: p.binding.name,
+        delivery: p.delivery || null,
+        spine: spineTitle || null,
+        agree,
+      };
+      const KEY = 'ngw_engine_shadow_v1';
+      const k = `${rec.eventKey}|${rec.engineBinding}|${rec.spine}`;
+      const log = JSON.parse(localStorage.getItem(KEY) || '[]');
+      if (!log.some(r => r._k === k)) {
+        log.push({ ...rec, _k: k });
+        localStorage.setItem(KEY, JSON.stringify(log));
+      }
+      window.__engineShadowLog = log;
+      window.__dumpEngineShadow = () => JSON.parse(localStorage.getItem(KEY) || '[]');
+      window.__clearEngineShadow = () => { localStorage.removeItem(KEY); window.__engineShadowLog = []; };
+      console.debug('[engine-shadow]', rec);
+    } catch (e) {}
+  }
 
   return (
     <div style={{

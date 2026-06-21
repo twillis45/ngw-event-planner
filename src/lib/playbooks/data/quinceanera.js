@@ -36,6 +36,14 @@ const quinceanera = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The vals — the quinceañera dances with her court and months of rehearsal become one perfect song.',
+    'Her father changes her shoes and neither of them makes it through without tears.',
+    'The crowning — the tiara goes on and the whole room sees her as the young woman she is.',
+    'The first dance with her father — just the two of them, in the middle of everything.',
+    'The brindis lands and she looks around the room at everyone who came for her.',
+  ],
+
   decisions: [
     {
       id: 'religious_or_secular',
@@ -218,6 +226,7 @@ const quinceanera = {
       buyAt: 'T-3d',
       note: 'A quince is a full seated meal, not a buffet of snacks. The menu reflects the family\'s tradition — Mexican, Central American, Caribbean or South American. Give the caterer the final count at T-30d; the per-plate price is set by contract well before.',
       provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US catered-event norm: ~$18-45/plate for a seated meal.' },
+      alternatives: ['Chicken mole instead of beef — cheaper, traditional and impressive', 'Buffet-style rice + beans + chicken — lower cost per head than plated'],
     },
     {
       id: 'p_appetizers',
@@ -230,6 +239,7 @@ const quinceanera = {
       essential: false,
       buyAt: 'T-1d',
       note: 'Light bites while guests arrive and photos are taken keeps the room comfortable before the seated dinner.',
+      alternatives: ['Chips + salsa + guacamole station — budget appetizer swap', 'Taquitos (frozen) baked tray — cheaper passed app option'],
     },
     {
       id: 'p_cake',
@@ -242,6 +252,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-1d',
       note: 'A multi-tier cake is a centerpiece and a photo moment, often matched to the gown. Order from the baker at T-180d; pick up or confirm delivery the day before. Some families add a smaller decorative top tier and sheet cakes to serve a large crowd.',
+      alternatives: ['Grocery bakery sheet cake with custom decorations — far cheaper', 'Tres leches cake from Latin bakery — traditional, often more affordable'],
     },
     {
       id: 'p_beverages',

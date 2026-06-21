@@ -29,6 +29,13 @@ const surpriseProposal = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'They say yes — everything before and after that is setup and celebration.',
+    'The photographer captures the real face, the real tears, the real thing.',
+    'The ring goes on and nobody says anything for a few seconds.',
+    'The celebration after — calling family, the champagne, the first dinner as engaged.',
+  ],
+
   decisions: [
     { id: 'public_private', label: 'Public moment or private/intimate?', options: ['Private (just the two of you)', 'Public with a hidden audience', 'Family + friends gathered after', 'Destination / trip proposal'], default: 'Private (just the two of you)', when: 'T-40d', blocks: ['location', 'permit', 'decor', 'celebration'], why: 'The single biggest fork. Public/destination drives permits, crowd control, travel, and a bigger circle of secret-keepers; private keeps it controllable and easier to keep secret.' },
     { id: 'who_knows', label: 'Who is in on it? (secret-keepers)', options: ['Nobody — solo', 'Photographer only', '2-3 trusted people', "Both families coordinated"], default: '2-3 trusted people', when: 'T-40d', blocks: ['celebration', 'ring'], why: 'Every extra person is another way the surprise leaks. Keep the circle as small as the plan allows; only loop in people who are doing a job (ring size, the cover story, the reveal).' },

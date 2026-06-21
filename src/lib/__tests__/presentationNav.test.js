@@ -52,9 +52,9 @@ describe('57E-A hostNav — FLAG ON', () => {
 
   test('T7 hostTabLabel relabels for host, null (→ caller default) for planner/unmapped', () => {
     expect(hostTabLabel('Planning', HOST)).toBe('Plan');
-    expect(hostTabLabel('Budget', HOST)).toBe('Money');
+    expect(hostTabLabel('Budget', HOST)).toBe('Budget');
     expect(hostTabLabel('Event Day Schedule', HOST)).toBe('The Day');
-    expect(hostTabLabel('Event Details', HOST)).toBe('Details');
+    expect(hostTabLabel('Event Details', HOST)).toBe('Venue & Details');
     expect(hostTabLabel('Guests', HOST)).toBeNull();      // unmapped ⇒ caller default ("Guests")
     expect(hostTabLabel('Planning', PLANNER)).toBeNull(); // planner ⇒ caller default
   });

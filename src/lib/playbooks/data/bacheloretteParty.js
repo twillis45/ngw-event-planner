@@ -32,6 +32,13 @@ const bacheloretteParty = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The bride walks in and doesn\'t know what\'s coming — then she sees everyone.',
+    'The toast from the maid of honor that makes the bride ugly-cry in the best way.',
+    'The whole group on the dance floor at the same time, no one sitting it out.',
+    'The quiet ride home where the bride says it was exactly what she needed.',
+  ],
+
   decisions: [
     { id: 'format', label: 'Night out vs. weekend trip', options: ['One big night out (local)', 'Overnight (Airbnb / hotel suite)', 'Full weekend trip'], default: 'One big night out (local)', when: 'T-30d', blocks: ['lodging', 'transport', 'itinerary', 'beverage_purchases'], why: 'This is the spine decision: it sets lodging, how many nights of transport you book, how big the cost-split is, and whether the pre-game is at home or in a rented suite.' },
     { id: 'costsplit', label: 'Budget + cost-split model (who pays for what; cover the bride)', options: ['Even split, group covers the bride', 'Even split, bride pays her own', 'Tiered (each pays own + chips in for bride)', 'Host fronts, collect via app'], default: 'Even split, group covers the bride', when: 'T-30d', blocks: ['lodging', 'transport', 'itinerary'], why: 'Bachelorette costs spiral and money is the #1 friction. Agree the per-person number and the "do we cover the bride" rule UP FRONT, in writing, before anyone books — traditionally the group splits the bride\'s share, travel excepted.' },
@@ -65,7 +72,7 @@ const bacheloretteParty = {
   ],
 
   purchases: [
-    { id: 'p_apps', item: 'Grazing / charcuterie board + appetizers (cheese, cured meats, dips, crackers, fruit, veg)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [5, 12], essential: true, buyAt: 'T-1d', note: 'Food is a SAFETY tool — a real grazing board for the pre-game keeps people eating while they drink and slows the night down.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grazing/guest for a pre-dinner pre-game board.' } },
+    { id: 'p_apps', item: 'Grazing / charcuterie board + appetizers (cheese, cured meats, dips, crackers, fruit, veg)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [5, 12], essential: true, buyAt: 'T-1d', note: 'Food is a SAFETY tool — a real grazing board for the pre-game keeps people eating while they drink and slows the night down.', alternatives: ['Costco deli platter — cheaper per lb, same grazing function', 'Trader Joe\'s appetizer section — budget-friendly, pre-made bites', 'Hummus + veggie tray + crackers — cheapest spread option'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grazing/guest for a pre-dinner pre-game board.' } },
     { id: 'p_spirits', item: 'Liquor for the batch cocktail (vodka/tequila/gin) + a bottle for shots', category: 'beverage', qtyPerGuest: 0.18, unit: 'bottle (750ml)', where: ['Liquor store', 'Costco', 'Total Wine'], unitCostRange: [15, 30], essential: false, buyAt: 'T-3d', note: 'For the at-home pre-game only — plan ~1 drink/guest/hr for the ~2 pre-game hours. ~1 750ml bottle (≈16 drinks) per 5–6 guests. Pace, do not over-buy; the night out has its own bar tab.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: 'US party heuristic: ~1 drink/guest/hr (2 in the first hour); ~16 cocktails per 750ml bottle.' } },
     { id: 'p_bubbly', item: 'Sparkling wine / prosecco for the toast + mimosas', category: 'beverage', qtyPerGuest: 0.25, unit: 'bottle (750ml)', where: ['Grocery', 'Liquor store', 'Costco'], unitCostRange: [10, 18], essential: false, buyAt: 'T-3d', note: '~1 bottle per 4 guests covers a welcome toast and a light pour; the bride\'s glass is the centerpiece.' },
     { id: 'p_mixers', item: 'Mixers + garnishes (juice, soda, citrus, simple syrup) for the batch cocktail', category: 'beverage', qtyPerGuest: 0.5, unit: 'L', where: ['Grocery', 'Costco'], unitCostRange: [1.5, 4], essential: false, buyAt: 'T-1d', note: 'Doubles as the base for the zero-proof version of the signature drink.' },

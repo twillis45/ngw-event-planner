@@ -28,6 +28,13 @@ const bridalShower = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The bride opens the gift that makes the room go quiet in the best way.',
+    'Her grandmother\'s toast — short, sincere, and everyone cries.',
+    'The advice cards are read out loud and she keeps the funniest ones forever.',
+    'The moment she looks around the room and realizes who showed up for her.',
+  ],
+
   decisions: [
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Garden luncheon', 'Cocktail-hour shower'], default: 'Brunch', when: 'T-14d', blocks: ['menu', 'beverage_purchases'], why: 'Sets the menu, time of day, and whether the bar skews mimosa/coffee (brunch) or punch/tea (afternoon).' },
     { id: 'guestlist', label: 'Confirm guest list with the bride (and her mother / future MIL)', options: [], default: null, when: 'T-14d', blocks: ['food', 'favors', 'seating', 'tableware'], why: 'Every quantity and the seat count scale from this — and the bride must approve who is invited (no shower guest should be off the wedding list).' },
@@ -59,8 +66,8 @@ const bridalShower = {
   ],
 
   purchases: [
-    { id: 'p_food', item: 'Brunch / finger-food spread (quiche, fruit, tea sandwiches, salads)', category: 'food', qtyPerGuest: 0.6, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5–0.6 lb grazing/guest for a seated daytime brunch shower.' } },
-    { id: 'p_cake', item: 'Cake / cupcakes / dessert table', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [35, 80], essential: true, buyAt: 'T-1d', note: 'Order ahead; ~1 serving/guest. The cake is the centerpiece dessert at a shower.' },
+    { id: 'p_food', item: 'Brunch / finger-food spread (quiche, fruit, tea sandwiches, salads)', category: 'food', qtyPerGuest: 0.6, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', alternatives: ['Costco deli platter — cheaper per lb, same grazing function', 'Bagels + cream cheese + lox — budget brunch option, easy to scale', 'Grocery store salad bar by the pound — flexible, no-prep option'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5–0.6 lb grazing/guest for a seated daytime brunch shower.' } },
+    { id: 'p_cake', item: 'Cake / cupcakes / dessert table', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [35, 80], essential: true, buyAt: 'T-1d', note: 'Order ahead; ~1 serving/guest. The cake is the centerpiece dessert at a shower.', alternatives: ['Grocery bakery sheet cake — add custom message, far cheaper', 'Cupcake tower (grocery bakery) — easy to serve, no cutting'] },
     { id: 'p_bubbly', item: 'Sparkling wine / prosecco for mimosas', category: 'beverage', qtyPerGuest: 0.22, unit: 'bottle (750ml)', where: ['Grocery', 'Liquor store', 'Costco'], unitCostRange: [10, 18], essential: false, buyAt: 'T-3d', note: 'Plan ~1 bottle per 4–5 guests for a mimosa bar (each bottle pours ~5–6 mimosas cut with juice).', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: 'Mimosa-bar heuristic: ~1 bottle bubbly per 4–5 guests when cut with juice.' } },
     { id: 'p_juice', item: 'Juice for mimosas (orange + a second flavor)', category: 'beverage', qtyPerGuest: 0.25, unit: 'gal', where: ['Grocery', 'Costco'], unitCostRange: [3, 6], essential: false, buyAt: 'T-1d', note: 'Pairs with bubbly; doubles as the kids/no-alcohol pour.' },
     { id: 'p_punch', item: 'Non-alcoholic punch / mocktail base + garnishes', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', note: 'Always offer a great zero-proof punch for non-drinkers — make it as pretty as the mimosa bar.' },

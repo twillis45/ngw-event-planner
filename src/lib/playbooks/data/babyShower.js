@@ -22,6 +22,13 @@ const babyShower = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The guest of honor opens the gift that makes her cry in the best way.',
+    'Everyone leans in to feel the baby kick — the room holds its breath.',
+    'The advice cards are read out loud and the whole room laughs at the honest ones.',
+    'The moment she realizes how many people showed up just to celebrate this baby.',
+  ],
+
   decisions: [
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Lunch buffet', 'Co-ed "sip & see"'], default: 'Brunch', when: 'T-28d', blocks: ['menu', 'beverage_purchases'], why: 'Sets the menu, time of day, and whether it skews sweet or savory.' },
     { id: 'guestlist', label: 'Finalize guest list with the parent(s)', options: [], default: null, when: 'T-21d', blocks: ['food', 'favors', 'tableware'], why: 'Every quantity scales from this; confirm with the guest of honor first.' },
@@ -52,8 +59,8 @@ const babyShower = {
   ],
 
   purchases: [
-    { id: 'p_food', item: 'Finger foods / brunch spread (quiche, fruit, sandwiches)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [4, 9], essential: true, buyAt: 'T-1d', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grazing/guest for a daytime shower.' } },
-    { id: 'p_cake', item: 'Cake / cupcakes / dessert table', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [30, 70], essential: true, buyAt: 'T-1d', note: 'Order ahead; ~1 serving/guest.' },
+    { id: 'p_food', item: 'Finger foods / brunch spread (quiche, fruit, sandwiches)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [4, 9], essential: true, buyAt: 'T-1d', alternatives: ['Costco party platters — cheaper per head, low prep', 'Deli sandwich tray — budget swap if quiche ingredients unavailable', 'Bagels + cream cheese spread — cheaper brunch option'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grazing/guest for a daytime shower.' } },
+    { id: 'p_cake', item: 'Cake / cupcakes / dessert table', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [30, 70], essential: true, buyAt: 'T-1d', note: 'Order ahead; ~1 serving/guest.', alternatives: ['Grocery bakery sheet cake — add custom message, much cheaper', 'Cupcakes from grocery — easier to serve, no cutting required'] },
     { id: 'p_mocktail', item: 'Mocktails / punch / non-alcoholic drinks', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', note: 'Showers are often dry — make the zero-proof option great for the pregnant guest of honor.' },
     { id: 'p_coffee', item: 'Coffee + tea + cream/sugar (a 40-cup urn per ~25 guests)', category: 'beverage', qtyFlat: 1, qtyPer: 25, unit: 'urn (~40 cups)', where: ['Grocery', 'Rental', 'Party store'], unitCostRange: [12, 30], essential: true, buyAt: 'T-3d', note: 'Board-corrected: coffee is the #1 drink at a daytime shower — a single flat "service" under-spec\'s 25-40 guests. Scale ~1 large urn per 25.' },
     { id: 'p_ice', item: 'Ice', category: 'beverage', qtyPerGuest: 1.5, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0', note: 'COMMONLY FORGOTTEN. ~1.5 lb/guest.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~1.5 lb ice/guest beverage-service heuristic.' } },

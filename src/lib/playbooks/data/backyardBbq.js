@@ -23,6 +23,13 @@ const backyardBbq = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The grill is going, music is right, and everyone is exactly where they should be.',
+    'Kids running in the yard while the adults finally get to sit and catch up.',
+    'Someone flips a burger and the whole yard smells like summer.',
+    'The cooler opens and there\'s exactly the right beer for everyone.',
+  ],
+
   decisions: [
     { id: 'menu', label: 'Grill menu (proteins + sides)', options: ['Burgers + dogs', 'Chicken + ribs', 'Mixed grill', 'Seafood boil / cookout'], default: 'Burgers + dogs', when: 'T-10d', blocks: ['food', 'fuel'], why: 'Drives proteins, buns, fuel, and grill time. Burgers/dogs are the lowest-effort default.' },
     { id: 'potluck', label: 'Host-provided or potluck sides?', options: ['Host provides all', 'Potluck sides', 'Host grills, guests bring drinks'], default: 'Host grills, guests bring drinks', when: 'T-10d', blocks: ['food', 'beverage_purchases'], why: 'Biggest cost/effort lever — assigning sides/drinks cuts the host load roughly in half.' },
@@ -51,11 +58,11 @@ const backyardBbq = {
   ],
 
   purchases: [
-    { id: 'p_protein', item: 'Grill proteins (burgers, dogs, chicken)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Butcher'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grilled protein/guest cookout heuristic.' } },
-    { id: 'p_buns', item: 'Buns / bread', category: 'food', qtyPerGuest: 2, unit: 'buns', where: ['Grocery', 'Bakery'], unitCostRange: [0.3, 0.6], essential: true, buyAt: 'T-1d' },
-    { id: 'p_sides', item: 'Sides (salads, beans, corn, chips)', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Grocery'], unitCostRange: [2, 4], essential: true, buyAt: 'T-1d' },
+    { id: 'p_protein', item: 'Grill proteins (burgers, dogs, chicken)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Butcher'], unitCostRange: [4, 10], essential: true, buyAt: 'T-1d', alternatives: ['Pork shoulder — cheaper, feeds a crowd smoked low & slow', 'Bone-in chicken thighs — budget-friendly, hard to overcook', 'Turkey burgers — leaner swap, same cook time'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~0.5 lb grilled protein/guest cookout heuristic.' } },
+    { id: 'p_buns', item: 'Buns / bread', category: 'food', qtyPerGuest: 2, unit: 'buns', where: ['Grocery', 'Bakery'], unitCostRange: [0.3, 0.6], essential: true, buyAt: 'T-1d', alternatives: ['Sliced white bread — cheaper, works for dogs and burgers', 'Tortillas — versatile, cheaper per serving'] },
+    { id: 'p_sides', item: 'Sides (salads, beans, corn, chips)', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Grocery'], unitCostRange: [2, 4], essential: true, buyAt: 'T-1d', alternatives: ['Canned baked beans — near-zero prep, same crowd appeal', 'Bag of chips + store-bought dip — if time is short'] },
     { id: 'p_condiments', item: 'Condiments + toppings (ketchup, mustard, cheese, lettuce, onion)', category: 'food', qtyFlat: 1, unit: 'kit', where: ['Grocery'], unitCostRange: [15, 30], essential: true, buyAt: 'T-3d' },
-    { id: 'p_dessert', item: 'Dessert (watermelon, cookies, s\'mores)', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Grocery'], unitCostRange: [1, 3], essential: false, buyAt: 'T-1d' },
+    { id: 'p_dessert', item: 'Dessert (watermelon, cookies, s\'mores)', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Grocery'], unitCostRange: [1, 3], essential: false, buyAt: 'T-1d', alternatives: ['Grocery sheet cake — feeds same crowd, no prep', 'Popsicles / ice cream bars — budget option, kids love them'] },
     { id: 'p_drinks', item: 'Drinks (beer, soda, water)', category: 'beverage', qtyPerGuest: 3, unit: 'drinks', where: ['Grocery', 'Costco', 'Liquor store'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~3 drinks/guest over a 4h outdoor afternoon.' } },
     { id: 'p_ice', item: 'Ice (coolers + drinks)', category: 'beverage', qtyPerGuest: 2, unit: 'lb', where: ['Grocery', 'Gas station'], unitCostRange: [0.2, 0.4], essential: true, buyAt: 'T0', note: 'COMMONLY FORGOTTEN. ~2 lb/guest for outdoor coolers (more than indoors — it melts).', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~2 lb ice/guest for outdoor cooler service (heat-adjusted).' } },
     { id: 'p_fuel', item: 'Charcoal / propane + lighter', category: 'logistics', qtyFlat: 1, unit: 'supply', where: ['Grocery', 'Hardware store', 'Gas station'], unitCostRange: [15, 30], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: check the propane tank or buy a bag of charcoal — out of fuel = no food.' },

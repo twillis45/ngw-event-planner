@@ -24,6 +24,13 @@ const dinnerParty = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'Everyone seated, candles lit, first course on the table — the room settles.',
+    'The moment a dish lands and the table goes quiet.',
+    'The conversation that goes long past dessert.',
+    'A guest pushes back from the table and says "that was the best thing I\'ve eaten in years."',
+  ],
+
   decisions: [
     { id: 'format', label: 'Seated dinner or buffet / family-style?', options: ['Plated 3-course', 'Family-style', 'Buffet', 'Grazing + small plates'], default: 'Family-style', when: 'T-21d', blocks: ['menu', 'rentals', 'seating'], why: 'Drives plate/serveware counts, table layout, and how much active cooking lands on the host during the party.' },
     { id: 'menu', label: 'Lock the menu (incl. a vegetarian main)', options: [], default: null, when: 'T-14d', dependsOn: ['format', 'dietary'], blocks: ['shopping_list', 'cook_schedule'], why: 'Every quantity, the shopping list, and the cook timeline derive from this. A dinner party with no locked menu at T-7 is the #1 host failure mode.' },
@@ -65,12 +72,12 @@ const dinnerParty = {
   ],
 
   purchases: [
-    { id: 'p_protein', item: 'Main protein (e.g. beef short rib / salmon / mushroom wellington for veg)', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Butcher', 'Grocery', 'Costco', 'Instacart'], unitCostRange: [8, 18], essential: true, buyAt: 'T-1d', substitutes: ['roast chicken (cheaper)', 'pasta course (cheapest)'] },
-    { id: 'p_starch', item: 'Starch side (potato/grain/risotto)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-1d' },
-    { id: 'p_veg', item: 'Vegetable side + salad greens', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Grocery', 'Farmers market'], unitCostRange: [2, 5], essential: true, buyAt: 'T-1d' },
-    { id: 'p_appetizer', item: 'Appetizer / grazing (cheese, charcuterie, dips, crackers)', category: 'food', qtyPerGuest: 0.25, unit: 'lb', where: ['Grocery', 'Cheese shop'], unitCostRange: [4, 9], essential: true, buyAt: 'T-3d' },
-    { id: 'p_bread', item: 'Bread / rolls', category: 'food', qtyFlat: 1, qtyPer: 4, unit: 'loaf per 4 guests', where: ['Bakery', 'Grocery'], unitCostRange: [4, 8], essential: false, buyAt: 'T-1d' },
-    { id: 'p_dessert', item: 'Dessert (or ingredients)', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Bakery', 'Grocery'], unitCostRange: [3, 7], essential: true, buyAt: 'T-1d' },
+    { id: 'p_protein', item: 'Main protein (e.g. beef short rib / salmon / mushroom wellington for veg)', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Butcher', 'Grocery', 'Costco', 'Instacart'], unitCostRange: [8, 18], essential: true, buyAt: 'T-1d', alternatives: ['Roast chicken thighs — much cheaper, still impressive plated', 'Pork tenderloin — budget alternative to beef, elegant presentation', 'Pasta main with good sauce — cheapest option, guests love it'], substitutes: ['roast chicken (cheaper)', 'pasta course (cheapest)'] },
+    { id: 'p_starch', item: 'Starch side (potato/grain/risotto)', category: 'food', qtyPerGuest: 0.3, unit: 'lb', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-1d', alternatives: ['White rice or egg noodles — cheapest starch option', 'Roasted potatoes — budget-friendly, no special technique needed'] },
+    { id: 'p_veg', item: 'Vegetable side + salad greens', category: 'food', qtyPerGuest: 0.4, unit: 'lb', where: ['Grocery', 'Farmers market'], unitCostRange: [2, 5], essential: true, buyAt: 'T-1d', alternatives: ['Frozen roasted vegetables — cheaper, quick to prepare', 'Bagged salad mix — if time-pressed, still looks nice in a bowl'] },
+    { id: 'p_appetizer', item: 'Appetizer / grazing (cheese, charcuterie, dips, crackers)', category: 'food', qtyPerGuest: 0.25, unit: 'lb', where: ['Grocery', 'Cheese shop'], unitCostRange: [4, 9], essential: true, buyAt: 'T-3d', alternatives: ['Store-brand crackers + one good cheese — cheaper by half', 'Hummus + pita + olives — budget Mediterranean grazing option'] },
+    { id: 'p_bread', item: 'Bread / rolls', category: 'food', qtyFlat: 1, qtyPer: 4, unit: 'loaf per 4 guests', where: ['Bakery', 'Grocery'], unitCostRange: [4, 8], essential: false, buyAt: 'T-1d', alternatives: ['Store-brand dinner rolls — fraction of bakery cost', 'Frozen par-baked rolls — bake day-of, cheaper than bakery'] },
+    { id: 'p_dessert', item: 'Dessert (or ingredients)', category: 'food', qtyPerGuest: 1, unit: 'serving', where: ['Bakery', 'Grocery'], unitCostRange: [3, 7], essential: true, buyAt: 'T-1d', alternatives: ['Grocery bakery tart or cake — no baking required', 'Ice cream + store-bought cookies — simple, crowd-pleasing budget option'] },
     { id: 'p_wine', item: 'Wine', category: 'beverage', qtyPerGuest: 0.5, unit: 'bottle (½ bottle/guest rule)', where: ['Wine shop', 'Total Wine', 'Grocery'], unitCostRange: [12, 25], essential: true, buyAt: 'T-3d', note: 'Rule of thumb: ½ bottle per drinking guest for a 3-4h dinner; round up.' },
     { id: 'p_cocktail', item: 'Signature cocktail spirits + mixers + garnish', category: 'beverage', qtyFlat: 1, unit: 'batch (serves ~10)', where: ['Liquor store'], unitCostRange: [40, 70], essential: false, buyAt: 'T-3d', dependsOnDecision: 'alcohol' },
     { id: 'p_nonalc', item: 'Non-alcoholic options (sparkling water, mocktail, juice)', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery'], unitCostRange: [1, 2], essential: true, buyAt: 'T-3d', note: 'Always have a great zero-proof option — designated drivers, non-drinkers, pregnant guests.' },

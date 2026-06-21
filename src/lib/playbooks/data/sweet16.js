@@ -22,6 +22,14 @@ const sweet16 = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The grand entrance — she walks in, the lights hit, and the room goes up.',
+    'Her first song request gets played and the whole floor knows every word.',
+    'The photo booth fills up with her best friends and nobody leaves the booth.',
+    'A parent watches from across the room and can\'t believe she\'s sixteen.',
+    'The last slow song goes long and nobody wants the night to end.',
+  ],
+
   decisions: [
     {
       id: 'venue_type',
@@ -185,6 +193,7 @@ const sweet16 = {
       buyAt: 'T-1d',
       note: 'Teens eat what is fast and handheld. ~0.5 lb of main per guest covers a buffet; order a couple extra pies/trays — teens graze all night.',
       provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US party-food norm: ~$10-20/guest food spend; pizza/sliders favored for teens.' },
+      alternatives: ['Frozen pizza (Costco) — cheaper, bake onsite', 'Sliders tray (Costco/Sam\'s) — budget handheld alternative'],
     },
     {
       id: 'p_sides',
@@ -197,6 +206,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Round out the mains; a fruit/veggie tray quietly covers lighter eaters and parents.',
+      alternatives: ['Bag chips + store-bought dip — cheapest side option', 'Veggie tray from deli — easy and budget-friendly'],
     },
     {
       id: 'p_cake',
@@ -209,6 +219,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'The cake is a spotlight moment, not just dessert. Order to theme; a two-tier serves ~40-50. Add cupcakes if over 50 guests.',
+      alternatives: ['Costco sheet cake with custom topper — cheapest per slice', 'Grocery bakery tiered cake — much cheaper than specialty bakery'],
     },
     {
       id: 'p_soda',

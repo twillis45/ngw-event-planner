@@ -331,10 +331,23 @@ export function deriveCommandCenterData(event) {
   // food bought so far, against the host's total budget (or the food+categories
   // estimate). Planner budget stays category-only (food plan null/0 → unchanged).
   const _isHostBudget = audiencePersona(event) === 'host';
-  let _foodSpent = 0, _foodEst = 0;
-  if (_isHostBudget) { try { const _fp = playbookFoodPlan(event); if (_fp) { _foodSpent = _fp.spentHigh || 0; _foodEst = _fp.foodHigh || 0; } } catch (e) { /* non-fatal */ } }
+  // A self-host has no vendor roster or contract paperwork — "No vendors yet / No
+  // documents" reads as a gap at something that doesn't apply (planner-cockpit leakage).
+  // Mirror the host nav's reveal-when-data rule: show those readiness rows ONLY once the
+  // host has actually added a vendor / document. Planner always sees them.
+  const _isHost = _isHostBudget;
+  const _hasVendors = vendors.length > 0;
+  const _hasDocs = Array.isArray(event.documents) && event.documents.length > 0;
+  let _foodSpent = 0;
+  if (_isHostBudget) { try { const _fp = playbookFoodPlan(event); if (_fp) { _foodSpent = _fp.spentHigh || 0; } } catch (e) { /* non-fatal */ } }
   const billedActual = totalActual + _foodSpent;
-  const billedBudget = (_isHostBudget && Number(event.totalBudget) > 0) ? Number(event.totalBudget) : (totalBudgeted + _foodEst);
+  // Audit fix: the "$X of $Y budget" denominator must be the host's REAL budget — the
+  // total they set, else their entered category budgets — NEVER the floating food
+  // ESTIMATE (foodHigh). Folding the estimate in made the SAME header read "$1,215" then
+  // "$1,415" across renders and disagree with the Spending Plan. No real budget set ⇒
+  // billedBudget is 0 and we show spend only, never an invented denominator.
+  const billedBudget = (Number(event.totalBudget) > 0) ? Number(event.totalBudget) : totalBudgeted;
+  const hasRealBudget = billedBudget > 0;
   const budgetPct = billedBudget > 0 ? billedActual / billedBudget : 0;
 
   const stat = (label, status, note) => ({
@@ -350,12 +363,12 @@ export function deriveCommandCenterData(event) {
         : overdueCount > 0 ? 'ATTENTION'
         : (tasksDone / tasksTotal) >= 0.5 ? 'ON TRACK' : 'ATTENTION',
       tasksTotal > 0 ? `${Math.round(tasksDone/tasksTotal*100)}% complete · ${overdueCount} overdue` : 'No tasks yet'),
-    stat('Vendors',
+    (!_isHost || _hasVendors) ? stat('Vendors',
       vendors.length === 0 ? 'AT RISK'
         : confirmedVendors === vendors.length ? 'ON TRACK'
         : (vendors.length - confirmedVendors) >= 3 ? 'AT RISK'
         : 'ATTENTION',
-      vendors.length > 0 ? `${confirmedVendors} of ${vendors.length} confirmed` : 'No vendors yet'),
+      vendors.length > 0 ? `${confirmedVendors} of ${vendors.length} confirmed` : 'No vendors yet') : null,
     stat('Guests',
       guests.length === 0 ? 'AT RISK'
         : yesGuests / guests.length >= 0.7 ? 'ON TRACK'
@@ -368,8 +381,10 @@ export function deriveCommandCenterData(event) {
         : budgetPct >= 0.7 ? 'ATTENTION'
         : 'ON TRACK',
       billedBudget > 0 ? `${fmtMoney(billedActual)} of ${fmtMoney(billedBudget)} · ${Math.round(budgetPct*100)}%` : 'No budget set'),
-    // Sprint 49: real documents readiness (was previously placeholder)
+    // Sprint 49: real documents readiness (was previously placeholder).
+    // Host with no documents → suppressed (reveal-when-data; a home host has no contracts).
     (() => {
+      if (_isHost && !_hasDocs) return null;
       const dr = getDocumentsReadiness(event);
       return stat('Documents', dr.status === 'ON_TRACK' ? 'ON TRACK' : dr.status === 'AT_RISK' ? 'AT RISK' : 'ATTENTION', dr.note);
     })(),
@@ -431,7 +446,8 @@ export function deriveCommandCenterData(event) {
   const metaParts = [
     event.venue,
     resolvedGuests > 0 ? `${resolvedGuests} guests` : null,
-    billedBudget > 0 ? `${fmtMoney(billedActual)} of ${fmtMoney(billedBudget)} budget` : null,
+    hasRealBudget ? `${fmtMoney(billedActual)} of ${fmtMoney(billedBudget)} budget`
+      : (billedActual > 0 ? `${fmtMoney(billedActual)} spent` : null),
   ].filter(Boolean);
 
   // Days from
@@ -441,6 +457,9 @@ export function deriveCommandCenterData(event) {
     decisions, approvals, requests, questions, nextUp, vendorRows, vendorIssuesCount,
     health, headline, headlineColor, totalNeeds,
     metaParts, days,
+    // Host-leakage gates: a self-host with no vendor/document data shouldn't see
+    // vendor/paperwork sections at all (reveal-when-data, like the host nav).
+    isHost: _isHost, hasVendors: _hasVendors, hasDocs: _hasDocs,
     // Sprint 51 Path B: caterer drift surfacing data
     catererDrift, cateringVendor, cateringDriftDelta, yesGuestsCount,
   };
@@ -917,9 +936,9 @@ export function selectStudioCommand(events = []) {
         eventId: todayEv.id,
         eventName: todayEv.name,
         title: `${count} thing${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} attention right now.`,
-        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open Day-of Mode to triage.',
-        primaryCta: 'Open Day-of Mode',
-        primaryRoute: { eventId: todayEv.id, tab: 'Command' },
+        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open your run of show to work the day.',
+        primaryCta: 'Open your run of show',
+        primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule' },
         secondaryCta: 'View messages',
         secondaryRoute: { eventId: todayEv.id, tab: 'Communication' },
       };
@@ -931,9 +950,12 @@ export function selectStudioCommand(events = []) {
       eventId: todayEv.id,
       eventName: todayEv.name,
       title: 'Your event is today.',
-      consequence: 'Day-of Mode gives you vendor arrivals, messages, and the run-of-show in one place.',
-      primaryCta: 'Enter Day-of Mode',
-      primaryRoute: { eventId: todayEv.id, tab: 'Command' },
+      // B5 — promise only what production delivers: the real run-of-show (Event Day
+      // Schedule, derived from the playbook). The unified "Day-of Mode" with live vendor
+      // arrivals + messages is a dev-only demo (App.js ~35410), so the CTA must not sell it.
+      consequence: 'Your run of show is ready — every cue for the day, top to bottom.',
+      primaryCta: 'Open your run of show',
+      primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule' },
       secondaryCta: 'View full event details',
       secondaryRoute: { eventId: todayEv.id, tab: 'Planning' },
     };
@@ -1287,7 +1309,8 @@ function _selectEventNextActionInner(event) {
       title: 'Set your budget.',
       consequence: 'With your headcount in, a budget frames every food and vendor choice — Event Boss can size a starting point for you.',
       primaryCta: 'Set budget',
-      primaryRoute: { tab: 'Budget' },
+      // focusField deep-links to the budget $ input so the host lands on it, not the tab top.
+      primaryRoute: { tab: 'Budget', focusField: 'hsp-budget' },
       contextLine: daysSub,
     };
   }
@@ -1481,7 +1504,9 @@ function _selectEventNextActionInner(event) {
       title: opDecision.title,
       consequence: opDecision.consequence,
       primaryCta: opDecision.primaryCta,
-      primaryRoute: { tab: opDecision.primaryRoute.tab },
+      // Spread the full primaryRoute — previously narrowed to just .tab, dropping
+      // foodFocus, focusField, taskId, eventId, and other deep-link fields.
+      primaryRoute: opDecision.primaryRoute,
       contextLine: daysSub,
     };
   }
@@ -1558,16 +1583,26 @@ function _selectEventNextActionInner(event) {
   // authored (already warm) instead of being overwritten by the neutral voice.
   if (event.must_have_moment) {
     const mh = String(event.must_have_moment).trim();
-    const mhShort = mh.length <= 64 ? mh : mh.slice(0, 64).replace(/\s+\S*$/, '') + '…';
-    return {
-      level: 'neutral',
-      category: 'heart',
-      title: `Protect the heart: "${mhShort}".`,
-      consequence: "Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in the run of show.",
-      primaryCta: 'Plan the moment',
-      primaryRoute: { tab: 'Event Day Schedule' },
-      contextLine: daysSub,
-    };
+    // CLEARS once the moment is actually on the run of show (the host planned it). A
+    // next-step must update when its action is satisfied — "Protect the heart · Plan the
+    // moment" should not persist after the moment has a place + owner in the day.
+    const heartScheduled = (event.ros || event.timeline || []).some(r =>
+      r && (r.heart === true || String(r.segment || '').trim().toLowerCase() === mh.toLowerCase()));
+    if (!heartScheduled) {
+      const mhShort = mh.length <= 64 ? mh : mh.slice(0, 64).replace(/\s+\S*$/, '') + '…';
+      return {
+        level: 'neutral',
+        category: 'heart',
+        title: `Protect the heart: "${mhShort}".`,
+        consequence: "Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in the run of show.",
+        primaryCta: 'Plan the moment',
+        // Deep-link to the must-have card on the run of show (data-deeplink="musthave"),
+        // so "Plan the moment" lands ON the host's own moment with a one-tap add — not on
+        // an empty schedule with no affordance for their custom moment.
+        primaryRoute: { tab: 'Event Day Schedule', timelineId: 'musthave' },
+        contextLine: daysSub,
+      };
+    }
   }
 
   // Tier 8: neutral fallback
@@ -1864,6 +1899,27 @@ const HEALTH_ROUTE = { Timeline: 'Timeline', Vendors: 'Vendors', Guests: 'Guests
 // Sprint 57G: TIER → Studio Matte color. UNKNOWN/ESTIMATE/VERIFY render steel —
 // never green (false certainty) and never red (false alarm) for "no data".
 const CONF_TIER_COLOR = { green: P.green, amber: P.amber, red: P.red, steel: P.textSecondary };
+// Board #13 — collapse the cockpit. Show only what needs the host; roll everything
+// that's ON TRACK into one "N handled" line they can expand. No 8 near-equal rows.
+function HealthList({ health, onTabChange, event }) {
+  const [showOk, setShowOk] = useState(false);
+  const grammar = confidencePersona(event);
+  const attention = health.filter(h => h.statusLabel !== 'ON TRACK');
+  const onTrack = health.filter(h => h.statusLabel === 'ON TRACK');
+  const rows = showOk ? [...attention, ...onTrack] : attention;
+  return (
+    <>
+      {rows.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} grammar={grammar} />)}
+      {onTrack.length > 0 && (
+        <button type="button" onClick={() => setShowOk(v => !v)}
+          style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: rows.length ? `1px solid ${P.borderSubtle}` : 'none', padding: '12px 14px', cursor: 'pointer', fontFamily: FF, fontSize: 13, fontWeight: 600, color: P.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span><span style={{ color: P.green, fontWeight: 800 }}>✓</span> {onTrack.length} on track</span>
+          <span style={{ fontSize: 11, opacity: 0.8 }}>{showOk ? 'Hide' : 'Show'}</span>
+        </button>
+      )}
+    </>
+  );
+}
 function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
   const target    = HEALTH_ROUTE[h.label];              // route keyed on the CANONICAL label
   const clickable = !!(target && onTabChange);
@@ -2436,7 +2492,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         )}
 
         {/* Vendor Status */}
-        {!dormant('vendors') && (
+        {!dormant('vendors') && (!d.isHost || d.hasVendors) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Vendors" action="All →" onAction={() => onTabChange?.('Vendors')} />
           {d.vendorRows.length > 0 ? (
@@ -2453,7 +2509,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} gap={10} />
 
         {/* Documents — Sprint 49: real status from event.documents */}
-        {!dormant('documents') && (
+        {!dormant('documents') && (!d.isHost || d.hasDocs) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
           {(() => {
@@ -2645,7 +2701,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
               <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
-                {d.health.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} grammar={confidencePersona(event)} />)}
+                <HealthList health={d.health} onTabChange={onTabChange} event={event} />
               </div>
             </div>
             )}
@@ -2663,7 +2719,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             )}
 
             {/* Vendors */}
-            {!dormant('vendors') && (
+            {!dormant('vendors') && (!d.isHost || d.hasVendors) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Vendors" action="Manage all →" onAction={() => onTabChange?.('Vendors')} />
               {d.vendorRows.length > 0 ? (
@@ -2680,7 +2736,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             <TeamReadinessBlock summary={crewSummary} onManage={() => onTabChange?.('Crew')} />
 
             {/* Documents — Sprint 49: real status from event.documents */}
-            {!dormant('documents') && (
+            {!dormant('documents') && (!d.isHost || d.hasDocs) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Documents" action="All →" onAction={() => onTabChange?.('Documents')} />
               {(() => {

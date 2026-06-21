@@ -35,6 +35,13 @@ const genderReveal = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The reveal lands and the parents\' faces say everything before the room does.',
+    'Everyone holds their breath for the same half-second right before.',
+    'The grandparents\' reaction — caught on camera — is the real moment.',
+    'Pink or blue fills the air and the whole room goes at the same time.',
+  ],
+
   decisions: [
     {
       id: 'reveal_method',
@@ -124,10 +131,10 @@ const genderReveal = {
   ],
 
   purchases: [
-    { id: 'p_reveal_cake', item: 'Reveal cake / cupcakes (neutral outside, colored inside)', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [35, 75], essential: true, buyAt: 'T-1d', note: 'The baker holds the sealed result and colors the inside; pick up neutral so parents stay surprised. ~1 serving/guest.', provenance: { tier: 'trade-heuristic', confidence: 'high', verificationStatus: 'established-consensus', note: 'Cake/cupcake reveal is the most common SAFE method.' } },
+    { id: 'p_reveal_cake', item: 'Reveal cake / cupcakes (neutral outside, colored inside)', category: 'food', qtyFlat: 1, qtyPer: 15, unit: 'cake (serves ~15)', where: ['Bakery', 'Grocery'], unitCostRange: [35, 75], essential: true, buyAt: 'T-1d', note: 'The baker holds the sealed result and colors the inside; pick up neutral so parents stay surprised. ~1 serving/guest.', alternatives: ['Grocery bakery cupcakes — cheaper, easier to serve', 'Confetti cupcakes colored inside — budget DIY if baker is unavailable'], provenance: { tier: 'trade-heuristic', confidence: 'high', verificationStatus: 'established-consensus', note: 'Cake/cupcake reveal is the most common SAFE method.' } },
     { id: 'p_reveal_balloon', item: 'Reveal item — balloon box OR confetti poppers OR rated powder cannon', category: 'decor', qtyFlat: 2, unit: 'reveal item(s)', where: ['Party store', 'Balloon shop', 'Amazon'], unitCostRange: [15, 60], essential: true, buyAt: 'T-3d', note: 'SAFE methods only: opaque balloon box, biodegradable confetti popper, or a rated non-pyro powder cannon. NEVER fireworks, Tannerite/explosive targets, or hot/burning smoke. Buy 2 in case one fails.', provenance: { tier: 'trade-heuristic', confidence: 'high', verificationStatus: 'established-consensus', note: 'Balloon/confetti/rated-cannon reveals are the standard safe alternatives.' } },
-    { id: 'p_snacks', item: 'Finger snacks (fruit, veggie cups, dips, mini sandwiches, charcuterie)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [3, 8], essential: true, buyAt: 'T-1d', note: 'Snack-forward party, not a meal — ~6-8 bites/guest/hr.', provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~5-8 appetizer bites/guest/hr when apps are the main food.' } },
-    { id: 'p_pinkblue_treats', item: 'Pink + blue themed sweets (cookies, candy, donuts)', category: 'food', qtyPerGuest: 2, unit: 'pieces', where: ['Grocery', 'Bakery', 'Party store'], unitCostRange: [0.5, 1.5], essential: false, buyAt: 'T-1d', note: 'Deliberately serve BOTH colors so the spread does not hint at the answer.' },
+    { id: 'p_snacks', item: 'Finger snacks (fruit, veggie cups, dips, mini sandwiches, charcuterie)', category: 'food', qtyPerGuest: 0.5, unit: 'lb', where: ['Grocery', 'Costco', 'Caterer'], unitCostRange: [3, 8], essential: true, buyAt: 'T-1d', note: 'Snack-forward party, not a meal — ~6-8 bites/guest/hr.', alternatives: ['Costco party platters — cheaper per lb, minimal prep', 'Fruit + veggie tray + dip from deli — budget grazing option'], provenance: { tier: 'trade-heuristic', confidence: 'medium', verificationStatus: 'established-consensus', note: '~5-8 appetizer bites/guest/hr when apps are the main food.' } },
+    { id: 'p_pinkblue_treats', item: 'Pink + blue themed sweets (cookies, candy, donuts)', category: 'food', qtyPerGuest: 2, unit: 'pieces', where: ['Grocery', 'Bakery', 'Party store'], unitCostRange: [0.5, 1.5], essential: false, buyAt: 'T-1d', note: 'Deliberately serve BOTH colors so the spread does not hint at the answer.', alternatives: ['Pink + blue M&Ms — cheapest themed candy option', 'Pink + blue cotton candy bags — festive, inexpensive per serving'] },
     { id: 'p_mocktail', item: 'Mocktail / pink-or-blue punch mixers (for the parent-to-be)', category: 'beverage', qtyPerGuest: 2, unit: 'drinks', where: ['Grocery'], unitCostRange: [1, 3], essential: true, buyAt: 'T-3d', note: 'Make the zero-proof option genuinely great — the pregnant guest of honor is the centerpiece.' },
     { id: 'p_softdrinks', item: 'Soft drinks / sparkling water', category: 'beverage', qtyPerGuest: 2, unit: 'cans', where: ['Grocery', 'Costco'], unitCostRange: [0.5, 1.5], essential: true, buyAt: 'T-3d' },
     { id: 'p_alcohol', item: 'Beer / wine (optional)', category: 'beverage', qtyPerGuest: 1.5, unit: 'drinks', where: ['Grocery', 'Liquor store'], unitCostRange: [1.5, 4], essential: false, buyAt: 'T-3d', dependsOnDecision: 'beverage', note: 'Skip or keep light — many guests will mirror the non-drinking guest of honor.' },

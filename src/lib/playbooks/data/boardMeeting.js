@@ -27,6 +27,13 @@ const boardMeeting = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The agenda lands on time and every member is actually prepared.',
+    'The vote is clean — quorum confirmed, motion carried, minutes will be accurate.',
+    'The one hard item gets decided, not deferred again.',
+    'The meeting ends early because everything was handled before anyone walked in.',
+  ],
+
   decisions: [
     { id: 'format', label: 'Meeting format', options: ['In-person', 'Hybrid (in-person + remote)', 'Fully virtual'], default: 'Hybrid (in-person + remote)', when: 'T-30d', blocks: ['av', 'catering', 'access'], why: 'Drives the entire logistics chain — room + AV + catering + parking/badges vs. a video platform + secure remote distribution. Hybrid is the modern default and also the #1 day-of failure point, so it must be decided early enough to test.' },
     { id: 'materials_format', label: 'Board materials format', options: ['Secure board portal (digital)', 'Printed packets (numbered, collected)', 'Hybrid: portal + a few printed'], default: 'Secure board portal (digital)', when: 'T-21d', blocks: ['packet', 'confidentiality'], why: 'Confidential governance material. A secure portal gives access control + audit trail; printed packets must be numbered and collected. This choice sets the whole document-handling and confidentiality workflow.' },
@@ -62,7 +69,7 @@ const boardMeeting = {
 
   purchases: [
     { id: 'p_coffee', item: 'Coffee, tea, water service', category: 'beverage', qtyPerGuest: 2, unit: 'servings', where: ['Caterer', 'Office pantry', 'Cafe'], unitCostRange: [2, 5], essential: true, buyAt: 'T-1d', note: 'Baseline hospitality for any in-person session — keep it functional.' },
-    { id: 'p_breakfast', item: 'Continental breakfast / working-lunch catering', category: 'food', qtyPerGuest: 1, unit: 'meal', where: ['Caterer', 'Corporate catering', 'Deli'], unitCostRange: [12, 35], essential: false, buyAt: 'T-1d', note: 'Only if the meeting spans a meal — boxed or buffet, governance-appropriate, not a party.' },
+    { id: 'p_breakfast', item: 'Continental breakfast / working-lunch catering', category: 'food', qtyPerGuest: 1, unit: 'meal', where: ['Caterer', 'Corporate catering', 'Deli'], unitCostRange: [12, 35], essential: false, buyAt: 'T-1d', note: 'Only if the meeting spans a meal — boxed or buffet, governance-appropriate, not a party.' , alternatives: ['Office pantry coffee plus pre-ordered deli sandwich boxes — budget swap', 'Grocery pastry tray — cheaper than corporate catering'] },
     { id: 'p_print', item: 'Printed board packets (numbered) + tabbed binders', category: 'logistics', qtyPerGuest: 1, unit: 'packet', where: ['Print shop', 'Office'], unitCostRange: [5, 15], essential: false, buyAt: 'T-1d', note: 'Only if materials_format includes print. Number each copy for confidentiality and collect them after.' },
     { id: 'p_namecards', item: 'Name cards / table tents + agenda printouts', category: 'logistics', qtyPerGuest: 1, unit: 'set', where: ['Office', 'Print shop'], unitCostRange: [0.5, 2], essential: true, buyAt: 'T-1d', note: 'Helps the minute-taker attribute remarks correctly and keeps roll call clean.' },
     { id: 'p_avsupplies', item: 'AV consumables (HDMI/USB-C adapters, spare batteries, clicker, extension cords)', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Office', 'Electronics store', 'Amazon'], unitCostRange: [20, 60], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN: the adapter that connects a presenter laptop to the room screen is the classic last-minute scramble.' },

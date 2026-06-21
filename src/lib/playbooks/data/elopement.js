@@ -28,6 +28,13 @@ const elopement = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'Just the two of them, in the place they chose, saying the thing they mean.',
+    'The photographer captures the look between them — no poses, just that look.',
+    'The vows they wrote themselves, said out loud for the first time.',
+    'The small celebratory meal after, when it finally settles in that they\'re married.',
+  ],
+
   decisions: [
     { id: 'location', label: 'Where will you elope?', options: ['National / state park', 'Beach / coast', 'Mountain / wilderness', 'Courthouse', 'Destination (out of state / abroad)', 'Private property / Airbnb'], default: 'National / state park', when: 'T-90d', blocks: ['permit', 'license', 'travel', 'photographer'], why: 'The single most-blocking decision. Location sets which marriage-license rules apply, whether a permit is required, and how far everyone has to travel.' },
     { id: 'license_jurisdiction', label: 'Which county/state issues your marriage license?', options: ['County of the ceremony location', 'Home county (if same state)', 'Self-solemnize state (e.g. Colorado)', 'Destination/abroad — research separately'], default: 'County of the ceremony location', when: 'T-75d', blocks: ['license'], why: 'License is governed by where you MARRY, not where you live. Waiting periods (0–6 days), validity windows (often ~90 days), and witness counts (0, 1, or 2) all vary by state. Get this wrong and the marriage is not legal.' },
@@ -63,7 +70,7 @@ const elopement = {
 
   purchases: [
     { id: 'p_champagne', item: 'Champagne / sparkling for the toast', category: 'beverage', qtyFlat: 1, unit: 'bottle', where: ['Liquor store', 'Grocery', 'Lodging concierge'], unitCostRange: [18, 60], essential: false, buyAt: 'T-1d', note: 'One 750ml bottle pours ~5–6 toast glasses — plenty for the couple alone or a few witnesses. Add a second bottle near the high end (~10+ people). Confirm alcohol is allowed at the site (many parks restrict it).' },
-    { id: 'p_meal', item: 'Small celebratory meal (picnic, reservation, or to-go)', category: 'food', qtyPerGuest: 1, unit: 'meal', where: ['Restaurant', 'Caterer', 'Grocery / deli'], unitCostRange: [25, 120], essential: true, buyAt: 'T-1d', note: 'No reception — this is the celebration. A reservation for two, a curated picnic, or a private chef all work. Reserve ahead if dining out.' },
+    { id: 'p_meal', item: 'Small celebratory meal (picnic, reservation, or to-go)', category: 'food', qtyPerGuest: 1, unit: 'meal', where: ['Restaurant', 'Caterer', 'Grocery / deli'], unitCostRange: [25, 120], essential: true, buyAt: 'T-1d', note: 'No reception — this is the celebration. A reservation for two, a curated picnic, or a private chef all work. Reserve ahead if dining out.' , alternatives: ['Picnic from local deli or grocery — romantic, budget-friendly', 'Farmers market spread — seasonal, meaningful, often cheaper than restaurant'] },
     { id: 'p_bouquet', item: 'Bouquet / boutonniere / simple florals', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Florist', 'Grocery', 'Farmers market'], unitCostRange: [40, 150], essential: false, buyAt: 'T-1d', note: 'The one styling element that reads in every photo. Keep it small and packable for travel.' },
     { id: 'p_rings', item: 'Wedding rings', category: 'logistics', qtyFlat: 2, unit: 'rings', where: ['Jeweler', 'Online'], unitCostRange: [100, 2000], essential: true, buyAt: 'T-3d', note: 'COMMONLY FORGOTTEN day-of: pack the rings and the license folder FIRST. Order/size rings weeks ahead; carry them on your person when traveling, never checked.' },
     { id: 'p_keepsakes', item: 'Vow books, marriage license folder, ring box', category: 'logistics', qtyFlat: 1, unit: 'kit', where: ['Online', 'Stationery store'], unitCostRange: [15, 50], essential: false, buyAt: 'T-3d', note: 'Vow books photograph beautifully and keep written vows safe. A document folder protects the license in a pack/pocket.' },

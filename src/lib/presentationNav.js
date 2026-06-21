@@ -55,12 +55,15 @@ export function hostNav(tabs, event) {
 
 // Host display labels (route keys unchanged). Returns null when not host ⇒ the caller
 // falls back to its existing TAB_LABELS[t] || t (today).
+// Board #6 — the L3 sidebar must speak the SAME words as the host home cards
+// (home says "Budget" and "Venue"). Drift like Budget→"Money" / Venue→"Details"
+// made one destination wear three names. Aligned to the home's vocabulary.
 const HOST_TAB_LABELS = {
   Command: 'Overview',
   Planning: 'Plan',
-  Budget: 'Money',
+  Budget: 'Budget',
   'Event Day Schedule': 'The Day',
-  'Event Details': 'Details',
+  'Event Details': 'Venue & Details',
   Communication: 'Messages',
   Documents: 'Paperwork',
 };

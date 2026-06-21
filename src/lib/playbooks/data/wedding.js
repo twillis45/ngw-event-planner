@@ -32,6 +32,14 @@ const wedding = {
     scaleBy: 'guestCount',
   },
 
+  heartMoments: [
+    'The first look — just the two of them, before anyone else arrives.',
+    'The vows — no one else in the room.',
+    'The first dance when only they exist.',
+    'The moment they walk back down the aisle and it\'s done and it\'s real.',
+    'Late in the reception, the dance floor is full and they stop and look at each other.',
+  ],
+
   decisions: [
     { id: 'budget', label: 'Total budget + who pays', options: ['Under $25k', '$25k–$50k', '$50k–$100k', '$100k+'], default: '$25k–$50k', when: 'T-365d', blocks: ['venue', 'guestcount', 'vendor_team', 'catering_style'], why: 'The first gate. Budget sets the guest-count ceiling and which vendors are reachable — every later decision back-solves from this number.' },
     { id: 'guestcount', label: 'Guest-count target (the budget gate)', options: ['Intimate (≤50)', 'Mid (50–120)', 'Large (120–250)', 'Grand (250+)'], default: 'Mid (50–120)', when: 'T-365d', dependsOn: ['budget'], blocks: ['venue', 'catering_style', 'bar'], why: 'Headcount × per-head is the single biggest cost lever. Set the target BEFORE touring venues — a venue that fits 80 won\'t fit 200, and per-head catering/bar scale directly off it.' },
