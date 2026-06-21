@@ -23866,9 +23866,14 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
                            { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
 
-  // ─── Persona gate (RA-4 / DL-009) ── a self-host (recordKind:'event') gets a
-  // spending plan, never the planner's fee/Stripe/vendor/AR cockpit below.
-  const isHostBudget = (intakeFamilyConfig(eventType) || {}).recordKind === 'event';
+  // ─── Persona gate (RA-4 / DL-009) ── a self-host gets a spoken spending plan,
+  // never the planner's fee/Stripe/vendor/AR cockpit (a KPI grid + "Uncontracted").
+  // UX-SAAS fix: gate on the SAME host signal as the nav / Guests / The Day
+  // (hostNavActive), not only recordKind — otherwise a host-audience event whose type
+  // maps to a non-'event' record kind got the planner cockpit while everything else
+  // around it spoke like a host. Consistency closes that leak.
+  const isHostBudget = (intakeFamilyConfig(eventType) || {}).recordKind === 'event'
+    || (() => { try { return hostNavActive(event); } catch { return false; } })();
   if (isHostBudget) {
     return (
       <HostSpendingPlan
@@ -25215,6 +25220,8 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
   const s      = makeS(C);
   const rsvpCLR = RSVP_CLR(C);
   const bp = useContext(BpCtx);
+  // UX-SAAS — a host should hear "18 coming, 6 yet to reply," not read a CRM KPI grid.
+  const guestsIsHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
   // Guest-list-optional: casual events (cookout, watch party) just want a headcount,
   // not a roster. Show a calm number-only view until they choose to track RSVPs.
   // Default to the roster when a list already exists (unless the host committed to
@@ -25535,6 +25542,37 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         </div>
       )}
 
+      {guestsIsHost ? (
+        /* UX-SAAS — speak the numbers, don't tile them. One warm sentence the host
+           reads at a glance, not a 7-tile KPI dashboard. Tap to filter the list below. */
+        (() => {
+          const tail = [];
+          if (awaiting > 0) tail.push({ t: `${awaiting} yet to reply`, f: 'Awaiting' });
+          if (no > 0)       tail.push({ t: `${no} can’t make it`,       f: 'No' });
+          return (
+            <div style={{ marginBottom: 22, maxWidth: 760 }}>
+              <button type="button" onClick={() => setGFilter('Yes')} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <div style={{ fontSize: 21, fontWeight: 800, color: C.text, lineHeight: 1.25 }}>
+                  {yes > 0
+                    ? <>{yes} {yes === 1 ? 'person’s' : 'people are'} coming so far</>
+                    : 'No yeses yet — they’ll appear here as people reply'}
+                </div>
+              </button>
+              {tail.length > 0 && (
+                <div style={{ fontSize: 13.5, color: C.muted, marginTop: 6 }}>
+                  {tail.map((x, i) => (
+                    <span key={x.f}>
+                      {i > 0 && ' · '}
+                      <button type="button" onClick={() => setGFilter(x.f)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontFamily: 'inherit', fontSize: 13.5, textDecoration: 'underline', textDecorationColor: `${C.muted}66`, textUnderlineOffset: 3 }}>{x.t}</button>
+                    </span>
+                  ))}
+                  {thankYouPending > 0 && <span> · {thankYouPending} thank-you{thankYouPending === 1 ? '' : 's'} to send</span>}
+                </div>
+              )}
+            </div>
+          );
+        })()
+      ) : (
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
             is evidence (steel). Declined is settled fact, not an alarm → no red.
@@ -25549,6 +25587,7 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         {kids > 0 && <StatCard tier="evidence" label="Kids Meals" value={kids} />}
         {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
       </div>
+      )}
 
       {(() => {
         const rsvpCode = event?.rsvpCode || event?.id || '';
@@ -25894,8 +25933,9 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         )}
       </div>
 
-      {/* ── Thank-You Tracker ── */}
-      {confirmed.length > 0 && (() => {
+      {/* ── Thank-You Tracker ── (planner CRM table; a host uses the one-tap "write the
+           thank-yous" do-it-for-me on the recap instead, never a gift/thank-you grid). */}
+      {!guestsIsHost && confirmed.length > 0 && (() => {
         const thanked   = confirmed.filter(g => g.thankYouSent).length;
         const gifted    = confirmed.filter(g => g.giftReceived).length;
         const pending   = confirmed.filter(g => g.giftReceived && !g.thankYouSent);
@@ -25994,9 +26034,10 @@ function Guests({ guests, setGuests, event = {}, setGuestCount = () => {}, setGu
         );
       })()}
 
-      {/* ── Vendor Impact Summaries ── */}
+      {/* ── Vendor Impact Summaries ── (planner-only: "planner-reviewed before sharing",
+           confirmed-attendance/undecided headcount packets for vendors — never a host). */}
       {(() => {
-        if (confirmed.length === 0) return null;
+        if (guestsIsHost || confirmed.length === 0) return null;
 
         // F&B data
         const mealBreakdown = Object.entries(mealCounts).sort((a, b) => b[1] - a[1]);
@@ -34443,11 +34484,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // Host Activation v1 · Phase 3 — mobile-first host lanes. "The Day" (the host's
     // #1 day-of surface) is a PRIMARY lane, never buried under "More"; Messages is
     // reveal-when-data and lives in More. Plan/Money use the host vocabulary.
-    { id: 'Command',            icon: 'zap',       label: 'Overview', target: 'Command' },
-    { id: 'Planning',           icon: 'check',     label: 'Plan',     target: 'Planning' },
-    { id: 'Event Day Schedule', icon: 'clipboard', label: 'The Day',  target: 'Event Day Schedule' },
-    { id: 'Guests',             icon: 'users',     label: 'Guests',   target: 'Guests' },
-    { id: 'Money',              icon: 'dollar',    label: 'Budget',   sheet:  'money' },
+    { id: 'Command',            icon: 'zap',       label: 'Your event', target: 'Command' },
+    { id: 'Planning',           icon: 'check',     label: 'Plan',       target: 'Planning' },
+    { id: 'Event Day Schedule', icon: 'clipboard', label: 'The Day',    target: 'Event Day Schedule' },
+    { id: 'Guests',             icon: 'users',     label: 'Guests',     target: 'Guests' },
+    { id: 'Money',              icon: 'dollar',    label: 'Budget',     sheet:  'money' },
   ] : [
     { id: 'Command',  icon: 'zap',     label: 'Overview',  target: 'Command' },
     { id: 'Planning', icon: 'check',   label: 'Planning', target: 'Planning' },

@@ -37,9 +37,12 @@ export function hostNavActive(event) {
 
 // Always-shown host essentials (route keys). Decisions/Client Intake/Crew/Seating/
 // Calendar are HIDDEN in host mode (still reachable by route/deep-link).
-const HOST_KEEP = ['Command', 'Planning', 'Guests', 'Budget', 'Event Day Schedule', 'Event Details'];
+// UX-SAAS: "Event Details" (a venue/date FORM) dropped from the primary nav — a host
+// sets it at creation and rarely revisits; still reachable by route/deep-link and from
+// the home. Fewer, warmer tabs: Your event · Plan · Guests · Budget · The Day.
+const HOST_KEEP = ['Command', 'Planning', 'Guests', 'Budget', 'Event Day Schedule'];
 // Render order, including the data-revealed items when present.
-const HOST_ORDER = ['Command', 'Communication', 'Planning', 'Vendors', 'Guests', 'Budget', 'Documents', 'Event Day Schedule', 'Event Details'];
+const HOST_ORDER = ['Command', 'Communication', 'Planning', 'Vendors', 'Guests', 'Budget', 'Documents', 'Event Day Schedule'];
 
 // hostNav(tabs, event) → the host-reduced tab list. Identity when not host/flag-off.
 // REVEAL-when-data: Vendors / Documents / Messages appear only once the event has them.
@@ -59,11 +62,11 @@ export function hostNav(tabs, event) {
 // (home says "Budget" and "Venue"). Drift like Budget→"Money" / Venue→"Details"
 // made one destination wear three names. Aligned to the home's vocabulary.
 const HOST_TAB_LABELS = {
-  Command: 'Overview',
+  Command: 'Your event',           // UX-SAAS: "Overview" is a software module word
   Planning: 'Plan',
   Budget: 'Budget',
   'Event Day Schedule': 'The Day',
-  'Event Details': 'Venue & Details',
+  'Event Details': 'Venue & Details',  // kept for any deep-link/caller that still routes here
   Communication: 'Messages',
   Documents: 'Paperwork',
 };

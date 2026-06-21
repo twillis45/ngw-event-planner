@@ -26,8 +26,9 @@ describe('57E-A hostNav — FLAG ON', () => {
     expect(hostNavActive(PLANNER)).toBe(false);
   });
 
-  test('T3 host, no data ⇒ exactly the 6 essentials', () => {
-    expect(hostNav(TABS, HOST)).toEqual(['Command', 'Planning', 'Guests', 'Budget', 'Event Day Schedule', 'Event Details']);
+  test('T3 host, no data ⇒ exactly the 5 essentials (UX-SAAS: Event Details dropped from primary nav)', () => {
+    expect(hostNav(TABS, HOST)).toEqual(['Command', 'Planning', 'Guests', 'Budget', 'Event Day Schedule']);
+    expect(hostNav(TABS, HOST)).not.toContain('Event Details');
     expect(hostNavActive(HOST)).toBe(true);
   });
 
@@ -54,7 +55,7 @@ describe('57E-A hostNav — FLAG ON', () => {
     expect(hostTabLabel('Planning', HOST)).toBe('Plan');
     expect(hostTabLabel('Budget', HOST)).toBe('Budget');
     expect(hostTabLabel('Event Day Schedule', HOST)).toBe('The Day');
-    expect(hostTabLabel('Event Details', HOST)).toBe('Venue & Details');
+    expect(hostTabLabel('Command', HOST)).toBe('Your event');   // UX-SAAS: was "Overview"
     expect(hostTabLabel('Guests', HOST)).toBeNull();      // unmapped ⇒ caller default ("Guests")
     expect(hostTabLabel('Planning', PLANNER)).toBeNull(); // planner ⇒ caller default
   });
