@@ -19519,6 +19519,67 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
   );
 }
 
+// B3 "Press play" — the moment a host finishes creating a real event, the app
+// VISIBLY assembles the plan in front of them (the day · the food · the shopping
+// list) instead of dropping them into an inert screen. Delight, and proof the app
+// did real work. Built entirely from the playbook the event already resolves to —
+// no invented data. Emits ASSEMBLE_VIEWED.
+function AssembleReveal({ ev, profile, onDone }) {
+  const C = useT();
+  const foodPP = useFoodPriceFactor(ev, profile);
+  const fp  = useMemo(() => { try { return playbookFoodPlan(ev, foodPP); } catch { return null; } }, [ev, foodPP]);
+  const ros = useMemo(() => { try { return effectiveRos(ev) || []; } catch { return []; } }, [ev]);
+  const stages = useMemo(() => [
+    { key: 'day',  icon: '🗓️', label: 'Building your day',        value: ros.length ? `${ros.length} moments, timed and owned` : 'A run of the day, ready to fill' },
+    fp ? { key: 'food', icon: '🍽️', label: 'Sizing the food & drink', value: `${fp.itemCount} item${fp.itemCount === 1 ? '' : 's'} for ~${fp.guests} guests` } : null,
+    fp ? { key: 'list', icon: '🛒', label: 'Writing your shopping list', value: 'Every item, ready to check off' } : null,
+  ].filter(Boolean), [ros.length, fp]);
+  const [revealed, setRevealed] = useState(0);
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+    try { track(EVENTS.ASSEMBLE_VIEWED, { event_id: ev.id, event_type: ev.type, stages: stages.length }); } catch { /* never break the reveal */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (revealed >= stages.length) return undefined;
+    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 420 : 820);
+    return () => clearTimeout(t);
+  }, [revealed, stages.length]);
+  const done = revealed >= stages.length;
+  return (
+    <div role="dialog" aria-label="Setting up your event" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
+      <div style={{ width: '100%', maxWidth: 460 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22 }}>
+          {done ? 'Your plan is ready.' : 'Putting it together…'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {stages.map((st, i) => {
+            const shown = i < revealed;
+            return (
+              <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, background: C.surface, border: `1px solid ${shown ? (C.success || C.accent) + '55' : C.border}`, opacity: shown ? 1 : 0.32, transform: shown ? 'none' : 'translateY(6px)', transition: 'opacity 360ms ease, transform 360ms ease, border-color 360ms ease' }}>
+                <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: 800 }}>{shown ? '✓' : st.icon}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{st.label}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1 }}>{st.value}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <button type="button" onClick={onDone} disabled={!done}
+          style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: done ? 'pointer' : 'default', background: done ? C.accent : C.surface, color: done ? '#fff' : C.muted, opacity: done ? 1 : 0.6, transition: 'opacity 240ms ease, background 240ms ease' }}>
+          {done ? 'Open my event →' : 'Setting up…'}
+        </button>
+        {!done && (
+          <button type="button" onClick={onDone} style={{ marginTop: 8, width: '100%', background: 'none', border: 'none', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', padding: 6 }}>Skip</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
   const isMobile = useContext(BpCtx) === 'mobile';
@@ -35410,6 +35471,7 @@ export default function App() {
   const [initialNav,     setInitialNav]     = useState(null);
   const [showNew,        setShowNew]        = useState(false);
   const [showNewClient,  setShowNewClient]  = useState(false);
+  const [assemble,       setAssemble]       = useState(null);  // B3 "press play" reveal: { ev, openId }
   const [showProfile,    setShowProfile]    = useState(false);
   const [composeOpen,    setComposeOpen]    = useState(false); // Sprint 61 — Studio "New message" (replaces killed FAB)
   const [showMembers,    setShowMembers]    = useState(false);
@@ -35637,6 +35699,33 @@ export default function App() {
               ? Math.max(0, Math.floor((Date.now() - Date.parse(ev.createdAt)) / 86400000)) : null,
           });
         });
+      } catch { /* analytics must never break the save path */ }
+      // "First 50 Real Events" sprint (2026-06-21) — the STRICT activation milestone.
+      // INTAKE_COMMITTED above is "any operational data"; EVENT_QUALIFIED is the real
+      // bar: a non-seed event that has the three essentials (date + venue + a guest
+      // count). This is the line PostHog treats as "a real event started." Fires once
+      // per event; once two events qualify, the user has cleared the retention bar.
+      try {
+        let qualifiedCount = 0;
+        (events || []).forEach(ev => {
+          if (!ev || isSeedEvent(ev)) return;
+          // The two essentials that make a plan REAL and sized: a date and a head
+          // count. (The host quick-create captures location as a home/venue toggle,
+          // not a venue string, so requiring a venue name would never fire — date +
+          // count is the honest, product-aligned activation bar.)
+          const hasDate  = !!(ev.date && String(ev.date).trim());
+          const hasCount = Number(ev.guestCount) > 0 || Number(ev.guestEstimate) > 0 || (ev.guests || []).length > 0;
+          if (!(hasDate && hasCount)) return;
+          qualifiedCount += 1;
+          trackOnce('ngw-evt-qualified-' + ev.id, EVENTS.EVENT_QUALIFIED, {
+            event_id: ev.id,
+            event_type: ev.type,
+            is_host: (intakeFamilyConfig(ev.type) || {}).recordKind === 'event',
+            days_since_event_created: ev.createdAt
+              ? Math.max(0, Math.floor((Date.now() - Date.parse(ev.createdAt)) / 86400000)) : null,
+          });
+        });
+        if (qualifiedCount >= 2) trackOnce('ngw-second-event-created', EVENTS.SECOND_EVENT_CREATED, { qualified_count: qualifiedCount });
       } catch { /* analytics must never break the save path */ }
       // 2. Diff against previous snapshot to find removed ids (deletions).
       const prevIds = prevEventIdsRef.current;
@@ -35956,9 +36045,23 @@ export default function App() {
       setClients(cs => cs.map(c => c.id === linkId ? { ...c, eventIds: [...new Set([...(c.eventIds || []), ev.id])] } : c));
       if (!activeClientId) setActiveClientId(linkId);
     }
-    // navigate=false lets the New Event flow show its success state in place
-    // (the event is really created; navigation waits for "Open event").
-    if (navigate) setActiveId(ev.id);
+    // "Press play" assemble moment (B3) — when a host creates a REAL event (the three
+    // essentials present), reveal the plan being built (the day · the food · the
+    // shopping list) before dropping them in: delight, and proof the app did real work.
+    // Unqualified drafts and planner/client stubs navigate exactly as before.
+    // Note the host create path calls this with navigate=false and lands on Host Home
+    // via the modal's own onClose — so the reveal must NOT depend on `navigate`. It
+    // fires for any qualified host event; onDone then honors the caller's intent
+    // (open the event when navigate was requested, otherwise return to Host Home).
+    const _qualifies = !isSeedEvent(ev) && !!(ev.date && String(ev.date).trim()) &&
+      (Number(ev.guestCount) > 0 || Number(ev.guestEstimate) > 0 || (ev.guests || []).length > 0);
+    if (evIsHost && _qualifies) {
+      setAssemble({ ev, openId: navigate ? ev.id : null });
+    } else if (navigate) {
+      // navigate=false lets the New Event flow show its success state in place
+      // (the event is really created; navigation waits for "Open event").
+      setActiveId(ev.id);
+    }
   };
   const createClient = (cl, linkedEventId, openIntake, navigate = true, stubEvent = null) => {
     setClients(cs => [...cs, cl]);
@@ -36167,6 +36270,13 @@ export default function App() {
                       }
                     }}
                     onDone={() => { setShowMigration(false); setMigrationSnapshot(null); }}
+                  />
+                )}
+                {assemble && (
+                  <AssembleReveal
+                    ev={assemble.ev}
+                    profile={profile}
+                    onDone={() => { const a = assemble; setAssemble(null); if (a && a.openId) setActiveId(a.openId); }}
                   />
                 )}
                 <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />

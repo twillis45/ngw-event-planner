@@ -43,7 +43,7 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Metrics', 'Errors', 'Providers', 'Audit'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Metrics', 'Errors', 'Providers', 'Audit'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -500,6 +500,104 @@ function MetricsPanel() {
   );
 }
 
+// ─── Activation tab — per-planner funnel board ("First 50 Real Events" sprint) ──
+// The Metrics tab shows the AGGREGATE funnel; this shows WHO is where, so a recruit
+// who stalls is visible by name. Built from /api/admin/users (server truth: joined,
+// last active, synced-event count) — no new endpoint. Honest limit: the server can't
+// see a real event vs the sample (event bodies are localStorage-first), so "synced
+// events" is a proxy for activity, never proof of a real qualified event. The strict
+// real-event funnel (EVENT_QUALIFIED → SECOND_EVENT_CREATED) lives in PostHog.
+const _daysSince = (t) => { if (!t) return null; const ms = Date.now() - Date.parse(t); return Number.isFinite(ms) ? Math.floor(ms / 86400000) : null; };
+const _stageOf = (u) => {
+  const events = Number(u.event_count) || 0;
+  const idle = _daysSince(u.last_sign_in_at);
+  if (events > 0 && idle !== null && idle <= 14) return { key: 'active', label: 'Active · has events', color: D.good };
+  if (events > 0)                                 return { key: 'has_events', label: 'Has events', color: D.accent };
+  if (u.last_sign_in_at)                          return { key: 'returned', label: 'Signed in, no event', color: D.warn };
+  return { key: 'signed_up', label: 'Signed up only', color: D.muted };
+};
+
+function ActivationPanel({ onOpenUser }) {
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setBusy(true); setErr(null);
+    try { const r = await adminApi.users(''); setRows(r?.users || []); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const tally = (rows || []).reduce((acc, u) => { acc[_stageOf(u).key] = (acc[_stageOf(u).key] || 0) + 1; return acc; }, {});
+  const total = (rows || []).length;
+  const withEvents = (tally.active || 0) + (tally.has_events || 0);
+  // Most-at-risk first: stalled (signed-in, no event) and idle accounts to the top.
+  const sorted = [...(rows || [])].sort((a, b) => {
+    const ra = _stageOf(a).key === 'returned' ? 0 : 1;
+    const rb = _stageOf(b).key === 'returned' ? 0 : 1;
+    if (ra !== rb) return ra - rb;
+    return (_daysSince(b.last_sign_in_at) ?? 1e9) - (_daysSince(a.last_sign_in_at) ?? 1e9);
+  });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation — by planner</div>
+        <button onClick={load} disabled={busy} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline' }}>{busy ? 'loading…' : 'refresh'}</button>
+        {rows && <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}><span style={{ color: D.good, fontWeight: 700 }}>{withEvents}</span> of {total} have synced an event</span>}
+      </div>
+
+      {err && <Banner tone="bad">Error: {err}</Banner>}
+      {rows && total === 0 && <div style={{ fontSize: 13, color: D.faint }}>No accounts yet. Recruiting (Workstream A) is the unblock.</div>}
+
+      {rows && total > 0 && (
+        <>
+          {/* mini per-person funnel tally */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {[
+              { k: 'signed_up', label: 'Signed up only', c: D.muted },
+              { k: 'returned', label: 'No event yet', c: D.warn },
+              { k: 'has_events', label: 'Has events', c: D.accent },
+              { k: 'active', label: 'Active · has events', c: D.good },
+            ].map(s => (
+              <div key={s.k} style={{ flex: '1 1 120px', background: D.surface, border: `1px solid ${D.border}`, borderLeft: `2px solid ${s.c}`, borderRadius: 8, padding: '8px 11px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: D.text, fontFamily: D.mono }}>{tally[s.k] || 0}</div>
+                <div style={{ fontSize: 10.5, color: D.muted, marginTop: 1 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {sorted.map(u => {
+            const st = _stageOf(u);
+            const idle = _daysSince(u.last_sign_in_at);
+            return (
+              <button key={u.id} onClick={() => onOpenUser && onOpenUser(u.id)} style={{
+                display: 'block', width: '100%', textAlign: 'left', background: D.surface,
+                border: `1px solid ${D.border}`, borderLeft: `2px solid ${st.color}`, borderRadius: 8,
+                padding: '9px 12px', marginBottom: 6, cursor: 'pointer', fontFamily: D.ff,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: D.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.email || '(no email)'}{u.role && <span style={{ color: D.accent, fontSize: 10, marginLeft: 8 }}>{u.role}</span>}
+                  </span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: st.color, flexShrink: 0 }}>{st.label}</span>
+                </div>
+                <div style={{ fontSize: 10.5, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
+                  {u.event_count} synced · joined {fmtTs(u.created_at).slice(0, 10)} · {idle === null ? 'never signed in' : idle === 0 ? 'active today' : `idle ${idle}d`}
+                </div>
+              </button>
+            );
+          })}
+          <div style={{ fontSize: 10.5, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
+            ⚠ "Synced an event" is a server proxy — it can't tell a real qualified event from the sample. The strict real-event funnel (qualified → completed → second event) is in PostHog.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Errors tab — A3-err server-side error feed ──────────────────────────────
 // admin_error_log: AI-proxy, email, payments, unhandled API exceptions. Honest
 // scope — browser errors (CSP, frontend crashes) are NOT here; they live in
@@ -821,6 +919,8 @@ export default function AdminConsole() {
         {tab === 'Workspaces' && <WorkspacesPanel onOpenUser={goToUser} />}
 
         {tab === 'Invitations' && <InvitationsPanel onOpenUser={goToUser} />}
+
+        {tab === 'Activation' && <ActivationPanel onOpenUser={goToUser} />}
 
         {tab === 'Metrics' && <MetricsPanel />}
 

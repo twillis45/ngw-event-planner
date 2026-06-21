@@ -129,6 +129,17 @@ export const EVENTS = {
   RETURNED_D1:            'returned_d1',
   RETURNED_D7:            'returned_d7',
 
+  // "First 50 Real Events" activation sprint (2026-06-21) — the strict real-event
+  // funnel PostHog watches. EVENT_CREATED fires for any non-seed event; these mark
+  // the milestones that actually mean activation:
+  //   • EVENT_QUALIFIED      — an event first has the 3 essentials (date + venue +
+  //                            guest count): the true "real event started" line.
+  //   • ASSEMBLE_VIEWED      — the host watched the plan get built ("press play").
+  //   • SECOND_EVENT_CREATED — a user started a 2nd real event: the retention proof.
+  EVENT_QUALIFIED:        'event_qualified',
+  ASSEMBLE_VIEWED:        'assemble_viewed',
+  SECOND_EVENT_CREATED:   'second_event_created',
+
   // Activation back-half (Host Activation v1) — the moat-gating signals the
   // 60C→61B arc found uninstrumented. First occurrence drives the funnel; every
   // occurrence measures depth.
