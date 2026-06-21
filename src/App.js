@@ -8371,6 +8371,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
+  // A host collects dietary by COUNT, inline (they note the allergies they know of and
+  // guests self-report the rest via RSVP) — they don't keep a planner-style per-guest
+  // roster. So the dietary gate uses the inline count picker for hosts, never the
+  // "Collect → Guests" jump that dead-ends a host on a faces list with no allergy field.
+  const isHostFP = (() => { try { return hostNavActive(event); } catch { return false; } })();
   // 64-#2 — the spread is summary-first. It auto-expands once shopping is live
   // (something bought, or inside the ~1-week shop window); otherwise it stays a
   // glanceable summary while the host is still planning.
@@ -8502,10 +8507,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* dietary gate (decision-first) — two workflows. Headcount/locked mode: there's
           no per-guest list, so the host NOTES the allergies they know of. List mode:
           collect per-guest in the roster. */}
-      {!plan.dietaryResolved && (event.guestMode === 'count' ? (
+      {!plan.dietaryResolved && (event.guestMode === 'count' || isHostFP ? (
         <div style={{ ...card, borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
           <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, marginBottom: 12 }}>
-            <strong>Any allergies or diets to plan around?</strong> You're going by a headcount, so just pick what applies — one unflagged allergy is a safety issue.
+            <strong>Any allergies or diets to plan around?</strong> {event.guestMode === 'count' ? 'You’re going by a headcount, so just pick what applies' : 'Note what you know of — guests can add theirs when they RSVP'} — one unflagged allergy is a safety issue.
           </div>
           {/* #16 — a COUNT per diet/allergy, so the host says how many people each
               represents. Counts drive the food plan (plant-based main) + the budget. */}

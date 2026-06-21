@@ -48,6 +48,7 @@ import boardMeeting from './data/boardMeeting';
 import conference from './data/conference';
 import teamRetreat from './data/teamRetreat';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
+import { audiencePersona } from '../nextActionRenderer';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -347,7 +348,12 @@ export function topPlaybookDecision(event, asOf) {
       consequence: 'Lock the menu only after allergies are in — one unflagged allergy is a safety issue, not a courtesy. Collect from your guest list before buying food.',
       level: 'attention',
       primaryCta: 'Collect dietary needs',
-      primaryRoute: { eventId: event.id, tab: 'Guests' },
+      // A host notes allergies inline on the food plan (count-based; guests self-report
+      // the rest via RSVP) — routing them to the roster dead-ends on a faces list with
+      // no allergy field. A planner collects per-guest on the roster. Route per persona.
+      primaryRoute: audiencePersona(event) === 'host'
+        ? { eventId: event.id, tab: 'Planning' }
+        : { eventId: event.id, tab: 'Guests' },
       eventId: event.id,
       owner: 'host',
       provenance: { source: `${playbook.type} playbook`, rule: 'decision-first: dietary before menu/food' },
