@@ -20062,6 +20062,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             const d = draftShoppingList(ev, profile, { items: shopItems, anchor: (ev.venueAddress || [ev.venueCity, ev.venueState].filter(Boolean).join(', ') || '').trim() });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
               title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
+              row: '🛒 Your shopping list', rowSub: 'every item, with amounts',
               sheet: { title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) } });
           }
           if (items.length === 0) return null;
@@ -20072,27 +20073,42 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (hc > 0) prep.push(`food’s sized for ${hc}`);
           prep.push('your day’s sketched');
           const prepLine = prep.slice(0, 3).join(', ');
+          const hero = items[0];
+          const rest = items.slice(1);
           return (
             <div style={{ marginBottom: 18 }}>
-              {/* The magic: it already did the hard parts — and the host SEES all of it.
-                  Every prepared thing keeps its own card; the breadth IS the magic. The
-                  most-relevant one just leads (accent edge). Nothing hidden. */}
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start — here’s what’s ready</div>
+              {/* The magic: it already did the hard parts. ONE hero to act on now; the rest
+                  it's prepared sit quietly under "Also ready" — no competing heroes, the
+                  stack collapsed (Attention System / mobile). */}
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
               <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.map((it, idx) => (
-                  <button key={it.id} type="button" onClick={() => setDraftSheet(it.sheet)}
-                    style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: idx === 0 ? `3px solid ${C.accent}` : `1px solid ${C.border}`, background: C.surface, display: 'block', marginBottom: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                      <span style={eyebrow}>{it.eyebrow}</span>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>{it.cta}</span>
-                    </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>{it.title}</div>
-                    {it.preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{it.preview}…”</div>}
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{it.sub}</div>
-                  </button>
-                ))}
-              </div>
+              <button type="button" onClick={() => setDraftSheet(hero.sheet)}
+                style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={eyebrow}>{hero.eyebrow}</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>{hero.cta}</span>
+                </div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>{hero.title}</div>
+                {hero.preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{hero.preview}…”</div>}
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{hero.sub}</div>
+              </button>
+              {rest.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {rest.map((it) => (
+                      <button key={it.id} type="button" onClick={() => setDraftSheet(it.sheet)}
+                        style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderRadius: 10, background: C.surface, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{it.row}</span>
+                          <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>{it.rowSub}</span>
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, flexShrink: 0 }}>Open →</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -30625,14 +30641,17 @@ function WeatherAlert({ event, onNavTo }) {
     return () => { cancelled = true; };
   }, [event?.id, event?.date, event?.venue, shouldFetch, dismissed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!shouldFetch || dismissed || loading || !wx || wx.risk === 'clear') return null;
+  // Rain plan (#56): show the forecast even on a CLEAR day — the host asked "is there a
+  // chance of rain?" and a calm "10% — you're clear, no rain plan needed" is an answer,
+  // not noise. Only truly nothing-to-show states (no fetch / loading / no data) return null.
+  if (!shouldFetch || dismissed || loading || !wx) return null;
 
   const riskColor = wx.risk === 'high' ? C.danger : C.muted;
   // Board #2 — the forecast drives concrete day-of adjustments (ice, shade, water,
   // tent), not just a banner. Sized to this event's guest count.
   const guests = Number(event?.guestCount) || (Array.isArray(event?.guests) ? event.guests.length : 0);
   const adjustments = weatherLogistics(wx, { guests });
-  const wxIcon = wx.kind === 'heat' ? '☀️' : wx.kind === 'snow' ? '❄️' : wx.kind === 'cold' ? '🥶' : wx.risk === 'high' ? '⛈' : '🌧';
+  const wxIcon = wx.risk === 'clear' ? '☀️' : wx.kind === 'heat' ? '☀️' : wx.kind === 'snow' ? '❄️' : wx.kind === 'cold' ? '🥶' : wx.risk === 'high' ? '⛈' : '🌧';
   return (
     <div style={{
       margin: '0 0 12px', padding: '10px 16px', borderRadius: 8,
