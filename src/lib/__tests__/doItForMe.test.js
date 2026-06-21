@@ -265,6 +265,18 @@ describe('draftToast', () => {
     expect(body).toContain('this family never quits');
     expect(body).toMatch(/raise your glass/i);
   });
+  test('body never exceeds 5 spoken lines', () => {
+    const ev = { ...maya, honoree_story: 'she worked two jobs to get here', meaning_why: 'this family never quits', feeling_words: 'pride and joy' };
+    const { body } = draftToast(ev, profile);
+    expect(body.split('\n').filter(Boolean).length).toBeLessThanOrEqual(5);
+  });
+  test('truncates a very long host line to one speakable beat', () => {
+    const longStory = 'She started from absolutely nothing and worked two jobs while raising three kids and studying every single night until two in the morning, and somehow she still found time to coach the team and bake for every bake sale and never once complained about any of it to anyone';
+    const ev = { ...maya, honoree_story: longStory };
+    const { body } = draftToast(ev, profile);
+    expect(body).not.toContain(longStory);                 // the full paragraph is gone
+    expect(body.split('\n').filter(Boolean).length).toBeLessThanOrEqual(5);
+  });
   test('hasToastMaterial gates the card on real material', () => {
     expect(hasToastMaterial(maya)).toBe(true);                       // honoree present
     expect(hasToastMaterial({ type: 'Dinner Party' })).toBe(false);  // nothing to shape
@@ -273,5 +285,6 @@ describe('draftToast', () => {
     const { body } = draftToast({ type: 'Celebration of Life', honoree: 'Joe' }, profile);
     expect(body).toMatch(/remember|hold each other|because of Joe/i);
     expect(body).not.toMatch(/raise your glass/i);
+    expect(body.split('\n').filter(Boolean).length).toBeLessThanOrEqual(5);
   });
 });

@@ -407,32 +407,58 @@ export function hasToastMaterial(event) {
     || String(event.meaning_why || '').trim() || String(event.feeling_words || '').trim());
 }
 
-// The toast — the one thing hosts dread. We draft a short, warm toast from the host's
-// OWN words (honoree, the story, why it matters, the feeling) — shaping, never inventing.
-// Tone follows the occasion. The host edits/polishes; this beats a blank page.
+// The toast — the one thing hosts dread. We draft a SHORT starting point from the host's
+// OWN words (honoree, the story, why it matters) — shaping, never inventing, never a
+// generated monologue. Hard cap: 5 spoken lines. The host edits/polishes from here.
 export function draftToast(event, profile) {
   if (!event) return { subject: '', body: '' };
   const honoree = String(event.honoree || '').trim();
   const type = (event.type ? String(event.type) : 'celebration').toLowerCase();
-  const story = String(event.honoree_story || '').trim();
-  const why = String(event.meaning_why || '').trim();
-  const feeling = String(event.feeling_words || '').trim();
+  // Trim a host line to one short, speakable beat: first sentence, or ~120 chars on a
+  // word boundary. Never lengthen, never invent — just shorten.
+  const speakable = (raw) => {
+    let s = String(raw || '').trim().replace(/\s+/g, ' ');
+    if (!s) return '';
+    const stop = s.search(/[.!?]/);
+    if (stop !== -1 && stop <= 120) s = s.slice(0, stop + 1);
+    else if (s.length > 120) {
+      let cut = s.slice(0, 120);
+      const sp = cut.lastIndexOf(' ');
+      if (sp > 40) cut = cut.slice(0, sp);
+      s = cut;
+    }
+    return s.replace(/\s+$/, '').replace(/[.!?,;:]*$/, '') + '.';
+  };
+  const story = speakable(event.honoree_story);
+  const why = speakable(event.meaning_why);
+  const feeling = String(event.feeling_words || '').trim().replace(/\.$/, '');
   const sombre = SOMBRE_RE.test(type);
-  const end = (s) => s.replace(/\s+$/, '').replace(/\.?$/, '.');
+  // Build at most 5 lines: opener, the host's own 1–2 lines, a closer.
   const lines = [];
   if (sombre) {
     lines.push('If I could say a few words…');
     lines.push(honoree ? `We’re here because of ${honoree} — and what ${honoree} meant to all of us.` : 'We’re here tonight to remember, and to hold each other close.');
-    if (story) lines.push(end(story));
-    if (why) lines.push(end(why));
+    if (story) lines.push(story);
+    if (why) lines.push(why);
     lines.push('Thank you for being here.');
   } else {
     lines.push('A few words, if I can…');
     lines.push(honoree ? `Tonight is about ${honoree}.` : 'Thank you all for being here — it means the world.');
-    if (story) lines.push(end(story));
-    if (why) lines.push(end(why));
-    if (feeling) lines.push(`Here’s to ${feeling.replace(/\.$/, '')}.`);
+    if (story) lines.push(story);
+    if (why) lines.push(why);
+    // Feeling is the soft option: only when we have room and no story+why pair already.
+    if (feeling && lines.length < 4 && !(story && why)) lines.push(`Here’s to ${feeling}.`);
     lines.push(honoree ? `So raise your glass — to ${honoree}.` : 'So raise your glass — to all of us, and to nights like this.');
+  }
+  // Hard cap at 5 lines: keep opener (first) + closer (last) + the most meaningful
+  // host material in between (story/why win over a separate feeling line).
+  if (lines.length > 5) {
+    const opener = lines[0];
+    const closer = lines[lines.length - 1];
+    const middle = lines.slice(1, -1).slice(0, 3); // story, why, [feeling]
+    while (1 + middle.length + 1 > 5) middle.pop(); // drop feeling first, then trim tail
+    lines.length = 0;
+    lines.push(opener, ...middle, closer);
   }
   if (hostName(profile)) { /* a toast is spoken, not signed */ }
   return { subject: honoree ? `A toast to ${honoree}` : 'A toast', body: lines.join('\n\n').replace(/\n{3,}/g, '\n\n').trim() };

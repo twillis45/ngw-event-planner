@@ -19950,7 +19950,18 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                   // directly to their destination (compression→Timeline, operational→Plan, etc.).
                   const wizardCategories = new Set(['start', 'readiness']);
                   if (wizardCategories.has(na.category)) {
-                    setSetupOpen(true);
+                    // BUG fix: open the wizard AT the step this action is about — not always
+                    // step 0 (the heart). "Set your budget" routes to { tab:'Budget',
+                    // focusField:'hsp-budget' }; match that to the live wizard steps so the
+                    // host lands on the budget question, not the heart-of-it screen first.
+                    const liveSteps = prog.filter((p) => p.state !== 'done');
+                    const route = na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null;
+                    let idx = -1;
+                    if (route) {
+                      if (route.focusField) idx = liveSteps.findIndex((p) => p.focusField === route.focusField);
+                      if (idx < 0 && route.tab) idx = liveSteps.findIndex((p) => p.tab === route.tab);
+                    }
+                    setSetupOpen(idx >= 0 ? idx : true);
                   } else if (na.primaryRoute) {
                     onSelectEvent(ev.id, na.primaryRoute);
                   }
@@ -19975,83 +19986,92 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
         {/* The entire planning home — suppressed once the event has passed (B2). */}
         {!isPost && (<>
-        {/* "Do it for me" #1 — the guest invite. The app already WROTE it from the
-            event facts; the host just opens it and sends. Pairs with the guest-list
-            hero (you invite people to build the list). Needs a date to be sendable. */}
-        {!isDayOf && ev.date && (() => {
-          // Close the loop — carry the live RSVP page link so guests reply on the hosted
-          // page and the headcount flows straight back to this event.
+        {/* "Do it for me" — THE HEAD START. The magic isn't a stack of cards; it's the
+            felt sense that the app already did the hard parts. One ranked queue: the most
+            relevant thing to send NOW is the bright hero; everything else it's prepared
+            sits quietly under "Also ready." Confidence before work (Airbnb) — the breadth
+            line enumerates what's genuinely done, never invented. */}
+        {!isDayOf && (() => {
           const rsvpCode = ev.rsvpCode || ev.id;
           const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
-          const d = draftInvite(ev, profile, { rsvpUrl });
-          const previewParts = (d.body || '').split('\n').map(s => s.trim()).filter(Boolean);
-          const preview = (previewParts[1] || previewParts[0] || '').slice(0, 92);
+          const confirmed = (ev.guests || []).filter((g) => g && g.rsvp === 'Yes').length;
+          const near = daysLeft != null && daysLeft >= 0;
+          const items = [];
+          // Each candidate carries a relevance SCORE — the hero shifts from invite (early)
+          // to the details/reconfirm note (as the day nears). The toast is a prep item.
+          if (ev.date) {
+            const d = draftInvite(ev, profile, { rsvpUrl });
+            const parts = (d.body || '').split('\n').map((s) => s.trim()).filter(Boolean);
+            items.push({ id: 'invite', score: confirmed > 0 ? 45 : 82, accent: true, eyebrow: 'Ready to send', cta: 'Open & send →',
+              title: "Your invite's written — send it now", sub: 'The yeses land right back here — and the rest of the plan can wait.',
+              row: 'Your invite', rowSub: 'written, with your RSVP link',
+              preview: (parts[1] || parts[0] || '').slice(0, 92),
+              sheet: { title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' } });
+          }
+          if (ev.date && near && daysLeft <= 7) {
+            const d = draftDayBeforeDetails(ev, profile, { rsvpUrl });
+            items.push({ id: 'daybefore', score: 70 - daysLeft * 6, eyebrow: 'Ready to send', cta: 'Open & send →',
+              title: 'Send everyone the final details', sub: 'Where, when, what to bring — the night-before note, already written.',
+              row: 'The final details', rowSub: 'where, when, what to bring',
+              sheet: { title: 'The final details', intro: 'A quick note to everyone coming — where, when, and anything to bring. Written from your event; make it yours and send.', draft: d, shareTitle: d.subject, kind: 'invite' } });
+          }
+          if (ev.date && near && daysLeft <= 10) {
+            const booked = (ev.vendors || []).filter((v) => v && /book|confirm|hired|signed|deposit/i.test(String(v.status || '')));
+            if (booked.length > 0) {
+              const d = draftVendorReconfirm(ev, booked.length === 1 ? booked[0] : null, profile);
+              items.push({ id: 'reconfirm', score: 55 - daysLeft * 4, eyebrow: 'Ready to send', cta: 'Open & send →',
+                title: `Reconfirm with your ${booked.length === 1 ? 'vendor' : `${booked.length} vendors`}`, sub: 'The day-before “still on?” check-in — written, with your details.',
+                row: `Reconfirm your ${booked.length === 1 ? 'vendor' : `${booked.length} vendors`}`, rowSub: 'the “still on?” check-in',
+                sheet: { title: 'Reconfirm your vendors', intro: booked.length === 1 ? 'A quick day-before check-in with your vendor — confirming the date, place, and timing. Make it yours and send.' : `A quick check-in to send each of your ${booked.length} booked vendors — confirming date, place, and timing.`, draft: d, shareTitle: d.subject, kind: 'vendor' } });
+            }
+          }
+          if (hasToastMaterial(ev)) {
+            const d = draftToast(ev, profile);
+            items.push({ id: 'toast', score: 25, eyebrow: 'Already written', cta: 'Open →',
+              title: '🥂 A toast — a starting draft', sub: 'From your own words. Beats staring at a blank page the night before.',
+              row: '🥂 A toast', rowSub: 'shaped from your own words',
+              sheet: { title: 'A toast', intro: 'The thing everyone dreads. Shaped from your own words — the person, the story, why it matters. Read it aloud once; tweak what’s yours.', draft: d, shareTitle: d.subject, kind: 'recap' } });
+          }
+          // Surface the shopping list here too — the clearest "look what it did for me,"
+          // otherwise it lives a tab away. Built from the real food plan.
+          if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
+            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id] }));
+            const left = shopItems.filter((i) => !i.got).length;
+            const d = draftShoppingList(ev, profile, { items: shopItems });
+            items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
+              title: '🛒 Your shopping list — already written', sub: left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts — take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.',
+              sheet: { title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store or send it to whoever’s shopping.', draft: d, shareTitle: d.subject, kind: 'thankyou' } });
+          }
+          if (items.length === 0) return null;
+          items.sort((a, b) => b.score - a.score);
+          // The breadth line — what's genuinely prepared, from real state (≤3, never invented).
+          const hc = Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
+          const prep = ['your invite’s written'];
+          if (hc > 0) prep.push(`food’s sized for ${hc}`);
+          prep.push('your day’s sketched');
+          const prepLine = prep.slice(0, 3).join(', ');
           return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <span style={eyebrow}>Ready to send</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+            <div style={{ marginBottom: 18 }}>
+              {/* The magic: it already did the hard parts — and the host SEES all of it.
+                  Every prepared thing keeps its own card; the breadth IS the magic. The
+                  most-relevant one just leads (accent edge). Nothing hidden. */}
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start — here’s what’s ready</div>
+              <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {items.map((it, idx) => (
+                  <button key={it.id} type="button" onClick={() => setDraftSheet(it.sheet)}
+                    style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: idx === 0 ? `3px solid ${C.accent}` : `1px solid ${C.border}`, background: C.surface, display: 'block', marginBottom: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={eyebrow}>{it.eyebrow}</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>{it.cta}</span>
+                    </div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>{it.title}</div>
+                    {it.preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{it.preview}…”</div>}
+                    <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{it.sub}</div>
+                  </button>
+                ))}
               </div>
-              {/* Front door + express (Partiful parity): the invite is the fastest path to
-                  a real event — sending it is how the guest list fills in. Lead with "send
-                  it now," reassure that the rest of the plan can wait. */}
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Your invite's written — send it now</div>
-              {preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{preview}…”</div>}
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>The yeses land right back here — and the rest of the plan can wait.</div>
-            </button>
-          );
-        })()}
-        {/* "Do it for me" — the day-before details blast. From the venue/date/time the
-            host gave us; appears as the event nears so it's there when they'd send it. */}
-        {!isDayOf && ev.date && daysLeft != null && daysLeft >= 0 && daysLeft <= 7 && (() => {
-          const rsvpCode = ev.rsvpCode || ev.id;
-          const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
-          const d = draftDayBeforeDetails(ev, profile, { rsvpUrl });
-          return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'The final details', intro: 'A quick note to everyone coming — where, when, and anything to bring. Written from your event; make it yours and send.', draft: d, shareTitle: d.subject, kind: 'invite' })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <span style={eyebrow}>Ready to send</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone the final details</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Where, when, what to bring — the night-before note, already written.</div>
-            </button>
-          );
-        })()}
-        {/* "Do it for me" — vendor reconfirm. The day-before "still on for Saturday?" to
-            booked vendors. One note (personalized if there's just one) the host sends each. */}
-        {!isDayOf && ev.date && daysLeft != null && daysLeft >= 0 && daysLeft <= 10 && (() => {
-          const booked = (ev.vendors || []).filter((v) => v && /book|confirm|hired|signed|deposit/i.test(String(v.status || '')));
-          if (booked.length === 0) return null;
-          const d = draftVendorReconfirm(ev, booked.length === 1 ? booked[0] : null, profile);
-          return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'Reconfirm your vendors', intro: booked.length === 1 ? 'A quick day-before check-in with your vendor — confirming the date, place, and timing. Make it yours and send.' : `A quick check-in to send each of your ${booked.length} booked vendors — confirming date, place, and timing.`, draft: d, shareTitle: d.subject, kind: 'vendor' })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <span style={eyebrow}>Ready to send</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Reconfirm with your {booked.length === 1 ? 'vendor' : `${booked.length} vendors`}</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>The day-before “still on?” check-in — written, with your details.</div>
-            </button>
-          );
-        })()}
-        {/* "Do it for me" — the toast. Only when the host's own words give us something
-            to shape (honoree / the story / why it matters / the feeling). Never fabricated. */}
-        {!isDayOf && hasToastMaterial(ev) && (() => {
-          const d = draftToast(ev, profile);
-          return (
-            <button type="button" onClick={() => setDraftSheet({ title: 'A toast', intro: 'The thing everyone dreads. Shaped from your own words — the person, the story, why it matters. Read it aloud once; tweak what’s yours.', draft: d, shareTitle: d.subject, kind: 'recap' })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <span style={eyebrow}>Already written</span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open →</span>
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>🥂 A toast — a starting draft</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>From your own words. Beats staring at a blank page the night before.</div>
-            </button>
+            </div>
           );
         })()}
         {/* 3 · What still needs you — Attention System: HIDE what's on-track (done
