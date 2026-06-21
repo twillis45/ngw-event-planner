@@ -23667,6 +23667,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
   const C = useT();
   const bp = useContext(BpCtx);
   const [budgetDraft, setBudgetDraft] = useState(totalBudget ? String(totalBudget) : '');
+  const [budgetSet, setBudgetSet] = useState(false); // confirmation: budget just saved
   const isMobile = bp === 'mobile';
   const money = (lo, hi) => {
     const f = (n) => '$' + Math.round(Number(n) || 0).toLocaleString();
@@ -23722,14 +23723,14 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0" enterKeyHint="done"
               value={budgetDraft}
               onChange={(e) => setBudgetDraft(e.target.value)}
-              onBlur={() => onSetTotalBudget && onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0)))}
+              onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) setBudgetSet(true); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
               style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 20, fontWeight: 800, fontFamily: 'inherit' }} />
           </span>
           {/* Board #10 — an explicit confirm so a host on a phone (no keyboard "Done")
               never types a number, scrolls away, and loses it to commit-on-blur only. */}
-          <button type="button" onClick={() => onSetTotalBudget && onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0)))}
-            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: C.accent, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Set</button>
+          <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); }}
+            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
           {Number(budgetDraft) > 0 && (() => {
             // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
             // budget lands inside the estimate; COVERED if it clears the premium (high) end.
@@ -23743,6 +23744,9 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
               : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
             return <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{msg}</span>;
           })()}
+          {budgetSet && Number(budgetDraft) > 0 && (
+            <div style={{ width: '100%', fontSize: 12.5, fontWeight: 700, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
+          )}
         </div>
       </div>
 
