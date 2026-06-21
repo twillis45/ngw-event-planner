@@ -8707,6 +8707,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                             ))}
                           </span>
                         )}
+                        {/* Instacart interim (no key): per-item deep link — opens Instacart
+                            (the app on mobile) to a search for this item to add to a cart. */}
+                        {(i.short || i.item) && !got && (
+                          <span style={{ display: 'block', fontSize: 11.5, marginTop: 3 }}>
+                            <span role="link" tabIndex={0}
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://www.instacart.com/store/s?k=${encodeURIComponent(i.short || i.item)}`, '_blank', 'noopener'); }}
+                              style={{ cursor: 'pointer', color: '#0AAD0A', fontWeight: 700, textDecoration: 'underline dotted' }}>🛒 Find on Instacart</span>
+                          </span>
+                        )}
                         {/* Alternatives — playbook-sourced swap suggestions shown inline so the
                             host never needs to leave the shopping list to find a substitute. */}
                         {Array.isArray(i.alternatives) && i.alternatives.length > 0 && !got && (
