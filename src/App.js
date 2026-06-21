@@ -20096,6 +20096,21 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               preview: (parts[1] || parts[0] || '').slice(0, 92),
               sheet: { title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' } });
           }
+          // RSVP reminder — the single highest-leverage nudge as the day nears: replies
+          // grow the headcount that sizes everything. Only while people still owe a reply
+          // and the event is upcoming (≤21 days out). Score rises as the day approaches
+          // (60 − daysLeft), so it overtakes the invite to become the hero when it's the
+          // most urgent thing to send. Same RSVP filter as the Guests screen.
+          if (ev.date && near && daysLeft <= 21) {
+            const awaitingRsvp = (ev.guests || []).filter((g) => g && g.rsvp !== 'Yes' && g.rsvp !== 'No').length;
+            if (awaitingRsvp > 0) {
+              const d = draftRsvpChase(ev, profile, { rsvpUrl });
+              items.push({ id: 'rsvp_reminder', score: 60 - daysLeft, eyebrow: 'Ready to send', cta: 'Open & send →',
+                title: `Nudge the ${awaitingRsvp} who haven’t replied`, sub: 'A gentle reminder — written, with your RSVP link. The yeses land right back here.',
+                row: 'Nudge the no-replies', rowSub: `${awaitingRsvp} ${awaitingRsvp === 1 ? 'reply' : 'replies'} still owed`,
+                sheet: { title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaitingRsvp} ${awaitingRsvp === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite' } });
+            }
+          }
           if (ev.date && near && daysLeft <= 7) {
             const d = draftDayBeforeDetails(ev, profile, { rsvpUrl });
             items.push({ id: 'daybefore', score: 70 - daysLeft * 6, eyebrow: 'Ready to send', cta: 'Open & send →',
@@ -20148,7 +20163,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                   stack collapsed (Attention System / mobile). */}
               <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
               <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
-              <button type="button" onClick={() => setDraftSheet(hero.sheet)}
+              <button type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: hero.id }); } catch { /* never block the send */ } setDraftSheet(hero.sheet); }}
                 style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                   <span style={eyebrow}>{hero.eyebrow}</span>
@@ -20163,7 +20178,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                   <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {rest.map((it) => (
-                      <button key={it.id} type="button" onClick={() => setDraftSheet(it.sheet)}
+                      <button key={it.id} type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: it.id }); } catch { /* never block the send */ } setDraftSheet(it.sheet); }}
                         style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderRadius: 10, background: C.surface, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                         <span style={{ minWidth: 0 }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{it.row}</span>
