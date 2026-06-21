@@ -30669,6 +30669,7 @@ function WeatherAlert({ event, onNavTo }) {
             Weather forecast · {wx.daysOut}d out
           </div>
           <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
+          {wx.sunset && <div style={{ fontSize: 10.5, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
         </div>
         {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: 600, flexShrink: 0 }}>Review vendors →</button>}

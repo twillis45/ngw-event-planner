@@ -154,6 +154,16 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
       precipitation: pop,
       conditions: description || conditions,
       icon,
+      // Sunset in the EVENT's local time (real, computed — never fabricated). Drives
+      // golden-hour / "when it gets dark" / lighting planning for outdoor events.
+      sunset: (() => {
+        const u = eventDay.sunset, off = data.timezone_offset || 0;
+        if (!u) return '';
+        const d = new Date((u + off) * 1000);
+        let h = d.getUTCHours(); const m = d.getUTCMinutes();
+        const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+        return `${h}:${String(m).padStart(2, '0')} ${ap}`;
+      })(),
       disclaimer: 'Weather forecast — accuracy decreases beyond 7 days.',
     };
   } catch {
