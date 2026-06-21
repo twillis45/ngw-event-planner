@@ -8446,6 +8446,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
           <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> for food and drinks, scaled to your count.
         </div>
+        {/* Show the basis — trust comes from seeing the math, not just the number.
+            "≈ $X a head × N guests" is exactly how the range is built. */}
+        {plan.guests > 0 && plan.foodHigh > 0 && (
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+            That's about <span style={{ color: steel, fontWeight: 600 }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span> × {plan.guests} {plan.guests === 1 ? 'guest' : 'guests'}.
+          </div>
+        )}
         {/* #16 — diet counts the plan is accounting for (drives the plant-based line + budget). */}
         {plan.specialDiets && plan.specialDiets.length > 0 && (
           <div style={{ fontSize: 12.5, color: steel, marginTop: 4, fontWeight: 600 }}>
@@ -19580,8 +19587,11 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   const aiKey = useAIKey();
   const [polishing, setPolishing] = useState(false);
   const [prePolish, setPrePolish] = useState(null);  // the text before AI polish, for one-tap undo
-  const send = async () => { setStatus(await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text })); };
-  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); } catch { setStatus('failed'); } };
+  // Close the invite loop: when the host actually puts the invite out into the world,
+  // record it — this is the top of the growth funnel (host shares → guests RSVP back).
+  const trackShared = (via) => { if (kind === 'invite') { try { track(EVENTS.INVITE_SHARED, { via }); } catch {} } };
+  const send = async () => { const r = await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text }); setStatus(r); if (r === 'shared' || r === 'copied') trackShared(r === 'shared' ? 'share_sheet' : 'clipboard'); };
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); trackShared('clipboard'); } catch { setStatus('failed'); } };
   // Optional AI polish — warms the prose WITHOUT inventing anything. The honest
   // template is always the baseline; this only rewrites what's already there. Hard
   // rules in the prompt forbid new facts; the host can undo in one tap.
@@ -19953,13 +19963,17 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           const preview = (previewParts[1] || previewParts[0] || '').slice(0, 92);
           return (
             <button type="button" onClick={() => setDraftSheet({ title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, display: 'block' }}>
+              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Ready to send</span>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Your invite — already written</div>
+              {/* Front door + express (Partiful parity): the invite is the fastest path to
+                  a real event — sending it is how the guest list fills in. Lead with "send
+                  it now," reassure that the rest of the plan can wait. */}
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Your invite's written — send it now</div>
               {preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{preview}…”</div>}
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>The yeses land right back here — and the rest of the plan can wait.</div>
             </button>
           );
         })()}
@@ -23534,6 +23548,12 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
                   : <> Nothing checked off yet.</>}</>)
             : (<>Set your menu in the food plan to estimate this.</>)}
         </div>
+        {/* Show the basis — the food estimate is per-head × guests, not a guess. */}
+        {foodPlan && foodPlan.guests > 0 && foodHigh > 0 && (
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>
+            ≈ <span style={{ color: C.text, fontWeight: 600 }}>{money(Math.round(foodLow / foodPlan.guests), Math.round(foodHigh / foodPlan.guests))} a head</span> × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}.
+          </div>
+        )}
         {/* Pricing source — ALWAYS shown (regional when resolved, national + nudge otherwise). */}
         {priceNote && (
           <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>
@@ -25350,6 +25370,9 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
       // The joyful feed: who just said YES via the link. Celebrate them on arrival.
       const arrivedYeses = queued.filter(d => d && d.rsvp === 'Yes').map(d => String(d.name || '').trim()).filter(Boolean);
       if (arrivedYeses.length) setNewYeses(arrivedYeses);
+      // Close the invite loop: the guest came back through the link. This is the
+      // bottom of the growth funnel (host shared → guest RSVP'd) — count each arrival.
+      queued.forEach(d => { try { track(EVENTS.GUEST_RSVP_RECEIVED, { event_id: event.id, rsvp: d && d.rsvp ? String(d.rsvp).toLowerCase() : 'unknown' }); } catch {} });
       queued.forEach(data => {
         setGuests(gs => {
           const nameParts = (data.name || '').toLowerCase().split(' ').filter(Boolean);
@@ -27418,7 +27441,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
-function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {}, isHost = false }) {
+function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {}, isHost = false, authored = false }) {
   const C        = useT();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
@@ -27443,6 +27466,15 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
   // never spin-then-silence, never claim a complete sync. { kind: 'ok'|'err', text }.
   const [rosActionMsg, setRosActionMsg] = useState(null);
   const isMobileRos = bp === 'mobile' || bp === 'tablet';
+  // Delete a layer (Apple): the minute-by-minute schedule is day-of detail. For a host
+  // whose event is weeks out, leading with a dense editor is premature — it reads as a
+  // wall of work before there's any reason to plan the timeline. Far out, we show a calm
+  // lead-in and keep the editor one tap away; near the day (or once they open it), the
+  // full schedule leads. Planner view is unchanged.
+  const [daySketchOpen, setDaySketchOpen] = useState(false);
+  const rosDaysOut = eventDate ? Math.round((new Date(eventDate + 'T00:00:00') - new Date()) / 86400000) : null;
+  const farOut = isHost && !isDayOf && rosDaysOut != null && rosDaysOut > 21 && !authored;
+  const scheduleHidden = farOut && !daySketchOpen;
 
   const draftFullSchedule = async () => {
     if (!aiInputOn(aiKey)) return;
@@ -27946,7 +27978,22 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         );
       })()}
 
-      <div style={s.card}>
+      {scheduleHidden && (
+        <div style={{ ...s.card, borderLeft: `3px solid ${C.accent}` }}>
+          <div style={s.cardTitle}>Your run of the day</div>
+          <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.55 }}>
+            {rosDaysOut > 60
+              ? `Your event's about ${Math.round(rosDaysOut / 7)} weeks out — there's no rush on the minute-by-minute yet.`
+              : `Your event's ${rosDaysOut} days out — the timeline comes together best a few weeks before.`}
+            {' '}We'll have a starting shape ready when it's time. Want to sketch it now? Go for it.
+          </div>
+          <button type="button" onClick={() => setDaySketchOpen(true)}
+            style={{ marginTop: 12, minHeight: 40, padding: '0 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Sketch the day now →
+          </button>
+        </div>
+      )}
+      <div style={{ ...s.card, ...(scheduleHidden ? { display: 'none' } : {}) }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={s.cardTitle}>{isHost ? 'Your run of the day' : 'Event Day Schedule'}</div>
           {isMobileRos ? (
@@ -34279,7 +34326,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Event Day Schedule' && <>
           <LegacyTabHeader label="The day" hint="Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day." onBack={() => go('Command')} />
           <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
         </>}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
@@ -34978,7 +35025,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={hostNavActive(event)} />
+          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={hostNavActive(event)} authored={Array.isArray(event.ros) && event.ros.length > 0} />
         </>
       )}
       {tab === 'Agenda'      && <>

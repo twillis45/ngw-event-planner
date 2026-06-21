@@ -122,6 +122,11 @@ export const EVENTS = {
   FIRST_GUEST_ADDED:      'first_guest_added',     // UX-7 no-intake funnel
   FIRST_VENDOR_ADDED:     'first_vendor_added',
 
+  // Invite growth loop — host shares their invite link → guest RSVPs back to host.
+  // The two-step viral loop we instrument to measure invite-driven growth.
+  INVITE_SHARED:          'invite_shared',          // host shares/copies invite link
+  GUEST_RSVP_RECEIVED:    'guest_rsvp_received',     // a guest RSVP arrives back to the host
+
   // Activation funnel (Sprint 55N) — denominator → setup → value → retention
   SIGNED_UP:              'signed_up',
   INTAKE_COMMITTED:       'intake_committed',

@@ -2436,6 +2436,11 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         {(() => {
           const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
           if (dormant('needsYou')) return null;   // UX-4: dormant ⇒ not in the main flow
+          // Host shell de-cockpit (task #51): the Decisions/Approvals/Requests/Questions
+          // queue + "Your call to make / Waiting on client" + "+Add/+Create" are PLANNER
+          // machinery. A host's single next thing is the NextBestActionPanel above; the
+          // planner queue never renders to a host.
+          if (d.isHost) return null;
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2476,8 +2481,10 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         {/* Sprint 60B: Event Identity — what this really is + the must-have */}
         <EventIdentityBlock event={event} isMobile />
         <YoureSetOn items={setItems} isMobile />
-        {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?" */}
-        <DecisionsBlock items={decisionItems} isMobile />
+        {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?"
+            Host de-cockpit (task #51): the "Gathering / Blocked" confidence pills are
+            planner-operator framing; hosts never see them. */}
+        {!d.isHost && <DecisionsBlock items={decisionItems} isMobile />}
 
         {/* Next Up */}
         {!dormant('nextUp') && (
@@ -2533,7 +2540,10 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         </div>{/* /hp-recede-group */}
       </div>
 
-      {/* Sticky bottom action bar */}
+      {/* Sticky bottom action bar — planner-only. Host de-cockpit (task #51): a host
+          never hand-files Decisions/Approvals/Requests; their actions come from the
+          next-step engine, not a CRM toolbar. */}
+      {!d.isHost && (
       <div style={{
         position: 'sticky', bottom: 0, left: 0, right: 0,
         background: P.elev, borderTop: `1px solid ${P.borderSubtle}`,
@@ -2544,6 +2554,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <button onClick={onAddApproval} style={actionBtnStyle}>+ Approval</button>
         <button onClick={onAddRequest}  style={actionBtnStyle}>+ Request</button>
       </div>
+      )}
     </div>
   );
 }
@@ -2658,6 +2669,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             {(() => {
               const needs = d.decisions.length + d.approvals.length + d.requests.length + d.questions.length;
               if (dormant('needsYou')) return null;   // UX-4: dormant ⇒ relocated to the rail
+              if (isHost) return null;                // Host de-cockpit (task #51): planner queue never renders to a host
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <SectionHeader label="Needs You" count={needs} countColor={needs > 0 ? P.red : P.green} />
@@ -2690,8 +2702,10 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             {/* Sprint 60B: Event Identity — what this really is + the must-have */}
             <EventIdentityBlock event={event} />
             <YoureSetOn items={setItems} />
-            {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?" */}
-            <DecisionsBlock items={decisionItems} />
+            {/* Sprint 57J: Decision Confidence — "do we have enough to lock this?"
+                Host de-cockpit (task #51): "Gathering / Blocked" confidence pills are
+                planner-operator framing; hosts never see them. */}
+            {!isHost && <DecisionsBlock items={decisionItems} />}
           </div>
 
           {/* RIGHT — operational rail (recedes section-by-section). */}
