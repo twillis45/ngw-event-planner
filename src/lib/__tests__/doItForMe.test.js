@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -115,6 +115,46 @@ describe('draftRsvpChase', () => {
     expect(body).not.toMatch(/💛|friendly nudge/i);
     expect(body).toMatch(/gentle note|mean a great deal/i);
     expect(subject).not.toMatch(/nudge/i);
+  });
+});
+
+describe('draftHelperBrief', () => {
+  const ros = [
+    { time: '12:00', segment: 'Heat the buffet', owner: 'You' },
+    { time: '14:00', segment: 'Set drinks + ice', owner: 'Marcus' },
+    { time: '15:00', segment: 'Greet guests', owner: 'You' },
+  ];
+  test('groups cues by owner with 12h times', () => {
+    const { body, subject } = draftHelperBrief({ ...maya, ros }, profile);
+    expect(subject).toContain("Maya's Graduation");
+    expect(body).toContain('You:');
+    expect(body).toContain('Marcus:');
+    expect(body).toContain('12:00 PM — Heat the buffet');
+    expect(body).toContain('2:00 PM — Set drinks + ice');
+    expect(body).toContain('Todd');
+  });
+  test('no ros → honest placeholder, never invented duties', () => {
+    const { body } = draftHelperBrief({ ...maya, ros: [] }, profile);
+    expect(body).toMatch(/isn’t filled in yet/);
+  });
+});
+
+describe('draftDietaryNote', () => {
+  test('lists each guest dietary need from their own field', () => {
+    const guests = [
+      { name: 'Priya', rsvp: 'Yes', needs: 'Nut allergy' },
+      { name: 'Carlos', rsvp: 'Yes', needs: 'Gluten-free' },
+      { name: 'Tom', rsvp: 'Yes', needs: '' },
+    ];
+    const { body } = draftDietaryNote({ ...maya, guests }, profile);
+    expect(body).toContain('Priya: Nut allergy');
+    expect(body).toContain('Carlos: Gluten-free');
+    expect(body).not.toContain('Tom');           // no need → not listed
+    expect(body).toContain('about 3 guests');     // 3 RSVP'd Yes
+  });
+  test('no needs → honest "nothing to flag", never invents', () => {
+    const { body } = draftDietaryNote({ ...maya, guests: [{ name: 'A', rsvp: 'Yes', needs: '' }] }, profile);
+    expect(body).toMatch(/No special dietary needs/);
   });
 });
 

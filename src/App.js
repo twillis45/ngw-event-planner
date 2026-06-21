@@ -37,7 +37,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, shareOrCopy } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, shareOrCopy } from './lib/doItForMe';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
@@ -19875,6 +19875,21 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           </button>
         )}
 
+        {/* "Do it for me" — the day-of helper brief. From the run of show, the app writes
+            "here's everyone's part" the host drops in the group chat. Shown on the big day
+            once there's a run of show to brief from. */}
+        {isDayOf && !isPost && dayRos.length > 0 && (
+          <button type="button" onClick={() => { const d = draftHelperBrief(ev, profile, { ros: dayRos }); setDraftSheet({ title: 'Everyone’s part', intro: 'Pulled from your run of show — what each person’s on today, ready to drop in the group chat. Make it yours, then send.', draft: d, shareTitle: d.subject, kind: 'recap' }); }}
+            style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, display: 'block' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ ...eyebrow, color: C.accent }}>Ready to send</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone their part</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Today’s plan, by person — already written for the group chat.</div>
+          </button>
+        )}
+
         {/* UX-9 · one-time create receipt (relocated from the success modal) */}
         {!isPost && !isDayOf && <HostWelcomeCard ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
 
@@ -25605,6 +25620,25 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Nudge the {awaiting} who haven’t replied</div>
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A friendly reminder — already written, with your RSVP link.</div>
+          </button>
+        );
+      })()}
+
+      {/* "Do it for me" — the dietary note. From the guests' own needs, the app writes
+          the "here's what the table needs" note for whoever's cooking. Host-only, shown
+          only once at least one guest has a dietary need on file. */}
+      {guestsIsHost && (() => {
+        const needCount = (guests || []).filter(g => g && String(g.needs || '').trim()).length;
+        if (needCount === 0) return null;
+        return (
+          <button type="button" onClick={() => { const d = draftDietaryNote(event, profile, {}); setGuestDraftSheet({ title: 'Notes for the cook', intro: `Pulled from your guests — the ${needCount} dietary ${needCount === 1 ? 'note' : 'notes'} to pass to whoever’s cooking or catering. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
+            style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, marginBottom: 16, display: 'block' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send the cook the dietary notes</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{needCount} {needCount === 1 ? 'guest has' : 'guests have'} a need on file — written up for whoever’s cooking.</div>
           </button>
         );
       })()}

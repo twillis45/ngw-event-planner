@@ -205,6 +205,71 @@ export function draftRsvpChase(event, profile, opts = {}) {
   return { subject: v.sombre ? `A note about ${thing}` : `Quick RSVP nudge — ${thing}`, body: lines.join('\n').trim() };
 }
 
+// HH:MM (24h) → "12:00 PM". Blank/garbage → ''.
+function fmtClock(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+  if (!m) return '';
+  let h = Number(m[1]); const mm = m[2];
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}:${mm} ${ap}`;
+}
+
+// Day-of helper brief — from the run-of-show, the app writes "here's everyone's part"
+// the host drops in the group chat the night before. Grounded in the ROS owners + cues.
+export function draftHelperBrief(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const ros = Array.isArray(event.ros) ? event.ros : (Array.isArray(opts.ros) ? opts.ros : []);
+  const date = fmtLongDate(event.date);
+  const host = hostName(profile);
+  const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
+  // group cues by owner, preserving time order
+  const order = [];
+  const byOwner = new Map();
+  for (const r of ros) {
+    if (!r) continue;
+    const seg = (r.segment ? String(r.segment) : '').trim();
+    if (!seg) continue;
+    const owner = (r.owner ? String(r.owner) : '').trim() || 'Everyone';
+    if (!byOwner.has(owner)) { byOwner.set(owner, []); order.push(owner); }
+    byOwner.get(owner).push({ t: fmtClock(r.time), seg });
+  }
+  const lines = [`Here’s the plan for ${name}${date ? ` — ${date}` : ''} 💛`, 'Thanks for helping out — here’s everyone’s part:', ''];
+  if (order.length === 0) {
+    lines.push('(The run of the day isn’t filled in yet — I’ll send it once it is.)');
+  } else {
+    for (const owner of order) {
+      lines.push(`${owner}:`);
+      for (const c of byOwner.get(owner)) lines.push(`  • ${c.t ? c.t + ' — ' : ''}${c.seg}`);
+      lines.push('');
+    }
+    lines.push('You’ve got this — text me if anything comes up!');
+  }
+  if (host) lines.push('', `— ${host}`);
+  return { subject: `The plan for ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
+// Dietary note to the cook/caterer — from the guests' own dietary/needs fields, the app
+// writes the "here's what the table needs" note. Never invents needs; honest when none.
+export function draftDietaryNote(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const guests = Array.isArray(event.guests) ? event.guests : (Array.isArray(opts.guests) ? opts.guests : []);
+  const host = hostName(profile);
+  const coming = guests.filter((g) => g && g.rsvp === 'Yes').length;
+  const withNeeds = guests.filter((g) => g && String(g.needs || '').trim());
+  const lines = [];
+  if (withNeeds.length === 0) {
+    lines.push(`Quick note for the food${coming ? ` — we’re expecting about ${coming}` : ''}.`);
+    lines.push('No special dietary needs to flag so far — I’ll let you know if that changes.');
+  } else {
+    lines.push(`A few dietary notes for the food${coming ? ` (about ${coming} guests)` : ''}:`);
+    for (const g of withNeeds) lines.push(`• ${(g.name ? String(g.name) : 'A guest').trim()}: ${String(g.needs).trim()}`);
+    lines.push('', 'Thanks so much for accommodating these!');
+  }
+  if (host) lines.push('', host);
+  return { subject: 'Dietary notes for the food', body: lines.join('\n').trim() };
+}
+
 // Recap keepsake — a warm, shareable few lines the host WANTS to send round after the
 // event ("Maya's Graduation — thank you"). Grounded in the event + its heart; tone
 // follows the occasion (somber events get remembrance, not "it was everything!").
