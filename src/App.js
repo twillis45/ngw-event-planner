@@ -19593,11 +19593,15 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
       : kind === 'recap' ? 'a warm recap note to share after the event'
       : 'a warm event invitation';
     const prompt = `A host will send ${kindLabel} as-is. Rewrite the message below so it reads warmer and more natural, staying short and ready-to-send.\n\nHARD RULES:\n- Do NOT add any fact that isn't already in the message — no new dates, times, addresses, places, prices, names, or details. If it isn't there, leave it out.\n- Keep every concrete detail (date, time, place, names, the sign-off) exactly as written.\n- Keep it about the same length. Keep the friendly emoji if present.\n- Return ONLY the finished message text — no preamble, no quotes, no explanation.\n\nMESSAGE:\n${text}`;
-    try {
-      const out = ((await askNGW('message', prompt, { aiKey, maxTokens: 500 })) || '').trim();
-      if (out && out.length > 8) { setPrePolish(text); setText(out); setStatus('polished'); }
-      else setStatus('polishfail');
-    } catch { setStatus('polishfail'); }
+    // The prompt is fully self-contained, so the backend feature only sets a system
+    // voice. Prefer the dedicated 'message' feature, but fall back to an always-deployed
+    // one ('vendor_followup' — short message, no-invent guard) so polish works even
+    // before the backend ships 'message'. Either way: no new facts, host reviews + undo.
+    const tryFeature = async (f) => { try { return ((await askNGW(f, prompt, { aiKey, maxTokens: 500 })) || '').trim(); } catch { return ''; } };
+    let out = await tryFeature('message');
+    if (!out) out = await tryFeature('vendor_followup');
+    if (out && out.length > 8) { setPrePolish(text); setText(out); setStatus('polished'); }
+    else setStatus('polishfail');
     setPolishing(false);
   };
   const undoPolish = () => { if (prePolish != null) { setText(prePolish); setPrePolish(null); setStatus(null); } };
