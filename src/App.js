@@ -20135,7 +20135,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 14 };
   // Mobile type scale: eyebrows were 9px (illegible on a phone) — now T.eyebrow (12 mobile / 11 desktop).
-  const eyebrow = { fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 };
+  // Voice pass (mobile-innovation audit move #1): the uppercase tracked-out "kicker"
+  // eyebrow is the loudest SaaS tell. De-shout it — sentence case, light tracking, a
+  // quiet section label instead of a B2B analytics-panel header.
+  const eyebrow = { fontSize: T.caption, fontWeight: 600, letterSpacing: '0.01em', color: C.muted, marginBottom: 8 };
 
   return (
     <>
@@ -20358,7 +20361,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               </button>
               {rest.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
+                  <div style={{ fontSize: T.caption, fontWeight: 600, letterSpacing: '0.01em', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {rest.map((it) => (
                       <button key={it.id} type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: it.id }); } catch { /* never block the send */ } setDraftSheet(it.sheet); }}
@@ -20403,7 +20406,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           return (
             <div className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <div style={eyebrow}>What still needs you</div>
+                <div style={eyebrow}>Still on you</div>
                 {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
