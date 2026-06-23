@@ -19644,6 +19644,11 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
               )}
             </div>
           )}
+          {/* Info CTA — make it obvious these aren't fixed: the list is built from the
+              host's own menu choices and re-sizes/re-prices when they change. */}
+          <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 4, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+            Built from your <span style={{ color: C.text, fontWeight: 600 }}>menu choices</span> — swap any item, change a course, or adjust the count and it re-sizes and re-prices itself. You're never locked in.
+          </div>
         </div>
       );
     }
