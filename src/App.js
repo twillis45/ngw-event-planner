@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments, playbookSetupPreview } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments, playbookSetupPreview, playbookRisks } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -8266,6 +8266,47 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
         })}
       </div>
       </>
+      )}
+    </div>
+  );
+}
+
+// ── WhatCouldGoWrongPanel — surfaces the playbook's AUTHORED risk→fix wisdom
+// (playbookRisks), the differentiated operational intelligence that was computed
+// but dark. Collapsed by default — it whispers (Attention System), reassurance on
+// demand, not an alarm. Each row: what the pros watch for + the fix they use.
+function WhatCouldGoWrongPanel({ event, isMobile = false }) {
+  const C = useT();
+  const [expanded, setExpanded] = useState(false);
+  const rk = (() => { try { return playbookRisks(event); } catch { return null; } })();
+  if (!rk || !rk.items || !rk.items.length) return null;
+  const sevColor = (rank) => (rank <= 1 ? (C.danger || C.accent) : rank === 2 ? (C.accentTopGrad || C.accent) : C.muted);
+  const sevWord = { critical: 'Critical', high: 'High', med: 'Watch', medium: 'Watch', low: 'Minor' };
+  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  return (
+    <div style={card}>
+      <button type="button" onClick={() => setExpanded((v) => !v)}
+        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>What could go wrong</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{expanded ? 'Hide' : `${rk.count} the pros plan for →`}</div>
+      </button>
+      {expanded && (
+        <>
+          <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>The handful of things that trip up a {String(event.type || 'event').toLowerCase()} — and how the pros handle each. Nothing for you to do now; just so you know.</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {rk.items.map((r, i) => (
+              <div key={r.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0' }}>
+                <span aria-hidden style={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: sevColor(r.rank) }} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>{r.trigger}
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: sevColor(r.rank), textTransform: 'uppercase', marginLeft: 8, verticalAlign: 'middle' }}>{sevWord[r.severity] || 'Watch'}</span>
+                  </span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.45 }}><span style={{ fontWeight: 700, color: C.text }}>The fix:</span> {r.mitigation}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -34701,6 +34742,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Event Day Schedule' && <>
           <LegacyTabHeader label="The day" hint="Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day." onBack={() => go('Command')} />
           <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+          <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
           <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
         </>}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
@@ -35385,6 +35427,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             onBack={() => handleTabChange('Command')} />
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
+          <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"

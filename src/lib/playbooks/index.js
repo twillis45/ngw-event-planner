@@ -609,6 +609,29 @@ export function playbookInfraPrompts(event) {
   return { prompts, summary: prompts.map((p) => p.short).join(' · '), because };
 }
 
+// ── What-could-go-wrong reader (Sprint — surface authored risk wisdom) ─────────
+// Pure reader over the playbook's AUTHORED `risks` array — the operational wisdom
+// the pros plan for, that's been computed-but-dark (scanned only as text for the
+// infra prompts, never shown). Each authored risk carries a trigger (what goes
+// wrong) and a mitigation (the fix). We never infer or invent a risk; we only
+// surface what the playbook author wrote, sorted by severity. Types without
+// authored risks return null.
+const RISK_RANK = { critical: 0, high: 1, med: 2, medium: 2, low: 3 };
+export function playbookRisks(event) {
+  if (!event) return null;
+  const pb = getPlaybook(event.type);
+  if (!pb || !Array.isArray(pb.risks)) return null;
+  const items = pb.risks
+    .filter((r) => r && r.trigger && r.mitigation)
+    .map((r) => {
+      const sev = String(r.severity || 'med').toLowerCase();
+      return { id: r.id, trigger: String(r.trigger).trim(), mitigation: String(r.mitigation).trim(), severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2 };
+    })
+    .sort((a, b) => (a.rank - b.rank));
+  if (!items.length) return null;
+  return { items, count: items.length };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a
