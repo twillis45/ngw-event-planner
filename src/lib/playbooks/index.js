@@ -762,6 +762,34 @@ const FOOD_GROUP = { food: 'Food', beverage: 'Drinks' };
 // backend (BLS Average Price). opts.priceContext carries { region, month, source }
 // so the UI can label it honestly ("adjusted for {region}") — never claim "live"
 // without a real factor. With no factor it is a 1.0 no-op (today's behavior).
+// Dietary heads-up keyword map. Each NOTED restriction → a name pattern + a short
+// label. Honest by framing: this is a "double-check this line" prompt (purchases have
+// no allergen data), not a hard claim. Patterns are scoped to avoid the obvious false
+// positives (butternut/coconut/nutmeg are NOT nut flags; "meat" alone isn't).
+const DIET_KEYWORDS = {
+  'Nut allergy':  { re: /\b(peanut|almond|pecan|walnut|cashew|pistachio|hazelnut|praline|nuts?)\b/i, not: /butternut|coconut|nutmeg|doughnut|donut/i, label: 'nuts' },
+  'Nut-free':     { re: /\b(peanut|almond|pecan|walnut|cashew|pistachio|hazelnut|praline|nuts?)\b/i, not: /butternut|coconut|nutmeg|doughnut|donut/i, label: 'nuts' },
+  'Gluten-free':  { re: /\b(bread|rolls?|buns?|cornbread|crackers?|pasta|noodle|flour|cake|pie|cookie|biscuit|wheat|pretzel|crust|breaded|stuffing|cobbler|pudding|tortilla|bun)\b/i, label: 'gluten' },
+  'Dairy-free':   { re: /\b(cheese|butter|cream|milk|yogurt|ranch|custard|ice cream|mac (&|and) cheese)\b/i, label: 'dairy' },
+  'Shellfish':    { re: /\b(shrimp|crabs?|lobster|clams?|oysters?|mussels?|scallops?|crawfish|shellfish|prawn)\b/i, label: 'shellfish' },
+  'Vegetarian':   { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|fish|shrimp|crab|wings?|hot links?|oxtail|seafood|salmon|half-?smoke|meatball|lamb|charcuterie|salami|prosciutto|pepperoni|cured meat)\b/i, label: 'not veg' },
+  'Vegan':        { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|fish|shrimp|crab|wings?|oxtail|seafood|salmon|cheese|butter|cream|milk|eggs?|honey|yogurt|lamb|charcuterie|salami|prosciutto|pepperoni)\b/i, label: 'not vegan' },
+  'Pescatarian':  { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|wings?|oxtail|half-?smoke|hot links?|lamb|meatball|charcuterie|salami|prosciutto|pepperoni)\b/i, label: 'not pesc.' },
+  'Halal':        { re: /\b(pork|bacon|ham|sausage|hot links?|half-?smoke|wine|beer|liquor|cocktail|spirits?)\b/i, label: 'check halal' },
+  'Kosher':       { re: /\b(pork|bacon|ham|shellfish|shrimp|crabs?|lobster|clams?|oysters?)\b/i, label: 'check kosher' },
+  'Alcohol-free': { re: /\b(wine|beer|cocktail|spirits?|liquor|champagne|sangria|rum|vodka|whiskey|bourbon|tequila|prosecco|mimosa|cider|seltzer)\b/i, label: 'alcohol' },
+};
+export function itemDietaryFlags(name, activeDiets) {
+  if (!name || !Array.isArray(activeDiets) || !activeDiets.length) return [];
+  const n = String(name);
+  const out = [];
+  for (const diet of activeDiets) {
+    const m = DIET_KEYWORDS[diet];
+    if (m && m.re.test(n) && !(m.not && m.not.test(n))) out.push(m.label);
+  }
+  return [...new Set(out)];
+}
+
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
@@ -907,6 +935,18 @@ export function playbookFoodPlan(event, opts = {}) {
     });
   }
   const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
+
+  // Dietary heads-up per item — when a restriction is NOTED for the event, mark the
+  // food whose NAME relates to it so the host knows which lines to double-check. This
+  // is honest by framing: purchases carry no allergen data, so it's a "watch this"
+  // prompt (keyword-matched), never a hard "contains X" claim. Mutates the list items.
+  const activeDiets = specialDiets.map((d) => d.diet);
+  if (activeDiets.length) {
+    for (const it of list) {
+      const flags = itemDietaryFlags(it.item || it.short, activeDiets);
+      if (flags.length) it.dietFlags = flags;
+    }
+  }
 
   // Essential NON-food supplies (kraft-paper table cover, propane, safety kit…) —
   // folded into the list as their own "Supplies" group so they get the EXACT same

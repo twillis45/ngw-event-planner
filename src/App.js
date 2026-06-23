@@ -8797,6 +8797,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                        {/* Dietary heads-up — a noted restriction relates to this item (double-check). */}
+                        {Array.isArray(i.dietFlags) && i.dietFlags.map((f) => (
+                          <span key={f} title="A dietary need you noted relates to this item — double-check it"
+                            style={{ fontSize: T.caption, fontWeight: 700, color: C.warn || '#ef962e', background: `${C.warn || '#ef962e'}1c`, border: `1px solid ${(C.warn || '#ef962e')}44`, borderRadius: 6, padding: '1px 6px', marginLeft: 7, whiteSpace: 'nowrap' }}>⚠ {f}</span>
+                        ))}
                         {i.perGuest != null && (
                           <span style={{ display: 'block', fontSize: T.secondary, marginTop: 2 }}>
                             <span style={{ color: steel, fontWeight: 600 }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
