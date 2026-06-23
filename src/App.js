@@ -35580,7 +35580,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {/* Board ruling (2026-06-11): the global header is CHROME — it spans the
           frame FULL-BLEED (one clean line), not capped to the body's reading
           column. Capping it forced the chips/buttons to wrap onto 3-4 lines. */}
-      {tab !== 'Command' && <div style={{ padding: hPad, position: 'relative' }}>
+      {tab !== 'Command' && <div style={{ padding: hPad, paddingBottom: 10, position: 'relative' }}>
         {/* Overall-progress fill along the header's bottom edge — the divider line IS the
             progress bar. STATUS-COLORED: green when on-pace/ready, steel when behind
             (Studio Matte confidence palette — never alarming amber/red). On every tab. */}
