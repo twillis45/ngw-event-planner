@@ -34465,7 +34465,7 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
 //   • Studio mode (L1 Studio Home): pass a precomputed cross-event `command`
 //     (selectStudioCommand), an `eventLabel` prefix, and `totalOpen`. The parent
 //     owns navigation (it opens the right event), so onNavigate gets the route.
-function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile, onNavigate, eventsHydrated = true }) {
+function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile, onNavigate, eventsHydrated = true, stickyTop = 0 }) {
   const C = useT();
   const s = makeS(C);
   const studio = command !== undefined;
@@ -34513,7 +34513,7 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
       background: advanced ? (caughtUp ? C.success + '12' : C.accent2 + '0E') : (C.bg || '#0b0d10'),
       transition: 'background 0.45s ease',
       position: 'sticky',
-      top: 0,
+      top: stickyTop,   // sits just below the (also-sticky) header
       zIndex: 50,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -34977,6 +34977,12 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // saving appends a persisted record onto event.decisionMemory[]. Gated by pi.memory.
   const [decPrompt, setDecPrompt] = useState(null);
   const promptDecision = (cfg) => { if (decisionMemoryOn() && cfg) setDecPrompt(cfg); };
+  // Sticky header + spine: freeze BOTH at the top on scroll. The header carries the
+  // progress fill + % chip; the spine sits just below it (offset by the measured
+  // header height so they stack instead of overlapping). The measuring effect lives
+  // below the `tab` declaration (it depends on tab) to avoid a TDZ reference.
+  const headerRef = useRef(null);
+  const [headerH, setHeaderH] = useState(0);
   const saveDecision = (rationale) => {
     if (decPrompt && rationale && rationale.trim()) {
       track(EVENTS.DECISION_CAPTURED, { decision_type: decPrompt.decisionType });
@@ -34989,6 +34995,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   };
   const _initialNorm = normalizeEventTabRoute(initialNav?.tab, initialNav?.taskId || initialNav?.timelineId);
   const [tab,             setTab]            = useState(_initialNorm.tab || 'Command');
+  // Measure the sticky header so the spine can sit just below it (re-runs per tab,
+  // since the header only renders for tab !== 'Command').
+  useEffect(() => {
+    const el = headerRef.current; if (!el) { setHeaderH(0); return undefined; }
+    const measure = () => setHeaderH(el.offsetHeight || 0);
+    measure();
+    let ro; try { ro = new ResizeObserver(measure); ro.observe(el); } catch (e) { window.addEventListener('resize', measure); }
+    return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', measure); };
+  }, [tab]);
   // Sprint 59B: which view inside the merged Planning tab is active. Seeded
   // from the legacy tab name so a route to 'Timeline' opens Planning →
   // Timeline view, 'Checklist' opens Planning → Checklist view, and
@@ -35697,7 +35712,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {/* Board ruling (2026-06-11): the global header is CHROME — it spans the
           frame FULL-BLEED (one clean line), not capped to the body's reading
           column. Capping it forced the chips/buttons to wrap onto 3-4 lines. */}
-      {tab !== 'Command' && <div style={{ padding: hPad, paddingBottom: 10, position: 'relative' }}>
+      {tab !== 'Command' && <div ref={headerRef} style={{ padding: hPad, paddingBottom: 10, position: 'sticky', top: 0, zIndex: 60, background: C.bg || '#0b0d10' }}>
         {/* Overall-progress fill along the header's bottom edge — the divider line IS the
             progress bar. STATUS-COLORED: green when on-pace/ready, steel when behind
             (Studio Matte confidence palette — never alarming amber/red). On every tab. */}
@@ -35918,6 +35933,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           event={event}
           pad={hPad}
           isMobile={isMobile}
+          stickyTop={headerH}
           onNavigate={(route) => {
             route = route || { tab: 'Command' }; // never no-op: a routeless CTA falls back to the overview
             const itemId = route.vendorId || route.decisionId || route.commId || route.taskId || route.timelineId || undefined;
