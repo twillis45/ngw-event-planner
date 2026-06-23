@@ -1269,6 +1269,29 @@ function ThemeToggle() {
 
 const BpCtx = createContext('desktop');
 
+// ── Mobile-first type scale (2026-06-23 mobile-typography rethink) ────────────
+// The phone is the design target. Six steps, with a HARD 12px floor on mobile —
+// the 7.5–11px micro-type band is deleted on mobile. useType() resolves the right
+// column for the current breakpoint; use T.body/T.secondary/T.eyebrow instead of
+// reaching for an inline "11ish". (Kept inline here to match App.js's tokens-inline
+// pattern; mirrors the doctrine in engine-audit/MOBILE_TYPOGRAPHY_AUDIT_2026-06-23.)
+const TYPE_SCALE = {
+  display:   { mobile: 26, desktop: 30 },
+  title:     { mobile: 19, desktop: 20 },
+  body:      { mobile: 16, desktop: 15 },  // the readable default — the new workhorse
+  secondary: { mobile: 14, desktop: 13 },  // supporting copy, row meta
+  caption:   { mobile: 13, desktop: 12 },  // timestamps, small meta
+  eyebrow:   { mobile: 12, desktop: 11 },  // uppercase labels (used sparingly)
+};
+const useType = () => {
+  const bp = useContext(BpCtx);
+  const k = bp === 'mobile' ? 'mobile' : 'desktop';
+  return {
+    display: TYPE_SCALE.display[k], title: TYPE_SCALE.title[k], body: TYPE_SCALE.body[k],
+    secondary: TYPE_SCALE.secondary[k], caption: TYPE_SCALE.caption[k], eyebrow: TYPE_SCALE.eyebrow[k],
+  };
+};
+
 // Auth context — when Supabase is configured, the planner app is gated behind a
 // AuthCtx is defined in src/contexts/AuthContext.jsx and provided by AuthGate.
 
@@ -19949,6 +19972,7 @@ function AssembleReveal({ ev, profile, onDone }) {
 
 function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
   const C = useT();
+  const T = useType();
   const isMobile = useContext(BpCtx) === 'mobile';
   const [setupOpen, setSetupOpen] = useState(false);
   const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
@@ -20082,7 +20106,8 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const allProgDone = prog.length > 0 && prog.every(p => p.state === 'done');
 
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 14 };
-  const eyebrow = { fontSize: 9, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 };
+  // Mobile type scale: eyebrows were 9px (illegible on a phone) — now T.eyebrow (12 mobile / 11 desktop).
+  const eyebrow = { fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 };
 
   return (
     <>
@@ -20092,7 +20117,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* 1 · Event Summary */}
         <div style={{ ...card, background: 'transparent', border: 'none', padding: '8px 4px 16px' }}>
           <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15 }}>{ev.name || 'Your event'}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 8, fontSize: 13.5, color: C.muted }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 8, fontSize: T.body, color: C.muted }}>
             <span>{fmtDate}</span>
             {guestCount > 0 && <span>· {guestCount} guests</span>}
             {daysLeft !== null && daysLeft >= 0 && <span style={{ color: C.text, fontWeight: 600 }}>· {daysLeft === 0 ? 'Today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} to go`}</span>}
@@ -20114,12 +20139,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                 <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>
                   {nextCue.time ? `${fmtTime12(nextCue.time)} — ` : ''}{nextCue.segment || 'Next up'}
                 </div>
-                <div style={{ fontSize: 13.5, color: C.muted, marginTop: 6 }}>Your run of show is ready. Tap in and work it top to bottom →</div>
+                <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>Your run of show is ready. Tap in and work it top to bottom →</div>
               </>
             ) : (
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>It's the big day.</div>
-                <div style={{ fontSize: 13.5, color: C.muted, marginTop: 6 }}>Open the day to work your run of show →</div>
+                <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>Open the day to work your run of show →</div>
               </>
             )}
           </button>
@@ -20133,10 +20158,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ ...eyebrow, color: C.accent }}>Ready to send</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone their part</div>
-            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Today’s plan, by person — already written for the group chat.</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Today’s plan, by person — already written for the group chat.</div>
           </button>
         )}
 
@@ -20155,7 +20180,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
             <div style={eyebrow}>Your next step</div>
             <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
-            {na.consequence && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
+            {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
             {na.primaryCta && (
               <button onClick={() => {
                   track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category });
@@ -20291,30 +20316,30 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               {/* The magic: it already did the hard parts. ONE hero to act on now; the rest
                   it's prepared sit quietly under "Also ready" — no competing heroes, the
                   stack collapsed (Attention System / mobile). */}
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
+              <div style={{ fontSize: T.body, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
+              <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
               <button type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: hero.id }); } catch { /* never block the send */ } setDraftSheet(hero.sheet); }}
                 style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                   <span style={eyebrow}>{hero.eyebrow}</span>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>{hero.cta}</span>
+                  <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>{hero.cta}</span>
                 </div>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>{hero.title}</div>
-                {hero.preview && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{hero.preview}…”</div>}
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{hero.sub}</div>
+                {hero.preview && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{hero.preview}…”</div>}
+                <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{hero.sub}</div>
               </button>
               {rest.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
+                  <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {rest.map((it) => (
                       <button key={it.id} type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: it.id }); } catch { /* never block the send */ } setDraftSheet(it.sheet); }}
                         style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderRadius: 10, background: C.surface, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                         <span style={{ minWidth: 0 }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{it.row}</span>
-                          <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>{it.rowSub}</span>
+                          <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 8 }}>{it.rowSub}</span>
                         </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, flexShrink: 0 }}>Open →</span>
+                        <span style={{ fontSize: T.caption, fontWeight: 700, color: C.accent, flexShrink: 0 }}>Open →</span>
                       </button>
                     ))}
                   </div>
@@ -20351,7 +20376,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             <div className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
                 <div style={eyebrow}>What still needs you</div>
-                {doneCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
+                {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
                 {visible.map(({ p, i }) => {
@@ -20373,15 +20398,15 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text }}>{p.label}</span>
+                      <span style={{ display: 'block', fontSize: T.body, fontWeight: 600, color: C.text }}>{p.label}</span>
                       {step && step.action && (
-                        <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {step.action}{step.owner && step.owner !== 'host' ? ` · ${step.owner}` : ''}
                         </span>
                       )}
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: dueColor }}>{dueText}</span>
+                      <span style={{ fontSize: T.secondary, fontWeight: 700, color: dueColor }}>{dueText}</span>
                       <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
                     </span>
                   </button>
@@ -20389,7 +20414,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                 })}
                 {moreCount > 0 && (
                   <button type="button" onClick={() => setSetupOpen(visible[visible.length - 1].i)}
-                    style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, color: C.muted }}>
+                    style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, color: C.muted }}>
                     +{moreCount} more, one step at a time ›
                   </button>
                 )}
@@ -20412,7 +20437,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             {id.reallyIs && <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{id.reallyIs}</div>}
             {isMeaningfulMustHave(id.mustHaveMoment) && (
               <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
+                <div style={{ fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
               </div>
             )}
@@ -20440,7 +20465,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+              <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
                 {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
               </div>
             </button>
@@ -20461,7 +20486,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                     style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '11px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.label}</span>
-                      <span style={{ fontSize: 11.5, color: C.muted }}>{r.hint}</span>
+                      <span style={{ fontSize: T.secondary, color: C.muted }}>{r.hint}</span>
                     </span>
                     <span style={{ fontSize: 16, color: C.muted }}>›</span>
                   </button>
@@ -20478,7 +20503,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>
               <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
-              <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
+              <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
             </span>
             <span style={{ fontSize: 18, color: C.muted }}>→</span>
           </button>
