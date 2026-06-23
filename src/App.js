@@ -8511,6 +8511,16 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
 
   return (
     <div style={{ marginBottom: 20, maxWidth: 760 }}>
+      {/* The heart, mid-planning — the one moment this whole plan serves, anchored
+          on the planning surface (not only on The Day) so the food/budget choices
+          stay pointed at the why. */}
+      {isMeaningfulMustHave(event.must_have_moment) && (
+        <div style={{ ...card, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
+        </div>
+      )}
       {/* header + budget */}
       <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
         <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
@@ -23803,7 +23813,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget }) {
+function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '' }) {
   const C = useT();
   const bp = useContext(BpCtx);
   const [budgetDraft, setBudgetDraft] = useState(totalBudget ? String(totalBudget) : '');
@@ -23849,6 +23859,14 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
 
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760, margin: '0 auto' }}>
+      {/* The heart, mid-planning — keep the money pointed at the why. */}
+      {isMeaningfulMustHave(mustHave) && (
+        <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(mustHave).trim()}</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
+        </div>
+      )}
       {/* HERO — the honest total. ONE hero per screen (SM-2). */}
       <div style={{ ...card, padding: isMobile ? 18 : 24 }}>
         <div style={label}>Your spending plan</div>
@@ -24325,6 +24343,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         hasRegion={foodPP.hasRegion}
         totalBudget={event ? Number(event.totalBudget) || 0 : 0}
         onSetTotalBudget={onSetTotalBudget}
+        mustHave={event ? event.must_have_moment : ''}
       />
     );
   }
