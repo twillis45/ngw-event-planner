@@ -1375,6 +1375,18 @@ const countdownShort = (days) => {
   if (days > 0)  return `${days}d`;
   return `${Math.abs(days)}d ago`;
 };
+// Countdown WARMS as the day nears (mobile-innovation audit): anticipation should
+// grow more present as it approaches, not grey out. Brighter = nearer, all within
+// the Studio Matte green/steel palette (no warm gold) — "warming" = rising presence.
+const countdownTone = (days, C) => {
+  if (days == null) return C.muted;
+  if (days < 0)   return C.muted;                 // past — calm
+  if (days === 0) return C.success || C.accent;   // today — peak presence (arrived)
+  if (days <= 7)  return C.accent;                // this week — lit
+  if (days <= 30) return C.accent2 || C.accent;   // weeks out — present
+  if (days <= 90) return C.text;                  // a month-plus — quietly present
+  return C.muted;                                  // far off — calm
+};
 const parseMin  = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 const fmtDur    = (m) => { if (!m || m <= 0) return ''; const h = Math.floor(m / 60); const r = m % 60; return h > 0 ? (r > 0 ? `${h}h ${r}m` : `${h}h`) : `${r}m`; };
 const fmtTime12 = (t) => { if (!t) return '—'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
@@ -11495,7 +11507,7 @@ function EventCard({ event, onClick }) {
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{event.venue || '—'} · {fmtDate(event.date)}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {days !== null && <span style={s.pill(days < 0 ? C.muted : days <= 90 ? C.muted : C.accent)}>{countdownLabel(days)}</span>}
+        {days !== null && <span style={s.pill(countdownTone(days, C))}>{countdownLabel(days)}</span>}
         {statusLabel && <span style={s.pill(C.muted)}>{statusLabel}</span>}
         {isArchived  && <span style={s.pill(C.muted)}>Archived</span>}
       </div>
@@ -19812,6 +19824,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 // already done; the host just sends.
 function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile, orderItems }) {
   const [text, setText] = useState((draft && draft.body) || '');
+  const T = useType();
   const [status, setStatus] = useState(null);
   const aiKey = useAIKey();
   const [polishing, setPolishing] = useState(false);
@@ -19872,19 +19885,19 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
     <div role="dialog" aria-label={title} onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 24 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: C.surface, border: `1px solid ${C.border}`, borderRadius: isMobile ? '18px 18px 0 0' : 16, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: isMobile ? '88vh' : '86vh', overflowY: 'auto', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>{title}</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>{title}</div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: 20, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, color: C.text, lineHeight: 1.25, marginBottom: intro ? 6 : 12 }}>We wrote it for you.</div>
-        {intro && <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{intro}</div>}
+        {intro && <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{intro}</div>}
         <textarea value={text} onChange={e => setText(e.target.value)} rows={isMobile ? 9 : 8}
           style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 14, lineHeight: 1.55, padding: '13px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
-          <div style={{ fontSize: 11, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
+          <div style={{ fontSize: T.secondary, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
           {aiInputOn(aiKey) && (
             prePolish != null
-              ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.muted }}>↺ Undo polish</button>
-              : <button type="button" onClick={polish} disabled={polishing} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: `${C.accent}14`, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 11px', cursor: polishing ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.accent, opacity: polishing ? 0.7 : 1 }}>
+              ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 700, color: C.muted }}>↺ Undo polish</button>
+              : <button type="button" onClick={polish} disabled={polishing} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: `${C.accent}14`, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 11px', cursor: polishing ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 700, color: C.accent, opacity: polishing ? 0.7 : 1 }}>
                   {polishing ? <span style={{ display: 'inline-block', width: 10, height: 10, border: `2px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> : '✨'} {polishing ? 'Polishing…' : 'Polish'}
                 </button>
           )}
@@ -19894,7 +19907,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
           <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
         </div>
         {Array.isArray(orderItems) && orderItems.length > 0 && (
-          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: 13.5, fontWeight: 800, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
+          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: T.body, fontWeight: 800, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
             🛒 {ordering ? 'One sec…' : 'Order on Instacart →'}
           </button>
         )}
@@ -19906,7 +19919,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
           const names = orderItems.map((i) => (i && i.name ? String(i.name).trim() : '')).filter(Boolean);
           const thingsHref = `things:///add?title=${encodeURIComponent('Shopping — ' + (shareTitle || 'list'))}&checklist-items=${encodeURIComponent(names.join('\n'))}`;
           const mailHref = `mailto:?subject=${encodeURIComponent(shareTitle || 'Shopping list')}&body=${encodeURIComponent(text)}`;
-          const chip = { flex: 1, textAlign: 'center', fontSize: 12.5, fontWeight: 700, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', fontFamily: 'inherit' };
+          const chip = { flex: 1, textAlign: 'center', fontSize: T.secondary, fontWeight: 700, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', fontFamily: 'inherit' };
           return (
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <a href={thingsHref} style={chip}>✓ Add to Things</a>
@@ -19914,7 +19927,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
             </div>
           );
         })()}
-        {statusLine && <div style={{ fontSize: 12, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
+        {statusLine && <div style={{ fontSize: T.caption, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
       </div>
     </div>
   );
@@ -35747,7 +35760,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             {days !== null && event.date ? ' · ' : ''}
           </span>
           {days !== null && event.date && (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: hostNavActive(event) ? (days <= 3 && days >= 0 ? C.accent : C.muted) : (days <= 14 ? C.danger : days <= 90 ? C.warn : C.muted), whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: hostNavActive(event) ? countdownTone(days, C) : (days <= 14 ? C.danger : days <= 90 ? C.warn : C.muted), whiteSpace: 'nowrap' }}>
               {countdownLabel(days)}
             </span>
           )}
