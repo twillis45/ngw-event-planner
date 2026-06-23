@@ -182,7 +182,7 @@ const ClientIntakeFlow        = lazy(() => import('./plan/ClientIntakeFlow'));
 
 // Lightweight fallback for lazy-loaded specialists.
 const SpecialistFallback = () => (
-  <div style={{ padding: 40, color: '#849eb8', fontSize: 13, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif" }}>
+  <div style={{ padding: 40, color: '#849eb8', fontSize: 13, textAlign: 'center', fontFamily: FF }}>
     Loading…
   </div>
 );
@@ -440,7 +440,7 @@ const C = DARK;
 const makeS = (C) => {
   const isLight = C.surface === '#ffffff';
   return {
-    app: { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeLegibility' },
+    app: { minHeight: '100vh', background: C.bg, color: C.text, fontFamily: FF, fontSize: 14, WebkitFontSmoothing: 'antialiased', MozOsxFontSmoothing: 'grayscale', textRendering: 'optimizeLegibility' },
     header: {
       padding: '28px 32px 0',
       borderBottom: `1px solid ${C.border}`,
@@ -481,13 +481,13 @@ const makeS = (C) => {
     // CommandCenter section eyebrows, and Vendor Cockpit collapsible
     // headers — so every "section start" in the app reads in one voice.
     cardTitle: { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, margin: '0 0 14px' },
-    input: { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: "'Inter', system-ui, sans-serif" },
+    input: { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: FF },
     btn: (v = 'default') => {
       // ONE canonical CTA size for the whole app (parity pass). minHeight +
       // inline-flex centering means every s.btn() matches in height whether or
       // not it carries an icon — no more 30/34/38 drift across tabs. Genuinely
       // compact contexts still override padding/minHeight locally.
-      const baseBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 32, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.1, whiteSpace: 'nowrap', boxSizing: 'border-box', fontFamily: "'Inter', system-ui, sans-serif" };
+      const baseBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 32, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.1, whiteSpace: 'nowrap', boxSizing: 'border-box', fontFamily: FF };
       if (v === 'primary') {
         // Sprint 60.U — promote the marquee new-event CTA's brushed-steel gradient
         // to the standard primary CTA so every primary action shares one premium
@@ -602,7 +602,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 40, textAlign: 'center', fontFamily: "'Inter', system-ui, sans-serif", background: carbonBody, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ padding: 40, textAlign: 'center', fontFamily: FF, background: carbonBody, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#e8e8f0', marginBottom: 8 }}>A component failed to render</div>
           <div style={{ fontSize: 12, color: '#6b6b80', marginBottom: 6, maxWidth: 340 }}>Your data is safe — this is a display error, not a data loss event.</div>
           <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'monospace', marginBottom: 24, maxWidth: 380, wordBreak: 'break-word' }}>{this.state.error.message}</div>
@@ -1283,12 +1283,18 @@ const TYPE_SCALE = {
   caption:   { mobile: 13, desktop: 12 },  // timestamps, small meta
   eyebrow:   { mobile: 12, desktop: 11 },  // uppercase labels (used sparingly)
 };
+// The ONE font-family token for App.js (the src/plan/* modules already use FF = type.family).
+// Set on the app root too, so most elements inherit and never need to declare it.
+const FF = "'Inter', system-ui, -apple-system, sans-serif";
+// Weight token — the named weights, so fontWeight stops being a raw magic number.
+const FW = { regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800 };
 const useType = () => {
   const bp = useContext(BpCtx);
   const k = bp === 'mobile' ? 'mobile' : 'desktop';
   return {
     display: TYPE_SCALE.display[k], title: TYPE_SCALE.title[k], body: TYPE_SCALE.body[k],
     secondary: TYPE_SCALE.secondary[k], caption: TYPE_SCALE.caption[k], eyebrow: TYPE_SCALE.eyebrow[k],
+    w: FW, ff: FF,  // weight + family tokens, so T carries all three font properties
   };
 };
 
@@ -7001,7 +7007,7 @@ function VendorBriefView({ brief }) {
   const eyebrow   = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 12 };
 
   return (
-    <div style={{ minHeight: '100vh', background: LC.bg, fontFamily: "'Inter', system-ui, sans-serif", color: LC.text, padding: '0 0 64px' }}>
+    <div style={{ minHeight: '100vh', background: LC.bg, fontFamily: FF, color: LC.text, padding: '0 0 64px' }}>
       {/* ── Brand bar ── */}
       <div style={{ background: '#fff', borderBottom: `1px solid ${LC.border}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
@@ -12291,7 +12297,7 @@ function ClientPortalPublicView({ token, events }) {
   }[k] || k || 'Decision');
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, fontFamily: "'Inter', system-ui, sans-serif", color: text }}>
+    <div style={{ minHeight: '100vh', background: bg, fontFamily: FF, color: text }}>
       {/* Header — Sprint 61.E: Event Boss branding, steel-blue accent */}
       <div style={{ background: card, borderBottom: `1px solid ${border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(180deg, ${accent} 0%, #3F5B6A 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)' }}>✓</div>
@@ -23268,7 +23274,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     max={f.amount}
                     step="0.01"
                     placeholder="0"
-                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: (f.paidAmount || 0) > 0 ? C.muted : C.text, width: 64, fontFamily: "'Inter', system-ui, sans-serif" }}
+                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: (f.paidAmount || 0) > 0 ? C.muted : C.text, width: 64, fontFamily: FF }}
                     value={f.paidAmount || ''}
                     onChange={e => updateF('paidAmount', Math.min(Number(e.target.value) || 0, f.amount))}
                   />
@@ -25497,7 +25503,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   const lInput = {
     background: LC.bg, border: `1.5px solid ${LC.border}`, borderRadius: 10,
     color: LC.text, fontSize: 16, padding: '12px 14px', outline: 'none',
-    width: '100%', boxSizing: 'border-box', fontFamily: "'Inter', system-ui, sans-serif",
+    width: '100%', boxSizing: 'border-box', fontFamily: FF,
   };
 
   const submit = () => {
@@ -25520,7 +25526,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   const clearErr = () => { if (err) setErr(''); };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: LC.bg, overflowY: 'auto', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: LC.bg, overflowY: 'auto', fontFamily: FF }}>
       {!guestMode && (
         <div style={{ background: C.accent, color: '#fff', fontSize: 11, fontWeight: 700, textAlign: 'center', padding: '7px 16px', letterSpacing: '0.06em', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
           GUEST PREVIEW — this is what your RSVP link looks like
@@ -26857,7 +26863,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
         <StatCard label="Seated" value={seated} color={seated === confirmed.length && confirmed.length > 0 ? C.success : C.muted} sub={`${unassigned.length} unassigned`} />
         <div style={{ ...s.card, flex: 1, minWidth: 110, marginBottom: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Tables</div>
-          <input type="number" min="1" max="50" value={tableCount} onChange={e => onTablesChange && onTablesChange(Math.max(1, Number(e.target.value) || 1))} style={{ ...s.statNum(), fontSize: 28, border: 'none', background: 'transparent', outline: 'none', width: 64, padding: 0, fontFamily: "'Inter', system-ui, sans-serif" }} />
+          <input type="number" min="1" max="50" value={tableCount} onChange={e => onTablesChange && onTablesChange(Math.max(1, Number(e.target.value) || 1))} style={{ ...s.statNum(), fontSize: 28, border: 'none', background: 'transparent', outline: 'none', width: 64, padding: 0, fontFamily: FF }} />
         </div>
         <StatCard label="Avg / Table" value={confirmed.length ? Math.round(confirmed.length / tableCount) : '—'} />
       </div>
@@ -27381,7 +27387,7 @@ function VendorScriptsPanel({ profile, event }) {
                   {mode === 'phone' && (
                     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Phone talking points</div>
                   )}
-                  <pre style={{ fontSize: 12, lineHeight: 1.7, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: C.text, fontFamily: "'Inter', system-ui, sans-serif", margin: 0, marginBottom: 12 }}>{filled}</pre>
+                  <pre style={{ fontSize: 12, lineHeight: 1.7, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: C.text, fontFamily: FF, margin: 0, marginBottom: 12 }}>{filled}</pre>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {mode === 'email' ? (
                       <>
@@ -30792,7 +30798,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                       </div>
                       <div style={{ flex: '1 1 100%' }}>
                         <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Notes / description</div>
-                        <textarea style={{ ...s.input, fontSize: 12, resize: 'vertical', minHeight: 56, fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.5 }}
+                        <textarea style={{ ...s.input, fontSize: 12, resize: 'vertical', minHeight: 56, fontFamily: FF, lineHeight: 1.5 }}
                           value={item.notes || ''} placeholder="Background, materials needed, reference documents…"
                           onChange={e => updateItem(item.id, 'notes', e.target.value)} />
                       </div>
@@ -30848,7 +30854,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                       <div>
                         <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Discussion Notes</div>
                         <textarea
-                          style={{ ...s.input, fontSize: 12, resize: 'vertical', minHeight: 80, fontFamily: "'Inter', system-ui, sans-serif", lineHeight: 1.6 }}
+                          style={{ ...s.input, fontSize: 12, resize: 'vertical', minHeight: 80, fontFamily: FF, lineHeight: 1.6 }}
                           value={item.notes || ''}
                           placeholder="Key discussion points, decisions made, action items assigned…"
                           onChange={e => updateItem(item.id, 'notes', e.target.value)}
@@ -35748,7 +35754,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <button onClick={onOpenClient || onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>{backLabel || '← Clients'}</button>
           <span style={{ color: C.border, fontSize: 18 }}>|</span>
           <input
-            style={{ background: 'none', border: 'none', fontSize: isMobile ? 17 : 20, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', outline: 'none', padding: 0, minWidth: 0, flex: '0 1 auto', maxWidth: 400, fontFamily: "'Inter', system-ui, sans-serif" }}
+            style={{ background: 'none', border: 'none', fontSize: isMobile ? 17 : 20, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', outline: 'none', padding: 0, minWidth: 0, flex: '0 1 auto', maxWidth: 400, fontFamily: FF }}
             value={event.name}
             onChange={e => setEvent(ev => ({ ...ev, name: e.target.value }))}
           />
@@ -37367,7 +37373,7 @@ export default function App() {
         <AICtx.Provider value={profile?.anthropicKey || ''}>
           <BpCtx.Provider value={bp}>
             <SaveCtx.Provider value={saveCtxVal}>
-              <div style={{ color: themeC.text, fontFamily: "'Inter', system-ui, sans-serif" }}>
+              <div style={{ color: themeC.text, fontFamily: FF }}>
                 <GlobalStyles />
                 {/* Sprint 51 a11y: skip-to-content link for keyboard users.
                     Visually hidden until focused, then jumps over chrome to
