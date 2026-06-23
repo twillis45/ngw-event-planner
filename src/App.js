@@ -8509,7 +8509,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* "Do it for me" — the shopping list. The plan already computes every item AND
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
-        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
+        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
         const shopAnchorStr = eventGeoQuery(event, profile); // single source — checks the event, then the host's profile home
         const left = shopItems.filter((i) => !i.got).length;
         return (
@@ -20138,7 +20138,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           // Surface the shopping list here too — the clearest "look what it did for me,"
           // otherwise it lives a tab away. Built from the real food plan.
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
-            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high }));
+            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
             const left = shopItems.filter((i) => !i.got).length;
             const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev, profile) });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',

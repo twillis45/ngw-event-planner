@@ -310,6 +310,15 @@ describe('draftShoppingList', () => {
     expect(localityAnchor('Austin, TX')).toBe('Austin, TX');
     expect(localityAnchor('')).toBe('');
   });
+  test('a line carries its per-guest basis as a "because" — only when it has a quantity', () => {
+    const { body } = draftShoppingList(maya, profile, { items: [
+      { name: 'BBQ chicken', qty: 12, unit: 'lbs', basis: '½ lb/guest' },
+      { name: 'Ribs', qty: 15, unit: 'lbs', basis: '½ lb/guest', forgotten: false },
+      { name: 'Napkins', qty: 0, unit: '', basis: '1.5/guest' }, // no qty → no dangling basis
+    ] });
+    expect(body).toContain('BBQ chicken — 12 lbs  · ½ lb/guest');
+    expect(body).not.toMatch(/Napkins.*·/); // basis suppressed when there's no quantity to explain
+  });
 });
 
 describe('draftDayBeforeDetails', () => {

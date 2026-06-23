@@ -49,6 +49,7 @@ import conference from './data/conference';
 import teamRetreat from './data/teamRetreat';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
+import { quantityBasis } from '../quantities/quantityBasis';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -745,6 +746,12 @@ export function playbookFoodPlan(event, opts = {}) {
         // Only per-guest-scaled items carry a rate; flat items (1 grill) don't. A
         // converted whole-good has no per-guest serving rate — null it.
         perGuest: (!buyable && typeof p.qtyPerGuest === 'number') ? p.qtyPerGuest : null,
+        // The "because" the quantity was scaled from, read from the authored
+        // factor (qtyPerGuest / qtyPer) — never invented. Travels with the line
+        // into the shopping-list deliverable so the hand-off shows its reasoning
+        // ("12 lbs · ½ lb/guest"). '' when there's no per-person basis or the
+        // line was unit-converted (same honesty rule as perGuest above).
+        basis: buyable ? '' : quantityBasis(p),
         qtyOverridden: qOver != null, baseQty,
         low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a

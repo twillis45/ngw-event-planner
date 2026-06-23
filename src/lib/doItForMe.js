@@ -496,7 +496,11 @@ export function draftShoppingList(event, profile, opts = {}) {
   const renderItem = (i) => {
     const q = qtyOf(i);
     const star = i.forgotten ? '   ⭐' : '';
-    return `[ ] ${String(i.name).trim()}${q ? ` — ${q}` : ''}${star}`;
+    // The "because" — the per-person rate this quantity was scaled from (authored
+    // in the playbook, never invented). Only shown alongside a real quantity, so a
+    // bare item never reads "· ½ lb/guest" with nothing to explain.
+    const basis = q && i.basis ? `  · ${String(i.basis).trim()}` : '';
+    return `[ ] ${String(i.name).trim()}${q ? ` — ${q}` : ''}${basis}${star}`;
   };
   const header = `🛒 Shopping List — ${name}${count ? ` (${count} guests)` : ''}`;
   const lines = [header, ''];
