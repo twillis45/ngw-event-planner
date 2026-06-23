@@ -20156,8 +20156,11 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                       if (idx < 0 && route.tab) idx = liveSteps.findIndex((p) => p.tab === route.tab);
                     }
                     setSetupOpen(idx >= 0 ? idx : true);
-                  } else if (na.primaryRoute) {
-                    onSelectEvent(ev.id, na.primaryRoute);
+                  } else {
+                    // Global guarantee: a Next-Step CTA must always DO something.
+                    // Route to the action's own destination when it has one; otherwise
+                    // fall back to the event's overview so the button never dead-ends.
+                    onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' });
                   }
                 }}
                 style={{ marginTop: 12, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
@@ -21002,8 +21005,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             isMobile={isMobile}
             eventsHydrated={eventsHydrated}
             onNavigate={(route) => {
-              if (!route) return;
-              const { eventId, ...nav } = route;
+              const r = route || { tab: 'Command' }; // never no-op: a routeless CTA opens the event overview
+              const { eventId, ...nav } = r;
               // A cross-event action should carry its eventId; if one slips through
               // without it (e.g. the "Set budget" next-step → {tab:'Budget'}), fall
               // back to the only/first live event so the CTA navigates instead of
@@ -35802,7 +35805,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           pad={hPad}
           isMobile={isMobile}
           onNavigate={(route) => {
-            if (!route) return;
+            route = route || { tab: 'Command' }; // never no-op: a routeless CTA falls back to the overview
             const itemId = route.vendorId || route.decisionId || route.commId || route.taskId || route.timelineId || undefined;
             const norm = normalizeEventTabRoute(route.tab, itemId);
             handleTabChange(route.tab, itemId, route.vendorSection ? { vendorSection: route.vendorSection } : undefined);
