@@ -9,13 +9,16 @@ describe('playbookFoodPlan.supplies — essential non-food gets a checkable line
     expect(paper.qty).not.toBeNull();
     expect(paper.where.length).toBeGreaterThan(0);
   });
-  test('supplies are kept OUT of the food $ total (food math unchanged)', () => {
+  test('supplies live in the list as the Supplies group, OUT of the food $ total', () => {
     const fp = playbookFoodPlan({ type: 'Crab Feast', guestCount: 12 });
-    // every supply is a non-food category
-    expect(fp.supplies.every((s) => s.cat !== 'food' && s.cat !== 'beverage')).toBe(true);
-    // none of the supply ids appear in the food list (no double-count)
+    // supplies are non-food and carry group 'Supplies'
+    expect(fp.supplies.every((s) => s.cat !== 'food' && s.cat !== 'beverage' && s.group === 'Supplies')).toBe(true);
+    // they ARE in the list now (so they get the full food-row functions)…
     const listIds = new Set(fp.list.map((i) => i.id));
-    expect(fp.supplies.every((s) => !listIds.has(s.id))).toBe(true);
+    expect(fp.supplies.every((s) => listIds.has(s.id))).toBe(true);
+    // …but the food $ total excludes the Supplies group (no inflation of "Food & drink")
+    const foodOnly = fp.list.filter((i) => i.group !== 'Supplies' && !i.skipped).reduce((s, i) => s + (i.locked != null ? i.locked : i.low), 0);
+    expect(fp.foodLow).toBe(Math.max(0, Math.round(foodOnly / 5) * 5));
   });
   test('supplies carry their own cost total + per-unit info (wired into budget)', () => {
     const fp = playbookFoodPlan({ type: 'Crab Feast', guestCount: 12 });

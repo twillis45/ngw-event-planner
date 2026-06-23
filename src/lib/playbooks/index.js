@@ -908,48 +908,52 @@ export function playbookFoodPlan(event, opts = {}) {
   }
   const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
 
+  // Essential NON-food supplies (kraft-paper table cover, propane, safety kit…) —
+  // folded into the list as their own "Supplies" group so they get the EXACT same
+  // row functions as food (lock-before-checkoff, qty edit, skip/swap, per-unit,
+  // where-links, alternatives). Kept OUT of the food $ total below; surfaced as
+  // their own budget line. Same map shape as the food rows above.
+  for (const p of playbook.purchases) {
+    if (p.category === 'food' || p.category === 'beverage') continue;
+    if (!p.essential || !p.buyAt || !purchaseShown(p) || !regionShown(p)) continue;
+    const baseQty = resolveQuantity(p, guests);
+    const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
+    const qty = qOver != null ? qOver : baseQty;
+    const [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+    const units = qty == null ? 1 : qty;
+    list.push({
+      id: p.id, group: 'Supplies', item: p.item, short: shortItem(p.item),
+      qty, unit: shortUnit(p.unit, qty), essential: !!p.essential, where: p.where || [],
+      cat: p.category || 'other', buyAt: p.buyAt || null, perGuest: null, basis: '',
+      qtyOverridden: qOver != null, baseQty,
+      low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
+      units, unitBase: p.unit || '', perUnitLow: Math.round(uLow * pf * 100) / 100, perUnitHigh: Math.round(uHigh * pf * 100) / 100,
+      skipped: !!skip[p.id], locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
+      note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), supply: true,
+      ...(Array.isArray(p.alternatives) && p.alternatives.length > 0 ? { alternatives: p.alternatives } : {}),
+    });
+  }
+
   // A locked cost is fixed — it collapses the item's range to one committed number.
   const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
-  // Skipped (swapped-out) items leave every total.
-  const sum = (k) => list.filter((i) => !i.skipped).reduce((s, i) => s + eff(i, k), 0);
-  const lockedTotal = list.filter((i) => !i.skipped && i.locked != null).reduce((s, i) => s + i.locked, 0);
-  const lockedCount = list.filter((i) => !i.skipped && i.locked != null).length;
+  const isFood = (i) => i.group !== 'Supplies';   // supplies are a separate $ line
+  // Skipped (swapped-out) items leave every total. Food totals exclude Supplies.
+  const sum = (k) => list.filter((i) => !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
+  const lockedTotal = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).reduce((s, i) => s + i.locked, 0);
+  const lockedCount = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).length;
   const di = dietaryResolved(event);
   // 60H — what the host has actually bought (checked off on the shopping list). This
   // is what connects the food plan to the budget: spent updates as items are ticked.
   const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
-  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + eff(i, k), 0);
-  const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
+  const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
+  const boughtCount = list.filter((i) => got[i.id] && !i.skipped && isFood(i)).length;
 
-  // Essential NON-food supplies to buy before the day (kraft-paper table cover,
-  // propane, safety kit…). They carry the SAME information as a food line —
-  // quantity, per-unit price, line cost, lock, check-off — and now flow into the
-  // budget as their own "Supplies" line (kept separate from the food $ total so
-  // "Food & drink" stays food, but the overall plan total includes them).
-  const supplies = playbook.purchases
-    .filter((p) => p.category !== 'food' && p.category !== 'beverage' && p.essential && p.buyAt && purchaseShown(p) && regionShown(p))
-    .map((p) => {
-      const qty = resolveQuantity(p, guests);
-      const [sLow, sHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
-      const units = qty == null ? 1 : qty;
-      return {
-        id: p.id, item: p.item, short: shortItem(p.item), qty, unit: shortUnit(p.unit, qty),
-        where: p.where || [], cat: p.category || 'other', buyAt: p.buyAt || null,
-        note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), basis: '',
-        essential: !!p.essential,
-        low: Math.round(units * sLow * pf), high: Math.round(units * sHigh * pf),
-        units, unitBase: p.unit || '', perUnitLow: Math.round(sLow * pf * 100) / 100, perUnitHigh: Math.round(sHigh * pf * 100) / 100,
-        locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
-        got: !!got[p.id], skipped: !!skip[p.id],
-      };
-    })
-    .filter((s) => !s.skipped);
-  // Supplies $ totals — same eff()/gotSum shape as food, so a locked supply is a
-  // fixed cost and "bought so far" tracks check-offs.
-  const supLow = supplies.reduce((s, i) => s + (i.locked != null ? i.locked : i.low), 0);
-  const supHigh = supplies.reduce((s, i) => s + (i.locked != null ? i.locked : i.high), 0);
-  const supSpentLow = supplies.filter((i) => got[i.id]).reduce((s, i) => s + (i.locked != null ? i.locked : i.low), 0);
-  const supSpentHigh = supplies.filter((i) => got[i.id]).reduce((s, i) => s + (i.locked != null ? i.locked : i.high), 0);
+  // Supplies — the 'Supplies' group of the list. Derived totals mirror the food
+  // ones (eff() so a locked supply is a fixed cost; got tracks check-offs).
+  const supItems = list.filter((i) => i.group === 'Supplies' && !i.skipped);
+  const supSum = (k) => supItems.reduce((s, i) => s + eff(i, k), 0);
+  const supGot = (k) => supItems.filter((i) => got[i.id]).reduce((s, i) => s + eff(i, k), 0);
+  const supplies = list.filter((i) => i.group === 'Supplies');
 
   return {
     type: playbook.type,
@@ -958,19 +962,19 @@ export function playbookFoodPlan(event, opts = {}) {
     choices,
     list,
     supplies,
-    suppliesLow: Math.max(0, Math.round(supLow / 5) * 5),
-    suppliesHigh: Math.max(0, Math.round(supHigh / 5) * 5),
-    suppliesSpentLow: Math.max(0, Math.round(supSpentLow / 5) * 5),
-    suppliesSpentHigh: Math.max(0, Math.round(supSpentHigh / 5) * 5),
-    suppliesCount: supplies.length,
-    suppliesBought: supplies.filter((s) => got[s.id]).length,
-    groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
+    suppliesLow: Math.max(0, Math.round(supSum('low') / 5) * 5),
+    suppliesHigh: Math.max(0, Math.round(supSum('high') / 5) * 5),
+    suppliesSpentLow: Math.max(0, Math.round(supGot('low') / 5) * 5),
+    suppliesSpentHigh: Math.max(0, Math.round(supGot('high') / 5) * 5),
+    suppliesCount: supItems.length,
+    suppliesBought: supItems.filter((s) => got[s.id]).length,
+    groups: ['Food', 'Drinks', 'Supplies'].filter((g) => list.some((i) => i.group === g)),
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
     spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
     boughtCount,
-    itemCount: list.filter((i) => !i.skipped).length,
+    itemCount: list.filter((i) => !i.skipped && isFood(i)).length,
     lockedTotal: Math.max(0, Math.round(lockedTotal)),
     lockedCount,
     dietaryResolved: di.resolved,
