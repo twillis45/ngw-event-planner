@@ -8369,6 +8369,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState('');
   const [addQty, setAddQty] = useState('');
+  const [expanded, setExpanded] = useState(false); // collapse-when-satisfied (Attention System)
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
   if (!cap || !cap.items || !cap.items.length) return null;
   const checked = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
@@ -8381,6 +8382,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
   ];
   const done = items.filter((it) => checked[it.key]).length;
   const allDone = items.length > 0 && done === items.length;
+  const collapsed = allDone && !expanded; // once everything's ready, the panel rests
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityChecked: next }); };
   const setQty = (it, v) => {
     const n = Math.max(0, Math.round(Number(v) || 0));
@@ -8399,10 +8401,12 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
   const qtyInp = { width: 40, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center' };
   return (
     <div style={card}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>Seating &amp; supplies</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${done} of ${items.length} ready`}</div>
-      </div>
+      <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
+        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Seating &amp; supplies</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All set ✓ · Review' : 'All set ✓ · Hide') : `${done} of ${items.length} ready`}</div>
+      </button>
+      {!collapsed && (<>
       <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Sized for {cap.guests} guests — change a count or add your own. Tap the box once you have it.</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {items.map((it, i) => {
@@ -8448,6 +8452,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
         )}
       </div>
       {cap.because && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: 700 }}>How we sized it:</span> {cap.because}</div>}
+      </>)}
     </div>
   );
 }
