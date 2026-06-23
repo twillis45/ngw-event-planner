@@ -8460,6 +8460,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
 function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile, focusId = null, onFocusConsumed = () => {} }) {
   const C = useT();
+  const T = useType();
   const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
   // A host collects dietary by COUNT, inline (they note the allergies they know of and
@@ -8539,14 +8540,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           stay pointed at the why. */}
       {isMeaningfulMustHave(event.must_have_moment) && (
         <div style={{ ...card, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
-          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
         </div>
       )}
       {/* header + budget */}
       <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
+        <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
         <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
           Food for {plan.guests} guests{!plan.guestCountResolved ? ' (estimate)' : ''}
         </div>
@@ -8556,26 +8557,26 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         {/* Show the basis — trust comes from seeing the math, not just the number.
             "≈ $X a head × N guests" is exactly how the range is built. */}
         {plan.guests > 0 && plan.foodHigh > 0 && (
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
             That's about <span style={{ color: steel, fontWeight: 600 }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span> × {plan.guests} {plan.guests === 1 ? 'guest' : 'guests'}.
           </div>
         )}
         {/* #16 — diet counts the plan is accounting for (drives the plant-based line + budget). */}
         {plan.specialDiets && plan.specialDiets.length > 0 && (
-          <div style={{ fontSize: 12.5, color: steel, marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: T.secondary, color: steel, marginTop: 4, fontWeight: 600 }}>
             Planning for {plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}.
           </div>
         )}
         {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
         {plan.foodHigh > plan.foodLow && (
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4 }}>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4 }}>
             <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart, <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> going all-out. Tap any item for its price.
           </div>
         )}
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
             can resolve the area; national + a nudge to add a location otherwise. */}
         {foodPP.priceNote && (
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {foodPP.hasRegion
               ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
               : (<>
@@ -8583,7 +8584,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   {/* Inline metro picker — set the area right here to switch to local
                       (BLS) pricing. ~26 metros, so a native select is fine here. */}
                   <select value={event.market || ''} onChange={(e) => onPatch({ market: e.target.value })}
-                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: 12.5, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
+                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
                     <option value="">Set your area for local prices…</option>
                     {METRO_MARKETS.filter((m) => METRO_GEO[m.id]).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                   </select>
@@ -8593,7 +8594,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         {/* 60H — bought-so-far updates live as the host checks off the shopping list,
             and feeds the budget's Food line. */}
         {plan.boughtCount > 0 && (
-          <div style={{ fontSize: 13.5, marginTop: 6 }}>
+          <div style={{ fontSize: T.body, marginTop: 6 }}>
             <span style={{ color: C.muted }}>Bought so far: </span>
             <span style={{ color: C.success, fontWeight: 700 }}>{money(plan.spentLow, plan.spentHigh)}</span>
             <span style={{ color: C.muted }}> · {plan.boughtCount} of {plan.itemCount} items</span>
@@ -8618,11 +8619,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: steel }}>Open &amp; share →</span>
+              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: 700, color: steel }}>Open &amp; share →</span>
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>🛒 Your shopping list — already written</div>
-            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
           </button>
         );
       })()}
@@ -8632,7 +8633,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           collect per-guest in the roster. */}
       {!plan.dietaryResolved && (event.guestMode === 'count' || isHostFP ? (
         <div style={{ ...card, borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
-          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, marginBottom: 12 }}>
+          <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, marginBottom: 12 }}>
             <strong>Any allergies or diets to plan around?</strong> {event.guestMode === 'count' ? 'You’re going by a headcount, so just pick what applies' : 'Note what you know of — guests can add theirs when they RSVP'} — one unflagged allergy is a safety issue.
           </div>
           {/* #16 — a COUNT per diet/allergy, so the host says how many people each
@@ -8646,11 +8647,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   const n = Number(counts[diet]) || 0;
                   return (
                     <div key={diet} style={{ display: 'flex', alignItems: 'center', gap: 8, background: n > 0 ? `${steel}14` : C.bg, border: `1px solid ${n > 0 ? steel : C.border}`, borderRadius: 9, padding: '6px 8px 6px 11px' }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: T.secondary, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
                       <input type="number" inputMode="numeric" min="0" defaultValue={n || ''} placeholder="0"
                         onBlur={(e) => setCount(diet, e.currentTarget.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { setCount(diet, e.currentTarget.value); e.currentTarget.blur(); } }}
-                        style={{ width: 40, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: 13.5, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
+                        style={{ width: 40, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: T.body, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
                     </div>
                   );
                 })}
@@ -8666,10 +8667,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
       ) : (
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
-          <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
             <strong>Collect allergies & dietary needs first.</strong> One unflagged allergy is a safety issue — lock the menu after.
           </div>
-          <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
+          <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: T.body, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
         </div>
       ))}
 
@@ -8677,7 +8678,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {plan.choices.length > 0 && (
         <div style={card}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>Your choices</div>
-          <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
           {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
               no wall of every option for every decision). */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -8688,7 +8689,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   <button type="button" onClick={() => setOpenChoice(open ? null : c.id)}
                     style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '11px 2px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 11, color: C.muted }}>{c.label}</span>
+                      <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>{c.label}</span>
                       <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: c.chosen ? C.text : steel, marginTop: 2, lineHeight: 1.3 }}>{c.chosen || 'Choose →'}</span>
                     </span>
                     <span aria-hidden style={{ flexShrink: 0, marginTop: 2, color: C.muted, fontSize: 15, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
@@ -8707,7 +8708,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           );
                         })}
                       </div>
-                      {c.why && <div style={{ fontSize: 12, color: C.muted, marginTop: 9, lineHeight: 1.5 }}>{c.why}</div>}
+                      {c.why && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 9, lineHeight: 1.5 }}>{c.why}</div>}
                     </div>
                   )}
                 </div>
@@ -8723,12 +8724,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>The spread</div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>
         </div>
-        <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
           {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}
           {plan.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>${plan.lockedTotal.toLocaleString()} locked</span></> : null}
         </div>
         {heroNames.length > 0 && (
-          <div style={{ fontSize: 13.5, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
+          <div style={{ fontSize: T.body, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
             {heroNames.join(' · ')}
             {plan.itemCount > heroNames.length ? <span style={{ color: C.muted }}> · +{plan.itemCount - heroNames.length} more</span> : null}
           </div>
@@ -8739,7 +8740,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </button>
         {showFullSpread && (
         <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 14 }}>Tap an item to check it off as you shop.</div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 14 }}>Tap an item to check it off as you shop.</div>
         {plan.groups.map((g) => (
           <div key={g} style={{ marginBottom: 14 }}>
             {/* 60J — group subtotal breaks the total range into Food vs Drinks. */}
@@ -8748,8 +8749,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
               return (
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>{money(gl, gh)}</span>
+                  <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                  <span style={{ fontSize: T.caption, fontWeight: 700, color: C.muted }}>{money(gl, gh)}</span>
                 </div>
               );
             })()}
@@ -8773,7 +8774,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               // Added dishes are fully host-authored — removing one DELETES it (no struck-through ghost).
               const removeAdded = (e) => { e.stopPropagation(); onPatch({ foodAdd: (event.foodAdd || []).filter((a) => a.id !== i.id) }); };
               const lockOpen = openLockId === i.id;
-              const lkBtn = { fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
+              const lkBtn = { fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
                 <div key={i.id} id={`foodrow-${i.id}`} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1, background: highlightId === i.id ? `${C.accent}1f` : 'transparent', borderRadius: highlightId === i.id ? 8 : 0, boxShadow: highlightId === i.id ? `0 0 0 2px ${C.accent}66` : 'none', transition: 'background 400ms ease, box-shadow 400ms ease', margin: highlightId === i.id ? '0 -6px' : 0, padding: highlightId === i.id ? '0 6px' : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'stretch' }}>
@@ -8784,21 +8785,21 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } });
                       }}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                        {i.added && i.owner && <span style={{ fontSize: 11, fontWeight: 600, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
-                        {i.added && !i.owner && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}
-                        {!i.essential && !i.added && <span style={{ fontSize: 11, color: C.muted, marginLeft: 7 }}>optional</span>}
-                        {i.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                        {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: 600, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
+                        {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
+                        {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
+                        {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
                         {i.perGuest != null && (
-                          <span style={{ display: 'block', fontSize: 11.5, marginTop: 2 }}>
+                          <span style={{ display: 'block', fontSize: T.secondary, marginTop: 2 }}>
                             <span style={{ color: steel, fontWeight: 600 }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
                             <span style={{ color: C.muted }}> · typical</span>
                           </span>
                         )}
                         {i.where && i.where.length > 0 && (
-                          <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
+                          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>
                             {i.where.slice(0, 3).map((w, wi) => (
                               <span key={w}>
                                 {wi > 0 ? ' · ' : ''}
@@ -8812,7 +8813,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         {/* Instacart interim (no key): per-item deep link — opens Instacart
                             (the app on mobile) to a search for this item to add to a cart. */}
                         {(i.short || i.item) && !got && (
-                          <span style={{ display: 'block', fontSize: 11.5, marginTop: 3 }}>
+                          <span style={{ display: 'block', fontSize: T.secondary, marginTop: 3 }}>
                             <span role="link" tabIndex={0}
                               onClick={(e) => { e.stopPropagation(); window.open(`https://www.instacart.com/store/s?k=${encodeURIComponent(i.short || i.item)}`, '_blank', 'noopener'); }}
                               style={{ cursor: 'pointer', color: '#0AAD0A', fontWeight: 700, textDecoration: 'underline dotted' }}>🛒 Find on Instacart</span>
@@ -8822,19 +8823,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                             host never needs to leave the shopping list to find a substitute. */}
                         {Array.isArray(i.alternatives) && i.alternatives.length > 0 && !got && (
                           <span style={{ display: 'block', marginTop: 4 }}>
-                            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
-                            <span style={{ fontSize: 11.5, color: C.muted }}>{i.alternatives.slice(0, 2).join(' · ')}</span>
+                            <span style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
+                            <span style={{ fontSize: T.secondary, color: C.muted }}>{i.alternatives.slice(0, 2).join(' · ')}</span>
                           </span>
                         )}
                       </span>
                       <span style={{ flexShrink: 0, textAlign: 'right' }}>
-                        {i.qty != null && <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                        {i.qty != null && <span style={{ display: 'block', fontSize: T.body, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
                         {i.added && i.low === 0
-                          ? <span style={{ fontSize: 11.5, color: C.muted }}>they're bringing it</span>
+                          ? <span style={{ fontSize: T.secondary, color: C.muted }}>they're bringing it</span>
                           : i.locked != null
-                          ? <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success }}>${i.locked.toLocaleString()} locked</span>
-                          : <span style={{ fontSize: 12, color: C.muted }}>{money(i.low, i.high)}</span>}
-                        {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: 11, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
+                          ? <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.success }}>${i.locked.toLocaleString()} locked</span>
+                          : <span style={{ fontSize: T.caption, color: C.muted }}>{money(i.low, i.high)}</span>}
+                        {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
                       </span>
                     </button>
                     {!skipped && !i.added && (
@@ -8855,18 +8856,18 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     <div style={{ padding: '0 0 12px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {/* 64-#3 — change the quantity; it recomputes the cost + the budget. */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: C.muted }}>Quantity:</span>
+                        <span style={{ fontSize: T.caption, color: C.muted }}>Quantity:</span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: C.bg, border: `1px solid ${i.qtyOverridden ? C.accent : C.border}`, borderRadius: 8, padding: '4px 9px' }}>
                           <input type="number" inputMode="decimal" defaultValue={i.qty != null ? i.qty : ''} placeholder={i.baseQty != null ? String(i.baseQty) : '—'}
                             onKeyDown={(e) => { if (e.key === 'Enter') setQty(e.currentTarget.value); }}
                             onBlur={(e) => setQty(e.currentTarget.value)}
                             style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
-                          <span style={{ color: C.muted, fontSize: 12 }}>{i.unitBase || i.unit}</span>
+                          <span style={{ color: C.muted, fontSize: T.caption }}>{i.unitBase || i.unit}</span>
                         </span>
                         {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: checkAfterLock === i.id ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === i.id ? 700 : 400 }}>{checkAfterLock === i.id ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this'll cost — pick one or enter your own:"}</span>
+                      <span style={{ fontSize: T.caption, color: checkAfterLock === i.id ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === i.id ? 700 : 400 }}>{checkAfterLock === i.id ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this'll cost — pick one or enter your own:"}</span>
                       <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
                       <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
@@ -8896,12 +8897,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input placeholder="Who's bringing it (optional)" value={addOwner} onChange={(e) => setAddOwner(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
-                  style={{ flex: 1, minWidth: 150, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 11px', color: C.text, fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }} />
+                  style={{ flex: 1, minWidth: 150, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 11px', color: C.text, fontSize: T.body, fontFamily: 'inherit', outline: 'none' }} />
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '0 11px' }}>
                   <span style={{ color: C.muted, fontSize: 13 }}>$</span>
                   <input type="number" inputMode="numeric" placeholder="cost" value={addCost} onChange={(e) => setAddCost(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
-                    style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit' }} />
+                    style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: 700, fontFamily: 'inherit' }} />
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -8913,7 +8914,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             </div>
           ) : (
             <button type="button" onClick={() => setAddOpen(true)}
-              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: '11px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a dish</button>
+              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: 700, fontSize: T.body, cursor: 'pointer', padding: '11px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a dish</button>
           )}
         </div>
         </div>
@@ -8924,14 +8925,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
         <div style={card}>
-          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Where to shop</div>
+          <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Where to shop</div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>The places this spread calls for{shopCity ? `, near ${shopCity}` : ''}</div>
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, marginBottom: 12, lineHeight: 1.5 }}>Tap any place to open a live map search — real listings near you, never endorsements.</div>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, marginBottom: 12, lineHeight: 1.5 }}>Tap any place to open a live map search — real listings near you, never endorsements.</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {shopSources.map((src) => (
               <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 12px 7px 11px', textDecoration: 'none' }}>
-                <Icon name="pin" size={12} color={steel} /> {src} <span style={{ color: steel, fontSize: 11 }}>↗</span>
+                <Icon name="pin" size={12} color={steel} /> {src} <span style={{ color: steel, fontSize: T.secondary }}>↗</span>
               </a>
             ))}
           </div>
@@ -8956,8 +8957,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             if (!online.length) return null;
             return (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Or get it delivered</div>
-                <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>{hasMeat ? 'Top online butchers' : 'Top online grocers'}{hasMeat && hasGrocery ? ' + grocery delivery' : ''} — ships nationwide.</div>
+                <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Or get it delivered</div>
+                <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>{hasMeat ? 'Top online butchers' : 'Top online grocers'}{hasMeat && hasGrocery ? ' + grocery delivery' : ''} — ships nationwide.</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {online.map((o) => (
                     <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
