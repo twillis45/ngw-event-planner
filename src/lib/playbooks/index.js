@@ -922,11 +922,10 @@ export function playbookFoodPlan(event, opts = {}) {
   const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
 
   // Essential NON-food supplies to buy before the day (kraft-paper table cover,
-  // propane, safety kit…). These were dark: playbookTasks emitted a "Buy X"
-  // next-step for them, but the food-only shopping list had no line to check off,
-  // so the prompt dead-ended. Surface them as their own checkable group (reusing
-  // foodGot for check-off) and include them in the hand-off list — but keep them
-  // OUT of the food $ total above (food math is unchanged).
+  // propane, safety kit…). They carry the SAME information as a food line —
+  // quantity, per-unit price, line cost, lock, check-off — and now flow into the
+  // budget as their own "Supplies" line (kept separate from the food $ total so
+  // "Food & drink" stays food, but the overall plan total includes them).
   const supplies = playbook.purchases
     .filter((p) => p.category !== 'food' && p.category !== 'beverage' && p.essential && p.buyAt && purchaseShown(p) && regionShown(p))
     .map((p) => {
@@ -937,11 +936,20 @@ export function playbookFoodPlan(event, opts = {}) {
         id: p.id, item: p.item, short: shortItem(p.item), qty, unit: shortUnit(p.unit, qty),
         where: p.where || [], cat: p.category || 'other', buyAt: p.buyAt || null,
         note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), basis: '',
+        essential: !!p.essential,
         low: Math.round(units * sLow * pf), high: Math.round(units * sHigh * pf),
+        units, unitBase: p.unit || '', perUnitLow: Math.round(sLow * pf * 100) / 100, perUnitHigh: Math.round(sHigh * pf * 100) / 100,
+        locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
         got: !!got[p.id], skipped: !!skip[p.id],
       };
     })
     .filter((s) => !s.skipped);
+  // Supplies $ totals — same eff()/gotSum shape as food, so a locked supply is a
+  // fixed cost and "bought so far" tracks check-offs.
+  const supLow = supplies.reduce((s, i) => s + (i.locked != null ? i.locked : i.low), 0);
+  const supHigh = supplies.reduce((s, i) => s + (i.locked != null ? i.locked : i.high), 0);
+  const supSpentLow = supplies.filter((i) => got[i.id]).reduce((s, i) => s + (i.locked != null ? i.locked : i.low), 0);
+  const supSpentHigh = supplies.filter((i) => got[i.id]).reduce((s, i) => s + (i.locked != null ? i.locked : i.high), 0);
 
   return {
     type: playbook.type,
@@ -950,6 +958,12 @@ export function playbookFoodPlan(event, opts = {}) {
     choices,
     list,
     supplies,
+    suppliesLow: Math.max(0, Math.round(supLow / 5) * 5),
+    suppliesHigh: Math.max(0, Math.round(supHigh / 5) * 5),
+    suppliesSpentLow: Math.max(0, Math.round(supSpentLow / 5) * 5),
+    suppliesSpentHigh: Math.max(0, Math.round(supSpentHigh / 5) * 5),
+    suppliesCount: supplies.length,
+    suppliesBought: supplies.filter((s) => got[s.id]).length,
     groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),

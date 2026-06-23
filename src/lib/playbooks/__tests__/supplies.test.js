@@ -17,4 +17,14 @@ describe('playbookFoodPlan.supplies — essential non-food gets a checkable line
     const listIds = new Set(fp.list.map((i) => i.id));
     expect(fp.supplies.every((s) => !listIds.has(s.id))).toBe(true);
   });
+  test('supplies carry their own cost total + per-unit info (wired into budget)', () => {
+    const fp = playbookFoodPlan({ type: 'Crab Feast', guestCount: 12 });
+    expect(fp.suppliesHigh).toBeGreaterThan(0);
+    expect(fp.suppliesCount).toBe(fp.supplies.length);
+    for (const s of fp.supplies) {
+      expect(typeof s.low).toBe('number');
+      expect(typeof s.perUnitHigh).toBe('number');
+      expect(s.unitBase !== undefined).toBe(true);
+    }
+  });
 });

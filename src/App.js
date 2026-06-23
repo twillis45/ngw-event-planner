@@ -8843,10 +8843,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>Supplies — also grab</span>
-              <span style={{ fontSize: 11, color: C.muted }}>not food · off the food total</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>{money(plan.suppliesLow, plan.suppliesHigh)}</span>
             </div>
             {plan.supplies.map((s) => {
               const got = (event.foodGot || {})[s.id];
+              const pu = (n) => (n >= 10 ? `$${Math.round(n)}` : (Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`));
+              const perUnit = s.perUnitHigh > 0 ? (s.perUnitLow === s.perUnitHigh ? pu(s.perUnitLow) : `${pu(s.perUnitLow)}–${pu(s.perUnitHigh)}`) : null;
               return (
                 <div key={s.id} id={`foodrow-${s.id}`} style={{ borderBottom: `1px solid ${C.border}`, background: highlightId === s.id ? `${C.accent}1f` : 'transparent', borderRadius: highlightId === s.id ? 8 : 0, boxShadow: highlightId === s.id ? `0 0 0 2px ${C.accent}66` : 'none', transition: 'background 400ms ease, box-shadow 400ms ease', margin: highlightId === s.id ? '0 -6px' : 0, padding: highlightId === s.id ? '0 6px' : 0 }}>
                   <button type="button" onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [s.id]: !got } })}
@@ -8855,8 +8857,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: got ? 'line-through' : 'none' }}>{s.short || s.item}{s.qty != null && s.qty !== '' ? <span style={{ color: C.muted, fontWeight: 500 }}> — {s.qty}{s.unit ? ' ' + s.unit : ''}</span> : null}</span>
                       {s.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7 }}>· often forgotten</span>}
+                      {perUnit && <span style={{ display: 'block', fontSize: 11.5, color: C.muted, marginTop: 2 }}>{s.units} {s.unitBase || s.unit} × {perUnit}{s.unitBase ? `/${String(s.unitBase).split(' ')[0]}` : ''}</span>}
                       {s.where && s.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{s.where.slice(0, 3).join(' · ')}</span>}
                     </span>
+                    <span style={{ flexShrink: 0, fontSize: 13.5, fontWeight: 700, color: C.text, marginLeft: 8 }}>{money(s.low, s.high)}</span>
                   </button>
                 </div>
               );
@@ -23833,10 +23837,15 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
   const foodLow = foodPlan ? foodPlan.foodLow : 0;
   const foodHigh = foodPlan ? foodPlan.foodHigh : 0;
   const foodSpent = foodPlan ? (foodPlan.spentHigh || 0) : 0;
+  // Supplies (kraft paper, propane, safety kit…) — a real, separate cost line that
+  // flows into the overall plan total but is kept out of the food number.
+  const supLow = foodPlan ? (foodPlan.suppliesLow || 0) : 0;
+  const supHigh = foodPlan ? (foodPlan.suppliesHigh || 0) : 0;
+  const supSpent = foodPlan ? (foodPlan.suppliesSpentHigh || 0) : 0;
 
-  const totalLow = foodLow + otherBudgeted;
-  const totalHigh = foodHigh + otherBudgeted;
-  const spentSoFar = foodSpent + otherActual;
+  const totalLow = foodLow + supLow + otherBudgeted;
+  const totalHigh = foodHigh + supHigh + otherBudgeted;
+  const spentSoFar = foodSpent + supSpent + otherActual;
 
   const patchRow = (id, key, val) =>
     setBudget((b) => (b || []).map((r) => (r.id === id ? { ...r, [key]: key === 'category' ? val : (Number(val) || 0) } : r)));
@@ -23933,6 +23942,26 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
           Open the food plan →
         </button>
       </div>
+
+      {/* SUPPLIES — non-food essentials from the playbook (table cover, fuel,
+          safety, serveware). A real cost line in the plan, tracking shopping checkoffs. */}
+      {supHigh > 0 && foodPlan && (
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+            <div style={label}>Supplies</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(supLow, supHigh)}</div>
+          </div>
+          <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+            The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
+            {foodPlan.suppliesBought > 0
+              ? <> You've got <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
+              : <> Nothing checked off yet.</>}
+          </div>
+          <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
+            Open the supplies list →
+          </button>
+        </div>
+      )}
 
       {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
       <div style={card}>
@@ -24181,7 +24210,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const projectedFinal = (budget || []).reduce((s, r) => s + Math.max(getCommitted(r.category), (r.budgeted || 0)), 0);
   const overCommitted  = totalCommitted > totalBudgeted;        // busted the budget at SIGNING
   const projectedOver  = projectedFinal > totalBudgeted;
-  const overCats       = budget.filter(r => (r.budgeted || 0) > 0 && getCommitted(r.category) > (r.budgeted || 0)).length;
+  const overCats       = (budget || []).filter(r => (r.budgeted || 0) > 0 && getCommitted(r.category) > (r.budgeted || 0)).length;
 
   const add = () => {
     const nr = { id: uid(), category: 'New Item', budgeted: 0, actual: 0, notes: '' };
