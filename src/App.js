@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments, playbookSetupPreview } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -9571,18 +9571,50 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                       {occasionBlurb(form.type, form.secondaryType) && (
                         <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, marginBottom: 10 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
                       )}
-                      {/* Type-specific intelligence — the ACTUAL engine setup for this
-                          event type (kitCfg auto-derives from the type), so the host sees
-                          concretely what to expect, not a generic line. */}
+                      {/* Type-specific intelligence — the REAL authored playbook plan for
+                          this event type (its actual milestones, a shopping list sized to
+                          the count, the key decisions, and whether it carries a moment that
+                          matters). This is the "look what it will do for me" reveal at the
+                          create moment. Falls back to the kit checklist for the handful of
+                          types without an authored playbook. */}
                       <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 8 }}>What I’ll set up for {/^[aeiou]/i.test(form.type) ? 'an' : 'a'} {form.type}</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {(kitCfg.checklist || []).slice(0, 5).map((item, i) => (
-                          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
-                            <span aria-hidden style={{ color: steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
-                            <span>{item}</span>
-                          </div>
-                        ))}
-                      </div>
+                      {(() => {
+                        const sp = playbookSetupPreview(form.type);
+                        if (!sp) {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {(kitCfg.checklist || []).slice(0, 5).map((item, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
+                                  <span aria-hidden style={{ color: steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
+                                  <span>{item}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        const chips = [
+                          `${sp.stepCount}-step plan`,
+                          sp.foodCount > 0 ? `a ${sp.foodCount}-item shopping list, sized to your count` : null,
+                          sp.decisionCount > 0 ? `${sp.decisionCount} key decision${sp.decisionCount === 1 ? '' : 's'}` : null,
+                          sp.hasMeaning ? 'a moment that matters' : null,
+                        ].filter(Boolean);
+                        return (
+                          <>
+                            <div style={{ fontSize: 13, color: C.text, lineHeight: 1.55, marginBottom: 10 }}>{chips.join(' · ')}.</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {sp.steps.slice(0, 5).map((s, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
+                                  <span aria-hidden style={{ color: s.critical ? C.accent : steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
+                                  <span>{s.name}{typeof s.daysBefore === 'number' && s.daysBefore > 0 ? <span style={{ color: C.muted }}> · {s.daysBefore}d before</span> : null}</span>
+                                </div>
+                              ))}
+                              {sp.steps.length > 5 && (
+                                <div style={{ fontSize: 12, color: C.muted, marginLeft: 16 }}>+{sp.steps.length - 5} more milestones</div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
                       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginTop: 10 }}>All built back from your date — and you can change any of it.</div>
                     </div>
 
