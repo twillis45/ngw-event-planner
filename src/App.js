@@ -23855,6 +23855,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
 function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '' }) {
   const C = useT();
+  const T = useType();
   const bp = useContext(BpCtx);
   const [budgetDraft, setBudgetDraft] = useState(totalBudget ? String(totalBudget) : '');
   const [budgetSet, setBudgetSet] = useState(false); // confirmation: budget just saved
@@ -23893,7 +23894,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
   const removeRow = (id) => setBudget((b) => (b || []).filter((r) => r.id !== id));
 
   const card = { background: C.surface || C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 16 : 20 };
-  const label = { fontSize: 12, fontWeight: 700, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
+  const label = { fontSize: T.caption, fontWeight: 700, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
   const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 };
 
@@ -23902,9 +23903,9 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
       {/* The heart, mid-planning — keep the money pointed at the why. */}
       {isMeaningfulMustHave(mustHave) && (
         <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
-          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(mustHave).trim()}</div>
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
         </div>
       )}
       {/* HERO — the honest total. ONE hero per screen (SM-2). */}
@@ -23920,7 +23921,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
             The host types a target; we show the estimate against it (on track / over). */}
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <label htmlFor="hsp-budget" style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>What's your budget?</label>
+          <label htmlFor="hsp-budget" style={{ fontSize: T.body, fontWeight: 600, color: C.text }}>What's your budget?</label>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${Number(budgetDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '6px 12px' }}>
             <span style={{ color: C.muted, fontSize: 17, fontWeight: 700 }}>$</span>
             <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0" enterKeyHint="done"
@@ -23933,7 +23934,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
           {/* Board #10 — an explicit confirm so a host on a phone (no keyboard "Done")
               never types a number, scrolls away, and loses it to commit-on-blur only. */}
           <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); }}
-            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
+            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: T.body, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
           {Number(budgetDraft) > 0 && (() => {
             // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
             // budget lands inside the estimate; COVERED if it clears the premium (high) end.
@@ -23946,7 +23947,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
               : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — your budget covers it`
               : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
             return (
-              <span style={{ fontSize: 12.5, fontWeight: 600, color }}>
+              <span style={{ fontSize: T.secondary, fontWeight: 600, color }}>
                 {msg}
                 {/* Middle-audit #2 — the watch-out carries its fix (over-trending → the swap). */}
                 {state === 'over' && <span style={{ display: 'block', fontWeight: 500, color: C.muted, marginTop: 3, lineHeight: 1.5 }}><span style={{ fontWeight: 700, color: C.text }}>The fix:</span> shop the value end — the food plan flags a cheaper swap on most lines — or trim the guest count.</span>}
@@ -23954,7 +23955,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             );
           })()}
           {budgetSet && Number(budgetDraft) > 0 && (
-            <div style={{ width: '100%', fontSize: 12.5, fontWeight: 700, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
+            <div style={{ width: '100%', fontSize: T.secondary, fontWeight: 700, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
           )}
         </div>
       </div>
@@ -23968,7 +23969,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
           <div style={label}>Food &amp; drink</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(foodLow, foodHigh)}</div>
         </div>
-        <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+        <div style={{ fontSize: T.body, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
           {foodPlan
             ? (<>Estimated from your menu for {foodPlan.guests} guests.
                 {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
@@ -23979,13 +23980,13 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         </div>
         {/* Show the basis — the food estimate is per-head × guests, not a guess. */}
         {foodPlan && foodPlan.guests > 0 && foodHigh > 0 && (
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5 }}>
             ≈ <span style={{ color: C.text, fontWeight: 600 }}>{money(Math.round(foodLow / foodPlan.guests), Math.round(foodHigh / foodPlan.guests))} a head</span> × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}.
           </div>
         )}
         {/* Pricing source — ALWAYS shown (regional when resolved, national + nudge otherwise). */}
         {priceNote && (
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6 }}>
             {hasRegion
               ? <span style={{ color: C.text, fontWeight: 600 }}>{priceNote}.</span>
               : <button type="button" onClick={() => onNav && onNav('Event Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.accent, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{priceNote} →</button>}
@@ -24004,7 +24005,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             <div style={label}>Supplies</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(supLow, supHigh)}</div>
           </div>
-          <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+          <div style={{ fontSize: T.body, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
             The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
             {foodPlan.suppliesBought > 0
               ? <> You've got <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
@@ -24020,7 +24021,7 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
           <div style={label}>Other costs</div>
-          {otherBudgeted > 0 ? <div style={{ fontSize: 13.5, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}
+          {otherBudgeted > 0 ? <div style={{ fontSize: T.body, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}
         </div>
         <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
           {otherRows.length === 0
