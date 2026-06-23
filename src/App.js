@@ -27900,6 +27900,9 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
   const stageCLR = STAGE_CLR(C);
   const rosCLR   = ROS_CLR(C);
   const bp = useContext(BpCtx);
+  // Only offer "Add vendor arrivals" when the event actually HAS vendors — pulling
+  // arrivals from an empty vendor list is a dead control (the reported confusion).
+  const hasVendors = (vendors || []).some(v => v && String(v.name || '').trim());
   const aiKey = useAIKey();
   // Quiet-input style for the schedule grid — the board flagged the bordered
   // "spreadsheet" inputs as the heaviest, most off-system surface. At rest the
@@ -28343,7 +28346,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             <SheetGrip isMobile />
             <div style={{ padding: '4px 16px 20px' }}>
               {[
-                { label: 'Add vendor arrivals', action: () => { syncVendors(); setRosActionsOpen(false); } },
+                ...(hasVendors ? [{ label: 'Add vendor arrivals', action: () => { syncVendors(); setRosActionsOpen(false); } }] : []),
                 { label: 'Print / PDF', action: () => { printROS(); setRosActionsOpen(false); } },
                 ...(aiInputOn(aiKey) ? [{ label: rosDraftLoad ? 'Drafting…' : 'Draft schedule (AI)', action: () => { draftFullSchedule(); setRosActionsOpen(false); }, disabled: rosDraftLoad }] : []),
               ].map(({ label, action, disabled }) => (
@@ -28469,11 +28472,11 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
               <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
                 value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
                 <option value="all">All types</option>
-                <option value="vendor">Vendors</option>
+                {hasVendors && <option value="vendor">Vendors</option>}
                 <option value="event">Event</option>
                 <option value="prep">Prep</option>
               </select>
-              <button style={s.btn('teal')} onClick={syncVendors}>Add vendor arrivals</button>
+              {hasVendors && <button style={s.btn('teal')} onClick={syncVendors}>Add vendor arrivals</button>}
               <button aria-label="Open a print-ready schedule — use your browser's Save as PDF" style={s.btn()} onClick={printROS} title="Open a print-ready schedule — use your browser's Save as PDF">Print / PDF</button>
               <AIBtn onClick={draftFullSchedule} loading={rosDraftLoad} label="Draft schedule" />
               <button style={s.btn('primary')} onClick={add}>+ Add</button>
@@ -28614,7 +28617,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
               <div style={{ textAlign: 'center', padding: '36px 16px', color: C.muted }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No schedule yet</div>
                 <div style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 420, margin: '0 auto' }}>
-                  Press <strong style={{ color: C.text }}>+ Add</strong> to build it item by item, or <strong style={{ color: C.text }}>Add vendor arrivals</strong> to pull in confirmed vendor arrivals as a starting point.
+                  Press <strong style={{ color: C.text }}>+ Add</strong> to build it item by item{hasVendors ? <>, or <strong style={{ color: C.text }}>Add vendor arrivals</strong> to pull in confirmed vendor arrivals as a starting point</> : ''}.
                 </div>
               </div>
             )}
