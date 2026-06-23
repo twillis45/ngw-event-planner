@@ -910,12 +910,35 @@ export function playbookFoodPlan(event, opts = {}) {
   const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped).reduce((s, i) => s + eff(i, k), 0);
   const boughtCount = list.filter((i) => got[i.id] && !i.skipped).length;
 
+  // Essential NON-food supplies to buy before the day (kraft-paper table cover,
+  // propane, safety kit…). These were dark: playbookTasks emitted a "Buy X"
+  // next-step for them, but the food-only shopping list had no line to check off,
+  // so the prompt dead-ended. Surface them as their own checkable group (reusing
+  // foodGot for check-off) and include them in the hand-off list — but keep them
+  // OUT of the food $ total above (food math is unchanged).
+  const supplies = playbook.purchases
+    .filter((p) => p.category !== 'food' && p.category !== 'beverage' && p.essential && p.buyAt && purchaseShown(p) && regionShown(p))
+    .map((p) => {
+      const qty = resolveQuantity(p, guests);
+      const [sLow, sHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+      const units = qty == null ? 1 : qty;
+      return {
+        id: p.id, item: p.item, short: shortItem(p.item), qty, unit: shortUnit(p.unit, qty),
+        where: p.where || [], cat: p.category || 'other', buyAt: p.buyAt || null,
+        note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), basis: '',
+        low: Math.round(units * sLow * pf), high: Math.round(units * sHigh * pf),
+        got: !!got[p.id], skipped: !!skip[p.id],
+      };
+    })
+    .filter((s) => !s.skipped);
+
   return {
     type: playbook.type,
     guests,
     guestCountResolved: gc.resolved,
     choices,
     list,
+    supplies,
     groups: ['Food', 'Drinks'].filter((g) => list.some((i) => i.group === g)),
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),

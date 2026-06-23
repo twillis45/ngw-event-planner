@@ -8550,7 +8550,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* "Do it for me" — the shopping list. The plan already computes every item AND
           quantity; we write the checklist the host takes to the store or hands off. */}
       {isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped) && (() => {
-        const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
+        const shopItems = [
+          ...plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis })),
+          // Essential non-food supplies (kraft paper, propane, safety kit) get a real
+          // checkable line on the hand-off list — so "Buy X" is never an orphaned prompt.
+          ...(plan.supplies || []).map((s) => ({ name: s.short || s.item, qty: s.qty, unit: s.unit, got: !!(event.foodGot || {})[s.id], category: s.cat, where: s.where, buyAt: s.buyAt, forgotten: s.forgotten, costLow: s.low, costHigh: s.high, basis: '' })),
+        ];
         const shopAnchorStr = eventGeoQuery(event, profile); // single source — checks the event, then the host's profile home
         const left = shopItems.filter((i) => !i.got).length;
         return (
@@ -8824,6 +8829,34 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             })}
           </div>
         ))}
+        {/* Supplies — essential non-food to buy before the day (kraft-paper table
+            cover, propane, safety kit). Checkable like the food list (reuses foodGot)
+            and keyed foodrow-<id> so a "Buy X" next-step lands here; kept OUT of the
+            food $ total. Fixes the orphaned, un-checkable buy prompt. */}
+        {(plan.supplies || []).length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>Supplies — also grab</span>
+              <span style={{ fontSize: 11, color: C.muted }}>not food · off the food total</span>
+            </div>
+            {plan.supplies.map((s) => {
+              const got = (event.foodGot || {})[s.id];
+              return (
+                <div key={s.id} id={`foodrow-${s.id}`} style={{ borderBottom: `1px solid ${C.border}`, background: highlightId === s.id ? `${C.accent}1f` : 'transparent', borderRadius: highlightId === s.id ? 8 : 0, boxShadow: highlightId === s.id ? `0 0 0 2px ${C.accent}66` : 'none', transition: 'background 400ms ease, box-shadow 400ms ease', margin: highlightId === s.id ? '0 -6px' : 0, padding: highlightId === s.id ? '0 6px' : 0 }}>
+                  <button type="button" onClick={() => onPatch({ foodGot: { ...(event.foodGot || {}), [s.id]: !got } })}
+                    style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
+                    <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: got ? 'line-through' : 'none' }}>{s.short || s.item}{s.qty != null && s.qty !== '' ? <span style={{ color: C.muted, fontWeight: 500 }}> — {s.qty}{s.unit ? ' ' + s.unit : ''}</span> : null}</span>
+                      {s.forgotten && <span style={{ fontSize: 10.5, fontWeight: 700, color: steel, marginLeft: 7 }}>· often forgotten</span>}
+                      {s.where && s.where.length > 0 && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>{s.where.slice(0, 3).join(' · ')}</span>}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {/* #4 — add your own dish: closes the remove/add asymmetry. A named line +
             who's bringing it; cost optional (a dish someone brings is $0 to you). */}
         <div style={{ marginTop: 4 }}>
@@ -20211,7 +20244,10 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           // Surface the shopping list here too — the clearest "look what it did for me,"
           // otherwise it lives a tab away. Built from the real food plan.
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
-            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
+            const shopItems = [
+              ...fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis })),
+              ...((fpProg && fpProg.supplies) || []).map((s) => ({ name: s.short || s.item, qty: s.qty, unit: s.unit, got: !!(ev.foodGot || {})[s.id], category: s.cat, where: s.where, buyAt: s.buyAt, forgotten: s.forgotten, costLow: s.low, costHigh: s.high, basis: '' })),
+            ];
             const left = shopItems.filter((i) => !i.got).length;
             const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev, profile) });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
