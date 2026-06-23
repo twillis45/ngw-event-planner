@@ -352,6 +352,20 @@ function catRank(c) {
   return i === -1 ? CATEGORY_ORDER.indexOf('other') : i;
 }
 
+// localityAnchor — sanitize a place string into a clean, geocodable locality for a maps
+// "near X" search. Host-facing venue labels often carry chrome the user should never see
+// in a search query or a copyable list, e.g. "My place — Atlanta, Georgia" or
+// "Backyard – Pasadena, MD". Strip the chrome and keep the geographic segment (the part
+// that reads like "City, ST"). If no segment looks geographic (e.g. "Hartwell Legal Aid —
+// Main Conference Room"), leave the string untouched — never guess a location.
+export function localityAnchor(raw) {
+  const s = String(raw || '').trim();
+  if (!s || !/\s[—–-]\s/.test(s)) return s;
+  const parts = s.split(/\s[—–-]\s/).map((p) => p.trim()).filter(Boolean);
+  const geo = [...parts].reverse().find((p) => /,\s*[A-Za-z]/.test(p) || /\b[A-Z]{2}\b/.test(p));
+  return geo || s;
+}
+
 // buildShoppingPlan — the pure engine. Takes the richer item spread and returns a
 // structured store-grouped plan, collapsed onto as few stores as possible (fewest
 // trips). Never invents a store name/price/distance — distance stays null for a later
@@ -361,7 +375,9 @@ export function buildShoppingPlan(items, opts = {}) {
   // anchor = the host's address or "City, ST" (may be empty). When present, each store
   // section gets a real Maps search link that opens the actual nearby stores of that type
   // WITH distances. When empty, we degrade to null — never a fabricated "Kroger 1.2 mi".
-  const anchor = String((opts && opts.anchor) || '').trim();
+  // Sanitize first so venue chrome ("My place — Atlanta, GA") never leaks into the query
+  // or the copyable list as an ugly percent-encoded blob.
+  const anchor = localityAnchor(String((opts && opts.anchor) || '').trim());
   const mapLinkFor = (storeType) => anchor
     ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(storeType) + ' near ' + anchor)
     : null;

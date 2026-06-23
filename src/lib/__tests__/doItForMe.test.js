@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, buildShoppingPlan, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, buildShoppingPlan, localityAnchor, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -297,6 +297,18 @@ describe('draftShoppingList', () => {
     const { body } = draftShoppingList(maya, profile, { items });
     expect(body).not.toContain('Find one near you');
     expect(body).toMatch(/🛒 Order for pickup\/delivery: Instacart/);
+  });
+  test('venue chrome is stripped from the map link — only the locality reaches the query', () => {
+    const { body } = draftShoppingList(maya, profile, { items, anchor: 'My place — Atlanta, Georgia' });
+    // the clean locality survives; the host-facing "My place" chrome and em-dash do not
+    expect(body).toContain(encodeURIComponent('Atlanta, Georgia'));
+    expect(body).not.toContain(encodeURIComponent('My place'));
+    expect(body).not.toContain('%E2%80%94'); // em-dash must never appear in the URL
+  });
+  test('anchor with no geographic segment is left intact (never guesses a location)', () => {
+    expect(localityAnchor('Hartwell Legal Aid — Main Conference Room')).toBe('Hartwell Legal Aid — Main Conference Room');
+    expect(localityAnchor('Austin, TX')).toBe('Austin, TX');
+    expect(localityAnchor('')).toBe('');
   });
 });
 
