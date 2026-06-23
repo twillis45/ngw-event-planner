@@ -632,6 +632,64 @@ export function playbookRisks(event) {
   return { items, count: items.length };
 }
 
+// ── Dated milestones reader — the planning arc as day-of-style dated actions ───
+// Pure reader over the authored milestones: each carries a name (the action), an
+// owner, and an offsetDays back from the event, which we turn into a real due
+// date + a days-out count. This is what lets the middle (planning) screens speak
+// the day-of grammar — "what · by when · who" — instead of a bare status word.
+// Never invents a date: dueDate/daysOut are null when the event has no date.
+export function playbookMilestones(event, asOf) {
+  if (!event) return [];
+  const pb = getPlaybook(event.type);
+  if (!pb || !Array.isArray(pb.milestones)) return [];
+  const dte = daysToEvent(event.date, asOf);
+  return pb.milestones
+    .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
+    .map((m) => {
+      let dueDate = null;
+      if (event.date) {
+        const d = new Date(event.date + 'T00:00:00');
+        d.setDate(d.getDate() - m.offsetDays);
+        dueDate = d.toISOString().slice(0, 10);
+      }
+      return {
+        id: m.id, name: String(m.name || '').trim(), owner: m.owner || 'host',
+        category: m.category || 'planning', offsetDays: m.offsetDays,
+        daysOut: dte === null ? null : (dte - m.offsetDays),
+        dueDate, critical: !!(m.risk && (m.risk.severity === 'high' || m.risk.severity === 'critical')),
+      };
+    })
+    .sort((a, b) => b.offsetDays - a.offsetDays); // chronological — furthest-out first
+}
+
+// The next concrete dated step for a home "What needs you" AREA, mapped to the
+// authored milestone categories. Prefers the soonest still-upcoming milestone;
+// falls back to the most-recent past one, then the earliest if the event has no
+// date. null when the area carries no dated milestone (e.g. Heart) or the type
+// has no playbook — the caller then keeps the plain status word.
+const AREA_MILESTONE_CATEGORIES = {
+  Guests: ['guest'], Food: ['food', 'shopping'], 'Your choices': ['food'],
+  'The Day': ['setup'], Budget: ['planning'], Venue: ['rental', 'planning'],
+};
+export function playbookAreaNextStep(event, area, asOf) {
+  const cats = AREA_MILESTONE_CATEGORIES[area];
+  if (!cats) return null;
+  const ms = playbookMilestones(event, asOf).filter((m) => cats.includes(m.category));
+  if (!ms.length) return null;
+  const dated = ms.filter((m) => m.daysOut !== null);
+  let pick;
+  if (dated.length) {
+    const upcoming = dated.filter((m) => m.daysOut >= 0).sort((a, b) => a.daysOut - b.daysOut);
+    pick = upcoming[0] || dated.sort((a, b) => b.daysOut - a.daysOut)[0];
+  } else {
+    pick = ms[ms.length - 1];
+  }
+  if (!pick) return null;
+  let action = pick.name.split(' (')[0].trim();
+  if (action.length > 52) action = action.slice(0, 50).trim() + '…';
+  return { action, dueDate: pick.dueDate, daysOut: pick.daysOut, owner: pick.owner, critical: pick.critical };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a

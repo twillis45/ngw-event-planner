@@ -11,7 +11,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments, playbookSetupPreview, playbookRisks } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep } from './lib/playbooks';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -20297,19 +20297,39 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                 {doneCount > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
-                {visible.map(({ p, i }) => (
+                {visible.map(({ p, i }) => {
+                  // Day-of grammar on the planning home: each area carries its next
+                  // concrete dated step (from the authored milestones) + owner when
+                  // it isn't the host. Falls back to the plain status word when the
+                  // area has no dated milestone (e.g. Heart) or the type has no playbook.
+                  const step = (() => { try { return playbookAreaNextStep(ev, p.label); } catch { return null; } })();
+                  const overdue = step && typeof step.daysOut === 'number' && step.daysOut < 0;
+                  const due = step && step.dueDate ? new Date(step.dueDate + 'T00:00:00') : null;
+                  const dueText = due
+                    ? (overdue ? `${Math.abs(step.daysOut)}d overdue` : `by ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+                    : stateMeta[p.state].t;
+                  const dueColor = due ? (overdue ? (C.danger || C.warn) : C.muted) : stateMeta[p.state].c;
+                  return (
                   <button key={p.label} type="button"
                     onClick={() => setSetupOpen(i)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '7px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '8px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                    <span style={{ fontSize: 13.5, color: C.text }}>{p.label}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: stateMeta[p.state].c }}>{stateMeta[p.state].t}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text }}>{p.label}</span>
+                      {step && step.action && (
+                        <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {step.action}{step.owner && step.owner !== 'host' ? ` · ${step.owner}` : ''}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: dueColor }}>{dueText}</span>
                       <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
                     </span>
                   </button>
-                ))}
+                  );
+                })}
                 {moreCount > 0 && (
                   <button type="button" onClick={() => setSetupOpen(visible[visible.length - 1].i)}
                     style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, color: C.muted }}>
