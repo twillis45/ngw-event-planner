@@ -1532,6 +1532,26 @@ const isTaskOverdue = (task, eventDate, eventType) => {
   return d <= getToday();
 };
 
+// NOW-relative due label for a planning task. The phase bucket ("2 Weeks Out")
+// is event-relative and reads as if it were now-relative — misleading once the
+// task's real due date is near or past. This turns the authored offset
+// (task.offsetDays, days-before-event; or the phase bucket) into honest timing
+// against TODAY: "Due in 2 days", "Overdue 4d", "Due Jul 9". Null when undatable.
+const taskDueLabel = (task, eventDate) => {
+  if (!eventDate || !task) return null;
+  const daysBefore = typeof task.offsetDays === 'number' ? task.offsetDays
+    : (task.week in PHASE_OFFSET ? -PHASE_OFFSET[task.week] : null);
+  if (daysBefore == null) return null;
+  const due = new Date(eventDate + 'T00:00:00');
+  due.setDate(due.getDate() - daysBefore);
+  const days = Math.round((due - getToday()) / 86400000);
+  if (days < 0) return `${Math.abs(days)}d overdue`;
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  if (days <= 21) return `Due in ${days} days`;
+  return `Due ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+};
+
 const currentPhase = (days) => {
   if (days === null || days === undefined) return null;
   if (days > 330) return '12 Months Out';
@@ -20681,7 +20701,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
   const urgentTasks = useMemo(() => events.flatMap(ev =>
     (ev.timeline || [])
       .filter(t => !t.done && isTaskOverdue(t, ev.date, ev.type))
-      .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type }))
+      .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type, eventDate: ev.date }))
   ), [events]);
 
   const soonTasks = useMemo(() => events.flatMap(ev => {
@@ -20692,7 +20712,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     const phaseIdx = phaseOrder.indexOf(phase);
     return (ev.timeline || [])
       .filter(t => !t.done && !isTaskOverdue(t, ev.date, ev.type) && phaseOrder.indexOf(t.week) <= phaseIdx + 1 && phaseOrder.indexOf(t.week) >= 0)
-      .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type }));
+      .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type, eventDate: ev.date }));
   }), [events]);
 
   const taskInboxItems = useMemo(() => [...urgentTasks, ...soonTasks].slice(0, 12), [urgentTasks, soonTasks]);
@@ -20738,7 +20758,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ fontSize: 12.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.task || 'Untitled task'}</div>
           <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             <span style={{ color: clr }}>{t.eventName}</span>
-            {t.week !== 'Custom' && <span> · {t.week}</span>}
+            {(() => { const due = taskDueLabel(t, t.eventDate); return (due || t.week !== 'Custom') ? <span> · {due || t.week}</span> : null; })()}
             {t.owner && <span> · {t.owner}</span>}
           </div>
         </div>
@@ -33073,7 +33093,7 @@ function LegacyTabHeader({ label, hint, onBack }) {
 // underlying components ignore it where it doesn't apply.
 // #13 — the planning task's STEPS live in a modal (not stacked on the screen). Opens
 // from the categorized checklist; shows the FULL title (no truncation) + checkable steps.
-function PlanStepModal({ task, onClose, onPatch }) {
+function PlanStepModal({ task, onClose, onPatch, eventDate }) {
   const C = useT();
   const subs = Array.isArray(task.subtasks) ? task.subtasks : [];
   const doneN = subs.filter((x) => x.done).length;
@@ -33089,7 +33109,13 @@ function PlanStepModal({ task, onClose, onPatch }) {
           <div style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>{task.task}</div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>✕</button>
         </div>
-        {(task.owner || task.week) && <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{[task.owner, task.week].filter(Boolean).join(' · ')}</div>}
+        {(() => {
+          // Now-relative timing ("Due in 2 days") instead of the event-relative phase
+          // bucket ("2 Weeks Out"), which read as if it meant 2 weeks from today.
+          const due = taskDueLabel(task, eventDate);
+          const meta = [task.owner, due || (task.week !== 'Custom' ? task.week : null)].filter(Boolean).join(' · ');
+          return meta ? <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{meta}</div> : null;
+        })()}
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Steps</span>
@@ -33243,7 +33269,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
         />
       )}
       </>)}
-      {stepTask && <PlanStepModal task={stepTask} onClose={() => setStepTaskId(null)} onPatch={(patch) => patchTask(stepTask.id, patch)} />}
+      {stepTask && <PlanStepModal task={stepTask} eventDate={event?.date} onClose={() => setStepTaskId(null)} onPatch={(patch) => patchTask(stepTask.id, patch)} />}
     </>
   );
 }
