@@ -25722,6 +25722,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
 function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, focusCount = false }) {
   const C      = useT();
+  const T = useType();
   const s      = makeS(C);
   const rsvpCLR = RSVP_CLR(C);
   const bp = useContext(BpCtx);
@@ -25949,13 +25950,13 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
     return (
       <div style={{ padding: '8px 0' }}>
         <div style={card}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
+          <div style={{ fontSize: T.secondary, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
           <div style={{ fontSize: 14.5, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: 600 }}>
             {hasList
               ? `${yes} confirmed${awaiting > 0 ? ` · ${awaiting} still out` : ''} of ${guests.length} invited.`
               : 'How many are you planning for?'}
           </div>
-          <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
+          <div style={{ fontSize: T.body, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
             Lock the number you're cooking and buying for — it becomes your final count everywhere (food plan, budget, seating).
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -26035,7 +26036,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <div onClick={() => setGuestActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Guest Actions</div>
+            <div style={{ fontSize: T.caption, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Guest Actions</div>
             {[
               { icon: 'import',  label: 'Import CSV',      onClick: () => { setShowImport(true);        setGuestActionsOpen(false); } },
               { icon: 'history', label: `Import History${importBatches.length > 0 ? ` (${importBatches.length})` : ''}`, onClick: () => { setShowGuestHistory(true); setGuestActionsOpen(false); } },
@@ -26062,11 +26063,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
       {event.guestMode === 'count' && Number(event.guestCount) > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${(C.success || C.accent)}55`, borderLeft: `3px solid ${C.success || C.accent}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
           <span aria-hidden style={{ fontSize: 15 }}>📌</span>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: C.text, lineHeight: 1.5 }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.5 }}>
             <span style={{ fontWeight: 700 }}>Locked at {Number(event.guestCount)} guests</span> — that's your final count for food, budget &amp; seating. RSVPs below are just for tracking.
           </div>
           <button type="button" onClick={() => { setGuestMode('list'); }}
-            style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
+            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: 700, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
         </div>
       )}
 
@@ -26084,7 +26085,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
             <span aria-hidden style={{ fontSize: 22, lineHeight: 1 }}>🎉</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15.5, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{headline}</div>
-              <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{yes} {yes === 1 ? 'person is' : 'people are'} coming so far 💛</div>
+              <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2 }}>{yes} {yes === 1 ? 'person is' : 'people are'} coming so far 💛</div>
             </div>
             <button type="button" onClick={() => setNewYeses([])} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>×</button>
           </div>
@@ -26108,11 +26109,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 </div>
               </button>
               {tail.length > 0 && (
-                <div style={{ fontSize: 13.5, color: C.muted, marginTop: 6 }}>
+                <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>
                   {tail.map((x, i) => (
                     <span key={x.f}>
                       {i > 0 && ' · '}
-                      <button type="button" onClick={() => setGFilter(x.f)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontFamily: 'inherit', fontSize: 13.5, textDecoration: 'underline', textDecorationColor: `${C.muted}66`, textUnderlineOffset: 3 }}>{x.t}</button>
+                      <button type="button" onClick={() => setGFilter(x.f)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontFamily: 'inherit', fontSize: T.body, textDecoration: 'underline', textDecorationColor: `${C.muted}66`, textUnderlineOffset: 3 }}>{x.t}</button>
                     </span>
                   ))}
                   {thankYouPending > 0 && <span> · {thankYouPending} thank-you{thankYouPending === 1 ? '' : 's'} to send</span>}
@@ -26148,11 +26149,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite' }); }}
             style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, marginBottom: 16, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Nudge the {awaiting} who haven’t replied</div>
-            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A friendly reminder — already written, with your RSVP link.</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A friendly reminder — already written, with your RSVP link.</div>
           </button>
         );
       })()}
@@ -26167,11 +26168,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <button type="button" onClick={() => { const d = draftDietaryNote(event, profile, {}); setGuestDraftSheet({ title: 'Notes for the cook', intro: `Pulled from your guests — the ${needCount} dietary ${needCount === 1 ? 'note' : 'notes'} to pass to whoever’s cooking or catering. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
             style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, marginBottom: 16, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send the cook the dietary notes</div>
-            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{needCount} {needCount === 1 ? 'guest has' : 'guests have'} a need on file — written up for whoever’s cooking.</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{needCount} {needCount === 1 ? 'guest has' : 'guests have'} a need on file — written up for whoever’s cooking.</div>
           </button>
         );
       })()}
@@ -26229,10 +26230,10 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                     Link" with a raw URL and "responses feed into this list." */}
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{guestsIsHost ? 'Your invite link' : 'RSVP Collection Link'}</div>
                 {guestsIsHost ? (
-                  <div style={{ fontSize: 11.5, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it and guests reply right here — your list updates on its own.</div>
+                  <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it and guests reply right here — your list updates on its own.</div>
                 ) : (<>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3, wordBreak: 'break-all' }}>{rsvpUrl || '—'}</div>
-                  <div style={{ fontSize: 11, color: C.accent2, marginTop: 2 }}>Responses feed directly into this list</div>
+                  <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, wordBreak: 'break-all' }}>{rsvpUrl || '—'}</div>
+                  <div style={{ fontSize: T.secondary, color: C.accent2, marginTop: 2 }}>Responses feed directly into this list</div>
                 </>)}
               </div>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -26242,7 +26243,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
             </div>
             {blastList.length > 0 && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ fontSize: 12, color: C.muted }}>
+                <div style={{ fontSize: T.caption, color: C.muted }}>
                   Send the RSVP request to {blastList.length} guest{blastList.length === 1 ? '' : 's'} who haven't replied
                   {noEmail > 0 && <span> · {noEmail} have no email on file</span>}
                 </div>
@@ -26280,7 +26281,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               {/* Sprint 60.L color restraint: guest dietary need text was
                   amber as metadata. → steel; the wrapper card already
                   signals "Special Needs" attention. */}
-              <span style={{ fontSize: 12, color: C.muted }}>{g.needs}</span>
+              <span style={{ fontSize: T.caption, color: C.muted }}>{g.needs}</span>
             </div>
           ))}
         </div>
@@ -26310,7 +26311,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               {withEmail.length > 0 && (
                 emailEnabled ? (
                   <button
-                    style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0 }}
+                    style={{ ...s.btn('secondary'), fontSize: T.secondary, padding: '5px 12px', flexShrink: 0 }}
                     onClick={async () => {
                       let delivered = 0;
                       let loggedOnly = 0;
@@ -26343,7 +26344,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                   <a
                     href={`mailto:${withEmail.map(g => g.email).join(',')}?subject=${encodeURIComponent(`RSVP reminder — ${event?.name || 'our event'}`)}&body=${encodeURIComponent(`Hi all,\n\nJust a friendly reminder to RSVP for ${event?.name || 'our event'}!${rsvpUrl ? `\n\nRSVP here: ${rsvpUrl}` : ''}\n\nThank you!`)}`}
                     title="Opens your email app. Reminders are not sent until you send the draft."
-                    style={{ ...s.btn('secondary'), fontSize: 11, padding: '5px 12px', flexShrink: 0, textDecoration: 'none' }}
+                    style={{ ...s.btn('secondary'), fontSize: T.secondary, padding: '5px 12px', flexShrink: 0, textDecoration: 'none' }}
                   >
                     Open email draft ({withEmail.length})
                   </a>
@@ -26360,11 +26361,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
-                    <div style={{ flex: 1, fontSize: 13 }}>{g.name} <span style={{ color: C.muted, fontSize: 11 }}>{g.rsvp === 'Maybe' ? '· Maybe' : '· No response'}</span></div>
+                    <div style={{ flex: 1, fontSize: 13 }}>{g.name} <span style={{ color: C.muted, fontSize: T.secondary }}>{g.rsvp === 'Maybe' ? '· Maybe' : '· No response'}</span></div>
                     <div style={{ display: 'flex', gap: 5 }} onClick={e => e.stopPropagation()}>
-                      {emailLink && <a href={emailLink} style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }}>Email</a>}
-                      {smsLink   && <a href={smsLink}   style={{ ...s.btn(), fontSize: 10, padding: '3px 8px', textDecoration: 'none' }}>Text</a>}
-                      {!emailLink && !smsLink && <span style={{ fontSize: 10, color: C.muted }}>No contact</span>}
+                      {emailLink && <a href={emailLink} style={{ ...s.btn(), fontSize: T.caption, padding: '3px 8px', textDecoration: 'none' }}>Email</a>}
+                      {smsLink   && <a href={smsLink}   style={{ ...s.btn(), fontSize: T.caption, padding: '3px 8px', textDecoration: 'none' }}>Text</a>}
+                      {!emailLink && !smsLink && <span style={{ fontSize: T.caption, color: C.muted }}>No contact</span>}
                     </div>
                   </div>
                 );
@@ -26403,7 +26404,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 title="Import history"
               >
                 <Icon name="history" size={14} />
-                {importBatches.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
+                {importBatches.length > 0 && <span style={{ fontSize: T.eyebrow, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
               </button>
               {importBatches.length > 0 && (
                 <button aria-label="Undo last import" style={{ ...s.btn(), color: C.muted }} onClick={handleUndo} title="Undo last import">↩</button>
@@ -26413,7 +26414,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           )}
         </div>
         {importMsg && (
-          <div style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
+          <div style={{ fontSize: T.caption, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
             {importMsg.text}
           </div>
         )}
@@ -26423,12 +26424,12 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               not a row of database filter pills + a sort dropdown. Planner keeps the toolbar. */}
           {!guestsIsHost && ['all', 'Yes', 'No', 'Maybe'].map(f => (
             <button key={f} onClick={() => setGFilter(f)}
-              style={{ ...s.btn(gFilter === f ? 'primary' : 'ghost'), fontSize: 11, padding: '5px 10px' }}>
+              style={{ ...s.btn(gFilter === f ? 'primary' : 'ghost'), fontSize: T.secondary, padding: '5px 10px' }}>
               {f === 'all' ? 'All' : f === 'Yes' ? 'Confirmed' : f === 'No' ? 'Declined' : 'Awaiting'}
             </button>
           ))}
           {!guestsIsHost && bp !== 'mobile' && (
-            <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }} value={gSort} onChange={e => setGSort(e.target.value)}>
+            <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: T.secondary }} value={gSort} onChange={e => setGSort(e.target.value)}>
               <option value="name">Sort: Name</option>
               <option value="group">Sort: Group</option>
               <option value="rsvp">Sort: RSVP</option>
@@ -26438,7 +26439,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           )}
         </div>
         {!guestsIsHost && bp === 'mobile' && (
-          <select style={{ ...s.input, fontSize: 12, padding: '6px 10px', marginBottom: 10 }} value={gSort} onChange={e => setGSort(e.target.value)}>
+          <select style={{ ...s.input, fontSize: T.caption, padding: '6px 10px', marginBottom: 10 }} value={gSort} onChange={e => setGSort(e.target.value)}>
             <option value="name">Sort: Name</option>
             <option value="group">Sort: Group</option>
             <option value="rsvp">Sort: RSVP</option>
@@ -26480,16 +26481,16 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {!guestsIsHost && g.group && <span style={{ fontSize: 11, color: C.muted }}>{g.group}</span>}
+                    {!guestsIsHost && g.group && <span style={{ fontSize: T.secondary, color: C.muted }}>{g.group}</span>}
                     {!guestsIsHost && g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
-                    {!guestsIsHost && g.table && <span style={{ fontSize: 11, color: C.muted }}>Table {g.table}</span>}
-                    {g.needs && <span style={{ fontSize: 11, color: C.muted }}>⚠ {g.needs}</span>}
-                    {g.plusOne && <span style={{ fontSize: 11, color: C.muted }}>+{g.plusOne}</span>}
+                    {!guestsIsHost && g.table && <span style={{ fontSize: T.secondary, color: C.muted }}>Table {g.table}</span>}
+                    {g.needs && <span style={{ fontSize: T.secondary, color: C.muted }}>⚠ {g.needs}</span>}
+                    {g.plusOne && <span style={{ fontSize: T.secondary, color: C.muted }}>+{g.plusOne}</span>}
                   </div>
                 </div>
                 <div style={{ flexShrink: 0, marginLeft: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span
-                    style={{ ...s.pill(rsvpCLR[g.rsvp] || C.muted), cursor: 'pointer', padding: '4px 11px', fontSize: 11, minHeight: 26, display: 'inline-flex', alignItems: 'center' }}
+                    style={{ ...s.pill(rsvpCLR[g.rsvp] || C.muted), cursor: 'pointer', padding: '4px 11px', fontSize: T.secondary, minHeight: 26, display: 'inline-flex', alignItems: 'center' }}
                     title="Tap to cycle RSVP"
                     onClick={e => { e.stopPropagation(); const cycle = { 'Yes': 'No', 'No': 'Maybe', 'Maybe': '', '': 'Yes', undefined: 'Yes' }; setGuests(gs => gs.map(x => x.id === g.id ? { ...x, rsvp: cycle[g.rsvp] ?? 'Yes' } : x)); }}
                   >{g.rsvp || '—'}</span>
@@ -26513,14 +26514,14 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                   onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
                   <td style={s.td}>
                     <div style={{ fontWeight: 500 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
-                    {g.plusOne && <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>+1 {g.plusOne}</div>}
+                    {g.plusOne && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 1 }}>+1 {g.plusOne}</div>}
                   </td>
-                  <td style={{ ...s.td, color: C.muted, fontSize: 12 }}>{g.group}</td>
+                  <td style={{ ...s.td, color: C.muted, fontSize: T.caption }}>{g.group}</td>
                   <td style={s.td}><span style={{ ...s.pill(rsvpCLR[g.rsvp] || C.muted), cursor: 'pointer' }} title="Click to change RSVP" onClick={e => { e.stopPropagation(); const cycle = { 'Yes': 'No', 'No': 'Maybe', 'Maybe': '', '': 'Yes', undefined: 'Yes' }; setGuests(gs => gs.map(x => x.id === g.id ? { ...x, rsvp: cycle[g.rsvp] ?? 'Yes' } : x)); }}>{g.rsvp}</span></td>
-                  <td style={{ ...s.td, fontSize: 12, color: g.meal === '—' ? C.muted : C.text }}>{g.meal}</td>
-                  <td style={{ ...s.td, color: g.table ? C.text : C.muted, fontSize: 12 }}>{g.table || '—'}</td>
-                  <td style={{ ...s.td, fontSize: 12, color: g.needs ? C.warn : C.muted }}>{g.needs ? `⚠ ${g.needs}` : '—'}</td>
-                  <td style={{ ...s.td, fontSize: 11.5, color: g.email || g.phone ? C.muted : C.border, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{g.email || g.phone || '—'}</td>
+                  <td style={{ ...s.td, fontSize: T.caption, color: g.meal === '—' ? C.muted : C.text }}>{g.meal}</td>
+                  <td style={{ ...s.td, color: g.table ? C.text : C.muted, fontSize: T.caption }}>{g.table || '—'}</td>
+                  <td style={{ ...s.td, fontSize: T.caption, color: g.needs ? C.warn : C.muted }}>{g.needs ? `⚠ ${g.needs}` : '—'}</td>
+                  <td style={{ ...s.td, fontSize: T.secondary, color: g.email || g.phone ? C.muted : C.border, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{g.email || g.phone || '—'}</td>
                   <td style={{ ...s.td, color: C.muted, fontSize: 18, lineHeight: 1 }}>›</td>
                 </tr>
               ))}
@@ -26529,7 +26530,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         ))}
         {!guestsIsHost && confirmed.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
+            <span style={{ fontSize: T.secondary, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
             {Object.entries(mealCounts).map(([meal, count]) => <span key={meal} style={s.pill(C.accent2)}>{meal}: {count}</span>)}
             {kids > 0 && <span style={s.pill(C.muted)}>Kids meals: {kids}</span>}
           </div>
@@ -26548,7 +26549,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         const toggle = (gId, key) => setGuests(gs => gs.map(g => g.id === gId ? { ...g, [key]: !g[key] } : g));
 
         const giftPct     = confirmed.length > 0 ? Math.round((gifted / confirmed.length) * 100) : 0;
-        const TH_STYLE    = { fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, padding: '0 8px 8px', textAlign: 'center', borderBottom: `1px solid ${C.border}` };
+        const TH_STYLE    = { fontSize: T.caption, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, padding: '0 8px 8px', textAlign: 'center', borderBottom: `1px solid ${C.border}` };
         const TH_L_STYLE  = { ...TH_STYLE, textAlign: 'left', paddingLeft: 0 };
 
         return (
@@ -26558,7 +26559,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               <div style={s.cardTitle}>Thank-You Tracker</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {pending.length > 0 && <span style={s.pill(C.muted)}>{pending.length} pending</span>}
-                <span style={{ fontSize: 12, color: C.muted }}>{gifted} received · {thanked}/{confirmed.length} sent</span>
+                <span style={{ fontSize: T.caption, color: C.muted }}>{gifted} received · {thanked}/{confirmed.length} sent</span>
               </div>
             </div>
 
@@ -26598,11 +26599,11 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                     }}>
                       <td style={{ padding: '8px 8px 8px 0', borderBottom: `1px solid ${C.border}`, verticalAlign: 'middle' }}>
                         <div style={{ fontSize: 13, fontWeight: isDone ? 400 : 500, color: C.text }}>{g.name}</div>
-                        {g.partyNotes && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{g.partyNotes}</div>}
+                        {g.partyNotes && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{g.partyNotes}</div>}
                       </td>
                       <td style={{ padding: '8px', borderBottom: `1px solid ${C.border}`, textAlign: 'center', verticalAlign: 'middle', width: 110 }}>
                         <button onClick={() => toggle(g.id, 'giftReceived')} style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: 600,
+                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: 600,
                           border: `1px solid ${g.giftReceived ? C.success : C.border}`,
                           background: g.giftReceived ? C.success + '18' : C.bg,
                           color: g.giftReceived ? C.success : C.muted,
@@ -26616,7 +26617,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                           }
                           toggle(g.id, 'thankYouSent');
                         }} style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: 11, cursor: 'pointer', fontWeight: 600,
+                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: 600,
                           border: `1px solid ${g.thankYouSent ? C.accent2 : g.giftReceived ? C.muted + '88' : C.border}`,
                           background: g.thankYouSent ? C.accent2 + '18' : g.giftReceived ? C.muted + '12' : C.bg,
                           color: g.thankYouSent ? C.accent2 : g.giftReceived ? C.warn : C.muted,
@@ -26678,40 +26679,40 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         return (
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vendor Impact Summaries</div>
-              <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>Copy and send manually — planner-reviewed before sharing</div>
+              <div style={{ fontSize: T.caption, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vendor Impact Summaries</div>
+              <div style={{ fontSize: T.secondary, color: C.muted, fontStyle: 'italic' }}>Copy and send manually — planner-reviewed before sharing</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
 
               {/* F&B Summary */}
               <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.accent2 }}>Food & Beverage</div>
+                  <div style={{ fontSize: T.caption, fontWeight: 700, color: C.accent2 }}>Food & Beverage</div>
                   <button onClick={() => copyText(fbText)}
-                    style={{ ...makeS(C).btn('ghost'), fontSize: 10, padding: '3px 8px' }}>Copy</button>
+                    style={{ ...makeS(C).btn('ghost'), fontSize: T.caption, padding: '3px 8px' }}>Copy</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                     <span style={{ color: C.muted }}>Confirmed headcount</span>
                     <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
                   </div>
                   {totalPlusOnes > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Plus-ones</span>
                       <span style={{ fontWeight: 600, color: C.text }}>{totalPlusOnes}</span>
                     </div>
                   )}
                   {totalKids > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Kids meals needed</span>
                       <span style={{ fontWeight: 600, color: C.muted }}>{totalKids}</span>
                     </div>
                   )}
                   {mealBreakdown.length > 0 && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Meal selections</div>
+                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Meal selections</div>
                       {mealBreakdown.map(([meal, count]) => (
-                        <div key={meal} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
+                        <div key={meal} style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption, marginBottom: 2 }}>
                           <span style={{ color: C.text }}>{meal}</span>
                           <span style={{ fontWeight: 700, color: C.accent }}>{count}</span>
                         </div>
@@ -26720,9 +26721,9 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                   )}
                   {Object.keys(needsCounts).length > 0 && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Dietary / Special Needs</div>
+                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Dietary / Special Needs</div>
                       {Object.entries(needsCounts).map(([need, count]) => (
-                        <div key={need} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 2 }}>
+                        <div key={need} style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption, marginBottom: 2 }}>
                           <span style={{ color: C.text }}>{need}</span>
                           {count > 1 && <span style={{ fontWeight: 700, color: C.muted }}>×{count}</span>}
                         </div>
@@ -26730,7 +26731,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                     </div>
                   )}
                   {Object.keys(needsCounts).length === 0 && mealBreakdown.length === 0 && (
-                    <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>No meal selections or dietary needs recorded.</div>
+                    <div style={{ fontSize: T.secondary, color: C.muted, fontStyle: 'italic' }}>No meal selections or dietary needs recorded.</div>
                   )}
                 </div>
               </div>
@@ -26738,35 +26739,35 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               {/* Venue / Logistics Summary */}
               <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Venue & Logistics</div>
+                  <div style={{ fontSize: T.caption, fontWeight: 700, color: C.accent }}>Venue & Logistics</div>
                   <button onClick={() => copyText(venueText)}
-                    style={{ ...makeS(C).btn('ghost'), fontSize: 10, padding: '3px 8px' }}>Copy</button>
+                    style={{ ...makeS(C).btn('ghost'), fontSize: T.caption, padding: '3px 8px' }}>Copy</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                     <span style={{ color: C.muted }}>Confirmed attendance</span>
                     <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
                   </div>
                   {tablesUsed > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Tables assigned</span>
                       <span style={{ fontWeight: 600, color: C.text }}>{tablesUsed}</span>
                     </div>
                   )}
                   {accessible > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Wheelchair access needed</span>
                       <span style={{ fontWeight: 700, color: C.muted }}>{accessible}</span>
                     </div>
                   )}
                   {maybeCount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Still undecided</span>
                       <span style={{ fontWeight: 600, color: C.muted }}>{maybeCount}</span>
                     </div>
                   )}
                   {noResponse > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>No response yet</span>
                       <span style={{ fontWeight: 600, color: C.danger }}>{noResponse}</span>
                     </div>
@@ -27902,6 +27903,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 
 function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {}, isHost = false, authored = false }) {
   const C        = useT();
+  const T = useType();
   const s        = makeS(C);
   const stageCLR = STAGE_CLR(C);
   const rosCLR   = ROS_CLR(C);
@@ -28195,18 +28197,18 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: dim ? C.muted : C.text, minWidth: 72, flexShrink: 0, lineHeight: 1.15 }}>
             {fmtTime12(r.time)}
-            {r.endTime && <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: C.muted }}>–{fmtTime12(r.endTime)}</span>}
+            {r.endTime && <span style={{ display: 'block', fontSize: T.secondary, fontWeight: 600, color: C.muted }}>–{fmtTime12(r.endTime)}</span>}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: dim ? C.muted : C.text }}>{r.segment || '(untitled)'}</div>
-            {((!soloRun && r.owner) || r.location) && <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>{[soloRun ? null : r.owner, r.location].filter(Boolean).join(' · ')}</div>}
+            {((!soloRun && r.owner) || r.location) && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>{[soloRun ? null : r.owner, r.location].filter(Boolean).join(' · ')}</div>}
             {Array.isArray(r.subtasks) && r.subtasks.length > 0 && (() => {
               const dn = r.subtasks.filter((x) => x.done).length;
-              return <div style={{ fontSize: 11.5, fontWeight: 600, color: dn === r.subtasks.length ? C.success : (C.accentTopGrad || C.accent), marginTop: 4 }}>✓ {dn} of {r.subtasks.length} steps</div>;
+              return <div style={{ fontSize: T.secondary, fontWeight: 600, color: dn === r.subtasks.length ? C.success : (C.accentTopGrad || C.accent), marginTop: 4 }}>✓ {dn} of {r.subtasks.length} steps</div>;
             })()}
             {/* Cue notes — the coordinator's cue sheet, surfaced (was dropped before). */}
-            {r.notes && <div style={{ fontSize: 12.5, color: kind === 'now' ? C.text : C.muted, marginTop: 5, lineHeight: 1.45, fontStyle: kind === 'now' ? 'normal' : 'italic' }}>{r.notes}</div>}
-            {kind === 'now' && r.actualStart != null && <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Started {fmtTime12(`${String(Math.floor(r.actualStart / 60)).padStart(2, '0')}:${String(r.actualStart % 60).padStart(2, '0')}`)}</div>}
+            {r.notes && <div style={{ fontSize: T.secondary, color: kind === 'now' ? C.text : C.muted, marginTop: 5, lineHeight: 1.45, fontStyle: kind === 'now' ? 'normal' : 'italic' }}>{r.notes}</div>}
+            {kind === 'now' && r.actualStart != null && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4 }}>Started {fmtTime12(`${String(Math.floor(r.actualStart / 60)).padStart(2, '0')}:${String(r.actualStart % 60).padStart(2, '0')}`)}</div>}
           </div>
         </div>
         {kind === 'now' && (
@@ -28225,7 +28227,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
           </div>
         )}
         {kind === 'done' && (
-          <button onClick={() => undoSeg(r.id)} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 11, cursor: 'pointer', padding: '6px 0 0', fontFamily: 'inherit' }}>↶ Not done yet</button>
+          <button onClick={() => undoSeg(r.id)} style={{ background: 'none', border: 'none', color: C.muted, fontSize: T.secondary, cursor: 'pointer', padding: '6px 0 0', fontFamily: 'inherit' }}>↶ Not done yet</button>
         )}
       </div>
     );
@@ -28234,7 +28236,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
       if (secItems.length === 0) return null;
       return (
         <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color, marginBottom: 8, paddingLeft: 4 }}>{label}</div>
+          <div style={{ fontSize: T.secondary, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color, marginBottom: 8, paddingLeft: 4 }}>{label}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {secItems.map(r => <Card key={r.id} r={r} color={color} dim={dim} kind={kind} />)}
           </div>
@@ -28247,7 +28249,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         {/* Header + drift badge */}
         <div style={{ marginBottom: 16, paddingLeft: 4, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Today's schedule</div>
+            <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Today's schedule</div>
             <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.4 }}>Tap Start / Done as the day runs — it tracks reality, not the clock.</div>
           </div>
           {driftLabel && (
@@ -28303,20 +28305,20 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         const feelWords = feeling ? feeling.split(/[·,]/).map(w => w.trim()).filter(Boolean) : [];
         return (
           <div style={{ ...s.card, marginBottom: 18, padding: '16px 20px', borderLeft: `3px solid ${C.accent}`, background: `linear-gradient(180deg, ${C.accent}12 0%, ${C.accent}05 100%)` }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.18em', color: C.accent, textTransform: 'uppercase', marginBottom: 9 }}>
+            <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.18em', color: C.accent, textTransform: 'uppercase', marginBottom: 9 }}>
               ★ The heart of the night
             </div>
             {feelWords.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: story || why || mustHave ? 9 : 0 }}>
                 {feelWords.map((w, i) => (
-                  <span key={i} style={{ fontSize: 11.5, fontWeight: 600, color: C.text, background: `${C.accent}1A`, border: `1px solid ${C.accent}40`, padding: '2px 9px', borderRadius: 999 }}>{w}</span>
+                  <span key={i} style={{ fontSize: T.secondary, fontWeight: 600, color: C.text, background: `${C.accent}1A`, border: `1px solid ${C.accent}40`, padding: '2px 9px', borderRadius: 999 }}>{w}</span>
                 ))}
               </div>
             )}
             {why && <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, marginBottom: story || mustHave ? 7 : 0 }}>{why}</div>}
-            {story && <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5, marginBottom: mustHave ? 7 : 0 }}>{story}</div>}
+            {story && <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, marginBottom: mustHave ? 7 : 0 }}>{story}</div>}
             {mustHave && (
-              <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.45, display: 'flex', gap: 7, alignItems: 'baseline' }}>
+              <div style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45, display: 'flex', gap: 7, alignItems: 'baseline' }}>
                 <span aria-hidden style={{ color: C.accent, fontWeight: 800 }}>★</span>
                 <span><strong style={{ color: C.accent }}>Must-have moment:</strong> {mustHave}</span>
               </div>
@@ -28337,7 +28339,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         return (
           <div style={{ ...s.card, marginBottom: 14, padding: '11px 14px', borderLeft: `3px solid ${C.muted}`, background: `${C.muted}12`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span aria-hidden style={{ color: C.muted, fontWeight: 800 }}>⚠</span>
-            <span style={{ fontSize: 12.5, color: C.text, lineHeight: 1.45, flex: 1, minWidth: 180 }}>
+            <span style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45, flex: 1, minWidth: 180 }}>
               <strong>{honoree}</strong> is running {mine.length} moment{mine.length !== 1 ? 's' : ''} — they should be <em>celebrating</em>, not working. Reassign so they can enjoy their night.
             </span>
           </div>
@@ -28422,15 +28424,15 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
               background: allClear ? `${C.success}22` : `${steelTopROS}22`,
               color: allClear ? C.success : steelTopROS,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 800,
+              fontSize: T.secondary, fontWeight: 800,
             }}>{allClear ? '✓' : '◐'}</span>
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steelTopROS }}>Readiness</span>
+            <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steelTopROS }}>Readiness</span>
             {allClear ? (
               <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Every segment has a time, owner, and location filled in, and all vendor rows are confirmed.</span>
             ) : (
               <>
                 {issues.map(i => (
-                  <span key={i.key} style={{ fontSize: 11, fontWeight: 700, color: i.color, background: `${i.color}14`, border: `1px solid ${i.color}44`, padding: '3px 9px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <span key={i.key} style={{ fontSize: T.secondary, fontWeight: 700, color: i.color, background: `${i.color}14`, border: `1px solid ${i.color}44`, padding: '3px 9px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     {i.n} · {i.label}
                   </span>
                 ))}
@@ -28443,7 +28445,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
       {scheduleHidden && (
         <div style={{ ...s.card, borderLeft: `3px solid ${C.accent}` }}>
           <div style={s.cardTitle}>Your run of the day</div>
-          <div style={{ fontSize: 13.5, color: C.muted, marginTop: 8, lineHeight: 1.55 }}>
+          <div style={{ fontSize: T.body, color: C.muted, marginTop: 8, lineHeight: 1.55 }}>
             {rosDaysOut > 60
               ? `Your event's about ${Math.round(rosDaysOut / 7)} weeks out — there's no rush on the minute-by-minute yet.`
               : `Your event's ${rosDaysOut} days out — the timeline comes together best a few weeks before.`}
@@ -28460,7 +28462,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
           <div style={s.cardTitle}>{isHost ? 'Your run of the day' : 'Event Day Schedule'}</div>
           {isMobileRos ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
+              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: T.secondary }}
                 value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
                 <option value="all">All</option>
                 <option value="vendor">Vendors</option>
@@ -28475,7 +28477,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: 11 }}
+              <select style={{ ...s.input, width: 'auto', padding: '5px 10px', fontSize: T.secondary }}
                 value={rosFilter} onChange={e => setRosFilter(e.target.value)}>
                 <option value="all">All types</option>
                 {hasVendors && <option value="vendor">Vendors</option>}
@@ -28497,7 +28499,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             and opens the editor for a time + owner. data-deeplink so the CTA scrolls to it. */}
         {!isDayOf && meaning && isMeaningfulMustHave(meaning.mustHave) && !ros.some(r => r && r.heart) && (
           <div data-deeplink="musthave" style={{ marginBottom: 16, padding: '14px 16px', border: `1px solid ${C.accent}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 10, background: `${C.accent}10` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>The one thing that has to happen</div>
+            <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>The one thing that has to happen</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.4, marginBottom: 10 }}>{meaning.mustHave}</div>
             <button type="button" onClick={() => {
                 const id = uid();
@@ -28517,12 +28519,12 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
           const addMoment = (m) => { track(EVENTS.ROS_ITEM_ADDED, { source: 'moment', moment: m.id }); setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]); };
           return (
             <div style={{ marginBottom: 16, padding: '10px 12px', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{isHost ? 'Moments that matter · one tap drops it into your day' : 'Moments that matter · one tap adds it with an owner'}</div>
+              <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{isHost ? 'Moments that matter · one tap drops it into your day' : 'Moments that matter · one tap adds it with an owner'}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {sugg.map(m => (
                   <button key={m.id} onClick={() => addMoment(m)}
                     title={m.note ? `Owner: ${m.owner} · ${m.note}` : `Owner: ${m.owner}`}
-                    style={{ fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                    style={{ fontSize: T.caption, fontWeight: 600, padding: '5px 11px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
                     + {m.label}
                   </button>
                 ))}
@@ -28536,7 +28538,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 14,
             background: `${rosActionMsg.kind === 'err' ? C.muted : C.success}14`,
             border: `1px solid ${rosActionMsg.kind === 'err' ? C.muted : C.success}44`,
-            borderRadius: 8, padding: '8px 12px', fontSize: 12.5, color: C.text,
+            borderRadius: 8, padding: '8px 12px', fontSize: T.secondary, color: C.text,
           }}>
             <span aria-hidden style={{ color: rosActionMsg.kind === 'err' ? C.muted : C.success, fontWeight: 800, flexShrink: 0 }}>{rosActionMsg.kind === 'err' ? '⚠' : '✓'}</span>
             <span style={{ flex: 1 }}>{rosActionMsg.text}</span>
@@ -28565,7 +28567,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                       borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
                       marginTop: i === 0 ? 0 : 4,
                     }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                      <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
                         {PHASE_LABEL[phase]}
                       </span>
                     </div>
@@ -28586,17 +28588,17 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                             "Host" on every row (they're the host) is noise. Show only a
                             real helper's name. Planner keeps the full taxonomy. */}
                         {!isHost && <span style={s.pill(typeColor)}>{entry.type}</span>}
-                        {entry.aiDraft && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
-                        {entry.location && <span style={{ fontSize: 11, color: C.muted }}>{entry.location}</span>}
-                        {entry.owner && !(isHost && /^(host|you)$/i.test(String(entry.owner).trim())) && <span style={{ fontSize: 11, color: C.muted }}>{entry.owner}</span>}
-                        {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: 11, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
-                        {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: 11, color: C.muted }}>⚠ Unconfirmed</span>}
+                        {entry.aiDraft && <span style={{ fontSize: T.caption, fontWeight: 700, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
+                        {entry.location && <span style={{ fontSize: T.secondary, color: C.muted }}>{entry.location}</span>}
+                        {entry.owner && !(isHost && /^(host|you)$/i.test(String(entry.owner).trim())) && <span style={{ fontSize: T.secondary, color: C.muted }}>{entry.owner}</span>}
+                        {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: T.secondary, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
+                        {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: T.secondary, color: C.muted }}>⚠ Unconfirmed</span>}
                       </div>
                     </div>
                     <span style={{ color: C.muted, fontSize: 16, flexShrink: 0, marginTop: 2 }}>›</span>
                   </div>
                   {gapLabel && i < sorted.length - 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', color: C.muted, fontSize: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', color: C.muted, fontSize: T.caption }}>
                       <div style={{ flex: 1, height: 1, background: C.border }} />
                       <span>{gapLabel}</span>
                       <div style={{ flex: 1, height: 1, background: C.border }} />
@@ -28611,7 +28613,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 32px', gap: '8px', marginBottom: 8, padding: '0 0 8px', borderBottom: `1px solid ${C.border}` }}>
               {['Time', '', 'Item / Location', 'Type', 'In charge', 'Notes', '✓', ''].map((h, i) => (
-                <div key={i} style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
+                <div key={i} style={{ fontSize: T.secondary, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
               ))}
             </div>
 
@@ -28650,10 +28652,10 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                       paddingBottom: 4,
                       borderBottom: `1px solid ${C.border}`,
                     }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                      <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
                         {PHASE_LABEL[phase]}
                       </span>
-                      <span style={{ fontSize: 11, color: C.muted }}>
+                      <span style={{ fontSize: T.secondary, color: C.muted }}>
                         {sorted.filter(e => phaseOf(e) === phase).length} segment{sorted.filter(e => phaseOf(e) === phase).length === 1 ? '' : 's'}
                       </span>
                     </div>
@@ -28662,12 +28664,12 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                   <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
                     <div>
                       <input style={{ ...qInput, padding: '6px 8px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} onFocus={qFocus} onBlur={qBlur} value={entry.time} placeholder="09:00" onChange={e => upd(entry.id, 'time', e.target.value)} />
-                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: 8.5, fontWeight: 800, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
+                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: T.eyebrow, fontWeight: 800, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
                     </div>
                     <div style={{ width: 3, minHeight: 36, borderRadius: 99, background: typeColor, marginTop: 4 }} />
                     <div>
                       <input style={qInput} onFocus={qFocus} onBlur={qBlur} value={entry.segment} placeholder="What's happening" onChange={e => upd(entry.id, 'segment', e.target.value)} />
-                      <input style={{ ...qInput, fontSize: 11, marginTop: 4, color: C.muted, padding: '4px 8px' }} onFocus={qFocus} onBlur={qBlur} value={entry.location || ''} placeholder="Location" onChange={e => upd(entry.id, 'location', e.target.value)} />
+                      <input style={{ ...qInput, fontSize: T.secondary, marginTop: 4, color: C.muted, padding: '4px 8px' }} onFocus={qFocus} onBlur={qBlur} value={entry.location || ''} placeholder="Location" onChange={e => upd(entry.id, 'location', e.target.value)} />
                     </div>
                     <select style={{ ...qInput, padding: '6px 8px', color: typeColor }} onFocus={qFocus} onBlur={qBlur} value={entry.type} onChange={e => upd(entry.id, 'type', e.target.value)}>
                       <option value="event">Event</option>
@@ -28690,20 +28692,20 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                     {/* #6 — open the full editable side panel (full title + steps/sub-tasks). */}
                     <button aria-label="Open steps & details" title="Steps & details" onClick={() => setModalId(entry.id)}
                       style={{ ...s.btn('ghost'), padding: '6px 6px', fontSize: 13, position: 'relative', color: (Array.isArray(entry.subtasks) && entry.subtasks.length) ? (C.accentTopGrad || C.accent) : C.muted }}>
-                      ⤢{Array.isArray(entry.subtasks) && entry.subtasks.length > 0 && <span style={{ position: 'absolute', top: -3, right: -3, fontSize: 7.5, fontWeight: 800, background: C.accent, color: '#fff', borderRadius: 99, padding: '0 3px', lineHeight: 1.4 }}>{entry.subtasks.filter((x) => x.done).length}/{entry.subtasks.length}</span>}
+                      ⤢{Array.isArray(entry.subtasks) && entry.subtasks.length > 0 && <span style={{ position: 'absolute', top: -3, right: -3, fontSize: T.eyebrow, fontWeight: 800, background: C.accent, color: '#fff', borderRadius: 99, padding: '0 3px', lineHeight: 1.4 }}>{entry.subtasks.filter((x) => x.done).length}/{entry.subtasks.length}</span>}
                     </button>
                     <button aria-label="Remove" style={{ ...s.btn('danger'), padding: '6px 8px' }} onClick={() => del(entry.id)}>✕</button>
                   </div>
                   {gapLabel && i < sorted.length - 1 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingLeft: 72 }}>
                       <div style={{ flex: 1, height: 1, background: C.border }} />
-                      <span style={{ fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>{gapLabel}</span>
+                      <span style={{ fontSize: T.caption, color: C.muted, whiteSpace: 'nowrap' }}>{gapLabel}</span>
                       <div style={{ flex: 1, height: 1, background: C.border }} />
                     </div>
                   )}
                   </div>
                   {i < sorted.length - 1 && gapMin !== null && gapMin <= 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 12px', marginBottom: 4, color: C.danger, fontSize: 11, fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 12px', marginBottom: 4, color: C.danger, fontSize: T.secondary, fontWeight: 600 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, display: 'inline-block', flexShrink: 0 }} />
                       {gapMin === 0 ? 'Same time as next — possible conflict' : 'Time overlap — check order'}
                     </div>
@@ -28730,12 +28732,12 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                 <tr key={v.id}>
                   <td style={{ ...s.td, fontWeight: 500 }}>{v.name}{v.onSiteContactName ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.onSiteContactName}</span> : null}</td>
                   {/* Load-in order — the sequence/dock the venue runs on. */}
-                  <td style={{ ...s.td, color: v.loadInOrder ? C.text : C.muted, fontSize: 12 }}>{v.loadInOrder || '—'}</td>
-                  <td style={{ ...s.td, color: C.muted, fontSize: 12 }}>{v.arrivalTime || '—'}</td>
+                  <td style={{ ...s.td, color: v.loadInOrder ? C.text : C.muted, fontSize: T.caption }}>{v.loadInOrder || '—'}</td>
+                  <td style={{ ...s.td, color: C.muted, fontSize: T.caption }}>{v.arrivalTime || '—'}</td>
                   {/* On-site cell, flagged if it falls back to the office line. */}
-                  <td style={{ ...s.td, fontFamily: 'monospace', color: v.onSitePhone ? C.accent2 : C.muted }}>{dayOfPhone(v)}{v.onSitePhone ? <span style={{ color: C.success, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>on-site</span> : <span style={{ color: C.muted, fontSize: 10, marginLeft: 6, fontFamily: 'inherit' }}>office</span>}</td>
+                  <td style={{ ...s.td, fontFamily: 'monospace', color: v.onSitePhone ? C.accent2 : C.muted }}>{dayOfPhone(v)}{v.onSitePhone ? <span style={{ color: C.success, fontSize: T.caption, marginLeft: 6, fontFamily: 'inherit' }}>on-site</span> : <span style={{ color: C.muted, fontSize: T.caption, marginLeft: 6, fontFamily: 'inherit' }}>office</span>}</td>
                   {/* COI gate dot — venue can refuse entry at a glance. */}
-                  <td style={s.td}>{coi ? <span title={coi.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: coi.c }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: coi.c, display: 'inline-block', flexShrink: 0 }} />{coi.c === C.success ? 'Valid' : coi.c === C.danger ? 'Missing' : 'Unverified'}</span> : <span style={{ color: C.muted, fontSize: 11 }}>—</span>}</td>
+                  <td style={s.td}>{coi ? <span title={coi.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: T.secondary, color: coi.c }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: coi.c, display: 'inline-block', flexShrink: 0 }} />{coi.c === C.success ? 'Valid' : coi.c === C.danger ? 'Missing' : 'Unverified'}</span> : <span style={{ color: C.muted, fontSize: T.secondary }}>—</span>}</td>
                   <td style={s.td}><span style={s.pill(stageCLR[v.status] || C.muted)}>{v.status}</span></td>
                 </tr>
                 );
