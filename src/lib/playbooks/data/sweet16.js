@@ -197,7 +197,7 @@ const sweet16 = {
     },
     {
       id: 'p_sides',
-      item: 'Sides, chips, fruit, veggie tray',
+      item: 'Chips, fruit & veggie tray',
       category: 'food',
       qtyPerGuest: 0.25,
       unit: 'lb',

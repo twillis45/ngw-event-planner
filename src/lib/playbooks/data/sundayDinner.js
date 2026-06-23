@@ -268,7 +268,7 @@ const sundayDinner = {
     },
     {
       id: 'p-dessert',
-      item: 'Dessert ingredients (peach cobbler / sweet potato pie / pound cake / banana pudding)',
+      item: 'Peach cobbler, sweet potato pie & pound cake (or banana pudding)',
       category: 'food',
       qtyFlat: 1,
       unit: '9x13 cobbler or 2 pies',

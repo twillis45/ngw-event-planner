@@ -26,4 +26,8 @@ describe('quantityBasis — formats the authored factor, never invents one', () 
   test('strips the parenthetical rule-of-thumb from authored units', () => {
     expect(quantityBasis({ qtyPerGuest: 0.5, unit: 'bottle (½ bottle/guest rule)' })).toBe('½ bottle/guest');
   });
+  test('a compound "per N guests" unit never double-prints "per" (the loaf bug)', () => {
+    expect(quantityBasis({ qtyPer: 4, qtyFlat: 1, unit: 'loaf per 4 guests' })).toBe('1 loaf per 4 guests');
+    expect(quantityBasis({ qtyPer: 7, qtyFlat: 1, unit: 'bottle per ~7 guests' })).toBe('1 bottle per 7 guests');
+  });
 });

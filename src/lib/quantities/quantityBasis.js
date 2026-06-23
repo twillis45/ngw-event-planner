@@ -35,7 +35,9 @@ function fmtRate(n) {
 const COUNT_UNIT = /^(each|count|unit|units|piece|pieces|serving|servings|drink|drinks|napkin|napkins|candle|candles|arrangement|arrangements)$/;
 
 function unitWord(unit) {
-  const u = String(unit || '').split('(')[0].trim().toLowerCase();
+  // Drop a compound "per N guests" tail some playbooks bake into the unit string
+  // ("loaf per 4 guests") — the per-N already lives in qtyPer, so keep only the noun.
+  const u = String(unit || '').split('(')[0].split(/\s+per\s+/i)[0].trim().toLowerCase();
   if (!u || COUNT_UNIT.test(u)) return '';
   return u.replace(/s$/, '');
 }

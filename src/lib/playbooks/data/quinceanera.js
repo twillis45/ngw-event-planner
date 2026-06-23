@@ -230,7 +230,7 @@ const quinceanera = {
     },
     {
       id: 'p_appetizers',
-      item: 'Appetizers / botanas for the cocktail or arrival hour',
+      item: 'Botanas — chips, salsa & guacamole, taquitos',
       category: 'food',
       qtyPerGuest: 3,
       unit: 'pieces',
@@ -256,7 +256,7 @@ const quinceanera = {
     },
     {
       id: 'p_beverages',
-      item: 'Beverages: aguas frescas, soda, juice, coffee (+ alcohol for adults if served)',
+      item: 'Aguas frescas, soda & juice (coffee; + alcohol for adults if served)',
       category: 'beverage',
       qtyPerGuest: 4,
       unit: 'servings',

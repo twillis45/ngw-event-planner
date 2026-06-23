@@ -113,11 +113,17 @@ function shortItem(item) {
   return String(item || '').split(/[(—–]| - /)[0].trim();
 }
 
-// "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; pluralized by qty.
+// "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; "loaf per 4 guests" →
+// "loaves" (the per-N belongs to qtyPer, not the unit). Pluralized by qty.
 function shortUnit(unit, qty) {
-  let u = String(unit || '').split('(')[0].trim();
+  // strip a parenthetical rule-of-thumb AND a compound "per N guests" tail.
+  let u = String(unit || '').split('(')[0].split(/\s+per\s+/i)[0].trim();
   if (!u) return '';
-  if (qty !== 1 && !/s$/.test(u)) u += 's';
+  if (qty !== 1 && !/s$/i.test(u)) {
+    if (/(?:x|z|ch|sh)$/i.test(u)) u += 'es';            // batch → batches, box → boxes
+    else if (/f$/i.test(u)) u = u.replace(/f$/i, 'ves'); // loaf → loaves
+    else u += 's';
+  }
   return u;
 }
 
