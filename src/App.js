@@ -480,14 +480,14 @@ const makeS = (C) => {
     // + slightly wider letterspacing matches the modal NO GUESSWORK rail,
     // CommandCenter section eyebrows, and Vendor Cockpit collapsible
     // headers — so every "section start" in the app reads in one voice.
-    cardTitle: { fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, margin: '0 0 14px' },
+    cardTitle: { fontSize: 10.5, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, margin: '0 0 14px' },
     input: { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: FF },
     btn: (v = 'default') => {
       // ONE canonical CTA size for the whole app (parity pass). minHeight +
       // inline-flex centering means every s.btn() matches in height whether or
       // not it carries an icon — no more 30/34/38 drift across tabs. Genuinely
       // compact contexts still override padding/minHeight locally.
-      const baseBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 32, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.1, whiteSpace: 'nowrap', boxSizing: 'border-box', fontFamily: FF };
+      const baseBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 32, padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: FW.semibold, lineHeight: 1.1, whiteSpace: 'nowrap', boxSizing: 'border-box', fontFamily: FF };
       if (v === 'primary') {
         // Sprint 60.U — promote the marquee new-event CTA's brushed-steel gradient
         // to the standard primary CTA so every primary action shares one premium
@@ -518,7 +518,7 @@ const makeS = (C) => {
     },
     pill: (color) => ({
       display: 'inline-block', padding: '2px 9px', borderRadius: 99,
-      fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', lineHeight: '18px',
+      fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.04em', lineHeight: '18px',
       // Cylindrical tube physics — both themes: solid color base, white specular at top, shadow at base
       background: isLight
         ? [`linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.10) 38%, rgba(0,0,0,0.00) 62%, rgba(0,0,0,0.10) 100%)`, color].join(', ')
@@ -534,14 +534,14 @@ const makeS = (C) => {
       const shadow = isLight
         ? (color ? `0 1px 3px ${color}2a, 0 2px 6px ${color}14` : '0 1px 2px rgba(0,0,0,0.07)')
         : (color ? `0 0 18px ${color}55` : 'none');
-      return { fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, color: c, textShadow: shadow };
+      return { fontWeight: FW.heavy, letterSpacing: '-0.03em', lineHeight: 1.1, color: c, textShadow: shadow };
     },
     table: { width: '100%', borderCollapse: 'collapse' },
-    th: { textAlign: 'left', fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 10px 10px 0', borderBottom: `1px solid ${C.border}` },
+    th: { textAlign: 'left', fontSize: 11, fontWeight: FW.semibold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 10px 10px 0', borderBottom: `1px solid ${C.border}` },
     td: { padding: '11px 10px 11px 0', borderBottom: `1px solid ${C.border}`, verticalAlign: 'middle' },
     // ── Orchestration vocabulary (Sprint 23) ────────────────────────────────
-    editLabel: { fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.18em', color: C.muted, lineHeight: 1 },
-    glanceNum: (sz, color) => ({ fontWeight: 900, fontSize: sz || 40, letterSpacing: '-0.05em', lineHeight: 0.9, color: color || C.text, fontFeatureSettings: '"tnum" 1' }),
+    editLabel: { fontSize: 9, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.18em', color: C.muted, lineHeight: 1 },
+    glanceNum: (sz, color) => ({ fontWeight: FW.black, fontSize: sz || 40, letterSpacing: '-0.05em', lineHeight: 0.9, color: color || C.text, fontFeatureSettings: '"tnum" 1' }),
     orchDivider: { height: 1, background: `linear-gradient(90deg, ${C.border} 0%, transparent 80%)`, flexShrink: 0 },
     tensionCue: (level) => ({
       display: 'flex', alignItems: 'flex-start', gap: 9,
@@ -582,7 +582,7 @@ const mkSphere = (color, size, textSz = null) => ({
   ].join(', '),
   boxShadow: `0 2px 4px rgba(0,0,0,0.28), 0 6px 16px ${color}55, 0 1px 0 rgba(255,255,255,0.08) inset`,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  ...(textSz ? { fontSize: textSz, fontWeight: 700, color: '#fff' } : {}),
+  ...(textSz ? { fontSize: textSz, fontWeight: FW.bold, color: '#fff' } : {}),
 });
 
 // Dot version — small bullet circles (no text, no flex needed)
@@ -603,7 +603,7 @@ class ErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <div style={{ padding: 40, textAlign: 'center', fontFamily: FF, background: carbonBody, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#e8e8f0', marginBottom: 8 }}>A component failed to render</div>
+          <div style={{ fontSize: 16, fontWeight: FW.bold, color: '#e8e8f0', marginBottom: 8 }}>A component failed to render</div>
           <div style={{ fontSize: 12, color: '#6b6b80', marginBottom: 6, maxWidth: 340 }}>Your data is safe — this is a display error, not a data loss event.</div>
           <div style={{ fontSize: 11, color: '#f87171', fontFamily: 'monospace', marginBottom: 24, maxWidth: 380, wordBreak: 'break-word' }}>{this.state.error.message}</div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -741,7 +741,7 @@ function AIBtn({ onClick, loading, label = 'AI', style: xtra }) {
   const aiKey = useAIKey();
   if (!aiInputOn(aiKey)) return null; // hidden only if NO AI path (no backend + no key)
   return (
-    <button onClick={onClick} disabled={loading} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: loading ? 'wait' : 'pointer', fontSize: 11, fontWeight: 600, color: C.muted, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: loading ? 0.6 : 1, flexShrink: 0, ...xtra }}>
+    <button onClick={onClick} disabled={loading} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, cursor: loading ? 'wait' : 'pointer', fontSize: 11, fontWeight: FW.semibold, color: C.muted, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: loading ? 0.6 : 1, flexShrink: 0, ...xtra }}>
       {loading ? <span style={{ display: 'inline-block', width: 10, height: 10, border: `2px solid ${C.muted}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> : null} {loading ? 'Working…' : label}
     </button>
   );
@@ -836,7 +836,7 @@ function Toast({ msg, variant = 'success', onDone }) {
         position: 'fixed', bottom: 24, right: 24, zIndex: 300,
         padding: '11px 18px', borderRadius: 10,
         background: C.surface2, border: `1px solid ${clr}66`,
-        color: C.text, fontSize: 13, fontWeight: 600,
+        color: C.text, fontSize: 13, fontWeight: FW.semibold,
         display: 'flex', alignItems: 'center', gap: 10,
         boxShadow: C.surface === '#ffffff' ? '0 4px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04)' : '0 4px 24px rgba(0,0,0,0.28)', pointerEvents: 'none',
       }}>
@@ -888,10 +888,10 @@ function UndoToast({ toast, C, onDismiss }) {
           flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
           background: `${C.success}22`, color: C.success,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 800,
+          fontSize: 13, fontWeight: FW.heavy,
         }}>✓</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{toast.title}</div>
+          <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{toast.title}</div>
           {toast.detail && (
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{toast.detail}</div>
           )}
@@ -909,7 +909,7 @@ function UndoToast({ toast, C, onDismiss }) {
             border: 'none', borderRadius: 8,
             padding: '10px 16px',
             minHeight: 44, minWidth: 64,
-            fontSize: 13, fontWeight: 700, letterSpacing: '0.03em',
+            fontSize: 13, fontWeight: FW.bold, letterSpacing: '0.03em',
             cursor: 'pointer',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
           }}>
@@ -1111,8 +1111,8 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
         boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
         zIndex: 81, padding: 22,
       }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTop, marginBottom: 4 }}>Confirm</div>
-        <div id={titleId} style={{ fontSize: 18, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 12, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTop, marginBottom: 4 }}>Confirm</div>
+        <div id={titleId} style={{ fontSize: 18, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, marginBottom: 8 }}>{title}</div>
         <div id={descId}>
           {summary && (
             <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 14 }}>{summary}</div>
@@ -1121,7 +1121,7 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
             <div data-testid="bp-trust-block" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
               {trustLines.map((line, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, paddingTop: i ? 6 : 0 }}>
-                  <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800, marginTop: 1 }}>✓</span>
+                  <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: FW.heavy, marginTop: 1 }}>✓</span>
                   <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
                 </div>
               ))}
@@ -1147,7 +1147,7 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
               borderRadius: 8,
               padding: '12px 18px',
               minHeight: 44, minWidth: 88,
-              fontSize: 13, fontWeight: 600,
+              fontSize: 13, fontWeight: FW.semibold,
               cursor: 'pointer',
               fontFamily: 'inherit',
               letterSpacing: '0.01em',
@@ -1163,7 +1163,7 @@ function ConfirmTrustDialog({ C, s, title, summary, trustLines = [], primaryLabe
               color: C.accentText || '#fff',
               border: 'none', borderRadius: 8,
               padding: '12px 22px', minHeight: 44,
-              fontSize: 13, fontWeight: 700,
+              fontSize: 13, fontWeight: FW.bold,
               cursor: 'pointer',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
             }}>
@@ -1287,7 +1287,7 @@ const TYPE_SCALE = {
 // Set on the app root too, so most elements inherit and never need to declare it.
 const FF = "'Inter', system-ui, -apple-system, sans-serif";
 // Weight token — the named weights, so fontWeight stops being a raw magic number.
-const FW = { regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800 };
+const FW = { regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800, black: 900 };
 const useType = () => {
   const bp = useContext(BpCtx);
   const k = bp === 'mobile' ? 'mobile' : 'desktop';
@@ -4739,7 +4739,7 @@ function Avatar({ src, name, size = 32, color, title }) {
       width: dim, height: dim, borderRadius: '50%',
       background: bg, color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, fontSize, fontWeight: 700, letterSpacing: '0.02em',
+      flexShrink: 0, fontSize, fontWeight: FW.bold, letterSpacing: '0.02em',
       border: `1px solid ${bg}`,
     }}>
       {initials || '?'}
@@ -4803,7 +4803,7 @@ function ImageUpload({ value, label, onChange, onError, size = 48, max = 400, hi
             style={{
               padding: '5px 12px', borderRadius: 8,
               border: `1px solid ${C.border}`, background: 'transparent',
-              color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 600,
+              color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: FW.semibold,
               fontFamily: 'inherit',
             }}>
             {value ? 'Replace' : 'Upload'}
@@ -4813,7 +4813,7 @@ function ImageUpload({ value, label, onChange, onError, size = 48, max = 400, hi
               style={{
                 padding: '5px 12px', borderRadius: 8,
                 border: `1px solid ${C.border}`, background: 'transparent',
-                color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: FW.medium,
                 fontFamily: 'inherit',
               }}>
               Remove
@@ -4896,7 +4896,7 @@ function KpiInboxPanel({ label, headerRight, hasItems, empty, children }) {
   return (
     <div style={{ ...s.card, marginBottom: 0, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 150 }}>
       <div style={{ padding: '13px 16px 10px', borderBottom: hasItems ? `1px solid ${C.border}` : 'none', flexShrink: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+        <div style={{ fontSize: 11, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
         {headerRight}
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -4947,7 +4947,7 @@ function TagBadges({ tags }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
       {list.map(t => (
         <span key={t} style={{
-          fontSize: 9.5, fontWeight: 700, color: C.accent2 || C.accent,
+          fontSize: 9.5, fontWeight: FW.bold, color: C.accent2 || C.accent,
           background: (C.accent2 || C.accent) + '18', border: `1px solid ${(C.accent2 || C.accent)}44`,
           borderRadius: 999, padding: '1px 7px', whiteSpace: 'nowrap',
         }}>{t}</span>
@@ -4980,7 +4980,7 @@ function ReadinessSparkline({ eventId }) {
     <span
       title={`Readiness is ${up ? 'trending up' : down ? 'trending down' : 'holding steady'}. Updates only when the score actually moves.`}
       aria-label={`Readiness ${up ? 'trending up, more ready' : down ? 'trending down, less ready' : 'holding steady'}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: col, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 10.5, fontWeight: FW.bold, color: col, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
       <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{arrow}</span>
       {plain}
     </span>
@@ -5132,7 +5132,7 @@ function DraftVersionBar({ draftKey, content, onRestore, saveLabel = 'Save versi
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '8px 0' }}>
-      <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginRight: 2 }}>
+      <span style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginRight: 2 }}>
         Versions
       </span>
       {versions.length === 0 && (
@@ -5160,7 +5160,7 @@ function DraftVersionBar({ draftKey, content, onRestore, saveLabel = 'Save versi
       <button onClick={save} disabled={!hasContent} title={hasContent ? saveLabel : 'Nothing to save yet'}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6,
           border: `1px dashed ${C.accent}77`, background: 'transparent', cursor: hasContent ? 'pointer' : 'not-allowed',
-          opacity: hasContent ? 1 : 0.45, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, color: C.accent }}>
+          opacity: hasContent ? 1 : 0.45, fontFamily: 'inherit', fontSize: 11, fontWeight: FW.bold, color: C.accent }}>
         ＋ {saveLabel}
       </button>
     </div>
@@ -5390,7 +5390,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
   // Sprint 60.U.3 10+ — steel-blue section eyebrow style for VendorModal.
   // Replaces the muted-gray s.cardTitle in section headers so the modal
   // reads as one cohesive hierarchy with the NO GUESSWORK rail.
-  const vendorSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: 800, letterSpacing: '0.14em', fontSize: 10.5 };
+  const vendorSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: FW.heavy, letterSpacing: '0.14em', fontSize: 10.5 };
   const [notesDraftLoad, setNotesDraftLoad] = useState(false);
   const [showOps,        setShowOps]        = useState(false);
   const [contractUploading, setContractUploading] = useState(false);
@@ -5594,7 +5594,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 reader.readAsDataURL(file);
               }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <input style={{ ...s.input, fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px', width: '100%' }} value={vendor.name} onChange={e => onChange('name', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
+              <input style={{ ...s.input, fontSize: 17, fontWeight: FW.bold, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px', width: '100%' }} value={vendor.name} onChange={e => onChange('name', e.target.value.replace(/(^\w|\s\w)/g, c => c.toUpperCase()))} />
             </div>
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
@@ -5617,10 +5617,10 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
                   background: `${steelTopV}22`, color: steelTopV,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                  fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopV }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopV }}>NO GUESSWORK</div>
                   <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     Edits autosave. Event Boss tracks payment status, deposit/balance, and decision log.
                   </div>
@@ -5696,10 +5696,10 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 borderRadius: 8,
                 display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
               }}>
-                <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTopVB, textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTopVB, textTransform: 'uppercase' }}>
                   Typical range
                 </span>
-                <span style={{ fontSize: 11.5, color: C.text, fontWeight: 600 }}>
+                <span style={{ fontSize: 11.5, color: C.text, fontWeight: FW.semibold }}>
                   ${match.low.toLocaleString()}–${match.high.toLocaleString()}
                 </span>
                 <span style={{ fontSize: 10.5, color: C.muted }}>
@@ -5738,7 +5738,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                 <div style={vendorSectionTitle}>Promise Tracker</div>
                 <span style={{
-                  fontSize: 9.5, fontWeight: 800, color: tierColor,
+                  fontSize: 9.5, fontWeight: FW.heavy, color: tierColor,
                   background: `${tierColor}14`, border: `1px solid ${tierColor}44`,
                   padding: '2px 8px', borderRadius: 999,
                   textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -5760,7 +5760,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
 
               {/* Next action — steel-blue label, no fake CTA */}
               {next && next.kind && next.kind !== 'none' && (
-                <div style={{ fontSize: 11, color: steelTopPT, marginBottom: 10, fontWeight: 700 }}>
+                <div style={{ fontSize: 11, color: steelTopPT, marginBottom: 10, fontWeight: FW.bold }}>
                   Next: {next.label.replace(/^.*?:\s/, '')}
                 </div>
               )}
@@ -5769,7 +5769,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {byStatus.overdue.length > 0 && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, color: C.danger,
+                    fontSize: 10.5, fontWeight: FW.bold, color: C.danger,
                     background: `${C.danger}14`, border: `1px solid ${C.danger}44`,
                     padding: '3px 9px', borderRadius: 999,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -5779,7 +5779,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 )}
                 {byStatus.evidence.length > 0 && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, color: C.muted,
+                    fontSize: 10.5, fontWeight: FW.bold, color: C.muted,
                     background: `${C.muted}14`, border: `1px solid ${C.muted}44`,
                     padding: '3px 9px', borderRadius: 999,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -5789,7 +5789,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 )}
                 {byStatus.confirmed.length > 0 && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, color: C.success,
+                    fontSize: 10.5, fontWeight: FW.bold, color: C.success,
                     background: `${C.success}14`, border: `1px solid ${C.success}44`,
                     padding: '3px 9px', borderRadius: 999,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -5799,7 +5799,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 )}
                 {brief.missingItems.length > 0 && (
                   <span style={{
-                    fontSize: 10.5, fontWeight: 700, color: C.muted,
+                    fontSize: 10.5, fontWeight: FW.bold, color: C.muted,
                     background: `${C.muted}14`, border: `1px solid ${C.border}`,
                     padding: '3px 9px', borderRadius: 999,
                     letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -5823,7 +5823,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         borderLeft: `3px solid ${p.status === 'overdue' ? C.danger : C.muted}`,
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                          <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>
                             {p.promiseText}
                           </div>
                           <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
@@ -5838,7 +5838,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                             move together — no more dead read-out. */}
                         <button type="button"
                           onClick={() => onChange('promiseEvidence', { ...(vendor.promiseEvidence || {}), [p.promiseKey]: 'attached' })}
-                          style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: C.success, background: 'none', border: `1px solid ${C.success}66`, borderRadius: 6, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                          style={{ flexShrink: 0, fontSize: 11, fontWeight: FW.bold, color: C.success, background: 'none', border: `1px solid ${C.success}66`, borderRadius: 6, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}>
                           {p.evidenceRequired ? 'Mark proof on file' : 'Mark confirmed'}
                         </button>
                       </div>
@@ -5852,7 +5852,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   8/8 from here, and it moves in lockstep with the detail. */}
               {brief.missingItems.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Brief — confirm what's set</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Brief — confirm what's set</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {brief.missingItems.map(key => {
                       const pm = (promises || []).find(p => p.promiseKey === key);
@@ -5861,7 +5861,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <button key={key} type="button"
                           onClick={() => onChange('promiseEvidence', { ...(vendor.promiseEvidence || {}), [key]: 'attached' })}
                           title={`Confirm: ${label}`}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '4px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '4px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = C.success + '99'; e.currentTarget.style.color = C.success; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}>
                           {label.length > 28 ? label.slice(0, 27) + '…' : label} <span aria-hidden style={{ color: C.success }}>✓</span>
@@ -5916,7 +5916,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <input style={{ ...s.input, flex: 1, borderColor: vErr.contact ? C.danger : undefined }} value={vendor.contact || ''} placeholder="email@vendor.com" onChange={e => onChange('contact', e.target.value)} />
                   {vendor.contact && !vErr.contact && (
                     <a href={`mailto:${vendor.contact}`} onClick={e => e.stopPropagation()}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 10px' }}>
                       <IconEmail size={14} /> Email
                     </a>
                   )}
@@ -5929,11 +5929,11 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <input style={{ ...s.input, flex: 1, minWidth: 120, borderColor: vErr.phone ? C.danger : undefined }} value={vendor.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} />
                   {vendor.phone && !vErr.phone && (<>
                     <a href={`sms:${vendor.phone}`} onClick={e => e.stopPropagation()}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.accent2, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.accent2}44`, borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: C.accent2, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.accent2}44`, borderRadius: 8, padding: '5px 10px' }}>
                       <IconSMS size={14} /> Text
                     </a>
                     <a href={`facetime:${vendor.phone}`} onClick={e => e.stopPropagation()}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.success, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.success}44`, borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: C.success, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.success}44`, borderRadius: 8, padding: '5px 10px' }}>
                       <IconFaceTime size={14} /> FaceTime
                     </a>
                   </>)}
@@ -5944,7 +5944,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Website</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input style={{ ...s.input, flex: 1, borderColor: vErr.website ? C.danger : undefined }} value={vendor.website || ''} placeholder="vendor.com" onChange={e => onChange('website', e.target.value)} />
-                  {vendor.website && !vErr.website && <a href={wsHref(vendor.website)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.muted, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px' }}><IconGlobe size={14} /> Visit</a>}
+                  {vendor.website && !vErr.website && <a href={wsHref(vendor.website)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: C.muted, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px' }}><IconGlobe size={14} /> Visit</a>}
                 </div>
                 {vErr.website && <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>{vErr.website}</div>}
               </div>
@@ -5954,7 +5954,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               {event && (
                 <button type="button" onClick={() => { const d = draftVendorOutreach(event, vendor, profile); setDraftSheet({ title: 'Vendor inquiry', intro: `A quick note to ${vendor.name || 'this vendor'} to check availability and pricing — drafted from your event. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'vendor' }); }}
                   style={{ width: '100%', textAlign: 'left', background: `${C.accent}0e`, border: `1px solid ${C.accent}33`, borderRadius: 10, padding: '11px 13px', cursor: 'pointer', fontFamily: 'inherit', marginTop: 2 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>✍️ Write the inquiry for me →</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>✍️ Write the inquiry for me →</div>
                   <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>A ready-to-send note asking availability + pricing, built from your event.</div>
                 </button>
               )}
@@ -5983,7 +5983,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       <input style={{ ...s.input, flex: 1 }} value={vendor.whatsapp || ''} placeholder="+1 555-0000" onChange={e => onChange('whatsapp', e.target.value)} />
                       {vendor.whatsapp && (
                         <a href={waHref(vendor.whatsapp)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#25D366', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #25D36644', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#25D366', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #25D36644', borderRadius: 8, padding: '5px 10px' }}>
                           <IconWA size={14} /> Chat
                         </a>
                       )}
@@ -5997,7 +5997,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <a
                           href={`https://voice.google.com/calls?a=nc,%2B${vendor.googleVoice.replace(/\D/g, '')}`}
                           target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
                           📞 Call
                         </a>
                       )}
@@ -6005,7 +6005,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <a
                           href={`https://voice.google.com/sms?a=mt,${vendor.googleVoice.replace(/\D/g, '')}`}
                           target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
                           💬 Text
                         </a>
                       )}
@@ -6017,7 +6017,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       <input style={{ ...s.input, flex: 1 }} value={vendor.zoomUrl || ''} placeholder="https://zoom.us/j/…" onChange={e => onChange('zoomUrl', e.target.value)} />
                       {vendor.zoomUrl && (
                         <a href={vendor.zoomUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#2D8CFF', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #2D8CFF44', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#2D8CFF', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #2D8CFF44', borderRadius: 8, padding: '5px 10px' }}>
                           <IconZoom size={14} /> Join
                         </a>
                       )}
@@ -6029,7 +6029,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       <input style={{ ...s.input, flex: 1 }} value={vendor.meetUrl || ''} placeholder="https://meet.google.com/…" onChange={e => onChange('meetUrl', e.target.value)} />
                       {vendor.meetUrl && (
                         <a href={vendor.meetUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#1A73E8', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #1A73E844', borderRadius: 8, padding: '5px 10px' }}>
                           <IconMeet size={14} /> Join
                         </a>
                       )}
@@ -6041,7 +6041,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       <input style={{ ...s.input, flex: 1 }} value={vendor.teamsUrl || ''} placeholder="https://teams.microsoft.com/…" onChange={e => onChange('teamsUrl', e.target.value)} />
                       {vendor.teamsUrl && (
                         <a href={vendor.teamsUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#6264A7', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #6264A744', borderRadius: 8, padding: '5px 10px' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: FW.semibold, color: '#6264A7', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #6264A744', borderRadius: 8, padding: '5px 10px' }}>
                           <IconTeams size={14} /> Join
                         </a>
                       )}
@@ -6092,8 +6092,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             return (
               <div style={{ marginBottom: 20, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
                 <button onClick={() => setShowCommsCheck(v => !v)} style={{ width: '100%', background: showCommsCheck ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comms Checklist</span>
-                  <span style={{ fontSize: 11, color: totalDone === totalItems.length && totalItems.length > 0 ? C.success : currentClr, fontWeight: 600 }}>{totalDone}/{totalItems.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comms Checklist</span>
+                  <span style={{ fontSize: 11, color: totalDone === totalItems.length && totalItems.length > 0 ? C.success : currentClr, fontWeight: FW.semibold }}>{totalDone}/{totalItems.length}</span>
                   <span style={{ color: C.muted, fontSize: 12 }}>{showCommsCheck ? '▾' : '▸'}</span>
                 </button>
                 {showCommsCheck && (
@@ -6113,8 +6113,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: allDone ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
-                            <span style={{ fontSize: 10, color: allDone ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
+                            <span style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{stage}</span>
+                            <span style={{ fontSize: 10, color: allDone ? C.success : isCurrent ? clr : C.muted, fontWeight: FW.semibold }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {allItems.map(item => {
@@ -6306,7 +6306,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     data-testid="vm-unmark-deposit-paid"
                     onClick={() => setConfirmKind('unmark-deposit')}
                     title="Reverse the deposit-paid record"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0, color: C.muted }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0, color: C.muted }}>
                     Unmark
                   </button>
                 )}
@@ -6324,7 +6324,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   if (!venmoLink) return null;
                   return (
                     <a href={venmoLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                      style={{ fontSize: 11, fontWeight: 700, color: '#3D95CE', textDecoration: 'none', border: '1px solid #3D95CE', borderRadius: 6, padding: '4px 10px', whiteSpace: 'nowrap' }}>
+                      style={{ fontSize: 11, fontWeight: FW.bold, color: '#3D95CE', textDecoration: 'none', border: '1px solid #3D95CE', borderRadius: 6, padding: '4px 10px', whiteSpace: 'nowrap' }}>
                       Pay deposit {fmtD(vendor.depositAmt)} →
                     </a>
                   );
@@ -6393,7 +6393,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       const zelleInfo = link.slice(6);
                       return (
                         <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#6c4ef210', border: '1px solid #6c4ef240', fontSize: 12, color: C.muted }}>
-                          <span style={{ fontWeight: 600, color: C.text }}>Zelle to:</span> {zelleInfo}
+                          <span style={{ fontWeight: FW.semibold, color: C.text }}>Zelle to:</span> {zelleInfo}
                         </div>
                       );
                     }
@@ -6403,7 +6403,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     return (
                       <div style={{ marginTop: 10 }}>
                         <a href={appLink} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: btnColor, color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', letterSpacing: '0.01em' }}>
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: btnColor, color: '#fff', fontSize: 12, fontWeight: FW.bold, textDecoration: 'none', letterSpacing: '0.01em' }}>
                           Pay {fmtD(balance)} via {vendor.balanceMethod} →
                         </a>
                       </div>
@@ -6412,7 +6412,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 </div>
               ) : vendor.cost > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>
+                  <div style={{ fontSize: 13, color: C.success, fontWeight: FW.semibold }}>
                     ✓ Paid in full{vendor.balanceMethod ? ` · ${vendor.balanceMethod}` : ''}
                   </div>
                   <button style={{ ...s.btn('ghost'), fontSize: 11, padding: '3px 10px', color: C.muted }}
@@ -6431,7 +6431,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     <input style={{ ...s.input, flex: 1 }} value={vendor.venmo || ''} placeholder="@handle" onChange={e => onChange('venmo', e.target.value)} />
                     {vendor.venmo && (
                       <a href={`https://venmo.com/${vendor.venmo.replace(/^@/, '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                        style={{ fontSize: 12, fontWeight: 600, color: '#3D95CE', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #3D95CE44', borderRadius: 8, padding: '5px 10px' }}>
+                        style={{ fontSize: 12, fontWeight: FW.semibold, color: '#3D95CE', textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid #3D95CE44', borderRadius: 8, padding: '5px 10px' }}>
                         Pay
                       </a>
                     )}
@@ -6448,9 +6448,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: contractUploadErr ? 6 : 0 }}>
                   <label onClick={() => onChange('contractSigned', !vendor.contractSigned)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
                     <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.contractSigned ? C.success : C.border}`, background: vendor.contractSigned ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.12s' }}>
-                      {vendor.contractSigned && <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>✓</span>}
+                      {vendor.contractSigned && <span style={{ fontSize: 10, color: '#fff', fontWeight: FW.bold }}>✓</span>}
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: vendor.contractSigned ? C.success : C.muted }}>Contract signed</span>
+                    <span style={{ fontSize: 12, fontWeight: FW.semibold, color: vendor.contractSigned ? C.success : C.muted }}>Contract signed</span>
                   </label>
                   <input style={{ ...s.input, flex: 1, minWidth: 160, fontSize: 12 }} value={vendor.contractUrl || ''} placeholder="Paste URL or upload file below…" onChange={e => onChange('contractUrl', e.target.value)} />
                   {vendor.contractUrl && (
@@ -6461,7 +6461,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     at the door without one ~30 days out). Distinct from the vendor's
                     general reputation insuranceStatus. */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, flexShrink: 0 }}>Insurance certificate (COI)</span>
+                  <span style={{ fontSize: 12, fontWeight: FW.semibold, color: C.muted, flexShrink: 0 }}>Insurance certificate (COI)</span>
                   <select style={{ ...s.input, fontSize: 12, maxWidth: 220 }} value={vendor.coiStatus || ''} onChange={e => onChange('coiStatus', e.target.value || undefined)}>
                     <option value="">Auto (by category)</option>
                     <option value="not_required">Not required</option>
@@ -6476,9 +6476,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap', paddingLeft: 4 }}>
                     <label onClick={() => onChange('coiVerified', !vendor.coiVerified)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', userSelect: 'none' }}>
                       <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.coiVerified ? C.success : C.muted}`, background: vendor.coiVerified ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {vendor.coiVerified && <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>✓</span>}
+                        {vendor.coiVerified && <span style={{ fontSize: 10, color: '#fff', fontWeight: FW.bold }}>✓</span>}
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: vendor.coiVerified ? C.success : C.muted }}>Verified valid (venue named + covers event date)</span>
+                      <span style={{ fontSize: 12, fontWeight: FW.semibold, color: vendor.coiVerified ? C.success : C.muted }}>Verified valid (venue named + covers event date)</span>
                     </label>
                     <label style={{ fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
                       Valid through
@@ -6491,7 +6491,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                     {vendor.docusignEnvelopeId ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: vendor.docusignStatus === 'completed' ? C.success : C.muted, fontWeight: 600 }}>
+                        <span style={{ fontSize: 11, color: vendor.docusignStatus === 'completed' ? C.success : C.muted, fontWeight: FW.semibold }}>
                           DocuSign: {envelopeStatusLabel(vendor.docusignStatus)}
                         </span>
                         {vendor.docusignStatus !== 'completed' && (
@@ -6561,14 +6561,14 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       }}>
                         <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: C.success }}>Contract uploaded</div>
+                          <div style={{ fontSize: 12, fontWeight: FW.bold, color: C.success }}>Contract uploaded</div>
                           <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             📄 {vendor.contractFileName}
                           </div>
                         </div>
                         {/* Replace button */}
                         <label style={{
-                          fontSize: 10, fontWeight: 600, color: C.muted, cursor: 'pointer',
+                          fontSize: 10, fontWeight: FW.semibold, color: C.muted, cursor: 'pointer',
                           padding: '3px 8px', borderRadius: 5, border: `1px solid ${C.border}`,
                           background: 'transparent', whiteSpace: 'nowrap', flexShrink: 0,
                         }}>
@@ -6599,7 +6599,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     {(!vendor.contractFileName || contractUploading) && (
                       <label style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '7px 14px', borderRadius: 7, fontSize: 11, fontWeight: 600,
+                        padding: '7px 14px', borderRadius: 7, fontSize: 11, fontWeight: FW.semibold,
                         border: `1.5px dashed ${contractUploading ? C.accent : C.border}`,
                         cursor: contractUploading ? 'wait' : 'pointer',
                         color: contractUploading ? C.accent : C.muted,
@@ -6612,7 +6612,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                       >
                         {contractUploading
                           ? <><span style={{ fontSize: 14 }}>⏳</span> Uploading…</>
-                          : <><span style={{ fontSize: 14 }}>📎</span> Upload contract file<span style={{ fontSize: 10, color: C.muted, fontWeight: 400, marginLeft: 4 }}>PDF · image · Word</span></>
+                          : <><span style={{ fontSize: 14 }}>📎</span> Upload contract file<span style={{ fontSize: 10, color: C.muted, fontWeight: FW.regular, marginLeft: 4 }}>PDF · image · Word</span></>
                         }
                         <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: 'none' }} disabled={contractUploading}
                           onChange={async (e) => {
@@ -6666,9 +6666,9 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           {/* ── Operational & Reliability (collapsible) ── */}
           <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowOps(v => !v)} style={{ width: '100%', background: showOps ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Operational & Reliability</span>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Operational & Reliability</span>
               {rel.sufficient
-                ? <span style={{ fontSize: 11, fontWeight: 700, color: VENDOR_TIER_META[tier].color }}>{VENDOR_TIER_META[tier].icon} {tier} · {rel.score}</span>
+                ? <span style={{ fontSize: 11, fontWeight: FW.bold, color: VENDOR_TIER_META[tier].color }}>{VENDOR_TIER_META[tier].icon} {tier} · {rel.score}</span>
                 : <span style={{ fontSize: 11, color: C.muted }}>Insufficient data</span>}
               <span style={{ fontSize: 10, color: C.muted, transform: showOps ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </button>
@@ -6679,12 +6679,12 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   {rel.sufficient ? (
                     <>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                        <span style={{ fontSize: 24, fontWeight: 800, color: VENDOR_TIER_META[tier].color }}>{rel.score}</span>
+                        <span style={{ fontSize: 24, fontWeight: FW.heavy, color: VENDOR_TIER_META[tier].color }}>{rel.score}</span>
                         <span style={{ fontSize: 12, color: C.muted }}>/ 100 reliability · {VENDOR_TIER_META[tier].icon} {tier}</span>
                       </div>
                       {badges.length > 0 && (
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
-                          {badges.map(b => <span key={b} style={{ fontSize: 10, fontWeight: 600, color: C.accent2, background: C.accent2 + '14', border: `1px solid ${C.accent2}33`, borderRadius: 12, padding: '2px 8px' }}>{b}</span>)}
+                          {badges.map(b => <span key={b} style={{ fontSize: 10, fontWeight: FW.semibold, color: C.accent2, background: C.accent2 + '14', border: `1px solid ${C.accent2}33`, borderRadius: 12, padding: '2px 8px' }}>{b}</span>)}
                         </div>
                       )}
                     </>
@@ -6726,7 +6726,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 </div>
                 {/* Manual tier override */}
                 <div>
-                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Tier override <span style={{ fontWeight: 400 }}>(Certified is manual-only)</span></label>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Tier override <span style={{ fontWeight: FW.regular }}>(Certified is manual-only)</span></label>
                   <select style={{ ...s.input, fontSize: 13 }} value={vendor.preferredTier || ''} onChange={e => onChange('preferredTier', e.target.value)}>
                     <option value="">Auto — earned tier ({tier})</option>
                     {VENDOR_TIERS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -6739,7 +6739,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           {/* ── Specialties & Tags (collapsible) — discovery context ── */}
           <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowTags(v => !v)} style={{ width: '100%', background: showTags ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Specialties & Tags</span>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Specialties & Tags</span>
               {tagCount > 0 && <span style={{ fontSize: 11, color: C.muted }}>{tagCount}</span>}
               <span style={{ fontSize: 10, color: C.muted, transform: showTags ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </button>
@@ -6751,7 +6751,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                   const selected = vendor[g.key] || [];
                   return (
                     <div key={g.key}>
-                      <label style={{ fontSize: 10, fontWeight: 700, color: g.key === 'identityTags' ? C.muted : tone, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>{g.label}</label>
+                      <label style={{ fontSize: 10, fontWeight: FW.bold, color: g.key === 'identityTags' ? C.muted : tone, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>{g.label}</label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {[...new Set([...g.options, ...selected])].map(opt => {
                           const on = selected.includes(opt);
@@ -6767,7 +6767,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                         <input style={{ ...s.input, flex: 1, fontSize: 12 }} value={customTag[g.key] || ''} placeholder={`Add custom ${g.filterLabel.toLowerCase()}…`}
                           onChange={e => setCustomTag(c => ({ ...c, [g.key]: e.target.value }))}
                           onKeyDown={e => e.key === 'Enter' && addCustomTag(g.key)} />
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => addCustomTag(g.key)}>Add</button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => addCustomTag(g.key)}>Add</button>
                       </div>
                     </div>
                   );
@@ -6782,13 +6782,13 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               action signal. The "internal only" tooltip stays steel too. */}
           <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowPNotes(v => !v)} style={{ width: '100%', background: showPNotes ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, flex: 1 }}>Planner-Only Notes</span>
+              <span style={{ fontSize: 12, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, flex: 1 }}>Planner-Only Notes</span>
               {((vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length) > 0 && <span style={{ fontSize: 12, color: C.muted }}>{(vendor.plannerNotes || []).length + (vendor.privateRiskFlags || []).length}</span>}
               <span style={{ fontSize: 10, color: C.muted, transform: showPNotes ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
             </button>
             {showPNotes && (
               <div style={{ padding: '12px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ fontSize: 12, color: C.muted, fontWeight: 500 }}>Internal only — never shown to the vendor, client, or in any export.</div>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: FW.medium }}>Internal only — never shown to the vendor, client, or in any export.</div>
                 {/* Private notes */}
                 <div>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
@@ -6806,7 +6806,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                 </div>
                 {/* Risk flags */}
                 <div>
-                  <label style={{ fontSize: 10, fontWeight: 700, color: C.danger, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Private Risk Flags</label>
+                  <label style={{ fontSize: 10, fontWeight: FW.bold, color: C.danger, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>Private Risk Flags</label>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                     <input style={{ ...s.input, flex: 1, fontSize: 13 }} value={newRiskFlag} placeholder="e.g. 'Double-booked us once — confirm dates in writing'" onChange={e => setNewRiskFlag(e.target.value)} onKeyDown={e => e.key === 'Enter' && addRiskFlag()} />
                     <button style={{ ...s.btn(), fontSize: 12 }} onClick={addRiskFlag}>Flag</button>
@@ -6841,8 +6841,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
           {/* Communication Log */}
           <div style={{ marginBottom: 8, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button aria-label="Remove" onClick={() => setShowLog(v => !v)} style={{ width: '100%', background: showLog ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comm Log</span>
-              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comm Log</span>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.semibold }}>
                 {(vendor.log || []).length > 0 ? `${(vendor.log || []).length} entr${(vendor.log || []).length === 1 ? 'y' : 'ies'}` : 'no entries'}
               </span>
               <span style={{ color: C.muted, fontSize: 12 }}>{showLog ? '▾' : '▸'}</span>
@@ -6854,7 +6854,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     {logSumm ? (
                       <div style={{ background: C.accent+'12', border:`1px solid ${C.accent}33`, borderRadius:8, padding:'10px 12px', marginBottom:8, fontSize:12, lineHeight:1.6 }}>
                         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                          <span style={{ fontWeight:700, color:C.accent, fontSize:11 }}>AI Summary</span>
+                          <span style={{ fontWeight: FW.bold, color:C.accent, fontSize:11 }}>AI Summary</span>
                           <button aria-label="Remove" onClick={()=>setLogSumm('')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:C.muted }}>✕</button>
                         </div>
                         {logSumm}
@@ -6874,8 +6874,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     borderRadius: 8,
                     display: 'flex', flexDirection: 'column', gap: 6,
                   }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Notes &amp; history</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>Keep important notes about this vendor.</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Notes &amp; history</div>
+                    <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>Keep important notes about this vendor.</div>
                     <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>Use this for reminders, preferences, decisions, and details you don't want buried in messages. Use the input above to add a note.</div>
                   </div>
                 ) : [...(vendor.log || [])].reverse().map(entry => (
@@ -7004,7 +7004,7 @@ function VendorBriefView({ brief }) {
   const copyBrief = () => navigator.clipboard?.writeText(textBrief).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
 
   const cardStyle = { background: LC.surface, borderRadius: 14, padding: '18px 20px', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)' };
-  const eyebrow   = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 12 };
+  const eyebrow   = { fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: LC.muted, marginBottom: 12 };
 
   return (
     <div style={{ minHeight: '100vh', background: LC.bg, fontFamily: FF, color: LC.text, padding: '0 0 64px' }}>
@@ -7013,26 +7013,26 @@ function VendorBriefView({ brief }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
           {brief.plannerLogo
             ? <div style={{ height: 40, maxWidth: 140, display: 'flex', alignItems: 'center', flexShrink: 0 }}><img src={brief.plannerLogo} alt={brandName} style={{ maxHeight: 40, maxWidth: 140, objectFit: 'contain' }} /></div>
-            : <div style={{ width: 36, height: 36, borderRadius: 9, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, flexShrink: 0, letterSpacing: '0.02em' }}>{initials}</div>}
+            : <div style={{ width: 36, height: 36, borderRadius: 9, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: FW.heavy, flexShrink: 0, letterSpacing: '0.02em' }}>{initials}</div>}
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.1, color: LC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandName || 'Event Planner'}</div>
+            <div style={{ fontSize: 15, fontWeight: FW.heavy, lineHeight: 1.1, color: LC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandName || 'Event Planner'}</div>
             {(brief.plannerCity || brief.plannerName) && brandName !== brief.plannerName && (
               <div style={{ fontSize: 12, color: LC.muted, marginTop: 1 }}>{[brief.plannerName, brief.plannerCity].filter(Boolean).join(' · ')}</div>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={copyBrief} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>{copied ? '✓ Copied' : '⎘ Copy'}</button>
-          <button onClick={() => window.print()} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' }}>Print</button>
+          <button onClick={copyBrief} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: FW.bold, padding: '7px 14px', cursor: 'pointer' }}>{copied ? '✓ Copied' : '⎘ Copy'}</button>
+          <button onClick={() => window.print()} style={{ background: LC.bg, border: `1px solid ${LC.border}`, borderRadius: 8, color: LC.text, fontSize: 12, fontWeight: FW.bold, padding: '7px 14px', cursor: 'pointer' }}>Print</button>
         </div>
       </div>
 
       {/* ── Hero band (brand accent) ── */}
       <div style={{ background: `linear-gradient(135deg, ${accent} 0%, ${accent}d9 100%)`, color: '#fff', padding: '28px 24px 30px' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', opacity: 0.85 }}>VENDOR BRIEF</div>
-          <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{brief.eventName || 'Event'}</div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap', fontSize: 13, fontWeight: 500, opacity: 0.95 }}>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.14em', opacity: 0.85 }}>VENDOR BRIEF</div>
+          <div style={{ fontSize: 24, fontWeight: FW.heavy, marginTop: 4, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{brief.eventName || 'Event'}</div>
+          <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap', fontSize: 13, fontWeight: FW.medium, opacity: 0.95 }}>
             {brief.eventDate && <span>{fmtDate(brief.eventDate)}</span>}
             {brief.venue     && <span>{brief.venue}</span>}
           </div>
@@ -7045,13 +7045,13 @@ function VendorBriefView({ brief }) {
           {brief.contactName && (
             <div style={{ fontSize: 14, color: LC.muted, marginBottom: 8 }}>Hi {brief.contactName},</div>
           )}
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 3 }}>{brief.vendorName}</div>
+          <div style={{ fontSize: 20, fontWeight: FW.heavy, marginBottom: 3 }}>{brief.vendorName}</div>
           <div style={{ fontSize: 13, color: LC.muted, marginBottom: brief.arrivalTime ? 16 : 0 }}>{brief.category}</div>
           {brief.arrivalTime && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: accent + '12', border: `1.5px solid ${accent}33`, borderRadius: 12, padding: '14px 18px' }}>
               <div>
-                <div style={{ fontSize: 11, color: accent, fontWeight: 700, letterSpacing: '0.08em' }}>YOUR ARRIVAL TIME</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: accent, lineHeight: 1.1, marginTop: 2 }}>{fmtTime12(brief.arrivalTime)}</div>
+                <div style={{ fontSize: 11, color: accent, fontWeight: FW.bold, letterSpacing: '0.08em' }}>YOUR ARRIVAL TIME</div>
+                <div style={{ fontSize: 26, fontWeight: FW.heavy, color: accent, lineHeight: 1.1, marginTop: 2 }}>{fmtTime12(brief.arrivalTime)}</div>
               </div>
             </div>
           )}
@@ -7063,9 +7063,9 @@ function VendorBriefView({ brief }) {
             <div style={eyebrow}>Your Day-of Schedule</div>
             {brief.ros.map((r, i) => (
               <div key={r.id || i} style={{ display: 'flex', gap: 14, paddingBottom: i < brief.ros.length - 1 ? 14 : 0, borderBottom: i < brief.ros.length - 1 ? `1px solid ${LC.border}` : 'none', marginBottom: i < brief.ros.length - 1 ? 14 : 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: accent, minWidth: 64, flexShrink: 0 }}>{fmtTime12(r.time)}</div>
+                <div style={{ fontSize: 13, fontWeight: FW.bold, color: accent, minWidth: 64, flexShrink: 0 }}>{fmtTime12(r.time)}</div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{r.segment}</div>
+                  <div style={{ fontSize: 14, fontWeight: FW.semibold }}>{r.segment}</div>
                   {r.location && <div style={{ fontSize: 12, color: LC.muted }}>{r.location}</div>}
                   {r.notes    && <div style={{ fontSize: 12, color: LC.text, marginTop: 4, lineHeight: 1.5 }}>{r.notes}</div>}
                 </div>
@@ -7087,16 +7087,16 @@ function VendorBriefView({ brief }) {
           <div style={{ ...cardStyle, marginBottom: 0, background: '#fff' }}>
             <div style={eyebrow}>Your Day-of Contact</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{initials}</div>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: FW.heavy, flexShrink: 0 }}>{initials}</div>
               <div>
-                {brief.plannerName && <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>{brief.plannerName}</div>}
+                {brief.plannerName && <div style={{ fontSize: 15, fontWeight: FW.bold, lineHeight: 1.2 }}>{brief.plannerName}</div>}
                 {brandName && brandName !== brief.plannerName && <div style={{ fontSize: 13, color: LC.muted }}>{brandName}</div>}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {brief.plannerPhone && <a href={`tel:${brief.plannerPhone}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>{brief.plannerPhone}</a>}
-              {brief.plannerEmail && <a href={`mailto:${brief.plannerEmail}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>{brief.plannerEmail}</a>}
-              {brief.plannerWebsite && <a href={wsHref(brief.plannerWebsite)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: 600 }}>{brief.plannerWebsite}</a>}
+              {brief.plannerPhone && <a href={`tel:${brief.plannerPhone}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: FW.semibold }}>{brief.plannerPhone}</a>}
+              {brief.plannerEmail && <a href={`mailto:${brief.plannerEmail}`} style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: FW.semibold }}>{brief.plannerEmail}</a>}
+              {brief.plannerWebsite && <a href={wsHref(brief.plannerWebsite)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: accent, textDecoration: 'none', fontWeight: FW.semibold }}>{brief.plannerWebsite}</a>}
               {brief.plannerIG && <span style={{ fontSize: 14, color: LC.muted }}>{brief.plannerIG}</span>}
             </div>
           </div>
@@ -7181,7 +7181,7 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(480px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Vendor Brief</div>
+            <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.text }}>Vendor Brief</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{vendor.name} sees only what's in this view</div>
           </div>
           <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px' }}>✕</button>
@@ -7190,18 +7190,18 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           {/* What the vendor sees */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Vendor sees</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>Vendor sees</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ ...s.card, padding: '12px 16px', marginBottom: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{vendor.name}</div>
+                <div style={{ fontSize: 13, fontWeight: FW.bold }}>{vendor.name}</div>
                 <div style={{ fontSize: 12, color: C.muted }}>{vendor.category}</div>
-                {vendor.arrivalTime && <div style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginTop: 8 }}>Arrives {fmtTime12(vendor.arrivalTime)}</div>}
+                {vendor.arrivalTime && <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.accent, marginTop: 8 }}>Arrives {fmtTime12(vendor.arrivalTime)}</div>}
               </div>
               {vendorRos.map((r, i) => (
                 <div key={r.id || i} style={{ display: 'flex', gap: 12, padding: '8px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.accent2, minWidth: 52 }}>{fmtTime12(r.time)}</div>
+                  <div style={{ fontSize: 12, fontWeight: FW.bold, color: C.accent2, minWidth: 52 }}>{fmtTime12(r.time)}</div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{r.segment}</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.semibold }}>{r.segment}</div>
                     {r.location && <div style={{ fontSize: 11, color: C.muted }}>{r.location}</div>}
                     {r.notes    && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{r.notes}</div>}
                   </div>
@@ -7213,13 +7213,13 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
 
           {/* What they do NOT see */}
           <div style={{ padding: '10px 14px', background: C.danger + '11', border: `1px solid ${C.danger}33`, borderRadius: 10, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.danger, marginBottom: 4 }}>NOT shared with vendor</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.danger, marginBottom: 4 }}>NOT shared with vendor</div>
             <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>Budget, payments, other vendors, guest list, notes from other tabs</div>
           </div>
 
           {/* Share link */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 8 }}>Share link</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 8 }}>Share link</div>
             <div style={{ fontSize: 10, color: C.muted, wordBreak: 'break-all', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px', marginBottom: 10, lineHeight: 1.5 }}>{briefUrl}</div>
             <button onClick={copyUrl} style={{ ...s.btn(copied ? 'success' : 'primary'), width: '100%', fontSize: 13 }}>
               {copied ? '✓ Link copied to clipboard' : '⎘ Copy Vendor Brief Link'}
@@ -7229,7 +7229,7 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
 
           {/* QR code — for printed materials */}
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>QR code <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— print on call sheets or day-of signage</span></div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 12 }}>QR code <span style={{ fontWeight: FW.regular, textTransform: 'none', letterSpacing: 0 }}>— print on call sheets or day-of signage</span></div>
             {qrErr ? (
               <div style={{ fontSize: 12, color: C.danger, padding: '10px 12px', background: C.danger + '11', borderRadius: 8 }}>Couldn't generate QR code for this brief.</div>
             ) : (
@@ -7291,7 +7291,7 @@ function InviteComposer({ event, guests, onClose }) {
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(480px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Invite guests</div>
+            <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.text }}>Invite guests</div>
             <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
               Opens your email or text app with a draft. Nothing is sent until you tap send there.
             </div>
@@ -7303,7 +7303,7 @@ function InviteComposer({ event, guests, onClose }) {
           {/* Invitation message editor */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Invitation Message</label>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Invitation Message</label>
               <button onClick={copyText} style={{ ...s.btn(copied ? 'success' : 'ghost'), fontSize: 11, padding: '3px 10px' }}>
                 {copied ? '✓ Copied' : '⎘ Copy All'}
               </button>
@@ -7317,7 +7317,7 @@ function InviteComposer({ event, guests, onClose }) {
 
           {/* Guest send list */}
           <div>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
               Send To ({needsInvite.length} need{needsInvite.length !== 1 ? '' : 's'} invitation)
             </div>
             {needsInvite.length === 0 ? (
@@ -7331,7 +7331,7 @@ function InviteComposer({ event, guests, onClose }) {
                   return (
                     <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: sent ? C.success + '11' : C.bg, border: `1px solid ${sent ? C.success + '44' : C.border}`, transition: 'all 0.2s' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{g.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{g.name}</div>
                         <div style={{ fontSize: 11, color: C.muted }}>{g.group}{g.rsvp === 'Maybe' ? ' · Maybe' : ' · No response'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
@@ -7401,7 +7401,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
   // Sprint 60.U.3 10+ — steel-blue section eyebrow for GuestModal.
-  const guestSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: 800, letterSpacing: '0.14em', fontSize: 10.5 };
+  const guestSectionTitle = { ...s.cardTitle, color: C.accentTopGrad || C.accent, fontWeight: FW.heavy, letterSpacing: '0.14em', fontSize: 10.5 };
   const rsvpColor = rsvpCLR[guest.rsvp] || C.text;
   const mealOpts  = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free', '—'];
   // Field validation
@@ -7425,7 +7425,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
-            <input style={{ ...s.input, fontSize: 17, fontWeight: 700, flex: 1, padding: '5px 8px' }} value={guest.name} placeholder="Guest name" onChange={e => onChange('name', e.target.value)} />
+            <input style={{ ...s.input, fontSize: 17, fontWeight: FW.bold, flex: 1, padding: '5px 8px' }} value={guest.name} placeholder="Guest name" onChange={e => onChange('name', e.target.value)} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -7454,10 +7454,10 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
                   flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
                   background: `${steelTopG}22`, color: steelTopG,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                  fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopG }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopG }}>NO GUESSWORK</div>
                   <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     Edits autosave. No emails or texts are sent — Event Boss only records the RSVP.
                   </div>
@@ -7582,19 +7582,19 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {guest.phone && !gErr.phone && (
                     <a href={`sms:${guest.phone}`}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: C.accent2, textDecoration: 'none', border: `1px solid ${C.accent2}44`, borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: FW.semibold, color: C.accent2, textDecoration: 'none', border: `1px solid ${C.accent2}44`, borderRadius: 8, padding: '5px 10px' }}>
                       <IconSMS size={14} /> Text
                     </a>
                   )}
                   {guest.email && !gErr.email && (
                     <a href={`mailto:${guest.email}`}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: 'none', border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: FW.semibold, color: C.accent, textDecoration: 'none', border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 10px' }}>
                       <IconEmail size={14} /> Email
                     </a>
                   )}
                   {guest.phone && !gErr.phone && (
                     <a href={waHref(guest.phone)} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#25D366', textDecoration: 'none', border: '1px solid #25D36644', borderRadius: 8, padding: '5px 10px' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: FW.semibold, color: '#25D366', textDecoration: 'none', border: '1px solid #25D36644', borderRadius: 8, padding: '5px 10px' }}>
                       <IconWA size={14} /> WhatsApp
                     </a>
                   )}
@@ -7711,10 +7711,10 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
             <textarea rows={1} value={task.task} placeholder="Task name"
               ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
               onChange={e => { onChange('task', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-              style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1, lineHeight: 1.35, resize: 'none', overflow: 'hidden', minHeight: 38, textDecoration: task.done ? 'line-through' : 'none', color: task.done ? C.muted : C.text }} />
+              style={{ ...s.input, fontSize: 16, fontWeight: FW.bold, flex: 1, lineHeight: 1.35, resize: 'none', overflow: 'hidden', minHeight: 38, textDecoration: task.done ? 'line-through' : 'none', color: task.done ? C.muted : C.text }} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
-          {task.done && <div style={{ fontSize: 11, color: C.success, fontWeight: 600, paddingLeft: 34 }}>Completed ✓</div>}
+          {task.done && <div style={{ fontSize: 11, color: C.success, fontWeight: FW.semibold, paddingLeft: 34 }}>Completed ✓</div>}
           {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. Replaces the bare truth
               line. Explains what Event Boss auto-tracks for this task. */}
           {(() => {
@@ -7732,10 +7732,10 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
                   flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
                   background: `${steelTopT}22`, color: steelTopT,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                  fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopT }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopT }}>NO GUESSWORK</div>
                   <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     Edits autosave to this event's planning timeline. Event Boss tracks owner, due date, and phase.
                   </div>
@@ -7778,7 +7778,7 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <label style={{ fontSize: 11, color: C.muted }}>Steps</label>
-                  {visibleSubs.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: doneN === visibleSubs.length ? C.success : C.muted }}>{doneN} of {visibleSubs.length} done</span>}
+                  {visibleSubs.length > 0 && <span style={{ fontSize: 11, fontWeight: FW.semibold, color: doneN === visibleSubs.length ? C.success : C.muted }}>{doneN} of {visibleSubs.length} done</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {visibleSubs.map(sub => (
@@ -7792,7 +7792,7 @@ function TaskModal({ task, eventDate, foodChoices, onClose, onChange, onDelete }
                   ))}
                 </div>
                 <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
-                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
+                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
               </div>
             );
           })()}
@@ -7895,7 +7895,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
       <div onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }} style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(380px, 100vw)', background: C.surface, borderLeft: `1px solid ${C.border}`, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
-            <input style={{ ...s.input, fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px' }} value={row.category} onChange={e => onChange('category', e.target.value)} />
+            <input style={{ ...s.input, fontSize: 17, fontWeight: FW.bold, letterSpacing: '-0.02em', flex: 1, padding: '5px 8px' }} value={row.category} onChange={e => onChange('category', e.target.value)} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
@@ -7930,7 +7930,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               ) : (
                 <button
                   onClick={() => { onChange('paid', !isPaid); if (!isPaid && !row.paymentMethod) onChange('paymentMethod', 'Credit Card'); }}
-                  style={{ ...s.btn(isPaid ? 'success' : 'default'), fontSize: 12, padding: '6px 14px', fontWeight: 700 }}
+                  style={{ ...s.btn(isPaid ? 'success' : 'default'), fontSize: 12, padding: '6px 14px', fontWeight: FW.bold }}
                 >
                   {isPaid ? '✓ Paid' : '○ Unpaid'}
                 </button>
@@ -7955,10 +7955,10 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                   flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
                   background: `${steelTopB}22`, color: steelTopB,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                  fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopB }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopB }}>NO GUESSWORK</div>
                   <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     {isVendorLinked
                       ? 'Edits autosave. Payment status is owned by the vendor record — Event Boss keeps them in sync.'
@@ -8017,12 +8017,12 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <div>
                   <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Payment method</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
-                    {mirrorMethod || <span style={{ color: C.muted, fontWeight: 400 }}>— not set on vendor —</span>}
+                  <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>
+                    {mirrorMethod || <span style={{ color: C.muted, fontWeight: FW.regular }}>— not set on vendor —</span>}
                   </div>
                 </div>
                 {primaryVendor && onOpenVendor && (
-                  <button onClick={() => onOpenVendor(primaryVendor.id, 'payment')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0 }}>
+                  <button onClick={() => onOpenVendor(primaryVendor.id, 'payment')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0 }}>
                     Open payment details →
                   </button>
                 )}
@@ -8068,7 +8068,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
 
           <ProgressBar pct={previewBudgeted > 0 ? (previewActual / previewBudgeted) * 100 : 0} color={previewActual > previewBudgeted && previewBudgeted > 0 ? C.danger : undefined} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginTop: 4 }}>
-            <span style={{ color: previewActual > previewBudgeted && previewBudgeted > 0 ? C.danger : C.text, fontWeight: 600 }}>{fmtD(previewActual)} spent</span>
+            <span style={{ color: previewActual > previewBudgeted && previewBudgeted > 0 ? C.danger : C.text, fontWeight: FW.semibold }}>{fmtD(previewActual)} spent</span>
             <span>{fmtD(previewBudgeted)} budgeted</span>
           </div>
 
@@ -8078,7 +8078,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
               (amber only when ≤30d, red overdue, neutral otherwise). */}
           {categoryVendors && categoryVendors.length > 0 && (
             <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 10 }}>Vendors in this category</div>
+              <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 10 }}>Vendors in this category</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {categoryVendors.map(v => {
                   const bal      = vendorBalance(v);
@@ -8087,11 +8087,11 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                   return (
                     <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{v.name}</div>
+                        <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{v.name}</div>
                         <div style={{ fontSize: 10, color: C.muted }}>{v.status}</div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700 }}>{fmtD(v.cost)}</div>
+                        <div style={{ fontSize: 12, fontWeight: FW.bold }}>{fmtD(v.cost)}</div>
                         {bal > 0 && <div style={{ fontSize: 10, color: balColor }}>{fmtD(bal)} due{typeof dueDays === 'number' ? ` · ${dueDays < 0 ? `${-dueDays}d overdue` : `${dueDays}d`}` : ''}</div>}
                         {v.balancePaid && <div style={{ fontSize: 10, color: C.success }}>Paid ✓</div>}
                       </div>
@@ -8101,7 +8101,7 @@ function BudgetModal({ row, committed, categoryVendors, onClose, onChange, onDel
                           onClick={() => onOpenVendor(v.id, 'payment')}
                           title={`Open ${v.name}'s payment details`}
                           aria-label={`Open ${v.name} payment details`}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0, flexShrink: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0, flexShrink: 0 }}
                         >
                           Open payment details →
                         </button>
@@ -8178,7 +8178,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
         <div style={{ padding: isMobile ? '12px 20px 14px' : '20px 24px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 4, borderRadius: 99, background: typeClr, alignSelf: 'stretch', flexShrink: 0 }} />
-            <input style={{ ...s.input, fontSize: 16, fontWeight: 700, flex: 1 }} value={entry.segment} placeholder="What's happening" onChange={e => onChange('segment', e.target.value)} />
+            <input style={{ ...s.input, fontSize: 16, fontWeight: FW.bold, flex: 1 }} value={entry.segment} placeholder="What's happening" onChange={e => onChange('segment', e.target.value)} />
             <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 18, padding: '4px 10px', flexShrink: 0 }}>✕</button>
           </div>
           {/* Sprint 60.U.3 10+ — NO GUESSWORK rail. */}
@@ -8197,10 +8197,10 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
                   flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
                   background: `${steelTopR}22`, color: steelTopR,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 800, marginTop: 1,
+                  fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopR }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopR }}>NO GUESSWORK</div>
                   <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                     Edits autosave to the event day schedule. Event Boss orders segments and flags conflicts.
                   </div>
@@ -8216,7 +8216,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
               <input style={s.input} type="time" value={entry.time} onChange={e => onChange('time', e.target.value)} />
             </div>
             <div style={{ width: 110 }}>
-              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>End <span style={{ opacity: 0.6, fontWeight: 400 }}>· optional</span></label>
+              <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>End <span style={{ opacity: 0.6, fontWeight: FW.regular }}>· optional</span></label>
               <input style={s.input} type="time" value={entry.endTime || ''} onChange={e => onChange('endTime', e.target.value)} />
             </div>
             <div style={{ flex: 1, minWidth: 120 }}>
@@ -8247,7 +8247,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <label style={{ fontSize: 11, color: C.muted }}>Steps</label>
-                  {subs.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
+                  {subs.length > 0 && <span style={{ fontSize: 11, fontWeight: FW.semibold, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {subs.map((sub) => (
@@ -8261,7 +8261,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
                   ))}
                 </div>
                 <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
-                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
+                  style={{ marginTop: subs.length ? 8 : 0, background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: 12.5, cursor: 'pointer', padding: '7px 12px', borderRadius: 8 }}>+ Add a step</button>
               </div>
             );
           })()}
@@ -8273,7 +8273,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
               <input type="checkbox" checked={entry.confirmed || false} onChange={e => onChange('confirmed', e.target.checked)} style={{ accentColor: C.success, cursor: 'pointer', width: 14, height: 14 }} />
               Vendor confirmed
-              {entry.confirmed && <span style={{ color: C.success, fontWeight: 600 }}>✓</span>}
+              {entry.confirmed && <span style={{ color: C.success, fontWeight: FW.semibold }}>✓</span>}
             </label>
           )}
         </div>
@@ -8311,8 +8311,8 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
     <div style={card}>
       <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.prompts.length} confirmed`}</div>
+        <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
+        <div style={{ fontSize: 11.5, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.prompts.length} confirmed`}</div>
       </button>
       {!collapsed && (
       <>
@@ -8323,9 +8323,9 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
           return (
             <button key={p.key} type="button" onClick={() => toggle(p.key)}
               style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
-              <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, marginTop: 1, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
+              <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, marginTop: 1, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: FW.bold, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
                 <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{p.detail}</span>
               </span>
             </button>
@@ -8354,8 +8354,8 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
     <div style={card}>
       <button type="button" onClick={() => setExpanded((v) => !v)}
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{title}</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{expanded ? 'Hide' : `${rk.count} the pros plan for →`}</div>
+        <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{title}</div>
+        <div style={{ fontSize: 11.5, fontWeight: FW.bold, color: C.muted }}>{expanded ? 'Hide' : `${rk.count} the pros plan for →`}</div>
       </button>
       {expanded && (
         <>
@@ -8365,10 +8365,10 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
               <div key={r.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0' }}>
                 <span aria-hidden style={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: sevColor(r.rank) }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>{r.trigger}
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: sevColor(r.rank), textTransform: 'uppercase', marginLeft: 8, verticalAlign: 'middle' }}>{sevWord[r.severity] || 'Watch'}</span>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: FW.bold, color: C.text, lineHeight: 1.4 }}>{r.trigger}
+                    <span style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.08em', color: sevColor(r.rank), textTransform: 'uppercase', marginLeft: 8, verticalAlign: 'middle' }}>{sevWord[r.severity] || 'Watch'}</span>
                   </span>
-                  <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.45 }}><span style={{ fontWeight: 700, color: C.text }}>The fix:</span> {r.mitigation}</span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 3, lineHeight: 1.45 }}><span style={{ fontWeight: FW.bold, color: C.text }}>The fix:</span> {r.mitigation}</span>
                 </span>
               </div>
             ))}
@@ -8416,13 +8416,13 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
   };
   const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
   const qtyBox = { display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '3px 8px', flexShrink: 0 };
-  const qtyInp = { width: 40, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center' };
+  const qtyInp = { width: 40, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 14, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center' };
   return (
     <div style={card}>
       <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Seating &amp; supplies</div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All set ✓ · Review' : 'All set ✓ · Hide') : `${done} of ${items.length} ready`}</div>
+        <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Seating &amp; supplies</div>
+        <div style={{ fontSize: 11.5, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All set ✓ · Review' : 'All set ✓ · Hide') : `${done} of ${items.length} ready`}</div>
       </button>
       {!collapsed && (<>
       <div style={{ fontSize: 14, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Sized for {cap.guests} guests — change a count or add your own. Tap the box once you have it.</div>
@@ -8432,7 +8432,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
           return (
             <div key={it.key} style={{ display: 'flex', alignItems: 'center', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '10px 0', opacity: on ? 0.6 : 1 }}>
               <button type="button" onClick={() => toggle(it.key)} aria-label={on ? 'Got it' : 'Mark as got'}
-                style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
+                style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: 12, fontWeight: FW.heavy, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
               <span style={qtyBox}>
                 <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
                   onBlur={(e) => setQty(it, e.currentTarget.value)}
@@ -8440,7 +8440,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
                   style={qtyInp} />
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: FW.semibold, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: 10.5, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
                 {it.note && <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
               </span>
               {it.added && <button type="button" onClick={() => removeAdded(it.key)} aria-label="Remove" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: '2px 4px' }}>×</button>}
@@ -8460,16 +8460,16 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false }) {
               onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
               style={{ flex: 1, minWidth: 160, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 11px', color: C.text, fontSize: 13.5, fontFamily: 'inherit', outline: 'none' }} />
             <button type="button" onClick={commitAdd} disabled={!addName.trim()}
-              style={{ fontSize: 13, fontWeight: 700, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6, fontFamily: 'inherit' }}>Add</button>
+              style={{ fontSize: 13, fontWeight: FW.bold, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6, fontFamily: 'inherit' }}>Add</button>
             <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddQty(''); }}
-              style={{ fontSize: 13, fontWeight: 600, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Cancel</button>
+              style={{ fontSize: 13, fontWeight: FW.semibold, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Cancel</button>
           </div>
         ) : (
           <button type="button" onClick={() => setAddOpen(true)}
-            style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: C.accentTopGrad || C.accent, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item</button>
+            style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: C.accentTopGrad || C.accent, fontWeight: FW.bold, fontSize: 13.5, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item</button>
         )}
       </div>
-      {cap.because && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: 700 }}>How we sized it:</span> {cap.because}</div>}
+      {cap.because && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: FW.bold }}>How we sized it:</span> {cap.because}</div>}
       </>)}
     </div>
   );
@@ -8563,37 +8563,37 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           stay pointed at the why. */}
       {isMeaningfulMustHave(event.must_have_moment) && (
         <div style={{ ...card, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
-          <div style={{ fontSize: T.eyebrow, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
         </div>
       )}
       {/* header + budget */}
       <div style={{ ...card, borderLeft: `3px solid ${steel}` }}>
-        <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
-        <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steel, textTransform: 'uppercase', marginBottom: 6 }}>Food plan</div>
+        <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.02em' }}>
           Food for {plan.guests} guests{!plan.guestCountResolved ? ' (estimate)' : ''}
         </div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-          <span style={{ color: C.text, fontWeight: 700 }}>{money(plan.foodLow, plan.foodHigh)}</span> for food and drinks, scaled to your count.
+          <span style={{ color: C.text, fontWeight: FW.bold }}>{money(plan.foodLow, plan.foodHigh)}</span> for food and drinks, scaled to your count.
         </div>
         {/* Show the basis — trust comes from seeing the math, not just the number.
             "≈ $X a head × N guests" is exactly how the range is built. */}
         {plan.guests > 0 && plan.foodHigh > 0 && (
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
-            That's about <span style={{ color: steel, fontWeight: 600 }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span> × {plan.guests} {plan.guests === 1 ? 'guest' : 'guests'}.
+            That's about <span style={{ color: steel, fontWeight: FW.semibold }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span> × {plan.guests} {plan.guests === 1 ? 'guest' : 'guests'}.
           </div>
         )}
         {/* #16 — diet counts the plan is accounting for (drives the plant-based line + budget). */}
         {plan.specialDiets && plan.specialDiets.length > 0 && (
-          <div style={{ fontSize: T.secondary, color: steel, marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: T.secondary, color: steel, marginTop: 4, fontWeight: FW.semibold }}>
             Planning for {plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}.
           </div>
         )}
         {/* 60J — what the range means: low = value sourcing, high = specialty/premium. */}
         {plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4 }}>
-            <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart, <span style={{ color: C.text, fontWeight: 600 }}>{money(plan.foodHigh, plan.foodHigh)}</span> going all-out. Tap any item for its price.
+            <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart, <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodHigh, plan.foodHigh)}</span> going all-out. Tap any item for its price.
           </div>
         )}
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
@@ -8607,7 +8607,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   {/* Inline metro picker — set the area right here to switch to local
                       (BLS) pricing. ~26 metros, so a native select is fine here. */}
                   <select value={event.market || ''} onChange={(e) => onPatch({ market: e.target.value })}
-                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
+                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontWeight: FW.semibold, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
                     <option value="">Set your area for local prices…</option>
                     {METRO_MARKETS.filter((m) => METRO_GEO[m.id]).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                   </select>
@@ -8619,12 +8619,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         {plan.boughtCount > 0 && (
           <div style={{ fontSize: T.body, marginTop: 6 }}>
             <span style={{ color: C.muted }}>Bought so far: </span>
-            <span style={{ color: C.success, fontWeight: 700 }}>{money(plan.spentLow, plan.spentHigh)}</span>
+            <span style={{ color: C.success, fontWeight: FW.bold }}>{money(plan.spentLow, plan.spentHigh)}</span>
             <span style={{ color: C.muted }}> · {plan.boughtCount} of {plan.itemCount} items</span>
           </div>
         )}
         {!plan.guestCountResolved && (
-          <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+          <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: FW.semibold, fontSize: 13, cursor: 'pointer', padding: 0 }}>
             Set your guest count to size this exactly →
           </button>
         )}
@@ -8642,10 +8642,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
-              <span style={{ fontSize: T.secondary, fontWeight: 700, color: steel }}>Open &amp; share →</span>
+              <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: steel }}>Open &amp; share →</span>
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>🛒 Your shopping list — already written</div>
+            <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>🛒 Your shopping list — already written</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
           </button>
         );
@@ -8670,11 +8670,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   const n = Number(counts[diet]) || 0;
                   return (
                     <div key={diet} style={{ display: 'flex', alignItems: 'center', gap: 8, background: n > 0 ? `${steel}14` : C.bg, border: `1px solid ${n > 0 ? steel : C.border}`, borderRadius: 9, padding: '6px 8px 6px 11px' }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: T.secondary, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
                       <input type="number" inputMode="numeric" min="0" defaultValue={n || ''} placeholder="0"
                         onBlur={(e) => setCount(diet, e.currentTarget.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { setCount(diet, e.currentTarget.value); e.currentTarget.blur(); } }}
-                        style={{ width: 40, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: T.body, fontWeight: 800, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
+                        style={{ width: 40, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
                     </div>
                   );
                 })}
@@ -8683,9 +8683,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
             <button type="button" onClick={() => onPatch({ dietaryNoted: true })}
-              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: steel, border: 'none', borderRadius: 9, padding: '9px 16px', cursor: 'pointer' }}>Save these</button>
+              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: FW.bold, color: '#fff', background: steel, border: 'none', borderRadius: 9, padding: '9px 16px', cursor: 'pointer' }}>Save these</button>
             <button type="button" onClick={() => onPatch({ knownAllergies: [], dietaryNoted: true })}
-              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: C.muted, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 6px' }}>None I know of</button>
+              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: FW.semibold, color: C.muted, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 6px' }}>None I know of</button>
           </div>
         </div>
       ) : (
@@ -8693,14 +8693,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
             <strong>Collect allergies & dietary needs first.</strong> One unflagged allergy is a safety issue — lock the menu after.
           </div>
-          <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: T.body, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
+          <button type="button" onClick={() => onNav('Guests')} style={{ fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 18px', cursor: 'pointer' }}>Collect →</button>
         </div>
       ))}
 
       {/* the menu CHOICES */}
       {plan.choices.length > 0 && (
         <div style={card}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>Your choices</div>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text, marginBottom: 3 }}>Your choices</div>
           <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
           {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
               no wall of every option for every decision). */}
@@ -8713,7 +8713,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '11px 2px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>{c.label}</span>
-                      <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: c.chosen ? C.text : steel, marginTop: 2, lineHeight: 1.3 }}>{c.chosen || 'Choose →'}</span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: FW.bold, color: c.chosen ? C.text : steel, marginTop: 2, lineHeight: 1.3 }}>{c.chosen || 'Choose →'}</span>
                     </span>
                     <span aria-hidden style={{ flexShrink: 0, marginTop: 2, color: C.muted, fontSize: 15, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
                   </button>
@@ -8724,7 +8724,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           const on = o === c.chosen;
                           return (
                             <button key={o} type="button" onClick={() => { setChoice(c.id, o); setOpenChoice(null); }}
-                              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
+                              style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
                                 color: on ? '#fff' : C.text, background: on ? steel : C.bg, border: `1px solid ${on ? steel : C.border}`, transition: 'background 140ms ease, border-color 140ms ease' }}>
                               {o}
                             </button>
@@ -8744,12 +8744,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* the grounded shopping list — summary-first; expand for the full checklist */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>The spread</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>The spread</div>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>
         </div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
           {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}
-          {plan.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>${plan.lockedTotal.toLocaleString()} locked</span></> : null}
+          {plan.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>${plan.lockedTotal.toLocaleString()} locked</span></> : null}
         </div>
         {heroNames.length > 0 && (
           <div style={{ fontSize: T.body, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
@@ -8758,7 +8758,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           </div>
         )}
         <button type="button" onClick={() => setShowFullSpread((v) => !v)}
-          style={{ marginTop: 12, background: 'transparent', border: `1px solid ${C.border}`, color: steel, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 }}>
+          style={{ marginTop: 12, background: 'transparent', border: `1px solid ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 }}>
           {showFullSpread ? 'Hide the shopping list' : 'Show the full shopping list →'}
         </button>
         {showFullSpread && (
@@ -8772,8 +8772,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
               return (
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
-                  <span style={{ fontSize: T.caption, fontWeight: 700, color: C.muted }}>{money(gl, gh)}</span>
+                  <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                  <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(gl, gh)}</span>
                 </div>
               );
             })()}
@@ -8797,7 +8797,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               // Added dishes are fully host-authored — removing one DELETES it (no struck-through ghost).
               const removeAdded = (e) => { e.stopPropagation(); onPatch({ foodAdd: (event.foodAdd || []).filter((a) => a.id !== i.id) }); };
               const lockOpen = openLockId === i.id;
-              const lkBtn = { fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 600, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
+              const lkBtn = { fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
               return (
                 <div key={i.id} id={`foodrow-${i.id}`} style={{ borderBottom: `1px solid ${C.border}`, opacity: skipped ? 0.45 : 1, background: highlightId === i.id ? `${C.accent}1f` : 'transparent', borderRadius: highlightId === i.id ? 8 : 0, boxShadow: highlightId === i.id ? `0 0 0 2px ${C.accent}66` : 'none', transition: 'background 400ms ease, box-shadow 400ms ease', margin: highlightId === i.id ? '0 -6px' : 0, padding: highlightId === i.id ? '0 6px' : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'stretch' }}>
@@ -8808,21 +8808,21 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } });
                       }}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                        {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: 600, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
+                        <span style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                        {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
                         {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
-                        {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: 700, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
+                        {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
                         {/* Dietary heads-up — a noted restriction relates to this item (double-check). */}
                         {Array.isArray(i.dietFlags) && i.dietFlags.map((f) => (
                           <span key={f} title="A dietary need you noted relates to this item — double-check it"
-                            style={{ fontSize: T.caption, fontWeight: 700, color: C.warn || '#ef962e', background: `${C.warn || '#ef962e'}1c`, border: `1px solid ${(C.warn || '#ef962e')}44`, borderRadius: 6, padding: '1px 6px', marginLeft: 7, whiteSpace: 'nowrap' }}>⚠ {f}</span>
+                            style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.warn || '#ef962e', background: `${C.warn || '#ef962e'}1c`, border: `1px solid ${(C.warn || '#ef962e')}44`, borderRadius: 6, padding: '1px 6px', marginLeft: 7, whiteSpace: 'nowrap' }}>⚠ {f}</span>
                         ))}
                         {i.perGuest != null && (
                           <span style={{ display: 'block', fontSize: T.secondary, marginTop: 2 }}>
-                            <span style={{ color: steel, fontWeight: 600 }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
+                            <span style={{ color: steel, fontWeight: FW.semibold }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
                             <span style={{ color: C.muted }}> · typical</span>
                           </span>
                         )}
@@ -8844,31 +8844,31 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           <span style={{ display: 'block', fontSize: T.secondary, marginTop: 3 }}>
                             <span role="link" tabIndex={0}
                               onClick={(e) => { e.stopPropagation(); window.open(`https://www.instacart.com/store/s?k=${encodeURIComponent(i.short || i.item)}`, '_blank', 'noopener'); }}
-                              style={{ cursor: 'pointer', color: '#0AAD0A', fontWeight: 700, textDecoration: 'underline dotted' }}>🛒 Find on Instacart</span>
+                              style={{ cursor: 'pointer', color: '#0AAD0A', fontWeight: FW.bold, textDecoration: 'underline dotted' }}>🛒 Find on Instacart</span>
                           </span>
                         )}
                         {/* Alternatives — playbook-sourced swap suggestions shown inline so the
                             host never needs to leave the shopping list to find a substitute. */}
                         {Array.isArray(i.alternatives) && i.alternatives.length > 0 && !got && (
                           <span style={{ display: 'block', marginTop: 4 }}>
-                            <span style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
+                            <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
                             <span style={{ fontSize: T.secondary, color: C.muted }}>{i.alternatives.slice(0, 2).join(' · ')}</span>
                           </span>
                         )}
                       </span>
                       <span style={{ flexShrink: 0, textAlign: 'right' }}>
-                        {i.qty != null && <span style={{ display: 'block', fontSize: T.body, fontWeight: 700, color: C.text }}>{i.qty} {i.unit}</span>}
+                        {i.qty != null && <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{i.qty} {i.unit}</span>}
                         {i.added && i.low === 0
                           ? <span style={{ fontSize: T.secondary, color: C.muted }}>they're bringing it</span>
                           : i.locked != null
-                          ? <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.success }}>${i.locked.toLocaleString()} locked</span>
+                          ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success }}>${i.locked.toLocaleString()} locked</span>
                           : <span style={{ fontSize: T.caption, color: C.muted }}>{money(i.low, i.high)}</span>}
                         {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
                       </span>
                     </button>
                     {!skipped && !i.added && (
                       <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Lock a cost" aria-label="Lock a cost"
-                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: 15, fontWeight: 800, lineHeight: 1, padding: '4px 5px' }}>$</button>
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: 15, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
                     )}
                     {i.added ? (
                       <button type="button" onClick={removeAdded} title="Remove this dish" aria-label="Remove this dish"
@@ -8889,7 +8889,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           <input type="number" inputMode="decimal" defaultValue={i.qty != null ? i.qty : ''} placeholder={i.baseQty != null ? String(i.baseQty) : '—'}
                             onKeyDown={(e) => { if (e.key === 'Enter') setQty(e.currentTarget.value); }}
                             onBlur={(e) => setQty(e.currentTarget.value)}
-                            style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
+                            style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: FW.bold, fontFamily: 'inherit' }} />
                           <span style={{ color: C.muted, fontSize: T.caption }}>{i.unitBase || i.unit}</span>
                         </span>
                         {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
@@ -8903,7 +8903,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="your price"
                           onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
                           onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
-                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }} />
+                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 13, fontWeight: FW.bold, fontFamily: 'inherit' }} />
                       </span>
                       {i.locked != null && <button type="button" onClick={clearLock} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
                       </div>
@@ -8930,19 +8930,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   <span style={{ color: C.muted, fontSize: 13 }}>$</span>
                   <input type="number" inputMode="numeric" placeholder="cost" value={addCost} onChange={(e) => setAddCost(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
-                    style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: 700, fontFamily: 'inherit' }} />
+                    style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.bold, fontFamily: 'inherit' }} />
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" onClick={commitAdd} disabled={!addName.trim()}
-                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 700, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6 }}>Add to plan</button>
+                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: FW.bold, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6 }}>Add to plan</button>
                 <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddOwner(''); setAddCost(''); }}
-                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
+                  style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: FW.semibold, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
               </div>
             </div>
           ) : (
             <button type="button" onClick={() => setAddOpen(true)}
-              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: 700, fontSize: T.body, cursor: 'pointer', padding: '11px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a dish</button>
+              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.body, cursor: 'pointer', padding: '11px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a dish</button>
           )}
         </div>
         </div>
@@ -8953,13 +8953,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
         <div style={card}>
-          <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Where to shop</div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>The places this spread calls for{shopCity ? `, near ${shopCity}` : ''}</div>
+          <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Where to shop</div>
+          <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>The places this spread calls for{shopCity ? `, near ${shopCity}` : ''}</div>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, marginBottom: 12, lineHeight: 1.5 }}>Tap any place to open a live map search — real listings near you, never endorsements.</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {shopSources.map((src) => (
               <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 12px 7px 11px', textDecoration: 'none' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 12px 7px 11px', textDecoration: 'none' }}>
                 <Icon name="pin" size={12} color={steel} /> {src} <span style={{ color: steel, fontSize: T.secondary }}>↗</span>
               </a>
             ))}
@@ -8985,12 +8985,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             if (!online.length) return null;
             return (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Or get it delivered</div>
+                <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 4 }}>Or get it delivered</div>
                 <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>{hasMeat ? 'Top online butchers' : 'Top online grocers'}{hasMeat && hasGrocery ? ' + grocery delivery' : ''} — ships nationwide.</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {online.map((o) => (
                     <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 13px', textDecoration: 'none' }}>
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '7px 13px', textDecoration: 'none' }}>
                       {o.name} <span style={{ color: steel }}>↗</span>
                     </a>
                   ))}
@@ -9079,7 +9079,7 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
       {value && (
         <div key={value} style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9, animation: 'ceRise 360ms ease-out both' }}>
           <span aria-hidden style={{ width: 5, height: 5, borderRadius: '50%', background: steel }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: steel, letterSpacing: '0.01em' }}>{weekdayLong} · {countLabel}</span>
+          <span style={{ fontSize: 13, fontWeight: FW.semibold, color: steel, letterSpacing: '0.01em' }}>{weekdayLong} · {countLabel}</span>
         </div>
       )}
 
@@ -9095,13 +9095,13 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
           <div style={isMobile
             ? { display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }
             : { display: 'flex', flexDirection: 'column', gap: 8, width: 162, flexShrink: 0 }}>
-            {!isMobile && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: C.muted, margin: '2px 0 4px 2px' }}>QUICK PICKS</div>}
+            {!isMobile && <div style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.muted, margin: '2px 0 4px 2px' }}>QUICK PICKS</div>}
             {chips.map((c, ci) => {
               const isSelChip = c.iso === shownSel;
               return (
                 <button key={c.label} type="button" onClick={() => chipPick(c.iso)}
                   style={{
-                    fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer',
                     padding: isMobile ? '9px 13px' : '10px 13px', borderRadius: 10,
                     textAlign: isMobile ? 'center' : 'left',
                     color: isSelChip ? '#fff' : C.text,
@@ -9126,7 +9126,7 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <button type="button" aria-label="Previous month" disabled={atCurrentMonth} onClick={() => { if (!atCurrentMonth) setView(v => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 })); }} style={navBtn(atCurrentMonth)}>‹</button>
                   <button type="button" onClick={() => setMode('months')} title="Jump to month / year"
-                    style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.01em', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 9, transition: 'background 140ms ease' }}
+                    style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.01em', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 9, transition: 'background 140ms ease' }}
                     onMouseEnter={e => { e.currentTarget.style.background = `${steel}1a`; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
                     {monthLabel} <span style={{ fontSize: 9, color: C.muted }}>▼</span>
@@ -9136,7 +9136,7 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 5 }}>
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => {
                     const wkndHdr = i === 0 || i === 5 || i === 6;  // Sun / Fri / Sat
-                    return <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: wkndHdr ? `${steel}cc` : C.muted, padding: '4px 0' }}>{w}</div>;
+                    return <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: FW.bold, color: wkndHdr ? `${steel}cc` : C.muted, padding: '4px 0' }}>{w}</div>;
                   })}
                 </div>
                 <div key={gridKey} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
@@ -9180,7 +9180,7 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
                 {/* Months mode — fast year + month jump */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <button type="button" aria-label="Previous year" disabled={atCurrentYear} onClick={() => { if (!atCurrentYear) setView(v => ({ ...v, y: v.y - 1 })); }} style={navBtn(atCurrentYear)}>‹</button>
-                  <button type="button" onClick={() => setMode('days')} title="Back to days" style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: C.text, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9 }}>{view.y}</button>
+                  <button type="button" onClick={() => setMode('days')} title="Back to days" style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: FW.bold, color: C.text, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9 }}>{view.y}</button>
                   <button type="button" aria-label="Next year" onClick={() => setView(v => ({ ...v, y: v.y + 1 }))} style={navBtn(false)}>›</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
@@ -9215,11 +9215,11 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
               commits it here (or by tapping the day). Honest: nothing is set yet. */}
           {draft && draft !== value && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>
-                <span style={{ color: steel }}>{draftLabel}</span>{draftCount ? <span style={{ color: C.muted, fontWeight: 500 }}> · {draftCount}</span> : null}
+              <span style={{ fontSize: 13.5, fontWeight: FW.semibold }}>
+                <span style={{ color: steel }}>{draftLabel}</span>{draftCount ? <span style={{ color: C.muted, fontWeight: FW.medium }}> · {draftCount}</span> : null}
               </span>
               <button type="button" onClick={commitDraft}
-                style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 22px', cursor: 'pointer', boxShadow: `0 3px 12px ${steel}55` }}>
+                style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: FW.bold, color: '#fff', background: steel, border: `1px solid ${steel}`, borderRadius: 10, padding: '10px 22px', cursor: 'pointer', boxShadow: `0 3px 12px ${steel}55` }}>
                 Confirm
               </button>
             </div>
@@ -9271,7 +9271,7 @@ function TypePicker({ value, onChange, placeholder = 'Choose…', fieldStyle, ex
               ? <div style={{ padding: 14, fontSize: 13, color: C.muted, lineHeight: 1.5 }}>No exact match — pick the closest and Event Boss adapts the plan.</div>
               : groups.map(([cat, types]) => (
                 <div key={cat} style={{ marginBottom: 4 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, padding: '7px 8px 3px' }}>{cat}</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, padding: '7px 8px 3px' }}>{cat}</div>
                   {types.map((t) => (
                     <button key={t} type="button" onClick={() => pick(t)}
                       style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px', background: t === value ? `${C.accent}22` : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13.5, fontWeight: t === value ? 700 : 500, color: C.text, fontFamily: 'inherit' }}>{t}</button>
@@ -9541,9 +9541,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
   // ── Studio Matte Carbon styles; inputs ≥44px; font sizes preserved/raised ──
   const ui = {
-    label: { display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 7, letterSpacing: '0.01em' },
-    req:   { color: C.accentText || C.accent, fontWeight: 600 },
-    opt:   { color: C.muted, fontWeight: 400 },
+    label: { display: 'block', fontSize: 12, fontWeight: FW.semibold, color: C.muted, marginBottom: 7, letterSpacing: '0.01em' },
+    req:   { color: C.accentText || C.accent, fontWeight: FW.semibold },
+    opt:   { color: C.muted, fontWeight: FW.regular },
     field: (bad) => ({ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '11px 13px', fontSize: 15, color: C.text, background: C.bg, border: `1px solid ${bad ? C.danger : C.border}`, borderRadius: 10, outline: 'none', fontFamily: 'inherit' }),
     hint:  { fontSize: 12, color: C.danger, marginTop: 6 },
     truth: { fontSize: 12.5, color: C.muted, lineHeight: 1.5 },
@@ -9597,7 +9597,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div>
               {stepCopy.title && (
-                <h2 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>
+                <h2 style={{ fontSize: isMobile ? 19 : 22, fontWeight: FW.bold, margin: 0, letterSpacing: '-0.02em', color: C.text }}>
                   {stepCopy.title}
                 </h2>
               )}
@@ -9658,21 +9658,21 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               ...(isActive ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
             });
             // The first question of each step is the hero of that step (lead with the question).
-            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
+            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
             const sub    = { fontSize: 13, color: C.muted, marginTop: 9, lineHeight: 1.5 };
-            const bopt   = { color: C.muted, fontWeight: 500, fontSize: 12 };
+            const bopt   = { color: C.muted, fontWeight: FW.medium, fontSize: 12 };
             const dot    = (on) => ({ width: 7, height: 7, borderRadius: '50%', background: on ? steel : 'transparent', border: `1.5px solid ${on ? steel : C.border}`, transition: 'all 260ms ease' });
             const reveal = (delay = 0) => ({ animation: 'ceRise 520ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${delay}ms` });
             // Dim the room — answered questions recede to a whisper so the live one
             // is the only thing pulling the eye (still editable; nothing is locked).
             const groupDim = (isActiveGroup) => ({ opacity: isActiveGroup ? 1 : 0.42, transition: 'opacity 340ms ease' });
-            const check  = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: 800, marginRight: 7 }}>✓</span>;
+            const check  = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: FW.heavy, marginRight: 7 }}>✓</span>;
             return (
               <div>
                 {/* Kare — the cadence map: how far down the path they are. */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 20, ...reveal(0) }}>
                   <span style={dot(typeDone)} /><span style={dot(dateDone)} /><span style={dot(nameDone)} />
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>
                     {!typeDone ? 'LET’S BEGIN' : !dateDone ? 'NEXT' : 'LAST ONE'}
                   </span>
                 </div>
@@ -9689,7 +9689,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   {/* Secondary — quiet optional refinement, only once the primary is set */}
                   {typeDone && (
                     <div style={{ marginTop: 12, ...reveal(60) }}>
-                      <label htmlFor="ce-secondary-type" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>Anything else mixed in? <span style={bopt}>· optional</span></label>
+                      <label htmlFor="ce-secondary-type" style={{ fontSize: 12, fontWeight: FW.semibold, color: C.muted, display: 'block', marginBottom: 7 }}>Anything else mixed in? <span style={bopt}>· optional</span></label>
                       <TypePicker value={form.secondaryType} onChange={(t) => upd('secondaryType', t)}
                         placeholder="Just the one" emptyOption="Just the one" excludeValue={form.type} testId="ce-secondary-type" C={C} isMobile={isMobile}
                         fieldStyle={{ ...sfield(false, false, false), minHeight: 46, fontSize: 15, animation: 'none' }} />
@@ -9704,7 +9704,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     {/* The lead: acknowledge, name what the engine will set up, ask the next question. */}
                     <div style={{ marginBottom: isMobile ? 20 : 24, padding: isMobile ? '13px 14px' : '14px 16px', borderRadius: 12, background: `${C.accent}0e`, border: `1px solid ${C.accent}24`, borderLeft: `3px solid ${C.accent}` }}>
                       {occasionBlurb(form.type, form.secondaryType) && (
-                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500, marginBottom: 10 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
+                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: FW.medium, marginBottom: 10 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
                       )}
                       {/* Type-specific intelligence — the REAL authored playbook plan for
                           this event type (its actual milestones, a shopping list sized to
@@ -9712,7 +9712,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                           matters). This is the "look what it will do for me" reveal at the
                           create moment. Falls back to the kit checklist for the handful of
                           types without an authored playbook. */}
-                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 8 }}>What I’ll set up for {/^[aeiou]/i.test(form.type) ? 'an' : 'a'} {form.type}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase', marginBottom: 8 }}>What I’ll set up for {/^[aeiou]/i.test(form.type) ? 'an' : 'a'} {form.type}</div>
                       {(() => {
                         const sp = playbookSetupPreview(form.type);
                         if (!sp) {
@@ -9720,7 +9720,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {(kitCfg.checklist || []).slice(0, 5).map((item, i) => (
                                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
-                                  <span aria-hidden style={{ color: steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
+                                  <span aria-hidden style={{ color: steel, fontWeight: FW.heavy, flexShrink: 0, marginTop: 1 }}>✓</span>
                                   <span>{item}</span>
                                 </div>
                               ))}
@@ -9739,7 +9739,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {sp.steps.slice(0, 5).map((s, i) => (
                                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.text, lineHeight: 1.45 }}>
-                                  <span aria-hidden style={{ color: s.critical ? C.accent : steel, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
+                                  <span aria-hidden style={{ color: s.critical ? C.accent : steel, fontWeight: FW.heavy, flexShrink: 0, marginTop: 1 }}>✓</span>
                                   <span>{s.name}{typeof s.daysBefore === 'number' && s.daysBefore > 0 ? <span style={{ color: C.muted }}> · {s.daysBefore}d before</span> : null}</span>
                                 </div>
                               ))}
@@ -9786,7 +9786,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         if willing — step to a second screen for a couple more details. */}
                     <div style={{ marginTop: 18 }}>
                       <button type="button" data-testid="ce-add-more" onClick={() => setHostScreen(2)}
-                        style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '11px 16px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'border-color 150ms ease' }}
+                        style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.text, fontFamily: 'inherit', fontSize: 13.5, fontWeight: FW.semibold, cursor: 'pointer', padding: '11px 16px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 8, transition: 'border-color 150ms ease' }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = `${steelTop}99`; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
                         Add guest count &amp; location <span style={bopt}>· optional</span> <span aria-hidden style={{ color: steelTop }}>→</span>
@@ -9813,18 +9813,18 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               transition: 'border-color 240ms ease',
               ...(isActive ? { animation: 'ceBreathe 3.8s ease-in-out infinite' } : {}),
             });
-            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
+            const qLabel = { display: 'block', fontSize: isMobile ? 18 : 21, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.02em', marginBottom: 12, lineHeight: 1.2 };
             const sub    = { fontSize: 13, color: C.muted, marginTop: 9, lineHeight: 1.5 };
-            const bopt   = { color: C.muted, fontWeight: 500, fontSize: 12 };
+            const bopt   = { color: C.muted, fontWeight: FW.medium, fontSize: 12 };
             const dot    = (on) => ({ width: 7, height: 7, borderRadius: '50%', background: on ? steel : 'transparent', border: `1.5px solid ${on ? steel : C.border}`, transition: 'all 260ms ease' });
             const reveal = (delay = 0) => ({ animation: 'ceRise 520ms cubic-bezier(.2,.7,.2,1) both', animationDelay: `${delay}ms` });
             const groupDim = (isActiveGroup) => ({ opacity: isActiveGroup ? 1 : 0.42, transition: 'opacity 340ms ease' });
-            const check = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: 800, marginRight: 7 }}>✓</span>;
+            const check = <span aria-hidden style={{ color: steel, fontSize: 13, fontWeight: FW.heavy, marginRight: 7 }}>✓</span>;
             return (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 20, ...reveal(0) }}>
                   <span style={dot(guestsDone)} /><span style={dot(locDone)} />
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>A FEW MORE DETAILS · OPTIONAL</span>
+                  <span style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: C.muted, marginLeft: 4 }}>A FEW MORE DETAILS · OPTIONAL</span>
                 </div>
 
                 {/* QUESTION 1 — guest count */}
@@ -9850,7 +9850,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                             const isOn = opt.v ? atHome : !atHome;
                             return (
                               <button key={opt.label} type="button" data-testid={opt.v ? 'ce-athome' : 'ce-atvenue'} onClick={() => upd('venue', opt.v)}
-                                style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '10px 16px', borderRadius: 10,
+                                style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: FW.semibold, cursor: 'pointer', padding: '10px 16px', borderRadius: 10,
                                   color: isOn ? '#fff' : C.text, background: isOn ? steel : C.bg, border: `1px solid ${isOn ? steel : C.border}`, transition: 'background 150ms ease, border-color 150ms ease' }}>
                                 {opt.label}
                               </button>
@@ -9858,7 +9858,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                           })}
                         </div>
                       )}
-                      <label htmlFor="ce-loc" style={{ fontSize: 12, fontWeight: 600, color: C.muted, display: 'block', marginBottom: 7 }}>{atHome ? 'Your city — for budget pricing' : 'City'} <span style={bopt}>· optional</span></label>
+                      <label htmlFor="ce-loc" style={{ fontSize: 12, fontWeight: FW.semibold, color: C.muted, display: 'block', marginBottom: 7 }}>{atHome ? 'Your city — for budget pricing' : 'City'} <span style={bopt}>· optional</span></label>
                       <select id="ce-loc" data-testid="ce-loc" style={sfield(active === 'loc', locDone, false)} value={form.market} onChange={e => upd('market', e.target.value)}>
                         <option value="">Select the city…</option>
                         {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -9890,11 +9890,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
                   background: `${steelTop}22`, color: steelTop,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, fontWeight: 800, marginTop: 1,
+                  fontSize: 14, fontWeight: FW.heavy, marginTop: 1,
                 }}>✓</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
-                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: 600, marginBottom: 6 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
+                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: FW.semibold, marginBottom: 6 }}>
                     Name it, date it, pick the type.
                   </div>
                   <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
@@ -9993,7 +9993,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 <div style={{
                   marginTop: 16, padding: isMobile ? '11px 13px' : '12px 15px', borderRadius: 10,
                   background: `${C.accent}10`, border: `1px solid ${C.accent}33`, borderLeft: `3px solid ${C.accent}`,
-                  fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: 500,
+                  fontSize: 13.5, color: C.text, lineHeight: 1.55, fontWeight: FW.medium,
                 }}>
                   {occasionBlurb(form.type, form.secondaryType)}
                 </div>
@@ -10045,7 +10045,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
               <div data-testid="ce-trust-block-step1" style={{
                 marginTop: 18, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px',
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>You can add details later</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>You can add details later</div>
                 {[
                   'Client/vendor will not be contacted',
                   'Messages sent: None',
@@ -10053,7 +10053,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   'Event is not created until final review',
                 ].map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
-                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800 }}>✓</span>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: FW.heavy }}>✓</span>
                     <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
                   </div>
                 ))}
@@ -10063,14 +10063,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
           {step === 2 && (
             <>
-              <div style={{ fontSize: isMobile ? 14 : 15.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>What should Event Boss set up for you?</div>
+              <div style={{ fontSize: isMobile ? 14 : 15.5, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>What should Event Boss set up for you?</div>
               {/* Intelligence Gap PR #1 — truthful "Suggested for X" /
                   "You picked X" copy. Switches state-by-state on
                   whether the planner has manually clicked a card. */}
               <div data-testid="ce-kit-suggest-line" style={{ ...ui.truth, marginBottom: 10, fontSize: isMobile ? 12.5 : 13 }}>
                 {kitTouched
-                  ? <>You picked <strong style={{ color: C.text, fontWeight: 700 }}>{kitCfg.title}</strong>. Tap a different card to change.</>
-                  : <>Suggested for <strong style={{ color: C.text, fontWeight: 700 }}>{form.type}</strong>: <strong style={{ color: C.text, fontWeight: 700 }}>{kitCfg.title}</strong>. Tap a different card to change.</>}
+                  ? <>You picked <strong style={{ color: C.text, fontWeight: FW.bold }}>{kitCfg.title}</strong>. Tap a different card to change.</>
+                  : <>Suggested for <strong style={{ color: C.text, fontWeight: FW.bold }}>{form.type}</strong>: <strong style={{ color: C.text, fontWeight: FW.bold }}>{kitCfg.title}</strong>. Tap a different card to change.</>}
               </div>
               <div style={{ ...ui.truth, marginBottom: 16, fontSize: isMobile ? 12 : 12.5, color: C.muted }}>The selected card shows exactly what Event Boss will create. You can add or remove anything afterward.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -10096,7 +10096,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                           {on && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
                         </span>
                         <span style={{ flex: 1 }}>
-                          <span style={{ display: 'block', fontSize: isMobile ? 15 : 16, fontWeight: 700, color: C.text, letterSpacing: '-0.005em' }}>{k.title}</span>
+                          <span style={{ display: 'block', fontSize: isMobile ? 15 : 16, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.005em' }}>{k.title}</span>
                           <span style={{ display: 'block', fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{k.creates}</span>
                         </span>
                       </span>
@@ -10111,11 +10111,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                           borderTop: `1px solid ${C.border}`,
                           background: 'transparent',
                         }}>
-                          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 7 }}>CREATES FOR YOU</div>
+                          <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTop, marginBottom: 7 }}>CREATES FOR YOU</div>
                           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
                             {k.checklist.map(item => (
                               <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text }}>
-                                <span aria-hidden style={{ width: 16, height: 16, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                                <span aria-hidden style={{ width: 16, height: 16, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: FW.bold, flexShrink: 0 }}>✓</span>
                                 {item}
                               </li>
                             ))}
@@ -10140,7 +10140,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 padding: isMobile ? '14px 16px' : '16px 20px',
                 marginBottom: 18,
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 10 }}>Will happen</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 10 }}>Will happen</div>
                 {(() => {
                   const dateLabel = form.date
                     ? new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
@@ -10171,7 +10171,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                       {reviewRows.map((row, i) => (
                         <div key={row.label} data-testid={`ce-review-row-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', paddingTop: i ? 6 : 0, borderTop: i ? `1px solid ${C.border}` : 'none' }}>
                           <span style={{ fontSize: 12.5, color: C.muted, flexShrink: 0 }}>{row.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: row.value === 'Yes' ? C.success : C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
+                          <span style={{ fontSize: 13, fontWeight: FW.semibold, color: row.value === 'Yes' ? C.success : C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
                         </div>
                       ))}
                     </div>
@@ -10189,7 +10189,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 return (
                   <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent2}`, borderRadius: 10, padding: isMobile ? '14px 16px' : '16px 20px', marginBottom: 18 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accent2, textTransform: 'uppercase' }}>Vendor categories</div>
+                      <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.accent2, textTransform: 'uppercase' }}>Vendor categories</div>
                       <div style={{ fontSize: 11.5, color: C.muted }}>{proposedCats.length} placeholders to fill · on-trend for {form.type}</div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '9px 18px' }}>
@@ -10211,7 +10211,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 padding: '12px 14px',
                 marginBottom: 18,
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>Will NOT happen</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTop, textTransform: 'uppercase', marginBottom: 8 }}>Will NOT happen</div>
                 {[
                   'Client contacted: No',
                   'Messages sent: None',
@@ -10219,13 +10219,13 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   'No money is moved or charged',
                 ].map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
-                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: 800 }}>✓</span>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 12, fontWeight: FW.heavy }}>✓</span>
                     <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{line}</span>
                   </div>
                 ))}
               </div>
 
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Optional details</div>
+              <div style={{ fontSize: 12.5, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Optional details</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 0 : 16, rowGap: 16, marginBottom: 16 }}>
                 <div>
                   <label style={ui.label} htmlFor="ce-venue">{isAtHomeType(form.type) ? 'Location' : 'Venue'} <span style={ui.opt}>· optional</span></label>
@@ -10365,7 +10365,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                       <span aria-hidden style={{ color: steelTop, fontSize: 13, marginTop: 1 }}>{estimatorOpen ? '▾' : '▸'}</span>
                       <span>
-                        <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>Estimate my budget</span>
+                        <span style={{ display: 'block', fontSize: 14, fontWeight: FW.bold, color: C.text }}>Estimate my budget</span>
                         <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
                           Use event details to create a starting range before you commit a budget.
                         </span>
@@ -10415,8 +10415,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                         {canEstimate ? (
                           <>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Choose how fancy</span>
-                              <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: 700, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
+                              <span style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Choose how fancy</span>
+                              <span data-testid="ce-estimator-confidence" style={{ fontSize: 9.5, fontWeight: FW.bold, color: confColor, background: `${confColor}14`, border: `1px solid ${confColor}44`, padding: '1px 7px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{conf.label}</span>
                             </div>
                             <div data-testid="ce-estimator-range" style={{ fontSize: 12, color: C.muted, marginTop: -2 }}>{money(lowT)} – {money(highT)} across tiers · {marketObj ? `priced for ${marketObj.label}` : 'national average — set the event city below for local pricing'} · adjust below.</div>
                             {/* Budget-stretch coaching (board 2026-06-12, Wanda dogfood): if the
@@ -10430,9 +10430,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               const venueNote = communityVenueNote(form.venue);
                               return (
                                 <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.6, background: `${C.muted}12`, border: `1px solid ${C.muted}40`, borderRadius: 8, padding: '8px 10px' }}>
-                                  <span style={{ color: C.muted, fontWeight: 700 }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%).{' '}
-                                  <strong style={{ fontWeight: 700 }}>Spend first</strong> on the room, food, and music; <strong style={{ fontWeight: 700 }}>save</strong> with family-style or buffet service, DIY or rented décor, a smaller act or a great playlist, and treat add-ons (photo booth, extras) as optional.
-                                  {venueNote && <div style={{ marginTop: 6, color: C.accent2, fontWeight: 600 }}>{venueNote}</div>}
+                                  <span style={{ color: C.muted, fontWeight: FW.bold }}>Your {money(ub)} budget is well under this scope</span> — {money(gap)} below the {money(lowT)} floor (≈{pct}%).{' '}
+                                  <strong style={{ fontWeight: FW.bold }}>Spend first</strong> on the room, food, and music; <strong style={{ fontWeight: FW.bold }}>save</strong> with family-style or buffet service, DIY or rented décor, a smaller act or a great playlist, and treat add-ons (photo booth, extras) as optional.
+                                  {venueNote && <div style={{ marginTop: 6, color: C.accent2, fontWeight: FW.semibold }}>{venueNote}</div>}
                                 </div>
                               );
                             })()}
@@ -10441,8 +10441,8 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                 the number stays in view and visibly drops as categories are skipped. */}
                             <div style={{ position: 'sticky', top: 0, zIndex: 3, background: C.surface, paddingTop: 6, paddingBottom: 10, borderBottom: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Your budget</span>
-                                <span data-testid="ce-estimator-grandtotal" style={{ fontSize: 26, fontWeight: 800, color: C.text }}>{money(grandTotal)}</span>
+                                <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>Your budget</span>
+                                <span data-testid="ce-estimator-grandtotal" style={{ fontSize: 26, fontWeight: FW.heavy, color: C.text }}>{money(grandTotal)}</span>
                               </div>
                               <div style={{ fontSize: 11, color: C.muted, marginTop: -2 }}>about {money(perGuestGrand)} per guest · {guests} guests · {form.type}{marketObj ? ` · ${marketObj.label}` : ''}</div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'flex-start' }}>
@@ -10453,7 +10453,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                   // event" (Grandmother clicked it thinking it made the party) —
                                   // demoted to an OUTLINE so only "Create event" is primary.
                                   <button type="button" data-testid="ce-estimator-apply" onClick={applyBudget}
-                                    style={{ alignSelf: 'flex-start', minWidth: 190, background: 'transparent', color: C.text, border: `1px solid ${steelTop}88`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Use this estimate as my budget</button>
+                                    style={{ alignSelf: 'flex-start', minWidth: 190, background: 'transparent', color: C.text, border: `1px solid ${steelTop}88`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>Use this estimate as my budget</button>
                                 )}
                                 <span style={{ fontSize: 12, color: (budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal) ? C.success : C.muted, lineHeight: 1.5 }}>
                                   {(budgetSource === 'estimate' && Number(form.totalBudget) === grandTotal)
@@ -10468,7 +10468,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               <span style={{ fontSize: 11, color: C.muted }}>Set all to:</span>
                               {['good', 'better', 'best'].map(t => (
                                 <button type="button" key={t} data-testid={`ce-alltier-${t}`} onClick={() => setAllTiers(t)}
-                                  style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36,
+                                  style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit', minHeight: 36,
                                     border: `1px solid ${allTierActive === t ? steelTop : C.border}`, background: allTierActive === t ? `${steelTop}1e` : 'transparent', color: C.text }}>{TIER_LABEL[t]}</button>
                               ))}
                             </div>
@@ -10480,14 +10480,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                 const tclr = t === 'good' ? C.success : t === 'better' ? C.accent2 : C.accent;
                                 return (
                                   <div key={t} style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.4 }}>
-                                    <span style={{ fontWeight: 800, color: tclr, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 10 }}>{TIER_LABEL[t]}</span>
+                                    <span style={{ fontWeight: FW.heavy, color: tclr, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 10 }}>{TIER_LABEL[t]}</span>
                                     {t === 'better' && <span style={{ fontSize: 9, color: C.muted, marginLeft: 5 }}>· default</span>}
                                     <span> — {TIER_BESTFOR[t]}</span>
                                   </div>
                                 );
                               })}
                               <details style={{ marginTop: 2 }}>
-                                <summary style={{ fontSize: 11.5, color: steelTop, cursor: 'pointer', fontWeight: 600 }}>What each tier includes</summary>
+                                <summary style={{ fontSize: 11.5, color: steelTop, cursor: 'pointer', fontWeight: FW.semibold }}>What each tier includes</summary>
                                 <div style={{ marginTop: 8, overflowX: 'auto' }}>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                                     <thead>
@@ -10495,14 +10495,14 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                         <th style={{ padding: '4px 6px' }}></th>
                                         {['good', 'better', 'best'].map(t => {
                                           const tclr = t === 'good' ? C.success : t === 'better' ? C.accent2 : C.accent;
-                                          return <th key={t} style={{ textAlign: 'left', padding: '4px 6px', color: tclr, fontWeight: 800, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{TIER_LABEL[t]}</th>;
+                                          return <th key={t} style={{ textAlign: 'left', padding: '4px 6px', color: tclr, fontWeight: FW.heavy, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{TIER_LABEL[t]}</th>;
                                         })}
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {TIER_MATRIX.map(row => (
                                         <tr key={row.axis} style={{ borderTop: `1px solid ${C.border}` }}>
-                                          <td style={{ padding: '5px 6px', color: C.muted, fontWeight: 700, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{row.axis}</td>
+                                          <td style={{ padding: '5px 6px', color: C.muted, fontWeight: FW.bold, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{row.axis}</td>
                                           {['good', 'better', 'best'].map(t => (
                                             <td key={t} style={{ padding: '5px 6px', color: C.text, lineHeight: 1.3, verticalAlign: 'top' }}>{tierMatrixCell(row, t)}</td>
                                           ))}
@@ -10519,7 +10519,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                 vendor costs vs another option, and can mix tiers (e.g. tight budget but
                                 Best photographer). */}
                             <button type="button" data-testid="ce-builder-toggle" onClick={() => setBuilderOpen(o => !o)}
-                              style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', minHeight: 40, fontFamily: 'inherit', color: steelTop, fontSize: 13, fontWeight: 700 }}>
+                              style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', minHeight: 40, fontFamily: 'inherit', color: steelTop, fontSize: 13, fontWeight: FW.bold }}>
                               <span aria-hidden>{builderOpen ? '▾' : '▸'}</span>
                               <span>Adjust by category{catTmpl.length ? ` (${catTmpl.length})` : ''}</span>
                             </button>
@@ -10533,15 +10533,15 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                               return (
                                 <div key={cat.c} data-testid={`ce-cat-${cat.c}`} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', background: C.bg }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{cat.c}</span>
+                                    <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{cat.c}</span>
                                     {/* Editable per-category budget — type a custom amount; the
                                         tier buttons below are presets that reset it. */}
                                     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 1, flexShrink: 0 }}>
-                                      <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>$</span>
+                                      <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.muted }}>$</span>
                                       <input type="number" min="0" inputMode="numeric" aria-label={`${cat.c} budget`} data-testid={`ce-cat-price-${cat.c}`}
                                         value={catAmount(cat)}
                                         onChange={e => { const v = e.target.value; setCategoryAmounts(a => ({ ...a, [cat.c]: v === '' ? 0 : Math.max(0, Math.round(Number(v) || 0)) })); }}
-                                        style={{ width: 76, fontSize: 14, fontWeight: 700, color: C.text, background: 'transparent', border: 'none', borderBottom: `1px dashed ${C.muted}66`, textAlign: 'right', fontFamily: 'inherit', padding: '0 0 1px' }} />
+                                        style={{ width: 76, fontSize: 14, fontWeight: FW.bold, color: C.text, background: 'transparent', border: 'none', borderBottom: `1px dashed ${C.muted}66`, textAlign: 'right', fontFamily: 'inherit', padding: '0 0 1px' }} />
                                     </span>
                                   </div>
                                   {/* Board fix: each tier explains WHAT YOU GET, not just a
@@ -10556,9 +10556,9 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                         <button type="button" key={t} data-testid={`ce-cat-${cat.c}-${t}`} onClick={() => { setCategoryTiers(m => ({ ...m, [cat.c]: t })); setCategoryAmounts(a => { const n = { ...a }; delete n[cat.c]; return n; }); }}
                                           style={{ flex: 1, minWidth: 0, padding: '7px 6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', lineHeight: 1.3, display: 'flex', flexDirection: 'column', gap: 2,
                                             border: `1px solid ${on ? steelTop : C.border}`, background: on ? `${steelTop}1e` : 'transparent' }}>
-                                          <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: on ? C.text : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{TIER_LABEL[t]}</span>
-                                          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.text }}>{money(catPrice(cat, t))}</span>
-                                          <span style={{ display: 'block', fontSize: 9.5, fontWeight: 500, color: on ? C.warn : C.muted, lineHeight: 1.25, marginTop: 1 }}>{tierNote(cat.c, t)}</span>
+                                          <span style={{ display: 'block', fontSize: 10, fontWeight: FW.bold, color: on ? C.text : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{TIER_LABEL[t]}</span>
+                                          <span style={{ display: 'block', fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{money(catPrice(cat, t))}</span>
+                                          <span style={{ display: 'block', fontSize: 9.5, fontWeight: FW.medium, color: on ? C.warn : C.muted, lineHeight: 1.25, marginTop: 1 }}>{tierNote(cat.c, t)}</span>
                                         </button>
                                       );
                                     })}
@@ -10598,11 +10598,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                   <button type="button" key={a.c} onClick={() => { setExtraCats(e => [...e, a]); setOmittedCats(o => o.filter(x => x !== a.c)); setBuilderOpen(true); }}
                                     style={{ padding: '6px 11px', borderRadius: 999, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', minHeight: 34, border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>+ {a.c}</button>
                                 ))}
-                                <button type="button" onClick={() => setAddCatOpen(false)} style={{ background: 'transparent', border: 'none', color: steelTop, fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 34, fontFamily: 'inherit' }}>Done</button>
+                                <button type="button" onClick={() => setAddCatOpen(false)} style={{ background: 'transparent', border: 'none', color: steelTop, fontSize: 12, fontWeight: FW.semibold, cursor: 'pointer', minHeight: 34, fontFamily: 'inherit' }}>Done</button>
                               </div>
                             ) : (
                               <button type="button" data-testid="ce-add-cost" onClick={() => setAddCatOpen(true)}
-                                style={{ alignSelf: 'flex-start', background: 'transparent', border: `1px dashed ${C.border}`, borderRadius: 8, color: C.text, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '8px 14px', minHeight: 40, fontFamily: 'inherit' }}>+ Add another cost</button>
+                                style={{ alignSelf: 'flex-start', background: 'transparent', border: `1px dashed ${C.border}`, borderRadius: 8, color: C.text, fontSize: 12, fontWeight: FW.semibold, cursor: 'pointer', padding: '8px 14px', minHeight: 40, fontFamily: 'inherit' }}>+ Add another cost</button>
                             )}
 
                             {/* Save-money used to be its own collapsible with a second set of
@@ -10611,7 +10611,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                                 a single nudge that points the planner at the controls above. */}
                             {saveSwaps.length > 0 && (
                               <div style={{ border: `1px solid ${C.success}44`, background: `${C.success}0c`, borderRadius: 10, padding: '9px 12px', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.success, flexShrink: 0 }}>Trim up to {money(totalSavings)}</span>
+                                <span style={{ fontSize: 12.5, fontWeight: FW.bold, color: C.success, flexShrink: 0 }}>Trim up to {money(totalSavings)}</span>
                                 <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.4 }}>— drop any category to a lower tier above. Biggest: {saveSwaps[0].c} → {TIER_LABEL[saveSwaps[0].down]} saves {money(saveSwaps[0].save)}.</span>
                               </div>
                             )}
@@ -10619,7 +10619,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                             {/* (total + Use moved to the sticky hero at the top of this step) */}
 
                             <div data-testid="ce-estimator-assumptions" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 12px' }}>
-                              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Based on</div>
+                              <div style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Based on</div>
                               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                                 {guests} guests · {form.type}{form.date ? ` · ${new Date(form.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · {todLabel} · service+tax {estServiceTax ? 'on' : 'off'} · contingency {estContingency ? 'on' : 'off'} · market {marketObj ? marketObj.label : 'not set'}
                               </div>
@@ -10627,7 +10627,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
                             {missing.length > 0 && (
                               <div data-testid="ce-estimator-missing" style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-                                <div style={{ fontWeight: 700, color: C.text, marginBottom: 3 }}>Improve this estimate</div>
+                                <div style={{ fontWeight: FW.bold, color: C.text, marginBottom: 3 }}>Improve this estimate</div>
                                 {missing.map((m, i) => (
                                   <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'baseline' }}>
                                     <span aria-hidden style={{ color: C.muted }}>•</span><span>{m}</span>
@@ -10656,11 +10656,11 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
                     {replaceConfirm && (
                       <div data-testid="ce-estimator-replace" style={{ marginTop: 10, background: C.bg, border: `1px solid ${C.muted}55`, borderRadius: 10, padding: '12px 14px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
+                        <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>Replace your current budget with this estimate?</div>
                         <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>Your manually entered budget of {money(Number(form.totalBudget) || 0)} will be replaced with {money(estApplyTotal)}. No payment is created.</div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                           <button type="button" data-testid="ce-replace-cancel" onClick={() => setReplaceConfirm(false)}
-                            style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                            style={{ background: 'transparent', color: C.text, border: `1px solid ${C.muted}66`, borderRadius: 10, padding: '10px 16px', minHeight: 44, fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                           <button type="button" data-testid="ce-replace-confirm" onClick={() => { upd('totalBudget', String(estApplyTotal)); if (estApplyBreakdown) upd('budgetByCategory', estApplyBreakdown); setBudgetSource('estimate'); setReplaceConfirm(false); }}
                             style={{ ...primaryBtn }}>Replace budget</button>
                         </div>
@@ -10678,7 +10678,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
             <div data-testid="ce-success" style={{ padding: isMobile ? '12px 4px' : '8px 8px 4px' }}>
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: `${C.success}22`, border: `1px solid ${C.success}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: C.success, fontSize: 28 }}>✓</div>
-                <div data-testid="ce-success-title" style={{ fontSize: isMobile ? 17 : 19, fontWeight: 700, color: C.text, marginBottom: 6, letterSpacing: '-0.01em' }}>{`“${form.name.trim()}” created.`}</div>
+                <div data-testid="ce-success-title" style={{ fontSize: isMobile ? 17 : 19, fontWeight: FW.bold, color: C.text, marginBottom: 6, letterSpacing: '-0.01em' }}>{`“${form.name.trim()}” created.`}</div>
                 <div style={{ ...ui.truth, maxWidth: 420, margin: '0 auto' }}>{createdSummary}</div>
               </div>
 
@@ -10691,21 +10691,21 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 padding: isMobile ? '14px 16px' : '16px 20px',
                 maxWidth: 460, margin: '0 auto 12px',
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.success, marginBottom: 10 }}>CREATED</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.success, marginBottom: 10 }}>CREATED</div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <li style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
-                    <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.bold, flexShrink: 0 }}>✓</span>
                     Event workspace
                   </li>
                   {kitCfg.checklist.filter(item => item !== 'Event workspace only').map(item => (
                     <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
-                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.bold, flexShrink: 0 }}>✓</span>
                       {item}
                     </li>
                   ))}
                 </ul>
                 <div data-testid="ce-success-budget-source" style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 13, color: C.muted }}>
-                  Budget source: <span style={{ color: C.text, fontWeight: 600 }}>{budgetSource === 'estimate' ? 'Estimate applied' : budgetSource === 'manual' ? 'Manual' : 'None'}</span>
+                  Budget source: <span style={{ color: C.text, fontWeight: FW.semibold }}>{budgetSource === 'estimate' ? 'Estimate applied' : budgetSource === 'manual' ? 'Manual' : 'None'}</span>
                 </div>
               </div>
 
@@ -10716,7 +10716,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 padding: isMobile ? '12px 16px' : '14px 20px',
                 maxWidth: 460, margin: '0 auto',
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.muted, marginBottom: 8 }}>NOT DONE</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.muted, marginBottom: 8 }}>NOT DONE</div>
                 {/* Sprint UX-5 — a self-host doesn't have clients/payments to reassure
                     about; keep the No-Guesswork honesty in one host-plain line. */}
                 {(hostMode
@@ -10724,7 +10724,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   : ['Client contacted: No', 'Messages sent: None', 'Notifications sent: None', 'Payment created: No', 'Money moved: None']
                 ).map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
-                    <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 12, fontWeight: 800 }}>·</span>
+                    <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 12, fontWeight: FW.heavy }}>·</span>
                     <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>{line}</span>
                   </div>
                 ))}
@@ -10748,7 +10748,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44, minWidth: 96,
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 15, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}>{hostMode && hostScreen === 2 ? '← Back' : 'Cancel'}</button>
               {/* Sprint UX-7 — No-intake host flow. A host account creates straight from
@@ -10774,7 +10774,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44, minWidth: 96,
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 15, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}>Back</button>
               <button
@@ -10792,7 +10792,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44, minWidth: 96,
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 15, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}>Back</button>
               <button
@@ -10820,7 +10820,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   you capture the vision together as a conversation. If you're
                   setting it up solo, you scaffold it and send them their story to
                   fill in. The app should ask, not assume. */}
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text, marginBottom: 2 }}>
                 How are you capturing the vision?
               </div>
               <button
@@ -10828,7 +10828,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                 style={{ ...primaryBtn, width: '100%', textAlign: 'left', display: 'block' }}
                 onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake', intakeMode: 'together' }); onClose(); }}>
                 We're together now — let's talk it through →
-                <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, opacity: 0.85, marginTop: 2 }}>Capture the celebration's meaning as a conversation</span>
+                <span style={{ display: 'block', fontSize: 11.5, fontWeight: FW.medium, opacity: 0.85, marginTop: 2 }}>Capture the celebration's meaning as a conversation</span>
               </button>
               <button
                 data-testid="ce-send-to-client"
@@ -10837,12 +10837,12 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44,
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
                 onClick={() => { onOpenEvent(createdId, { tab: 'Client Intake', intakeMode: 'client' }); onClose(); }}>
                 I'll set it up and send it to the client →
-                <span style={{ display: 'block', fontSize: 11.5, fontWeight: 500, color: C.muted, marginTop: 2 }}>Open intake — then Share with client to collect their answers</span>
+                <span style={{ display: 'block', fontSize: 11.5, fontWeight: FW.medium, color: C.muted, marginTop: 2 }}>Open intake — then Share with client to collect their answers</span>
               </button>
               <button
                 data-testid="ce-open-event"
@@ -10850,7 +10850,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   width: '100%', background: 'transparent', color: C.muted,
                   border: 'none', borderRadius: 10,
                   padding: '8px 18px', minHeight: 40,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
                 onClick={() => { onOpenEvent(createdId); onClose(); }}>
@@ -10863,7 +10863,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     flex: 1, background: 'transparent', color: C.text,
                     border: `1px solid ${C.muted}66`, borderRadius: 10,
                     padding: '12px 18px', minHeight: 44,
-                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
                   onClick={() => { onOpenEvent(createdId, { tab: 'Vendors' }); onClose(); }}>
@@ -10878,7 +10878,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                     color: onOpenAddClient ? C.text : C.muted,
                     border: `1px solid ${C.muted}66`, borderRadius: 10,
                     padding: '12px 18px', minHeight: 44,
-                    fontSize: 14, fontWeight: 600,
+                    fontSize: 14, fontWeight: FW.semibold,
                     cursor: onOpenAddClient ? 'pointer' : 'not-allowed',
                     opacity: onOpenAddClient ? 1 : 0.6,
                     fontFamily: 'inherit',
@@ -10894,7 +10894,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   width: '100%', background: 'transparent', color: C.text,
                   border: `1px solid ${C.muted}66`, borderRadius: 10,
                   padding: '12px 18px', minHeight: 44,
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
                 onClick={resetForAnother}>
@@ -10908,7 +10908,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
         {confirmDiscard && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 5 }}>
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, maxWidth: 320, boxShadow: '0 18px 60px rgba(0,0,0,0.5)' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Discard this event?</div>
+              <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>Discard this event?</div>
               <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5, marginBottom: 16 }}>Your entries will be lost.</div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button style={ghostBtn} onClick={() => setConfirmDiscard(false)}>Keep editing</button>
@@ -11291,11 +11291,11 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
         <div style={{ padding: '20px 24px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
                 Client Intake
-                {hasSaved && <span style={{ marginLeft: 8, color: C.success, fontWeight: 400 }}>· Saved {event.intake.savedAt}</span>}
+                {hasSaved && <span style={{ marginLeft: 8, color: C.success, fontWeight: FW.regular }}>· Saved {event.intake.savedAt}</span>}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{event.name || (eventTypeLabel(event) || event.type) + ' Event'}</div>
+              <div style={{ fontSize: 16, fontWeight: FW.bold }}>{event.name || (eventTypeLabel(event) || event.type) + ' Event'}</div>
             </div>
             <button aria-label="Close" style={{ ...s.btn('ghost'), padding: '4px 8px', color: C.muted, fontSize: 16 }} onClick={onClose}>✕</button>
           </div>
@@ -11322,7 +11322,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
               {/* Smart Apply panel */}
               {suggestions.length > 0 && (
                 <div style={{ ...s.card, borderColor: C.accent + '44', marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.accent, marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.accent, marginBottom: 12 }}>
                     Smart Apply — {suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''}
                   </div>
                   <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
@@ -11338,7 +11338,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
                           {on && <span style={{ fontSize: 10, color: '#fff', lineHeight: 1 }}>✓</span>}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{sg.label}</div>
+                          <div style={{ fontSize: 13, fontWeight: FW.medium, color: C.text }}>{sg.label}</div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sg.sub}</div>
                         </div>
                       </div>
@@ -11348,12 +11348,12 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
               )}
 
               {/* Answer review */}
-              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 14 }}>
                 All Answers
               </div>
               {questions.map(sec => (
                 <div key={sec.id} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: typeColor, marginBottom: 8 }}>{sec.title}</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.1em', color: typeColor, marginBottom: 8 }}>{sec.title}</div>
                   {sec.items.map(item => (
                     <div key={item.id} style={{ marginBottom: 8, paddingLeft: 8, borderLeft: `2px solid ${answers[item.id] ? typeColor + '44' : C.border}` }}>
                       <div style={{ fontSize: 11, color: C.muted }}>{item.q}</div>
@@ -11370,7 +11370,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
             <div style={{ padding: '0 0 20px' }}>
               <div style={{ border:`1px solid ${C.accent}44`, borderRadius:10, overflow:'hidden' }}>
                 <div style={{ padding:'10px 14px', background:C.accent+'12', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:12, fontWeight:700, color:C.accent }}>Draft Proposal</span>
+                  <span style={{ fontSize:12, fontWeight: FW.bold, color:C.accent }}>Draft Proposal</span>
                   <div style={{ display:'flex', gap:6 }}>
                     {proposalDraft && <button aria-label="Remove" onClick={()=>copyToClipboard(proposalDraft)} style={{ ...makeS(C).btn(), fontSize:10, padding:'3px 8px' }}>Copy</button>}
                     <button aria-label="Remove" onClick={()=>setShowProposal(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:C.muted }}>✕</button>
@@ -11393,10 +11393,10 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           )}
           {!showSummary && (
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 18 }}>{section.title}</div>
+              <div style={{ fontSize: 15, fontWeight: FW.bold, marginBottom: 18 }}>{section.title}</div>
               {section.items.map(item => (
                 <div key={item.id} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6, color: C.text }}>{item.q}</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.medium, marginBottom: 6, color: C.text }}>{item.q}</div>
                   {item.type === 'radio' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {item.opts.map(opt => {
@@ -11416,14 +11416,14 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
                         <input
                           type="number"
                           min="0"
-                          style={{ ...s.input, width: 120, fontSize: 20, fontWeight: 700, textAlign: 'center', padding: '10px 12px' }}
+                          style={{ ...s.input, width: 120, fontSize: 20, fontWeight: FW.bold, textAlign: 'center', padding: '10px 12px' }}
                           value={answers[item.id] || ''}
                           placeholder="0"
                           onChange={e => setAnswer(item.id, e.target.value)}
                         />
                         {confirmedCount > 0 && (
                           <div style={{ fontSize: 12, color: C.muted }}>
-                            <span style={{ color: C.success, fontWeight: 600 }}>{confirmedCount}</span> confirmed RSVP so far
+                            <span style={{ color: C.success, fontWeight: FW.semibold }}>{confirmedCount}</span> confirmed RSVP so far
                           </div>
                         )}
                       </div>
@@ -11508,7 +11508,7 @@ function EventCard({ event, onClick }) {
       style={{ ...s.card, cursor: 'pointer', marginBottom: 0, borderColor: hov ? color : C.border, transition: 'border-color 0.15s, box-shadow 0.15s', boxShadow: hov ? `0 4px 20px rgba(0,0,0,${C.surface === '#ffffff' ? '0.08' : '0.18'})` : 'none' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', flex: 1, paddingRight: 8 }}>{event.name}</h3>
+        <h3 style={{ fontSize: 16, fontWeight: FW.bold, margin: 0, letterSpacing: '-0.02em', flex: 1, paddingRight: 8 }}>{event.name}</h3>
         <span style={{ ...s.pill(color), flexShrink: 0 }}>{event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{event.venue || '—'} · {fmtDate(event.date)}</div>
@@ -11518,10 +11518,10 @@ function EventCard({ event, onClick }) {
         {isArchived  && <span style={s.pill(C.muted)}>Archived</span>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Budget Used</div><div style={{ fontSize: 15, fontWeight: 600, marginBottom: 5 }}>{budgetPct}%</div><ProgressBar pct={budgetPct} /></div>
-        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Tasks Done</div><div style={{ fontSize: 15, fontWeight: 600, marginBottom: 5 }}>{doneTasks}/{event.timeline.length}</div><ProgressBar pct={taskPct} color={C.accent2} /></div>
-        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>Guests Confirmed</div><div style={{ fontSize: 15, fontWeight: 600 }}>{confirmedGuests}<span style={{ color: C.muted, fontWeight: 400 }}>/{event.guests.length}</span></div></div>
-        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>Vendors Confirmed</div><div style={{ fontSize: 15, fontWeight: 600 }}>{confirmedVendors}<span style={{ color: C.muted, fontWeight: 400 }}>/{event.vendors.length}</span></div></div>
+        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Budget Used</div><div style={{ fontSize: 15, fontWeight: FW.semibold, marginBottom: 5 }}>{budgetPct}%</div><ProgressBar pct={budgetPct} /></div>
+        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Tasks Done</div><div style={{ fontSize: 15, fontWeight: FW.semibold, marginBottom: 5 }}>{doneTasks}/{event.timeline.length}</div><ProgressBar pct={taskPct} color={C.accent2} /></div>
+        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>Guests Confirmed</div><div style={{ fontSize: 15, fontWeight: FW.semibold }}>{confirmedGuests}<span style={{ color: C.muted, fontWeight: FW.regular }}>/{event.guests.length}</span></div></div>
+        <div><div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>Vendors Confirmed</div><div style={{ fontSize: 15, fontWeight: FW.semibold }}>{confirmedVendors}<span style={{ color: C.muted, fontWeight: FW.regular }}>/{event.vendors.length}</span></div></div>
       </div>
     </div>
   );
@@ -11648,9 +11648,9 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
         background: open ? C.surface2 : 'transparent',
         border: 'none', cursor: 'pointer', padding: '10px 14px', textAlign: 'left',
       }}>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>{label}</span>
-        {caption && <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted, opacity: 0.8, fontStyle: caption === 'Not added' ? 'italic' : 'normal' }}>{caption}</span>}
-        {badge && <span style={{ fontSize: 10, fontWeight: 600, color: badgeColor || C.accent, background: (badgeColor || C.accent) + '18', padding: '2px 8px', borderRadius: 6 }}>{badge}</span>}
+        <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>{label}</span>
+        {caption && <span style={{ fontSize: 10.5, fontWeight: FW.medium, color: C.muted, opacity: 0.8, fontStyle: caption === 'Not added' ? 'italic' : 'normal' }}>{caption}</span>}
+        {badge && <span style={{ fontSize: 10, fontWeight: FW.semibold, color: badgeColor || C.accent, background: (badgeColor || C.accent) + '18', padding: '2px 8px', borderRadius: 6 }}>{badge}</span>}
         <span style={{ color: C.muted, fontSize: 11 }}>{open ? '▾' : '▸'}</span>
       </button>
     );
@@ -11696,7 +11696,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
   const Divider = ({ label }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 16px' }}>
       <div style={{ flex: 1, height: 1, background: C.border }} />
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flexShrink: 0 }}>{label}</span>
       <div style={{ flex: 1, height: 1, background: C.border }} />
     </div>
   );
@@ -11720,7 +11720,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
               onChange={v => onChange('photo', v)}
             />
             <input
-              style={{ ...s.input, fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, padding: '6px 10px' }}
+              style={{ ...s.input, fontSize: 16, fontWeight: FW.bold, letterSpacing: '-0.02em', flex: 1, padding: '6px 10px' }}
               value={client.name} placeholder="Client Name"
               onChange={e => onChange('name', e.target.value)}
             />
@@ -11953,11 +11953,11 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
               </CMField>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Collected</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.success }}>{fmtD(collected)}</div>
+                <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.success }}>{fmtD(collected)}</div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>Outstanding</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: outstanding > 0 ? C.warn : C.muted }}>{fmtD(outstanding)}</div>
+                <div style={{ fontSize: 16, fontWeight: FW.bold, color: outstanding > 0 ? C.warn : C.muted }}>{fmtD(outstanding)}</div>
               </div>
             </div>
             {(client.feeSchedule || []).map(f => {
@@ -12036,7 +12036,7 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
 
           {/* ── 10. Internal Notes ── */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Internal Notes</label>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: FW.bold }}>Internal Notes</label>
             <textarea style={{ ...s.input, minHeight: 70, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} value={client.notes || ''} placeholder="Family dynamics, sensitivities, decision-maker dynamics, anything the team should know…" onChange={e => onChange('notes', e.target.value)} />
           </div>
 
@@ -12051,8 +12051,8 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
             return (
               <div style={{ marginBottom: 12, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
                 <button aria-label="Toggle comms checklist" onClick={() => setShowCommsCheck(v => !v)} style={{ width: '100%', background: showCommsCheck ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comms Checklist</span>
-                  <span style={{ fontSize: 11, color: totalDone === totalItems.length && totalItems.length > 0 ? C.success : currentClr, fontWeight: 600 }}>{totalDone}/{totalItems.length}</span>
+                  <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Comms Checklist</span>
+                  <span style={{ fontSize: 11, color: totalDone === totalItems.length && totalItems.length > 0 ? C.success : currentClr, fontWeight: FW.semibold }}>{totalDone}/{totalItems.length}</span>
                   <span style={{ color: C.muted, fontSize: 12 }}>{showCommsCheck ? '▾' : '▸'}</span>
                 </button>
                 {showCommsCheck && (
@@ -12066,8 +12066,8 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
                         <div key={stage} style={{ marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5, padding: isCurrent ? '3px 8px' : '2px 0', borderRadius: isCurrent ? 6 : 0, background: isCurrent ? clr + '12' : 'transparent' }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: doneCount === allItems.length ? C.success : isCurrent ? clr : isPast ? clr + '77' : C.border, flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{clientStatusLabel(stage)}</span>
-                            <span style={{ fontSize: 10, color: doneCount === allItems.length ? C.success : isCurrent ? clr : C.muted, fontWeight: 600 }}>{doneCount}/{allItems.length}</span>
+                            <span style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: isCurrent ? clr : C.muted, flex: 1 }}>{clientStatusLabel(stage)}</span>
+                            <span style={{ fontSize: 10, color: doneCount === allItems.length ? C.success : isCurrent ? clr : C.muted, fontWeight: FW.semibold }}>{doneCount}/{allItems.length}</span>
                           </div>
                           <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {allItems.map(item => {
@@ -12092,8 +12092,8 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [] }) {
           {/* ── 12. Activity Log ── */}
           <div style={{ marginBottom: 8, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowLog(v => !v)} style={{ width: '100%', background: showLog ? C.surface2 : 'transparent', border: 'none', cursor: 'pointer', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Activity Log</span>
-              <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{(client.log || []).length > 0 ? `${(client.log || []).length} entr${(client.log || []).length === 1 ? 'y' : 'ies'}` : 'no entries'}</span>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, flex: 1 }}>Activity Log</span>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.semibold }}>{(client.log || []).length > 0 ? `${(client.log || []).length} entr${(client.log || []).length === 1 ? 'y' : 'ies'}` : 'no entries'}</span>
               <span style={{ color: C.muted, fontSize: 12 }}>{showLog ? '▾' : '▸'}</span>
             </button>
             {showLog && (
@@ -12235,7 +12235,7 @@ function ClientPortalPublicView({ token, events }) {
       <div style={{ minHeight: '100vh', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <div style={{ textAlign: 'center', maxWidth: 400 }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: text, marginBottom: 8 }}>Link not found</div>
+          <div style={{ fontSize: 20, fontWeight: FW.bold, color: text, marginBottom: 8 }}>Link not found</div>
           <div style={{ fontSize: 14, color: muted, lineHeight: 1.6 }}>
             This client portal link is no longer valid or has expired.
             Please contact your event planner for a fresh link.
@@ -12302,35 +12302,35 @@ function ClientPortalPublicView({ token, events }) {
       <div style={{ background: card, borderBottom: `1px solid ${border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(180deg, ${accent} 0%, #3F5B6A 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14)' }}>✓</div>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: accent, textTransform: 'uppercase', letterSpacing: '0.16em' }}>Event Boss · Client Portal</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: text }}>{event.name}</div>
+          <div style={{ fontSize: 10, fontWeight: FW.heavy, color: accent, textTransform: 'uppercase', letterSpacing: '0.16em' }}>Event Boss · Client Portal</div>
+          <div style={{ fontSize: 14, fontWeight: FW.bold, color: text }}>{event.name}</div>
         </div>
       </div>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
         {/* Event summary card */}
         <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 24, marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, color: accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
             {eventTypeLabel(event) || event.type || 'Event'}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: text, marginBottom: 12 }}>{event.name}</div>
+          <div style={{ fontSize: 22, fontWeight: FW.heavy, color: text, marginBottom: 12 }}>{event.name}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
             {event.date && (
               <div>
                 <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Date</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{fmtDate(event.date)}</div>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: text }}>{fmtDate(event.date)}</div>
               </div>
             )}
             {(event.venue || event.city) && (
               <div>
                 <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Venue</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{[event.venue, event.city].filter(Boolean).join(' · ')}</div>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: text }}>{[event.venue, event.city].filter(Boolean).join(' · ')}</div>
               </div>
             )}
             {daysLeft !== null && (
               <div>
                 <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Countdown</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: daysLeft <= 14 ? amber : text }}>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: daysLeft <= 14 ? amber : text }}>
                   {daysLeft > 0 ? `${daysLeft} days away` : daysLeft === 0 ? 'Today!' : 'Event passed'}
                 </div>
               </div>
@@ -12338,7 +12338,7 @@ function ClientPortalPublicView({ token, events }) {
             {typeof (event.guestEstimate || event.guests?.length) === 'number' && (
               <div>
                 <div style={{ fontSize: 10, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Guests</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: text }}>{event.guestEstimate || event.guests?.length}</div>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: text }}>{event.guestEstimate || event.guests?.length}</div>
               </div>
             )}
           </div>
@@ -12359,13 +12359,13 @@ function ClientPortalPublicView({ token, events }) {
             flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
             background: `${accent}30`, color: accent,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 800, marginTop: 1,
+            fontSize: 11, fontWeight: FW.heavy, marginTop: 1,
           }}>✓</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: accent, textTransform: 'uppercase', marginBottom: 3 }}>
+            <div style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.16em', color: accent, textTransform: 'uppercase', marginBottom: 3 }}>
               No Guesswork
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: text, marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: FW.semibold, color: text, marginBottom: 4 }}>
               This is your event portal.
             </div>
             <div style={{ fontSize: 12, color: muted, lineHeight: 1.5 }}>
@@ -12377,7 +12377,7 @@ function ClientPortalPublicView({ token, events }) {
         {/* Pending approvals */}
         {pending.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: amber, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: FW.bold, color: amber, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: amber, display: 'inline-block' }} />
               {pending.length} item{pending.length !== 1 ? 's' : ''} awaiting your response
             </div>
@@ -12392,11 +12392,11 @@ function ClientPortalPublicView({ token, events }) {
               <div key={`${it.kind}-${it.id}`} style={{ background: card, borderRadius: 10, border: `1px solid ${border}`, padding: '16px 18px', marginBottom: 10, opacity: busy ? 0.65 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{kindLabel(it.typeLabel)}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: text }}>{it.title}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, color: muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{kindLabel(it.typeLabel)}</div>
+                    <div style={{ fontSize: 15, fontWeight: FW.bold, color: text }}>{it.title}</div>
                     {it.notes && <div style={{ fontSize: 12, color: muted, marginTop: 4, lineHeight: 1.5 }}>{it.notes}</div>}
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: amber, background: amber + '18', border: `1px solid ${amber}33`, padding: '3px 8px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                  <span style={{ fontSize: 9, fontWeight: FW.bold, color: amber, background: amber + '18', border: `1px solid ${amber}33`, padding: '3px 8px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                     Needs response
                   </span>
                 </div>
@@ -12404,14 +12404,14 @@ function ClientPortalPublicView({ token, events }) {
                   <button
                     disabled={busy}
                     onClick={() => doRespond('approved')}
-                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${green}`, background: green + '15', color: green, fontWeight: 700, fontSize: 13, cursor: busy ? 'default' : 'pointer', transition: 'background 0.15s' }}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${green}`, background: green + '15', color: green, fontWeight: FW.bold, fontSize: 13, cursor: busy ? 'default' : 'pointer', transition: 'background 0.15s' }}
                   >
                     {busy ? 'Saving…' : '✓ Approve'}
                   </button>
                   <button
                     disabled={busy}
                     onClick={() => doRespond('rejected')}
-                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: muted, fontWeight: 600, fontSize: 13, cursor: busy ? 'default' : 'pointer' }}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: muted, fontWeight: FW.semibold, fontSize: 13, cursor: busy ? 'default' : 'pointer' }}
                   >
                     ✕ Request changes
                   </button>
@@ -12425,7 +12425,7 @@ function ClientPortalPublicView({ token, events }) {
         {/* Submitted responses */}
         {resolved.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Your responses</div>
+            <div style={{ fontSize: 12, fontWeight: FW.bold, color: muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Your responses</div>
             {resolved.map(it => {
               const isApproved = it.status === 'approved';
               return (
@@ -12433,14 +12433,14 @@ function ClientPortalPublicView({ token, events }) {
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: isApproved ? green : muted, flexShrink: 0, marginTop: 6 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 10, color: muted }}>{kindLabel(it.typeLabel)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: text }}>{it.title}</div>
+                    <div style={{ fontSize: 13, fontWeight: FW.semibold, color: text }}>{it.title}</div>
                     {it.sourceLabel && (
                       <div style={{ fontSize: 10, color: it.persistedRemotely ? muted : amber, marginTop: 3, lineHeight: 1.4 }}>
                         {it.sourceLabel}
                       </div>
                     )}
                   </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: isApproved ? green : muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: FW.bold, color: isApproved ? green : muted, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
                     {isApproved ? 'Approved' : 'Changes requested'}
                   </span>
                 </div>
@@ -12453,7 +12453,7 @@ function ClientPortalPublicView({ token, events }) {
         {pending.length === 0 && resolved.length === 0 && (
           <div style={{ background: card, borderRadius: 12, border: `1px solid ${border}`, padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: text, marginBottom: 6 }}>You're all caught up</div>
+            <div style={{ fontSize: 16, fontWeight: FW.bold, color: text, marginBottom: 6 }}>You're all caught up</div>
             <div style={{ fontSize: 13, color: muted }}>No items need your response right now. Your planner will reach out when something needs approval.</div>
           </div>
         )}
@@ -12534,14 +12534,14 @@ function PublicIntakeForm({ token }) {
     border: `1.5px solid ${C.border}`, background: C.surface, color: C.text,
     fontSize: 14, fontFamily: 'inherit', outline: 'none',
   };
-  const labelStyle = { fontSize: 12, color: C.muted, display: 'block', marginBottom: 5, fontWeight: 600 };
+  const labelStyle = { fontSize: 12, color: C.muted, display: 'block', marginBottom: 5, fontWeight: FW.semibold };
 
   if (submitted) {
     return (
       <div style={{ minHeight: isEmbed ? 'auto' : '100vh', background: isEmbed ? 'transparent' : C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isEmbed ? 16 : 24 }}>
         <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>✓</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 8 }}>Inquiry received</div>
+          <div style={{ fontSize: 20, fontWeight: FW.bold, color: C.text, marginBottom: 8 }}>Inquiry received</div>
           <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, marginBottom: isEmbed ? 0 : 32 }}>
             Thanks, {form.name.split(' ')[0]}! We'll be in touch shortly to discuss your {form.eventType || 'event'}.
           </div>
@@ -12557,7 +12557,7 @@ function PublicIntakeForm({ token }) {
         {/* Header — hidden in embed mode (host page provides its own heading) */}
         {!isEmbed && (
           <div style={{ marginBottom: 32, textAlign: 'center' }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: C.text, marginBottom: 8 }}>Tell us about your event</div>
+            <div style={{ fontSize: 24, fontWeight: FW.bold, color: C.text, marginBottom: 8 }}>Tell us about your event</div>
             <div style={{ fontSize: 14, color: C.muted }}>Fill out this form and we'll be in touch to start planning.</div>
           </div>
         )}
@@ -12634,7 +12634,7 @@ function PublicIntakeForm({ token }) {
               width: '100%', padding: '13px 0', borderRadius: 10, border: 'none',
               background: canSubmit ? C.accent : C.border,
               color: canSubmit ? '#fff' : C.muted,
-              fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'default',
+              fontSize: 15, fontWeight: FW.bold, cursor: canSubmit ? 'pointer' : 'default',
               fontFamily: 'inherit', transition: 'background 0.2s',
             }}
           >
@@ -12737,9 +12737,9 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 12px', background: C.accent + '22', border: `1px solid ${C.accent}44`, borderRadius: 20, marginBottom: 8 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, display: 'inline-block' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, letterSpacing: '0.06em' }}>CLIENT VIEW</span>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.accent, letterSpacing: '0.06em' }}>CLIENT VIEW</span>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{client.name}</div>
+            <div style={{ fontSize: 20, fontWeight: FW.bold }}>{client.name}</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>This is what your client sees — no budget figures, no internal notes.</div>
           </div>
           <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 20, padding: '6px 12px' }}>✕</button>
@@ -12787,9 +12787,9 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                     return (
                       <div key={e.id} style={{ borderLeft: `3px solid ${clr}`, padding: '8px 12px', background: clr + '0d', borderRadius: '0 8px 8px 0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: clr, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+                          <span style={{ fontSize: 10, fontWeight: FW.bold, color: clr, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
                           <span style={{ fontSize: 11, color: C.muted }}>{fmtDate(e.date)}</span>
-                          {status && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: status.c }}>{status.t}</span>}
+                          {status && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: FW.bold, color: status.c }}>{status.t}</span>}
                         </div>
                         <div style={{ fontSize: 13, lineHeight: 1.55, color: C.text }}>{e.text}</div>
                       </div>
@@ -12815,7 +12815,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                 <div style={s.card}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{ev.name}</div>
+                      <div style={{ fontSize: 18, fontWeight: FW.bold, marginBottom: 4 }}>{ev.name}</div>
                       <div style={{ fontSize: 13, color: C.muted }}>
                         {ev.venue && <span>{ev.venue} · </span>}
                         {fmtDate(ev.date)}
@@ -12847,7 +12847,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                       {confirmedVendors.map(v => (
                         <div key={v.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px' }}>
                           <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>{v.category}</div>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{v.name}</div>
+                          <div style={{ fontSize: 13, fontWeight: FW.semibold }}>{v.name}</div>
                           {v.arrivalTime && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Arrives {v.arrivalTime}</div>}
                         </div>
                       ))}
@@ -12890,10 +12890,10 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotClr, flexShrink: 0, marginTop: 5 }} />
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                                <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>
                                   {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </span>
-                                <span style={{ fontSize: 11, color: isPast ? C.success : isUrgent ? C.warn : C.muted, fontWeight: 600 }}>
+                                <span style={{ fontSize: 11, color: isPast ? C.success : isUrgent ? C.warn : C.muted, fontWeight: FW.semibold }}>
                                   {isPast ? `✓ ${countdownShort(dLeft)}` : countdownShort(dLeft)}
                                 </span>
                               </div>
@@ -12913,8 +12913,8 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                         const flipY = msMouse.y + TIP_H + 20 > window.innerHeight;
                         return (
                           <div style={{ position: 'fixed', top: flipY ? msMouse.y - TIP_H - 8 : msMouse.y + 16, left: flipX ? msMouse.x - TIP_W - 8 : msMouse.x + 12, zIndex: 9999, width: TIP_W, background: C.surface, border: `1px solid ${C.accent}44`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.28)', pointerEvents: 'none' }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.07em', marginBottom: 5, textTransform: 'uppercase' }}>{msHover.phase}</div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 7 }}>{entry.focus}</div>
+                            <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.accent, letterSpacing: '0.07em', marginBottom: 5, textTransform: 'uppercase' }}>{msHover.phase}</div>
+                            <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 7 }}>{entry.focus}</div>
                             <ul style={{ margin: 0, padding: '0 0 0 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {(entry.tips || []).map((tip, i) => (
                                 <li key={i} style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{tip}</li>
@@ -12973,7 +12973,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                           return (
                             <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${C.border}` }}>
                               <div style={{ flex: 1, fontSize: 13 }}>{g.name}</div>
-                              {g.rsvp && <span style={{ fontSize: 11, color: rsvpClr, fontWeight: 600 }}>{g.rsvp}</span>}
+                              {g.rsvp && <span style={{ fontSize: 11, color: rsvpClr, fontWeight: FW.semibold }}>{g.rsvp}</span>}
                               {!g.rsvp && <span style={{ fontSize: 11, color: C.muted }}>Pending</span>}
                               <button
                                 aria-label="Remove guest"
@@ -13004,11 +13004,11 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                       return (
                         <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: `1px solid ${C.border}` }}>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{f.label}</div>
+                            <div style={{ fontSize: 13, fontWeight: FW.medium }}>{f.label}</div>
                             {f.due && <div style={{ fontSize: 11, color: C.muted }}>Due {fmtDate(f.due)}</div>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtD(f.amount)}</span>
+                            <span style={{ fontSize: 14, fontWeight: FW.bold }}>{fmtD(f.amount)}</span>
                             {f.paid
                               ? <span style={s.pill(C.success)}>Paid</span>
                               : <span style={s.pill(dLeft !== null && dLeft <= 14 ? C.danger : C.muted)}>Due</span>
@@ -13020,7 +13020,7 @@ function ClientPortal({ client, events, onClose, onUpdateGuests }) {
                     {outstanding > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10 }}>
                         <span style={{ fontSize: 12, color: C.muted }}>Outstanding balance</span>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: C.muted }}>{fmtD(outstanding)}</span>
+                        <span style={{ fontSize: 14, fontWeight: FW.bold, color: C.muted }}>{fmtD(outstanding)}</span>
                       </div>
                     )}
                   </div>
@@ -13056,7 +13056,7 @@ function ClientCard({ client, events, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = cardShadow; }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{client.name}</div>
+        <div style={{ fontSize: 16, fontWeight: FW.bold, letterSpacing: '-0.01em' }}>{client.name}</div>
         {nextEvent
           ? <span style={s.pill(evtCLR[nextEvent.type] || C.muted)}>{nextEvent.type}</span>
           : <span style={s.pill(clr)}>{clientStatusLabel(client.status)}</span>}
@@ -13074,7 +13074,7 @@ function ClientCard({ client, events, onClick }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
         <div style={{ fontSize: 12, color: C.muted }}>{clientEvents.length} event{clientEvents.length !== 1 ? 's' : ''}</div>
         <div style={{ fontSize: 12 }}>
-          <span style={{ color: C.success, fontWeight: 600 }}>{fmtD(collected)}</span>
+          <span style={{ color: C.success, fontWeight: FW.semibold }}>{fmtD(collected)}</span>
           <span style={{ color: C.muted }}> / {fmtD(client.plannerFee || 0)}</span>
         </div>
       </div>
@@ -13283,10 +13283,10 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.12em', color: C.muted, marginBottom: 4 }}>
                 {submitted ? (isHostEvent ? 'Event updated' : 'Roster updated') : (isHostEvent ? 'New get-together' : 'New Client')}
               </div>
-              <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 21, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>
+              <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 21, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.01em' }}>
                 {submitted ? `${submitted.name} is ready` : (vocab.createTitle || 'Add to your roster')}
               </h2>
               {!submitted && (
@@ -13315,11 +13315,11 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                 borderLeft: `3px solid ${steelTop}`,
                 borderRadius: 10, padding: '16px 20px', maxWidth: 440, margin: '0 auto', width: '100%',
               }}>
-                <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: steelTop, marginBottom: 10 }}>CREATED FOR YOU</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTop, marginBottom: 10 }}>CREATED FOR YOU</div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {submitted.payoff.map(item => (
                     <li key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: C.text }}>
-                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.bold, flexShrink: 0 }}>✓</span>
                       {item}
                     </li>
                   ))}
@@ -13357,11 +13357,11 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
               background: `${steelTop}22`, color: steelTop,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 800, marginTop: 1,
+              fontSize: 14, fontWeight: FW.heavy, marginTop: 1,
             }}>✓</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
-              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: 600, marginBottom: 6 }}>
+              <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, marginBottom: 4 }}>NO GUESSWORK</div>
+              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, fontWeight: FW.semibold, marginBottom: 6 }}>
                 Add the basics. Event Boss handles the rest.
               </div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
@@ -13374,7 +13374,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
           {events.length > 0 && (
             <div>
               <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 4 }}>
-                Link to Event <span style={{ fontWeight: 400 }}>{isHostEvent ? '(optional)' : '(optional — drives fee suggestions)'}</span>
+                Link to Event <span style={{ fontWeight: FW.regular }}>{isHostEvent ? '(optional)' : '(optional — drives fee suggestions)'}</span>
               </label>
               <select style={s.input} value={selectedEventId} onChange={e => setSelectedEventId(e.target.value)}>
                 <option value="">No event — add later</option>
@@ -13387,24 +13387,24 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                 <div style={{ marginTop: 8, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}`, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Type</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: EVT_CLR(C)[linkedType] || C.text, marginTop: 2 }}>{linkedType}</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.semibold, color: EVT_CLR(C)[linkedType] || C.text, marginTop: 2 }}>{linkedType}</div>
                   </div>
                   {linkedEvent.date && (
                     <div>
                       <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Date</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginTop: 2 }}>{fmtDate(linkedEvent.date)}</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginTop: 2 }}>{fmtDate(linkedEvent.date)}</div>
                     </div>
                   )}
                   {evtBudget > 0 && (
                     <div>
                       <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Event Budget</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.success, marginTop: 2 }}>{fmtD(evtBudget)}</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.success, marginTop: 2 }}>{fmtD(evtBudget)}</div>
                     </div>
                   )}
                   {linkedEvent.guests && (
                     <div>
                       <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Guests</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginTop: 2 }}>{linkedEvent.guests.length}</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginTop: 2 }}>{linkedEvent.guests.length}</div>
                     </div>
                   )}
                 </div>
@@ -13471,7 +13471,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
 
           {/* ── Intake details ── */}
           <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: steelTop, marginBottom: 12 }}>{isHostEvent ? 'The basics' : 'Quick Intake'}</div>
+            <div style={{ fontSize: 10.5, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.14em', color: steelTop, marginBottom: 12 }}>{isHostEvent ? 'The basics' : 'Quick Intake'}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Board #3 — the event itself. When no existing event is linked, the
                   two facts that gate every inquiry (when + where) live here; entering
@@ -13480,7 +13480,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               {!selectedEventId && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event type <span style={{ fontWeight: 400 }}>(choose later if unsure)</span></label>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event type <span style={{ fontWeight: FW.regular }}>(choose later if unsure)</span></label>
                     {/* Chunk A — canonical taxonomy (incl. At-Home Gatherings) so the
                         type routes cleanly to its intake family. The old short
                         INTAKE_EVENT_TYPES list omitted home-hosted types entirely. */}
@@ -13494,15 +13494,15 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event date <span style={{ fontWeight: 400 }}>(approximate is fine)</span></label>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>Event date <span style={{ fontWeight: FW.regular }}>(approximate is fine)</span></label>
                     <input {...dateInputProps} style={s.input} value={form.eventDate} onChange={e => set('eventDate', e.target.value)} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'Where' : 'City / market'} <span style={{ fontWeight: 400 }}>{isHostEvent ? '(your place or address)' : '(or venue)'}</span></label>
+                    <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'Where' : 'City / market'} <span style={{ fontWeight: FW.regular }}>{isHostEvent ? '(your place or address)' : '(or venue)'}</span></label>
                     <input style={s.input} value={form.eventLocation} placeholder={isHostEvent ? 'e.g. my place, or an address' : 'e.g. Washington, DC'} onChange={e => set('eventLocation', e.target.value)} />
                   </div>
                   {(form.eventDate || form.eventLocation) && (
-                    <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: steelTop, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: steelTop, fontWeight: FW.semibold, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span aria-hidden>✓</span>
                       Event Boss will create {form.name.trim() ? `${form.name.trim()}'s` : 'their'} event{form.eventDate ? ' and start the countdown' : ''}.
                     </div>
@@ -13545,7 +13545,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               )}
               {/* Style/Vision — engine: home-scale example, not black-tie/wedding. */}
               <div>
-                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'The vibe you want' : 'Style / Vision'} <span style={{ fontWeight: 400 }}>(keywords)</span></label>
+                <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 3 }}>{isHostEvent ? 'The vibe you want' : 'Style / Vision'} <span style={{ fontWeight: FW.regular }}>(keywords)</span></label>
                 <input style={s.input} placeholder={isHostEvent ? 'e.g. Cozy, candlelit, good food & wine…' : isInternal ? 'e.g. Modern, branded, all-hands…' : 'e.g. Garden-romantic, boho, black-tie…'} value={form.styleNotes} onChange={e => set('styleNotes', e.target.value)} />
               </div>
               {/* Initial notes */}
@@ -13598,9 +13598,9 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: steelTop, fontSize: 11 }}>{feeOpen ? '▾' : '▸'}</span>
-                <label style={{ fontSize: 10.5, color: steelTop, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', cursor: 'pointer' }}>Planner Fee</label>
+                <label style={{ fontSize: 10.5, color: steelTop, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.14em', cursor: 'pointer' }}>Planner Fee</label>
                 {!feeOpen && (
-                  <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>
+                  <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.medium }}>
                     {form.plannerFee ? `${fmtD(feeAmt)} · ${form.feeStructure}` : 'Optional — open to set'}
                   </span>
                 )}
@@ -13608,7 +13608,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               {feeOpen && feeRange && !isInternal && (
                 <span style={{ fontSize: 10, color: C.muted }}>
                   {metroMkt ? <>{metroTier?.icon} {metroMkt.label}: </> : 'Industry range: '}
-                  <span style={{ color: C.accent2, fontWeight: 600 }}>{fmtD(adjLow)}–{fmtD(adjHigh)}</span>
+                  <span style={{ color: C.accent2, fontWeight: FW.semibold }}>{fmtD(adjLow)}–{fmtD(adjHigh)}</span>
                   {metroMkt && metroFactor !== 1.0 && (
                     <span style={{ color: C.muted, marginLeft: 3 }}>({metroFactor > 1 ? '+' : ''}{Math.round((metroFactor - 1) * 100)}% vs. national avg)</span>
                   )}
@@ -13621,7 +13621,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             {/* Internal corporate banner */}
             {isInternal ? (
               <div style={{ padding: '12px 14px', background: C.accent2 + '12', border: `1px solid ${C.accent2}44`, borderRadius: 10 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: C.accent2, marginBottom: 4 }}>Internal Employee-Managed Event</div>
+                <div style={{ fontWeight: FW.semibold, fontSize: 13, color: C.accent2, marginBottom: 4 }}>Internal Employee-Managed Event</div>
                 <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
                   {linkedType} events are typically planned by an employee or internal team — no external planner fee applies.
                 </div>
@@ -13666,7 +13666,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                                 border: `1.5px solid ${active ? C.accent : C.border}`,
                                 background: active ? C.accent + '18' : 'transparent',
                                 color: active ? C.accent : C.muted, fontWeight: active ? 700 : 400 }}>
-                              <div style={{ fontWeight: 700 }}>{pct}%</div>
+                              <div style={{ fontWeight: FW.bold }}>{pct}%</div>
                               {evtBudget > 0 && <div style={{ marginTop: 1 }}>{fmtD(amt)}</div>}
                             </button>
                           );
@@ -13696,11 +13696,11 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
                 {/* Fee schedule preview */}
                 {feeAmt > 0 && form.feeStructure !== 'hourly' && form.feeStructure !== 'day_rate' && (
                   <div style={{ marginTop: 10, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 10, color: C.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Auto-generated payment schedule</div>
+                    <div style={{ fontSize: 10, color: C.muted, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Auto-generated payment schedule</div>
                     {defaultFeeSchedule(feeAmt, form.feeStructure).map((p, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.text, marginBottom: 3 }}>
                         <span>{p.label}</span>
-                        <span style={{ fontWeight: 600 }}>{fmtD(p.amount)}</span>
+                        <span style={{ fontWeight: FW.semibold }}>{fmtD(p.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -14080,8 +14080,8 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
       {/* Sprint 60.Y — Filed-Cabinet drawer: left accent rail, recessed well, count badge. */}
       <div style={{ borderRadius: 12, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.bg, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '12px' : '13px 16px', borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.text, whiteSpace: 'nowrap' }}>My Vendor Bank</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 999, padding: '1px 9px' }}>{vendors.length}</span>
+          <span style={{ fontSize: 11, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.text, whiteSpace: 'nowrap' }}>My Vendor Bank</span>
+          <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 999, padding: '1px 9px' }}>{vendors.length}</span>
           <div style={{ flex: 1, minWidth: 8 }} />
           <input style={{ ...s.input, fontSize: 12, flex: isMobile ? '1 1 100%' : '0 1 220px', order: isMobile ? 3 : 0 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" />
           <button style={{ ...s.btn('primary'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }} onClick={() => setAdding(v => !v)}>
@@ -14092,7 +14092,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
         {/* Filter bar (board: filter the bank by category / insurance / source + sort) */}
         {vendors.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '10px 12px' : '9px 16px', borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap', background: C.bg }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Filter</span>
+            <span style={{ fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Filter</span>
             <select style={fsel} value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filter by category">
               <option value="all">All categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -14160,7 +14160,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
               vendor is good or not). All optional; the score only appears once
               there's a real record. */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10, marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Track record — powers the quality score (all optional)</div>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Track record — powers the quality score (all optional)</div>
             <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5, marginBottom: 8 }}>
               Counts are out of <strong style={{ color: C.text }}>Events done</strong> — “Went well” and “Incidents” describe how those turned out, so each stays ≤ Events done.
             </div>
@@ -14192,7 +14192,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
           </div>
           {/* Sprint 60.Y — referral provenance: how the vendor came to you (rated separately from performance). */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Referral — where they came from</div>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Referral — where they came from</div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
               <div>
                 <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3 }}>Source</label>
@@ -14241,24 +14241,24 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <button onClick={() => setOpenCardId(id => id === v.id ? null : v.id)} aria-expanded={open}
-                        style={{ fontWeight: 700, fontSize: 14, background: 'none', border: 'none', padding: 0, color: C.text, cursor: 'pointer', fontFamily: 'inherit' }}>{v.name}</button>
+                        style={{ fontWeight: FW.bold, fontSize: 14, background: 'none', border: 'none', padding: 0, color: C.text, cursor: 'pointer', fontFamily: 'inherit' }}>{v.name}</button>
                       {/* Two DIFFERENT trust signals — both labeled so they're not confused.
                           Reliability = earned from track record; Referral = how the vendor came to you. */}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Reliability — earned from track record (on-time %, proof, rehires)">
-                        <span style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Reliability</span>
-                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: trustC, background: trustC + '1e', border: `1px solid ${trustC}55`, borderRadius: 5, padding: '2px 7px' }}>{trust.label}</span>
+                        <span style={{ fontSize: 7.5, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Reliability</span>
+                        <span style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.06em', color: trustC, background: trustC + '1e', border: `1px solid ${trustC}55`, borderRadius: 5, padding: '2px 7px' }}>{trust.label}</span>
                       </span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Referral trust level — how this vendor came to you">
-                        <span style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Referral</span>
-                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: refC, background: refC + '1e', border: `1px solid ${refC}55`, borderRadius: 5, padding: '2px 7px' }}>{ref.label}</span>
+                        <span style={{ fontSize: 7.5, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Referral</span>
+                        <span style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.06em', color: refC, background: refC + '1e', border: `1px solid ${refC}55`, borderRadius: 5, padding: '2px 7px' }}>{ref.label}</span>
                       </span>
                     </div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{[v.category, v.region].filter(Boolean).join(' · ')}</div>
                   </div>
                   {rel.sufficient && (
                     <div style={{ flexShrink: 0, width: 54, textAlign: 'center', border: `1px solid ${trustC}55`, borderRadius: 8, padding: '5px 0', background: trustC + '12' }}>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: trustC, lineHeight: 1 }}>{rel.score}</div>
-                      <div style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: '0.12em', color: C.muted, marginTop: 2 }}>SCORE</div>
+                      <div style={{ fontSize: 20, fontWeight: FW.heavy, color: trustC, lineHeight: 1 }}>{rel.score}</div>
+                      <div style={{ fontSize: 7.5, fontWeight: FW.bold, letterSpacing: '0.12em', color: C.muted, marginTop: 2 }}>SCORE</div>
                     </div>
                   )}
                 </div>
@@ -14270,14 +14270,14 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                       <div key={lab} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: good ? C.success : C.muted, flexShrink: 0 }} />
                         <span style={{ color: C.muted }}>{lab}</span>
-                        <span style={{ color: C.text, fontWeight: 700, marginLeft: 'auto' }}>{val}</span>
+                        <span style={{ color: C.text, fontWeight: FW.bold, marginLeft: 'auto' }}>{val}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {/* Why */}
-                {v.notes && <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.45, marginTop: 10 }}><span style={{ fontWeight: 700, color: C.text }}>Why </span>{v.notes}</div>}
+                {v.notes && <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.45, marginTop: 10 }}><span style={{ fontWeight: FW.bold, color: C.text }}>Why </span>{v.notes}</div>}
 
                 {/* Referral line */}
                 {v.referredBy && (
@@ -14293,7 +14293,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                   {v.contact && <a href={`mailto:${v.contact}`} style={{ ...s.btn('primary'), fontSize: 11.5, padding: isMobile ? '9px 14px' : '6px 12px', textDecoration: 'none' }}>Message</a>}
                   <button onClick={() => setOpenCardId(id => id === v.id ? null : v.id)} style={{ ...s.btn(), fontSize: 11.5, padding: isMobile ? '9px 14px' : '6px 12px' }}>{open ? 'Hide details' : 'Track record'}</button>
-                  {v.insuranceStatus && <span style={{ fontSize: 11, color: insOk ? C.success : /not/i.test(v.insuranceStatus) ? C.warn : C.muted, fontWeight: 600 }}>{insOk ? '✓ ' : ''}{v.insuranceStatus}</span>}
+                  {v.insuranceStatus && <span style={{ fontSize: 11, color: insOk ? C.success : /not/i.test(v.insuranceStatus) ? C.warn : C.muted, fontWeight: FW.semibold }}>{insOk ? '✓ ' : ''}{v.insuranceStatus}</span>}
                   <div style={{ flex: 1 }} />
                   <button onClick={() => bumpRehire(v.id)} title="Booked again" aria-label={`Mark ${v.name} booked again`} style={{ ...s.btn(), fontSize: 12, padding: isMobile ? '9px 12px' : '6px 10px' }}>↻</button>
                   <button onClick={() => removeVendor(v.id)} title="Remove" aria-label={`Remove ${v.name}`} style={{ ...s.btn('danger'), fontSize: 12, padding: isMobile ? '9px 12px' : '6px 10px' }}>×</button>
@@ -14304,23 +14304,23 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {breakdown.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Score breakdown <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· six weighted signals, no black box</span></div>
+                        <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Score breakdown <span style={{ fontWeight: FW.regular, textTransform: 'none', letterSpacing: 0 }}>· six weighted signals, no black box</span></div>
                         {breakdown.map(b => (
                           <div key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, padding: '3px 0' }}>
                             <span style={{ color: C.muted, width: 92, flexShrink: 0 }}>{b.label}</span>
                             <span style={{ color: C.text }}>{b.raw}</span>
-                            <span style={{ marginLeft: 'auto', fontWeight: 700, color: b.penalty ? C.muted : C.success }}>{b.points >= 0 ? '+' : ''}{b.points}{b.max ? ` / ${b.max}` : ''}</span>
+                            <span style={{ marginLeft: 'auto', fontWeight: FW.bold, color: b.penalty ? C.muted : C.success }}>{b.points >= 0 ? '+' : ''}{b.points}{b.max ? ` / ${b.max}` : ''}</span>
                           </div>
                         ))}
                       </div>
                     )}
                     {specialties.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Event specialties <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· from booking history</span></div>
+                        <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Event specialties <span style={{ fontWeight: FW.regular, textTransform: 'none', letterSpacing: 0 }}>· from booking history</span></div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {specialties.map(sp => (
                             <span key={sp.type} style={{ fontSize: 10.5, color: sp.isBest ? C.success : C.text, background: sp.isBest ? C.success + '14' : C.surface2, border: `1px solid ${sp.isBest ? C.success + '55' : C.border}`, borderRadius: 6, padding: '2px 8px', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                              {sp.type} <strong>{sp.count}</strong>{sp.isBest && <span style={{ fontSize: 8, fontWeight: 800 }}>BEST</span>}
+                              {sp.type} <strong>{sp.count}</strong>{sp.isBest && <span style={{ fontSize: 8, fontWeight: FW.heavy }}>BEST</span>}
                             </span>
                           ))}
                         </div>
@@ -14328,7 +14328,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
                     )}
                     {(v.referredBy || v.referralSource) && (
                       <div>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Referral provenance</div>
+                        <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Referral provenance</div>
                         <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{ref.blurb}</div>
                         {v.referralQuote && <div style={{ fontSize: 11, color: C.text, fontStyle: 'italic', borderLeft: `2px solid ${refC}`, paddingLeft: 8, marginTop: 6 }}>“{v.referralQuote}”{v.referralQuoteAuthor ? <span style={{ color: C.muted, fontStyle: 'normal' }}> — {v.referralQuoteAuthor}</span> : null}</div>}
                       </div>
@@ -14352,11 +14352,11 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
 
       {/* Referral trust levels — explainer (rates the SOURCE, not delivery). */}
       <details style={{ marginTop: 10 }}>
-        <summary style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, cursor: 'pointer' }}>Referral trust levels — what they mean</summary>
+        <summary style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, cursor: 'pointer' }}>Referral trust levels — what they mean</summary>
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: wide && !isMobile ? '1fr 1fr' : '1fr', gap: 8 }}>
           {REFERRAL_ORDER.map(k => { const m = REFERRAL_LEVELS[k]; const c = toneColor(m.tone); return (
             <div key={k} style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', color: c, background: c + '1e', border: `1px solid ${c}55`, borderRadius: 4, padding: '1px 6px' }}>{m.label}</span>
+              <span style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.04em', color: c, background: c + '1e', border: `1px solid ${c}55`, borderRadius: 4, padding: '1px 6px' }}>{m.label}</span>
               <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.5, marginTop: 5 }}>{m.blurb}</div>
             </div>
           ); })}
@@ -14386,7 +14386,7 @@ function PMRow2({ children }) {
 function ClientSeesBadge({ C }) {
   return (
     <span title="Appears on your client-facing documents (letterhead, invoices, briefs)"
-      style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.03em', color: C.muted, opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+      style={{ fontSize: 9, fontWeight: FW.semibold, letterSpacing: '0.03em', color: C.muted, opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
       <span aria-hidden style={{ width: 4, height: 4, borderRadius: '50%', background: C.muted, flexShrink: 0 }} />Clients see
     </span>
   );
@@ -14760,7 +14760,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
   // studio), or a single event. Removes "do I affect self / workspace
   // / event" guesswork per the No Guesswork rule.
   const ownershipChipStyle = (color) => ({
-    fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
+    fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.12em',
     textTransform: 'uppercase', color,
     padding: '2px 6px', borderRadius: 3,
     border: `1px solid ${color}55`,
@@ -14794,7 +14794,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
         }}>
         {/* Sprint 60.Y — collapsible drawer titles read in bright C.text (not the
             faint steel eyebrow) so a closed panel's title clearly stands out. */}
-        <div style={{ fontSize: collapsible ? 11.5 : 10.5, fontWeight: 800, color: collapsible ? C.text : (C.accentTopGrad || C.accent), letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
+        <div style={{ fontSize: collapsible ? 11.5 : 10.5, fontWeight: FW.heavy, color: collapsible ? C.text : (C.accentTopGrad || C.accent), letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
         <span style={ownershipChipStyle(chip.color)} title={
           ownership === 'account' ? 'Affects only your user account.' :
           ownership === 'event' ? 'Set on each event individually.' :
@@ -14806,7 +14806,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           // the affordance is the rotation + the hairline lighting to accent.
           <span aria-hidden="true" style={{
             flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 22, height: 22, fontSize: 16, fontWeight: 600, lineHeight: 1,
+            width: 22, height: 22, fontSize: 16, fontWeight: FW.semibold, lineHeight: 1,
             color: open ? C.accent : C.muted,
             transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
             transformOrigin: '50% 50%',
@@ -15006,7 +15006,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
     return (
       <div id={`settings-zone-${k}`} style={{ scrollMarginTop: 8, background: C.surface2 || C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '4px 18px 18px', marginBottom: 18, boxShadow: '0 8px 24px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0 14px', paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
-          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.02em', color: C.text }}>{ZONE_TITLES[k]}</span>
+          <span style={{ fontSize: 14, fontWeight: FW.heavy, letterSpacing: '0.02em', color: C.text }}>{ZONE_TITLES[k]}</span>
         </div>
         {children}
       </div>
@@ -15039,10 +15039,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
         {/* ── Header ── */}
         <div style={{ padding: isNarrow ? '10px 20px 12px' : '18px 22px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 3 }}>
+            <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 3 }}>
               Event Boss
             </div>
-            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em' }}>Studio Settings</div>
+            <div style={{ fontSize: 17, fontWeight: FW.bold, letterSpacing: '-0.01em' }}>Studio Settings</div>
             {/* Board re-review (2026-06-12): the scope-chip explainer subtitle was cut
                 (documentation; the chips no longer carry that meaning). One calm line. */}
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Everything here saves as you go.</div>
@@ -15078,7 +15078,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           {clientSafe && (
             <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: `${C.accent2}14`, border: `1px solid ${C.accent2}44` }}>
               <span aria-hidden style={{ color: C.accent2, fontSize: 14 }}>◉</span>
-              <span style={{ flex: 1, fontSize: 12.5, color: C.text, fontWeight: 600 }}>Client view — payment &amp; account details are hidden.</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: C.text, fontWeight: FW.semibold }}>Client view — payment &amp; account details are hidden.</span>
               <button onClick={() => setClientSafe(false)} style={{ ...s.btn('ghost'), fontSize: 11, padding: '4px 10px', flexShrink: 0 }}>Exit</button>
             </div>
           )}
@@ -15098,7 +15098,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               background: C.surface2 || C.surface, border: `1px solid ${C.border}`,
               cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.text, fontWeight: 600 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: C.text, fontWeight: FW.semibold }}>
                 Finish setup — {setupTotal - setupDone} quick {setupTotal - setupDone === 1 ? 'thing' : 'things'} left{setupNext ? `: ${setupNext.label}` : ''}
               </span>
               <span aria-hidden style={{ color: C.muted, fontSize: 15, flexShrink: 0 }}>›</span>
@@ -15109,8 +15109,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               when the essentials are done, never a scoreboard. */}
           {setupDone === setupTotal && setupTotal > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 13px', marginBottom: 14, borderRadius: 10, background: `${C.success}12`, border: `1px solid ${C.success}33` }}>
-              <span aria-hidden style={{ color: C.success, fontSize: 13, fontWeight: 800 }}>✓</span>
-              <span style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>Your studio is all set — everything saves automatically.</span>
+              <span aria-hidden style={{ color: C.success, fontSize: 13, fontWeight: FW.heavy }}>✓</span>
+              <span style={{ fontSize: 12.5, color: C.text, fontWeight: FW.semibold }}>Your studio is all set — everything saves automatically.</span>
             </div>
           )}
 
@@ -15136,7 +15136,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               return (
                 <div style={{ borderTop: `1px solid ${C.border}` }}>
                   <div style={{ padding: '10px 14px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>{heading}</span>
+                    <span style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>{heading}</span>
                     <span style={{ fontSize: 10, color: C.muted }}>· {rows.length}</span>
                   </div>
                   {rows.map((row, idx) => (
@@ -15161,10 +15161,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                         border: `1.5px solid ${stateColor(row.state)}`,
                         background: row.state === 'done' ? `${C.success}22` : 'transparent',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 800, marginTop: 1,
+                        fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
                       }}>{stateGlyph(row.state)}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.text }}>{row.label}</div>
                         <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2, lineHeight: 1.5 }}>
                           {row.where}{row.next ? ` · ${row.next}` : ''}
                         </div>
@@ -15196,11 +15196,11 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                       background: allDone ? `${C.success}22` : `${steelTopSH}22`,
                       color: allDone ? C.success : steelTopSH,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13, fontWeight: 800,
+                      fontSize: 13, fontWeight: FW.heavy,
                     }}>{allDone ? '✓' : '⚐'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', color: steelTopSH, textTransform: 'uppercase' }}>Setup Health</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginTop: 1 }}>
+                      <div style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.14em', color: steelTopSH, textTransform: 'uppercase' }}>Setup Health</div>
+                      <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text, marginTop: 1 }}>
                         {allDone ? 'Your studio is ready' : `${setupDone} of ${setupTotal} essentials ready`}
                       </div>
                     </div>
@@ -15231,8 +15231,8 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                   {!allDone && setupNext && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Next</div>
-                        <div style={{ fontSize: 12.5, color: C.text, marginTop: 1, fontWeight: 600 }}>{setupNext.label}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Next</div>
+                        <div style={{ fontSize: 12.5, color: C.text, marginTop: 1, fontWeight: FW.semibold }}>{setupNext.label}</div>
                         <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{setupNext.where}</div>
                       </div>
                       <button
@@ -15244,7 +15244,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                           color: C.accentText || '#fff',
                           border: 'none', borderRadius: 8,
                           padding: '8px 14px',
-                          fontSize: 12.5, fontWeight: 700, letterSpacing: '0.01em',
+                          fontSize: 12.5, fontWeight: FW.bold, letterSpacing: '0.01em',
                           cursor: 'pointer',
                           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
                         }}>
@@ -15291,7 +15291,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                 const who = profile?.name || (!isDevId ? rawEmail : 'Planner');
                 return (
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signed in as</div>
+                    <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signed in as</div>
                     <div style={{ fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{who}</div>
                     {!isDevId && profile?.name && rawEmail !== who && (
                       <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rawEmail}</div>
@@ -15333,7 +15333,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{g.label}</span>
+                          <span style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>{g.label}</span>
                         </div>
                         {/* Live peek — the real current values, so the planner sees the
                             truth without opening the zone (board hybrid). */}
@@ -15343,9 +15343,9 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                           'todo' was a bare amber dot (a warning light a colorblind user
                           can't read); now an amber "Set up" chip. 'count' 0 reads as
                           "None yet", not the alarm-y "0 on". */}
-                      {g.status === 'done'  && <span title="Set up" style={{ flexShrink: 0, color: C.success, fontSize: 13, fontWeight: 800 }}>✓</span>}
-                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '2px 8px' }}>Set up</span>}
-                      {g.status === 'count' && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: C.muted }}>{g.count > 0 ? `${g.count} on` : 'None yet'}</span>}
+                      {g.status === 'done'  && <span title="Set up" style={{ flexShrink: 0, color: C.success, fontSize: 13, fontWeight: FW.heavy }}>✓</span>}
+                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '2px 8px' }}>Set up</span>}
+                      {g.status === 'count' && <span style={{ flexShrink: 0, fontSize: 11, fontWeight: FW.semibold, color: C.muted }}>{g.count > 0 ? `${g.count} on` : 'None yet'}</span>}
                       <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: 16 }}>›</span>
                     </button>
                   ))}
@@ -15357,18 +15357,18 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               <div style={{ width: 188, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
                 {/* Desktop: with all zones open on one page, the rail is a JUMP nav —
                     click scrolls to that zone (board responsive spec). */}
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, opacity: 0.6, padding: '0 12px 6px' }}>Jump to</div>
+                <div style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, opacity: 0.6, padding: '0 12px 6px' }}>Jump to</div>
                 {SETTINGS_GROUPS.filter(g => !clientSafe || g.key === 'studio').map(g => (
                     <button key={g.key} onClick={() => jumpToZone(g.key)} style={{
                       textAlign: 'left', padding: '9px 12px', borderRadius: 9, fontFamily: 'inherit', cursor: 'pointer',
                       background: 'transparent', border: '1px solid transparent',
-                      color: C.muted, fontSize: 13, fontWeight: 600,
+                      color: C.muted, fontSize: 13, fontWeight: FW.semibold,
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                     }}
                       onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.surface; e.currentTarget.style.color = C.text; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.muted; }}>
                       <span>{g.label}</span>
-                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '1px 6px' }}>Set up</span>}
+                      {g.status === 'todo'  && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: FW.heavy, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.muted}66`, background: `${C.muted}1a`, borderRadius: 999, padding: '1px 6px' }}>Set up</span>}
                       {g.status === 'count' && g.count > 0 && <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{g.count}</span>}
                     </button>
                   ))}
@@ -15379,7 +15379,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             {isNarrow && (
               <button onClick={() => setPanel(null)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', marginBottom: 14, borderRadius: 10, background: C.surface2 || C.surface, border: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <span aria-hidden style={{ fontSize: 18, color: C.accent, lineHeight: 1 }}>‹</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>All settings</span>
+                <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>All settings</span>
                 <span style={{ flex: 1 }} />
                 <span style={{ fontSize: 12, color: C.muted }}>{ZONE_TITLES[panel] || ''}</span>
               </button>
@@ -15395,7 +15395,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           {!isWideModal && (
           <div style={{ position: isNarrow ? 'sticky' : 'static', top: 0, zIndex: 2, marginBottom: 16, paddingTop: 2, background: C.surface }}>
             <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '6px 12px', fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ padding: '6px 12px', fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />What clients see · letterhead
               </div>
               {(profile?.businessName || profile?.logo)
@@ -15407,7 +15407,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                     <div style={{ background: '#f1f2f4', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.40)', padding: 18 }} dangerouslySetInnerHTML={{ __html: brandLetterheadHTML(profile) }} />
                   </div>
                 : <div style={{ padding: 20, background: C.bg, textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 6 }}>Your letterhead</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 6 }}>Your letterhead</div>
                     <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>Add your studio name and logo below — they’ll appear here on every client brief and page.</div>
                   </div>}
             </div>
@@ -15473,7 +15473,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               and any future client-facing brief / proposal letterhead. */}
           <div style={{ marginTop: 12 }}>
             <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>
-              Your Headshot <span style={{ fontWeight: 400 }}>— optional · appears on your profile pill and client-facing materials</span>
+              Your Headshot <span style={{ fontWeight: FW.regular }}>— optional · appears on your profile pill and client-facing materials</span>
             </label>
             <ImageUpload
               value={profile?.headshot || null}
@@ -15486,12 +15486,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
 
           {/* Logo upload */}
           <div style={{ marginTop: 12 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Business Logo <span style={{ fontWeight: 400 }}>— appears on vendor briefs, client pages & materials</span></label>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Business Logo <span style={{ fontWeight: FW.regular }}>— appears on vendor briefs, client pages & materials</span></label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 56, height: 56, borderRadius: 10, border: `1px dashed ${C.border}`, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {profile?.logo
                   ? <img src={profile.logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                  : <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>Logo</span>}
+                  : <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.medium }}>Logo</span>}
               </div>
               <div style={{ flex: 1 }}>
                 <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
@@ -15510,7 +15510,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             <textarea style={{ ...s.input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5, fontSize: 13 }} value={profile?.bio || ''} placeholder="Your planning style, specialties, and what makes you different…" onChange={e => onChange('bio', e.target.value)} />
           </div>
           <div style={{ marginTop: 12 }}>
-            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Brand Color <span style={{ fontWeight: 400 }}>— accents your vendor briefs & shared pages · Studio Matte palette</span></label>
+            <label style={{ fontSize: 11, color: C.muted, display: 'block', marginBottom: 5 }}>Brand Color <span style={{ fontWeight: FW.regular }}>— accents your vendor briefs & shared pages · Studio Matte palette</span></label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <input type="color" value={profile?.brandColor || defaultBrandColor} onChange={e => onChange('brandColor', e.target.value)}
                 style={{ width: 44, height: 36, padding: 2, borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, cursor: 'pointer', flexShrink: 0 }} />
@@ -15581,11 +15581,11 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             </button>
             {proofPaid && (
               <div style={{ marginTop: 10, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '6px 12px', fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, background: C.bg, borderBottom: `1px solid ${C.border}` }}>What clients see · payment footer</div>
+                <div style={{ padding: '6px 12px', fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, background: C.bg, borderBottom: `1px solid ${C.border}` }}>What clients see · payment footer</div>
                 {brandPaymentFooterHTML(profile)
                   ? <div style={{ padding: 14, background: C.bg }}><div style={{ background: '#f1f2f4', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.40)', padding: 16 }} dangerouslySetInnerHTML={{ __html: brandPaymentFooterHTML(profile) }} /></div>
                   : <div style={{ padding: 22, background: C.bg, textAlign: 'center' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 6 }}>Payment footer</div>
+                      <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 6 }}>Payment footer</div>
                       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>Add a payment method below and it appears here on client invoices.</div>
                     </div>}
               </div>
@@ -15616,7 +15616,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                 <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: tierInfo.color + '18', border: `1px solid ${tierInfo.color}44`, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 16 }}>{tierInfo.icon}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: tierInfo.color }}>{tierInfo.label} · {metroObj.factor.toFixed(2)}× cost index</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.semibold, color: tierInfo.color }}>{tierInfo.label} · {metroObj.factor.toFixed(2)}× cost index</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
                       Budget estimates will reflect {metroObj.label} typical rates
                       {metroObj.factor !== 1.0 && ` (${metroObj.factor > 1 ? '+' : ''}${Math.round((metroObj.factor - 1) * 100)}% vs. national avg)`}
@@ -15676,7 +15676,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                           placeholder="20"
                           onChange={e => writeRate('defaultServiceRate', e.target.value, 35)}
                         />
-                        <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>%</span>
+                        <span style={{ fontSize: 12, color: C.muted, fontWeight: FW.semibold }}>%</span>
                       </div>
                       <div style={{ fontSize: 10, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         Range 0–35%. Default {Math.round(0.20 * 100)}%.
@@ -15692,7 +15692,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                           placeholder="6"
                           onChange={e => writeRate('defaultTaxRate', e.target.value, 15)}
                         />
-                        <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>%</span>
+                        <span style={{ fontSize: 12, color: C.muted, fontWeight: FW.semibold }}>%</span>
                       </div>
                       <div style={{ fontSize: 10, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         Range 0–15%. Default {Math.round(0.06 * 100)}%. Not a legal tax rate.
@@ -15721,7 +15721,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               return (
                 <button key={cat} onClick={() => setSpecCat(cat)} style={{ ...s.btn(specCat === cat ? 'primary' : 'ghost'), fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
                   {cat === 'Weddings & Celebrations' ? 'Celebrations' : cat === 'Corporate' ? 'Corporate' : 'Social'}
-                  {selectedInCat > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: 700 }}>{selectedInCat}</span>}
+                  {selectedInCat > 0 && <span style={{ background: C.accent, color: '#fff', borderRadius: 10, fontSize: 9, padding: '1px 5px', fontWeight: FW.bold }}>{selectedInCat}</span>}
                 </button>
               );
             })}
@@ -15755,7 +15755,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           <Collapse open={secOpen('How Clients Pay', true)}>
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button onClick={() => setShowPay(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Payment methods you accept</span>
+              <span style={{ fontSize: 12, fontWeight: FW.medium }}>Payment methods you accept</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {hasPayData && !showPay && <span style={{ ...s.pill(C.success), fontSize: 10 }}>saved</span>}
                 <span style={{ color: C.muted, fontSize: 12 }}>{showPay ? '▾' : '▸'}</span>
@@ -15852,14 +15852,14 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                     onClick={expandContent ? () => setOpen(v => !v) : undefined}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{label}</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{label}</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       {actionLabel && onAction && status !== 'connected' && (
                         <button onClick={(e) => { e.stopPropagation(); onAction(); }} style={{ ...s.btn('secondary'), fontSize: 10, padding: '3px 10px' }}>{actionLabel}</button>
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 700, color: pillColor, background: pillColor + '18', border: `1px solid ${pillColor}33`, padding: '2px 8px', borderRadius: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{pill}</span>
+                      <span style={{ fontSize: 10, fontWeight: FW.bold, color: pillColor, background: pillColor + '18', border: `1px solid ${pillColor}33`, padding: '2px 8px', borderRadius: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{pill}</span>
                       {expandContent && <span style={{ color: C.muted, fontSize: 11 }}>{open ? '▾' : '▸'}</span>}
                     </div>
                   </div>
@@ -15882,7 +15882,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             const ConnGroupHeader = ({ label }) => (
               <div style={{
                 padding: '14px 14px 4px', borderBottom: `1px solid ${C.border}`,
-                fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+                fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.14em',
                 textTransform: 'uppercase', color: C.muted, opacity: 0.7,
                 background: C.bg,
               }}>{label}</div>
@@ -15920,7 +15920,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                 {/* Email delivery health — last 24h, derived from loaded events */}
                 {emailOn && (
                   <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.border}`, background: C.bg }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email delivery — last 24h (loaded events)</div>
+                    <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Email delivery — last 24h (loaded events)</div>
                     {deliveryHealth ? (
                       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                         {deliveryHealth.accepted > 0 && <span style={{ fontSize: 11, color: C.success }}>{deliveryHealth.accepted} accepted</span>}
@@ -16032,7 +16032,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                             const r = await fireWebhook(profile.webhookUrl, 'webhook.test', { message: 'NGW webhook test', studio: profile.businessName || profile.name || 'Studio' });
                             showToast(r?.status === 'delivered' ? '✓ Test webhook delivered' : `Webhook ${r?.status || 'error'} — check your endpoint`, r?.status === 'delivered' ? 'success' : 'error');
                           }}
-                          style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           Send test webhook
                         </button>
@@ -16073,7 +16073,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           <button onClick={() => setShowGuide(true)}
             style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderRadius: 10, background: C.success + '12', border: `1px solid ${C.success}55`, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}>
             <span>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.success }}>Getting started guide</span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: FW.bold, color: C.success }}>Getting started guide</span>
               <span style={{ display: 'block', fontSize: 11.5, color: C.muted, marginTop: 2 }}>How to run an event, start to finish — 10 steps.</span>
             </span>
             <span style={{ color: C.success, fontSize: 16, flexShrink: 0 }}>→</span>
@@ -16087,7 +16087,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             const hasSample = (events || []).some(e => SEED_EVENT_IDS.has(e.id));
             return (
               <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>Sample Data</div>
+                <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text, marginBottom: 3 }}>Sample Data</div>
                 <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>
                   {hasSample
                     ? 'A sample workspace is loaded — events, clients, vendors, and payments, all clearly marked SAMPLE. It never touches your real data.'
@@ -16110,7 +16110,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           <SectionHead label="Advanced settings" />
           <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
             <button data-testid="advanced-settings-toggle" onClick={() => setShowAdvanced(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Team, plan &amp; notifications</span>
+              <span style={{ fontSize: 12, fontWeight: FW.medium }}>Team, plan &amp; notifications</span>
               <span style={{ color: C.muted, fontSize: 12 }}>{showAdvanced ? '▾' : '▸'}</span>
             </button>
             {showAdvanced && (
@@ -16121,12 +16121,12 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
           <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 3 }}>Team collaboration</div>
+                <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text, marginBottom: 3 }}>Team collaboration</div>
                 <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                   Invite assistants, co-planners, and coordinators to collaborate across events.
                 </div>
               </div>
-              <div style={{ padding: '3px 9px', borderRadius: 6, background: C.surface2, border: `1px solid ${C.border}`, fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <div style={{ padding: '3px 9px', borderRadius: 6, background: C.surface2, border: `1px solid ${C.border}`, fontSize: 10, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0, whiteSpace: 'nowrap' }}>
                 Studio plan
               </div>
             </div>
@@ -16152,10 +16152,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               <div style={{ padding: '14px 16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>NGW Event Boss</div>
+                    <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>NGW Event Boss</div>
                     <div data-testid="plan-current" style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{PLANS.find(p => p.id === current)?.name || 'Essentials'}</div>
                   </div>
-                  <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Current plan</div>
+                  <div style={{ padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44`, fontSize: 10, fontWeight: FW.bold, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Current plan</div>
                 </div>
                 <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {PLANS.map(p => {
@@ -16163,17 +16163,17 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                     return (
                       <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ minWidth: 0 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: active ? C.accent : C.text }}>{p.name}</span>
+                          <span style={{ fontSize: 12, fontWeight: FW.semibold, color: active ? C.accent : C.text }}>{p.name}</span>
                           <span style={{ fontSize: 11, color: C.muted }}> — {p.desc}</span>
                         </div>
                         {canSwitch ? (
                           <button data-testid={`plan-switch-${p.id}`} onClick={() => onChange('plan', p.id)} disabled={active}
-                            style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '5px 11px', borderRadius: 6, cursor: active ? 'default' : 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em',
+                            style={{ flexShrink: 0, fontSize: 10, fontWeight: FW.bold, padding: '5px 11px', borderRadius: 6, cursor: active ? 'default' : 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em',
                               border: `1px solid ${active ? C.accent : C.border}`, background: active ? C.accent + '22' : 'transparent', color: active ? C.accent : C.text }}>
                             {active ? 'Active' : 'Switch'}
                           </button>
                         ) : active ? (
-                          <div style={{ fontSize: 10, color: C.accent, flexShrink: 0, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</div>
+                          <div style={{ fontSize: 10, color: C.accent, flexShrink: 0, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</div>
                         ) : PLANS.indexOf(p) > PLANS.findIndex(x => x.id === current) ? (
                           <button data-testid={`plan-upgrade-${p.id}`}
                             onClick={async () => {
@@ -16187,7 +16187,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                                 window.location.href = `mailto:info@noguessworksystems.com?subject=${encodeURIComponent('Upgrade to ' + p.name)}&body=${encodeURIComponent("I'd like to upgrade my NGW Event Boss plan to " + p.name + '.')}`;
                               }
                             }}
-                            style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: '5px 11px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em', border: `1px solid ${C.accent}`, background: C.accent + '18', color: C.accent }}>
+                            style={{ flexShrink: 0, fontSize: 10, fontWeight: FW.bold, padding: '5px 11px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.04em', border: `1px solid ${C.accent}`, background: C.accent + '18', color: C.accent }}>
                             Upgrade
                           </button>
                         ) : (
@@ -16212,7 +16212,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             ].map(({ key, label, desc }, i, arr) => (
               <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{label}</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{desc}</div>
                 </div>
                 <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
@@ -16248,7 +16248,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
               : null;
             return (
               <div style={{ padding: '16px', borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4 }}>Shareable intake form</div>
+                <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text, marginBottom: 4 }}>Shareable intake form</div>
                 <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 14 }}>
                   Send this link to prospective clients. They fill out the form and their inquiry appears here — ready to convert into an event.
                 </div>
@@ -16259,7 +16259,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {/* Direct link */}
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Direct link</div>
+                        <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Direct link</div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           <input readOnly value={intakeUrl} style={{ ...s.input, flex: 1, fontSize: 11, color: C.muted, minWidth: 180 }} onClick={e => e.target.select()} />
                           <button style={{ ...s.btn('ghost'), fontSize: 12, padding: '6px 14px', flexShrink: 0 }}
@@ -16270,7 +16270,7 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                       </div>
                       {/* Embed code */}
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Website embed</div>
+                        <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.muted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Website embed</div>
                         <div style={{ position: 'relative' }}>
                           <textarea
                             readOnly
@@ -16315,10 +16315,10 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
             ].map(({ label, desc, phase }, i, arr) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: i < arr.length - 1 ? 12 : 0, marginBottom: i < arr.length - 1 ? 12 : 0, borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted }}>{label}</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.muted }}>{label}</div>
                   <div style={{ fontSize: 11, color: C.muted, opacity: 0.7, marginTop: 1 }}>{desc}</div>
                 </div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, padding: '3px 8px', borderRadius: 6, border: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.6 }}>{phase}</div>
+                <div style={{ fontSize: 9, fontWeight: FW.bold, color: C.muted, flexShrink: 0, padding: '3px 8px', borderRadius: 6, border: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.6 }}>{phase}</div>
               </div>
             ))}
           </div>
@@ -16328,13 +16328,13 @@ function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], 
                 right. Soft mounted paper (not glaring white) on the dark backing. */}
             {isWideModal && (
               <div style={{ width: 348, flexShrink: 0, position: 'sticky', top: 0, alignSelf: 'flex-start' }}>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, opacity: 0.6, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, opacity: 0.6, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: C.success, boxShadow: `0 0 6px ${C.success}` }} />What clients see
                 </div>
                 {(profile?.businessName || profile?.logo)
                   ? <div style={{ padding: 16, background: C.bg, borderRadius: 12, border: `1px solid ${C.border}` }}><div style={{ background: '#f1f2f4', borderRadius: 8, boxShadow: '0 3px 16px rgba(0,0,0,0.45)', padding: 20 }} dangerouslySetInnerHTML={{ __html: brandLetterheadHTML(profile) }} /></div>
                   : <div style={{ padding: 26, background: C.bg, borderRadius: 12, border: `1px solid ${C.border}`, textAlign: 'center' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 8 }}>Your letterhead</div>
+                      <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, opacity: 0.55, marginBottom: 8 }}>Your letterhead</div>
                       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.6 }}>Fill in your studio name and logo — this is the letterhead clients see on every brief, invoice &amp; page.</div>
                     </div>}
               </div>
@@ -16423,12 +16423,12 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
         <div style={{ paddingRight: isWide ? 18 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <button aria-label="Previous month" onClick={() => setMonthOffset(o => o - 1)} title="Previous month" style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="chevronLeft" size={13} /></button>
-            <div style={{ fontSize: 12.5, fontWeight: 800, color: C.text, letterSpacing: '-0.01em' }}>{monthLabel}</div>
+            <div style={{ fontSize: 12.5, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.01em' }}>{monthLabel}</div>
             <button aria-label="Next month" onClick={() => setMonthOffset(o => o + 1)} title="Next month" style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="chevronRight" size={13} /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} style={{ fontSize: 9.5, fontWeight: 700, color: C.muted, textAlign: 'center', paddingBottom: 4, opacity: 0.7 }}>{d}</div>
+              <div key={i} style={{ fontSize: 9.5, fontWeight: FW.bold, color: C.muted, textAlign: 'center', paddingBottom: 4, opacity: 0.7 }}>{d}</div>
             ))}
             {Array.from({ length: firstWeekday }, (_, i) => <div key={`e${i}`} />)}
             {Array.from({ length: daysInMonth }, (_, i) => {
@@ -16459,7 +16459,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
         {/* ── Line-by-line week agenda (driven by selected day) ── */}
         <div style={{ borderLeft: isWide ? `1px solid ${C.border}` : 'none', paddingLeft: isWide ? 18 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.09em', color: C.accent }}>
+            <div style={{ fontSize: 11.5, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.09em', color: C.accent }}>
               {weekStartStr === new Date(getToday().getFullYear(), getToday().getMonth(), getToday().getDate() - getToday().getDay()).toISOString().slice(0, 10) ? 'This Week' : 'Week'}
             </div>
             <div style={{ fontSize: 12, color: C.muted }}>{weekLabel}</div>
@@ -16470,9 +16470,9 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
                 onMouseEnter={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a) a.style.opacity = 1; }}
                 onMouseLeave={e => { const a = e.currentTarget.querySelector('[data-addbtn]'); if (a && addDay !== ds) a.style.opacity = 0.45; }}>
                 <div style={{ width: 46, flexShrink: 0, textAlign: 'center' }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: isToday ? C.accent : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.bold, color: isToday ? C.accent : C.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: isToday ? C.accent : 'transparent' }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: isToday ? '#fff' : C.text, lineHeight: 1 }}>{d.getDate()}</span>
+                    <span style={{ fontSize: 15, fontWeight: FW.heavy, color: isToday ? '#fff' : C.text, lineHeight: 1 }}>{d.getDate()}</span>
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
@@ -16499,7 +16499,7 @@ function DashWeekView({ events, onSelectEvent, sidebar = false, calNotes = [], o
                     </div>
                   ))}
                   <button data-addbtn onClick={() => { setSelDay(ds); setAddDay(ds); }}
-                    style={{ marginTop: 3, fontSize: 11, fontWeight: 600, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 0', opacity: 0.45, transition: 'opacity .12s' }}>
+                    style={{ marginTop: 3, fontSize: 11, fontWeight: FW.semibold, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '1px 0', opacity: 0.45, transition: 'opacity .12s' }}>
                     + add
                   </button>
                 </div>
@@ -16536,18 +16536,18 @@ function DayAddModal({ date, onClose, onAdd }) {
         style={{ ...sheetShell(isMobile, 400), background: C.surface, border: `1px solid ${C.border}`, zIndex: 80, padding: 22, boxShadow: '0 18px 60px rgba(0,0,0,0.45)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Add to calendar</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginTop: 2 }}>{dayLabel}</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Add to calendar</div>
+            <div style={{ fontSize: 16, fontWeight: FW.heavy, color: C.text, marginTop: 2 }}>{dayLabel}</div>
           </div>
           <button aria-label="Close" onClick={onClose} style={{ ...s.btn('ghost'), fontSize: 16, padding: '4px 10px', flexShrink: 0 }}>✕</button>
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 7 }}>Type</div>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, marginBottom: 7 }}>Type</div>
           <div style={{ display: 'flex', gap: 7 }}>
             {['note', 'task', 'event'].map(k => (
               <button key={k} onClick={() => setKind(k)}
-                style={{ flex: 1, fontSize: 12.5, fontWeight: 700, textTransform: 'capitalize', padding: '8px 0', borderRadius: 9, cursor: 'pointer',
+                style={{ flex: 1, fontSize: 12.5, fontWeight: FW.bold, textTransform: 'capitalize', padding: '8px 0', borderRadius: 9, cursor: 'pointer',
                   border: `1.5px solid ${kind === k ? KIND_COLOR[k] : C.border}`,
                   background: kind === k ? KIND_COLOR[k] + '22' : 'transparent',
                   color: kind === k ? (KIND_COLOR[k] === C.muted ? C.text : KIND_COLOR[k]) : C.muted }}>{k}</button>
@@ -16557,7 +16557,7 @@ function DayAddModal({ date, onClose, onAdd }) {
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 7 }}>Details</div>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, marginBottom: 7 }}>Details</div>
           <input autoFocus value={text} onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); }}
             placeholder={`Add a ${kind}…`} style={{ ...s.input }} />
@@ -16617,7 +16617,7 @@ function SetupBanner({ profile, onOpenProfile }) {
           fontFamily: 'inherit',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+        <span style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>
           Finish studio setup · {doneCt}/{steps.length}
         </span>
         <span style={{ fontSize: 12, color: C.muted }}>Open →</span>
@@ -16632,18 +16632,18 @@ function SetupBanner({ profile, onOpenProfile }) {
     <div style={{ padding: '10px 16px', background: C.surface2, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopSB }}>
+          <span style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopSB }}>
             Event Boss
           </span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: C.border }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+          <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.text }}>
             Complete your studio setup — {doneCt}/{steps.length}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {steps.map(st => (
             <span key={st.label} style={{ fontSize: 11, color: st.done ? C.success : C.muted, display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span style={{ fontWeight: 700 }}>{st.done ? '✓' : '·'}</span> {st.label}
+              <span style={{ fontWeight: FW.bold }}>{st.done ? '✓' : '·'}</span> {st.label}
             </span>
           ))}
         </div>
@@ -16690,8 +16690,8 @@ function SwipeRow({ enabled, onSwipeRight, rightLabel, onSwipeLeft, children }) 
   return (
     <div style={{ position: 'relative', overflow: 'hidden' }}>
       <div aria-hidden style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', pointerEvents: 'none' }}>
-        <span style={{ fontSize: 11.5, fontWeight: 800, color: C.success, opacity: dx > 16 ? 1 : 0, transition: 'opacity 0.1s' }}>✓ {rightLabel || 'Handle'}</span>
-        <span style={{ fontSize: 11.5, fontWeight: 800, color: C.muted, opacity: dx < -16 ? 1 : 0, transition: 'opacity 0.1s' }}>Snooze ⤵</span>
+        <span style={{ fontSize: 11.5, fontWeight: FW.heavy, color: C.success, opacity: dx > 16 ? 1 : 0, transition: 'opacity 0.1s' }}>✓ {rightLabel || 'Handle'}</span>
+        <span style={{ fontSize: 11.5, fontWeight: FW.heavy, color: C.muted, opacity: dx < -16 ? 1 : 0, transition: 'opacity 0.1s' }}>Snooze ⤵</span>
       </div>
       <div
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
@@ -16764,10 +16764,10 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <span style={{
-          fontSize: 13, fontWeight: 700, color: C.text,
+          fontSize: 13, fontWeight: FW.bold, color: C.text,
         }}>What needs attention</span>
         {counts.all > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{counts.all}</span>
+          <span style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{counts.all}</span>
         )}
         <div style={{ flex: 1 }} />
         {/* Filter tabs */}
@@ -16788,7 +16788,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
               }}>
                 {tab.label}
                 {count > 0 && tab.id !== 'all' && (
-                  <span style={{ marginLeft: 5, opacity: 0.75, fontWeight: 500 }}>{count}</span>
+                  <span style={{ marginLeft: 5, opacity: 0.75, fontWeight: FW.medium }}>{count}</span>
                 )}
               </button>
             );
@@ -16912,7 +16912,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                 {/* Status pill */}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center',
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                  fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.08em',
                   padding: '3px 8px', borderRadius: 4, marginLeft: 4,
                   background: it.statusColor, color: '#fff',
                   flexShrink: 0, whiteSpace: 'nowrap',
@@ -16929,7 +16929,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                   title={routeLabel}
                 >
                   <div style={{
-                    fontSize: 12.5, fontWeight: 500, color: C.text,
+                    fontSize: 12.5, fontWeight: FW.medium, color: C.text,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{it.title}</div>
                   <div style={{
@@ -16940,7 +16940,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
 
                 {/* Due / timing */}
                 <span style={{
-                  fontSize: 12, fontWeight: 600, color: it.dueColor, flexShrink: 0,
+                  fontSize: 12, fontWeight: FW.semibold, color: it.dueColor, flexShrink: 0,
                   whiteSpace: 'nowrap',
                 }}>{it.dueLabel}</span>
 
@@ -16952,7 +16952,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                     {quickActions.map(a => a.kind === 'done' ? (
                       <span key={a.key} style={{
-                        fontSize: 12, fontWeight: 700,
+                        fontSize: 12, fontWeight: FW.bold,
                         color: C.success, background: C.success + '14',
                         border: `1px solid ${C.success}44`,
                         padding: '6px 12px', borderRadius: 7,
@@ -16962,7 +16962,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                         onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
                         title="Opens your email app with a draft. Nothing is sent until you send it."
                         style={{
-                          fontSize: 12, fontWeight: 600,
+                          fontSize: 12, fontWeight: FW.semibold,
                           color: C.text, background: 'transparent',
                           border: `1px solid ${C.border}`,
                           padding: '6px 12px', borderRadius: 7,
@@ -16971,7 +16971,7 @@ function AttentionQueue({ events, onSelectEvent, onMarkTaskDone, onMarkMsgHandle
                     ) : (
                       <button key={a.key} onClick={e => { e.stopPropagation(); a.onClick && a.onClick(); }}
                         style={{
-                          fontSize: 12, fontWeight: 600,
+                          fontSize: 12, fontWeight: FW.semibold,
                           color: C.accent, background: C.accent + '14',
                           border: `1px solid ${C.accent}66`,
                           padding: '6px 12px', borderRadius: 7,
@@ -17032,9 +17032,9 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
       ].join(', '),
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Upcoming Events</span>
+        <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>Upcoming Events</span>
         {allUpcoming.length > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{allUpcoming.length}</span>
+          <span style={{ fontSize: 12, fontWeight: FW.semibold, color: C.muted }}>{allUpcoming.length}</span>
         )}
         <div style={{ flex: 1 }} />
         {allUpcoming.length > PAGE && (
@@ -17094,10 +17094,10 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
                   alignItems: 'center', flexShrink: 0,
                 }}>
                   <span style={{
-                    fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: eventColor,
+                    fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.12em', color: eventColor,
                   }}>{month}</span>
                   <span style={{
-                    fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: '-0.02em',
+                    fontSize: 18, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.02em',
                     lineHeight: 1.1, marginTop: 1,
                   }}>{day}</span>
                 </div>
@@ -17109,7 +17109,7 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                     <div style={{
-                      fontSize: 12.5, fontWeight: 600, color: C.text,
+                      fontSize: 12.5, fontWeight: FW.semibold, color: C.text,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{ev.name}</div>
                     {/* Board ruling (2026-06-12): per-card SAMPLE stamp so a demo
@@ -17119,7 +17119,7 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
                         in a banner. */}
                     {isSeedEvent(ev) && (
                       <span style={{
-                        flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em',
+                        flexShrink: 0, fontSize: 8.5, fontWeight: FW.heavy, letterSpacing: '0.1em',
                         textTransform: 'uppercase', color: C.muted,
                         border: `1px solid ${C.border}`, background: C.surface,
                         borderRadius: 3, padding: '1px 5px', lineHeight: 1.3,
@@ -17143,7 +17143,7 @@ function HomeUpcomingPanel({ events, onSelectEvent }) {
 
                 {/* Days pill */}
                 <span style={{
-                  fontSize: 10, fontWeight: 700, color: daysColor,
+                  fontSize: 10, fontWeight: FW.bold, color: daysColor,
                   border: `1px solid ${daysColor}`, padding: '3px 7px',
                   borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
                 }}>{days === 0 ? 'Today' : `${days}d`}</span>
@@ -17253,7 +17253,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
       padding: '16px 18px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+        <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>
           {weekOffset === 0 ? 'This Week' : weekOffset === 1 ? 'Next Week' : weekOffset === -1 ? 'Last Week' : weekOffset > 0 ? `In ${weekOffset} weeks` : `${Math.abs(weekOffset)} weeks ago`}
         </span>
         <div style={{ flex: 1 }} />
@@ -17269,7 +17269,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
             style={{
               background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6,
               padding: '0 7px', height: 24, color: C.text, cursor: 'pointer',
-              fontSize: 10.5, fontWeight: 600, fontFamily: 'inherit',
+              fontSize: 10.5, fontWeight: FW.semibold, fontFamily: 'inherit',
             }}>Today</button>
         )}
         <button onClick={() => setWeekOffset(w => w + 1)} aria-label="Next week"
@@ -17282,7 +17282,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
           <button onClick={onOpenCalendar}
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
-              fontSize: 11, fontWeight: 500, color: C.accent, padding: '0 0 0 4px',
+              fontSize: 11, fontWeight: FW.medium, color: C.accent, padding: '0 0 0 4px',
               fontFamily: 'inherit',
             }}>Full calendar →</button>
         )}
@@ -17299,9 +17299,9 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
               background: d.isToday ? C.border : 'transparent',
               border: `1px solid ${C.border}`,
             }}>
-              <span style={{ fontSize: 8, fontWeight: 600, letterSpacing: '0.08em', color: C.muted }}>{d.label}</span>
+              <span style={{ fontSize: 8, fontWeight: FW.semibold, letterSpacing: '0.08em', color: C.muted }}>{d.label}</span>
               <span style={{
-                fontSize: 14, fontWeight: 700,
+                fontSize: 14, fontWeight: FW.bold,
                 color: d.isToday ? C.success : C.text, letterSpacing: '-0.02em',
               }}>{d.day}</span>
               {hasEvent && (
@@ -17329,7 +17329,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
               style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: '2px 0', cursor: go ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
               title={go ? (it.eventId ? 'Open' : 'Open calendar') : undefined}>
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: it.color,
+                fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.12em', color: it.color,
                 width: 28, flexShrink: 0,
               }}>{it.dayLabel}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -17341,7 +17341,7 @@ function HomeThisWeekPanel({ events, calNotes = [], onOpenCalendar, onSelectEven
           })}
           {items.length > 6 && (
             <button onClick={onOpenCalendar || undefined} disabled={!onOpenCalendar}
-              style={{ background: 'none', border: 'none', padding: '4px 0', cursor: onOpenCalendar ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', fontSize: 11, fontWeight: 600, color: C.accent }}>
+              style={{ background: 'none', border: 'none', padding: '4px 0', cursor: onOpenCalendar ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', fontSize: 11, fontWeight: FW.semibold, color: C.accent }}>
               +{items.length - 6} more this week →
             </button>
           )}
@@ -17391,7 +17391,7 @@ function HomeQuickActions({ events, onSelectEvent, onNew, onNewClient }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.18em',
+        fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.18em',
         textTransform: 'uppercase', color: C.muted, marginBottom: 10,
       }}>Quick actions</div>
       <div style={{
@@ -17405,7 +17405,7 @@ function HomeQuickActions({ events, onSelectEvent, onNew, onNewClient }) {
             background: 'transparent',
             border: `1px solid ${a.disabled ? C.border : a.color + '55'}`,
             color: a.disabled ? C.muted : C.text,
-            fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+            fontFamily: 'inherit', fontSize: 12, fontWeight: FW.semibold,
             cursor: a.disabled ? 'not-allowed' : 'pointer',
             opacity: a.disabled ? 0.5 : 1,
             minHeight: 44,
@@ -17506,10 +17506,10 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
           width: 14, height: 14, borderRadius: '50%',
           background: `${steelTopH}33`, color: steelTopH,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 8, fontWeight: 800,
+          fontSize: 8, fontWeight: FW.heavy,
         }}>✓</span>
         <span style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
+          fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.16em',
           textTransform: 'uppercase', color: steelTopH, lineHeight: 1,
         }}>Today at a glance</span>
       </div>
@@ -17518,12 +17518,12 @@ function HomeHero({ profile, events, clients, onSelectEvent }) {
           hero. The greeting no longer owns a 28px headline or a duplicate
           action link — the command panel carries the single next-best action. */}
       <div style={{
-        fontSize: 15.5, fontWeight: 600, color: C.text, marginTop: 8,
+        fontSize: 15.5, fontWeight: FW.semibold, color: C.text, marginTop: 8,
         letterSpacing: '-0.01em', lineHeight: 1.35, overflowWrap: 'anywhere',
       }}>
         {name ? `${greet}, ${name}` : greet}
         {activeEvents > 0 && status ? (
-          <span style={{ color: summaryColor !== C.muted ? summaryColor : C.muted, fontWeight: 500 }}> · {status}</span>
+          <span style={{ color: summaryColor !== C.muted ? summaryColor : C.muted, fontWeight: FW.medium }}> · {status}</span>
         ) : null}
       </div>
     </div>
@@ -17621,7 +17621,7 @@ function DailyBriefing({ events, onSelectEvent }) {
           display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 16,
           padding: '8px 14px', minHeight: 38, borderRadius: 10,
           background: `${steel}12`, border: `1px solid ${steel}40`,
-          color: steel, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+          color: steel, fontFamily: 'inherit', fontSize: 12.5, fontWeight: FW.bold,
           cursor: 'pointer', letterSpacing: '0.01em',
         }}>
         <Icon name="sparkle" size={13} /> Brief me
@@ -17635,7 +17635,7 @@ function DailyBriefing({ events, onSelectEvent }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Icon name="sparkle" size={12} style={{ color: steel }} />
-        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>
+        <span style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel }}>
           {usedAI ? 'Your daily brief' : 'Your daily summary'}
         </span>
         <span style={{ flex: 1 }} />
@@ -17673,12 +17673,12 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
     }}>
       {tag && (
         <div style={{
-          fontSize: 12, fontWeight: 700, letterSpacing: '0.14em',
+          fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.14em',
           textTransform: 'uppercase', color: C.muted,
         }}>{tag}</div>
       )}
       <div style={{
-        fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em',
+        fontSize: 20, fontWeight: FW.heavy, letterSpacing: '-0.02em',
         lineHeight: 1.22, color: C.text,
       }}>{title}</div>
       {body && (
@@ -17706,7 +17706,7 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
             border: 'none',
             background: `linear-gradient(180deg, ${C.accentTopGrad} 0%, ${C.accentDeep} 100%)`,
             color: C.accentText,
-            fontSize: 16, fontWeight: 700, cursor: 'pointer',
+            fontSize: 16, fontWeight: FW.bold, cursor: 'pointer',
             fontFamily: 'inherit',
             letterSpacing: '0.01em',
             textShadow: '0 1px 0 rgba(0,0,0,0.25)',
@@ -17717,7 +17717,7 @@ function EmptyStateCard({ tag, title, body, primaryCta, onPrimary, secondaryCta,
           <button onClick={onSecondary} style={{
             padding: '12px 14px', minHeight: 44, borderRadius: 8,
             border: 'none', background: 'transparent', color: C.muted,
-            fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            fontSize: 14, fontWeight: FW.medium, cursor: 'pointer',
             textDecoration: 'underline', textDecorationColor: C.border,
             textUnderlineOffset: 3, fontFamily: 'inherit',
           }}>{secondaryCta}</button>
@@ -17865,7 +17865,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
       }}>
         <div style={{
           fontSize: isMobile ? 12 : 10.5,
-          fontWeight: 700, letterSpacing: isMobile ? '0.14em' : '0.18em',
+          fontWeight: FW.bold, letterSpacing: isMobile ? '0.14em' : '0.18em',
           textTransform: 'uppercase', color: accent,
         }}>
           {label}
@@ -17873,7 +17873,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
         {isToday && (
           <span aria-label="Event is happening today" style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 12, fontWeight: 800, letterSpacing: '0.12em',
+            fontSize: 12, fontWeight: FW.heavy, letterSpacing: '0.12em',
             textTransform: 'uppercase', color: '#fff',
             background: accent, padding: '3px 10px', borderRadius: 999,
             lineHeight: 1,
@@ -17893,7 +17893,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
       <h2 style={{
         margin: 0, marginBottom: isMobile ? 14 : 10,
         fontSize: isWide ? 30 : isMobile ? 30 : 26,
-        fontWeight: 800, letterSpacing: '-0.028em',
+        fontWeight: FW.heavy, letterSpacing: '-0.028em',
         lineHeight: 1.15, color: C.text,
         fontFamily: 'inherit',
       }}>
@@ -17976,7 +17976,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
                 background: fillBg,
                 color: ctaText,
                 fontSize: isWide ? 14 : isMobile ? 16 : 13.5,
-                fontWeight: 700,
+                fontWeight: FW.bold,
                 letterSpacing: '0.01em',
                 fontFamily: 'inherit',
                 display: isMobile ? 'flex' : 'inline-flex',
@@ -18013,7 +18013,7 @@ function StudioCommandPanel({ events, clients, onSelectEvent, onJumpToAttention,
               background: 'transparent',
               color: C.muted,
               fontSize: isWide ? 12.5 : isMobile ? 14 : 12.5,
-              fontWeight: 500,
+              fontWeight: FW.medium,
               cursor: 'pointer',
               fontFamily: 'inherit',
               textDecoration: isMobile ? 'none' : 'underline',
@@ -18237,7 +18237,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
   const qBtnBase = {
     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
     padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
-    fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+    fontSize: 11, fontWeight: FW.semibold, fontFamily: 'inherit',
   };
 
   return (
@@ -18262,7 +18262,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
               <span style={{ fontSize: 16 }}>✉</span>
-              <span style={{ fontWeight: 700, fontSize: 14, flex: 1, color: C.text }}>Communications</span>
+              <span style={{ fontWeight: FW.bold, fontSize: 14, flex: 1, color: C.text }}>Communications</span>
               <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
 
@@ -18271,7 +18271,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
               {/* Event + To selectors */}
               <div style={{ padding: '12px 16px', display: 'flex', gap: 8, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Event</label>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: FW.bold }}>Event</label>
                   <select style={{ ...s.input, fontSize: 12 }} value={selectedEventId} onChange={e => { setSelectedEventId(e.target.value); setChannel('client'); }}>
                     {/* Sprint 51B P0 Fix 1 — explicit-choice placeholder so the
                         panel never silently assumes an event the planner did
@@ -18282,7 +18282,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>To</label>
+                  <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: FW.bold }}>To</label>
                   <select style={{ ...s.input, fontSize: 12 }} value={channel} onChange={e => setChannel(e.target.value)}>
                     <option value="client">{eventClient?.name || 'Client'}</option>
                     {vendors.map(v => <option key={v.id || v.name} value={v.name}>{v.category ? `${v.name} · ${v.category}` : v.name}</option>)}
@@ -18308,9 +18308,9 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                       Name · Role · Company (if any) · Email / Phone. */}
                   <div style={{ marginBottom: recipient.isInternal ? 0 : 8 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 700, color: C.text, fontSize: 13 }}>{recipient.name}</span>
+                      <span style={{ fontWeight: FW.bold, color: C.text, fontSize: 13 }}>{recipient.name}</span>
                       {recipient.role && (
-                        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 10, padding: '1px 7px' }}>{recipient.role}</span>
+                        <span style={{ fontSize: 10, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 10, padding: '1px 7px' }}>{recipient.role}</span>
                       )}
                     </div>
                     {recipient.company && (
@@ -18355,7 +18355,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
               <div style={{ padding: '10px 16px', display: 'flex', gap: 5, flexWrap: 'wrap', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
                 {TYPES.map(t => (
                   <button key={t.id} onClick={() => pickType(t.id)} style={{
-                    padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                    padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: FW.semibold,
                     border: `1px solid ${msgType === t.id ? C.accent : C.border}`,
                     background: msgType === t.id ? C.accent + '20' : 'transparent',
                     color: msgType === t.id ? C.accent : C.muted,
@@ -18418,7 +18418,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                     <button
                       type="button"
                       onClick={onOpenConnections}
-                      style={{ background: 'none', border: 'none', color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', padding: 0, marginLeft: 4 }}
+                      style={{ background: 'none', border: 'none', color: C.accent, fontSize: 10, fontWeight: FW.semibold, cursor: 'pointer', padding: 0, marginLeft: 4 }}
                     >
                       Open Connections →
                     </button>
@@ -18431,7 +18431,7 @@ function GlobalCompose({ events, profile, clients, onMessageSent, onOpenConnecti
                     disabled={!body.trim() || busy || !selectedEvent || sent}
                     style={{
                       ...s.btn(body.trim() && !busy && !sent ? 'primary' : 'secondary'),
-                      fontSize: 12, padding: '8px 20px', fontWeight: 700,
+                      fontSize: 12, padding: '8px 20px', fontWeight: FW.bold,
                       opacity: !body.trim() || busy ? 0.5 : 1,
                     }}
                   >
@@ -18622,7 +18622,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
   // ── Inquiry card (intake submission) ─────────────────────────────────
   const renderInquiryCard = (sub) => (
     <div key={sub.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{sub.name}</div>
+      <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{sub.name}</div>
       <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
         {sub.eventType || 'Event'}{sub.eventDate ? ` · ${fmtDate(sub.eventDate)}` : ''}{sub.guestCount ? ` · ${sub.guestCount} guests` : ''}
       </div>
@@ -18660,7 +18660,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
     };
     return (
       <div key={card.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{card.client.name}</div>
+        <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{card.client.name}</div>
         {ev && (
           <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
             {ev.name}{ev.date ? ` · ${fmtDate(ev.date)}` : ''}
@@ -18671,15 +18671,15 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
             folded into Booked), so the money signal survives even when the engine
             binding replaces the reason line below. */}
         {card.hasUnpaidMilestone && card.outstanding > 0 && (
-          <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.accent, background: C.accent + '14', border: `1px solid ${C.accent}44`, borderRadius: 5, padding: '2px 7px' }}>
+          <span style={{ alignSelf: 'flex-start', fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.04em', textTransform: 'uppercase', color: C.accent, background: C.accent + '14', border: `1px solid ${C.accent}44`, borderRadius: 5, padding: '2px 7px' }}>
             Deposit due · {fmtD(card.outstanding)}
           </span>
         )}
         {eng && eng.binding ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, minWidth: 0 }}>
             <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: ENGINE_FLAG_COLOR(C, eng.flag), flexShrink: 0 }} />
-            <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{eng.binding.name}</span>
-            <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
+            <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: FW.semibold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{eng.binding.name}</span>
+            <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
           </div>
         ) : (
           <div style={{ fontSize: 10.5, color: C.muted, lineHeight: 1.4 }}>{card.reason}</div>
@@ -18707,7 +18707,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
     return (
       <div style={{ padding: '32px 0' }}>
         <div style={{ maxWidth: 560 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 8 }}>No active pipeline items yet</div>
+          <div style={{ fontSize: 18, fontWeight: FW.bold, color: C.text, marginBottom: 8 }}>No active pipeline items yet</div>
           <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.55, marginBottom: 18 }}>
             Pipeline shows leads, contracted events, deposits pending, and bookings —
             grouped by stage. Start with an event or copy your intake-form link to
@@ -18782,7 +18782,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>
+        <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>
           Setup progress
         </div>
         <div style={{ fontSize: 11, color: C.muted }}>
@@ -18792,7 +18792,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {steps.map(s => (
           <span key={s.key} style={{
-            fontSize: 12, fontWeight: 600,
+            fontSize: 12, fontWeight: FW.semibold,
             padding: '6px 11px', borderRadius: 99,
             color: s.done ? C.success : C.muted,
             background: s.done ? C.success + '14' : 'transparent',
@@ -18810,7 +18810,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
               {nextStep.label} →
             </button>
           ) : (
-            <span style={{ color: C.text, fontWeight: 600 }}>{nextStep.label}</span>
+            <span style={{ color: C.text, fontWeight: FW.semibold }}>{nextStep.label}</span>
           )}
         </div>
       )}
@@ -18841,11 +18841,11 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
                   cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
                   gap: 6,
                 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: isActive ? C.accent : C.text }}>
+                <span style={{ fontSize: 13, fontWeight: FW.bold, color: isActive ? C.accent : C.text }}>
                   {ln.label}
                 </span>
                 {ln.count > 0 && (
-                  <span style={{ fontWeight: 700, color: isActive ? C.accent : C.muted }}>{ln.count}</span>
+                  <span style={{ fontWeight: FW.bold, color: isActive ? C.accent : C.muted }}>{ln.count}</span>
                 )}
               </button>
             );
@@ -18875,9 +18875,9 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 }}>
         <div style={{ padding: '0 4px 8px', borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{lane.label}</span>
+            <span style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{lane.label}</span>
             {lane.count > 0 && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 8px' }}>{lane.count}</span>
+              <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 8px' }}>{lane.count}</span>
             )}
           </div>
           {lane.hint && (
@@ -18921,8 +18921,8 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
             borderLeft: `3px solid ${ln.count > 0 ? C.accent2 : C.border}`,
             opacity: ln.count > 0 ? 1 : 0.62,
           }}>
-            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{ln.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: ln.count > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 2, fontFeatureSettings: '"tnum" 1' }}>{ln.count}</div>
+            <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{ln.label}</div>
+            <div style={{ fontSize: 22, fontWeight: FW.heavy, color: ln.count > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 2, fontFeatureSettings: '"tnum" 1' }}>{ln.count}</div>
           </div>
         ))}
       </div>
@@ -18936,7 +18936,7 @@ function PipelineView({ events, clients, profile, onSelectEvent, onSelectClient,
         return (
           <div key={ln.id} style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.text }}>{ln.label}</span>
+              <span style={{ fontSize: 12, fontWeight: FW.heavy, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.text }}>{ln.label}</span>
               <span style={{ fontSize: 11, color: C.muted }}>{ln.count}</span>
               {ln.hint && <span style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>· {ln.hint}</span>}
             </div>
@@ -19013,9 +19013,9 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
               <span style={{ width: 18, height: 2, background: C.accent, borderRadius: 1 }} />
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: C.accent, textTransform: 'uppercase' }}>Getting started</span>
+              <span style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.16em', color: C.accent, textTransform: 'uppercase' }}>Getting started</span>
             </div>
-            <div style={{ fontSize: 19, fontWeight: 700, color: C.text, letterSpacing: '-0.01em' }}>How to run an event, start to finish</div>
+            <div style={{ fontSize: 19, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.01em' }}>How to run an event, start to finish</div>
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 5, lineHeight: 1.55 }}>Ten steps from a blank workspace to event day. Do them in order or jump around — nothing locks.</div>
           </div>
           <button onClick={requestClose} aria-label="Close" style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.muted, width: 30, height: 30, borderRadius: 8, fontSize: 15, cursor: 'pointer', lineHeight: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
@@ -19036,12 +19036,12 @@ function GettingStartedGuide({ onClose, progress = {}, onStep }) {
                 <div style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 9,
                   background: done ? C.accent2 : C.surface,
                   border: `1px solid ${done ? C.accent2 : C.border}`,
-                  color: done ? '#fff' : C.accent, fontSize: done ? 14 : 13, fontWeight: 800,
+                  color: done ? '#fff' : C.accent, fontSize: done ? 14 : 13, fontWeight: FW.heavy,
                   display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{done ? '✓' : i + 1}</div>
                 <div style={{ minWidth: 0, paddingTop: 1, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text }}>{title}</div>
-                    {done && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent2 }}>Done</span>}
+                    <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text }}>{title}</div>
+                    {done && <span style={{ fontSize: 9, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent2 }}>Done</span>}
                   </div>
                   <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 3 }}>{desc}</div>
                 </div>
@@ -19072,14 +19072,14 @@ function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
   const [mh, setMh] = useState(ev.must_have_moment || '');
   const [why, setWhy] = useState(ev.meaning_why || '');
   const field = { width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', marginTop: 6 };
-  const label = { fontSize: 11, fontWeight: 600, color: C.muted, marginTop: 12 };
+  const label = { fontSize: 11, fontWeight: FW.semibold, color: C.muted, marginTop: 12 };
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px dashed ${C.border}`, background: 'transparent' }}>
         <div style={eyebrowStyle}>What matters most</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>Every event has one moment it’s really for.</div>
+        <div style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, lineHeight: 1.4 }}>Every event has one moment it’s really for.</div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>Name yours and we’ll keep the whole plan pointed at it.</div>
-        <span style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: 700, color: C.accent }}>Name the moment →</span>
+        <span style={{ display: 'inline-block', marginTop: 10, fontSize: 12.5, fontWeight: FW.bold, color: C.accent }}>Name the moment →</span>
       </button>
     );
   }
@@ -19088,12 +19088,12 @@ function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
       <div style={eyebrowStyle}>What matters most</div>
       <div style={label}>The one moment that has to go right</div>
       <textarea value={mh} onChange={e => setMh(e.target.value)} rows={2} placeholder="e.g. her whole family there for the diploma walk" style={{ ...field, resize: 'vertical', lineHeight: 1.4 }} />
-      <div style={label}>Why this matters <span style={{ fontWeight: 400 }}>· optional</span></div>
+      <div style={label}>Why this matters <span style={{ fontWeight: FW.regular }}>· optional</span></div>
       <input value={why} onChange={e => setWhy(e.target.value)} placeholder="the heart of the day" style={field} />
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <button onClick={() => { onPatchEvent(ev.id, { must_have_moment: mh.trim(), meaning_why: why.trim() }); setOpen(false); }}
-          style={{ fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Save</button>
-        <button onClick={() => setOpen(false)} style={{ fontSize: 13, fontWeight: 600, padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
+          style={{ fontSize: 13, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Save</button>
+        <button onClick={() => setOpen(false)} style={{ fontSize: 13, fontWeight: FW.semibold, padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
       </div>
     </div>
   );
@@ -19118,14 +19118,14 @@ function HostWelcomeCard({ ev, C, cardStyle, eyebrowStyle }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <div style={eyebrowStyle}>Done for you</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>We’ve already started planning for you.</div>
+          <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, lineHeight: 1.35 }}>We’ve already started planning for you.</div>
         </div>
         <button onClick={dismiss} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: C.muted, fontSize: 16, cursor: 'pointer', flexShrink: 0, lineHeight: 1, padding: 2 }}>✕</button>
       </div>
       <div style={{ marginTop: 11, display: 'flex', flexDirection: 'column', gap: 7 }}>
         {items.map(i => (
           <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'center', fontSize: 12.5, color: C.text }}>
-            <span style={{ color: C.success, fontWeight: 800, flexShrink: 0 }}>✓</span> {i}
+            <span style={{ color: C.success, fontWeight: FW.heavy, flexShrink: 0 }}>✓</span> {i}
           </div>
         ))}
       </div>
@@ -19204,7 +19204,7 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
             <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
               <span aria-hidden style={{ flexShrink: 0, fontSize: 15, marginTop: 1 }}>{p.icon}</span>
               <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: FW.heavy, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
                 <span style={{ display: 'block', fontSize: 13, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
               </span>
             </div>
@@ -19261,7 +19261,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
       {/* Recap hero — the one bright thing now is closing the loop, not planning. */}
       <div style={{ ...cardStyle, borderLeft: `3px solid ${C.accent}` }}>
         <div style={{ ...eyebrowStyle, color: C.accent }}>The event has passed</div>
-        <div style={{ fontSize: 19, fontWeight: 800, color: C.text, lineHeight: 1.25 }}>How did {ev.name || 'it'} go?</div>
+        <div style={{ fontSize: 19, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>How did {ev.name || 'it'} go?</div>
         <div style={{ fontSize: 13.5, color: C.muted, marginTop: 5 }}>{daysAgoLabel} — take a minute to close it out while it's fresh.</div>
       </div>
 
@@ -19269,7 +19269,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
       {isMeaningfulMustHave(mh) && (
         <div style={cardStyle}>
           <div style={eyebrowStyle}>The one thing that had to happen</div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>{mh}</div>
+          <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, lineHeight: 1.4 }}>{mh}</div>
           <Seg value={mhPick} signals={MUST_HAVE_SIGNALS} labels={MUST_HAVE_LABEL} onPick={(s) => setOutcome('mustHave', s)} />
         </div>
       )}
@@ -19277,7 +19277,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
       {/* How did it feel? */}
       <div style={cardStyle}>
         <div style={eyebrowStyle}>How it felt</div>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, lineHeight: 1.4 }}>Did it feel the way you hoped?</div>
+        <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, lineHeight: 1.4 }}>Did it feel the way you hoped?</div>
         <Seg value={feelPick} signals={FEELING_SIGNALS} labels={FEELING_LABEL} onPick={(s) => setOutcome('feeling', s)} />
       </div>
 
@@ -19285,7 +19285,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <div style={eyebrowStyle}>Wrap up</div>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: wrapDone === WRAP.length ? C.success : C.muted }}>{wrapDone} of {WRAP.length}</span>
+          <span style={{ fontSize: 11.5, fontWeight: FW.semibold, color: wrapDone === WRAP.length ? C.success : C.muted }}>{wrapDone} of {WRAP.length}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
           {WRAP.map(w => {
@@ -19297,12 +19297,12 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
               <div key={w.id}>
                 <button type="button" onClick={() => toggleWrap(w.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', background: 'none', border: 'none', padding: '9px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                  <span style={{ width: 18, height: 18, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
+                  <span style={{ width: 18, height: 18, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: 12, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
                   <span style={{ fontSize: 13.5, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{w.text}</span>
                 </button>
                 {canDraft && (
                   <button type="button" onClick={() => onDraft({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(ev, profile), shareTitle: `Thank you — ${ev.name || 'our celebration'}`, kind: 'thankyou' })}
-                    style={{ marginLeft: 29, marginTop: 2, marginBottom: 4, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: C.accent }}>
+                    style={{ marginLeft: 29, marginTop: 2, marginBottom: 4, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: FW.bold, color: C.accent }}>
                     Write them for me →
                   </button>
                 )}
@@ -19320,9 +19320,9 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
           style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e` }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
             <span style={{ ...eyebrowStyle, color: C.accent }}>Share the moment</span>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent }}>Open &amp; share →</span>
+            <span style={{ fontSize: 11.5, fontWeight: FW.bold, color: C.accent }}>Open &amp; share →</span>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone the recap</div>
+          <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>Send everyone the recap</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A keepsake note for the people who were there — already written.</div>
         </button>
       )}
@@ -19331,7 +19331,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
       <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
         style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span>
-          <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>See how the day went</span>
+          <span style={{ display: 'block', fontSize: 14, fontWeight: FW.bold, color: C.text }}>See how the day went</span>
           <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>The run of the day, kept for your records.</span>
         </span>
         <span style={{ fontSize: 18, color: C.muted }}>→</span>
@@ -19426,10 +19426,10 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
       const heartSuggestions = (() => { try { return playbookHeartMoments(ev) || []; } catch { return []; } })();
       return (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
             The heart of it
           </div>
-          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
+          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
             What has to go right?
           </div>
           <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
@@ -19438,7 +19438,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
           {/* Playbook-sourced suggestions — tapping one pre-fills the textarea */}
           {heartSuggestions.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 2 }}>
+              <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 2 }}>
                 Common for {ev.type || 'this event'}
               </div>
               {heartSuggestions.map((s, i) => {
@@ -19458,7 +19458,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
             </div>
           )}
           {/* Free-form override — always available; tapping a suggestion pre-fills this */}
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
             Or write your own
           </div>
           <textarea rows={3} value={momentDraft} onChange={e => setMomentDraft(e.target.value)}
@@ -19471,11 +19471,11 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
       <div>
         {creationCount > 0 && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 14px', marginBottom: 18 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: C.text }}>{creationCount}</span>
+            <span style={{ fontSize: 22, fontWeight: FW.heavy, color: C.text }}>{creationCount}</span>
             <span style={{ fontSize: 13, color: C.muted }}>guests from your setup</span>
           </div>
         )}
-        <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
+        <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
           How do you want to track who's coming?
         </div>
         <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
@@ -19483,7 +19483,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
         </div>
         {optionRow(guestMode === 'count', () => setGuestMode('count'),
           <>
-            <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 3 }}>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 3 }}>
               Lock at {creationCount > 0 ? creationCount : '—'} guests
             </span>
             <span style={{ display: 'block', fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
@@ -19493,7 +19493,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
         )}
         {optionRow(guestMode === 'list', () => setGuestMode('list'),
           <>
-            <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 3 }}>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 3 }}>
               Send invites and track RSVPs
             </span>
             <span style={{ display: 'block', fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
@@ -19528,34 +19528,34 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
         : `${estRange} estimated — tight but reachable at the value end`;
       return (
         <div>
-          <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
+          <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
             What's your budget?
           </div>
           {estRange && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 14px', marginBottom: 18, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Est. total</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{estRange}</span>
+              <span style={{ fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted }}>Est. total</span>
+              <span style={{ fontSize: 16, fontWeight: FW.heavy, color: C.text }}>{estRange}</span>
               <span style={{ fontSize: 11, color: C.muted }}>
                 {foodRange && otherBudgeted > 0 ? `food ${foodRange} + $${otherBudgeted.toLocaleString()} other` : `food & drink for ${fp ? fp.guests : ''} guests`}
               </span>
             </div>
           )}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.bg, borderRadius: 12, border: `1.5px solid ${C.accentTopGrad || C.accent}`, animation: 'ceBreathe 3.8s ease-in-out infinite', padding: '6px 14px' }}>
-            <span style={{ color: C.muted, fontSize: 20, fontWeight: 700 }}>$</span>
+            <span style={{ color: C.muted, fontSize: 20, fontWeight: FW.bold }}>$</span>
             <input type="number" inputMode="numeric" min="0" autoFocus value={budgetDraft}
               onChange={e => setBudgetDraft(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') commit(); }}
-              style={{ width: 120, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 28, fontWeight: 800, fontFamily: 'inherit' }} />
+              style={{ width: 120, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 28, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
           </div>
           {state && (
-            <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: stateColor }}>{stateMsg}</div>
+            <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: FW.semibold, color: stateColor }}>{stateMsg}</div>
           )}
         </div>
       );
     }
     if (step.label === 'Venue') return (
       <div>
-        <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
+        <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
           Where is it happening?
         </div>
         <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.5 }}>
@@ -19587,14 +19587,14 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 
       return (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
             Shape the plan
           </div>
-          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
             A few decisions first.
           </div>
           {choices.length > 0 && (
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: confirmedCount === choices.length ? C.success : C.muted, marginBottom: 16 }}>
+            <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: confirmedCount === choices.length ? C.success : C.muted, marginBottom: 16 }}>
               {confirmedCount} of {choices.length} confirmed
             </div>
           )}
@@ -19623,7 +19623,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
                       <span style={{ flex: 1, minWidth: 0 }}>
                         {/* Section label — larger + bolder when open, muted+compact when confirmed */}
                         <span style={{ display: 'block',
-                          fontSize: isOpen ? 12 : 10.5, fontWeight: 900,
+                          fontSize: isOpen ? 12 : 10.5, fontWeight: FW.black,
                           letterSpacing: isOpen ? '0.06em' : '0.12em',
                           textTransform: 'uppercase',
                           color: isOpen ? accentCol : (confirmed ? C.success : C.muted),
@@ -19632,18 +19632,18 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
                           {c.label}
                         </span>
                         {confirmed && !isOpen && (
-                          <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{picks[c.id]}</span>
+                          <span style={{ display: 'block', fontSize: 15, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{picks[c.id]}</span>
                         )}
                         {!confirmed && !isOpen && (
-                          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.muted }}>Choose one →</span>
+                          <span style={{ display: 'block', fontSize: 13, fontWeight: FW.semibold, color: C.muted }}>Choose one →</span>
                         )}
                         {isOpen && !confirmed && (
-                          <span style={{ display: 'block', fontSize: 12.5, color: C.muted, fontWeight: 500 }}>This shapes your spread and budget</span>
+                          <span style={{ display: 'block', fontSize: 12.5, color: C.muted, fontWeight: FW.medium }}>This shapes your spread and budget</span>
                         )}
                       </span>
                       <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7 }}>
                         {confirmed && !isOpen && (
-                          <span style={{ width: 20, height: 20, borderRadius: '50%', background: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>✓</span>
+                          <span style={{ width: 20, height: 20, borderRadius: '50%', background: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.heavy, color: '#fff' }}>✓</span>
                         )}
                         <span style={{ fontSize: isOpen ? 15 : 12, color: isOpen ? accentCol : C.muted, transition: 'transform 200ms ease, font-size 160ms ease', display: 'inline-block', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
                       </span>
@@ -19698,10 +19698,10 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
       const totalRange = fpProg ? fmtRange(fpProg.foodLow, fpProg.foodHigh) : null;
       return (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>
             Your shopping list
           </div>
-          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
+          <div style={{ fontSize: isMobile ? 21 : 25, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 8 }}>
             {totalRange ? `${totalRange} to feed ${fpProg.guests} guests.` : "Let's plan the food."}
           </div>
           <div style={{ fontSize: 13.5, color: C.muted, marginBottom: 18, lineHeight: 1.6 }}>
@@ -19714,7 +19714,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
                   padding: '10px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
                   <span style={{ fontSize: 14, color: C.text, flex: 1, minWidth: 0 }}>{i.short || i.item}</span>
                   {i.unitCostRange && (
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.muted, flexShrink: 0 }}>
                       {fmtRange(
                         Math.round((i.unitCostRange[0] || 0) * (i.qty || (i.qtyPerGuest ? i.qtyPerGuest * (fpProg.guests || 0) : (i.qtyFlat || 0)))),
                         Math.round((i.unitCostRange[1] || 0) * (i.qty || (i.qtyPerGuest ? i.qtyPerGuest * (fpProg.guests || 0) : (i.qtyFlat || 0))))
@@ -19733,14 +19733,14 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
           {/* Info CTA — make it obvious these aren't fixed: the list is built from the
               host's own menu choices and re-sizes/re-prices when they change. */}
           <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginTop: 4, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-            Built from your <span style={{ color: C.text, fontWeight: 600 }}>menu choices</span> — swap any item, change a course, or adjust the count and it re-sizes and re-prices itself. You're never locked in.
+            Built from your <span style={{ color: C.text, fontWeight: FW.semibold }}>menu choices</span> — swap any item, change a course, or adjust the count and it re-sizes and re-prices itself. You're never locked in.
           </div>
         </div>
       );
     }
     if (step.label === 'The Day') return (
       <div>
-        <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
+        <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2, marginBottom: 10 }}>
           Your run of show.
         </div>
         <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.5 }}>
@@ -19780,7 +19780,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {steps.map((_, i) => <span key={i} style={dot(i)} />)}
-            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: C.muted, marginLeft: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.16em', color: C.muted, marginLeft: 6 }}>
               {idx + 1} OF {total}
             </span>
           </div>
@@ -19799,18 +19799,18 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
         <div style={{ display: 'flex', gap: 10, padding: '16px 24px 24px', borderTop: `1px solid ${C.border}`, marginTop: 8 }}>
           {idx > 0 && (
             <button type="button" onClick={() => setIdx(i => i - 1)}
-              style={{ padding: '12px 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '12px 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
               ← Back
             </button>
           )}
           {step.label !== 'Food' && step.label !== 'The Day' && step.label !== 'Your choices' && step.label !== 'Guests' && (
             <button type="button" onClick={skip}
-              style={{ padding: '12px 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '12px 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 14, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
               Skip
             </button>
           )}
           <button type="button" onClick={commit}
-            style={{ flex: 1, padding: '13px 18px', borderRadius: 10, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ flex: 1, padding: '13px 18px', borderRadius: 10, border: 'none', background: C.accent, color: '#fff', fontSize: 14, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>
             {ctaLabel}
           </button>
         </div>
@@ -19891,10 +19891,10 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
     <div role="dialog" aria-label={title} onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 24 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, background: C.surface, border: `1px solid ${C.border}`, borderRadius: isMobile ? '18px 18px 0 0' : 16, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: isMobile ? '88vh' : '86vh', overflowY: 'auto', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
-          <div style={{ fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>{title}</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>{title}</div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: 20, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
         </div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.text, lineHeight: 1.25, marginBottom: intro ? 6 : 12 }}>We wrote it for you.</div>
+        <div style={{ fontSize: 18, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25, marginBottom: intro ? 6 : 12 }}>We wrote it for you.</div>
         {intro && <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{intro}</div>}
         <textarea value={text} onChange={e => setText(e.target.value)} rows={isMobile ? 9 : 8}
           style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 14, lineHeight: 1.55, padding: '13px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
@@ -19902,18 +19902,18 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
           <div style={{ fontSize: T.secondary, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
           {aiInputOn(aiKey) && (
             prePolish != null
-              ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 700, color: C.muted }}>↺ Undo polish</button>
-              : <button type="button" onClick={polish} disabled={polishing} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: `${C.accent}14`, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 11px', cursor: polishing ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: 700, color: C.accent, opacity: polishing ? 0.7 : 1 }}>
+              ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.muted }}>↺ Undo polish</button>
+              : <button type="button" onClick={polish} disabled={polishing} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: `${C.accent}14`, border: `1px solid ${C.accent}44`, borderRadius: 8, padding: '5px 11px', cursor: polishing ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.accent, opacity: polishing ? 0.7 : 1 }}>
                   {polishing ? <span style={{ display: 'inline-block', width: 10, height: 10, border: `2px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /> : '✨'} {polishing ? 'Polishing…' : 'Polish'}
                 </button>
           )}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={send} style={{ flex: 1, fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
-          <button onClick={copy} style={{ fontSize: 13, fontWeight: 700, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
+          <button onClick={send} style={{ flex: 1, fontSize: 14, fontWeight: FW.heavy, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
+          <button onClick={copy} style={{ fontSize: 13, fontWeight: FW.bold, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
         </div>
         {Array.isArray(orderItems) && orderItems.length > 0 && (
-          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: T.body, fontWeight: 800, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
+          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: T.body, fontWeight: FW.heavy, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
             🛒 {ordering ? 'One sec…' : 'Order on Instacart →'}
           </button>
         )}
@@ -19925,7 +19925,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
           const names = orderItems.map((i) => (i && i.name ? String(i.name).trim() : '')).filter(Boolean);
           const thingsHref = `things:///add?title=${encodeURIComponent('Shopping — ' + (shareTitle || 'list'))}&checklist-items=${encodeURIComponent(names.join('\n'))}`;
           const mailHref = `mailto:?subject=${encodeURIComponent(shareTitle || 'Shopping list')}&body=${encodeURIComponent(text)}`;
-          const chip = { flex: 1, textAlign: 'center', fontSize: T.secondary, fontWeight: 700, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', fontFamily: 'inherit' };
+          const chip = { flex: 1, textAlign: 'center', fontSize: T.secondary, fontWeight: FW.bold, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', fontFamily: 'inherit' };
           return (
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <a href={thingsHref} style={chip}>✓ Add to Things</a>
@@ -19933,7 +19933,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
             </div>
           );
         })()}
-        {statusLine && <div style={{ fontSize: T.caption, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: 600, lineHeight: 1.5 }}>{statusLine}</div>}
+        {statusLine && <div style={{ fontSize: T.caption, color: status === 'failed' ? C.muted : (C.success || C.accent), marginTop: 12, fontWeight: FW.semibold, lineHeight: 1.5 }}>{statusLine}</div>}
       </div>
     </div>
   );
@@ -19972,8 +19972,8 @@ function AssembleReveal({ ev, profile, onDone }) {
         {/* a calm breathing aura behind the headline — draws the eye in, never flashes */}
         <div aria-hidden style={{ position: 'absolute', top: -96, left: '50%', width: 300, height: 300, transform: 'translateX(-50%)', borderRadius: '50%', background: `radial-gradient(circle, ${(C.accent2 || C.accent)}24, transparent 66%)`, filter: 'blur(10px)', animation: 'ceAura 5.4s ease-in-out infinite', pointerEvents: 'none' }} />
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
-          <div key={done ? 'done' : 'building'} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22, animation: done ? 'ceSettle 640ms cubic-bezier(.2,.7,.2,1) both' : 'none', textShadow: done ? `0 0 26px ${(C.accent2 || C.accent)}55` : 'none' }}>
+          <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
+          <div key={done ? 'done' : 'building'} style={{ fontSize: 24, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22, animation: done ? 'ceSettle 640ms cubic-bezier(.2,.7,.2,1) both' : 'none', textShadow: done ? `0 0 26px ${(C.accent2 || C.accent)}55` : 'none' }}>
             {done ? 'Your plan is ready.' : 'Putting it together…'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -19982,9 +19982,9 @@ function AssembleReveal({ ev, profile, onDone }) {
               const justShown = i === revealed - 1;
               return (
                 <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, background: C.surface, border: `1px solid ${shown ? (C.success || C.accent) + '55' : C.border}`, opacity: shown ? 1 : 0.32, transform: shown ? 'none' : 'translateY(6px)', transition: 'opacity 460ms ease, transform 460ms ease, border-color 460ms ease', animation: justShown ? 'ceBreathe 2.4s ease-in-out 2' : 'none' }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: 800, animation: justShown ? 'cePop 460ms ease both' : 'none' }}>{shown ? '✓' : st.icon}</span>
+                  <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: FW.heavy, animation: justShown ? 'cePop 460ms ease both' : 'none' }}>{shown ? '✓' : st.icon}</span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{st.label}</span>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: FW.bold, color: C.text }}>{st.label}</span>
                     <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1 }}>{st.value}</span>
                   </span>
                 </div>
@@ -19995,7 +19995,7 @@ function AssembleReveal({ ev, profile, onDone }) {
               reveal can never read as a fake loader. It just relabels once everything
               has landed. An impatient host opens instantly; the rest watch it build. */}
           <button type="button" onClick={onDone}
-            style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', transition: 'box-shadow 360ms ease', boxShadow: done ? `0 8px 28px ${C.accent}44` : 'none' }}>
+            style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: FW.heavy, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', transition: 'box-shadow 360ms ease', boxShadow: done ? `0 8px 28px ${C.accent}44` : 'none' }}>
             {done ? 'Open my event →' : 'Take me in →'}
           </button>
         </div>
@@ -20042,9 +20042,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
 
   const Header = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
-      <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: C.text }}>Event Boss</div>
+      <div style={{ fontSize: 15, fontWeight: FW.heavy, letterSpacing: '-0.01em', color: C.text }}>Event Boss</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button onClick={onNew} style={{ fontSize: 12.5, fontWeight: 700, padding: '7px 13px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ New event</button>
+        <button onClick={onNew} style={{ fontSize: 12.5, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ New event</button>
         <button onClick={onProfile} title="Settings" style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>⚙</button>
       </div>
     </div>
@@ -20056,9 +20056,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {Header}
         {/* Host width parity (board ruling 760) — same column as every host surface. */}
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
+          <div style={{ fontSize: 22, fontWeight: FW.heavy, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
           <div style={{ fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 1.5 }}>Tell us what you’re hosting and when — Event Boss builds the plan, the schedule, and what to do next.</div>
-          <button onClick={onNew} style={{ fontSize: 14, fontWeight: 700, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
+          <button onClick={onNew} style={{ fontSize: 14, fontWeight: FW.bold, padding: '12px 22px', borderRadius: 11, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Start your event →</button>
         </div>
       </div>
     );
@@ -20144,7 +20144,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   // Voice pass (mobile-innovation audit move #1): the uppercase tracked-out "kicker"
   // eyebrow is the loudest SaaS tell. De-shout it — sentence case, light tracking, a
   // quiet section label instead of a B2B analytics-panel header.
-  const eyebrow = { fontSize: T.caption, fontWeight: 600, letterSpacing: '0.01em', color: C.muted, marginBottom: 8 };
+  const eyebrow = { fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.01em', color: C.muted, marginBottom: 8 };
 
   return (
     <>
@@ -20153,12 +20153,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '20px 16px 60px' }}>
         {/* 1 · Event Summary */}
         <div style={{ ...card, background: 'transparent', border: 'none', padding: '8px 4px 16px' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15 }}>{ev.name || 'Your event'}</div>
+          <div style={{ fontSize: 26, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15 }}>{ev.name || 'Your event'}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 8, fontSize: T.body, color: C.muted }}>
             <span>{fmtDate}</span>
             {guestCount > 0 && <span>· {guestCount} guests</span>}
-            {daysLeft !== null && daysLeft >= 0 && <span style={{ color: C.text, fontWeight: 600 }}>· {daysLeft === 0 ? 'Today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} to go`}</span>}
-            {isPost && <span style={{ color: C.muted, fontWeight: 600 }}>· {daysAgoLabel}</span>}
+            {daysLeft !== null && daysLeft >= 0 && <span style={{ color: C.text, fontWeight: FW.semibold }}>· {daysLeft === 0 ? 'Today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} to go`}</span>}
+            {isPost && <span style={{ color: C.muted, fontWeight: FW.semibold }}>· {daysAgoLabel}</span>}
           </div>
         </div>
 
@@ -20173,14 +20173,14 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             <div style={{ ...eyebrow, color: C.accent, marginBottom: 8 }}>Today · it's the big day</div>
             {nextCue ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>
+                <div style={{ fontSize: 20, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2 }}>
                   {nextCue.time ? `${fmtTime12(nextCue.time)} — ` : ''}{nextCue.segment || 'Next up'}
                 </div>
                 <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>Your run of show is ready. Tap in and work it top to bottom →</div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1.2 }}>It's the big day.</div>
+                <div style={{ fontSize: 20, fontWeight: FW.heavy, color: C.text, lineHeight: 1.2 }}>It's the big day.</div>
                 <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>Open the day to work your run of show →</div>
               </>
             )}
@@ -20195,9 +20195,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ ...eyebrow, color: C.accent }}>Ready to send</span>
-              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Open &amp; send →</span>
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send everyone their part</div>
+            <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>Send everyone their part</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>Today’s plan, by person — already written for the group chat.</div>
           </button>
         )}
@@ -20216,7 +20216,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           // recedes (.hp-recede) until you act, then the next thing lights up.
           <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
             <div style={eyebrow}>Your next step</div>
-            <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
+            <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
             {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
             {na.primaryCta && (
               <button onClick={() => {
@@ -20244,7 +20244,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                     onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' });
                   }
                 }}
-                style={{ marginTop: 12, fontSize: 13, fontWeight: 700, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
+                style={{ marginTop: 12, fontSize: 13, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
             )}
           </div>
         )}
@@ -20255,7 +20255,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {!isPost && !isDayOf && allProgDone && (
           <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: 'ceRise 480ms cubic-bezier(.2,.7,.2,1) both' }}>
             <div aria-hidden style={{ fontSize: 30, lineHeight: 1, marginBottom: 8 }}>🎉</div>
-            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
+            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
             <div style={{ fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
               Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
             </div>
@@ -20353,30 +20353,30 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               {/* The magic: it already did the hard parts. ONE hero to act on now; the rest
                   it's prepared sit quietly under "Also ready" — no competing heroes, the
                   stack collapsed (Attention System / mobile). */}
-              <div style={{ fontSize: T.body, fontWeight: 700, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
+              <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>✨ I’ve made a head start</div>
               <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 12, lineHeight: 1.5 }}>{prepLine.charAt(0).toUpperCase() + prepLine.slice(1)} — all set up and waiting for you.</div>
               <button type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: hero.id }); } catch { /* never block the send */ } setDraftSheet(hero.sheet); }}
                 style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, background: C.surface, display: 'block' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                   <span style={eyebrow}>{hero.eyebrow}</span>
-                  <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>{hero.cta}</span>
+                  <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>{hero.cta}</span>
                 </div>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>{hero.title}</div>
+                <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>{hero.title}</div>
                 {hero.preview && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>“{hero.preview}…”</div>}
                 <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{hero.sub}</div>
               </button>
               {rest.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: T.caption, fontWeight: 600, letterSpacing: '0.01em', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
+                  <div style={{ fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.01em', color: C.muted, margin: '0 2px 8px' }}>Also ready for you</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {rest.map((it) => (
                       <button key={it.id} type="button" onClick={() => { try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: it.id }); } catch { /* never block the send */ } setDraftSheet(it.sheet); }}
                         style={{ width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderRadius: 10, background: C.surface, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                         <span style={{ minWidth: 0 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{it.row}</span>
+                          <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{it.row}</span>
                           <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 8 }}>{it.rowSub}</span>
                         </span>
-                        <span style={{ fontSize: T.caption, fontWeight: 700, color: C.accent, flexShrink: 0 }}>Open →</span>
+                        <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.accent, flexShrink: 0 }}>Open →</span>
                       </button>
                     ))}
                   </div>
@@ -20413,7 +20413,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             <div className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
                 <div style={eyebrow}>Still on you</div>
-                {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: 600, color: C.success }}>{doneCount} done</span>}
+                {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.success }}>{doneCount} done</span>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
                 {visible.map(({ p, i }) => {
@@ -20435,7 +20435,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: T.body, fontWeight: 600, color: C.text }}>{p.label}</span>
+                      <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{p.label}</span>
                       {step && step.action && (
                         <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {step.action}{step.owner && step.owner !== 'host' ? ` · ${step.owner}` : ''}
@@ -20443,7 +20443,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                       )}
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                      <span style={{ fontSize: T.secondary, fontWeight: 700, color: dueColor }}>{dueText}</span>
+                      <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: dueColor }}>{dueText}</span>
                       <span aria-hidden style={{ color: C.muted, fontSize: 14, opacity: 0.6 }}>›</span>
                     </span>
                   </button>
@@ -20471,11 +20471,11 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {id && (id.reallyIs || isMeaningfulMustHave(id.mustHaveMoment)) && (
           <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
             <div style={{ ...eyebrow, color: C.accent }}>The heart of {ev.name || 'your event'}</div>
-            {id.reallyIs && <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{id.reallyIs}</div>}
+            {id.reallyIs && <div style={{ fontSize: 15, fontWeight: FW.semibold, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{id.reallyIs}</div>}
             {isMeaningfulMustHave(id.mustHaveMoment) && (
               <div style={{ marginTop: 12, paddingTop: 11, borderTop: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: T.eyebrow, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
+                <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>The one thing that must happen</div>
+                <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
               </div>
             )}
           </div>
@@ -20499,9 +20499,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Food plan</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
+                <span style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
+              <div style={{ fontSize: 14.5, fontWeight: FW.semibold, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
               <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
                 {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
               </div>
@@ -20522,7 +20522,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
                   <button key={r.section} onClick={() => onSelectEvent(ev.id, { tab: r.route })}
                     style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '11px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{r.label}</span>
                       <span style={{ fontSize: T.secondary, color: C.muted }}>{r.hint}</span>
                     </span>
                     <span style={{ fontSize: 16, color: C.muted }}>›</span>
@@ -20539,7 +20539,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           <button className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
             style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: C.text }}>View Event Day</span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: FW.bold, color: C.text }}>View Event Day</span>
               <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>The full run of the day — who does what, when.</span>
             </span>
             <span style={{ fontSize: 18, color: C.muted }}>→</span>
@@ -20998,7 +20998,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {!collapsed && (profile?.businessName || profile?.name) && (
         <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
           {profile.businessName && (
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.businessName}</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.businessName}</div>
           )}
           {profile.name && (
             <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.name}{profile.role ? ` · ${profile.role}` : ''}</div>
@@ -21030,7 +21030,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
       {isWide && (
         <div style={{ width: sidebarCollapsed ? 66 : 218, flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.bg, padding: '18px 12px', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', transition: 'width 0.16s ease', overflowY: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'space-between', gap: 8, marginBottom: 18, minHeight: 30 }}>
-            {!sidebarCollapsed && <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em' }}>NGW Event Boss</div>}
+            {!sidebarCollapsed && <div style={{ fontWeight: FW.heavy, fontSize: 14.5, letterSpacing: '-0.02em' }}>NGW Event Boss</div>}
             <button onClick={() => setSidebarCollapsed(c => !c)} title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'} aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
               style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={sidebarCollapsed ? 'chevronRight' : 'chevronLeft'} size={15} /></button>
           </div>
@@ -21050,8 +21050,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <button onClick={() => setDrawerOpen(true)} title="Menu" aria-label="Menu"
             style={{ width: 38, height: 38, borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="menu" size={20} /></button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>{profile?.businessName || 'NGW Event Boss'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>{profile?.businessName || 'NGW Event Boss'}</div>
+            <div style={{ fontSize: 18, fontWeight: FW.heavy, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pageMeta.title}</div>
           </div>
           {onProfile && (
             <button onClick={onProfile} title="Studio Settings" aria-label="Studio Settings"
@@ -21135,7 +21135,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div style={{ margin: isMobile ? '12px 14px' : '14px 16px', padding: isMobile ? '14px 16px' : '16px 18px', borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${doneN > 0 ? C.success : C.accent2}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>Let's get you set up</div>
+                <div style={{ fontSize: 14, fontWeight: FW.heavy, color: C.text }}>Let's get you set up</div>
                 <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{doneN} of {steps.length} done · checks off as you go</div>
               </div>
               <button onClick={dismissGuideAttention} title="Hide" aria-label="Hide getting started" style={{ ...s.btn('ghost'), fontSize: 11, padding: '5px 10px', flexShrink: 0 }}>Hide</button>
@@ -21143,8 +21143,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {steps.map((st, i) => (
                 <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span aria-hidden style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, background: st.done ? C.success + '22' : C.bg, color: st.done ? C.success : C.muted, border: `1px solid ${st.done ? C.success + '66' : C.border}` }}>{st.done ? '✓' : i + 1}</span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: st.done ? C.muted : C.text, textDecoration: st.done ? 'line-through' : 'none' }}>{st.label}</span>
+                  <span aria-hidden style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.heavy, background: st.done ? C.success + '22' : C.bg, color: st.done ? C.success : C.muted, border: `1px solid ${st.done ? C.success + '66' : C.border}` }}>{st.done ? '✓' : i + 1}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: FW.semibold, color: st.done ? C.muted : C.text, textDecoration: st.done ? 'line-through' : 'none' }}>{st.label}</span>
                   {!st.done && (st.locked
                     ? <span style={{ fontSize: 11, color: C.muted, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, opacity: 0.85 }}><Icon name="lock" size={11} />Unlocks once your event’s created</span>
                     : <button onClick={st.onClick} style={{ ...s.btn(st.key === 'event' ? 'primary' : 'ghost'), fontSize: 12, padding: '6px 12px', flexShrink: 0 }}>{st.cta}</button>
@@ -21194,7 +21194,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px', marginTop: 4 }}>← Home</button>
                   )}
                   <div>
-                    <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{pageMeta.title}</h1>
+                    <h1 style={{ fontSize: 28, fontWeight: FW.heavy, margin: 0, letterSpacing: '-0.03em' }}>{pageMeta.title}</h1>
                     <p style={{ color: C.muted, fontSize: 13, margin: '4px 0 0' }}>{pageMeta.sub}</p>
                   </div>
                 </div>
@@ -21283,7 +21283,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 >
                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.muted, borderRadius: 2 }} />
                   <span style={{
-                    fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+                    fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.14em',
                     textTransform: 'uppercase', color: C.muted,
                     padding: '2px 7px', borderRadius: 4,
                     border: `1px solid ${C.muted}55`, flexShrink: 0,
@@ -21310,7 +21310,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 ].join(', '),
               }}>
                 <div style={{ padding: '12px 18px 10px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>
+                  <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.muted }}>
                     ⏱ {unanswered.length} message{unanswered.length !== 1 ? 's' : ''} waiting for reply
                   </span>
                   <span style={{ fontSize: 11, color: C.muted, marginLeft: 4 }}>
@@ -21328,10 +21328,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     onMouseLeave={e => { e.currentTarget.style.background = ''; }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{u.eventName} · <span style={{ color: C.muted, fontWeight: 500 }}>{u.thread === 'client' ? 'Client thread' : u.thread}</span></div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{u.eventName} · <span style={{ color: C.muted, fontWeight: FW.medium }}>{u.thread === 'client' ? 'Client thread' : u.thread}</span></div>
                       <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{u.body}</div>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
+                    <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.muted, flexShrink: 0 }}>{u.hoursAgo}h ago</div>
                     <span style={{ color: C.muted, fontSize: 13 }}>›</span>
                   </div>
                 ))}
@@ -21410,8 +21410,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ marginBottom: 20, padding: '16px 18px', background: C.surface, border: `1px solid ${C.accent}44`, borderLeft: `3px solid ${C.accent}`, borderRadius: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: C.accent, letterSpacing: '0.14em', padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44` }}>NEW</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>New Inquiries</div>
+                    <div style={{ fontSize: 9, fontWeight: FW.heavy, color: C.accent, letterSpacing: '0.14em', padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}44` }}>NEW</div>
+                    <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>New Inquiries</div>
                   </div>
                   <div style={{ fontSize: 12, color: C.muted }}>{newSubs.length} pending</div>
                 </div>
@@ -21419,7 +21419,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   {newSubs.map(sub => (
                     <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.bg, borderRadius: 8, padding: '10px 14px', border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, minWidth: 160 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{sub.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{sub.name}</div>
                         <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                           {sub.eventType}{sub.eventDate ? ` · ${fmtDate(sub.eventDate)}` : ''}{sub.guestCount ? ` · ${sub.guestCount} guests` : ''}{sub.budget ? ` · ${sub.budget}` : ''}
                         </div>
@@ -21529,14 +21529,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     >
                       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.muted, borderRadius: 2 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 2 }}>
+                        <div style={{ fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 2 }}>
                           Attention
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
+                        <div style={{ fontSize: 15, fontWeight: FW.semibold, color: C.text }}>
                           {itemCount} attention item{itemCount !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <span style={{ fontSize: 14, color: C.muted, fontWeight: 600 }}>View all ›</span>
+                      <span style={{ fontSize: 14, color: C.muted, fontWeight: FW.semibold }}>View all ›</span>
                     </button>
                   );
                 })()
@@ -21605,10 +21605,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
              surface only when the seeds are then cleared. */
           <div style={{ maxWidth: 560, margin: '0 auto', padding: bp === 'mobile' ? '32px 0 24px' : '52px 0 36px' }}>
             <div style={{ marginBottom: 26 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
                 Welcome to NGW Event Boss
               </div>
-              <div style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: 800, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 12 }}>
+              <div style={{ fontSize: bp === 'mobile' ? 22 : 28, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 12 }}>
                 A calm place to plan your event
               </div>
               <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.65 }}>
@@ -21616,7 +21616,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               </div>
               {/* Sprint 52B — brand-new-user walkthrough */}
               <button onClick={() => setShowGuide(true)}
-                style={{ marginTop: 14, background: 'none', border: 'none', color: C.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                style={{ marginTop: 14, background: 'none', border: 'none', color: C.accent, fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
                 New here? See how to run an event, step by step →
               </button>
             </div>
@@ -21641,8 +21641,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 onMouseEnter={e => { e.currentTarget.style.background = C.accent + '12'; e.currentTarget.style.borderColor = C.accent; }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.accent + '88'; }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Welcome</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Plan your first event</div>
+                <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Welcome</div>
+                <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>Plan your first event</div>
                 <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
                   Wedding, birthday, baby shower, fundraiser, corporate event — pick a type, set a date, and start. You can link a client now or later.
                 </div>
@@ -21662,8 +21662,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   onMouseEnter={e => { e.currentTarget.style.background = C.accent2 + '0e'; e.currentTarget.style.borderColor = C.accent2 + '66'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Just exploring?</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Try a sample event</div>
+                  <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Just exploring?</div>
+                  <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>Try a sample event</div>
                   <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
                     Loads a populated workspace — a wedding, a corporate event, vendors, guests, decisions. Clear it any time.
                   </div>
@@ -21683,8 +21683,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 onMouseEnter={e => { e.currentTarget.style.background = C.accent + '0e'; e.currentTarget.style.borderColor = C.accent + '88'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Or</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Add your first client</div>
+                <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Or</div>
+                <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>Add your first client</div>
                 <div style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>
                   Connects the RSVP page, thank-you tracker, and fee collection to every event automatically.
                 </div>
@@ -21850,7 +21850,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
           <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
           <div style={{ flex: 1 }}>
-            {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{hostMode ? 'My Events' : 'Client Portfolio'}</h1>}
+            {!isMob && <h1 style={{ fontSize: 28, fontWeight: FW.heavy, margin: 0, letterSpacing: '-0.03em' }}>{hostMode ? 'My Events' : 'Client Portfolio'}</h1>}
             {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
               {hostMode
                 ? (allClients.length > 0 ? 'The events you’re hosting.' : 'Plan your first get-together to get started.')
@@ -21878,29 +21878,29 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               const cards = [
                 { key: 'outstanding', score: totalOutstanding > 0 ? 100 + Math.min(owedClients * 5, 40) : 5, node: (
                   <div key="outstanding" role="button" tabIndex={0} onClick={totalOutstanding > 0 ? () => setClientsFilter('outstanding') : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: totalOutstanding > 0 ? 'pointer' : 'default' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
-                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Outstanding</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: totalOutstanding > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalOutstanding)}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalOutstanding === 0 ? 'All paid in full' : `across ${owedClients} client${owedClients !== 1 ? 's' : ''}`}</div>
                   </div>
                 ) },
                 { key: 'next', score: cnd === null ? 0 : (cnd <= 3 ? 95 : cnd <= 7 ? 80 : cnd <= 14 ? 55 : 20), node: (
                   <div key="next" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
-                    <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextClientEvt ? nextClientEvt.ev.name : '—'}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
+                    <div style={{ fontSize: isMob ? 14 : 16, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextClientEvt ? nextClientEvt.ev.name : '—'}</div>
                     <div style={{ fontSize: 11, color: nextClientEvt ? (cnd <= 14 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextClientEvt ? countdownLabel(cnd) : 'No upcoming events'}</div>
                   </div>
                 ) },
                 { key: 'total', score: 30, node: (
                   <div key="total" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{hostMode ? 'My Events' : 'Total Clients'}</div>
-                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>{hostMode ? 'My Events' : 'Total Clients'}</div>
+                    <div style={{ fontSize: isMob ? 26 : 32, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{allClients.length}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{hostMode ? (allClients.length === 1 ? 'event you’re hosting' : 'events you’re hosting') : `${activeClientCount} active or contracted`}</div>
                   </div>
                 ) },
                 { key: 'revenue', score: 15, node: (
                   <div key="revenue" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}` }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
-                    <div style={{ fontSize: isMob ? 20 : 26, fontWeight: 800, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Revenue</div>
+                    <div style={{ fontSize: isMob ? 20 : 26, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: totalRevenue > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fmtD(totalRevenue)}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>collected to date</div>
                   </div>
                 ) },
@@ -21956,12 +21956,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             }} />
 
             {/* Label */}
-            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
+            <div style={{ fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
               {label}
             </div>
 
             {/* Headline */}
-            <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
+            <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: FW.bold, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
               {headline}
             </h2>
 
@@ -21979,7 +21979,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   borderRadius: 8, border: 'none', cursor: 'pointer',
                   background: accent,
                   color: isCritical ? '#fff' : '#070809',
-                  fontSize: isMob ? 12.5 : 13, fontWeight: 700,
+                  fontSize: isMob ? 12.5 : 13, fontWeight: FW.bold,
                   letterSpacing: '0.01em', fontFamily: 'inherit',
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   transition: 'transform 0.12s',
@@ -21992,7 +21992,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {otherCount > 0 && (
                 <button
                   onClick={() => setClientsFilter('needs')}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: 500, fontFamily: 'inherit', padding: '4px 0' }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: FW.medium, fontFamily: 'inherit', padding: '4px 0' }}
                 >
                   View {otherCount} more client{otherCount !== 1 ? 's' : ''} needing attention →
                 </button>
@@ -22050,7 +22050,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     transition: 'background 0.12s, color 0.12s',
                   }}>
                     {chip.label}
-                    {chip.count > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>}
+                    {chip.count > 0 && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: FW.medium }}>{chip.count}</span>}
                   </button>
                 );
               })}
@@ -22063,8 +22063,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           {/* Empty state — host vs pro copy from the engine. */}
           {allClients.length === 0 ? (
             <div style={{ padding: '28px 24px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>{hostMode ? 'My Events' : 'Clients'}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{hostMode ? 'Plan your first get-together' : 'Add your first client'}</div>
+              <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>{hostMode ? 'My Events' : 'Clients'}</div>
+              <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>{hostMode ? 'Plan your first get-together' : 'Add your first client'}</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
                 {hostMode
                   ? 'Start an event for the party you’re hosting — Event Boss sets up a budget, a countdown, and your planning checklist so you can enjoy it.'
@@ -22108,18 +22108,18 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     onMouseLeave={e => { if (!isPreviewC) e.currentTarget.style.background = 'transparent'; }}
                   >
                     {/* Col 1: Avatar — calm, no glow */}
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>{initials}</div>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.bold, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>{initials}</div>
 
                     {/* Col 2: Name + context */}
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
+                        <span style={{ fontWeight: FW.bold, fontSize: isMob ? 13 : 14 }}>{c.name}</span>
                         {/* Status chip — only non-Active statuses shown, Active is noise */}
                         {c.status && c.status !== 'Active' && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[c.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{clientStatusLabel(c.status)}</span>
+                          <span style={{ fontSize: 10, fontWeight: FW.semibold, color: CLIENT_CLR(C)[c.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{clientStatusLabel(c.status)}</span>
                         )}
                         {SEED_CLIENT_IDS && SEED_CLIENT_IDS.has(c.id) && (
-                          <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>
+                          <span style={{ fontSize: 9, fontWeight: FW.semibold, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>
                         )}
                       </div>
                       {/* Contact + event context */}
@@ -22137,7 +22137,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                 <span style={mkDot(evtCLR[e.type] || C.muted, 5)} />
                                 <span style={{ color: C.muted }}>
                                   {e.name.length > 24 ? e.name.slice(0, 22) + '…' : e.name}
-                                  {d !== null && <span style={{ marginLeft: 4, fontWeight: 600, color: d <= 30 ? C.warn : C.muted }}>{countdownShort(d)}</span>}
+                                  {d !== null && <span style={{ marginLeft: 4, fontWeight: FW.semibold, color: d <= 30 ? C.warn : C.muted }}>{countdownShort(d)}</span>}
                                 </span>
                               </span>
                             );
@@ -22152,18 +22152,18 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       {(() => { const eng = clientEngineAction(c, events); return (
                         <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           {outstanding > 0 && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, color: feeUrgent ? C.warn : C.muted }}>
+                            <span style={{ fontSize: 10.5, fontWeight: FW.semibold, color: feeUrgent ? C.warn : C.muted }}>
                               {fmtD(outstanding)} outstanding{feeUrgent && nextDays !== null ? ` · ${nextDays}d to event` : ''}
                             </span>
                           )}
                           {eng && eng.binding ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, minWidth: 0 }}>
                               <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: ENGINE_FLAG_COLOR(C, eng.flag), flexShrink: 0 }} />
-                              <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: 600 }}>{eng.binding.name}</span>
-                              <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
+                              <span style={{ color: eng.dateAtRisk ? C.danger : C.text, fontWeight: FW.semibold }}>{eng.binding.name}</span>
+                              <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px' }}>{ENGINE_OWNER_LABEL(eng.binding.owner)}</span>
                             </span>
                           ) : (!outstanding && clientEvents.length > 0 ? (
-                            <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track</span>
+                            <span style={{ fontSize: 10.5, fontWeight: FW.medium, color: C.muted }}>On track</span>
                           ) : null)}
                         </div>
                       ); })()}
@@ -22172,7 +22172,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     {/* Col 3: Fee + outstanding */}
                     {!isMob && (
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: c.plannerFee ? C.text : C.muted }}>
+                        <div style={{ fontSize: 12, fontWeight: FW.semibold, color: c.plannerFee ? C.text : C.muted }}>
                           {c.plannerFee ? fmtD(c.plannerFee) : '—'}
                         </div>
                         {c.plannerFee > 0 && (
@@ -22187,7 +22187,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     {!isMob && (
                       <div style={{ textAlign: 'center', flexShrink: 0 }}>
                         {clientEvents.length > 0 ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: C.surface2, color: C.muted, fontSize: 10, fontWeight: 700, border: `1px solid ${C.border}` }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: C.surface2, color: C.muted, fontSize: 10, fontWeight: FW.bold, border: `1px solid ${C.border}` }}>
                             {clientEvents.length}
                           </span>
                         ) : (
@@ -22218,13 +22218,13 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: FW.bold, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}` }}>
                     {(previewC.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <span style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewC.name}</span>
+                  <span style={{ fontWeight: FW.heavy, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewC.name}</span>
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: CLIENT_CLR(C)[previewC.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, border: `1px solid ${C.border}` }}>{previewC.status}</span>
+                  <span style={{ fontSize: 10, fontWeight: FW.semibold, color: CLIENT_CLR(C)[previewC.status] || C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, border: `1px solid ${C.border}` }}>{previewC.status}</span>
                   {previewC.email && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{previewC.email}</span>}
                 </div>
               </div>
@@ -22238,7 +22238,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ marginBottom: 16, padding: '10px 14px', background: C.surface2, borderRadius: 8, border: `1px solid ${C.border}` }}>
                 {previewFeeUrgent ? (
                   <>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, marginBottom: 2 }}>Needs attention</div>
+                    <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.muted, marginBottom: 2 }}>Needs attention</div>
                     <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
                       {fmtD(previewOutstanding)} outstanding
                       {previewNextEvt ? ` · ${previewNextDays}d to ${previewNextEvt.name}` : ''}
@@ -22246,12 +22246,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   </>
                 ) : previewOutstanding > 0 ? (
                   <>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, marginBottom: 2 }}>Balance due</div>
+                    <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.muted, marginBottom: 2 }}>Balance due</div>
                     <div style={{ fontSize: 11, color: C.muted }}>{fmtD(previewOutstanding)} remaining</div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: C.success, marginBottom: 2 }}>Paid in full</div>
+                    <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.success, marginBottom: 2 }}>Paid in full</div>
                     <div style={{ fontSize: 11, color: C.muted }}>No outstanding balance</div>
                   </>
                 )}
@@ -22260,7 +22260,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {/* Linked events */}
               {previewClientEvts.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Events</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Events</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {previewClientEvts.map(e => {
                       const d = daysUntil(e.date);
@@ -22274,8 +22274,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           onMouseLeave={ev => ev.currentTarget.style.opacity = '1'}
                         >
                           <span style={mkDot(evtCLR[e.type] || C.muted, 6)} />
-                          <span style={{ flex: 1, color: C.text, fontWeight: 600 }}>{e.name}</span>
-                          {d !== null && <span style={{ fontWeight: 600, color: d <= 30 ? C.warn : C.muted, fontSize: 11, flexShrink: 0 }}>{countdownShort(d)}</span>}
+                          <span style={{ flex: 1, color: C.text, fontWeight: FW.semibold }}>{e.name}</span>
+                          {d !== null && <span style={{ fontWeight: FW.semibold, color: d <= 30 ? C.warn : C.muted, fontSize: 11, flexShrink: 0 }}>{countdownShort(d)}</span>}
                         </div>
                       );
                     })}
@@ -22286,20 +22286,20 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {/* Fee breakdown */}
               {previewC.plannerFee > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Fee</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Fee</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Contracted</span>
-                      <span style={{ fontWeight: 600, color: C.text }}>{fmtD(previewC.plannerFee)}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.text }}>{fmtD(previewC.plannerFee)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Collected</span>
-                      <span style={{ fontWeight: 600, color: previewCollected > 0 ? C.success : C.muted }}>{fmtD(previewCollected)}</span>
+                      <span style={{ fontWeight: FW.semibold, color: previewCollected > 0 ? C.success : C.muted }}>{fmtD(previewCollected)}</span>
                     </div>
                     {previewOutstanding > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                         <span style={{ color: C.muted }}>Outstanding</span>
-                        <span style={{ fontWeight: 600, color: previewFeeUrgent ? C.warn : C.muted }}>{fmtD(previewOutstanding)}</span>
+                        <span style={{ fontWeight: FW.semibold, color: previewFeeUrgent ? C.warn : C.muted }}>{fmtD(previewOutstanding)}</span>
                       </div>
                     )}
                   </div>
@@ -22309,7 +22309,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {/* Contact */}
               {(previewC.phone || previewC.email) && (
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Contact</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Contact</div>
                   {previewC.email && <div style={{ fontSize: 12, color: C.text, marginBottom: 2 }}>{previewC.email}</div>}
                   {previewC.phone && <div style={{ fontSize: 12, color: C.muted }}>{previewC.phone}</div>}
                 </div>
@@ -22332,14 +22332,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
             display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Roster Snapshot</div>
+              <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Roster Snapshot</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.4 }}>Click any client to preview details here.</div>
             </div>
             <div style={{ padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
               {/* By status breakdown */}
               {allClients.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Status</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>By Status</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {clientStatuses.map(st => {
                       const cnt = allClients.filter(c => c.status === st).length;
@@ -22350,7 +22350,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           onClick={() => setClientsFilter(clientsFilter === st.toLowerCase() ? 'all' : st.toLowerCase())}>
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: stClr, flexShrink: 0 }} />
                           <span style={{ color: C.muted, flex: 1 }}>{clientStatusLabel(st)}</span>
-                          <span style={{ fontWeight: 600, color: C.text }}>{cnt}</span>
+                          <span style={{ fontWeight: FW.semibold, color: C.text }}>{cnt}</span>
                         </div>
                       );
                     })}
@@ -22361,20 +22361,20 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {/* Revenue overview */}
               {(totalRevenue > 0 || totalOutstanding > 0) && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Revenue</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Revenue</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Total contracted</span>
-                      <span style={{ fontWeight: 600, color: C.text }}>{fmtD(allClients.reduce((s, c) => s + (c.plannerFee || 0), 0))}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.text }}>{fmtD(allClients.reduce((s, c) => s + (c.plannerFee || 0), 0))}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                       <span style={{ color: C.muted }}>Collected</span>
-                      <span style={{ fontWeight: 600, color: totalRevenue > 0 ? C.success : C.muted }}>{fmtD(totalRevenue)}</span>
+                      <span style={{ fontWeight: FW.semibold, color: totalRevenue > 0 ? C.success : C.muted }}>{fmtD(totalRevenue)}</span>
                     </div>
                     {totalOutstanding > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                         <span style={{ color: C.muted }}>Outstanding</span>
-                        <span style={{ fontWeight: 600, color: C.muted }}>{fmtD(totalOutstanding)}</span>
+                        <span style={{ fontWeight: FW.semibold, color: C.muted }}>{fmtD(totalOutstanding)}</span>
                       </div>
                     )}
                   </div>
@@ -22384,16 +22384,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               {/* Attention summary */}
               {priorityClients.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Needs Attention</div>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Needs Attention</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {priorityClients.map(({ c, outstanding, nextDays, feeUrgent }) => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
                         onClick={() => setPreviewClientId(c.id)}>
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}`, marginTop: 1 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: C.surface2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: FW.bold, color: C.muted, flexShrink: 0, border: `1px solid ${C.border}`, marginTop: 1 }}>
                           {(c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                           {outstanding > 0 && (
                             <div style={{ fontSize: 10.5, color: feeUrgent ? C.warn : C.muted }}>
                               {fmtD(outstanding)} outstanding{nextDays !== null ? ` · ${nextDays}d` : ''}
@@ -22543,7 +22543,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMob ? 14 : 18 }}>
                 <button onClick={() => setDashView('dashboard')} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>← Home</button>
                 <div style={{ flex: 1 }}>
-                  {!isMob && <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>{isMyEvents ? 'My Events' : 'Client Events'}</h1>}
+                  {!isMob && <h1 style={{ fontSize: 28, fontWeight: FW.heavy, margin: 0, letterSpacing: '-0.03em' }}>{isMyEvents ? 'My Events' : 'Client Events'}</h1>}
                   {!isMob && <p style={{ color: C.muted, fontSize: 12, margin: '3px 0 0', letterSpacing: '0.01em' }}>
                     {allEvents.length > 0 ? (isMyEvents ? 'The events you’re hosting.' : 'Choose the event that needs work next.') : (isMyEvents ? 'Create your first self-hosted event to get started.' : 'Create your first event to get started.')}
                   </p>}
@@ -22569,35 +22569,35 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     const cards = [
                       { key: 'attention', score: totalAttention > 0 ? 100 + Math.min(totalAttention, 40) : 5, node: (
                         <div key="attention" style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: totalAttention > 0 ? 'pointer' : 'default' }} onClick={totalAttention > 0 ? () => setEventsFilter('needs') : undefined}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Attention Items</div>
+                          <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Attention Items</div>
                           {/* Board ruling (2026-06-13): a big ever-present aggregate count painted
                               amber = wallpaper; nothing then feels urgent. The COUNT is informational
                               (white, primary tier); amber is earned only on the near-term (≤7d) ROWS
                               below. Eyebrow stays steel to match the white number. */}
-                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
+                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: totalAttention > 0 ? C.text : C.muted, lineHeight: 1.1, marginTop: 4 }}>{totalAttention}</div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{totalAttention === 0 ? 'All clear' : `across ${eventsNeedingAttention} event${eventsNeedingAttention !== 1 ? 's' : ''}`}</div>
                         </div>
                       ) },
                       { key: 'next', score: nd === null ? 0 : (nd <= 3 ? 95 : nd <= 7 ? 80 : nd <= 14 ? 55 : 20), node: (
                         <div key="next" role={nextEvent ? 'button' : undefined} tabIndex={nextEvent ? 0 : undefined} onClick={nextEvent ? () => onSelectEvent(nextEvent.ev.id) : undefined} onKeyDown={nextEvent ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectEvent(nextEvent.ev.id); } } : undefined} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: nextEvent ? 'pointer' : 'default' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
-                          <div style={{ fontSize: isMob ? 14 : 16, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextEvent ? nextEvent.ev.name : '—'}</div>
+                          <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Next Event</div>
+                          <div style={{ fontSize: isMob ? 14 : 16, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextEvent ? nextEvent.ev.name : '—'}</div>
                           <div style={{ fontSize: 11, color: nextEvent ? (nd <= 7 ? C.warn : C.muted) : C.muted, marginTop: 2 }}>{nextEvent ? countdownLabel(nd) : 'No upcoming events'}</div>
                         </div>
                       ) },
                       { key: 'active', score: 30, node: (
                         <div key="active" role="button" tabIndex={0} onClick={() => setEventsFilter('active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('active'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
-                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
+                          <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Active Events</div>
+                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: C.accent, lineHeight: 1.1, marginTop: 4 }}>{upcomingEvents.length}</div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{allEvents.length} total in portfolio</div>
                         </div>
                       ) },
                       { key: 'value', score: hasOnlyDemoData ? 2 : 15, node: (
                         <div key="value" role="button" tabIndex={0} onClick={() => setEventsFilter('all')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEventsFilter('all'); } }} style={{ ...s.card, marginBottom: 0, padding: isMob ? '14px 14px 12px' : '16px 20px 14px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
+                          <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>Portfolio Value</div>
                           {/* Honesty: in sample-only mode the $ is sample money — "contracted
                               to vendors" read as a real debt; muted + relabeled. */}
-                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: 800, letterSpacing: '-0.03em', color: hasOnlyDemoData ? C.muted : (portfolioValue > 0 ? C.text : C.muted), lineHeight: 1.1, marginTop: 4 }}>{fmtD(portfolioValue)}</div>
+                          <div style={{ fontSize: isMob ? 26 : 32, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: hasOnlyDemoData ? C.muted : (portfolioValue > 0 ? C.text : C.muted), lineHeight: 1.1, marginTop: 4 }}>{fmtD(portfolioValue)}</div>
                           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{hasOnlyDemoData ? 'sample data — not real money' : 'contracted to vendors'}</div>
                         </div>
                       ) },
@@ -22652,10 +22652,10 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   overflow: 'hidden',
                 }}>
                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accent, opacity: hasCritical ? 1 : 0.6 }} />
-                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.18em', textTransform: 'uppercase', color: accent, marginBottom: 10 }}>
                     {label}
                   </div>
-                  <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
+                  <h2 style={{ margin: 0, marginBottom: 8, fontSize: isMob ? 18 : 24, fontWeight: FW.bold, letterSpacing: '-0.025em', lineHeight: 1.2, color: C.text, fontFamily: 'inherit' }}>
                     {headline}
                   </h2>
                   <p style={{ margin: 0, marginBottom: 18, fontSize: isMob ? 12 : 13, lineHeight: 1.55, color: C.muted, maxWidth: 680 }}>
@@ -22669,7 +22669,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                         borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: accent,
                         color: hasCritical || totalAtt > 0 ? '#fff' : '#070809',
-                        fontSize: isMob ? 12.5 : 13, fontWeight: 700, letterSpacing: '0.01em', fontFamily: 'inherit',
+                        fontSize: isMob ? 12.5 : 13, fontWeight: FW.bold, letterSpacing: '0.01em', fontFamily: 'inherit',
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         transition: 'transform 0.12s',
                       }}
@@ -22685,7 +22685,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     {otherCount > 0 && (
                       <button
                         onClick={() => setEventsFilter('needs')}
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: 500, fontFamily: 'inherit', padding: '4px 0' }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.muted, fontSize: isMob ? 12 : 12.5, fontWeight: FW.medium, fontFamily: 'inherit', padding: '4px 0' }}
                       >
                         View {otherCount} more event{otherCount !== 1 ? 's' : ''} needing attention →
                       </button>
@@ -22720,7 +22720,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                   {isSearchingOrTyped && (
                     <button
                       onClick={() => { setEventsSearch(''); setEventsTypeFilter('all'); }}
-                      style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: 500, cursor: 'pointer', background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, fontFamily: 'inherit' }}
+                      style={{ padding: '5px 12px', borderRadius: 99, fontSize: 11.5, fontWeight: FW.medium, cursor: 'pointer', background: 'transparent', color: C.muted, border: `1px solid ${C.border}`, fontFamily: 'inherit' }}
                     >
                       Clear
                     </button>
@@ -22743,7 +22743,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       }}>
                         {chip.label}
                         {chip.count > 0 && (
-                          <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 500 }}>{chip.count}</span>
+                          <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: FW.medium }}>{chip.count}</span>
                         )}
                       </button>
                     );
@@ -22756,8 +22756,8 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                 {/* Empty state */}
                 {allEvents.length === 0 ? (
                   <div style={{ padding: '32px 0' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events in your roster yet</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
+                    <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>No events in your roster yet</div>
                     <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 16, maxWidth: 380 }}>Create your first event to begin building it out — vendor roster, guest list, timeline, and budget in one place.</div>
                     <button style={{ ...s.btn('primary'), padding: '9px 18px', fontSize: 13 }} onClick={onNew}>New Event</button>
                   </div>
@@ -22777,7 +22777,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                       }}>
                         <span />
                         {[['Event','left'],['Next action','left'],['Waiting on','left'],['When','right'],['Balance','right']].map(([label, align]) => (
-                          <span key={label} style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, textAlign: align }}>{label}</span>
+                          <span key={label} style={{ fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, textAlign: align }}>{label}</span>
                         ))}
                         <span />
                       </div>
@@ -22849,14 +22849,14 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                             onMouseLeave={e => { if (!isPreview) e.currentTarget.style.background = 'transparent'; }}
                           >
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontWeight: 600, fontSize: isMob ? 13 : 13.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{ev.name}</span>
-                            {!isMob && <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}`, flexShrink: 0 }}>{eventTypeLabel(ev) || ev.type}</span>}
+                            <span style={{ fontWeight: FW.semibold, fontSize: isMob ? 13 : 13.5, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{ev.name}</span>
+                            {!isMob && <span style={{ fontSize: 10, fontWeight: FW.semibold, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}`, flexShrink: 0 }}>{eventTypeLabel(ev) || ev.type}</span>}
                             <span style={{ flex: 1 }} />
-                            {days !== null && <span style={{ fontSize: 11, fontWeight: 600, color: days <= 30 ? C.muted : C.accent2, flexShrink: 0, whiteSpace: 'nowrap' }}>{countdownShort(days)}</span>}
+                            {days !== null && <span style={{ fontSize: 11, fontWeight: FW.semibold, color: days <= 30 ? C.muted : C.accent2, flexShrink: 0, whiteSpace: 'nowrap' }}>{countdownShort(days)}</span>}
                             {strictOnTrack
-                              ? <span style={{ fontSize: 10.5, fontWeight: 600, color: C.success, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check" size={11} />On track</span>
-                              : <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted, flexShrink: 0 }}>No open items</span>}
-                            {!isMob && balanceDue > 0 && <span style={{ fontSize: 11.5, fontWeight: 600, color: C.muted, flexShrink: 0, fontFeatureSettings: '"tnum" 1' }}>{fmtD(balanceDue)}</span>}
+                              ? <span style={{ fontSize: 10.5, fontWeight: FW.semibold, color: C.success, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="check" size={11} />On track</span>
+                              : <span style={{ fontSize: 10.5, fontWeight: FW.medium, color: C.muted, flexShrink: 0 }}>No open items</span>}
+                            {!isMob && balanceDue > 0 && <span style={{ fontSize: 11.5, fontWeight: FW.semibold, color: C.muted, flexShrink: 0, fontFeatureSettings: '"tnum" 1' }}>{fmtD(balanceDue)}</span>}
                             <span style={{ color: C.muted, fontSize: 14, flexShrink: 0 }}>›</span>
                           </div>
                         );
@@ -22897,16 +22897,16 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                           {/* Col 2: Event info */}
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                              <span style={{ fontWeight: 700, fontSize: isMob ? 13 : 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMob ? 200 : 'none' }}>{ev.name}</span>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{eventTypeLabel(ev) || ev.type}</span>
-                              {SEED_EVENT_IDS.has(ev.id) && <span style={{ fontSize: 9, fontWeight: 600, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>}
+                              <span style={{ fontWeight: FW.bold, fontSize: isMob ? 13 : 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: isMob ? 200 : 'none' }}>{ev.name}</span>
+                              <span style={{ fontSize: 10, fontWeight: FW.semibold, color: C.muted, background: C.surface2, padding: '1px 8px', borderRadius: 10, whiteSpace: 'nowrap', border: `1px solid ${C.border}` }}>{eventTypeLabel(ev) || ev.type}</span>
+                              {SEED_EVENT_IDS.has(ev.id) && <span style={{ fontSize: 9, fontWeight: FW.semibold, color: C.muted, background: C.surface2, padding: '1px 7px', borderRadius: 10, border: `1px solid ${C.border}`, opacity: 0.7 }}>Demo</span>}
                             </div>
                             <div style={{ fontSize: 11.5, color: C.muted, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                               {ev.client && <span>{ev.client.name}</span>}
                               {ev.venue && <span style={{ opacity: 0.7 }}>· {ev.venue}</span>}
                               {ev.date && <span style={{ opacity: 0.7 }}>· {fmtDate(ev.date)}</span>}
                               {days !== null && (
-                                <span style={{ fontWeight: 600, color: days <= 14 ? C.danger : days <= 30 ? C.muted : days <= 90 ? C.accent2 : C.muted, marginLeft: 2 }}>
+                                <span style={{ fontWeight: FW.semibold, color: days <= 14 ? C.danger : days <= 30 ? C.muted : days <= 90 ? C.accent2 : C.muted, marginLeft: 2 }}>
                                   {countdownShort(days)}
                                 </span>
                               )}
@@ -22938,18 +22938,18 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                 }
                                 if (naLevel === 'critical') {
                                   const detail = fragments.length > 0 ? fragments.slice(0, 3).join(' · ') : (atRiskAxes[0] ? atRiskAxes[0].label.toLowerCase() : 'needs action now');
-                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.danger }}>At risk: {detail}</span>;
+                                  return <span style={{ fontSize: 10.5, fontWeight: FW.semibold, color: C.danger }}>At risk: {detail}</span>;
                                 }
                                 if (naLevel === 'attention' || atRiskAxes.length > 0 || attentionAxes.length > 0 || totalAtt > 0) {
                                   const detail = fragments.length > 0 ? fragments.slice(0, 3).join(' · ') : 'items need review';
-                                  return <span style={{ fontSize: 10.5, fontWeight: 600, color: C.muted }}>Needs attention: {detail}</span>;
+                                  return <span style={{ fontSize: 10.5, fontWeight: FW.semibold, color: C.muted }}>Needs attention: {detail}</span>;
                                 }
                                 // On track — still show progress fractions on desktop (not triage)
                                 const trackFrags = [];
                                 if (!isMob && !triage && tasksTotal > 0) trackFrags.push(`${tasksDone}/${tasksTotal} tasks`);
                                 if (!isMob && !triage && vTotal > 0) trackFrags.push(`${vConf}/${vTotal} vendors`);
                                 const suffix = trackFrags.length > 0 ? ` · ${trackFrags.join(' · ')}` : '';
-                                return <span style={{ fontSize: 10.5, fontWeight: 500, color: C.muted }}>On track{suffix}</span>;
+                                return <span style={{ fontSize: 10.5, fontWeight: FW.medium, color: C.muted }}>On track{suffix}</span>;
                               })()}
                               {/* PL-15: readiness-over-time sparkline (appears once there's a real trend). */}
                               <ReadinessSparkline eventId={ev.id} />
@@ -22965,7 +22965,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                               <div style={{ minWidth: 0, paddingRight: 4 }}>
                                 {na ? (
                                   <div title={na.title} style={{
-                                    fontSize: 13, fontWeight: 700, lineHeight: 1.3,
+                                    fontSize: 13, fontWeight: FW.bold, lineHeight: 1.3,
                                     // B3 (board): accent tied to the engine's real readiness — red only
                                     // for date-at-risk, amber only for approaching, steel for on-track.
                                     // Stops the "103 amber chips" wallpaper that killed the accent.
@@ -22981,7 +22981,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                               </div>
                               {/* Waiting on — who to chase, no count */}
                               <div style={{ textAlign: 'left' }}>
-                                <span style={{ fontSize: 11.5, fontWeight: 700, color: waitingOn.color }}>{waitingOn.label}</span>
+                                <span style={{ fontSize: 11.5, fontWeight: FW.bold, color: waitingOn.color }}>{waitingOn.label}</span>
                               </div>
                               {/* When — countdown. Time = urgency = amber for near events,
                                   else muted. Two tiers only (the invisible accent2 ≤30d tier
@@ -22989,12 +22989,12 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                   finer gradient. Never red — red stays on the action. */}
                               <div style={{ textAlign: 'right' }}>
                                 {days !== null ? (
-                                  <span style={{ fontSize: 12, fontWeight: 600, fontFeatureSettings: '"tnum" 1', color: days <= 30 ? C.warn : C.muted }}>{countdownShort(days)}</span>
+                                  <span style={{ fontSize: 12, fontWeight: FW.semibold, fontFeatureSettings: '"tnum" 1', color: days <= 30 ? C.warn : C.muted }}>{countdownShort(days)}</span>
                                 ) : <span style={{ fontSize: 12, color: C.muted }}>—</span>}
                               </div>
                               {/* Balance — quiet steel; the Friday scan, not the morning one. Never red. */}
                               <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, fontFeatureSettings: '"tnum" 1', color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.warn : C.muted }}>
+                                <div style={{ fontSize: 12, fontWeight: FW.semibold, fontFeatureSettings: '"tnum" 1', color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.warn : C.muted }}>
                                   {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
                                 </div>
                               </div>
@@ -23011,7 +23011,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                                     width: 24, height: 24, borderRadius: '50%',
                                     background: att.decisions > 0 ? C.danger + '22' : C.muted + '22',
                                     color: att.decisions > 0 ? C.danger : C.muted,
-                                    fontSize: 11, fontWeight: 700,
+                                    fontSize: 11, fontWeight: FW.bold,
                                   }}>
                                     {totalAtt}
                                   </span>
@@ -23025,7 +23025,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                               {/* Col 4: Balance due (desktop only) — only amber when overdue or due soon */}
                               {!isMob && (
                                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                  <div style={{ fontSize: 12, fontWeight: 600, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.muted : C.text }}>
+                                  <div style={{ fontSize: 12, fontWeight: FW.semibold, color: evCommitted === 0 ? C.muted : balanceDue === 0 ? C.success : (days !== null && days <= 30 && balanceDue > 0) ? C.muted : C.text }}>
                                     {evCommitted === 0 ? '—' : balanceDue === 0 ? 'Paid' : fmtD(balanceDue)}
                                   </div>
                                   {evCommitted > 0 && <div style={{ fontSize: 10, color: C.muted }}>balance</div>}
@@ -23044,7 +23044,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
                     {collapseOnTrack && onTrackList.length > 0 && (
                       <button
                         onClick={() => setShowOnTrackEvents(v => !v)}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 20px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: 600, color: C.muted }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 20px', background: 'transparent', border: 'none', borderTop: `1px solid ${C.border}`, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11.5, fontWeight: FW.semibold, color: C.muted }}
                       >
                         {showOnTrackEvents ? '▾ Hide' : '▸ Show'} {onTrackList.length} on track
                       </button>
@@ -23067,7 +23067,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
           <div onClick={() => setDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
           <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em' }}>NGW Event Boss</div>
+              <div style={{ fontWeight: FW.heavy, fontSize: 15, letterSpacing: '-0.02em' }}>NGW Event Boss</div>
               <button onClick={() => setDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {navLinks(false)}
@@ -23114,8 +23114,8 @@ function ClientIntakeModal({ client, onClose, onChange }) {
         <SheetGrip isMobile={isMobile} />
         <div style={{ padding: '18px 22px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Discovery Intake</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.text, marginTop: 2 }}>{client.name || 'New Prospect'}</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted }}>Discovery Intake</div>
+            <div style={{ fontSize: 17, fontWeight: FW.heavy, color: C.text, marginTop: 2 }}>{client.name || 'New Prospect'}</div>
           </div>
           <button aria-label="Close" onClick={onClose} title="Close" style={{ ...s.btn('ghost'), padding: '5px 9px', display: 'flex', alignItems: 'center' }}><Icon name="x" size={15} /></button>
         </div>
@@ -23138,7 +23138,7 @@ function ClientIntakeModal({ client, onClose, onChange }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {section.items.map(item => (
                   <div key={item.id}>
-                    <label style={{ fontSize: 12, color: C.text, fontWeight: 600, display: 'block', marginBottom: 5 }}>{item.q}</label>
+                    <label style={{ fontSize: 12, color: C.text, fontWeight: FW.semibold, display: 'block', marginBottom: 5 }}>{item.q}</label>
                     {item.type === 'radio' ? (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {item.opts.map(opt => {
@@ -23207,7 +23207,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     <div style={s.card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={s.cardTitle}>Planner Fee</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: feeSet ? C.text : C.muted }}>{feeSet ? fmtD(client.plannerFee || 0) : 'Not set'}</div>
+        <div style={{ fontSize: 15, fontWeight: FW.bold, color: feeSet ? C.text : C.muted }}>{feeSet ? fmtD(client.plannerFee || 0) : 'Not set'}</div>
       </div>
       {feeSet && (
         <div style={{ display: 'flex', gap: 28, marginBottom: (client.feeSchedule || []).length > 0 ? 14 : 0 }}>
@@ -23234,13 +23234,13 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           <div key={f.id} style={{ padding: '10px 0', borderTop: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{f.label}</div>
+                <div style={{ fontSize: 13, fontWeight: FW.medium }}>{f.label}</div>
                 {f.due && <div style={{ fontSize: 11, color: urgent ? C.danger : C.muted }}>Due {fmtDate(f.due)}{urgent ? ' — URGENT' : ''}</div>}
                 {f.paid && f.paymentMethod && <div style={{ fontSize: 11, color: C.success }}>Paid via {f.paymentMethod}</div>}
                 {partial && <div style={{ fontSize: 11, color: C.muted }}>{fmtD(f.paidAmount)} received · {fmtD(f.amount - f.paidAmount)} balance due</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{fmtD(f.amount)}</span>
+                <span style={{ fontSize: 13, fontWeight: FW.bold }}>{fmtD(f.amount)}</span>
                 <button
                   style={{ ...s.btn(f.paid ? 'success' : partial ? 'teal' : 'default'), fontSize: 11, padding: '4px 10px' }}
                   onClick={() => {
@@ -23274,7 +23274,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     max={f.amount}
                     step="0.01"
                     placeholder="0"
-                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: (f.paidAmount || 0) > 0 ? C.muted : C.text, width: 64, fontFamily: FF }}
+                    style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: FW.semibold, color: (f.paidAmount || 0) > 0 ? C.muted : C.text, width: 64, fontFamily: FF }}
                     value={f.paidAmount || ''}
                     onChange={e => updateF('paidAmount', Math.min(Number(e.target.value) || 0, f.amount))}
                   />
@@ -23310,7 +23310,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
   const eventsSection = (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showLinkEvent ? 8 : 14 }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Events ({clientEvents.length})</h3>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: FW.bold }}>Events ({clientEvents.length})</h3>
         <div style={{ display: 'flex', gap: 6 }}>
           {onLinkEvent && unlinkableEvents.length > 0 && (
             <button style={{ ...s.btn(), fontSize: 11, padding: '5px 10px' }} onClick={() => { setShowLinkEvent(v => !v); setLinkEventId(''); }}>
@@ -23338,8 +23338,8 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
       )}
       {clientEvents.length === 0 ? (
         <div style={{ ...s.card, padding: '24px 20px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 6 }}>No events linked yet</div>
+          <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Events</div>
+          <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>No events linked yet</div>
           <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 14 }}>Link an event to connect this client's RSVP page, vendor roster, and fee tracking to a live event.</div>
           <button style={{ ...s.btn('primary'), padding: '8px 16px', fontSize: 12 }} onClick={onAddEvent}>Link Event</button>
         </div>
@@ -23367,7 +23367,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{ev.name}</div>
+                    <div style={{ fontSize: 14, fontWeight: FW.semibold }}>{ev.name}</div>
                     <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{eventTypeLabel(ev) || ev.type}{ev.venue ? ` · ${ev.venue}` : ''}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -23418,7 +23418,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                   onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
                   <span style={{ display: 'flex', color: C.muted }}><Icon name="message" size={16} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: FW.semibold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.name}</div>
                     <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {cc.length ? `${cc.length} message${cc.length > 1 ? 's' : ''}${last ? ` · last ${fmtDate(String(last.created_at).slice(0, 10))}` : ''}` : 'No messages yet'}
                     </div>
@@ -23443,7 +23443,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
       <div style={s.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={s.cardTitle}>Party Checklist</div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: done === HOST_CHECKLIST.length ? C.success : C.muted }}>{done}/{HOST_CHECKLIST.length}</span>
+          <span style={{ fontSize: 12, fontWeight: FW.bold, color: done === HOST_CHECKLIST.length ? C.success : C.muted }}>{done}/{HOST_CHECKLIST.length}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {HOST_CHECKLIST.map(item => {
@@ -23454,10 +23454,10 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
                 <div style={{ width: 18, height: 18, borderRadius: 5, marginTop: 1, flexShrink: 0, border: `2px solid ${on ? C.success : C.muted}`, background: on ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {on && <span style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>✓</span>}
+                  {on && <span style={{ fontSize: 11, color: '#fff', fontWeight: FW.bold }}>✓</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{item.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.medium, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{item.label}</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{item.hint}</div>
                 </div>
               </label>
@@ -23479,7 +23479,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
           <div onClick={() => setClientActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>{isHostRecord ? 'Actions' : 'Client Actions'}</div>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>{isHostRecord ? 'Actions' : 'Client Actions'}</div>
             {[
               { icon: 'clipboard', label: 'Intake',        onClick: () => { setShowIntake(true);  setClientActionsOpen(false); } },
               ...(detailCfg.clientPortal ? [{ icon: 'eye', label: 'Client Portal', onClick: () => { setShowPortal(true);  setClientActionsOpen(false); } }] : []),
@@ -23493,7 +23493,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               </button>
             ))}
             <button onClick={() => setClientActionsOpen(false)}
-              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: FW.semibold, fontFamily: 'inherit' }}>
               Cancel
             </button>
           </div>
@@ -23536,7 +23536,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                 };
                 reader.readAsDataURL(file);
               }} />
-            <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 700, letterSpacing: '-0.02em' }}>{client.name}</div>
+            <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: FW.bold, letterSpacing: '-0.02em' }}>{client.name}</div>
             {/* Engine: a lead-pipeline status ("Inquiry") is meaningless for a
                 self-host event — the countdown carries the timing instead. */}
             {detailCfg.pipeline && <span style={s.pill(clr)}>{clientStatusLabel(client.status)}</span>}
@@ -23566,17 +23566,17 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 16,
                     minWidth: 320,
                   }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>Downloads</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>Downloads</div>
                     {clientEvents.length === 0 ? (
                       <div style={{ fontSize: 12, color: C.muted }}>Link an event to enable downloads.</div>
                     ) : clientEvents.map(ev => (
                       <div key={ev.id} style={{ marginBottom: 14 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{ev.name}</div>
+                        <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>{ev.name}</div>
                         <DownloadsCard event={ev} client={client} compact />
                       </div>
                     ))}
                     <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Template (no event)</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>Template (no event)</div>
                       <DownloadsCard event={{ name: client.name, guests: [] }} client={client} compact />
                     </div>
                     <button onClick={() => setShowDownloads(false)}
@@ -23658,7 +23658,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     key={i}
                     onClick={ch.onClick}
                     style={{
-                      fontSize: 12, fontWeight: 600, color: ch.c,
+                      fontSize: 12, fontWeight: FW.semibold, color: ch.c,
                       background: ch.c + '14', border: `1px solid ${ch.c}33`,
                       borderRadius: 20, padding: '5px 12px',
                       cursor: 'pointer', fontFamily: 'inherit',
@@ -23671,7 +23671,7 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
                     {ch.t} <span style={{ opacity: 0.7, fontSize: 11 }}>→</span>
                   </button>
                 ) : (
-                  <span key={i} style={{ fontSize: 12, fontWeight: 600, color: ch.c, background: ch.c + '14', border: `1px solid ${ch.c}33`, borderRadius: 20, padding: '5px 12px' }}>{ch.t}</span>
+                  <span key={i} style={{ fontSize: 12, fontWeight: FW.semibold, color: ch.c, background: ch.c + '14', border: `1px solid ${ch.c}33`, borderRadius: 20, padding: '5px 12px' }}>{ch.t}</span>
                 ))}
               </div>
             );
@@ -23816,7 +23816,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
           {/* Health badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: healthLabel.color, display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: healthLabel.color }}>{healthLabel.text}</span>
+            <span style={{ fontWeight: FW.bold, fontSize: 13, color: healthLabel.color }}>{healthLabel.text}</span>
           </div>
 
           {/* Breakdown rows */}
@@ -23824,7 +23824,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
             <div key={label} style={{ marginBottom: bar ? 10 : 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: bar ? 4 : 0 }}>
                 <span style={{ fontSize: 12, color: C.muted }}>{label}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color }}>{value}</span>
+                <span style={{ fontSize: 13, fontWeight: FW.semibold, color }}>{value}</span>
               </div>
               {bar && (
                 <div style={{ height: 4, borderRadius: 3, background: C.border, overflow: 'hidden' }}>
@@ -23857,9 +23857,9 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
             health state; a second badge here read as a contradiction, e.g. "ON TRACK"
             under a "PAYMENT LATE" hero. Plain-language, vendor-truth vocab.) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
-        <span style={{ color: C.success, fontWeight: 500 }}>{fmtD(totalActual)} paid</span>
-        {totalCommitted > 0 && <span style={{ color: C.accent2, fontWeight: 500 }}>{fmtD(totalCommitted)} booked</span>}
-        {balanceDue > 0 && <span style={{ color: C.muted, fontWeight: 500 }}>{fmtD(balanceDue)} still to pay</span>}
+        <span style={{ color: C.success, fontWeight: FW.medium }}>{fmtD(totalActual)} paid</span>
+        {totalCommitted > 0 && <span style={{ color: C.accent2, fontWeight: FW.medium }}>{fmtD(totalCommitted)} booked</span>}
+        {balanceDue > 0 && <span style={{ color: C.muted, fontWeight: FW.medium }}>{fmtD(balanceDue)} still to pay</span>}
         {uncontracted > 0 && !isOverBudget && <span style={{ color: C.muted }}>{fmtD(uncontracted)} not booked yet</span>}
         <span style={{ color: C.muted, marginLeft: 'auto' }}>
           {Math.round(spentPct)}% spent{committedPct > 0 ? ` · ${Math.round(committedPct)}% committed` : ''}
@@ -23916,47 +23916,47 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
   const removeRow = (id) => setBudget((b) => (b || []).filter((r) => r.id !== id));
 
   const card = { background: C.surface || C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: isMobile ? 16 : 20 };
-  const label = { fontSize: T.caption, fontWeight: 700, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
+  const label = { fontSize: T.caption, fontWeight: FW.bold, letterSpacing: 0.3, color: C.muted, textTransform: 'uppercase' };
   const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, padding: '7px 12px', outline: 'none', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' };
-  const ghostBtn = { background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 };
+  const ghostBtn = { background: 'transparent', border: `1px solid ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: 13, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 };
 
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760, margin: '0 auto' }}>
       {/* The heart, mid-planning — keep the money pointed at the why. */}
       {isMeaningfulMustHave(mustHave) && (
         <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
-          <div style={{ fontSize: T.eyebrow, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(mustHave).trim()}</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
+          <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(mustHave).trim()}</div>
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
         </div>
       )}
       {/* HERO — the honest total. ONE hero per screen (SM-2). */}
       <div style={{ ...card, padding: isMobile ? 18 : 24 }}>
         <div style={label}>Your spending plan</div>
-        <div style={{ fontSize: isMobile ? 28 : 34, fontWeight: 800, color: C.text, marginTop: 6, lineHeight: 1.1 }}>
+        <div style={{ fontSize: isMobile ? 28 : 34, fontWeight: FW.heavy, color: C.text, marginTop: 6, lineHeight: 1.1 }}>
           About {money(totalLow, totalHigh)}
         </div>
         <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>
           for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
-          {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: 700 }}>{money(spentSoFar)}</span> spent so far</> : null}
+          {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{money(spentSoFar)}</span> spent so far</> : null}
         </div>
         {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
             The host types a target; we show the estimate against it (on track / over). */}
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <label htmlFor="hsp-budget" style={{ fontSize: T.body, fontWeight: 600, color: C.text }}>What's your budget?</label>
+          <label htmlFor="hsp-budget" style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>What's your budget?</label>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${Number(budgetDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '6px 12px' }}>
-            <span style={{ color: C.muted, fontSize: 17, fontWeight: 700 }}>$</span>
+            <span style={{ color: C.muted, fontSize: 17, fontWeight: FW.bold }}>$</span>
             <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0" enterKeyHint="done"
               value={budgetDraft}
               onChange={(e) => setBudgetDraft(e.target.value)}
               onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) setBudgetSet(true); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-              style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 20, fontWeight: 800, fontFamily: 'inherit' }} />
+              style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 20, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
           </span>
           {/* Board #10 — an explicit confirm so a host on a phone (no keyboard "Done")
               never types a number, scrolls away, and loses it to commit-on-blur only. */}
           <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); }}
-            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: T.body, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
+            style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
           {Number(budgetDraft) > 0 && (() => {
             // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
             // budget lands inside the estimate; COVERED if it clears the premium (high) end.
@@ -23969,15 +23969,15 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
               : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — your budget covers it`
               : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
             return (
-              <span style={{ fontSize: T.secondary, fontWeight: 600, color }}>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color }}>
                 {msg}
                 {/* Middle-audit #2 — the watch-out carries its fix (over-trending → the swap). */}
-                {state === 'over' && <span style={{ display: 'block', fontWeight: 500, color: C.muted, marginTop: 3, lineHeight: 1.5 }}><span style={{ fontWeight: 700, color: C.text }}>The fix:</span> shop the value end — the food plan flags a cheaper swap on most lines — or trim the guest count.</span>}
+                {state === 'over' && <span style={{ display: 'block', fontWeight: FW.medium, color: C.muted, marginTop: 3, lineHeight: 1.5 }}><span style={{ fontWeight: FW.bold, color: C.text }}>The fix:</span> shop the value end — the food plan flags a cheaper swap on most lines — or trim the guest count.</span>}
               </span>
             );
           })()}
           {budgetSet && Number(budgetDraft) > 0 && (
-            <div style={{ width: '100%', fontSize: T.secondary, fontWeight: 700, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
+            <div style={{ width: '100%', fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
           )}
         </div>
       </div>
@@ -23989,28 +23989,28 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
           <div style={label}>Food &amp; drink</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(foodLow, foodHigh)}</div>
+          <div style={{ fontSize: 18, fontWeight: FW.heavy, color: C.text }}>{money(foodLow, foodHigh)}</div>
         </div>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
           {foodPlan
             ? (<>Estimated from your menu for {foodPlan.guests} guests.
-                {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
+                {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
                 {foodSpent > 0
-                  ? <> You've bought <span style={{ color: C.success, fontWeight: 700 }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
+                  ? <> You've bought <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
                   : <> Nothing checked off yet.</>}</>)
             : (<>Set your menu in the food plan to estimate this.</>)}
         </div>
         {/* Show the basis — the food estimate is per-head × guests, not a guess. */}
         {foodPlan && foodPlan.guests > 0 && foodHigh > 0 && (
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5 }}>
-            ≈ <span style={{ color: C.text, fontWeight: 600 }}>{money(Math.round(foodLow / foodPlan.guests), Math.round(foodHigh / foodPlan.guests))} a head</span> × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}.
+            ≈ <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(Math.round(foodLow / foodPlan.guests), Math.round(foodHigh / foodPlan.guests))} a head</span> × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}.
           </div>
         )}
         {/* Pricing source — ALWAYS shown (regional when resolved, national + nudge otherwise). */}
         {priceNote && (
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6 }}>
             {hasRegion
-              ? <span style={{ color: C.text, fontWeight: 600 }}>{priceNote}.</span>
+              ? <span style={{ color: C.text, fontWeight: FW.semibold }}>{priceNote}.</span>
               : <button type="button" onClick={() => onNav && onNav('Event Details')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.accent, font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>{priceNote} →</button>}
           </div>
         )}
@@ -24025,12 +24025,12 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
             <div style={label}>Supplies</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{money(supLow, supHigh)}</div>
+            <div style={{ fontSize: 18, fontWeight: FW.heavy, color: C.text }}>{money(supLow, supHigh)}</div>
           </div>
           <div style={{ fontSize: T.body, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
             The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
             {foodPlan.suppliesBought > 0
-              ? <> You've got <span style={{ color: C.success, fontWeight: 700 }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
+              ? <> You've got <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
               : <> Nothing checked off yet.</>}
           </div>
           <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
@@ -24445,7 +24445,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
       }}>
         <div style={{
-          fontSize: 9, fontWeight: 800,
+          fontSize: 9, fontWeight: FW.heavy,
           color: budgetState.color, letterSpacing: '0.14em',
           padding: '3px 9px', borderRadius: 6,
           background: budgetState.color + '18',
@@ -24454,7 +24454,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           {budgetState.text}
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.35 }}>
+          <div style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>
             {budgetState.headline}
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
@@ -24483,7 +24483,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           <div style={s.editLabel}>STILL TO PAY</div>
           <div style={{ ...s.glanceNum(46, totalBalance > 0 ? C.tier1 : C.success), marginTop: 8, marginBottom: 4 }}>{fmtD(totalBalance)}</div>
           {overdueBalance > 0 ? (
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.danger, lineHeight: 1.35 }}>⚠ {fmtD(overdueBalance)} overdue — pay now</div>
+            <div style={{ fontSize: 12.5, fontWeight: FW.bold, color: C.danger, lineHeight: 1.35 }}>⚠ {fmtD(overdueBalance)} overdue — pay now</div>
           ) : (
             <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.35 }}>{totalBalance > 0 ? `${fmtD(totalPaid)} paid so far` : 'All vendors paid in full'}</div>
           )}
@@ -24497,10 +24497,10 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
               onChange={e => setTotalDraft(e.target.value)} onBlur={commitTotalBudget}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commitTotalBudget(); } else if (e.key === 'Escape') { setEditingTotal(false); } }}
               aria-label="Total budget"
-              style={{ width: 120, fontSize: 18, fontWeight: 800, padding: '2px 7px', borderRadius: 6, border: `1px solid ${C.accent}`, background: C.surface2, color: C.text, fontFamily: 'inherit', marginTop: 8 }} />
+              style={{ width: 120, fontSize: 18, fontWeight: FW.heavy, padding: '2px 7px', borderRadius: 6, border: `1px solid ${C.accent}`, background: C.surface2, color: C.text, fontFamily: 'inherit', marginTop: 8 }} />
           ) : (
             <button onClick={() => beginEditTotal(totalBudgeted)} title="Edit budget — rescales categories to match"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.tier2, fontWeight: 900, fontSize: 26, letterSpacing: '-0.04em', padding: 0, marginTop: 8, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start' }}>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.tier2, fontWeight: FW.black, fontSize: 26, letterSpacing: '-0.04em', padding: 0, marginTop: 8, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start' }}>
               {fmtD(totalBudgeted)} <Icon name="edit" size={11} style={{ opacity: 0.5 }} />
             </button>
           )}
@@ -24519,7 +24519,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
       {upcomingPayments.length > 0 && (
         <div style={{ ...s.card, marginBottom: 16, position: 'relative', borderLeft: upcomingPayments[0].daysUntilDue <= 14 ? `3px solid ${C.danger}` : `3px solid ${C.muted}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: upcomingPayments[0].daysUntilDue <= 14 ? C.danger : C.muted }}>
+            <div style={{ fontSize: 12, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: 1, color: upcomingPayments[0].daysUntilDue <= 14 ? C.danger : C.muted }}>
               Upcoming Payments — {upcomingPayments.length} due within 30 days
             </div>
           </div>
@@ -24544,12 +24544,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${clr}44`, cursor: routable ? 'pointer' : 'default', minHeight: 44 }}>
                   <div style={{ width: 4, borderRadius: 2, alignSelf: 'stretch', background: clr, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{v.name || 'Vendor'}</div>
+                    <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{v.name || 'Vendor'}</div>
                     <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{v.budgetCategory || v.category || '—'} · Balance due {v.payDueDate}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: clr }}>{fmtD(v.balanceAmt)}</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: clr, marginTop: 1 }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: FW.heavy, color: clr }}>{fmtD(v.balanceAmt)}</div>
+                    <div style={{ fontSize: 11, fontWeight: FW.semibold, color: clr, marginTop: 1 }}>{label}</div>
                   </div>
                   {routable && <span aria-hidden style={{ color: C.muted, fontSize: 16, flexShrink: 0 }}>›</span>}
                 </div>
@@ -24565,7 +24565,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={s.cardTitle}>Budget Estimator</div>
             {metroMkt && (
-              <span style={{ fontSize: 10, fontWeight: 700, color: metroTierLbl?.color || C.muted, background: (metroTierLbl?.color || C.muted) + '15', border: `1px solid ${(metroTierLbl?.color || C.muted) + '40'}`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: 10, fontWeight: FW.bold, color: metroTierLbl?.color || C.muted, background: (metroTierLbl?.color || C.muted) + '15', border: `1px solid ${(metroTierLbl?.color || C.muted) + '40'}`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
                 {metroTierLbl?.icon} {metroMkt.label} {metroFactor !== 1.0 ? `· ${metroFactor > 1 ? '+' : ''}${Math.round((metroFactor - 1) * 100)}%` : ''}
               </span>
             )}
@@ -24574,7 +24574,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                               : rushFactor.label === 'COMPRESSED' ? C.muted
                               : C.accent2;
               return (
-                <span title={rushFactor.explanation} style={{ fontSize: 10, fontWeight: 700, color: rushColor, background: rushColor + '18', border: `1px solid ${rushColor}44`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
+                <span title={rushFactor.explanation} style={{ fontSize: 10, fontWeight: FW.bold, color: rushColor, background: rushColor + '18', border: `1px solid ${rushColor}44`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
                   {rushFactor.badge} · +{Math.round((rFactor - 1) * 100)}%
                 </span>
               );
@@ -24584,7 +24584,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 active. Tooltip carries the full prose breakdown. */}
             {datePrem.label && (
               <span title={datePrem.explanation || ''} style={{
-                fontSize: 10, fontWeight: 700, color: C.muted,
+                fontSize: 10, fontWeight: FW.bold, color: C.muted,
                 background: C.muted + '18', border: `1px solid ${C.muted}44`,
                 borderRadius: 12, padding: '2px 8px 2px 6px', letterSpacing: '0.04em',
                 display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
@@ -24629,12 +24629,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
               <>
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                    <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                    <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.semibold }}>
                       Time of day
                     </div>
                     {/* Sprint 57g.2: tiny "saved to event" affordance so the
                         planner knows this isn't an estimate-only toggle. */}
-                    <span style={{ fontSize: 9.5, color: C.success, fontWeight: 600, letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: 9.5, color: C.success, fontWeight: FW.semibold, letterSpacing: '0.04em' }}>
                       · saved to event
                     </span>
                   </div>
@@ -24671,7 +24671,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                       onChange={e => setEstServiceTax(e.target.checked)}
                       style={{ accentColor: C.accent2, marginTop: 2, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
+                      <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.text }}>
                         Include service charge + tax
                       </div>
                       <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.35 }}>
@@ -24693,7 +24693,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                       onChange={e => setEstContingency(e.target.checked)}
                       style={{ accentColor: C.muted, marginTop: 2, flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>
+                      <div style={{ fontSize: 11, fontWeight: FW.semibold, color: C.text }}>
                         Add 10% planning contingency
                       </div>
                       <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.35 }}>
@@ -24738,25 +24738,25 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: clr }}>{TIER_LABEL[tier]}</span>
+                        <span style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: clr }}>{TIER_LABEL[tier]}</span>
                         {tier === 'better' && (
-                          <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 999, padding: '1px 6px' }}>Default starting point</span>
+                          <span style={{ fontSize: 8.5, fontWeight: FW.bold, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.muted, border: `1px solid ${C.border}`, borderRadius: 999, padding: '1px 6px' }}>Default starting point</span>
                         )}
                       </div>
                       <div style={{ ...s.statNum(clr), fontSize: 22 }}>{fmtD(total)}</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{fmtD(perHead)} / person</div>
-                      <div style={{ fontSize: 11.5, color: C.text, marginTop: 8, fontWeight: 600, lineHeight: 1.4 }}>{TIER_BESTFOR[tier]}</div>
+                      <div style={{ fontSize: 11.5, color: C.text, marginTop: 8, fontWeight: FW.semibold, lineHeight: 1.4 }}>{TIER_BESTFOR[tier]}</div>
                       <div style={{ fontSize: 10.5, color: C.muted, marginTop: 4, fontStyle: 'italic', lineHeight: 1.4 }}>{meta.tag}</div>
                       {/* Fixed decision matrix — same axes every tier so the planner reads down a column. */}
                       <div style={{ marginTop: 10, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
                         {TIER_MATRIX.map(row => (
                           <div key={row.axis} style={{ marginBottom: 6 }}>
-                            <div style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.muted }}>{row.axis}</div>
+                            <div style={{ fontSize: 8.5, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.muted }}>{row.axis}</div>
                             <div style={{ fontSize: 11, color: C.text, lineHeight: 1.35 }}>{tierMatrixCell(row, tier)}</div>
                           </div>
                         ))}
                       </div>
-                      <div style={{ fontSize: 10, color: clr, marginTop: 8, fontWeight: 600 }}>Apply this budget →</div>
+                      <div style={{ fontSize: 10, color: clr, marginTop: 8, fontWeight: FW.semibold }}>Apply this budget →</div>
                     </div>
                   );
                 })}
@@ -24794,11 +24794,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                     width: '100%', textAlign: 'left', padding: '6px 10px',
                     background: 'transparent', border: `1px dashed ${C.border}`,
                     borderRadius: 8, cursor: 'pointer',
-                    fontSize: 10.5, color: C.muted, fontWeight: 600,
+                    fontSize: 10.5, color: C.muted, fontWeight: FW.semibold,
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   }}>
                     <span>{estBreakdownOpen ? '▾' : '▸'} How we got to {fmtD(breakdown.total)} ({TIER_LABEL[anchorKey] || anchorKey})</span>
-                    <span style={{ color: C.text, fontWeight: 700 }}>{fmtD(breakdown.perHead)}/person</span>
+                    <span style={{ color: C.text, fontWeight: FW.bold }}>{fmtD(breakdown.perHead)}/person</span>
                   </button>
                   {estBreakdownOpen && (
                     <div style={{ marginTop: 6, padding: '8px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
@@ -24845,9 +24845,9 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             <div>
               <div style={s.cardTitle}>Budget</div>
               {totalBudgeted > 0 && (
-                <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: C.text, lineHeight: 1.1, marginTop: 2 }}>
+                <div style={{ fontSize: 28, fontWeight: FW.heavy, letterSpacing: '-0.03em', color: C.text, lineHeight: 1.1, marginTop: 2 }}>
                   {fmtD(totalBudgeted)}
-                  <span style={{ fontSize: 13, fontWeight: 400, color: C.muted, marginLeft: 8, letterSpacing: 0 }}>total budget</span>
+                  <span style={{ fontSize: 13, fontWeight: FW.regular, color: C.muted, marginLeft: 8, letterSpacing: 0 }}>total budget</span>
                 </div>
               )}
             </div>
@@ -24887,7 +24887,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           </div>
           {showSotGlossary && (
             <div data-testid="bp-sot-glossary" style={{ marginTop: 10, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Money glossary — single source of truth</div>
+              <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Money glossary — single source of truth</div>
               {[
                 ['Estimate',     'A planning guide. Not committed money. Comes from the budget estimator or your manual entry.'],
                 ['Planned',      'The budgeted amount for a category. What you intend to spend.'],
@@ -24897,7 +24897,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 ['Stripe link',  'A hosted payment URL. Creating it does NOT charge the client; only when they pay through it.'],
               ].map(([term, def]) => (
                 <div key={term} style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'flex-start' }}>
-                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.text, minWidth: 90 }}>{term}</span>
+                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: FW.bold, color: C.text, minWidth: 90 }}>{term}</span>
                   <span style={{ fontSize: 11.5, color: C.muted, lineHeight: 1.5 }}>{def}</span>
                 </div>
               ))}
@@ -24950,11 +24950,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{r.category}</span>
-                      {sharePct > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{sharePct}%</span>}
+                      <span style={{ fontSize: 13, fontWeight: FW.semibold }}>{r.category}</span>
+                      {sharePct > 0 && <span style={{ fontSize: 10, fontWeight: FW.bold, color: C.muted, background: C.border + '88', borderRadius: 10, padding: '1px 7px' }}>{sharePct}%</span>}
                     </div>
                     {committed > 0
-                      ? <span style={{ fontSize: 12, fontWeight: 700, color: rowBalColor }}>
+                      ? <span style={{ fontSize: 12, fontWeight: FW.bold, color: rowBalColor }}>
                           {balDue <= 0 ? 'Paid' : `${fmtD(balDue)} due`}
                         </span>
                       : <span style={{ fontSize: 12, color: C.muted }}>Uncontracted</span>}
@@ -24978,7 +24978,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 </div>
               );
             })}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', fontWeight: 700, fontSize: 13, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', fontWeight: FW.bold, fontSize: 13, borderTop: `1px solid ${C.border}` }}>
               <span>Balance Due</span>
               {/* Sprint 59C: total balance color follows the soonest unpaid
                   vendor due date across every category. Stays neutral when
@@ -25041,13 +25041,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                   <tr key={r.id} onClick={() => setModalId(r.id)} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                     onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                    <td style={{ ...s.td, fontWeight: 500, minWidth: 160 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{r.category}</div>
+                    <td style={{ ...s.td, fontWeight: FW.medium, minWidth: 160 }}>
+                      <div style={{ fontSize: 13, fontWeight: FW.semibold, marginBottom: 4 }}>{r.category}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ flex: 1, height: 4, borderRadius: 3, background: C.border, overflow: 'hidden', maxWidth: 100 }}>
                           <div style={{ height: '100%', width: `${sharePct}%`, background: C.accent + '99', borderRadius: 3, transition: 'width 0.3s' }} />
                         </div>
-                        <span style={{ fontSize: 10, color: C.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 10, color: C.muted, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>
                           {sharePct > 0 ? `${Math.round(sharePct)}%` : '—'}
                         </span>
                       </div>
@@ -25064,7 +25064,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                         : fmtD(uncontracted)}
                     </td>
                     <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums' }}>{fmtD(r.actual)}</td>
-                    <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                    <td style={{ ...s.td, fontVariantNumeric: 'tabular-nums', fontWeight: FW.semibold }}>
                       {committed === 0
                         ? <span style={{ color: C.muted }}>—</span>
                         : balDue <= 0
@@ -25088,11 +25088,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 );
               })}
               <tr style={{ borderTop: `2px solid ${C.border}` }}>
-                <td style={{ ...s.td, fontWeight: 700 }}>Total</td>
-                <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalBudgeted)}</td>
-                <td style={{ ...s.td, fontWeight: 700, color: C.accent2 }}>{fmtD(totalCommitted)}</td>
-                <td style={{ ...s.td, fontWeight: 700, color: totalBudgeted - totalCommitted < 0 ? C.danger : C.muted }}>{fmtD(Math.max(0, totalBudgeted - totalCommitted))}</td>
-                <td style={{ ...s.td, fontWeight: 700 }}>{fmtD(totalActual)}</td>
+                <td style={{ ...s.td, fontWeight: FW.bold }}>Total</td>
+                <td style={{ ...s.td, fontWeight: FW.bold }}>{fmtD(totalBudgeted)}</td>
+                <td style={{ ...s.td, fontWeight: FW.bold, color: C.accent2 }}>{fmtD(totalCommitted)}</td>
+                <td style={{ ...s.td, fontWeight: FW.bold, color: totalBudgeted - totalCommitted < 0 ? C.danger : C.muted }}>{fmtD(Math.max(0, totalBudgeted - totalCommitted))}</td>
+                <td style={{ ...s.td, fontWeight: FW.bold }}>{fmtD(totalActual)}</td>
                 {/* Sprint 59C: total balance follows soonest-due discipline. */}
                 {(() => {
                   const totalBal = totalCommitted - totalActual;
@@ -25103,7 +25103,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                     .filter(d => d !== null);
                   const soonest  = allDays.length ? Math.min(...allDays) : null;
                   return (
-                    <td style={{ ...s.td, fontWeight: 700, color: paymentStatusColor(C, totalBal <= 0, soonest) }}>
+                    <td style={{ ...s.td, fontWeight: FW.bold, color: paymentStatusColor(C, totalBal <= 0, soonest) }}>
                       {totalBal <= 0 ? 'Paid' : fmtD(totalBal)}
                     </td>
                   );
@@ -25130,8 +25130,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             return (
               <div key={mon} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtMon(mon)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: monthColor }}>{fmtD(monthTotal)}</span>
+                  <span style={{ fontSize: 13, fontWeight: FW.semibold }}>{fmtMon(mon)}</span>
+                  <span style={{ fontSize: 13, fontWeight: FW.bold, color: monthColor }}>{fmtD(monthTotal)}</span>
                 </div>
                 {vs.map(v => {
                   const days = daysUntil(v.payDueDate);
@@ -25148,7 +25148,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                       <span style={{ fontSize: 12, color: C.muted }}>{v.name} — due {fmtDate(v.payDueDate)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {pillColor && <span style={s.pill(pillColor)}>{days < 0 ? `${-days}d overdue` : `${days}d`}</span>}
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>{fmtD(vendorBalance(v))}</span>
+                        <span style={{ fontSize: 12, fontWeight: FW.semibold }}>{fmtD(vendorBalance(v))}</span>
                       </div>
                     </div>
                   );
@@ -25255,9 +25255,9 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 {!stripeOn && (client.feeSchedule || []).some(f => !f.paid && f.amount > 0) && onOpenConnections && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 12, borderRadius: 8, background: C.bg, border: `1px dashed ${C.border}` }}>
                     <span style={{ fontSize: 11, color: C.muted, flex: 1, lineHeight: 1.45 }}>
-                      Stripe isn't connected — clients pay manually until you set it up. <strong style={{ color: C.text, fontWeight: 600 }}>Manual milestones still work.</strong>
+                      Stripe isn't connected — clients pay manually until you set it up. <strong style={{ color: C.text, fontWeight: FW.semibold }}>Manual milestones still work.</strong>
                     </span>
-                    <button onClick={onOpenConnections} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0, flexShrink: 0 }}>
+                    <button onClick={onOpenConnections} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0, flexShrink: 0 }}>
                       Open Connections →
                     </button>
                   </div>
@@ -25279,17 +25279,17 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <div style={{ flex: 1 }}>
                               {setClient ? (
-                                <input style={{ ...s.input, fontSize: 13, fontWeight: 600, marginBottom: 3 }} value={f.label} onChange={e => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, label: e.target.value } : x) }))} />
+                                <input style={{ ...s.input, fontSize: 13, fontWeight: FW.semibold, marginBottom: 3 }} value={f.label} onChange={e => setClient(c => ({ ...c, feeSchedule: c.feeSchedule.map(x => x.id === f.id ? { ...x, label: e.target.value } : x) }))} />
                               ) : (
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.label}</div>
+                                <div style={{ fontSize: 13, fontWeight: FW.semibold }}>{f.label}</div>
                               )}
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: f.paid ? C.success : C.text }}>{fmtD(f.amount)}</span>
+                                <span style={{ fontSize: 14, fontWeight: FW.bold, color: f.paid ? C.success : C.text }}>{fmtD(f.amount)}</span>
                                 {dueVal && <span style={{ fontSize: 11, color: f.paid ? C.success : days !== null && days <= 14 ? C.danger : C.muted }}>
                                   {f.paid ? 'Paid ✓' : days !== null ? (days === 0 ? 'Due today!' : days < 0 ? 'Overdue' : `Due in ${days}d`) : fmtDate(dueVal)}
                                 </span>}
                                 {f.paid && f.paymentMethod === 'Stripe' && (
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: C.success, background: C.success + '18', border: `1px solid ${C.success}44`, borderRadius: 5, padding: '1px 6px', letterSpacing: '0.06em' }}>STRIPE</span>
+                                  <span style={{ fontSize: 10, fontWeight: FW.bold, color: C.success, background: C.success + '18', border: `1px solid ${C.success}44`, borderRadius: 5, padding: '1px 6px', letterSpacing: '0.06em' }}>STRIPE</span>
                                 )}
                               </div>
                             </div>
@@ -25325,7 +25325,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                           {setClient && !f.paid && hasStripeLink && (
                             <div data-testid={`bp-stripe-status-row-${f.id}`} style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                <span data-testid={`bp-stripe-status-pill-${f.id}`} style={{ fontSize: 10, fontWeight: 800, color: C.accent, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 6px', border: `1px solid ${C.accent}55`, borderRadius: 4 }}>
+                                <span data-testid={`bp-stripe-status-pill-${f.id}`} style={{ fontSize: 10, fontWeight: FW.heavy, color: C.accent, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '2px 6px', border: `1px solid ${C.accent}55`, borderRadius: 4 }}>
                                   Link created · Awaiting Stripe confirmation
                                 </span>
                                 <span style={{ fontSize: 11, color: C.muted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{f.stripeUrl}</span>
@@ -25353,7 +25353,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                               </div>
                               {/* Honest explanation of what "Link created" means. */}
                               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
-                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: 600 }}>Check on Stripe</span> to query now — Event Boss does not auto-poll Stripe.
+                                Payment status updates only after Stripe confirms a payment. Tap <span style={{ color: C.text, fontWeight: FW.semibold }}>Check on Stripe</span> to query now — Event Boss does not auto-poll Stripe.
                               </div>
                             </div>
                           )}
@@ -25363,9 +25363,9 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                           {setClient && f.paid && (
                             <div data-testid={`bp-fee-paid-source-${f.id}`} style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
                               {f.paymentMethod === 'Stripe' ? (
-                                <span>✓ <span style={{ color: C.success, fontWeight: 600 }}>Stripe-confirmed paid</span> — verified via Stripe session.</span>
+                                <span>✓ <span style={{ color: C.success, fontWeight: FW.semibold }}>Stripe-confirmed paid</span> — verified via Stripe session.</span>
                               ) : (
-                                <span>✓ <span style={{ color: C.text, fontWeight: 600 }}>Manually recorded paid</span> in Event Boss — not verified by Stripe.</span>
+                                <span>✓ <span style={{ color: C.text, fontWeight: FW.semibold }}>Manually recorded paid</span> in Event Boss — not verified by Stripe.</span>
                               )}
                             </div>
                           )}
@@ -25528,17 +25528,17 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: LC.bg, overflowY: 'auto', fontFamily: FF }}>
       {!guestMode && (
-        <div style={{ background: C.accent, color: '#fff', fontSize: 11, fontWeight: 700, textAlign: 'center', padding: '7px 16px', letterSpacing: '0.06em', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+        <div style={{ background: C.accent, color: '#fff', fontSize: 11, fontWeight: FW.bold, textAlign: 'center', padding: '7px 16px', letterSpacing: '0.06em', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
           GUEST PREVIEW — this is what your RSVP link looks like
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '3px 12px', cursor: 'pointer', fontWeight: 700 }}>Exit Preview ✕</button>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 11, padding: '3px 12px', cursor: 'pointer', fontWeight: FW.bold }}>Exit Preview ✕</button>
         </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 16px 60px' }}>
         <div style={{ width: '100%', maxWidth: 480 }}>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: LC.muted, marginBottom: 8 }}>You're invited</div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: LC.text, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{event.name || 'Our Event'}</h1>
+            <div style={{ fontSize: 12, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.12em', color: LC.muted, marginBottom: 8 }}>You're invited</div>
+            <h1 style={{ fontSize: 28, fontWeight: FW.heavy, color: LC.text, margin: '0 0 8px', letterSpacing: '-0.02em' }}>{event.name || 'Our Event'}</h1>
             {(event.date || event.venue) && (
               <div style={{ fontSize: 15, color: LC.muted }}>
                 {event.date && fmtDate(event.date)}{event.venue ? ` · ${event.venue}` : ''}
@@ -25549,7 +25549,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
           {submitted ? (
             <div style={{ background: LC.surface, borderRadius: 20, padding: '40px 28px', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ fontSize: 52, marginBottom: 16 }}>{rsvp === 'Yes' ? '🎉' : '💌'}</div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: LC.text, margin: '0 0 10px' }}>Thanks, {firstName.trim()}!</h2>
+              <h2 style={{ fontSize: 24, fontWeight: FW.heavy, color: LC.text, margin: '0 0 10px' }}>Thanks, {firstName.trim()}!</h2>
               <p style={{ color: LC.muted, fontSize: 15, margin: '0 0 20px', lineHeight: 1.6 }}>
                 {rsvp === 'Yes' ? "We can't wait to celebrate with you." : rsvp === 'No' ? "We'll miss you — thank you for letting us know." : "We'll keep you updated."}
               </p>
@@ -25569,7 +25569,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                 );
               })()}
               {!guestMode && (
-                <button onClick={onClose} style={{ background: LC.accent, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={onClose} style={{ background: LC.accent, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 15, fontWeight: FW.bold, cursor: 'pointer' }}>
                   ← Back to planner
                 </button>
               )}
@@ -25578,17 +25578,17 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
             <div style={{ background: LC.surface, borderRadius: 20, padding: '28px 24px', boxShadow: '0 8px 30px rgba(0,0,0,0.18)', border: `1px solid ${LC.border}` }}>
               <div style={{ marginBottom: 22, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>First name</label>
+                  <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 8 }}>First name</label>
                   <input style={lInput} value={firstName} onChange={e => { setFirstName(e.target.value); clearErr(); }} placeholder="First name" autoFocus />
                 </div>
                 <div style={{ flex: 1, minWidth: 150 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Last name <span style={{ color: LC.muted, fontWeight: 400 }}>(optional)</span></label>
+                  <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 8 }}>Last name <span style={{ color: LC.muted, fontWeight: FW.regular }}>(optional)</span></label>
                   <input style={lInput} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
                 </div>
               </div>
 
               <div style={{ marginBottom: 22 }}>
-                <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Will you be attending?</label>
+                <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 10 }}>Will you be attending?</label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[['Yes', '🎉  Attending', LC.success], ['No', "😢  Can't make it", LC.danger], ['Maybe', '🤔  Maybe', LC.muted]].map(([val, label, clr]) => (
                     <button key={val} onClick={() => { setRsvp(val); clearErr(); }} style={{
@@ -25596,7 +25596,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                       border: `2px solid ${rsvp === val ? clr : LC.border}`,
                       background: rsvp === val ? clr + '22' : LC.bg,
                       color: rsvp === val ? clr : LC.muted,
-                      cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all 0.15s', lineHeight: 1.4,
+                      cursor: 'pointer', fontSize: 12, fontWeight: FW.semibold, transition: 'all 0.15s', lineHeight: 1.4,
                     }}>{label}</button>
                   ))}
                 </div>
@@ -25605,7 +25605,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
               {rsvp === 'Yes' && (
                 <>
                   <div style={{ marginBottom: 22 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Meal preference</label>
+                    <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 10 }}>Meal preference</label>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {mealOpts.map(m => (
                         <button key={m} onClick={() => setMeal(m)} style={{
@@ -25618,7 +25618,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                   </div>
 
                   <div style={{ marginBottom: 22 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 4 }}>Allergies or access needs</label>
+                    <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 4 }}>Allergies or access needs</label>
                     <div style={{ fontSize: 12, color: LC.muted, marginBottom: 10, lineHeight: 1.4 }}>Your meal choice is above — use this only for allergies and access we must plan around. If it's a real allergy, tap <strong style={{ color: LC.text }}>Other</strong> and tell us exactly.</div>
                     {(() => {
                       const needsParts = needs.split(',').map(s => s.trim()).filter(Boolean);
@@ -25669,7 +25669,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                         background: hasPlusOne ? LC.accent : LC.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#fff', fontSize: 14, flexShrink: 0, transition: 'all 0.12s',
                       }}>{hasPlusOne ? '✓' : ''}</div>
-                      <span style={{ fontSize: 15, fontWeight: 600, color: LC.text }}>I'm bringing a plus-one</span>
+                      <span style={{ fontSize: 15, fontWeight: FW.semibold, color: LC.text }}>I'm bringing a plus-one</span>
                     </label>
                     {hasPlusOne && (
                       <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 36 }}>
@@ -25692,11 +25692,11 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
                   </div>
 
                   <div style={{ marginBottom: 22 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 10 }}>Children in your party</label>
+                    <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 10 }}>Children in your party</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <button onClick={() => setKids(Math.max(0, kids - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>−</button>
-                      <span style={{ fontSize: 24, fontWeight: 800, color: LC.text, minWidth: 28, textAlign: 'center' }}>{kids}</span>
-                      <button onClick={() => setKids(kids + 1)} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>+</button>
+                      <button onClick={() => setKids(Math.max(0, kids - 1))} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: FW.bold }}>−</button>
+                      <span style={{ fontSize: 24, fontWeight: FW.heavy, color: LC.text, minWidth: 28, textAlign: 'center' }}>{kids}</span>
+                      <button onClick={() => setKids(kids + 1)} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: FW.bold }}>+</button>
                     </div>
                   </div>
                 </>
@@ -25704,19 +25704,19 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
 
               {rsvp === 'No' && (
                 <div style={{ marginBottom: 22 }}>
-                  <label style={{ fontSize: 14, fontWeight: 600, color: LC.text, display: 'block', marginBottom: 8 }}>Message (optional)</label>
+                  <label style={{ fontSize: 14, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 8 }}>Message (optional)</label>
                   <textarea style={{ ...lInput, minHeight: 80, resize: 'vertical', lineHeight: 1.5 }} value={needs} onChange={e => setNeeds(e.target.value)} placeholder="We'll miss you! Anything you'd like to share…" />
                 </div>
               )}
 
               {err && (
-                <div style={{ fontSize: 13, color: LC.danger, marginBottom: 10, fontWeight: 600, textAlign: 'center' }}>{err}</div>
+                <div style={{ fontSize: 13, color: LC.danger, marginBottom: 10, fontWeight: FW.semibold, textAlign: 'center' }}>{err}</div>
               )}
               <button
                 onClick={submit}
                 style={{
                   width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-                  background: LC.accent, color: '#fff', fontSize: 16, fontWeight: 800,
+                  background: LC.accent, color: '#fff', fontSize: 16, fontWeight: FW.heavy,
                   cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '-0.01em',
                 }}
               >
@@ -25730,7 +25730,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false }) {
               own. This is the growth loop: each event recruits the next host. Shown both
               before AND after RSVP (the post-RSVP moment converts best). */}
           <div style={{ textAlign: 'center', marginTop: 22, fontSize: 12.5, color: LC.muted, lineHeight: 1.5 }}>
-            <a href={`${window.location.origin}${window.location.pathname}`} style={{ color: LC.accent, fontWeight: 700, textDecoration: 'none' }}>
+            <a href={`${window.location.origin}${window.location.pathname}`} style={{ color: LC.accent, fontWeight: FW.bold, textDecoration: 'none' }}>
               Planning something of your own? Make it with Event Boss →
             </a>
           </div>
@@ -25972,8 +25972,8 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
     return (
       <div style={{ padding: '8px 0' }}>
         <div style={card}>
-          <div style={{ fontSize: T.secondary, fontWeight: 800, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
-          <div style={{ fontSize: 14.5, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: 600 }}>
+          <div style={{ fontSize: T.secondary, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
+          <div style={{ fontSize: 14.5, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: FW.semibold }}>
             {hasList
               ? `${yes} confirmed${awaiting > 0 ? ` · ${awaiting} still out` : ''} of ${guests.length} invited.`
               : 'How many are you planning for?'}
@@ -25987,27 +25987,27 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 ~10px and untappable on a phone, for the most consequential number. */}
             <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '2px 6px' }}>
               <button type="button" aria-label="Fewer guests" onClick={() => setHcDraft(String(Math.max(0, (Number(hcDraft) || Number(yes || guests.length) || 0) - 1)))}
-                style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: 24, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>−</button>
+                style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: 24, fontWeight: FW.bold, cursor: 'pointer', lineHeight: 1 }}>−</button>
               <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder={String(yes || guests.length || 0)} autoFocus
                 onChange={e => setHcDraft(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { commit(hcDraft); e.currentTarget.blur(); } }}
-                style={{ width: 66, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 26, fontWeight: 800, fontFamily: 'inherit' }} />
+                style={{ width: 66, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: 26, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
               <button type="button" aria-label="More guests" onClick={() => setHcDraft(String((Number(hcDraft) || Number(yes || guests.length) || 0) + 1))}
-                style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: 24, fontWeight: 700, cursor: 'pointer', lineHeight: 1 }}>+</button>
+                style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: 24, fontWeight: FW.bold, cursor: 'pointer', lineHeight: 1 }}>+</button>
             </span>
             <span style={{ fontSize: 16, color: C.text }}>guests</span>
             {(() => { const isLocked = lockedCount != null && Number(hcDraft || 0) === lockedCount; return (
             <button type="button" onClick={() => commit(hcDraft || yes || guests.length)}
-              style={{ fontSize: 14, fontWeight: 700, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
+              style={{ fontSize: 14, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
             ); })()}
           </div>
           {lockedCount != null && Number(hcDraft || 0) === lockedCount && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5 }}>
               ✓ Locked — cooking, buying, and seating for {lockedCount}. It flows everywhere now; change it anytime above.
             </div>
           )}
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
-            style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
+            style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: FW.semibold, fontSize: 13, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
             {hasList ? 'Open the full guest list →' : "Track who's coming with RSVPs instead →"}
           </button>
         </div>
@@ -26058,7 +26058,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <div onClick={() => setGuestActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9990 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 9991, padding: '8px 16px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: T.caption, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Guest Actions</div>
+            <div style={{ fontSize: T.caption, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 4px 8px' }}>Guest Actions</div>
             {[
               { icon: 'import',  label: 'Import CSV',      onClick: () => { setShowImport(true);        setGuestActionsOpen(false); } },
               { icon: 'history', label: `Import History${importBatches.length > 0 ? ` (${importBatches.length})` : ''}`, onClick: () => { setShowGuestHistory(true); setGuestActionsOpen(false); } },
@@ -26072,7 +26072,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               </button>
             ))}
             <button onClick={() => setGuestActionsOpen(false)}
-              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+              style={{ marginTop: 8, width: '100%', padding: '14px', borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, color: C.text, cursor: 'pointer', fontSize: 14, fontWeight: FW.semibold, fontFamily: 'inherit' }}>
               Cancel
             </button>
           </div>
@@ -26086,10 +26086,10 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${(C.success || C.accent)}55`, borderLeft: `3px solid ${C.success || C.accent}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
           <span aria-hidden style={{ fontSize: 15 }}>📌</span>
           <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.5 }}>
-            <span style={{ fontWeight: 700 }}>Locked at {Number(event.guestCount)} guests</span> — that's your final count for food, budget &amp; seating. RSVPs below are just for tracking.
+            <span style={{ fontWeight: FW.bold }}>Locked at {Number(event.guestCount)} guests</span> — that's your final count for food, budget &amp; seating. RSVPs below are just for tracking.
           </div>
           <button type="button" onClick={() => { setGuestMode('list'); }}
-            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: 700, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
+            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
         </div>
       )}
 
@@ -26106,7 +26106,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 18, maxWidth: 760, borderRadius: 14, background: `${green}14`, border: `1px solid ${green}44`, borderLeft: `3px solid ${green}`, animation: 'ceRise 420ms cubic-bezier(.2,.7,.2,1) both' }}>
             <span aria-hidden style={{ fontSize: 22, lineHeight: 1 }}>🎉</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15.5, fontWeight: 800, color: C.text, lineHeight: 1.3 }}>{headline}</div>
+              <div style={{ fontSize: 15.5, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{headline}</div>
               <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2 }}>{yes} {yes === 1 ? 'person is' : 'people are'} coming so far 💛</div>
             </div>
             <button type="button" onClick={() => setNewYeses([])} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>×</button>
@@ -26124,7 +26124,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           return (
             <div style={{ marginBottom: 22, maxWidth: 760 }}>
               <button type="button" onClick={() => setGFilter('Yes')} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <div style={{ fontSize: 21, fontWeight: 800, color: C.text, lineHeight: 1.25 }}>
+                <div style={{ fontSize: 21, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>
                   {yes > 0
                     ? <>{yes} {yes === 1 ? 'person’s' : 'people are'} coming so far</>
                     : 'No yeses yet — they’ll appear here as people reply'}
@@ -26171,10 +26171,10 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite' }); }}
             style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, marginBottom: 16, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
-              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Open &amp; send →</span>
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Nudge the {awaiting} who haven’t replied</div>
+            <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>Nudge the {awaiting} who haven’t replied</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>A friendly reminder — already written, with your RSVP link.</div>
           </button>
         );
@@ -26190,10 +26190,10 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           <button type="button" onClick={() => { const d = draftDietaryNote(event, profile, {}); setGuestDraftSheet({ title: 'Notes for the cook', intro: `Pulled from your guests — the ${needCount} dietary ${needCount === 1 ? 'note' : 'notes'} to pass to whoever’s cooking or catering. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
             style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, marginBottom: 16, display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
-              <span style={{ fontSize: T.secondary, fontWeight: 700, color: C.accent }}>Open &amp; send →</span>
+              <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Open &amp; send →</span>
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, marginTop: 6 }}>Send the cook the dietary notes</div>
+            <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginTop: 6 }}>Send the cook the dietary notes</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{needCount} {needCount === 1 ? 'guest has' : 'guests have'} a need on file — written up for whoever’s cooking.</div>
           </button>
         );
@@ -26250,7 +26250,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* UX-SAAS — a host sees "your invite link," not an "RSVP Collection
                     Link" with a raw URL and "responses feed into this list." */}
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{guestsIsHost ? 'Your invite link' : 'RSVP Collection Link'}</div>
+                <div style={{ fontSize: 13, fontWeight: FW.semibold }}>{guestsIsHost ? 'Your invite link' : 'RSVP Collection Link'}</div>
                 {guestsIsHost ? (
                   <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>Share it and guests reply right here — your list updates on its own.</div>
                 ) : (<>
@@ -26322,7 +26322,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: nonRespOpen ? 10 : 0 }}>
               <button onClick={() => setNonRespOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                 <span style={{ display: 'flex', color: C.muted }}><Icon name="calendar" size={15} /></span>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.muted, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
+                <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.muted, textAlign: 'left' }}>{nonResponders.length} guest{nonResponders.length !== 1 ? 's' : ''} haven't responded — {daysLeft}d to go</div>
                 <span style={{ color: C.muted, display: 'flex', transform: nonRespOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevronDown" size={16} /></span>
               </button>
               {/* Batch email reminder — DONE when email configured, DEEP HANDOFF via mailto otherwise.
@@ -26426,7 +26426,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 title="Import history"
               >
                 <Icon name="history" size={14} />
-                {importBatches.length > 0 && <span style={{ fontSize: T.eyebrow, fontWeight: 700, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
+                {importBatches.length > 0 && <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, background: C.accent, color: '#fff', borderRadius: 99, padding: '1px 5px', position: 'absolute', top: -4, right: -4 }}>{importBatches.length}</span>}
               </button>
               {importBatches.length > 0 && (
                 <button aria-label="Undo last import" style={{ ...s.btn(), color: C.muted }} onClick={handleUndo} title="Undo last import">↩</button>
@@ -26496,12 +26496,12 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                 onMouseLeave={e => { e.currentTarget.style.background = ''; }}
               >
                 {guestsIsHost && (
-                  <span aria-hidden style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: C.surface2 || C.bg, border: `1px solid ${C.border}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14.5, fontWeight: 700, color: C.text, marginRight: 12 }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', background: C.surface2 || C.bg, border: `1px solid ${C.border}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14.5, fontWeight: FW.bold, color: C.text, marginRight: 12 }}>
                     {((g.name || '').trim().charAt(0) || '?').toUpperCase()}
                   </span>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
+                  <div style={{ fontWeight: FW.semibold, fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     {!guestsIsHost && g.group && <span style={{ fontSize: T.secondary, color: C.muted }}>{g.group}</span>}
                     {!guestsIsHost && g.meal && g.meal !== '—' && <span style={s.pill(C.accent2)}>{g.meal}</span>}
@@ -26535,7 +26535,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                   onMouseEnter={e => { e.currentTarget.style.background = C.surface2; }}
                   onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
                   <td style={s.td}>
-                    <div style={{ fontWeight: 500 }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
+                    <div style={{ fontWeight: FW.medium }}>{g.name || <span style={{ color: C.muted }}>—</span>}</div>
                     {g.plusOne && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 1 }}>+1 {g.plusOne}</div>}
                   </td>
                   <td style={{ ...s.td, color: C.muted, fontSize: T.caption }}>{g.group}</td>
@@ -26571,7 +26571,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         const toggle = (gId, key) => setGuests(gs => gs.map(g => g.id === gId ? { ...g, [key]: !g[key] } : g));
 
         const giftPct     = confirmed.length > 0 ? Math.round((gifted / confirmed.length) * 100) : 0;
-        const TH_STYLE    = { fontSize: T.caption, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, padding: '0 8px 8px', textAlign: 'center', borderBottom: `1px solid ${C.border}` };
+        const TH_STYLE    = { fontSize: T.caption, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, padding: '0 8px 8px', textAlign: 'center', borderBottom: `1px solid ${C.border}` };
         const TH_L_STYLE  = { ...TH_STYLE, textAlign: 'left', paddingLeft: 0 };
 
         return (
@@ -26625,7 +26625,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                       </td>
                       <td style={{ padding: '8px', borderBottom: `1px solid ${C.border}`, textAlign: 'center', verticalAlign: 'middle', width: 110 }}>
                         <button onClick={() => toggle(g.id, 'giftReceived')} style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: 600,
+                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: FW.semibold,
                           border: `1px solid ${g.giftReceived ? C.success : C.border}`,
                           background: g.giftReceived ? C.success + '18' : C.bg,
                           color: g.giftReceived ? C.success : C.muted,
@@ -26639,7 +26639,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
                           }
                           toggle(g.id, 'thankYouSent');
                         }} style={{
-                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: 600,
+                          padding: '4px 10px', borderRadius: 20, fontSize: T.secondary, cursor: 'pointer', fontWeight: FW.semibold,
                           border: `1px solid ${g.thankYouSent ? C.accent2 : g.giftReceived ? C.muted + '88' : C.border}`,
                           background: g.thankYouSent ? C.accent2 + '18' : g.giftReceived ? C.muted + '12' : C.bg,
                           color: g.thankYouSent ? C.accent2 : g.giftReceived ? C.warn : C.muted,
@@ -26701,7 +26701,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         return (
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ fontSize: T.caption, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vendor Impact Summaries</div>
+              <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vendor Impact Summaries</div>
               <div style={{ fontSize: T.secondary, color: C.muted, fontStyle: 'italic' }}>Copy and send manually — planner-reviewed before sharing</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
@@ -26709,45 +26709,45 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               {/* F&B Summary */}
               <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: T.caption, fontWeight: 700, color: C.accent2 }}>Food & Beverage</div>
+                  <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.accent2 }}>Food & Beverage</div>
                   <button onClick={() => copyText(fbText)}
                     style={{ ...makeS(C).btn('ghost'), fontSize: T.caption, padding: '3px 8px' }}>Copy</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                     <span style={{ color: C.muted }}>Confirmed headcount</span>
-                    <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
+                    <span style={{ fontWeight: FW.bold, color: C.text }}>{fbHeadcount}</span>
                   </div>
                   {totalPlusOnes > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Plus-ones</span>
-                      <span style={{ fontWeight: 600, color: C.text }}>{totalPlusOnes}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.text }}>{totalPlusOnes}</span>
                     </div>
                   )}
                   {totalKids > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Kids meals needed</span>
-                      <span style={{ fontWeight: 600, color: C.muted }}>{totalKids}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.muted }}>{totalKids}</span>
                     </div>
                   )}
                   {mealBreakdown.length > 0 && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Meal selections</div>
+                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Meal selections</div>
                       {mealBreakdown.map(([meal, count]) => (
                         <div key={meal} style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption, marginBottom: 2 }}>
                           <span style={{ color: C.text }}>{meal}</span>
-                          <span style={{ fontWeight: 700, color: C.accent }}>{count}</span>
+                          <span style={{ fontWeight: FW.bold, color: C.accent }}>{count}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   {Object.keys(needsCounts).length > 0 && (
                     <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Dietary / Special Needs</div>
+                      <div style={{ fontSize: T.caption, color: C.muted, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Dietary / Special Needs</div>
                       {Object.entries(needsCounts).map(([need, count]) => (
                         <div key={need} style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption, marginBottom: 2 }}>
                           <span style={{ color: C.text }}>{need}</span>
-                          {count > 1 && <span style={{ fontWeight: 700, color: C.muted }}>×{count}</span>}
+                          {count > 1 && <span style={{ fontWeight: FW.bold, color: C.muted }}>×{count}</span>}
                         </div>
                       ))}
                     </div>
@@ -26761,37 +26761,37 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
               {/* Venue / Logistics Summary */}
               <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: T.caption, fontWeight: 700, color: C.accent }}>Venue & Logistics</div>
+                  <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>Venue & Logistics</div>
                   <button onClick={() => copyText(venueText)}
                     style={{ ...makeS(C).btn('ghost'), fontSize: T.caption, padding: '3px 8px' }}>Copy</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                     <span style={{ color: C.muted }}>Confirmed attendance</span>
-                    <span style={{ fontWeight: 700, color: C.text }}>{fbHeadcount}</span>
+                    <span style={{ fontWeight: FW.bold, color: C.text }}>{fbHeadcount}</span>
                   </div>
                   {tablesUsed > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Tables assigned</span>
-                      <span style={{ fontWeight: 600, color: C.text }}>{tablesUsed}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.text }}>{tablesUsed}</span>
                     </div>
                   )}
                   {accessible > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Wheelchair access needed</span>
-                      <span style={{ fontWeight: 700, color: C.muted }}>{accessible}</span>
+                      <span style={{ fontWeight: FW.bold, color: C.muted }}>{accessible}</span>
                     </div>
                   )}
                   {maybeCount > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>Still undecided</span>
-                      <span style={{ fontWeight: 600, color: C.muted }}>{maybeCount}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.muted }}>{maybeCount}</span>
                     </div>
                   )}
                   {noResponse > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.caption }}>
                       <span style={{ color: C.muted }}>No response yet</span>
-                      <span style={{ fontWeight: 600, color: C.danger }}>{noResponse}</span>
+                      <span style={{ fontWeight: FW.semibold, color: C.danger }}>{noResponse}</span>
                     </div>
                   )}
                 </div>
@@ -26862,7 +26862,7 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
         <StatCard label="Confirmed" value={confirmed.length} color={C.accent} />
         <StatCard label="Seated" value={seated} color={seated === confirmed.length && confirmed.length > 0 ? C.success : C.muted} sub={`${unassigned.length} unassigned`} />
         <div style={{ ...s.card, flex: 1, minWidth: 110, marginBottom: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Tables</div>
+          <div style={{ fontSize: 11, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, marginBottom: 8 }}>Tables</div>
           <input type="number" min="1" max="50" value={tableCount} onChange={e => onTablesChange && onTablesChange(Math.max(1, Number(e.target.value) || 1))} style={{ ...s.statNum(), fontSize: 28, border: 'none', background: 'transparent', outline: 'none', width: 64, padding: 0, fontFamily: FF }} />
         </div>
         <StatCard label="Avg / Table" value={confirmed.length ? Math.round(confirmed.length / tableCount) : '—'} />
@@ -26877,13 +26877,13 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
         {selected ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent, flexShrink: 0, animation: 'pulse 1.2s infinite' }} />
-            <span style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>Seating <strong>{selectedGuest?.name}</strong> — tap any table below to assign their seat</span>
+            <span style={{ fontSize: 13, color: C.accent, fontWeight: FW.semibold }}>Seating <strong>{selectedGuest?.name}</strong> — tap any table below to assign their seat</span>
             <button aria-label="Remove" style={{ ...s.btn('ghost'), marginLeft: 'auto', fontSize: 11, color: C.muted }} onClick={() => setSelected(null)}>Cancel</button>
           </div>
         ) : (
           <div style={{ fontSize: 12, color: C.muted }}>
             {unassigned.length === 0 && confirmed.length > 0
-              ? <span style={{ color: C.success, fontWeight: 600 }}>All confirmed guests are seated.</span>
+              ? <span style={{ color: C.success, fontWeight: FW.semibold }}>All confirmed guests are seated.</span>
               : confirmed.length === 0
               ? <span>No confirmed guests yet. Mark guests as Attending in the Guests tab first.</span>
               : <span>Tap an unassigned guest to select them, then tap a table to assign their seat. Use ⇄ to move a seated guest.</span>
@@ -26947,10 +26947,10 @@ function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTabl
                         }}
                         onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingTable(null); }}
                         onClick={e => e.stopPropagation()}
-                        style={{ background: 'none', border: 'none', outline: `1px solid ${C.accent}`, borderRadius: 4, fontSize: 13, fontWeight: 700, color: C.text, width: '100%', padding: '1px 4px', minWidth: 0 }}
+                        style={{ background: 'none', border: 'none', outline: `1px solid ${C.accent}`, borderRadius: 4, fontSize: 13, fontWeight: FW.bold, color: C.text, width: '100%', padding: '1px 4px', minWidth: 0 }}
                       />
                     ) : (
-                      <span title="Click to rename" style={{ fontSize: 13, fontWeight: 700, cursor: 'text', userSelect: 'none' }}
+                      <span title="Click to rename" style={{ fontSize: 13, fontWeight: FW.bold, cursor: 'text', userSelect: 'none' }}
                         onClick={e => { e.stopPropagation(); setEditingTable(tableNum); setEditName((tableNames || [])[tableNum - 1] || ''); }}>
                         {(tableNames || [])[tableNum - 1] || `Table ${tableNum}`}
                       </span>
@@ -27307,20 +27307,20 @@ function VendorScriptsPanel({ profile, event }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>Vendor Outreach Scripts</div>
+          <div style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, marginBottom: 4 }}>Vendor Outreach Scripts</div>
           <div style={{ fontSize: 12, color: C.muted }}>
             {eventType
               ? `${relevant.length} script${relevant.length !== 1 ? 's' : ''} for ${eventType} events.`
               : 'Ready-to-send templates for email or phone outreach.'}
             {eventType && others.length > 0 && !showAll && (
               <button onClick={() => setShowAll(true)}
-                style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                style={{ marginLeft: 8, fontSize: 11, fontWeight: FW.semibold, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 +{others.length} more types
               </button>
             )}
             {showAll && (
               <button onClick={() => setShowAll(false)}
-                style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                style={{ marginLeft: 8, fontSize: 11, fontWeight: FW.semibold, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 Show relevant only
               </button>
             )}
@@ -27343,7 +27343,7 @@ function VendorScriptsPanel({ profile, event }) {
         }}>
           <div style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 3, background: C.muted, borderRadius: 2 }} />
           <span style={{
-            fontSize: 9.5, fontWeight: 700, letterSpacing: '0.14em',
+            fontSize: 9.5, fontWeight: FW.bold, letterSpacing: '0.14em',
             textTransform: 'uppercase', color: C.muted,
             padding: '2px 7px', borderRadius: 4,
             border: `1px solid ${C.muted}55`, flexShrink: 0,
@@ -27367,8 +27367,8 @@ function VendorScriptsPanel({ profile, event }) {
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{script.type}</span>
-                    {priority && <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, background: C.accent + '18', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Priority</span>}
+                    <span style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{script.type}</span>
+                    {priority && <span style={{ fontSize: 10, fontWeight: FW.bold, color: C.accent, background: C.accent + '18', borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Priority</span>}
                   </div>
                   {mode === 'email' && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Subject: {script.subject}</div>}
                   {mode === 'phone' && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Phone talking points</div>}
@@ -27379,13 +27379,13 @@ function VendorScriptsPanel({ profile, event }) {
                 <div style={{ padding: '0 16px 16px' }}>
                   {mode === 'email' && (
                     <>
-                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Subject line</div>
+                      <div style={{ fontSize: 11, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Subject line</div>
                       <div style={{ fontSize: 12, padding: '8px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, marginBottom: 12, color: C.text, fontFamily: 'monospace' }}>{script.subject}</div>
-                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Email body</div>
+                      <div style={{ fontSize: 11, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Email body</div>
                     </>
                   )}
                   {mode === 'phone' && (
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Phone talking points</div>
+                    <div style={{ fontSize: 11, fontWeight: FW.semibold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Phone talking points</div>
                   )}
                   <pre style={{ fontSize: 12, lineHeight: 1.7, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: C.text, fontFamily: FF, margin: 0, marginBottom: 12 }}>{filled}</pre>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -27407,7 +27407,7 @@ function VendorScriptsPanel({ profile, event }) {
                       {personalizedText && personalizedIdx === idx ? (
                         <div>
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                            <span style={{ fontSize:11, fontWeight:700, color:C.accent }}>✨ Personalized</span>
+                            <span style={{ fontSize:11, fontWeight: FW.bold, color:C.accent }}>✨ Personalized</span>
                             <div style={{ display:'flex', gap:6 }}>
                               <button onClick={()=>{ navigator.clipboard?.writeText(personalizedText); copyText(-1, personalizedText); }} style={{ ...s.btn(), fontSize:10, padding:'3px 8px' }}>Copy</button>
                               <button aria-label="Remove" onClick={()=>{ setPersonalizedText(''); setPersonalizedIdx(null); }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:C.muted }}>✕</button>
@@ -27474,7 +27474,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency, onToggle
             // Clicking the progress pill toggles the drawer (stops row→modal navigation).
             <button type="button" onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: allDone ? C.success : (C.accentTopGrad || C.accent) }}>
+              <span style={{ fontSize: 11.5, fontWeight: FW.semibold, color: allDone ? C.success : (C.accentTopGrad || C.accent) }}>
                 ✓ {subsDone} of {subsTotal} steps
               </span>
               <span style={{ fontSize: 10, color: C.muted, transition: 'transform 180ms ease', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
@@ -27483,7 +27483,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency, onToggle
         </div>
         {urgency && !t.done && (
           <span title={urgency.explanation}
-            style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+            style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.05em', textTransform: 'uppercase',
               color: urgencyTone, background: urgencyTone + '18',
               border: `1px solid ${urgencyTone}44`, borderRadius: 8,
               padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -27503,7 +27503,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency, onToggle
               style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', background: 'none', border: 'none', padding: '6px 4px', borderRadius: 7, cursor: onToggleSubtask ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}
               onMouseEnter={e => { if (onToggleSubtask) e.currentTarget.style.background = C.surface2; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-              <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${sub.done ? C.success : C.border}`, background: sub.done ? C.success : 'transparent', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${sub.done ? C.success : C.border}`, background: sub.done ? C.success : 'transparent', color: '#fff', fontSize: 10, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {sub.done ? '✓' : ''}
               </span>
               <span style={{ fontSize: 12.5, color: sub.done ? C.muted : C.text, textDecoration: sub.done ? 'line-through' : 'none', lineHeight: 1.4 }}>
@@ -27643,8 +27643,8 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 
       {timeline.length === 0 ? (
         <div style={{ ...s.card, padding: '28px 24px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Planning Tasks</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Build your planning checklist</div>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.08em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Planning Tasks</div>
+          <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, marginBottom: 6 }}>Build your planning checklist</div>
           <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 18, maxWidth: 380 }}>
             Organize tasks by phase — 12 months out through day-of. Track ownership, deadlines, and completion across every stage of the event.
           </div>
@@ -27676,7 +27676,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                 {pastPhases.length > 0 && (
                   <button onClick={() => setShowPastPhases(v => !v)} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 11.5, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 11.5, fontWeight: FW.semibold,
                   }}>
                     <span style={{ fontSize: 10 }}>{showPastPhases ? '▾' : '▸'}</span>
                     {showPastPhases
@@ -27713,7 +27713,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               transition: 'all 0.15s', boxShadow: isAct ? `0 0 0 3px ${nodeClr}22` : 'none',
                             }}>
-                              <span style={{ fontSize: isAct ? 9 : 8, fontWeight: 700, color: isAct ? C.bg : nodeClr, lineHeight: 1 }}>
+                              <span style={{ fontSize: isAct ? 9 : 8, fontWeight: FW.bold, color: isAct ? C.bg : nodeClr, lineHeight: 1 }}>
                                 {allD ? '✓' : pOver ? '!' : abbr}
                               </span>
                             </div>
@@ -27721,12 +27721,12 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                             <div style={{ textAlign: 'center' }}>
                               {pDate ? (
                                 <>
-                                  <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>
+                                  <div style={{ fontSize: 9, fontWeight: FW.bold, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{pDate.replace(/,\s*\d{4}$/, '')}</div>
                                   {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, marginTop: 1, maxWidth: 96, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{focusLbl}</div>}
                                 </>
                               ) : (
                                 <>
-                                  <div style={{ fontSize: 9, fontWeight: 700, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{abbr}</div>
+                                  <div style={{ fontSize: 9, fontWeight: FW.bold, color: isAct ? nodeClr : C.muted, whiteSpace: 'nowrap' }}>{abbr}</div>
                                   {focusLbl && <div style={{ fontSize: 8, fontWeight: isAct ? 600 : 400, color: isAct ? C.text : C.muted, marginTop: 1, maxWidth: 96, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{focusLbl}</div>}
                                 </>
                               )}
@@ -27746,10 +27746,10 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                         <div style={{ width: 20, height: 2, background: C.border, marginTop: 15, flexShrink: 0 }} />
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: 52 }}>
                           <div style={{ width: 24, height: 24, borderRadius: 6, background: C.accent + '22', border: `2px solid ${C.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 8, fontWeight: 700, color: C.accent }}>DAY</span>
+                            <span style={{ fontSize: 8, fontWeight: FW.bold, color: C.accent }}>DAY</span>
                           </div>
                           <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, color: C.accent, whiteSpace: 'nowrap' }}>Event</div>
+                            <div style={{ fontSize: 9, fontWeight: FW.bold, color: C.accent, whiteSpace: 'nowrap' }}>Event</div>
                             <div style={{ fontSize: 8, color: C.border }}>{fmtDate(eventDate).replace(/,\s*\d{4}$/, '')}</div>
                           </div>
                         </div>
@@ -27807,10 +27807,10 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{ flex: 1 }}>
                   {selectedPhase === '__overdue__' ? (
-                    <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.danger }}>Overdue Tasks{overdueCount > 0 ? ` (${overdueCount})` : ''}</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.danger }}>Overdue Tasks{overdueCount > 0 ? ` (${overdueCount})` : ''}</div>
                   ) : selectedPhase === '__compressed__' ? (
                     <>
-                      <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.muted }}>Compressed plan priorities</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.muted }}>Compressed plan priorities</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                         {compressionSummary?.headline || 'Tasks moved to the front because the timeline is tight.'}
                       </div>
@@ -27820,16 +27820,16 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                     return pD ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{pD}</div>
+                          <div style={{ fontSize: 15, fontWeight: FW.heavy, color: C.text }}>{pD}</div>
                           {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, color: C.muted }}>— {PHASE_FOCUS[selectedPhase]}</div>}
                         </div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>{selectedPhase}</div>
+                        <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>{selectedPhase}</div>
                       </>
                     ) : (
                       <>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.accent }}>{selectedPhase}</div>
-                          {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{PHASE_FOCUS[selectedPhase]}</div>}
+                          <div style={{ fontSize: 13, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.accent }}>{selectedPhase}</div>
+                          {PHASE_FOCUS[selectedPhase] && <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>{PHASE_FOCUS[selectedPhase]}</div>}
                         </div>
                         <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Set an event date to see target dates</div>
                       </>
@@ -27856,7 +27856,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
                 if (!guidance) return null;
                 return (
                   <div style={{ padding: '10px 14px', background: C.accent + '0d', border: `1px solid ${C.accent}22`, borderRadius: 8, marginTop: 10, marginBottom: 4 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.accent, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                       {eventType} · {guidance.focus}
                     </div>
                     {guidance.tips.map((tip, i) => (
@@ -27906,9 +27906,9 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 
           {/* Bottom action row */}
           <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => add('Custom')}>+ New Phase Task</button>
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => add('Custom')}>+ New Phase Task</button>
             {selectedPhase && selectedPhase !== '__overdue__' && selectedPhase !== '__compressed__' && (
-              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => add(selectedPhase)}>+ Task to {selectedPhase}</button>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0 }} onClick={() => add(selectedPhase)}>+ Task to {selectedPhase}</button>
             )}
           </div>
         </>
@@ -28217,16 +28217,16 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalId(r.id); } }}
         style={{ ...s.card, padding: '14px 16px 14px 19px', borderRadius: 14, borderLeft: `3px solid ${color}`, boxShadow: dim ? 'none' : panelRaise, opacity: dim ? 0.62 : 1, cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: dim ? C.muted : C.text, minWidth: 72, flexShrink: 0, lineHeight: 1.15 }}>
+          <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: FW.heavy, color: dim ? C.muted : C.text, minWidth: 72, flexShrink: 0, lineHeight: 1.15 }}>
             {fmtTime12(r.time)}
-            {r.endTime && <span style={{ display: 'block', fontSize: T.secondary, fontWeight: 600, color: C.muted }}>–{fmtTime12(r.endTime)}</span>}
+            {r.endTime && <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>–{fmtTime12(r.endTime)}</span>}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: dim ? C.muted : C.text }}>{r.segment || '(untitled)'}</div>
+            <div style={{ fontSize: 15, fontWeight: FW.bold, color: dim ? C.muted : C.text }}>{r.segment || '(untitled)'}</div>
             {((!soloRun && r.owner) || r.location) && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>{[soloRun ? null : r.owner, r.location].filter(Boolean).join(' · ')}</div>}
             {Array.isArray(r.subtasks) && r.subtasks.length > 0 && (() => {
               const dn = r.subtasks.filter((x) => x.done).length;
-              return <div style={{ fontSize: T.secondary, fontWeight: 600, color: dn === r.subtasks.length ? C.success : (C.accentTopGrad || C.accent), marginTop: 4 }}>✓ {dn} of {r.subtasks.length} steps</div>;
+              return <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: dn === r.subtasks.length ? C.success : (C.accentTopGrad || C.accent), marginTop: 4 }}>✓ {dn} of {r.subtasks.length} steps</div>;
             })()}
             {/* Cue notes — the coordinator's cue sheet, surfaced (was dropped before). */}
             {r.notes && <div style={{ fontSize: T.secondary, color: kind === 'now' ? C.text : C.muted, marginTop: 5, lineHeight: 1.45, fontStyle: kind === 'now' ? 'normal' : 'italic' }}>{r.notes}</div>}
@@ -28258,7 +28258,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
       if (secItems.length === 0) return null;
       return (
         <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: T.secondary, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color, marginBottom: 8, paddingLeft: 4 }}>{label}</div>
+          <div style={{ fontSize: T.secondary, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color, marginBottom: 8, paddingLeft: 4 }}>{label}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {secItems.map(r => <Card key={r.id} r={r} color={color} dim={dim} kind={kind} />)}
           </div>
@@ -28271,11 +28271,11 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         {/* Header + drift badge */}
         <div style={{ marginBottom: 16, paddingLeft: 4, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Today's schedule</div>
+            <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.18em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Today's schedule</div>
             <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.4 }}>Tap Start / Done as the day runs — it tracks reality, not the clock.</div>
           </div>
           {driftLabel && (
-            <div style={{ fontSize: 13, fontWeight: 800, color: driftLabel.col, background: driftLabel.col + '1e', border: `1px solid ${driftLabel.col}55`, borderRadius: 8, padding: '7px 13px', flexShrink: 0 }}>{driftLabel.txt}</div>
+            <div style={{ fontSize: 13, fontWeight: FW.heavy, color: driftLabel.col, background: driftLabel.col + '1e', border: `1px solid ${driftLabel.col}55`, borderRadius: 8, padding: '7px 13px', flexShrink: 0 }}>{driftLabel.txt}</div>
           )}
         </div>
         {/* Board #18 — solo run: one banner instead of "You" stamped on every row. */}
@@ -28327,13 +28327,13 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         const feelWords = feeling ? feeling.split(/[·,]/).map(w => w.trim()).filter(Boolean) : [];
         return (
           <div style={{ ...s.card, marginBottom: 18, padding: '16px 20px', borderLeft: `3px solid ${C.accent}`, background: `linear-gradient(180deg, ${C.accent}12 0%, ${C.accent}05 100%)` }}>
-            <div style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.18em', color: C.accent, textTransform: 'uppercase', marginBottom: 9 }}>
+            <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.18em', color: C.accent, textTransform: 'uppercase', marginBottom: 9 }}>
               ★ The heart of the night
             </div>
             {feelWords.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: story || why || mustHave ? 9 : 0 }}>
                 {feelWords.map((w, i) => (
-                  <span key={i} style={{ fontSize: T.secondary, fontWeight: 600, color: C.text, background: `${C.accent}1A`, border: `1px solid ${C.accent}40`, padding: '2px 9px', borderRadius: 999 }}>{w}</span>
+                  <span key={i} style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, background: `${C.accent}1A`, border: `1px solid ${C.accent}40`, padding: '2px 9px', borderRadius: 999 }}>{w}</span>
                 ))}
               </div>
             )}
@@ -28341,7 +28341,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             {story && <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, marginBottom: mustHave ? 7 : 0 }}>{story}</div>}
             {mustHave && (
               <div style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45, display: 'flex', gap: 7, alignItems: 'baseline' }}>
-                <span aria-hidden style={{ color: C.accent, fontWeight: 800 }}>★</span>
+                <span aria-hidden style={{ color: C.accent, fontWeight: FW.heavy }}>★</span>
                 <span><strong style={{ color: C.accent }}>Must-have moment:</strong> {mustHave}</span>
               </div>
             )}
@@ -28360,7 +28360,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
         if (!mine.length) return null;
         return (
           <div style={{ ...s.card, marginBottom: 14, padding: '11px 14px', borderLeft: `3px solid ${C.muted}`, background: `${C.muted}12`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span aria-hidden style={{ color: C.muted, fontWeight: 800 }}>⚠</span>
+            <span aria-hidden style={{ color: C.muted, fontWeight: FW.heavy }}>⚠</span>
             <span style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45, flex: 1, minWidth: 180 }}>
               <strong>{honoree}</strong> is running {mine.length} moment{mine.length !== 1 ? 's' : ''} — they should be <em>celebrating</em>, not working. Reassign so they can enjoy their night.
             </span>
@@ -28446,15 +28446,15 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
               background: allClear ? `${C.success}22` : `${steelTopROS}22`,
               color: allClear ? C.success : steelTopROS,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: T.secondary, fontWeight: 800,
+              fontSize: T.secondary, fontWeight: FW.heavy,
             }}>{allClear ? '✓' : '◐'}</span>
-            <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: steelTopROS }}>Readiness</span>
+            <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steelTopROS }}>Readiness</span>
             {allClear ? (
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Every segment has a time, owner, and location filled in, and all vendor rows are confirmed.</span>
+              <span style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>Every segment has a time, owner, and location filled in, and all vendor rows are confirmed.</span>
             ) : (
               <>
                 {issues.map(i => (
-                  <span key={i.key} style={{ fontSize: T.secondary, fontWeight: 700, color: i.color, background: `${i.color}14`, border: `1px solid ${i.color}44`, padding: '3px 9px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <span key={i.key} style={{ fontSize: T.secondary, fontWeight: FW.bold, color: i.color, background: `${i.color}14`, border: `1px solid ${i.color}44`, padding: '3px 9px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     {i.n} · {i.label}
                   </span>
                 ))}
@@ -28474,7 +28474,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             {' '}We'll have a starting shape ready when it's time. Want to sketch it now? Go for it.
           </div>
           <button type="button" onClick={() => setDaySketchOpen(true)}
-            style={{ marginTop: 12, minHeight: 40, padding: '0 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ marginTop: 12, minHeight: 40, padding: '0 16px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>
             Sketch the day now →
           </button>
         </div>
@@ -28521,14 +28521,14 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             and opens the editor for a time + owner. data-deeplink so the CTA scrolls to it. */}
         {!isDayOf && meaning && isMeaningfulMustHave(meaning.mustHave) && !ros.some(r => r && r.heart) && (
           <div data-deeplink="musthave" style={{ marginBottom: 16, padding: '14px 16px', border: `1px solid ${C.accent}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 10, background: `${C.accent}10` }}>
-            <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>The one thing that has to happen</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, lineHeight: 1.4, marginBottom: 10 }}>{meaning.mustHave}</div>
+            <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.accent, marginBottom: 6 }}>The one thing that has to happen</div>
+            <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, lineHeight: 1.4, marginBottom: 10 }}>{meaning.mustHave}</div>
             <button type="button" onClick={() => {
                 const id = uid();
                 setRos(r => [...r, { id, time: '', segment: meaning.mustHave, owner: 'You', type: 'event', heart: true, notes: 'The one thing that has to happen — set a time and assign who leads it.' }]);
                 setModalId(id); // open the editor so they give it a time + owner right away
               }}
-              style={{ fontSize: 13, fontWeight: 700, padding: '10px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ Put it on the run of show</button>
+              style={{ fontSize: 13, fontWeight: FW.bold, padding: '10px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>+ Put it on the run of show</button>
           </div>
         )}
 
@@ -28541,12 +28541,12 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
           const addMoment = (m) => { track(EVENTS.ROS_ITEM_ADDED, { source: 'moment', moment: m.id }); setRos(r => [...r, { id: uid(), ...buildMomentSegment(m) }]); };
           return (
             <div style={{ marginBottom: 16, padding: '10px 12px', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
-              <div style={{ fontSize: T.caption, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{isHost ? 'Moments that matter · one tap drops it into your day' : 'Moments that matter · one tap adds it with an owner'}</div>
+              <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>{isHost ? 'Moments that matter · one tap drops it into your day' : 'Moments that matter · one tap adds it with an owner'}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {sugg.map(m => (
                   <button key={m.id} onClick={() => addMoment(m)}
                     title={m.note ? `Owner: ${m.owner} · ${m.note}` : `Owner: ${m.owner}`}
-                    style={{ fontSize: T.caption, fontWeight: 600, padding: '5px 11px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
+                    style={{ fontSize: T.caption, fontWeight: FW.semibold, padding: '5px 11px', borderRadius: 16, cursor: 'pointer', border: `1px solid ${C.border}`, background: 'transparent', color: C.text }}>
                     + {m.label}
                   </button>
                 ))}
@@ -28562,7 +28562,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             border: `1px solid ${rosActionMsg.kind === 'err' ? C.muted : C.success}44`,
             borderRadius: 8, padding: '8px 12px', fontSize: T.secondary, color: C.text,
           }}>
-            <span aria-hidden style={{ color: rosActionMsg.kind === 'err' ? C.muted : C.success, fontWeight: 800, flexShrink: 0 }}>{rosActionMsg.kind === 'err' ? '⚠' : '✓'}</span>
+            <span aria-hidden style={{ color: rosActionMsg.kind === 'err' ? C.muted : C.success, fontWeight: FW.heavy, flexShrink: 0 }}>{rosActionMsg.kind === 'err' ? '⚠' : '✓'}</span>
             <span style={{ flex: 1 }}>{rosActionMsg.text}</span>
             <button onClick={() => setRosActionMsg(null)} aria-label="Dismiss" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}>×</button>
           </div>
@@ -28589,7 +28589,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                       borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
                       marginTop: i === 0 ? 0 : 4,
                     }}>
-                      <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                      <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
                         {PHASE_LABEL[phase]}
                       </span>
                     </div>
@@ -28602,18 +28602,18 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                     <div style={{ width: 3, borderRadius: 99, background: typeColor, alignSelf: 'stretch', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{entry.segment || <em style={{ color: C.muted, fontWeight: 400 }}>Untitled segment</em>}</div>
-                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: C.muted, flexShrink: 0 }}>{fmtTime12(entry.time)}{entry.endTime ? `–${fmtTime12(entry.endTime)}` : ''}</span>
+                        <div style={{ fontWeight: FW.semibold, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{entry.segment || <em style={{ color: C.muted, fontWeight: FW.regular }}>Untitled segment</em>}</div>
+                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: FW.bold, color: C.muted, flexShrink: 0 }}>{fmtTime12(entry.time)}{entry.endTime ? `–${fmtTime12(entry.endTime)}` : ''}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
                         {/* UX-SAAS — a host doesn't get "event/prep/vendor" ops tags, and
                             "Host" on every row (they're the host) is noise. Show only a
                             real helper's name. Planner keeps the full taxonomy. */}
                         {!isHost && <span style={s.pill(typeColor)}>{entry.type}</span>}
-                        {entry.aiDraft && <span style={{ fontSize: T.caption, fontWeight: 700, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
+                        {entry.aiDraft && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.04em' }}>AI DRAFT</span>}
                         {entry.location && <span style={{ fontSize: T.secondary, color: C.muted }}>{entry.location}</span>}
                         {entry.owner && !(isHost && /^(host|you)$/i.test(String(entry.owner).trim())) && <span style={{ fontSize: T.secondary, color: C.muted }}>{entry.owner}</span>}
-                        {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: T.secondary, color: C.success, fontWeight: 600 }}>✓ Confirmed</span>}
+                        {entry.type === 'vendor' && entry.confirmed && <span style={{ fontSize: T.secondary, color: C.success, fontWeight: FW.semibold }}>✓ Confirmed</span>}
                         {entry.type === 'vendor' && !entry.confirmed && <span style={{ fontSize: T.secondary, color: C.muted }}>⚠ Unconfirmed</span>}
                       </div>
                     </div>
@@ -28635,7 +28635,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 32px', gap: '8px', marginBottom: 8, padding: '0 0 8px', borderBottom: `1px solid ${C.border}` }}>
               {['Time', '', 'Item / Location', 'Type', 'In charge', 'Notes', '✓', ''].map((h, i) => (
-                <div key={i} style={{ fontSize: T.secondary, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
+                <div key={i} style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</div>
               ))}
             </div>
 
@@ -28645,7 +28645,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
 
             {sorted.length === 0 && (
               <div style={{ textAlign: 'center', padding: '36px 16px', color: C.muted }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>No schedule yet</div>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>No schedule yet</div>
                 <div style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 420, margin: '0 auto' }}>
                   Press <strong style={{ color: C.text }}>+ Add</strong> to build it item by item{hasVendors ? <>, or <strong style={{ color: C.text }}>Add vendor arrivals</strong> to pull in confirmed vendor arrivals as a starting point</> : ''}.
                 </div>
@@ -28674,7 +28674,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                       paddingBottom: 4,
                       borderBottom: `1px solid ${C.border}`,
                     }}>
-                      <span style={{ fontSize: T.caption, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
+                      <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: steelTopROS }}>
                         {PHASE_LABEL[phase]}
                       </span>
                       <span style={{ fontSize: T.secondary, color: C.muted }}>
@@ -28686,7 +28686,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                   <div style={{ display: 'grid', gridTemplateColumns: '64px 3px 1fr 80px 130px 1fr 30px 30px 32px', gap: '8px', alignItems: 'start', marginBottom: gapLabel ? 4 : 6 }}>
                     <div>
                       <input style={{ ...qInput, padding: '6px 8px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }} onFocus={qFocus} onBlur={qBlur} value={entry.time} placeholder="09:00" onChange={e => upd(entry.id, 'time', e.target.value)} />
-                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: T.eyebrow, fontWeight: 800, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
+                      {entry.aiDraft && <div title="AI-suggested — confirm the time" style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, color: C.muted, textAlign: 'center', marginTop: 3, letterSpacing: '0.06em' }}>AI DRAFT</div>}
                     </div>
                     <div style={{ width: 3, minHeight: 36, borderRadius: 99, background: typeColor, marginTop: 4 }} />
                     <div>
@@ -28714,7 +28714,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                     {/* #6 — open the full editable side panel (full title + steps/sub-tasks). */}
                     <button aria-label="Open steps & details" title="Steps & details" onClick={() => setModalId(entry.id)}
                       style={{ ...s.btn('ghost'), padding: '6px 6px', fontSize: 13, position: 'relative', color: (Array.isArray(entry.subtasks) && entry.subtasks.length) ? (C.accentTopGrad || C.accent) : C.muted }}>
-                      ⤢{Array.isArray(entry.subtasks) && entry.subtasks.length > 0 && <span style={{ position: 'absolute', top: -3, right: -3, fontSize: T.eyebrow, fontWeight: 800, background: C.accent, color: '#fff', borderRadius: 99, padding: '0 3px', lineHeight: 1.4 }}>{entry.subtasks.filter((x) => x.done).length}/{entry.subtasks.length}</span>}
+                      ⤢{Array.isArray(entry.subtasks) && entry.subtasks.length > 0 && <span style={{ position: 'absolute', top: -3, right: -3, fontSize: T.eyebrow, fontWeight: FW.heavy, background: C.accent, color: '#fff', borderRadius: 99, padding: '0 3px', lineHeight: 1.4 }}>{entry.subtasks.filter((x) => x.done).length}/{entry.subtasks.length}</span>}
                     </button>
                     <button aria-label="Remove" style={{ ...s.btn('danger'), padding: '6px 8px' }} onClick={() => del(entry.id)}>✕</button>
                   </div>
@@ -28727,7 +28727,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                   )}
                   </div>
                   {i < sorted.length - 1 && gapMin !== null && gapMin <= 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 12px', marginBottom: 4, color: C.danger, fontSize: T.secondary, fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 12px', marginBottom: 4, color: C.danger, fontSize: T.secondary, fontWeight: FW.semibold }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.danger, display: 'inline-block', flexShrink: 0 }} />
                       {gapMin === 0 ? 'Same time as next — possible conflict' : 'Time overlap — check order'}
                     </div>
@@ -28752,7 +28752,7 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
                 const coi = coiDot(v);
                 return (
                 <tr key={v.id}>
-                  <td style={{ ...s.td, fontWeight: 500 }}>{v.name}{v.onSiteContactName ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.onSiteContactName}</span> : null}</td>
+                  <td style={{ ...s.td, fontWeight: FW.medium }}>{v.name}{v.onSiteContactName ? <span style={{ color: C.muted, fontWeight: FW.regular }}> · {v.onSiteContactName}</span> : null}</td>
                   {/* Load-in order — the sequence/dock the venue runs on. */}
                   <td style={{ ...s.td, color: v.loadInOrder ? C.text : C.muted, fontSize: T.caption }}>{v.loadInOrder || '—'}</td>
                   <td style={{ ...s.td, color: C.muted, fontSize: T.caption }}>{v.arrivalTime || '—'}</td>
@@ -28983,11 +28983,11 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {calView === 'list' ? (
-            <span style={{ fontSize: 16, fontWeight: 700 }}>Runway · what's ahead</span>
+            <span style={{ fontSize: 16, fontWeight: FW.bold }}>Runway · what's ahead</span>
           ) : calView === 'month' ? (
             <>
               <button aria-label="Previous month" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => setViewDate(new Date(year, month - 1, 1))}>←</button>
-              <span style={{ fontSize: 16, fontWeight: 700, minWidth: 160, textAlign: 'center' }}>{monthLabel}</span>
+              <span style={{ fontSize: 16, fontWeight: FW.bold, minWidth: 160, textAlign: 'center' }}>{monthLabel}</span>
               <button aria-label="Next month" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => setViewDate(new Date(year, month + 1, 1))}>→</button>
             </>
           ) : (
@@ -28997,7 +28997,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                 d.setDate(d.getDate() - 1);
                 setSelectedDay(d.toISOString().slice(0, 10));
               }}>←</button>
-              <span style={{ fontSize: 15, fontWeight: 700, minWidth: 200, textAlign: 'center' }}>
+              <span style={{ fontSize: 15, fontWeight: FW.bold, minWidth: 200, textAlign: 'center' }}>
                 {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
               </span>
               <button style={s.btn()} onClick={() => {
@@ -29036,7 +29036,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {['list', 'month', 'day'].map(v => (
               <button key={v} onClick={() => setCalView(v)} style={{
-                padding: '5px 12px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                padding: '5px 12px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: FW.semibold,
                 background: calView === v ? C.accent : 'transparent',
                 color: calView === v ? '#fff' : C.muted,
                 transition: 'all 0.15s',
@@ -29074,8 +29074,8 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                     border: `1px solid ${isEvent ? C.accent + '55' : hasCrit ? C.danger + '44' : C.border}`,
                   }}>
                     <div style={{ flexShrink: 0, width: 84 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: relColor, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{rel}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: FW.bold, color: C.text }}>{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: relColor, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 1 }}>{rel}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {dayItems.map((item, j) => (
@@ -29097,7 +29097,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
           {/* Day-of-week headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: C.muted, padding: '4px 0', letterSpacing: '0.06em', userSelect: 'none' }}>{d}</div>
+              <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: FW.semibold, color: C.muted, padding: '4px 0', letterSpacing: '0.06em', userSelect: 'none' }}>{d}</div>
             ))}
           </div>
 
@@ -29118,13 +29118,13 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                 }}>
                   <div style={{ fontSize: 11, fontWeight: isToday || isEvent || isSelected ? 700 : 400, color: isSelected ? C.accent2 : isEvent ? C.accent : isToday ? C.accent2 : C.muted, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
                     {dayNum}
-                    {isToday && <span style={{ fontSize: 8, background: C.accent2, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: 700 }}>NOW</span>}
-                    {isEvent && <span style={{ fontSize: 8, background: C.accent, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: 700 }}>EVENT</span>}
+                    {isToday && <span style={{ fontSize: 8, background: C.accent2, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: FW.bold }}>NOW</span>}
+                    {isEvent && <span style={{ fontSize: 8, background: C.accent, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: FW.bold }}>EVENT</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {dayItems.slice(0, 3).map((item, j) => (
                       <div key={j} title={item.title || item.label} style={{
-                        fontSize: 9, fontWeight: 500, borderRadius: 3, padding: '1px 4px',
+                        fontSize: 9, fontWeight: FW.medium, borderRadius: 3, padding: '1px 4px',
                         background: item.color + '22', color: item.color,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4,
                       }}>
@@ -29143,7 +29143,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
           {/* Day header */}
           <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
+            <div style={{ fontSize: 16, fontWeight: FW.bold }}>
               {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
             {selectedDay === today8601() && <span style={s.pill(C.accent2)}>Today</span>}
@@ -29156,10 +29156,10 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
             <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.border}`, background: C.surface2 + '88', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dayPhase && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: dayPhase.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: dayPhase.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>Planning Milestone — {dayPhase.phase}</span>
                     {onTabChange && (
-                      <button onClick={() => onTabChange('Planning Tasks')} style={{ fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                      <button onClick={() => onTabChange('Planning Tasks')} style={{ fontSize: 10, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: FW.semibold }}>
                         → Planning Tasks
                       </button>
                     )}
@@ -29182,9 +29182,9 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                 const bal = vendorBalance(v);
                 return (
                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.muted}` }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>💳 Payment Due</span>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.bold }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{v.name}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{fmtD(bal)}</span>
+                    <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.muted }}>{fmtD(bal)}</span>
                   </div>
                 );
               })}
@@ -29227,7 +29227,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                           <div style={{ flex: 1, padding: '4px 16px 4px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {slotItems.map((item, j) => (
                               <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 6, background: item.color + '18', borderLeft: `3px solid ${item.color}` }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: item.color, minWidth: 36, fontVariantNumeric: 'tabular-nums' }}>{item.time}</span>
+                                <span style={{ fontSize: 11, fontWeight: FW.bold, color: item.color, minWidth: 36, fontVariantNumeric: 'tabular-nums' }}>{item.time}</span>
                                 <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label}</span>
                                 {item.duration && <span style={{ fontSize: 10, color: C.muted }}>{fmtDur(item.duration)}</span>}
                                 <span style={{ fontSize: 10, color: item.color, textTransform: 'capitalize' }}>{item.sub}</span>
@@ -29243,7 +29243,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
               <div style={{ padding: '8px 20px 12px', fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 10 }}>
                 Full day-of schedule
                 {onTabChange && (
-                  <button onClick={() => onTabChange('Event Day Schedule')} style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                  <button onClick={() => onTabChange('Event Day Schedule')} style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: FW.semibold }}>
                     → Event Day Schedule
                   </button>
                 )}
@@ -29412,8 +29412,8 @@ function MasterCalendarView({ events, onSelectEvent }) {
           the calendar itself. Condensed to one quiet line — the legend below the
           calendar already names each chip type, so this doesn't need a hero card. */}
       <div style={{ marginBottom: 12, fontSize: 11, color: C.muted, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-        <span aria-hidden style={{ color: C.success, fontWeight: 800 }}>✓</span>
-        <span><span style={{ fontWeight: 600, color: C.text }}>One calendar across every event.</span> Event days, milestones, and payment due dates — tap any to jump into the event.</span>
+        <span aria-hidden style={{ color: C.success, fontWeight: FW.heavy }}>✓</span>
+        <span><span style={{ fontWeight: FW.semibold, color: C.text }}>One calendar across every event.</span> Event days, milestones, and payment due dates — tap any to jump into the event.</span>
       </div>
 
       {/* Nav */}
@@ -29422,13 +29422,13 @@ function MasterCalendarView({ events, onSelectEvent }) {
           {calView === 'month' ? (
             <>
               <button aria-label="Previous month" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => setViewDate(new Date(year, month - 1, 1))}>←</button>
-              <span style={{ fontSize: 16, fontWeight: 700, minWidth: 160, textAlign: 'center' }}>{monthLabel}</span>
+              <span style={{ fontSize: 16, fontWeight: FW.bold, minWidth: 160, textAlign: 'center' }}>{monthLabel}</span>
               <button aria-label="Next month" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => setViewDate(new Date(year, month + 1, 1))}>→</button>
             </>
           ) : calView === 'week' ? (
             <>
               <button aria-label="Previous week" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => shiftDay(-7)}>←</button>
-              <span style={{ fontSize: 15, fontWeight: 700, minWidth: 220, textAlign: 'center' }}>
+              <span style={{ fontSize: 15, fontWeight: FW.bold, minWidth: 220, textAlign: 'center' }}>
                 {(() => {
                   const d = new Date(selectedDay + 'T00:00:00');
                   const sun = new Date(d); sun.setDate(d.getDate() - d.getDay());
@@ -29439,13 +29439,13 @@ function MasterCalendarView({ events, onSelectEvent }) {
               <button aria-label="Next week" style={{ ...s.btn(), minWidth: 44, minHeight: 40, fontSize: 16, lineHeight: 1 }} onClick={() => shiftDay(7)}>→</button>
             </>
           ) : calView === 'list' ? (
-            <span style={{ fontSize: 15, fontWeight: 700, minWidth: 200, textAlign: 'center' }}>
+            <span style={{ fontSize: 15, fontWeight: FW.bold, minWidth: 200, textAlign: 'center' }}>
               Upcoming · all events
             </span>
           ) : (
             <>
               <button style={s.btn()} onClick={() => shiftDay(-1)}>←</button>
-              <span style={{ fontSize: 15, fontWeight: 700, minWidth: 200, textAlign: 'center' }}>
+              <span style={{ fontSize: 15, fontWeight: FW.bold, minWidth: 200, textAlign: 'center' }}>
                 {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
               </span>
               <button style={s.btn()} onClick={() => shiftDay(1)}>→</button>
@@ -29461,7 +29461,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
           <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
             {['month', 'week', 'day', 'list'].map(v => (
               <button key={v} onClick={() => setCalView(v)} style={{
-                padding: '5px 12px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                padding: '5px 12px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: FW.semibold,
                 background: calView === v ? C.accent : 'transparent',
                 color: calView === v ? '#fff' : C.muted,
                 transition: 'all 0.15s',
@@ -29476,7 +29476,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
           {/* Day-of-week headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: C.muted, padding: '4px 0', letterSpacing: '0.06em', userSelect: 'none' }}>{d}</div>
+              <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: FW.semibold, color: C.muted, padding: '4px 0', letterSpacing: '0.06em', userSelect: 'none' }}>{d}</div>
             ))}
           </div>
 
@@ -29498,13 +29498,13 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 }}>
                   <div style={{ fontSize: 11, fontWeight: isToday || isSelected ? 700 : 400, color: isSelected ? C.accent2 : isToday ? C.accent2 : C.muted, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
                     {dayNum}
-                    {isToday && <span style={{ fontSize: 8, background: C.accent2, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: 700 }}>NOW</span>}
-                    {isEventDay && <span style={{ fontSize: 8, background: C.accent, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: 700 }}>EVENT</span>}
+                    {isToday && <span style={{ fontSize: 8, background: C.accent2, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: FW.bold }}>NOW</span>}
+                    {isEventDay && <span style={{ fontSize: 8, background: C.accent, color: C.bg, borderRadius: 3, padding: '0 3px', fontWeight: FW.bold }}>EVENT</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {dayItems.slice(0, 3).map((item, j) => (
                       <div key={j} title={item.title || item.label} style={{
-                        fontSize: 9, fontWeight: 500, borderRadius: 3, padding: '1px 4px',
+                        fontSize: 9, fontWeight: FW.medium, borderRadius: 3, padding: '1px 4px',
                         background: item.color + '22', color: item.color,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4,
                       }}>{item.label}</div>
@@ -29559,9 +29559,9 @@ function MasterCalendarView({ events, onSelectEvent }) {
                     background: d.isToday ? C.accent2 + '12' : 'transparent',
                     border: `1px solid ${d.isToday ? C.accent2 + '55' : 'transparent'}`,
                   }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.label}</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.semibold, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.label}</div>
                     <div style={{
-                      fontSize: 20, fontWeight: 700, marginTop: 3,
+                      fontSize: 20, fontWeight: FW.bold, marginTop: 3,
                       color: d.isToday ? C.accent2 : C.text, letterSpacing: '-0.02em',
                     }}>{d.dayNum}</div>
                   </div>
@@ -29582,7 +29582,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                       <div style={{ fontSize: 10, color: C.muted, opacity: 0.5, textAlign: 'center', marginTop: 12 }}>—</div>
                     ) : d.items.map((item, j) => (
                       <div key={j} title={item.title || item.label} style={{
-                        fontSize: 10, fontWeight: 500, borderRadius: 4, padding: '4px 7px',
+                        fontSize: 10, fontWeight: FW.medium, borderRadius: 4, padding: '4px 7px',
                         background: item.color + '22', color: item.color,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         borderLeft: `2px solid ${item.color}`,
@@ -29654,7 +29654,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
           if (flat.length === 0) {
             return (
               <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>Nothing on the calendar</div>
+                <div style={{ fontSize: 14, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>Nothing on the calendar</div>
                 <div style={{ fontSize: 12, color: C.muted }}>Events, payments, and phase milestones will appear here as they're added.</div>
               </div>
             );
@@ -29685,8 +29685,8 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 onMouseLeave={e => { e.currentTarget.style.background = isToday ? C.accent2 + '08' : 'transparent'; }}
               >
                 <div style={{ width: 44, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.10em', color: isToday ? C.accent2 : C.muted }}>{dayLabel}</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: isToday ? C.accent2 : C.text, marginTop: 1, lineHeight: 1 }}>{dayNum}</span>
+                  <span style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.10em', color: isToday ? C.accent2 : C.muted }}>{dayLabel}</span>
+                  <span style={{ fontSize: 18, fontWeight: FW.bold, letterSpacing: '-0.02em', color: isToday ? C.accent2 : C.text, marginTop: 1, lineHeight: 1 }}>{dayNum}</span>
                 </div>
                 <div style={{ width: 3, height: 32, borderRadius: 2, background: accent, flexShrink: 0 }} />
                 <span aria-label={`${it.type} item`} title={it.type} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', color: accent }}>
@@ -29695,12 +29695,12 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: isEvent ? 700 : 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {it.title || it.label}
-                    {isEvent && it.venue && <span style={{ color: C.muted, fontWeight: 400 }}> · {it.venue}</span>}
+                    {isEvent && it.venue && <span style={{ color: C.muted, fontWeight: FW.regular }}> · {it.venue}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                     {isEvent ? 'Event day' : isTask ? 'Phase milestone' : isPay ? 'Payment due' : isVendor ? 'Vendor arrival' : it.type}
-                    {isPay && amt > 0 && <span style={{ color: C.success, fontWeight: 700 }}> · {fmtD(amt)}</span>}
-                    {isToday && <span style={{ color: C.accent2, fontWeight: 600 }}> · today</span>}
+                    {isPay && amt > 0 && <span style={{ color: C.success, fontWeight: FW.bold }}> · {fmtD(amt)}</span>}
+                    {isToday && <span style={{ color: C.accent2, fontWeight: FW.semibold }}> · today</span>}
                   </div>
                 </div>
                 <span style={{ color: C.muted, fontSize: 14 }}>›</span>
@@ -29712,11 +29712,11 @@ function MasterCalendarView({ events, onSelectEvent }) {
               {nextEvIt && (
                 <div onClick={() => onSelectEvent(nextEvIt.eventId)}
                   style={{ background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 12, padding: '14px 18px', marginBottom: 12, cursor: 'pointer' }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 5 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 5 }}>
                     Next up · {nextDays <= 0 ? 'today' : nextDays === 1 ? 'tomorrow' : `in ${nextDays} days`}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{nextEvIt.label}</div>
-                  {nextBind && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{nextBind.flag} Next: <span style={{ color: C.text, fontWeight: 600 }}>{nextBind.name}</span></div>}
+                  <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.text }}>{nextEvIt.label}</div>
+                  {nextBind && <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{nextBind.flag} Next: <span style={{ color: C.text, fontWeight: FW.semibold }}>{nextBind.name}</span></div>}
                 </div>
               )}
               <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
@@ -29727,7 +29727,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                   return (
                     <div key={b.key}>
                       <div onClick={() => setCalBands(s => ({ ...s, [b.key]: !s[b.key] }))}
-                        style={{ padding: '10px 20px', background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>
+                        style={{ padding: '10px 20px', background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>
                         <span>{b.label} · {list.length}</span>
                         <span style={{ fontSize: 12 }}>{open ? '▾' : '▸'}</span>
                       </div>
@@ -29744,7 +29744,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
           {/* Day header */}
           <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
+            <div style={{ fontSize: 16, fontWeight: FW.bold }}>
               {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
             {selectedDay === today8601() && <span style={s.pill(C.accent2)}>Today</span>}
@@ -29755,7 +29755,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
           {/* Events on this day */}
           {selEventDay.length > 0 && (
             <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent, marginBottom: 8 }}>Event Day</div>
+              <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.accent, marginBottom: 8 }}>Event Day</div>
               {selEventDay.map(ev => (
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={ev.id} onClick={() => onSelectEvent(ev.id)} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px',
@@ -29766,7 +29766,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                   onMouseLeave={e => e.currentTarget.style.background = (evtCLR[ev.type] || C.muted) + '12'}
                 >
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{ev.name}</div>
+                    <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text }}>{ev.name}</div>
                     <div style={{ fontSize: 11, color: C.muted }}>{ev.venue || ev.type}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -29786,7 +29786,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 const overdue = ph.tasks.filter(t => !t.done && ph.date <= getToday()).length;
                 return (
                   <div key={i}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: ph.color, marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: ph.color, marginBottom: 6 }}>
                       Planning Milestone — {ph.phase} · {ph.eventName}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -29804,7 +29804,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                         );
                       })}
                     </div>
-                    <div style={{ fontSize: 11, color: ph.color, fontWeight: 600, marginTop: 4 }}>{done}/{ph.tasks.length} done{overdue > 0 ? ` · ${overdue} overdue` : ''}</div>
+                    <div style={{ fontSize: 11, color: ph.color, fontWeight: FW.semibold, marginTop: 4 }}>{done}/{ph.tasks.length} done{overdue > 0 ? ` · ${overdue} overdue` : ''}</div>
                   </div>
                 );
               })}
@@ -29813,9 +29813,9 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 const bal = v ? vendorBalance(v) : 0;
                 return (
                   <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={i} onClick={() => onSelectEvent(item.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px 6px 13px', background: C.surface2, borderRadius: 6, borderLeft: `3px solid ${C.muted}`, cursor: 'pointer' }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>💳 Payment Due</span>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: FW.bold }}>💳 Payment Due</span>
                     <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label} · <span style={{ color: C.muted }}>{item.eventName}</span></span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>{fmtD(bal)}</span>
+                    <span style={{ fontSize: 13, fontWeight: FW.bold, color: C.muted }}>{fmtD(bal)}</span>
                   </div>
                 );
               })}
@@ -29841,7 +29841,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                         <div style={{ flex: 1, padding: '4px 16px 4px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {slotItems.map((item, j) => (
                             <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={j} onClick={() => onSelectEvent(item.evId)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 6, background: item.color + '18', borderLeft: `3px solid ${item.color}`, cursor: 'pointer' }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: item.color, minWidth: 42, fontVariantNumeric: 'tabular-nums' }}>{fmtTime12(item.time)}</span>
+                              <span style={{ fontSize: 11, fontWeight: FW.bold, color: item.color, minWidth: 42, fontVariantNumeric: 'tabular-nums' }}>{fmtTime12(item.time)}</span>
                               <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label}</span>
                               {item.duration && <span style={{ fontSize: 10, color: C.muted }}>{fmtDur(item.duration)}</span>}
                               <span style={{ fontSize: 10, color: item.color }}>{item.sub}</span>
@@ -29854,7 +29854,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                 </div>
                 {untimed.length > 0 && (
                   <div style={{ padding: '8px 20px 12px', borderTop: `1px solid ${C.border}33` }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 6 }}>No time set</div>
+                    <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 6 }}>No time set</div>
                     {untimed.map((item, j) => (
                       <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={j} onClick={() => onSelectEvent(item.evId)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 6, background: item.color + '12', borderLeft: `3px solid ${item.color}`, marginBottom: 3, cursor: 'pointer' }}>
                         <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{item.label}</span>
@@ -30088,7 +30088,7 @@ function DownloadsCard({ event, client, compact = false }) {
             onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
             onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{d.label}</div>
+              <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text }}>{d.label}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{d.sub}</div>
             </div>
             <span style={{ fontSize: 14, color: C.muted }}>⬇</span>
@@ -30296,7 +30296,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="send" size={16} /> Share with client</div>
+            <div style={{ fontWeight: FW.bold, fontSize: 16, color: C.text, display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="send" size={16} /> Share with client</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{event.name || 'Event'}{client?.name ? ` · ${client.name}` : ''}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 4, fontStyle: 'italic' }}>
               Download, copy, or open an email draft. Nothing is sent until you send it from your email app.
@@ -30308,14 +30308,14 @@ function SendToClientModal({ event, client, profile, onClose }) {
         {step === 'compose' ? (
           <div style={{ padding: '20px 24px 24px' }}>
             {/* Section toggles */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>What to include</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>What to include</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
               {CLIENT_PKG_SECTIONS.map(({ id, label }) => {
                 const on = sections[id];
                 return (
                   <button key={id} onClick={() => toggle(id)}
                     style={{
-                      padding: '7px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer', fontWeight: 500,
+                      padding: '7px 14px', borderRadius: 20, fontSize: 13, cursor: 'pointer', fontWeight: FW.medium,
                       border: `1.5px solid ${on ? C.accent : C.border}`,
                       background: on ? C.accent + '18' : 'transparent',
                       color: on ? C.accent : C.muted,
@@ -30328,7 +30328,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
             </div>
 
             {/* Delivery methods */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>How to deliver</div>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>How to deliver</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {deliveryBtns.map(({ id, label, sub, action, disabled }) => (
                 <button key={id} onClick={action} disabled={disabled || !anyOn}
@@ -30341,7 +30341,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
                   }}
                   onMouseEnter={e => { if (!disabled && anyOn) e.currentTarget.style.borderColor = C.accent; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text }}>{label}</div>
+                  <div style={{ fontWeight: FW.semibold, fontSize: 13, color: C.text }}>{label}</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
                 </button>
               ))}
@@ -30353,7 +30353,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
 
             {/* Guest list template download — always available */}
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>For Your Client to Fill In</div>
+              <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>For Your Client to Fill In</div>
               <button
                 onClick={() => downloadGuestTemplate(event?.name)}
                 style={{
@@ -30365,7 +30365,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent2; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text }}>Guest List Template</div>
+                  <div style={{ fontWeight: FW.semibold, fontSize: 13, color: C.text }}>Guest List Template</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Blank spreadsheet your client fills in — Name, RSVP, Meal, Table, Dietary Needs</div>
                 </div>
               </button>
@@ -30374,7 +30374,7 @@ function SendToClientModal({ event, client, profile, onClose }) {
         ) : (
           /* Sent confirmation */
           <div style={{ padding: '36px 24px', textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 6 }}>
+            <div style={{ fontWeight: FW.bold, fontSize: 16, color: C.text, marginBottom: 6 }}>
               {sentMethod === 'download' ? 'Package downloaded!' : sentMethod === 'email' ? 'Email client opened' : sentMethod === 'print' ? 'Print dialog opened' : 'Copied to clipboard!'}
             </div>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 24 }}>
@@ -30693,7 +30693,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
 
   if (!agenda.length) return (
     <div style={{ ...s.card, textAlign: 'center', padding: '48px 32px' }}>
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No agenda built yet</div>
+      <div style={{ fontSize: 16, fontWeight: FW.bold, marginBottom: 8 }}>No agenda built yet</div>
       <div style={{ fontSize: 13, color: C.muted, maxWidth: 360, margin: '0 auto 24px' }}>
         Start from the standard board meeting template or add items one by one.
       </div>
@@ -30711,7 +30711,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
         <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}` }}>
           {[['build', 'Agenda'], ['minutes', 'Minutes']].map(([id, lbl]) => (
             <button key={id} onClick={() => setMode(id)} style={{
-              padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: FW.semibold,
               background: mode === id ? C.accent : 'transparent',
               color: mode === id ? '#fff' : C.muted, transition: 'all 0.15s',
             }}>{lbl}</button>
@@ -30745,22 +30745,22 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
               {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => setExpandedId(isExpanded ? null : item.id)}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.accent, minWidth: 60, flexShrink: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: FW.bold, color: C.accent, minWidth: 60, flexShrink: 0 }}>
                   {minToTime12(times[i])}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {mode === 'build' ? (
                     <input
-                      style={{ ...s.input, background: 'transparent', border: 'none', padding: 0, fontSize: 13, fontWeight: 500, width: '100%' }}
+                      style={{ ...s.input, background: 'transparent', border: 'none', padding: 0, fontSize: 13, fontWeight: FW.medium, width: '100%' }}
                       value={item.title}
                       placeholder="Agenda item…"
                       onClick={e => e.stopPropagation()}
                       onChange={e => updateItem(item.id, 'title', e.target.value)}
                     />
                   ) : (
-                    <div style={{ fontSize: 13, fontWeight: 600, color: item.title ? C.text : C.muted, fontStyle: item.title ? 'normal' : 'italic' }}>
+                    <div style={{ fontSize: 13, fontWeight: FW.semibold, color: item.title ? C.text : C.muted, fontStyle: item.title ? 'normal' : 'italic' }}>
                       {item.title || 'Untitled item'}
-                      {item.presenter && <span style={{ fontWeight: 400, color: C.muted, marginLeft: 8 }}>— {item.presenter}</span>}
+                      {item.presenter && <span style={{ fontWeight: FW.regular, color: C.muted, marginLeft: 8 }}>— {item.presenter}</span>}
                     </div>
                   )}
                 </div>
@@ -30814,7 +30814,7 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {isVote && (
                         <div style={{ background: C.accent + '0c', border: `1px solid ${C.accent}33`, borderRadius: 8, padding: '12px 14px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Vote Record</div>
+                          <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Vote Record</div>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <div style={{ flex: '1 1 100%' }}>
                               <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Motion text</div>
@@ -30835,13 +30835,13 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
                           <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                             {[['voteYes', '✓ Yes', C.success], ['voteNo', '✗ No', C.danger], ['voteAbstain', '— Abstain', C.muted]].map(([field, label, clr]) => (
                               <div key={field} style={{ flex: '1 1 72px' }}>
-                                <div style={{ fontSize: 11, color: clr, fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                                <input type="number" min="0" style={{ ...s.input, fontSize: 18, fontWeight: 800, textAlign: 'center', padding: '6px 8px' }}
+                                <div style={{ fontSize: 11, color: clr, fontWeight: FW.semibold, marginBottom: 4 }}>{label}</div>
+                                <input type="number" min="0" style={{ ...s.input, fontSize: 18, fontWeight: FW.heavy, textAlign: 'center', padding: '6px 8px' }}
                                   value={item[field] || ''} placeholder="0" onChange={e => updateItem(item.id, field, e.target.value)} />
                               </div>
                             ))}
                             <div style={{ flex: '1 1 120px' }}>
-                              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 4 }}>Outcome</div>
+                              <div style={{ fontSize: 11, color: C.muted, fontWeight: FW.semibold, marginBottom: 4 }}>Outcome</div>
                               <select style={{ ...s.input, fontSize: 12 }} value={item.voteOutcome || ''}
                                 onChange={e => updateItem(item.id, 'voteOutcome', e.target.value)}>
                                 <option value="">Select…</option>
@@ -31011,19 +31011,19 @@ function WeatherAlert({ event, onNavTo }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 16 }}>{wxIcon}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: riskColor, marginBottom: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: FW.bold, color: riskColor, marginBottom: 2 }}>
             Weather forecast · {wx.daysOut}d out
           </div>
           <div style={{ fontSize: 11, color: C.text }}>{wx.summary}</div>
           {wx.sunset && <div style={{ fontSize: 10.5, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
         </div>
-        {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: 600, flexShrink: 0 }}>Review vendors →</button>}
+        {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: 11, color: riskColor, fontWeight: FW.semibold, flexShrink: 0 }}>Review vendors →</button>}
         <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: 12, color: C.muted }}>×</button>
       </div>
       {adjustments.length > 0 && (
         <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${riskColor}22`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: riskColor }}>What that changes</div>
+          <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: riskColor }}>What that changes</div>
           {adjustments.map((a) => (
             <div key={a.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>
               <span aria-hidden style={{ flexShrink: 0 }}>{a.icon}</span>
@@ -31071,26 +31071,26 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
     <div>
       {/* Clock / context strip */}
       <div style={{ background: C.surface2, borderBottom: `1px solid ${C.border}`, padding: isMobile ? '9px 14px' : '10px 28px', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 18, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 14 : 16, fontWeight: 700, color: C.text, letterSpacing: '0.04em', flexShrink: 0 }}>{timeStr}</span>
-        {isEvtDay && <span style={{ fontSize: 10, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${C.accent}66` }}>Event Day</span>}
+        <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 14 : 16, fontWeight: FW.bold, color: C.text, letterSpacing: '0.04em', flexShrink: 0 }}>{timeStr}</span>
+        {isEvtDay && <span style={{ fontSize: 10, fontWeight: FW.heavy, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.1em', flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${C.accent}66` }}>Event Day</span>}
         {days !== null && !isEvtDay && <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{days > 0 ? `${days}d to event` : `${Math.abs(days)}d post`}</span>}
         {nextSeg && !isMobile && (
           <span style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            Next: <span style={{ color: C.text, fontWeight: 600 }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
+            Next: <span style={{ color: C.text, fontWeight: FW.semibold }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
           </span>
         )}
         {visible.length > 0 ? (
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, border: `1px solid ${C.danger}44`, background: C.danger + '10', color: C.danger, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8, border: `1px solid ${C.danger}44`, background: C.danger + '10', color: C.danger, fontSize: 11, fontWeight: FW.bold, flexShrink: 0 }}>
             <Icon name="alertTriangle" size={12} /> {visible.length} alert{visible.length > 1 ? 's' : ''}
           </span>
         ) : (
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: C.success, fontWeight: 700, flexShrink: 0 }}>● All clear</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: C.success, fontWeight: FW.bold, flexShrink: 0 }}>● All clear</span>
         )}
       </div>
       {/* Next segment — mobile second row */}
       {nextSeg && isMobile && (
         <div style={{ background: C.surface2, borderBottom: `1px solid ${C.border}`, padding: '5px 14px', fontSize: 11, color: C.muted }}>
-          Next: <span style={{ color: C.text, fontWeight: 600 }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
+          Next: <span style={{ color: C.text, fontWeight: FW.semibold }}>{fmtTime12(nextSeg.time)} — {nextSeg.segment}</span>
         </div>
       )}
       {/* Sprint 60.V — Day-of command station structure. Alert rows are
@@ -31105,10 +31105,10 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
           borderBottom: `1px solid ${C.border}`,
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent }}>
+          <span style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent }}>
             Needs action now
           </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.danger }}>{criticalAlerts.length}</span>
+          <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.danger }}>{criticalAlerts.length}</span>
         </div>
       )}
       {/* Alert rows — critical first, then non-critical (when expanded on mobile). */}
@@ -31124,16 +31124,16 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
                 borderBottom: `1px solid ${C.border}`,
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>
+                <span style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted }}>
                   What can wait
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.muted }}>{otherAlerts.length}</span>
+                <span style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted }}>{otherAlerts.length}</span>
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: isMobile ? '8px 14px 8px 17px' : '8px 28px 8px 31px', background: C.surface, borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${a.sev === 'critical' ? C.danger : C.muted}` }}>
               <span style={{ flexShrink: 0, color: a.sev === 'critical' ? C.danger : C.muted, display: 'flex' }}><Icon name="alertTriangle" size={13} /></span>
               <span style={{ flex: 1, fontSize: 13, color: a.sev === 'critical' ? C.danger : C.text, fontWeight: a.sev === 'critical' ? 600 : 400 }}>{a.text}</span>
-              {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 40, fontFamily: 'inherit', fontWeight: 600, flexShrink: 0 }}>Go →</button>}
+              {a.navTo && <button onClick={() => onNavTo(a.navTo)} style={{ fontSize: 12, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 40, fontFamily: 'inherit', fontWeight: FW.semibold, flexShrink: 0 }}>Go →</button>}
               <button onClick={() => onDismiss(a.id)} style={{ width: 32, height: 32, borderRadius: 6, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon name="x" size={13} />
               </button>
@@ -31154,10 +31154,10 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
             border: 'none', borderRadius: 0, fontFamily: 'inherit',
           }}
         >
-          <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>
+          <span style={{ fontSize: 13, color: C.muted, fontWeight: FW.semibold }}>
             {otherAlerts.length} more alert{otherAlerts.length !== 1 ? 's' : ''} below
           </span>
-          <span style={{ fontSize: 13, color: C.accent, fontWeight: 600 }}>View ›</span>
+          <span style={{ fontSize: 13, color: C.accent, fontWeight: FW.semibold }}>View ›</span>
         </button>
       )}
       {/* Collapse-back when expanded */}
@@ -31169,7 +31169,7 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
             width: '100%', padding: '8px 14px',
             background: 'transparent', borderBottom: `1px solid ${C.border}`,
             cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-            fontSize: 12, color: C.muted, fontWeight: 500,
+            fontSize: 12, color: C.muted, fontWeight: FW.medium,
           }}
         >
           Collapse alerts
@@ -31242,7 +31242,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           — opens the planner's email app, doesn't send anything). */}
       {missingArrivalTime.length > 0 && (
         <div style={{ ...s.card, padding: '14px 16px', marginBottom: 16, borderLeft: `3px solid ${C.muted}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
             Missing arrival times · {missingArrivalTime.length}
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
@@ -31256,7 +31256,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
               return (
                 <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
                     <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
                       {v.category || 'vendor'}{v.contact ? ` · ${v.contact}` : ' · no contact on file'}
                     </div>
@@ -31311,12 +31311,12 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
               marginBottom: 10, paddingLeft: 4,
             }}>
               <span style={{
-                fontSize: 12, fontWeight: 700,
+                fontSize: 12, fontWeight: FW.bold,
                 letterSpacing: '0.14em', textTransform: 'uppercase',
                 color: sec.color,
               }}>{sec.label}</span>
               <span style={{
-                fontSize: 12, fontWeight: 700, color: sec.color,
+                fontSize: 12, fontWeight: FW.bold, color: sec.color,
                 background: sec.color + '22',
                 borderRadius: 999, padding: '1px 9px', lineHeight: 1.5,
               }}>{sec.vendors.length}</span>
@@ -31330,13 +31330,13 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
           return (
             <div key={v.id} style={{ ...s.card, padding: '14px 16px', borderLeft: `3px solid ${stColor}`, borderRadius: 14, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.02), 0 4px 10px rgba(0,0,0,0.30), 0 14px 28px rgba(0,0,0,0.22)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 18 : 20, fontWeight: 800, color: late ? C.danger : C.text, minWidth: 70, flexShrink: 0 }}>{fmtTime12(v.arrivalTime)}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: isMobile ? 18 : 20, fontWeight: FW.heavy, color: late ? C.danger : C.text, minWidth: 70, flexShrink: 0 }}>{fmtTime12(v.arrivalTime)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                  <div style={{ fontWeight: FW.bold, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
                   <div style={{ fontSize: 11, color: C.muted }}>{v.category}</div>
-                  {late && <div style={{ fontSize: 10, fontWeight: 700, color: C.danger, marginTop: 2 }}>OVERDUE</div>}
+                  {late && <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.danger, marginTop: 2 }}>OVERDUE</div>}
                 </div>
-                <span style={{ ...s.pill(stColor), fontWeight: 700, flexShrink: 0, fontSize: 10 }}>{ARRIVAL_STATUS_CFG[st] || st}</span>
+                <span style={{ ...s.pill(stColor), fontWeight: FW.bold, flexShrink: 0, fontSize: 10 }}>{ARRIVAL_STATUS_CFG[st] || st}</span>
               </div>
               {/* Status tap buttons — 48px min height, thumb-friendly */}
               <div style={{ display: 'flex', gap: 6 }}>
@@ -31352,8 +31352,8 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
               </div>
               {(v.phone || v.notes || v.name) && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center', flexWrap: 'wrap', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-                  {v.phone && <a href={`tel:${v.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 600 }}><Icon name="phone" size={13} /> {v.phone}</a>}
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + (v.serviceArea ? ', ' + v.serviceArea : ''))}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: 600 }}><Icon name="pin" size={13} /> Directions</a>
+                  {v.phone && <a href={`tel:${v.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: FW.semibold }}><Icon name="phone" size={13} /> {v.phone}</a>}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.name + (v.serviceArea ? ', ' + v.serviceArea : ''))}`} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.accent2, textDecoration: 'none', fontWeight: FW.semibold }}><Icon name="pin" size={13} /> Directions</a>
                   {v.notes && <span style={{ fontSize: 11, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.notes}</span>}
                 </div>
               )}
@@ -31441,7 +31441,7 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
-          <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color }}>{title}</span>
+          <span style={{ fontSize: 10, fontWeight: FW.heavy, textTransform: 'uppercase', letterSpacing: '0.1em', color }}>{title}</span>
           <span style={{ fontSize: 10, color: C.muted }}>({tasks.length})</span>
         </div>
         {/* Sprint 60.P Day-of: TaskSection cards join the Studio Matte
@@ -31474,7 +31474,7 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
           <div>
             <div style={{
               fontSize: isMobile ? 9.5 : 10.5,
-              fontWeight: 700,
+              fontWeight: FW.bold,
               letterSpacing: '0.14em', textTransform: 'uppercase',
               color: heroLabelColor,
               padding: '2px 7px', borderRadius: 4,
@@ -31487,7 +31487,7 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
             <h2 style={{
               margin: 0,
               fontSize: isMobile ? 22 : 26,
-              fontWeight: 800, letterSpacing: '-0.025em',
+              fontWeight: FW.heavy, letterSpacing: '-0.025em',
               lineHeight: 1.2, color: C.text,
             }}>
               {heroHeadline}
@@ -31497,7 +31497,7 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
           <div style={{ textAlign: isMobile ? 'left' : 'right', flexShrink: 0 }}>
             <div style={{
               fontSize: isMobile ? 36 : 44,
-              fontWeight: 800, color: C.text,
+              fontWeight: FW.heavy, color: C.text,
               letterSpacing: '-0.03em', lineHeight: 1,
               fontVariantNumeric: 'tabular-nums',
             }}>
@@ -31884,7 +31884,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
     coiExpiry: '',
   }));
   const setDet = (k, v) => setDetails(d => ({ ...d, [k]: v }));
-  const lblStyle = { display: 'block', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 };
+  const lblStyle = { display: 'block', fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 };
   // Engine-aware category scoping: only present the categories THIS event type
   // calls for (board: "don't show options the event doesn't call for"), with an
   // escape hatch to the full list. Derived from the same rosters the engine uses.
@@ -31948,7 +31948,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
           transition: 'all 200ms ease',
         }} />
       ))}
-      <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginLeft: 6 }}>
+      <span style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.12em', color: C.muted, textTransform: 'uppercase', marginLeft: 6 }}>
         Step {step} of 3
       </span>
     </div>
@@ -31966,7 +31966,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
           : `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
         color: disabled ? C.muted : (C.accentText || '#fff'),
         border: 'none', borderRadius: 8,
-        padding: '9px 18px', fontSize: 13, fontWeight: 700,
+        padding: '9px 18px', fontSize: 13, fontWeight: FW.bold,
         cursor: disabled ? 'not-allowed' : 'pointer',
         boxShadow: disabled ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
       }}>
@@ -31986,10 +31986,10 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
         {/* Header */}
         <div style={{ padding: '18px 22px 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Add Vendor</div>
+            <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase' }}>Add Vendor</div>
             <button type="button" aria-label="Close wizard" onClick={onCancel} style={{ ...s.btn('ghost'), fontSize: 16, padding: '2px 8px', marginTop: -2 }}>✕</button>
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: C.text, lineHeight: 1.25, marginBottom: 10 }}>
+          <div style={{ fontSize: 17, fontWeight: FW.bold, color: C.text, lineHeight: 1.25, marginBottom: 10 }}>
             {step === 1 && <>Who is this vendor?</>}
             {step === 2 && <>What should Event Boss track?</>}
             {step === 3 && <>Review and create</>}
@@ -32002,10 +32002,10 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
           {step === 1 && (
             <>
               <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>✓</span>
+                <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', background: `${steelTop}22`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: FW.heavy }}>✓</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase' }}>Linked event</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginTop: 1 }}>{event?.name || 'this event'}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase' }}>Linked event</div>
+                  <div style={{ fontSize: 13, fontWeight: FW.semibold, color: C.text, marginTop: 1 }}>{event?.name || 'this event'}</div>
                 </div>
               </div>
 
@@ -32013,12 +32013,12 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   expectation so the planner adds only what they're truly hiring. */}
               {event && isAtHomeType(event.type) && (
                 <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
-                  🏠 <span style={{ color: C.text, fontWeight: 600 }}>Hosting at home.</span> This isn't a full-service event — add only the few vendors you're actually hiring (caterer, bar, rentals). Many at-home gatherings need none at all.
+                  🏠 <span style={{ color: C.text, fontWeight: FW.semibold }}>Hosting at home.</span> This isn't a full-service event — add only the few vendors you're actually hiring (caterer, bar, rentals). Many at-home gatherings need none at all.
                 </div>
               )}
 
               <div style={{ marginBottom: 12 }}>
-                <label htmlFor="av-name" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                <label htmlFor="av-name" style={{ display: 'block', fontSize: 11, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
                   Vendor name <span style={{ color: steelTop }}>*</span>
                 </label>
                 <input
@@ -32033,7 +32033,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label htmlFor="av-category" style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
+                <label htmlFor="av-category" style={{ display: 'block', fontSize: 11, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>
                   Category <span style={{ color: steelTop }}>*</span>
                 </label>
                 <select
@@ -32058,7 +32058,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 </select>
                 {relevantCats && (
                   <button type="button" onClick={() => setShowAllCats(v => !v)}
-                    style={{ background: 'none', border: 'none', padding: '6px 0 0', color: C.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={{ background: 'none', border: 'none', padding: '6px 0 0', color: C.accent, fontSize: 11, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {showAllCats ? `Show only ${eventTypeLabel(event) || 'relevant'} categories` : 'Need something else? Show all categories'}
                   </button>
                 )}
@@ -32073,7 +32073,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Optional · add later</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Optional · add later</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input data-testid="av-contact-name" value={identity.contactName} onChange={e => setIdentity(d => ({ ...d, contactName: e.target.value }))} placeholder="Contact name" style={s.input} />
                   <input data-testid="av-phone" value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: e.target.value }))} placeholder="Phone" style={s.input} />
@@ -32092,7 +32092,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   style={{ marginTop: 3, width: 18, height: 18, accentColor: steelTop }}
                 />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>Save to my vendor bank</div>
+                  <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.text }}>Save to my vendor bank</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>
                     {bankAvailable
                       ? alreadyInBankHit
@@ -32113,7 +32113,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   'Vendor is not created until final review',
                 ].map((line, i) => (
                   <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: i ? 6 : 0 }}>
-                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 11, fontWeight: 800 }}>✓</span>
+                    <span aria-hidden style={{ flexShrink: 0, color: steelTop, fontSize: 11, fontWeight: FW.heavy }}>✓</span>
                     <span style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45 }}>{line}</span>
                   </div>
                 ))}
@@ -32129,14 +32129,14 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
               {playbook && (
                 <>
                   <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.55, marginBottom: 10 }}>
-                    For a <span style={{ color: C.text, fontWeight: 700 }}>{playbook.displayName}</span>, Event Boss usually tracks these. Uncheck anything that doesn't fit — <span style={{ color: C.text, fontWeight: 600 }}>you can change this any time later</span>.
+                    For a <span style={{ color: C.text, fontWeight: FW.bold }}>{playbook.displayName}</span>, Event Boss usually tracks these. Uncheck anything that doesn't fit — <span style={{ color: C.text, fontWeight: FW.semibold }}>you can change this any time later</span>.
                   </div>
                   {/* PT-7: select-all / clear-all so the planner isn't toggling 10 boxes by hand. */}
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                     <button type="button" onClick={() => setSelectedKeys(new Set((playbook.commonPromises || []).map(p => p.key)))}
-                      style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.accent, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, padding: '6px 11px', minHeight: 34, cursor: 'pointer' }}>Select all</button>
+                      style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.accent, fontFamily: 'inherit', fontSize: 11, fontWeight: FW.bold, padding: '6px 11px', minHeight: 34, cursor: 'pointer' }}>Select all</button>
                     <button type="button" onClick={() => setSelectedKeys(new Set())}
-                      style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, fontFamily: 'inherit', fontSize: 11, fontWeight: 700, padding: '6px 11px', minHeight: 34, cursor: 'pointer' }}>Clear all</button>
+                      style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, fontFamily: 'inherit', fontSize: 11, fontWeight: FW.bold, padding: '6px 11px', minHeight: 34, cursor: 'pointer' }}>Clear all</button>
                   </div>
                   <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
                     {(playbook.commonPromises || []).map((p, idx, arr) => {
@@ -32161,10 +32161,10 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* PT-4: label takes the space, the badge stays anchored on the same line. */}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: C.text, lineHeight: 1.35 }}>{p.label}</span>
+                              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{p.label}</span>
                               {evi && (
                                 <span style={{
-                                  fontSize: 10, fontWeight: 800, letterSpacing: '0.08em',
+                                  fontSize: 10, fontWeight: FW.heavy, letterSpacing: '0.08em',
                                   textTransform: 'uppercase', color: steelTop,
                                   padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap', flexShrink: 0,
                                   border: `1px solid ${steelTop}55`,
@@ -32181,7 +32181,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                     })}
                   </div>
                   <div data-testid="av-promise-summary" style={{ fontSize: 11.5, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
-                    <span data-testid="av-promise-count" style={{ color: C.text, fontWeight: 700 }}>{selectedCount}</span> tracked · <span data-testid="av-evidence-count" style={{ color: C.text, fontWeight: 700 }}>{evidenceCount}</span> need proof.
+                    <span data-testid="av-promise-count" style={{ color: C.text, fontWeight: FW.bold }}>{selectedCount}</span> tracked · <span data-testid="av-evidence-count" style={{ color: C.text, fontWeight: FW.bold }}>{evidenceCount}</span> need proof.
                   </div>
                 </>
               )}
@@ -32190,7 +32190,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   that drive the budget, the payment countdown, and the day-of board.
                   All optional; skip what you don't have yet. */}
               <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Add what you know</div>
+                <div style={{ fontSize: 11, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Add what you know</div>
                 <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5, marginBottom: 12 }}>
                   These power the budget, the payment countdown, and the day-of board. Skip anything you don't have yet — you can add it later.
                 </div>
@@ -32224,10 +32224,10 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   <div style={{ marginTop: 12, border: `1px solid ${C.border}`, borderRadius: 10, padding: '11px 13px' }}>
                     <label onClick={() => setDet('coiRequired', !details.coiRequired)} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
                       <div style={{ width: 18, height: 18, borderRadius: 4, marginTop: 1, border: `2px solid ${details.coiRequired ? C.accent : C.muted}`, background: details.coiRequired ? C.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {details.coiRequired && <span style={{ fontSize: 11, color: C.accentText || '#fff', fontWeight: 700 }}>✓</span>}
+                        {details.coiRequired && <span style={{ fontSize: 11, color: C.accentText || '#fff', fontWeight: FW.bold }}>✓</span>}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>Insurance certificate (COI) required</div>
+                        <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.text }}>Insurance certificate (COI) required</div>
                         <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>Most venues require it. Seeds the day-of dock board and the readiness check now, not weeks later.</div>
                       </div>
                     </label>
@@ -32252,7 +32252,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
           {step === 3 && (
             <>
               <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Review</div>
+                <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Review</div>
                 {[
                   { label: 'Vendor added to',     value: event?.name || 'this event' },
                   { label: 'Vendor name',         value: identity.name.trim() || '—' },
@@ -32266,7 +32266,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 ].map((row, i, arr) => (
                   <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, paddingTop: i ? 8 : 0, paddingBottom: i === arr.length - 1 ? 0 : 8, borderBottom: i === arr.length - 1 ? 'none' : `1px solid ${C.border}` }}>
                     <div style={{ fontSize: 11.5, color: C.muted, flexShrink: 0 }}>{row.label}</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</div>
+                    <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, textAlign: 'right', maxWidth: '60%' }}>{row.value}</div>
                   </div>
                 ))}
               </div>
@@ -32279,7 +32279,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
 
         {/* Footer */}
         <div style={{ padding: '14px 22px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexShrink: 0 }}>
-          <button type="button" onClick={step === 1 ? onCancel : () => setStep(s => s - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0 }}>
+          <button type="button" onClick={step === 1 ? onCancel : () => setStep(s => s - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0 }}>
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
           {step < 3 && (
@@ -32336,8 +32336,8 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.50)',
         zIndex: 71, padding: 22,
       }}>
-        <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase', marginBottom: 4 }}>Add Vendor</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 4, lineHeight: 1.25 }}>
+        <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTop, textTransform: 'uppercase', marginBottom: 4 }}>Add Vendor</div>
+        <div style={{ fontSize: 18, fontWeight: FW.bold, color: C.text, marginBottom: 4, lineHeight: 1.25 }}>
           Add a vendor to <span style={{ color: steelTop }}>{eventName}</span>
         </div>
         <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55, marginBottom: 16 }}>
@@ -32345,7 +32345,7 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
         </div>
 
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>What happens when you save</div>
+          <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>What happens when you save</div>
           {[
             { label: 'Added to event',         value: eventName },
             { label: 'Saved to vendor bank',   value: 'No (workspace bank is separate — coming soon)' },
@@ -32354,9 +32354,9 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
             { label: 'Notifications sent',     value: 'None' },
           ].map((row) => (
             <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 6 }}>
-              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${steelTop}`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, marginTop: 1 }}>·</span>
+              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${steelTop}`, color: steelTop, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: FW.heavy, marginTop: 1 }}>·</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                <div style={{ fontSize: 11.5, fontWeight: FW.semibold, color: C.text }}>{row.label}</div>
                 <div style={{ fontSize: 11, color: C.muted, marginTop: 1, lineHeight: 1.45 }}>{row.value}</div>
               </div>
             </div>
@@ -32364,16 +32364,16 @@ function AddVendorIntro({ C, s, eventName, onCancel, onContinue }) {
         </div>
 
         <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 16, lineHeight: 1.5 }}>
-          Required: <span style={{ color: C.text, fontWeight: 600 }}>name</span> and <span style={{ color: C.text, fontWeight: 600 }}>category</span>. Contact info, deposit, contract — you can add later.
+          Required: <span style={{ color: C.text, fontWeight: FW.semibold }}>name</span> and <span style={{ color: C.text, fontWeight: FW.semibold }}>category</span>. Contact info, deposit, contract — you can add later.
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0 }}>Cancel</button>
+          <button type="button" onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0 }}>Cancel</button>
           <button type="button" onClick={onContinue} style={{
             background: `linear-gradient(180deg, ${steelTop} 0%, ${steelDeep} 100%)`,
             color: C.accentText || '#fff',
             border: 'none', borderRadius: 8,
-            padding: '9px 18px', fontSize: 13, fontWeight: 700,
+            padding: '9px 18px', fontSize: 13, fontWeight: FW.bold,
             cursor: 'pointer',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.32)',
           }}>Continue</button>
@@ -32422,10 +32422,10 @@ function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCou
         zIndex: 71, padding: 22,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <span aria-hidden style={{ width: 32, height: 32, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800 }}>✓</span>
+          <span aria-hidden style={{ width: 32, height: 32, borderRadius: '50%', background: `${C.success}22`, color: C.success, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: FW.heavy }}>✓</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: C.success, textTransform: 'uppercase' }}>Vendor added</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 1, lineHeight: 1.25 }}>{vendor?.name || 'New vendor'}</div>
+            <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: C.success, textTransform: 'uppercase' }}>Vendor added</div>
+            <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.text, marginTop: 1, lineHeight: 1.25 }}>{vendor?.name || 'New vendor'}</div>
             {vendor?.category && (
               <div style={{ fontSize: 11.5, color: C.muted, marginTop: 1 }}>{vendor.category}</div>
             )}
@@ -32442,16 +32442,16 @@ function VendorCreatedSuccess({ C, s, vendor, eventName, savedToBank, promiseCou
             { label: 'Notifications sent',     value: 'None' },
           ].map((row, idx, arr) => (
             <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingTop: idx ? 8 : 0, paddingBottom: idx === arr.length - 1 ? 0 : 8, borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${C.border}` }}>
-              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', background: `${C.success}22`, color: C.success, border: `1.5px solid ${C.success}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, marginTop: 1 }}>✓</span>
+              <span aria-hidden style={{ flexShrink: 0, width: 14, height: 14, borderRadius: '50%', background: `${C.success}22`, color: C.success, border: `1.5px solid ${C.success}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: FW.heavy, marginTop: 1 }}>✓</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.text }}>{row.label}</div>
+                <div style={{ fontSize: 11.5, fontWeight: FW.semibold, color: C.text }}>{row.label}</div>
                 <div style={{ fontSize: 11, color: C.muted, marginTop: 1, lineHeight: 1.45 }}>{row.value}</div>
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Next best action</div>
+        <div style={{ fontSize: 10.5, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 8 }}>Next best action</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" data-testid="vcs-open" onClick={onOpen} style={{ ...s.btn('primary') }}>Open vendor</button>
           <button type="button" data-testid="vcs-draft-followup" onClick={handleDraft} title="Opens a category-aware draft in your mail client (when an email is set) and copies it to the clipboard. Nothing is sent." style={{ ...s.btn('ghost') }}>
@@ -32937,10 +32937,10 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
               flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
               background: `${steelTopD}22`, color: steelTopD,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 800, marginTop: 1,
+              fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
             }}>✓</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopD, textTransform: 'uppercase' }}>No Guesswork</div>
+              <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopD, textTransform: 'uppercase' }}>No Guesswork</div>
               <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                 Decisions block downstream work. Each row shows who owns it, what's blocking, and the next action. Approvals you send via the client portal show up here as soon as the client responds.
               </div>
@@ -32965,7 +32965,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+            <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.text }}>
               {unmigrated.length} legacy decision{unmigrated.length !== 1 ? 's' : ''} saved locally
             </div>
             <div style={{ fontSize: 10, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>
@@ -32983,7 +32983,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
                 border: `1px solid ${migrating ? C.border : C.accent + '66'}`,
                 background: migrating ? C.bg : C.accent + '18',
                 color: migrating ? C.muted : C.accent,
-                fontSize: 11, fontWeight: 600,
+                fontSize: 11, fontWeight: FW.semibold,
                 cursor: migrating ? 'default' : 'pointer',
                 fontFamily: 'inherit', flexShrink: 0,
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -33000,7 +33000,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
               border: `1px solid ${C.border}`,
               background: 'transparent',
               color: C.muted,
-              fontSize: 11, fontWeight: 600,
+              fontSize: 11, fontWeight: FW.semibold,
               cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
             }}
           >
@@ -33019,7 +33019,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
-            <strong style={{ fontWeight: 700 }}>
+            <strong style={{ fontWeight: FW.bold }}>
               {migrationResult.ok
                 ? `Moved ${migrationResult.moved} decision${migrationResult.moved !== 1 ? 's' : ''} into shared approval history.`
                 : `Moved ${migrationResult.moved}; ${migrationResult.failed} could not be moved.`}
@@ -33042,10 +33042,10 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+          <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.text }}>
             Client portal
             {hasClientActivity && (
-              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: 700, color: C.success, background: C.success + '18', border: `1px solid 33`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ marginLeft: 8, fontSize: 9, fontWeight: FW.bold, color: C.success, background: C.success + '18', border: `1px solid 33`, padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {clientRespondedN} response{clientRespondedN !== 1 ? 's' : ''}
               </span>
             )}
@@ -33063,7 +33063,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
             border: `1px solid ${copied ? C.success : C.border}`,
             background: copied ? C.success + '18' : C.bg,
             color: copied ? C.success : C.text,
-            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            fontSize: 11, fontWeight: FW.semibold, cursor: 'pointer',
             fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s',
             display: 'flex', alignItems: 'center', gap: 6,
           }}
@@ -33075,7 +33075,7 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
       {/* Client responses section — shown when client has responded */}
       {hasClientActivity && (
         <div style={{ padding: '10px 16px', background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: FW.bold, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
             Client responses (via portal)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -33086,8 +33086,8 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
               return (
                 <div key={decId} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: isApproved ? C.success : C.muted, flexShrink: 0 }} />
-                  <span style={{ color: C.text, fontWeight: 500 }}>{d.title}</span>
-                  <span style={{ color: isApproved ? C.success : C.muted, fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ color: C.text, fontWeight: FW.medium }}>{d.title}</span>
+                  <span style={{ color: isApproved ? C.success : C.muted, fontWeight: FW.bold, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     — {isApproved ? 'Approved' : 'Changes requested'}
                   </span>
                 </div>
@@ -33148,7 +33148,7 @@ function LegacyTabHeader({ label, hint, onBack }) {
         onClick={onBack}
         style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, fontWeight: 600, letterSpacing: '0.01em',
+          fontSize: 12, fontWeight: FW.semibold, letterSpacing: '0.01em',
           color: C.tier2, padding: 0, marginBottom: 6,
           fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
         }}
@@ -33156,7 +33156,7 @@ function LegacyTabHeader({ label, hint, onBack }) {
         ‹ Overview
       </button>
       <div style={{
-        fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em',
+        fontSize: 22, fontWeight: FW.bold, letterSpacing: '-0.02em',
         lineHeight: 1.15, color: C.tier1,
       }}>
         {label}
@@ -33199,7 +33199,7 @@ function PlanStepModal({ task, onClose, onPatch, eventDate }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9990 }} />
       <div role="dialog" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 460px)', maxHeight: '85vh', overflowY: 'auto', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, zIndex: 9991, padding: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.35 }}>{task.task}</div>
+          <div style={{ fontSize: 16, fontWeight: FW.bold, color: C.text, lineHeight: 1.35 }}>{task.task}</div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, flexShrink: 0, lineHeight: 1 }}>✕</button>
         </div>
         {(() => {
@@ -33211,8 +33211,8 @@ function PlanStepModal({ task, onClose, onPatch, eventDate }) {
         })()}
         <div style={{ marginTop: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Steps</span>
-            {subs.length > 0 && <span style={{ fontSize: 11.5, fontWeight: 700, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
+            <span style={{ fontSize: 11, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Steps</span>
+            {subs.length > 0 && <span style={{ fontSize: 11.5, fontWeight: FW.bold, color: doneN === subs.length ? C.success : C.muted }}>{doneN} of {subs.length} done</span>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {subs.map((sub) => (
@@ -33225,7 +33225,7 @@ function PlanStepModal({ task, onClose, onPatch, eventDate }) {
             ))}
           </div>
           <button type="button" onClick={() => setSubs([...subs, { id: uid(), text: '', done: false }])}
-            style={{ marginTop: subs.length ? 10 : 0, background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '8px 13px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a step</button>
+            style={{ marginTop: subs.length ? 10 : 0, background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: 12.5, cursor: 'pointer', padding: '8px 13px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add a step</button>
         </div>
       </div>
     </>
@@ -33302,10 +33302,10 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
               flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
               background: `${steelTopPT}22`, color: steelTopPT,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 800, marginTop: 1,
+              fontSize: 10, fontWeight: FW.heavy, marginTop: 1,
             }}>✓</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', color: steelTopPT, textTransform: 'uppercase' }}>No Guesswork</div>
+              <div style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', color: steelTopPT, textTransform: 'uppercase' }}>No Guesswork</div>
               <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.45, marginTop: 1 }}>
                 Edits autosave. Event Boss tracks owner, deadline, and phase across List, Timeline, and Checklist.
               </div>
@@ -33439,12 +33439,12 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
   const SectionTitle = ({ label, count, accent }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isMobile ? '14px 14px 6px' : '20px 28px 8px' }}>
       <span style={{
-        fontSize: 12, fontWeight: 700, letterSpacing: '0.14em',
+        fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.14em',
         textTransform: 'uppercase', color: accent || C.muted,
       }}>{label}</span>
       {typeof count === 'number' && (
         <span style={{
-          fontSize: 12, fontWeight: 700, color: accent || C.muted,
+          fontSize: 12, fontWeight: FW.bold, color: accent || C.muted,
           background: (accent || C.border) + '22',
           borderRadius: 999, padding: '1px 9px', lineHeight: 1.5,
         }}>{count}</span>
@@ -33514,7 +33514,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 return (
                   <div key={`att-${d.id || d.title}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+                      <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
                       </div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
@@ -33522,11 +33522,11 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                       </div>
                     </div>
                     {/* Sprint 60.W — operational status chip + honest action verb */}
-                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: FW.bold, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                       {op.label}
                     </span>
                     {opener && (
-                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     )}
@@ -33541,21 +33541,21 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 return (
                   <div key={`att-v-${v.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{v.name}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{v.name}</div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
                         {v.category ? `${v.category} · ` : ''}Owner: Vendor
                       </div>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: FW.bold, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                       {op.label}
                     </span>
                     {v.contractUrl && (
-                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     )}
                     {onOpenVendor && (
-                      <button onClick={() => onOpenVendor(v.id, 'contract')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, flexShrink: 0 }}>
+                      <button onClick={() => onOpenVendor(v.id, 'contract')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, flexShrink: 0 }}>
                         Open contract →
                       </button>
                     )}
@@ -33578,7 +33578,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 return (
                   <div key={d.id || d.title} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
+                      <div style={{ fontSize: 14.5, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
                         {d.title || d.fileName || '(untitled)'}
                       </div>
                       <div style={{ fontSize: 13, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>
@@ -33588,11 +33588,11 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                       </div>
                     </div>
                     {/* Sprint 60.W operational chip */}
-                    <span style={{ fontSize: 12, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: FW.bold, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '3px 10px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
                       {op.label}
                     </span>
                     {opener && (
-                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={opener} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     )}
@@ -33620,21 +33620,21 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
                 return (
                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: C.bg, border: `1px solid ${C.border}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</div>
                       <div style={{ fontSize: 10.5, color: C.muted, marginTop: 1 }}>
                         {v.category ? `${v.category} · ` : ''}Owner: Vendor · {fileLabel}
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: FW.bold, color: op.color, background: op.color + '14', border: `1px solid ${op.color}44`, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>
                       {op.label}
                     </span>
                     {v.contractUrl && (
-                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
+                      <a href={v.contractUrl} target="_blank" rel="noopener noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, textDecoration: 'none', flexShrink: 0 }}>
                         Open file →
                       </a>
                     )}
                     {onOpenVendor && (
-                      <button onClick={() => onOpenVendor(v.id, 'arrival')} title={`Open ${v.name}'s arrival details`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 13, padding: '4px 4px', minHeight: 0, flexShrink: 0 }}>
+                      <button onClick={() => onOpenVendor(v.id, 'arrival')} title={`Open ${v.name}'s arrival details`} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 13, padding: '4px 4px', minHeight: 0, flexShrink: 0 }}>
                         Open arrival details →
                       </button>
                     )}
@@ -33670,7 +33670,7 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
 function EDTSectionHead({ C, label, hint }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>{label}</div>
       {hint && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{hint}</div>}
     </div>
   );
@@ -33791,7 +33791,7 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
       background: C.surface2, borderLeft: `3px solid ${C.muted}`,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 11, fontWeight: FW.bold, color: C.muted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
         {sec} templates not applied
       </div>
       <div style={{ fontSize: 12, color: C.text, lineHeight: 1.45 }}>
@@ -33894,7 +33894,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           </EDTRow>
         ) : (
           <button type="button" onClick={() => setShowTouches(true)}
-            style={{ background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: '9px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add personal touches (guest of honor, theme, song, drink)</button>
+            style={{ background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: 12.5, cursor: 'pointer', padding: '9px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add personal touches (guest of honor, theme, song, drink)</button>
         )}
       </div>
 
@@ -33928,7 +33928,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
             // for grandmother-readable phone brightness.
             <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${C.muted}` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
                 Heads up · Missing logistics
               </div>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -33971,7 +33971,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   padding: '10px 14px', minHeight: 44,
                   borderRadius: 8, border: `1px solid ${C.border}`,
                   background: 'transparent', color: C.text,
-                  fontSize: 14, fontWeight: 600,
+                  fontSize: 14, fontWeight: FW.semibold,
                   textDecoration: 'none', fontFamily: 'inherit',
                 }}
               >
@@ -33987,7 +33987,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   padding: '10px 14px', minHeight: 44,
                   borderRadius: 8, border: `1px solid ${C.border}`,
                   background: 'transparent', color: C.text,
-                  fontSize: 14, fontWeight: 600,
+                  fontSize: 14, fontWeight: FW.semibold,
                   textDecoration: 'none', fontFamily: 'inherit',
                 }}
               >
@@ -34004,7 +34004,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   padding: '10px 14px', minHeight: 44,
                   borderRadius: 8, border: `1px solid ${C.border}`,
                   background: 'transparent', color: C.text,
-                  fontSize: 14, fontWeight: 600,
+                  fontSize: 14, fontWeight: FW.semibold,
                   textDecoration: 'none', fontFamily: 'inherit',
                 }}
               >
@@ -34015,7 +34015,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         )}
         {detailsIsHost ? (() => {
           const atHome = (event.venueKind || 'home') === 'home';
-          const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
+          const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: FW.bold, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
           const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
           const rememberState = (v) => { upd('venueState', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-state', v.trim()); } catch (e) {} };
           const composeAddr = (o) => { const n = { street: event.venueStreet, city: event.venueCity, state: event.venueState, zip: event.venueZip, ...o }; return [n.street, [n.city, n.state].filter(Boolean).join(', '), n.zip].filter(Boolean).join(' ').replace(/\s+,/g, ',').trim(); };
@@ -34023,7 +34023,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             <div style={{ marginBottom: 12 }}>
               {/* Default to the host's house; standard address fields only when it's elsewhere.
                   City/state feed local pricing + the weather outlook. */}
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Where's it happening?</div>
+              <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.muted, marginBottom: 8 }}>Where's it happening?</div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 <button type="button" onClick={() => upd('venueKind', 'home')} style={tog(atHome)}>🏠 At home · your place</button>
                 <button type="button" onClick={() => { if ((event.venueKind || 'home') === 'home') upd('venueKind', 'venue'); }} style={tog(!atHome)}>📍 Somewhere else</button>
@@ -34073,7 +34073,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           const categories = ['Caterer', 'Party rentals', 'Bakery', 'Photographer', 'Bartender', 'Cleaning service'];
           return (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>Find local help near you</div>
+              <div style={{ fontSize: 12.5, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>Find local help near you</div>
               {vendorAnchor ? (
                 <>
                   <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
@@ -34231,7 +34231,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
     >
       <div>
         {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches global hierarchy */}
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 6 }}>
+        <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 6 }}>
           Communication
         </div>
         <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
@@ -34240,7 +34240,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
       </div>
 
       {pendingApprovals > 0 && (
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muted, background: C.muted + '14', border: `1px solid ${C.muted}44`, padding: '6px 10px', borderRadius: 7 }}>
+        <div style={{ fontSize: 10.5, fontWeight: FW.bold, color: C.muted, background: C.muted + '14', border: `1px solid ${C.muted}44`, padding: '6px 10px', borderRadius: 7 }}>
           {pendingApprovals} pending approval{pendingApprovals !== 1 ? 's' : ''}
         </div>
       )}
@@ -34255,8 +34255,8 @@ function CommunicationRail({ event, onOpenCommunication }) {
           borderRadius: 8,
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Messages</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>No messages yet.</div>
+          <div style={{ fontSize: 12, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Messages</div>
+          <div style={{ fontSize: 15, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.015em', lineHeight: 1.3 }}>No messages yet.</div>
           <div style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.5 }}>When you send notes or receive updates from your client, vendors, or team, they show here. Use the compose button in the top bar to start a message.</div>
         </div>
       ) : (
@@ -34267,7 +34267,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
             return (
               <div key={m.id} style={{ fontSize: 11, color: C.text, padding: '8px 10px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>
+                  <span style={{ fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>
                     {m.senderName || m.sender || (m.direction === 'outbound' ? 'You' : 'Thread')}
                   </span>
                   <span style={{ fontSize: 10, color: C.muted }}>{fmtRel(m.createdAt)}</span>
@@ -34278,7 +34278,7 @@ function CommunicationRail({ event, onOpenCommunication }) {
                   </div>
                 )}
                 {label && (
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: C.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: FW.bold, color: C.muted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {label}
                   </div>
                 )}
@@ -34315,7 +34315,7 @@ const crewStatusColor = (C, status) => {
 function CrewContactActions({ c, event, compact }) {
   const C = useT();
   const [copied, setCopied] = useState(false);
-  const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: compact ? '7px 10px' : '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', minHeight: 36 };
+  const btn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: compact ? '7px 10px' : '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.text, textDecoration: 'none', minHeight: 36 };
   const copySheet = async () => {
     try { await navigator.clipboard.writeText(crewCallSheetText(c, event)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
@@ -34334,16 +34334,16 @@ function CrewManifest({ crew = [], event, isMobile }) {
   if (!crew.length) return null;
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>Crew manifest</div>
+      <div style={{ fontSize: 10.5, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accentTopGrad || C.accent, marginBottom: 8 }}>Crew manifest</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {crew.map(c => (
           <div key={c.id} data-testid="crew-manifest-row" style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{c.name}</span>
+                <span style={{ fontSize: 14, fontWeight: FW.bold, color: C.text }}>{c.name}</span>
                 {c.roleLabel && <span style={{ fontSize: 12, color: C.muted }}> · {c.roleLabel}</span>}
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: crewStatusColor(C, c.status), background: `${crewStatusColor(C, c.status)}14`, border: `1px solid ${crewStatusColor(C, c.status)}44`, padding: '1px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{CREW_STATUS_LABEL[c.status] || 'Assigned'}</span>
+              <span style={{ fontSize: 10, fontWeight: FW.bold, color: crewStatusColor(C, c.status), background: `${crewStatusColor(C, c.status)}14`, border: `1px solid ${crewStatusColor(C, c.status)}44`, padding: '1px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{CREW_STATUS_LABEL[c.status] || 'Assigned'}</span>
             </div>
             {(c.callTime || c.arrivalTime) && (
               <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
@@ -34390,9 +34390,9 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
           ‹ Overview up-crumb, then "Crew" as a 22px sentence-case heading. */}
       <div style={{ marginBottom: 14 }}>
         {onBack && (
-          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, letterSpacing: '0.01em', color: C.tier2, padding: 0, marginBottom: 6, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}>‹ Overview</button>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: FW.semibold, letterSpacing: '0.01em', color: C.tier2, padding: 0, marginBottom: 6, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}>‹ Overview</button>
         )}
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15, color: C.tier1 }}>Crew</div>
+        <div style={{ fontSize: 22, fontWeight: FW.bold, letterSpacing: '-0.02em', lineHeight: 1.15, color: C.tier1 }}>Crew</div>
         <div style={{ marginTop: 3, fontSize: 12.5, color: C.tier3, lineHeight: 1.4 }}>Assign studio teammates, set call times, and track who's confirmed. Solo events can leave this empty.</div>
       </div>
 
@@ -34406,22 +34406,22 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
           {crew.map(c => (
             <div key={c.id} data-testid="crew-row" style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{c.name}{c.email ? <span style={{ fontSize: 12, fontWeight: 400, color: C.muted }}> · {c.email}</span> : null}</span>
+                <span style={{ fontSize: 15, fontWeight: FW.bold, color: C.text }}>{c.name}{c.email ? <span style={{ fontSize: 12, fontWeight: FW.regular, color: C.muted }}> · {c.email}</span> : null}</span>
                 <button onClick={() => removeCrew(c.id)} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
               </div>
               <div style={fieldRow}>
-                <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Role</span>
+                <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Role</span>
                   <input data-testid="crew-role" style={field} value={c.roleLabel} placeholder="e.g. Second shooter" onChange={e => updateCrew(c.id, 'roleLabel', e.target.value)} /></label>
-                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Call time</span>
+                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Call time</span>
                   <input type="time" style={field} value={c.callTime} onChange={e => updateCrew(c.id, 'callTime', e.target.value)} /></label>
-                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Arrival</span>
+                <label style={{ width: isMobile ? '100%' : 120 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Arrival</span>
                   <input type="time" style={field} value={c.arrivalTime} onChange={e => updateCrew(c.id, 'arrivalTime', e.target.value)} /></label>
-                <label style={{ width: isMobile ? '100%' : 170 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Status</span>
+                <label style={{ width: isMobile ? '100%' : 170 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Status</span>
                   <select data-testid="crew-status" style={field} value={c.status} onChange={e => updateCrew(c.id, 'status', e.target.value)}>
                     {CREW_STATUSES.map(st => <option key={st} value={st}>{CREW_STATUS_LABEL[st]}</option>)}
                   </select></label>
               </div>
-              <label style={{ display: 'block', marginTop: 8 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Notes</span>
+              <label style={{ display: 'block', marginTop: 8 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Notes</span>
                 <input style={field} value={c.notes} placeholder="Optional — e.g. handles drone, leaves at 9pm" onChange={e => updateCrew(c.id, 'notes', e.target.value)} /></label>
               <div style={{ marginTop: 10 }}><CrewContactActions c={c} event={event} /></div>
             </div>
@@ -34432,11 +34432,11 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
       {/* Assign from roster */}
       {available.length > 0 && (
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 6 }}>Add from your studio</div>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold, marginBottom: 6 }}>Add from your studio</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {available.map(m => (
-              <button key={m.id} data-testid="crew-assign-chip" onClick={() => assign(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 999, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40 }}>
-                + {m.name}{m.roleLabel ? <span style={{ color: C.muted, fontWeight: 400 }}> · {m.roleLabel}</span> : null}
+              <button key={m.id} data-testid="crew-assign-chip" onClick={() => assign(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 999, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit', minHeight: 40 }}>
+                + {m.name}{m.roleLabel ? <span style={{ color: C.muted, fontWeight: FW.regular }}> · {m.roleLabel}</span> : null}
               </button>
             ))}
           </div>
@@ -34446,15 +34446,15 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
       {/* Add a new teammate */}
       {adding ? (
         <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Add a teammate</div>
+          <div style={{ fontSize: 13, fontWeight: FW.bold, color: C.text, marginBottom: 10 }}>Add a teammate</div>
           <div style={fieldRow}>
-            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Name *</span>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Name *</span>
               <input data-testid="crew-new-name" style={field} value={nm} placeholder="Full name" onChange={e => setNm(e.target.value)} /></label>
-            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Role</span>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Role</span>
               <input style={field} value={rl} placeholder="e.g. Assistant" onChange={e => setRl(e.target.value)} /></label>
-            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Email</span>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Email</span>
               <input style={field} value={em} placeholder="teammate@studio.com" onChange={e => setEm(e.target.value)} /></label>
-            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>Phone</span>
+            <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Phone</span>
               <input style={field} value={ph} placeholder="(555) 555-0123" onChange={e => setPh(formatPhone(e.target.value))} /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -34547,22 +34547,22 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
         {/* eyebrow + owner + action */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, flex: '1 1 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: accent }}>
+            <span style={{ fontSize: 9.5, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: accent }}>
               {caughtUp ? 'Caught up' : 'Next step'}
             </span>
             {!caughtUp && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: ownerColor, border: `1px solid ${ownerColor}55`, borderRadius: 5, padding: '1px 6px' }}>
+              <span style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: ownerColor, border: `1px solid ${ownerColor}55`, borderRadius: 5, padding: '1px 6px' }}>
                 {owner.label}
               </span>
             )}
             {advanced && !caughtUp && (
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: C.success, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 9.5, fontWeight: FW.bold, color: C.success, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 <Icon name="check" size={11} /> Next up
               </span>
             )}
           </div>
           <div style={{
-            fontSize: isMobile ? 13 : 14, fontWeight: 600, color: caughtUp ? C.muted : C.text, lineHeight: 1.3,
+            fontSize: isMobile ? 13 : 14, fontWeight: FW.semibold, color: caughtUp ? C.muted : C.text, lineHeight: 1.3,
             overflow: 'hidden', textOverflow: 'ellipsis',
             whiteSpace: isMobile ? 'normal' : 'nowrap',
             display: isMobile ? '-webkit-box' : 'block',
@@ -34576,7 +34576,7 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
 
         {/* right cluster — queue depth + the single CTA */}
         {caughtUp ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.success, fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.success, fontSize: 12, fontWeight: FW.semibold, flexShrink: 0 }}>
             <Icon name="check" size={15} /> All clear
           </span>
         ) : (
@@ -34587,7 +34587,7 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
               // knows they're seeing the TOP of N things needing them, and that
               // clearing it advances to the next.
               <span title={`Your top next step — 1 of ${totalOpen} open items. Clear it and the next moves up.`}
-                style={{ fontSize: 11, fontWeight: 600, color: C.muted, fontFeatureSettings: '"tnum" 1', whiteSpace: 'nowrap' }}>
+                style={{ fontSize: 11, fontWeight: FW.semibold, color: C.muted, fontFeatureSettings: '"tnum" 1', whiteSpace: 'nowrap' }}>
                 1 of {totalOpen} open
               </span>
             )}
@@ -34601,7 +34601,7 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
               onClick={() => onNavigate(na.primaryRoute)}
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer',
+                fontSize: 12, fontWeight: FW.bold, whiteSpace: 'nowrap', cursor: 'pointer',
                 padding: '6px 14px', borderRadius: 8, lineHeight: 1.1, fontFamily: 'inherit',
                 border: `1px solid ${accent}`, color: accent, background: 'transparent',
                 transition: 'background 0.12s',
@@ -34629,8 +34629,8 @@ function RationaleModal({ prompt, onSave, onSkip }) {
   return (
     <div onClick={onSkip} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 94vw)', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Decision noted</div>
-        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: C.text, marginTop: 4 }}>{prompt.question || 'Why this decision?'}</div>
+        <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>Decision noted</div>
+        <div style={{ fontSize: 16, fontWeight: FW.bold, letterSpacing: '-0.01em', color: C.text, marginTop: 4 }}>{prompt.question || 'Why this decision?'}</div>
         {prompt.decision && <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{prompt.decision}</div>}
         <textarea autoFocus value={text} onChange={e => setText(e.target.value)} placeholder="A sentence is plenty — your future self will thank you."
           rows={3} style={{ width: '100%', marginTop: 12, padding: '10px 12px', fontSize: 13, lineHeight: 1.4, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
@@ -34654,17 +34654,17 @@ function DecisionHistory({ event }) {
   const fmtWhen = (iso) => { try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ''; } };
   return (
     <div style={{ padding: '20px 0 8px', borderTop: `1px solid ${C.border}`, marginTop: 18 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Decision History</div>
+      <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Decision History</div>
       <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>Why the calls were made — captured as you went.</div>
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10 }}>
         {list.slice().reverse().map((d, i) => (
           <div key={d.id} style={{ padding: '12px 16px', borderTop: i === 0 ? 'none' : `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{d.decision || d.subjectLabel}</div>
+              <div style={{ fontSize: 12.5, fontWeight: FW.semibold, color: C.text }}>{d.decision || d.subjectLabel}</div>
               <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{(DECISION_TYPE_LABEL[d.decisionType] || 'Decision')}{d.createdAt ? ' · ' + fmtWhen(d.createdAt) : ''}</div>
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>
-              <span style={{ fontWeight: 700, color: C.text, opacity: 0.8 }}>Because</span> {d.rationale}
+              <span style={{ fontWeight: FW.bold, color: C.text, opacity: 0.8 }}>Because</span> {d.rationale}
               {d.createdBy ? <span style={{ opacity: 0.7 }}> — {d.createdBy}</span> : null}
             </div>
             {/* Sprint 58E — Outcome: completes the triple. Captured (vendor/overall)
@@ -34675,7 +34675,7 @@ function DecisionHistory({ event }) {
               const col = o.tone === 'good' ? C.success : o.tone === 'bad' ? C.danger : C.muted;
               return (
                 <div style={{ fontSize: 11.5, color: col, marginTop: 3 }}>
-                  <span style={{ fontWeight: 700 }}>→ Outcome:</span> {o.label}
+                  <span style={{ fontWeight: FW.bold }}>→ Outcome:</span> {o.label}
                   <span style={{ color: C.muted, opacity: 0.7 }}> ({o.source})</span>
                 </div>
               );
@@ -34701,7 +34701,7 @@ function OutcomeChips({ options, value, onPick, C }) {
         const col = tone === 'good' ? C.success : tone === 'bad' ? C.danger : C.accent;
         return (
           <button key={opt} onClick={() => onPick(on ? null : opt)} style={{
-            fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+            fontSize: 11.5, fontWeight: FW.semibold, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
             border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent',
             color: on ? col : C.muted,
           }}>{OUTCOME_LABEL[opt] || opt}</button>
@@ -34720,12 +34720,12 @@ function OutcomeCapture({ event, setEvent }) {
   return (
     <div style={{ padding: '20px 0 8px', borderTop: `1px solid ${C.border}`, marginTop: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>How did it go?</div>
+        <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>How did it go?</div>
         {!complete && <div style={{ fontSize: 10, color: C.muted, opacity: 0.7 }}>· best recorded after the event</div>}
       </div>
       <div style={{ fontSize: 11, color: C.muted, margin: '4px 0 12px' }}>One tap each — these turn your reasons into intelligence.</div>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Overall</div>
+        <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>Overall</div>
         <OutcomeChips options={OUTCOME_SIGNALS.overall} value={o.overall} C={C}
           onPick={(v) => {
             track(EVENTS.OUTCOME_CAPTURED, { kind: 'overall' });
@@ -34736,7 +34736,7 @@ function OutcomeCapture({ event, setEvent }) {
       {/* Sprint 60B — Outcome alignment: did the thing that mattered most happen? */}
       {event.must_have_moment && (
         <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>Did the must-have happen?</div>
+          <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>Did the must-have happen?</div>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{event.must_have_moment}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {MUST_HAVE_SIGNALS.map(opt => {
@@ -34744,7 +34744,7 @@ function OutcomeCapture({ event, setEvent }) {
               const col = opt === 'happened' ? C.success : opt === 'missed' ? C.danger : C.accent;
               return (
                 <button key={opt} onClick={() => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'must_have' }); setEvent(e => setMustHaveOutcome(e, on ? null : opt, new Date().toISOString())); }}
-                  style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+                  style={{ fontSize: 11.5, fontWeight: FW.semibold, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
                     border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
                   {MUST_HAVE_LABEL[opt]}
                 </button>
@@ -34761,7 +34761,7 @@ function OutcomeCapture({ event, setEvent }) {
       )}
       {refl && refl.feeling && (
         <div style={{ marginBottom: confirmedVendors.length ? 14 : 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>Did guests feel it?</div>
+          <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text }}>Did guests feel it?</div>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{refl.feeling}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {FEELING_SIGNALS.map(opt => {
@@ -34769,7 +34769,7 @@ function OutcomeCapture({ event, setEvent }) {
               const col = opt === 'yes' ? C.success : opt === 'no' ? C.danger : C.accent;
               return (
                 <button key={opt} onClick={() => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'feeling' }); setEvent(e => setFeelingOutcome(e, on ? null : opt, new Date().toISOString())); }}
-                  style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
+                  style={{ fontSize: 11.5, fontWeight: FW.semibold, padding: '5px 11px', borderRadius: 20, cursor: 'pointer',
                     border: `1px solid ${on ? col : C.border}`, background: on ? col + '22' : 'transparent', color: on ? col : C.muted }}>
                   {FEELING_LABEL[opt]}
                 </button>
@@ -34780,14 +34780,14 @@ function OutcomeCapture({ event, setEvent }) {
       )}
       {confirmedVendors.map(v => (
         <div key={v.id} style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>{v.name || 'Vendor'}{v.category ? <span style={{ color: C.muted, fontWeight: 400 }}> · {v.category}</span> : null}</div>
+          <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>{v.name || 'Vendor'}{v.category ? <span style={{ color: C.muted, fontWeight: FW.regular }}> · {v.category}</span> : null}</div>
           <OutcomeChips options={OUTCOME_SIGNALS.vendor_selection} value={vendorOutcome(event, v.id)} C={C}
             onPick={(val) => { track(EVENTS.OUTCOME_CAPTURED, { kind: 'vendor' }); setEvent(e => setVendorOutcome(e, v.id, val, new Date().toISOString())); }} />
         </div>
       ))}
       {/* Sprint 58G — Event Lesson Memory: one short optional line, no form, no AI. */}
       <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.text, marginBottom: 6 }}>Biggest lesson <span style={{ color: C.muted, fontWeight: 400 }}>(optional, one line)</span></div>
+        <div style={{ fontSize: 12, fontWeight: FW.semibold, color: C.text, marginBottom: 6 }}>Biggest lesson <span style={{ color: C.muted, fontWeight: FW.regular }}>(optional, one line)</span></div>
         <input value={getLesson(event)} onChange={e => setEvent(ev => setLesson(ev, e.target.value))}
           placeholder="e.g. Parking filled early · catering ran over · timeline ran long"
           maxLength={200}
@@ -34924,7 +34924,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     <div style={{ minHeight: '100vh', background: C.bg, paddingBottom: 76 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.muted }}>←</button>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        <div style={{ fontSize: 14, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
       </div>
 
       <div>
@@ -34959,7 +34959,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         })}
         <button onClick={() => setMoreOpen(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 2px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: moreItems.some(m => m.id === tab) ? C.accent : C.muted }}>
           <Icon name="ellipsis" size={20} />
-          <span style={{ fontSize: 10, fontWeight: 600 }}>More</span>
+          <span style={{ fontSize: 10, fontWeight: FW.semibold }}>More</span>
         </button>
       </div>
 
@@ -35349,7 +35349,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           const isAlert = tabBadgeOverdue[t];
           return (
           <span style={{
-            fontSize: 9.5, fontWeight: 700,
+            fontSize: 9.5, fontWeight: FW.bold,
             color: isAlert ? C.danger : (active ? color : C.tier3),
             background: isAlert ? C.danger + '1a' : (active ? color + '22' : 'transparent'),
             borderRadius: 5, padding: '1px 5px', flexShrink: 0,
@@ -35377,7 +35377,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     }
     return (
       <div key={`hdr-${label}`} style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+        fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.14em',
         textTransform: 'uppercase', color: C.muted, opacity: 0.7,
         padding: '14px 10px 6px',
       }}>{label}</div>
@@ -35411,7 +35411,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     }, 60);
   };
   const canArchive = days !== null && days < -7;
-  const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: 'transparent', color: C.text, textAlign: 'left' };
+  const drawerActRow = { display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: FW.medium, background: 'transparent', color: C.text, textAlign: 'left' };
   // ─── Sprint 59F: mobile bottom nav — 5-item lane model ──────────────────
   // Pre-59F shipped 4 routing items (Command / Planning / Vendors / Comms).
   // Sprint 59A audit asked for a 5-lane shape that matches how planners
@@ -35650,7 +35650,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
                 {(event.agenda || []).length} agenda note{(event.agenda || []).length !== 1 ? 's' : ''} on this event (from the legacy Agenda tab).
               </span>
-              <button onClick={() => handleTabChange('Agenda')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0 }}>
+              <button onClick={() => handleTabChange('Agenda')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0 }}>
                 View legacy agenda →
               </button>
             </div>
@@ -35754,7 +35754,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <button onClick={onOpenClient || onBack} style={{ ...s.btn('ghost'), fontSize: 12, padding: '4px 10px' }}>{backLabel || '← Clients'}</button>
           <span style={{ color: C.border, fontSize: 18 }}>|</span>
           <input
-            style={{ background: 'none', border: 'none', fontSize: isMobile ? 17 : 20, fontWeight: 700, color: C.text, letterSpacing: '-0.02em', outline: 'none', padding: 0, minWidth: 0, flex: '0 1 auto', maxWidth: 400, fontFamily: FF }}
+            style={{ background: 'none', border: 'none', fontSize: isMobile ? 17 : 20, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.02em', outline: 'none', padding: 0, minWidth: 0, flex: '0 1 auto', maxWidth: 400, fontFamily: FF }}
             value={event.name}
             onChange={e => setEvent(ev => ({ ...ev, name: e.target.value }))}
           />
@@ -35762,14 +35762,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               with the countdown keeping its urgency color. Replaces the loud chips +
               the whole second meta row (venue/date/type/client edit live in the
               Event Details tab now). */}
-          <span style={{ fontSize: 12.5, color: C.muted, fontWeight: 500, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 12.5, color: C.muted, fontWeight: FW.medium, whiteSpace: 'nowrap' }}>
             {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}
             {event.honoree ? ` · for ${event.honoree}` : ''}
             {event.date ? ` · ${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}
             {days !== null && event.date ? ' · ' : ''}
           </span>
           {days !== null && event.date && (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: hostNavActive(event) ? countdownTone(days, C) : (days <= 14 ? C.danger : days <= 90 ? C.warn : C.muted), whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: FW.bold, color: hostNavActive(event) ? countdownTone(days, C) : (days <= 14 ? C.danger : days <= 90 ? C.warn : C.muted), whiteSpace: 'nowrap' }}>
               {countdownLabel(days)}
             </span>
           )}
@@ -35777,7 +35777,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               with the fill along the header's bottom edge (below). On every tab. */}
           {(() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
           <span title={`Overall planning progress vs. time left — headcount, budget, place, the heart, and the day`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: C.text, whiteSpace: 'nowrap', letterSpacing: '0.01em', padding: '3px 10px', borderRadius: 999, background: `${_c}1c`, border: `1px solid ${_c}66` }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap', letterSpacing: '0.01em', padding: '3px 10px', borderRadius: 999, background: `${_c}1c`, border: `1px solid ${_c}66` }}>
             <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: _c, boxShadow: `0 0 6px ${_c}`, flexShrink: 0 }} />
             <span>{_s.showPct ? <><span style={{ color: _c }}>{_s.pct}%</span> · {_s.word}</> : _s.word}</span>
           </span>
@@ -35795,7 +35795,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <button
               onClick={() => setDayMode(false)}
               title="Switch to the full event editor"
-              style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}66`, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              style={{ fontSize: 10, fontWeight: FW.bold, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '3px 9px', borderRadius: 6, background: C.accent + '18', border: `1px solid ${C.accent}66`, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
             >
               <Icon name="zap" size={11} /> Full event view
             </button>
@@ -35808,7 +35808,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <span
               title="Day-of view opened automatically because the event is today. Switch back any time with the button on the left."
               style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+                fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.1em',
                 textTransform: 'uppercase', color: C.accent,
                 background: C.accent + '14',
                 border: `1px solid ${C.accent}44`,
@@ -35819,25 +35819,25 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </span>
           )}
           {syncState === 'offline' && (
-            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● Offline</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: FW.semibold }}>● Offline</span>
           )}
           {syncState === 'saving' && (
-            <span style={{ fontSize: 10, color: C.muted, fontWeight: 500 }}>● Saving…</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: FW.medium }}>● Saving…</span>
           )}
           {syncState === 'reconnecting' && (
-            <span style={{ fontSize: 10, color: C.accent2, fontWeight: 600 }}>● Reconnecting…</span>
+            <span style={{ fontSize: 10, color: C.accent2, fontWeight: FW.semibold }}>● Reconnecting…</span>
           )}
           {syncState === 'sync_failed' && (
-            <span style={{ fontSize: 10, color: C.danger, fontWeight: 600 }}>● Sync failed</span>
+            <span style={{ fontSize: 10, color: C.danger, fontWeight: FW.semibold }}>● Sync failed</span>
           )}
           {(syncState === 'pending' || (syncState !== 'sync_failed' && pendingCount > 0)) && (
-            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● {pendingCount} pending</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: FW.semibold }}>● {pendingCount} pending</span>
           )}
           {/* Board: the verbose "Saved 15s ago" chip is the lowest-value pixel in
               the header and fragments onto its own line — cut. Save state is shown
               only as a transient "Saving…" / failure signal above. */}
           {(syncState === 'saved' || syncState === 'idle') && savedAt && !online && (
-            <span style={{ fontSize: 10, color: C.muted, fontWeight: 600 }}>● Offline</span>
+            <span style={{ fontSize: 10, color: C.muted, fontWeight: FW.semibold }}>● Offline</span>
           )}
           {isSidebarNav ? (
             /* Desktop/tablet-land: 3 visible + overflow ··· */
@@ -35867,7 +35867,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={e => { e.stopPropagation(); setDesktopEvtOverflow(o => !o); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: 600, fontSize: 11, padding: '2px 4px', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: desktopEvtOverflow ? C.accent : C.border, color: desktopEvtOverflow ? C.accent : C.text }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: 11, padding: '2px 4px', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: desktopEvtOverflow ? C.accent : C.border, color: desktopEvtOverflow ? C.accent : C.text }}
                   title="Event details"
                   aria-label="Event details"
                   aria-expanded={desktopEvtOverflow}
@@ -35886,7 +35886,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                       background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
                       boxShadow: '0 8px 32px rgba(0,0,0,0.20)', padding: '4px 0', minWidth: 200,
                     }}>
-                      <div style={{ padding: '8px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Event Details</div>
+                      <div style={{ padding: '8px 14px 6px', fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted }}>Event Details</div>
                       <button onClick={() => { setDayMode(!dayMode); setDesktopEvtOverflow(false); if (!dayMode) handleTabChange('Now'); }} style={{ ...row, color: dayMode ? C.accent : C.text }}>
                         <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: dayMode ? C.accent : C.muted }}><Icon name="zap" size={15} /></span>
                         {/* Sprint 59D: copy locked to Day-of/Full event view. */}
@@ -35922,7 +35922,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                       <div style={{ margin: '4px 0', borderTop: `1px solid ${C.border}` }} />
                       {confirmEvtDel ? (
                         <div style={{ padding: '6px 14px' }}>
-                          <div style={{ fontSize: 11.5, color: C.text, fontWeight: 600, marginBottom: 3 }}>Delete this event?</div>
+                          <div style={{ fontSize: 11.5, color: C.text, fontWeight: FW.semibold, marginBottom: 3 }}>Delete this event?</div>
                           <div style={{ fontSize: 10.5, color: C.muted, marginBottom: 6, lineHeight: 1.4 }}>This removes its guests, vendors, budget, tasks, and messages. You'll have 5 seconds to undo.</div>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button style={{ ...s.btn('danger'), fontSize: 11, flex: 1 }} onClick={onDelete}>Delete</button>
@@ -36057,7 +36057,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 <div style={{ height: 1, background: `linear-gradient(90deg, ${C.border} 0%, transparent 80%)`, marginBottom: 14 }} />
                 {days !== null && (
                   <div style={{
-                    fontWeight: 900,
+                    fontWeight: FW.black,
                     fontSize: days <= 7 ? 28 : days <= 30 ? 24 : 20,
                     letterSpacing: '-0.04em',
                     lineHeight: 0.9,
@@ -36074,7 +36074,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   </div>
                 )}
                 {days !== null && (
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.muted, marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.14em', color: C.muted, marginBottom: 10 }}>
                     {/* Figma 584:39 — vertical chip sublabel */}
                     {days > 0 ? 'days until event' : days === 0 ? 'today' : 'days since event'}
                   </div>
@@ -36143,7 +36143,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <div onClick={() => setEvtDrawerOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
           <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 'min(284px, 84vw)', background: C.surface, borderRight: `1px solid ${C.border}`, zIndex: 61, padding: '18px 14px', display: 'flex', flexDirection: 'column', boxShadow: '0 0 40px rgba(0,0,0,0.45)', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-              <div style={{ fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Event'}</div>
+              <div style={{ fontWeight: FW.heavy, fontSize: 14.5, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Event'}</div>
               <button onClick={() => setEvtDrawerOpen(false)} title="Close" aria-label="Close menu" style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={15} /></button>
             </div>
             {renderTabListWithHeaders(navTabs, false)}
@@ -36157,7 +36157,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <div onClick={() => setEvtActionsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60 }} />
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '20px 20px 0 0', zIndex: 61, padding: '8px 14px calc(16px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.45)', maxHeight: '88vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Event Details</div>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Event Details</div>
             {[
               // Sprint 49 closure: 'Plan Dashboard' entry removed — PLAN overlay retired.
               // Sprint 59D: mobile drawer copy locked to Day-of/Full event view.
@@ -36177,7 +36177,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             ))}
             {confirmEvtDel ? (
               <div style={{ padding: '6px 8px 0' }}>
-                <div style={{ fontSize: 12.5, color: C.text, fontWeight: 600, marginBottom: 3 }}>Delete this event?</div>
+                <div style={{ fontSize: 12.5, color: C.text, fontWeight: FW.semibold, marginBottom: 3 }}>Delete this event?</div>
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 7, lineHeight: 1.4 }}>This removes its guests, vendors, budget, tasks, and messages. You'll have 5 seconds to undo.</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button style={{ ...s.btn('danger'), flex: 1 }} onClick={onDelete}>Delete</button>
@@ -36223,7 +36223,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
               <div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} />
             </div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8, padding: '0 4px' }}>
+            <div style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8, padding: '0 4px' }}>
               {bottomSheet === 'people' ? 'People' : 'Money & Files'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -36255,7 +36255,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                   >
                     <span style={{ width: 28, display: 'flex', justifyContent: 'center', color: isActive ? color : C.muted }}><Icon name={opt.icon} size={18} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{opt.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: FW.bold, lineHeight: 1.2 }}>{opt.label}</div>
                       <div style={{ fontSize: 10.5, color: C.muted, marginTop: 2 }}>{opt.sub}</div>
                     </div>
                     <Icon name="chevronRight" size={14} />
@@ -36402,18 +36402,18 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
   return (
     <div style={overlay}>
       <div style={box}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.1em', color: C.accent, textTransform: 'uppercase', marginBottom: 10 }}>Cloud sync</div>
+        <div style={{ fontSize: 12, fontWeight: FW.heavy, letterSpacing: '0.1em', color: C.accent, textTransform: 'uppercase', marginBottom: 10 }}>Cloud sync</div>
 
         {phase === 'prompt' && (
           <>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>Save your data to the cloud?</div>
+            <div style={{ fontSize: 17, fontWeight: FW.bold, marginBottom: 8, color: C.text }}>Save your data to the cloud?</div>
             <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 20 }}>
               You have <strong style={{ color: C.text }}>{localEvents.length} event{localEvents.length !== 1 ? 's' : ''}</strong> and <strong style={{ color: C.text }}>{localClients.length} client{localClients.length !== 1 ? 's' : ''}</strong> saved locally. Import them to your account so they're available on any device.
               <br /><br />
               Your local data will <em>not</em> be deleted — it stays as a backup.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={run} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={run} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Import to cloud
               </button>
               <button onClick={onDone} style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -36431,11 +36431,11 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
 
         {phase === 'done' && (
           <>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>All done</div>
+            <div style={{ fontSize: 17, fontWeight: FW.bold, marginBottom: 8, color: C.text }}>All done</div>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
               {result?.evR.migrated} event{result?.evR.migrated !== 1 ? 's' : ''} and {result?.clR.migrated} client{result?.clR.migrated !== 1 ? 's' : ''} saved to your account.
             </div>
-            <button onClick={onDone} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={onDone} style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
               Continue
             </button>
           </>
@@ -36443,13 +36443,13 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
 
         {phase === 'error' && (
           <>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: C.text }}>Partial import</div>
+            <div style={{ fontSize: 17, fontWeight: FW.bold, marginBottom: 8, color: C.text }}>Partial import</div>
             <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
               {(result?.evR.migrated || 0) + (result?.clR.migrated || 0)} items uploaded,
               {' '}{(result?.evR.failed || 0) + (result?.clR.failed || 0)} failed. Your local data is intact — try again later.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={run} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button onClick={run} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: 13, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Retry
               </button>
               <button onClick={onDone} style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -36477,7 +36477,7 @@ function WelcomeOnboarding({ onChoose }) {
       onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = C.surface2 || C.surface; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.borderLeftColor = accent; e.currentTarget.style.background = C.surface; }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{title}</span>
+        <span style={{ fontSize: 16, fontWeight: FW.heavy, color: C.text }}>{title}</span>
         <span style={{ fontSize: 18, color: C.muted }}>→</span>
       </div>
       <div style={{ fontSize: 13, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{sub}</div>
@@ -36489,8 +36489,8 @@ function WelcomeOnboarding({ onChoose }) {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'center', padding: isNarrow ? 'max(72px, 14vh) 20px 40px' : '40px 20px' }}>
       <div style={{ maxWidth: 540, width: '100%' }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Welcome to Event Boss</div>
-        <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15, marginBottom: 8 }}>What are you planning?</div>
+        <div style={{ fontSize: 9, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Welcome to Event Boss</div>
+        <div style={{ fontSize: 26, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.15, marginBottom: 8 }}>What are you planning?</div>
         <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.5, marginBottom: 24 }}>We’ll set things up to match. You can change it anytime.</div>
         {choice('My own event', "A dinner, cookout, shower, birthday, wedding — I'm hosting it. I'll build the whole plan around it.", () => onChoose('host'), C.accent)}
         {choice('Events for clients', "I'm a planner or pro coordinating events for other people — clients, vendors, and the details.", () => onChoose('planner'), C.muted)}
@@ -37382,7 +37382,7 @@ export default function App() {
                 {/* Offline strip — fixed top, only when offline. role=status
                     so screen readers announce the state change. */}
                 {!online && (
-                  <div role="status" aria-live="polite" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#92400e', color: '#fef3c7', fontSize: 12, fontWeight: 600, padding: '6px 16px', textAlign: 'center', letterSpacing: '0.02em' }}>
+                  <div role="status" aria-live="polite" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#92400e', color: '#fef3c7', fontSize: 12, fontWeight: FW.semibold, padding: '6px 16px', textAlign: 'center', letterSpacing: '0.02em' }}>
                     Working offline — all changes are saved locally
                   </div>
                 )}
@@ -37390,7 +37390,7 @@ export default function App() {
                     cloud-save failures from any route. Sprint 51 a11y:
                     role=alert so screen readers announce immediately. */}
                 {online && syncState === 'sync_failed' && (
-                  <div role="alert" aria-live="assertive" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#7c2828', color: '#fde8e8', fontSize: 12, fontWeight: 600, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+                  <div role="alert" aria-live="assertive" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#7c2828', color: '#fde8e8', fontSize: 12, fontWeight: FW.semibold, padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
                     <span>Cloud sync failed — your changes are saved locally.</span>
                     <button
                       onClick={() => {
@@ -37401,7 +37401,7 @@ export default function App() {
                           if (flushed > 0 && failed === 0) showToast(`${flushed} change${flushed > 1 ? 's' : ''} synced to cloud`, 'success');
                         }).catch(() => setSyncState('sync_failed'));
                       }}
-                      style={{ background: '#fde8e8', color: '#7c2828', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+                      style={{ background: '#fde8e8', color: '#7c2828', border: 'none', borderRadius: 6, padding: '4px 12px', fontSize: 11, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.04em', textTransform: 'uppercase' }}
                     >
                       Retry
                     </button>
@@ -37493,7 +37493,7 @@ export default function App() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <div style={{ textAlign: 'center', maxWidth: 380 }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔗</div>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Link expired or invalid</div>
+          <div style={{ fontSize: 18, fontWeight: FW.bold, marginBottom: 8 }}>Link expired or invalid</div>
           <div style={{ fontSize: 14, color: '#888' }}>This vendor brief link is no longer valid. Ask your event planner to share a fresh link.</div>
         </div>
       </div>
