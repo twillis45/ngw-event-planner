@@ -34498,8 +34498,14 @@ function NextStepSpine({ event, command, totalOpen: totalOpenProp, pad, isMobile
     <div style={{
       padding: pad,
       borderBottom: `1px solid ${C.border}`,
-      background: advanced ? (caughtUp ? C.success + '12' : C.accent2 + '0E') : 'transparent',
+      // Frozen on scroll — the next step stays in view as the host scrolls the surface.
+      // Needs an OPAQUE base (was transparent) so scrolling content doesn't bleed through;
+      // the brief "advanced" tint layers on top.
+      background: advanced ? (caughtUp ? C.success + '12' : C.accent2 + '0E') : (C.bg || '#0b0d10'),
       transition: 'background 0.45s ease',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         {/* accent rule — the ONE red/amber/steel moment, identical on every tab */}
