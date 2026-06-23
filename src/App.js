@@ -23905,7 +23905,13 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
             const msg = state === 'over' ? `Estimate ${money(totalLow, totalHigh)} — over your budget (cheapest plan is ${money(totalLow, totalLow)})`
               : state === 'covered' ? `Estimate ${money(totalLow, totalHigh)} — your budget covers it`
               : `Estimate ${money(totalLow, totalHigh)} — within your budget if you shop the value end`;
-            return <span style={{ fontSize: 12.5, fontWeight: 600, color }}>{msg}</span>;
+            return (
+              <span style={{ fontSize: 12.5, fontWeight: 600, color }}>
+                {msg}
+                {/* Middle-audit #2 — the watch-out carries its fix (over-trending → the swap). */}
+                {state === 'over' && <span style={{ display: 'block', fontWeight: 500, color: C.muted, marginTop: 3, lineHeight: 1.5 }}><span style={{ fontWeight: 700, color: C.text }}>The fix:</span> shop the value end — the food plan flags a cheaper swap on most lines — or trim the guest count.</span>}
+              </span>
+            );
           })()}
           {budgetSet && Number(budgetDraft) > 0 && (
             <div style={{ width: '100%', fontSize: 12.5, fontWeight: 700, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
