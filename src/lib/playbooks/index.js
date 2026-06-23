@@ -617,12 +617,23 @@ export function playbookInfraPrompts(event) {
 // surface what the playbook author wrote, sorted by severity. Types without
 // authored risks return null.
 const RISK_RANK = { critical: 0, high: 1, med: 2, medium: 2, low: 3 };
-export function playbookRisks(event) {
+// Optional domain scoping — surface only the authored risks relevant to a given
+// middle screen (Guests, Budget) by matching the authored id/trigger text. This
+// brings the day-of "what could go wrong + the fix" card to the planning screens,
+// scoped to what that screen is about. Domains with no matching authored risk
+// return null (the card renders nothing — never a fabricated watch-out).
+const RISK_DOMAIN_RE = {
+  guests: /headcount|rsvp|\bcount\b|capacity|chairs?|seat|dietary|allerg|guest|invite|no-?show/i,
+  budget: /budget|\bcost\b|over-?spend|spend|cheap|price|expensive/i,
+};
+export function playbookRisks(event, domain) {
   if (!event) return null;
   const pb = getPlaybook(event.type);
   if (!pb || !Array.isArray(pb.risks)) return null;
+  const dre = domain ? RISK_DOMAIN_RE[domain] : null;
   const items = pb.risks
     .filter((r) => r && r.trigger && r.mitigation)
+    .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
       return { id: r.id, trigger: String(r.trigger).trim(), mitigation: String(r.mitigation).trim(), severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2 };

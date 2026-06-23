@@ -26,4 +26,16 @@ describe('playbookRisks — surfaces authored risk→fix wisdom, never invents',
       expect(rk && rk.count).toBeGreaterThan(0);
     }
   });
+  test('domain scoping surfaces only the relevant authored risks (guests ⊂ all)', () => {
+    const all = playbookRisks({ type: 'Dinner Party' });
+    const guests = playbookRisks({ type: 'Dinner Party' }, 'guests');
+    expect(guests).toBeTruthy();
+    expect(guests.count).toBeGreaterThan(0);
+    expect(guests.count).toBeLessThan(all.count); // a strict subset
+    // the headcount/dietary/capacity risks are guest-domain; ice/cleanup are not
+    const ids = guests.items.map((r) => r.id);
+    expect(ids).toEqual(expect.arrayContaining(['r_headcount']));
+    expect(ids).not.toContain('r_ice');
+    expect(ids).not.toContain('r_cleanup');
+  });
 });

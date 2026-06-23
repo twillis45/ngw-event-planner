@@ -8275,10 +8275,10 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
 // (playbookRisks), the differentiated operational intelligence that was computed
 // but dark. Collapsed by default — it whispers (Attention System), reassurance on
 // demand, not an alarm. Each row: what the pros watch for + the fix they use.
-function WhatCouldGoWrongPanel({ event, isMobile = false }) {
+function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title = 'What could go wrong' }) {
   const C = useT();
   const [expanded, setExpanded] = useState(false);
-  const rk = (() => { try { return playbookRisks(event); } catch { return null; } })();
+  const rk = (() => { try { return playbookRisks(event, domain); } catch { return null; } })();
   if (!rk || !rk.items || !rk.items.length) return null;
   const sevColor = (rank) => (rank <= 1 ? (C.danger || C.accent) : rank === 2 ? (C.accentTopGrad || C.accent) : C.muted);
   const sevWord = { critical: 'Critical', high: 'High', med: 'Watch', medium: 'Watch', low: 'Minor' };
@@ -8287,7 +8287,7 @@ function WhatCouldGoWrongPanel({ event, isMobile = false }) {
     <div style={card}>
       <button type="button" onClick={() => setExpanded((v) => !v)}
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>What could go wrong</div>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{title}</div>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: C.muted }}>{expanded ? 'Hide' : `${rk.count} the pros plan for →`}</div>
       </button>
       {expanded && (
@@ -34788,7 +34788,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
 
       <div>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
-        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
+        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></>}
         {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} /><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></>}
         {tab === 'Planning' && <>
           <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
@@ -35343,7 +35343,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
       {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
