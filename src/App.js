@@ -9471,6 +9471,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       // Sprint 57A-B (Phase 0): self-declared audience drives presentation voice only
       // (pi.voice flag); never planning/permissions/workflow. Additive nullable field.
       audience: form.audience || '',
+      // The metro the host picked at creation — was captured in the form but never
+      // persisted, so the food plan/budget couldn't localize prices and kept asking
+      // "set your area." It drives resolveEventState → regional grocery pricing.
+      market: form.market || '',
       guestEstimate: form.guestCount || '', budget, guests: [], vendors, timeline,
       // Sprint 55H-B1: a playbook event is born with an EMPTY ros so the Event
       // Day Schedule derives a real, playbook-specific run-of-show at read-time
