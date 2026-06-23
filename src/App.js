@@ -788,6 +788,12 @@ function GlobalStyles() {
       // Calendar life: cells cascade in on month change; the chosen day pops.
       '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
       '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',
+      // Calm "arrival" set for the post-create reveal — a slow eased fade for the
+      // backdrop, a gentle breathing aura that draws the eye in, and a soft settle
+      // for the headline once the plan lands. Studio Matte: nothing flashes.
+      '@keyframes ceFadeIn { from { opacity: 0; } to { opacity: 1; } }',
+      '@keyframes ceAura { 0%, 100% { opacity: 0.45; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.06); } }',
+      '@keyframes ceSettle { 0% { opacity: 0; transform: translateY(8px) scale(0.98); letter-spacing: 0.01em; } 100% { opacity: 1; transform: none; letter-spacing: -0.02em; } }',
       // Focus indicator for keyboard navigation. The :focus-visible polyfill
       // is built into all modern browsers (Chrome 86+, Firefox 85+, Safari 15.4+).
       'button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }',
@@ -19891,38 +19897,47 @@ function AssembleReveal({ ev, profile, onDone }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (revealed >= stages.length) return undefined;
-    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 240 : 460);
+    const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 360 : 620);
     return () => clearTimeout(t);
   }, [revealed, stages.length]);
   const done = revealed >= stages.length;
   return (
-    <div role="dialog" aria-label="Setting up your event" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
-      <div style={{ width: '100%', maxWidth: 460 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
-        <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22 }}>
-          {done ? 'Your plan is ready.' : 'Putting it together…'}
+    <div role="dialog" aria-label="Setting up your event"
+      style={{ position: 'fixed', inset: 0, zIndex: 10000,
+        background: `radial-gradient(125% 80% at 50% 16%, ${(C.accent2 || C.accent)}16, transparent 58%), ${C.bg}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px',
+        animation: 'ceFadeIn 600ms ease both' }}>
+      <div style={{ width: '100%', maxWidth: 460, position: 'relative', animation: 'ceRise 640ms cubic-bezier(.2,.7,.2,1) both' }}>
+        {/* a calm breathing aura behind the headline — draws the eye in, never flashes */}
+        <div aria-hidden style={{ position: 'absolute', top: -96, left: '50%', width: 300, height: 300, transform: 'translateX(-50%)', borderRadius: '50%', background: `radial-gradient(circle, ${(C.accent2 || C.accent)}24, transparent 66%)`, filter: 'blur(10px)', animation: 'ceAura 5.4s ease-in-out infinite', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
+          <div key={done ? 'done' : 'building'} style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22, animation: done ? 'ceSettle 640ms cubic-bezier(.2,.7,.2,1) both' : 'none', textShadow: done ? `0 0 26px ${(C.accent2 || C.accent)}55` : 'none' }}>
+            {done ? 'Your plan is ready.' : 'Putting it together…'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {stages.map((st, i) => {
+              const shown = i < revealed;
+              const justShown = i === revealed - 1;
+              return (
+                <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, background: C.surface, border: `1px solid ${shown ? (C.success || C.accent) + '55' : C.border}`, opacity: shown ? 1 : 0.32, transform: shown ? 'none' : 'translateY(6px)', transition: 'opacity 460ms ease, transform 460ms ease, border-color 460ms ease', animation: justShown ? 'ceBreathe 2.4s ease-in-out 2' : 'none' }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: 800, animation: justShown ? 'cePop 460ms ease both' : 'none' }}>{shown ? '✓' : st.icon}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{st.label}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1 }}>{st.value}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Never gate the host out — the button is live from the first frame, so the
+              reveal can never read as a fake loader. It just relabels once everything
+              has landed. An impatient host opens instantly; the rest watch it build. */}
+          <button type="button" onClick={onDone}
+            style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', transition: 'box-shadow 360ms ease', boxShadow: done ? `0 8px 28px ${C.accent}44` : 'none' }}>
+            {done ? 'Open my event →' : 'Take me in →'}
+          </button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {stages.map((st, i) => {
-            const shown = i < revealed;
-            return (
-              <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, background: C.surface, border: `1px solid ${shown ? (C.success || C.accent) + '55' : C.border}`, opacity: shown ? 1 : 0.32, transform: shown ? 'none' : 'translateY(6px)', transition: 'opacity 360ms ease, transform 360ms ease, border-color 360ms ease' }}>
-                <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: 800 }}>{shown ? '✓' : st.icon}</span>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: C.text }}>{st.label}</span>
-                  <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 1 }}>{st.value}</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        {/* Never gate the host out — the button is live from the first frame, so the
-            reveal can never read as a fake loader. It just relabels once everything
-            has landed. An impatient host opens instantly; the rest watch it build. */}
-        <button type="button" onClick={onDone}
-          style={{ marginTop: 22, width: '100%', fontSize: 14, fontWeight: 800, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', transition: 'opacity 240ms ease' }}>
-          {done ? 'Open my event →' : 'Take me in →'}
-        </button>
       </div>
     </div>
   );
