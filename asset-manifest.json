@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/ngw-event-planner/static/css/main.d843dbff.css",
-    "main.js": "/ngw-event-planner/static/js/main.7189f90c.js",
+    "main.css": "/ngw-event-planner/static/css/main.49ddbfc7.css",
+    "main.js": "/ngw-event-planner/static/js/main.e3e066ec.js",
     "static/js/47.d45026e9.chunk.js": "/ngw-event-planner/static/js/47.d45026e9.chunk.js",
     "static/js/784.c1b332e1.chunk.js": "/ngw-event-planner/static/js/784.c1b332e1.chunk.js",
     "static/js/563.acf70c61.chunk.js": "/ngw-event-planner/static/js/563.acf70c61.chunk.js",
@@ -22,8 +22,8 @@
     "static/js/406.a0074560.chunk.js": "/ngw-event-planner/static/js/406.a0074560.chunk.js",
     "static/js/961.35afb59a.chunk.js": "/ngw-event-planner/static/js/961.35afb59a.chunk.js",
     "index.html": "/ngw-event-planner/index.html",
-    "main.d843dbff.css.map": "/ngw-event-planner/static/css/main.d843dbff.css.map",
-    "main.7189f90c.js.map": "/ngw-event-planner/static/js/main.7189f90c.js.map",
+    "main.49ddbfc7.css.map": "/ngw-event-planner/static/css/main.49ddbfc7.css.map",
+    "main.e3e066ec.js.map": "/ngw-event-planner/static/js/main.e3e066ec.js.map",
     "47.d45026e9.chunk.js.map": "/ngw-event-planner/static/js/47.d45026e9.chunk.js.map",
     "784.c1b332e1.chunk.js.map": "/ngw-event-planner/static/js/784.c1b332e1.chunk.js.map",
     "563.acf70c61.chunk.js.map": "/ngw-event-planner/static/js/563.acf70c61.chunk.js.map",
@@ -45,7 +45,7 @@
     "961.35afb59a.chunk.js.map": "/ngw-event-planner/static/js/961.35afb59a.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d843dbff.css",
-    "static/js/main.7189f90c.js"
+    "static/css/main.49ddbfc7.css",
+    "static/js/main.e3e066ec.js"
   ]
 }
