@@ -21036,6 +21036,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   const isMobile = useContext(BpCtx) === 'mobile';
   const [setupOpen, setSetupOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false); // host event switcher (bottom sheet)
+  const [focusExpanded, setFocusExpanded] = useState(false); // Focus mode: collapsed (default) ↔ "whole day"
   const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
   // The host's focus event. A real (user-created) event ALWAYS outranks a sample/demo
   // event — a host must never open their own home inside someone else's seeded event
@@ -21110,12 +21111,21 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   // B3 — on the event day itself the home leads with the RUN OF SHOW, not the planning
   // to-do grid. Showing "Venue: To do" the morning guests arrive is panic-inducing.
   const isDayOf = daysLeft === 0;
-  const dayRos = isDayOf ? (() => { try { return effectiveRos(ev) || []; } catch { return []; } })() : [];
+  // Focus mode — the flagship "dim the room" day-of surface. Auto-emerges (earned by
+  // proximity, never a toggle): the final ~72h + the day itself. Covers and replaces
+  // the planning home for that window; outside it the normal planning home stays.
+  const isFocus = daysLeft !== null && daysLeft >= 0 && daysLeft <= 2
+    && (() => { try { return hostNavActive(ev); } catch { return false; } })();
+  const dayRos = (isDayOf || isFocus) ? (() => { try { return effectiveRos(ev) || []; } catch { return []; } })() : [];
   const nowMins = (() => { try { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); } catch { return -1; } })();
   const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
-  const nextCue = isDayOf
-    ? (dayRos.filter(r => { const mm = toMins(r.time); return mm !== null && mm >= nowMins; })
-        .sort((a, b) => toMins(a.time) - toMins(b.time))[0] || dayRos[0] || null)
+  // A ROS cue is "open" until marked done (focus advances through them in order).
+  const isCueDone = (r) => !!(r && r.done);
+  const nextCue = (isDayOf || isFocus)
+    ? (dayRos.filter(r => !isCueDone(r)).filter(r => { const mm = toMins(r.time); return mm !== null && mm >= nowMins; })
+        .sort((a, b) => toMins(a.time) - toMins(b.time))[0]
+       || dayRos.filter(r => !isCueDone(r)).sort((a, b) => (toMins(a.time) ?? 1e9) - (toMins(b.time) ?? 1e9))[0]
+       || null)
     : null;
   const guests = ev.guests || [];
   // Same resolution order as guestCountOf (playbooks) so the header headcount agrees
@@ -21184,6 +21194,180 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
   // quiet section label instead of a B2B analytics-panel header.
   // Glass-chip eyebrow (user) — tokenized frosted pill (glassChip) for card labels.
   const eyebrow = { ...glassChip(C), fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.02em', color: C.muted, marginBottom: 11 };
+
+  // ─── FOCUS MODE ─────────────────────────────────────────────────────────────
+  // The flagship "dim the room" day-of view: a near-black screen with ONE card.
+  // Everything DERIVES from the engine — never fabricate a fact. (Attention System:
+  // ONE hero, evidence whispers, motion = change only.)
+  if (isFocus) {
+    // THE ONE headline reads as the clean cue line (no time prefix — the time lives in
+    // the cue text, e.g. "…by noon"). The "Then" line + the ROS rows carry the clock.
+    const cueLabel = (r) => (r ? (r.segment || 'Next up') : '');
+    const cueLabelTimed = (r) => (r ? `${r.time ? `${fmtTime12(r.time)} — ` : ''}${r.segment || 'Next up'}` : '');
+    // THE ONE THING: on the event day, the current/next run-of-show cue; otherwise the
+    // engine's #1 next step. Both are real engine outputs — never invented.
+    const openCues = dayRos.filter(r => !isCueDone(r)).sort((a, b) => (toMins(a.time) ?? 1e9) - (toMins(b.time) ?? 1e9));
+    const theOne = isDayOf
+      ? (nextCue ? { kind: 'cue', cue: nextCue, headline: cueLabel(nextCue) }
+                 : (na ? { kind: 'na', headline: na.title } : null))
+      : (na ? { kind: 'na', headline: na.title }
+            : (nextCue ? { kind: 'cue', cue: nextCue, headline: cueLabel(nextCue) } : null));
+    // THEN: the 2nd item — the next OPEN cue chronologically AFTER THE ONE (never an
+    // earlier, still-undone cue), so the hand-off reads forward in time.
+    const thenCue = theOne && theOne.kind === 'cue'
+      ? (() => {
+          const oneMin = toMins(theOne.cue.time);
+          const after = openCues.filter(r => r.id !== theOne.cue.id && (oneMin === null || (toMins(r.time) ?? 1e9) >= oneMin));
+          return after[0] || null;
+        })() : null;
+    const thenLabel = thenCue ? cueLabelTimed(thenCue) : null;
+    // HANDLED WHISPERS — ONLY facts proven TRUE, from existing readers. Never fabricate;
+    // show 0 rows if nothing's proven.
+    const whispers = [];
+    try {
+      const band = attendanceBand(ev);
+      const gcr = guestCountResolved(ev);
+      if (yes > 0) whispers.push(`${yes} ${yes === 1 ? 'guest' : 'guests'} confirmed`);
+      else if (gcr && gcr.resolved && guestCount > 0) whispers.push(`${guestCount} ${guestCount === 1 ? 'guest' : 'guests'} expected`);
+      else if (band && band.applicable && attendanceBandLabel(band)) whispers.push(`${attendanceBandLabel(band)} expected`);
+    } catch {}
+    // Spread complete — every non-skipped food item bought.
+    if (fpTotal > 0 && fpBought >= fpTotal) whispers.push('Food shopped');
+    // Budget on plan — only when a real budget exists.
+    if (budgetSet) {
+      try {
+        const planned = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) || Number(ev.totalBudget) || 0;
+        const spent = (ev.budget || []).reduce((s, r) => s + (Number(r.actual) || Number(r.spent) || 0), 0);
+        if (planned > 0 && spent <= planned) whispers.push(spent > 0 ? `Budget on plan · $${Math.round(spent).toLocaleString()} of $${Math.round(planned).toLocaleString()}` : `Budget set · $${Math.round(planned).toLocaleString()}`);
+      } catch {}
+    }
+    const handled = whispers.slice(0, 4);
+
+    // "Mark it done" — completes THE ONE and advances focus. For a ROS cue, persist the
+    // effective ROS with that cue flagged done (so the next open cue becomes THE ONE).
+    const markOneDone = () => {
+      if (!theOne) return;
+      if (theOne.kind === 'cue') {
+        try {
+          const base = effectiveRos(ev) || [];
+          const next = base.map(r => r.id === theOne.cue.id ? { ...r, done: true } : { ...r });
+          onPatchEvent(ev.id, { ros: next });
+        } catch {}
+      } else if (na) {
+        // A next-action: route into its destination (the engine's existing nav).
+        try { onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' }); } catch {}
+      }
+    };
+
+    // Tokens (Studio Matte — steel, never amber/gold for the action).
+    const steel = 'rgba(132,158,184,0.42)';      // C.tier3 — dim dormant steel
+    const dimSteel = C.tier3 || steel;
+    const fg = C.text;
+    const sub = C.muted;
+    const dimRow = 'rgba(132,158,184,0.7)';
+
+    return (
+      <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden',
+        background: 'radial-gradient(120% 100% at 50% 38%, #090a0c 0%, #050608 55%, #000001 100%)' }}>
+        {/* Header — back to portfolio/home, identity glyph, event name */}
+        <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' }}>
+          <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Command' })} aria-label="Back"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: sub, fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center' }}>‹</button>
+          <span aria-hidden style={{ display: 'flex', alignItems: 'center' }}>
+            {ident.mark !== 'quiet' && hasGlassShape(ident.icon)
+              ? <GlassIcon icon={ident.icon} hue={idColor} size={22} />
+              : <span style={{ color: ident.mark === 'quiet' ? sub : idColor, display: 'flex' }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>}
+          </span>
+          <span style={{ fontSize: 16, fontWeight: FW.medium, color: fg, letterSpacing: '-0.01em' }}>{ev.name || 'Your event'}</span>
+        </div>
+
+        {/* The dim-the-room body: whispers sit at the base; the vignette dims everything
+            but the center; the glowing ONE card floats above it all. */}
+        <div style={{ position: 'relative', maxWidth: 480, margin: '0 auto', padding: '0 22px 80px' }}>
+          {/* FOCUS eyebrow */}
+          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, opacity: 0.7, textAlign: 'center', margin: '20px 0 26px' }}>FOCUS</div>
+
+          {/* Handled (whisper) — the proof that everything else is already taken care of. */}
+          {handled.length > 0 && (
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', opacity: 0.7, marginBottom: 30 }}>
+              {handled.map((h, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, color: sub }}>
+                  <span style={{ fontSize: 12, color: dimRow }}>✓</span>
+                  <span style={{ fontSize: 13, color: dimRow }}>{h}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* THE ONE hero — wrapped so its glow + the vignette layer correctly:
+              vignette (zIndex 2) sits BEHIND the hero (zIndex 3) but ABOVE the whispers. */}
+          <div style={{ position: 'relative', zIndex: 3 }}>
+            {/* Soft steel glow behind the one card */}
+            <div aria-hidden style={{ position: 'absolute', inset: '-30px', borderRadius: 40, background: 'radial-gradient(60% 55% at 50% 45%, rgba(77,102,117,0.28) 0%, rgba(77,102,117,0) 70%)', pointerEvents: 'none' }} />
+            {theOne ? (
+              <div style={{ position: 'relative', background: 'linear-gradient(160deg, #2a2c30 0%, #1b1c20 100%)', border: '1px solid rgba(111,135,148,0.42)', borderRadius: 20, padding: 24, boxShadow: '0 20px 52px rgba(0,0,0,0.7), 0 0 54px rgba(77,102,117,0.42)' }}>
+                <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, marginBottom: 14 }}>THE ONE THING TODAY</div>
+                <div style={{ fontSize: 28, fontWeight: FW.heavy, color: fg, lineHeight: 1.18, letterSpacing: '-0.01em' }}>{theOne.headline}</div>
+                <div style={{ fontSize: 15, color: sub, lineHeight: 1.4, marginTop: 14 }}>Everything else is handled. This is the only thing that can’t slip.</div>
+                <button type="button" onClick={markOneDone}
+                  style={{ marginTop: 22, width: '100%', background: 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: FW.bold, color: fg, cursor: 'pointer' }}>Mark it done</button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative', background: 'linear-gradient(160deg, #2a2c30 0%, #1b1c20 100%)', border: '1px solid rgba(111,135,148,0.42)', borderRadius: 20, padding: 24, boxShadow: '0 20px 52px rgba(0,0,0,0.7), 0 0 54px rgba(77,102,117,0.42)' }}>
+                <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, marginBottom: 14 }}>THE ONE THING TODAY</div>
+                <div style={{ fontSize: 28, fontWeight: FW.heavy, color: fg, lineHeight: 1.18, letterSpacing: '-0.01em' }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
+                <div style={{ fontSize: 15, color: sub, lineHeight: 1.4, marginTop: 14 }}>Nothing left that can slip. Go enjoy it. 💛</div>
+              </div>
+            )}
+
+            {/* Then: … — the 2nd item, dim. */}
+            {thenLabel && (
+              <div style={{ fontSize: 13, color: sub, opacity: 0.85, paddingTop: 28, textAlign: 'center' }}>Then: {thenLabel}</div>
+            )}
+
+            {/* Show the whole day ▾ — toggles the expanded run-of-show. */}
+            {dayRos.length > 0 && (
+              <div style={{ textAlign: 'center', marginTop: thenLabel ? 18 : 28 }}>
+                <button type="button" onClick={() => setFocusExpanded(v => !v)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: FW.medium, color: dimSteel, padding: '6px 10px' }}>
+                  {focusExpanded ? 'Hide the day ▴' : 'Show the whole day ▾'}
+                </button>
+              </div>
+            )}
+
+            {/* Expanded — Run of show. NOW marks the cue at/after the current time-of-day. */}
+            {focusExpanded && dayRos.length > 0 && (() => {
+              const nowCue = dayRos.filter(r => !isCueDone(r)).filter(r => { const mm = toMins(r.time); return mm !== null && mm >= nowMins; })
+                .sort((a, b) => toMins(a.time) - toMins(b.time))[0] || openCues[0] || null;
+              return (
+                <div style={{ marginTop: 18, borderTop: '1px solid rgba(111,135,148,0.18)', paddingTop: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, marginBottom: 14 }}>RUN OF SHOW</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {dayRos.map((r) => {
+                      const done = isCueDone(r);
+                      const isNow = nowCue && r.id === nowCue.id;
+                      return (
+                        <div key={r.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '8px 0', opacity: done ? 0.4 : 1 }}>
+                          <span style={{ width: 44, flexShrink: 0, fontSize: 12, fontWeight: FW.bold, color: isNow ? '#9fc0d6' : dimSteel, textAlign: 'right' }}>{r.time ? fmtTime12(r.time).replace(/ (AM|PM)$/, m => m.toLowerCase()) : ''}</span>
+                          <span style={{ fontSize: 14, color: isNow ? fg : (done ? sub : 'rgba(150,174,198,0.88)'), textDecoration: done ? 'line-through' : 'none', flex: 1, lineHeight: 1.35 }}>{r.segment}</span>
+                          {isNow && <span style={{ fontSize: 10, fontWeight: FW.bold, letterSpacing: '1px', color: '#0b0c0e', background: '#7fa3ba', borderRadius: 4, padding: '2px 6px', flexShrink: 0 }}>NOW</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Vignette — "dim the room." Full-body radial: transparent center → black edges.
+            Sits BEHIND the hero (z3) but ABOVE the whispers (z1). pointer-events off. */}
+        <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+          background: 'radial-gradient(80% 60% at 50% 42%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.42) 48%, rgba(0,0,0,0.88) 78%, rgba(0,0,0,0.97) 100%)' }} />
+      </div>
+    );
+  }
 
   return (
     <>
