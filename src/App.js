@@ -1563,6 +1563,16 @@ const rsvpToken = () => {
   while (out.length < N) out += Math.random().toString(36).slice(2);
   return out.replace(/[^A-Za-z0-9]/g, '').slice(0, N);
 };
+// rsvpInviteUrl — the ONE builder for a guest invite URL. Emits a link ONLY for a real,
+// server-resolvable token (≥16 chars — rsvp.py MIN_CODE_LEN). A short seed/legacy code or
+// the old `|| event.id` slug fallback resolves to 404 (guests hit "failed to post" — proven
+// by the live RSVP smoke), so we return '' rather than a dead link. One source = no drift.
+const rsvpInviteUrl = (event) => {
+  const code = event && event.rsvpCode;
+  if (typeof code !== 'string' || code.length < 16) return '';
+  if (typeof window === 'undefined') return '';
+  return `${window.location.origin}${window.location.pathname}?rsvp=${code}`;
+};
 // getToday + daysUntil now live in ./lib/dates (single source — see import above),
 // so the weather window and every countdown agree on the day count.
 // Sprint 51 Figma parity: canonical countdown text per CYlmJqDCXEaacCuz9wW3bd
@@ -21348,13 +21358,9 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             sits quietly under "Also ready." Confidence before work (Airbnb) — the breadth
             line enumerates what's genuinely done, never invented. */}
         {!isDayOf && (() => {
-          // Invite-readiness guard: only emit a LIVE RSVP link when the code is a real
-          // rsvpToken (≥16 chars — the backend's entropy floor, rsvp.py MIN_CODE_LEN). A
-          // short seed/legacy code, or the old `|| ev.id` slug fallback, resolves to 404
-          // server-side (confirmed via smoke), so the guest would hit "failed to post."
-          // Below the floor we emit NO link rather than a dead one — the draft omits it.
-          const rsvpReady = typeof ev.rsvpCode === 'string' && ev.rsvpCode.length >= 16;
-          const rsvpUrl = rsvpReady ? `${window.location.origin}${window.location.pathname}?rsvp=${ev.rsvpCode}` : '';
+          // Invite-readiness guard: rsvpInviteUrl emits a link only for a real ≥16-char
+          // token (else '') — never a dead seed/slug link. See the helper near rsvpToken.
+          const rsvpUrl = rsvpInviteUrl(ev);
           const confirmed = (ev.guests || []).filter((g) => g && g.rsvp === 'Yes').length;
           const near = daysLeft != null && daysLeft >= 0;
           const items = [];
@@ -29240,8 +29246,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
           the headcount that sizes everything. The app WROTE the reminder; the host sends
           it in one tap. Host-only, shown only while people still owe a reply. */}
       {guestsIsHost && awaiting > 0 && (() => {
-        const rsvpCode = event?.rsvpCode || event?.id || '';
-        const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+        const rsvpUrl = rsvpInviteUrl(event);
         return (
           <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite', trackAs: 'rsvp' }); }}
             style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, marginBottom: 16, display: 'block' }}>
@@ -29275,8 +29280,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
       })()}
 
       {(() => {
-        const rsvpCode = event?.rsvpCode || event?.id || '';
-        const rsvpUrl  = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+        const rsvpUrl  = rsvpInviteUrl(event);
         // Copy/share the raw invite link. shareOrCopy gives the native share sheet on
         // mobile (the natural way to send a link) and falls back to clipboard, so the
         // host can hand off the ?rsvp=CODE link in one tap. We keep the transient
@@ -29413,7 +29417,7 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
         if (!nonResponders.length || daysLeft === null || daysLeft > 90) return null;
         const withEmail = nonResponders.filter(g => g.email);
         const emailEnabled = isEmailConfigured();
-        const rsvpUrl = event?.rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${event.rsvpCode}` : null;
+        const rsvpUrl = rsvpInviteUrl(event) || null;
         return (
           <div style={{ ...s.card, borderColor: C.muted + '66', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: nonRespOpen ? 10 : 0 }}>
