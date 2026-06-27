@@ -17,6 +17,21 @@ function writeLocal(vendors) {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(vendors)); } catch (e) { captureError(e, { where: 'vendors.writeLocal', count: vendors?.length }); }
 }
 
+// ─── Vendor Bank identity (Sprint 61B) ───────────────────────────────────────
+// A stable bankId stamped onto event vendors so cross-event vendor history stops
+// fragmenting on normalized names. bankKey is the dedupe key (lowercased
+// name|category); resolveBankId finds the existing bank entry's id for a
+// name+category, or null when there's no match (or no usable key).
+export function bankKey(name, category) {
+  return `${String(name || '').toLowerCase().trim()}|${String(category || '').toLowerCase().trim()}`;
+}
+export function resolveBankId(bank, name, category) {
+  const k = bankKey(name, category);
+  if (k === '|') return null;
+  const hit = (bank || []).find((v) => bankKey(v.name, v.category) === k);
+  return hit ? hit.id : null;
+}
+
 /** Load all preferred vendors for the current studio. Falls back to localStorage. */
 export async function loadVendors() {
   if (!isSupabaseConfigured() || !supabase) return readLocal();

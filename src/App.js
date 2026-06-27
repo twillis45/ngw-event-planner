@@ -56,7 +56,7 @@ import {
   brandPresets, defaultBrandColor,
   carbonNeutral,       // de-blued carbon ramp (deep/mid/soft/softer) — the lighter dark canvas (tokenized)
 } from './theme/palette';
-import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers, loadVendors, saveVendor, deleteVendor, loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from './lib/api';
+import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers, loadVendors, saveVendor, deleteVendor, resolveBankId, loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from './lib/api';
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -34865,6 +34865,29 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
       selectedPromiseKeys: Array.isArray(selectedPromiseKeys) ? [...selectedPromiseKeys] : [],
       createdAt: new Date().toISOString().slice(0, 10),
     };
+    // Sprint 61B — stamp a stable Vendor Bank id at the create site so cross-event
+    // vendor history stops fragmenting on normalized names. Written UNCONDITIONALLY
+    // (clean capture from event #1); only the READER surface stays pi.memory-gated.
+    // Resolve-or-create a bank entry keyed on name+category, then stamp bankId.
+    try {
+      const bank = readVendorBank();
+      let bankId = resolveBankId(bank, newVendor.name, newVendor.category);
+      if (!bankId) {
+        bankId = `pv-${Date.now()}`;
+        saveVendor({
+          id: bankId,
+          name: newVendor.name,
+          category: newVendor.category,
+          contact: newVendor.email || '',
+          phone: newVendor.phone || '',
+          website: newVendor.website || '',
+          notes: '',
+          rehireCount: 0,
+          addedAt: new Date().toISOString(),
+        });
+      }
+      newVendor.bankId = bankId;
+    } catch { /* bank stamp is best-effort; never block vendor creation */ }
     setVendors(prev => [...(prev || []), newVendor]);
     // Seed the event-level COI requirement so the readiness gate (event.coiNeeded)
     // and the dock board recognize this event collects insurance — once set, every
@@ -38013,6 +38036,108 @@ function eventProgressStatus(event) {
   return { pct, tier, word, showPct: false, barFull: false };  // word + bar fill carry progress; the raw % is an un-asked-for number (Ruthless Host Lens)
 }
 
+// ─── hostPlanAllDone — pure readiness mirror of the home NOW hero's `prog` ─────────
+// The home hero (Home component ~21134) derives an honest, percentage-free `prog`
+// checklist and `allProgDone` from real event state. The Plan NOW hero reuses the
+// SAME signals so "ALL SET" means the same thing on every host surface — no second
+// definition of "caught up". Pure: takes the event + the already-computed food plan.
+function hostPlanAllDone(ev, fpProg) {
+  try {
+    const guestCount = Number(ev.guestCount) || Number(ev.guestEstimate) || (ev.guests || []).length || 0;
+    const budgetSet = (ev.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0 || Number(ev.totalBudget) > 0;
+    const fpItems = (fpProg && fpProg.list) || [];
+    const fpBought = fpProg ? (fpProg.boughtCount || 0) : 0;
+    const fpTotal = fpProg ? (fpProg.itemCount || 0) : 0;
+    const fpChoices = (fpProg && fpProg.choices) || [];
+    const explicitPicks = ev.foodChoices && typeof ev.foodChoices === 'object' ? ev.foodChoices : {};
+    const choicesDone = fpChoices.length > 0 && fpChoices.every(c => !!explicitPicks[c.id]);
+    const scheduleRows = (ev.ros || []);
+    const states = [
+      isMeaningfulMustHave(ev.must_have_moment) ? 'done' : 'todo',
+      guestCountResolved(ev).resolved ? 'done' : (guestCount > 0 ? 'progress' : 'todo'),
+      budgetSet ? 'done' : 'todo',
+      ...(fpChoices.length > 0 ? [choicesDone ? 'done' : 'todo'] : []),
+      fpTotal > 0 ? (fpBought >= fpTotal ? 'done' : 'progress') : 'todo',
+      scheduleRows.length >= 6 ? 'done' : (scheduleRows.length > 0 ? 'progress' : 'todo'),
+      (ev.venue || '').trim() ? 'done' : 'todo',
+    ];
+    return states.length > 0 && states.every(s => s === 'done');
+  } catch { return false; }
+}
+
+// ─── PlanNowHero — the NOW-view command hero, brought to the host Plan tab ──────────
+// Figma target: every host tab leads with the day-of NOW hero shape — a STATE-named
+// eyebrow (NEEDS YOU / NEXT UP / ON TRACK / ALL SET), an ACTION-named headline (the
+// live single next-step in command voice), a supporting line, and a CTA that advances
+// that step. This is the SAME pattern the home NOW hero (~21288) and day-of NOW hero
+// use, factored into one component so Budget/Guests can reuse it next. Host-only: the
+// caller renders it solely when hostNavActive(event) — the planner surface never sees it.
+//
+// State color discipline (Studio Matte / confidence-lock memory): the eyebrow is STEEL
+// for live work and GREEN for the all-clear exhale — never amber. Amber/gold are banned
+// as a hierarchy/confidence accent here.
+function PlanNowHero({ event, profile, onNav, onSetupStep }) {
+  const C = useT();
+  const foodPP = useFoodPriceFactor(event, profile);
+  const fpProg = useMemo(() => { try { return playbookFoodPlan(event, foodPP); } catch { return null; } }, [event, foodPP]);
+  const na = useMemo(() => { try { return selectEventNextAction(event); } catch { return null; } }, [event]);
+  const ident = (() => { try { return evtIdentity(event.type, C); } catch { return { icon: 'sparkles', mark: 'quiet' }; } })();
+  const idColor = ident.color || C.accent;
+  const daysLeft = daysUntil(event.date);
+  const allDone = hostPlanAllDone(event, fpProg);
+
+  const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: 18, marginBottom: 14 };
+
+  // ALL SET — the exhale. Mirrors the home hero's allProgDone variant: calm, green,
+  // celebratory. The empty-handed screen is the reward (Attention System).
+  if (allDone) {
+    return (
+      <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c` }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.success || C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${(C.success || C.accent)}55`, display: 'inline-block', marginBottom: 8 }}>All set</div>
+        <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{event.name ? ` for ${event.name}` : ''}.</div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
+          Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
+        </div>
+      </div>
+    );
+  }
+
+  if (!na) return null;
+
+  // State-named eyebrow from the engine's urgency level — NOT amber. critical/attention
+  // both read as live steel work; the wording shifts (NEEDS YOU vs NEXT UP) by urgency.
+  const STATE = na.level === 'critical'
+    ? { label: 'Needs you', color: C.steel || C.accent }
+    : na.level === 'attention'
+      ? { label: 'Next up', color: C.steel || C.accent }
+      : { label: 'On track', color: C.steel || C.accent };
+
+  const onCta = () => {
+    try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); } catch { /* analytics best-effort */ }
+    const wizardCategories = new Set(['start', 'readiness']);
+    if (wizardCategories.has(na.category) && typeof onSetupStep === 'function') {
+      onSetupStep(na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null);
+      return;
+    }
+    // A next-step CTA must always DO something: route to the action's own destination,
+    // falling back to the event overview so it never dead-ends.
+    if (onNav) onNav((na.primaryRoute && na.primaryRoute.tab) || 'Command', na.primaryRoute && na.primaryRoute.taskId);
+  };
+
+  return (
+    // The ONE live thing on Plan — it breathes (ceBreathe) and leads; everything below
+    // recedes (.hp-recede on the FoodPlan/planning views). Attention System: one hero.
+    <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: STATE.color, padding: '2px 7px', borderRadius: 4, border: `1px solid ${STATE.color}55`, display: 'inline-block', marginBottom: 8 }}>{STATE.label}</div>
+      <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
+      {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
+      {na.primaryCta && (
+        <button onClick={onCta} style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
+      )}
+    </div>
+  );
+}
+
 // ─── HostEventShell — the host L3 over the shared core (pi.shell, default OFF) ──────
 // Host shell decision (docs/product-os/HOST_SHELL_DECISION.md): instead of routing a
 // host through the planner EventPlanner with runtime gating, give the host its OWN slim
@@ -38102,7 +38227,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></>}
         {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} /><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></>}
         {tab === 'Planning' && <>
-          <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
+          {/* NOW-view command hero (host shell) — the same state-named + action-named
+              hero every host tab leads with. Single focus; the food plan recedes. */}
+          <PlanNowHero event={event} profile={profile} onNav={(t, id) => go(t, id)} />
+          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
         </>}
@@ -38759,7 +38887,20 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Planning' && isHostEvt && (
         <LegacyTabHeader label="Your plan" hint="Your food, supplies, and what's left to do — all in one place." onBack={() => handleTabChange('Command')} />
       )}
-      {tab === 'Planning'       && (
+      {/* NOW-view command hero (host only). Figma: every host tab leads with the
+          state-named eyebrow + action-named next-step the day-of NOW hero uses. The
+          shared PlanNowHero derives state (engine level) + action (selectEventNextAction)
+          and its CTA routes to that step's tab. The food plan below recedes so the hero
+          is the single focus (Attention System: one hero). */}
+      {tab === 'Planning' && isHostEvt && (
+        <PlanNowHero event={event} profile={profile} onNav={(t, id) => handleTabChange(t, id)} />
+      )}
+      {tab === 'Planning' && isHostEvt && (
+        <div className="hp-recede">
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
+        </div>
+      )}
+      {tab === 'Planning' && !isHostEvt && (
         <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
       )}
       {/* Attention pass (host): the food plan is the one bright thing on Plan;
@@ -39151,8 +39292,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           NextBestActionPanel hero card on BOTH viewports (unified — no thin-ribbon-on-
           desktop vs boxed-card-on-mobile split), so the spine is EXCLUDED on Command.
           Also hidden on Communication (a messaging surface) and in day-of mode
-          (EventDayBar owns the live strip). Full-bleed chrome matching the header gutter. */}
-      {tab !== 'Command' && tab !== 'Communication' && !dayMode && (
+          (EventDayBar owns the live strip). Full-bleed chrome matching the header gutter.
+          Host Plan: SUPPRESSED — the PlanNowHero IS the next-step on that tab (one hero,
+          Attention System), so the thin spine would duplicate it. The fan-out (Budget/
+          Guests heroes) will extend this suppression per-tab as each gets its own hero. */}
+      {tab !== 'Command' && tab !== 'Communication' && !dayMode && !(isHostEvt && tab === 'Planning') && (
         <NextStepSpine
           event={event}
           pad={hPad}
@@ -40761,11 +40905,15 @@ export default function App() {
     // HostEventShell instead of the planner EventPlanner. Flag off ⇒ unchanged path.
     if (hostShellOn() && hostNavActive(activeEvent)) {
       const saveVendorToBank = (snap) => {
-        const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
-        const newKey = k(snap);
-        if (!newKey || newKey === '|') return;
-        if (readVendorBank().some(v => k(v) === newKey)) return;
-        saveVendor({ id: snap.id || `pv-${Date.now()}`, name: snap.name || '', category: snap.category || '', contact: snap.email || snap.contact_name || '', phone: snap.phone || '', website: '', notes: '', rehireCount: 0, addedAt: new Date().toISOString() });
+        // Sprint 61B — reuse resolveBankId so an existing bank entry is reused
+        // (dedupe) rather than skipped, and a NEW entry is keyed on a stable
+        // bankId — never snap.id (the per-event vendor id), which would refragment
+        // the bank across events. Prefer the create-site bankId stamp when present.
+        const bank = readVendorBank();
+        const existing = resolveBankId(bank, snap?.name, snap?.category);
+        if (existing) return; // already in bank — nothing to write
+        const bankId = snap?.bankId || `pv-${Date.now()}`;
+        saveVendor({ id: bankId, name: snap.name || '', category: snap.category || '', contact: snap.email || snap.contact_name || '', phone: snap.phone || '', website: snap.website || '', notes: '', rehireCount: 0, addedAt: new Date().toISOString() });
       };
       return gated(
         <HostEventShell
@@ -40803,17 +40951,20 @@ export default function App() {
         onSaveVendorToBank={(snap) => {
           // Unified bank: write to the SAME preferred_vendors store the Settings
           // directory uses (localStorage + Supabase), not profile.savedVendors.
-          const k = (v) => `${(v?.name || '').toLowerCase().trim()}|${(v?.category || '').toLowerCase().trim()}`;
-          const newKey = k(snap);
-          if (!newKey || newKey === '|') return;
-          if (readVendorBank().some(v => k(v) === newKey)) return; // dedupe
+          // Sprint 61B — reuse resolveBankId so an existing entry is reused
+          // (dedupe) and a new entry is keyed on a stable bankId, never snap.id
+          // (the per-event vendor id). Prefer the create-site bankId stamp.
+          const bank = readVendorBank();
+          const existing = resolveBankId(bank, snap?.name, snap?.category);
+          if (existing) return; // already in bank — nothing to write
+          const bankId = snap?.bankId || `pv-${Date.now()}`;
           saveVendor({
-            id: snap.id || `pv-${Date.now()}`,
+            id: bankId,
             name: snap.name || '',
             category: snap.category || '',
             contact: snap.email || snap.contact_name || '',
             phone: snap.phone || '',
-            website: '',
+            website: snap.website || '',
             notes: '',
             rehireCount: 0,
             addedAt: new Date().toISOString(),

@@ -671,7 +671,7 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
         {/* Sprint 58G — Event Memory: the private track record from PAST events
             (excludes this event), surfaced where the planner picks the vendor. */}
         {memoryOn() && (() => {
-          const mem = vendorMemoryFor(allEvents, vendor.name || vendor.vendor_name, event && event.id);
+          const mem = vendorMemoryFor(allEvents, { bankId: vendor.bankId, name: vendor.name || vendor.vendor_name }, event && event.id);
           const line = summarizeVendorMemory(mem);
           return line ? (
             <div style={{ fontSize: type.size['xs'], color: P.textTertiary, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

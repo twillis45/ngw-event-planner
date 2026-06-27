@@ -48,6 +48,57 @@ describe('58G vendorMemoryFor — private aggregate across events', () => {
   });
 });
 
+describe('61B vendorMemoryFor — keyed on stable bankId, not name', () => {
+  // Two PAST events using the SAME vendor (same bankId) but DIFFERENT display
+  // names — a rename that the old name-key would have fragmented into two records.
+  const b1 = {
+    id: 'b1',
+    vendors: [{ id: 'v1', bankId: 'pv-9', name: 'Bloom & Stem', category: 'Florals', status: 'Confirmed' }],
+    outcomes: { vendors: { v1: 'on_time' } },
+  };
+  const b2 = {
+    id: 'b2',
+    vendors: [{ id: 'v2', bankId: 'pv-9', name: 'Bloom and Stem Co.', category: 'Florals', status: 'Booked' }],
+    outcomes: { vendors: { v2: 'great' } },
+  };
+
+  test('same bankId, different names ⇒ one aggregated record (timesUsed === 2)', () => {
+    const m = vendorMemoryFor([b1, b2], { bankId: 'pv-9', name: 'Bloom & Stem' });
+    expect(m.timesUsed).toBe(2);
+    expect(m.on_time).toBe(1);
+    expect(m.great).toBe(1);
+    expect(m.rehired).toBe(true);
+  });
+
+  test('different bankIds ⇒ distinct records (no cross-bleed)', () => {
+    const other = { id: 'o1', vendors: [{ id: 'v3', bankId: 'pv-7', name: 'Bloom & Stem', category: 'Florals', status: 'Confirmed' }], outcomes: { vendors: { v3: 'late' } } };
+    const m = vendorMemoryFor([b1, b2, other], { bankId: 'pv-9', name: 'Bloom & Stem' });
+    expect(m.timesUsed).toBe(2);   // only the two pv-9 events, NOT the pv-7 one
+    expect(m.late).toBe(0);
+  });
+
+  test('legacy name-fallback intact when no bankId on the lookup or events', () => {
+    // Object signature with no bankId falls back to the normalized-name key.
+    const m = vendorMemoryFor([e1, e2, eCur], { name: 'Bloom & Stem' });
+    expect(m.timesUsed).toBe(2);
+    expect(m.on_time).toBe(1);
+    expect(m.late).toBe(1);
+  });
+
+  test('excludeEventId still works with the object signature', () => {
+    const m = vendorMemoryFor([b1, b2], { bankId: 'pv-9', name: 'Bloom & Stem' }, 'b2');
+    expect(m.timesUsed).toBe(1);
+    expect(m.on_time).toBe(1);
+    expect(m.great).toBe(0);
+  });
+
+  test('object signature still routes through the bare-name path for legacy events', () => {
+    // A bankId lookup must NOT match legacy events that have no bankId field.
+    const m = vendorMemoryFor([e1, e2], { bankId: 'pv-nonexistent', name: 'Bloom & Stem' });
+    expect(m).toBeNull();   // bankId present ⇒ matches on bankId only; legacy events have none
+  });
+});
+
 describe('58G summarizeVendorMemory — one private line, no public rating', () => {
   test('renders the compact track record', () => {
     const m = vendorMemoryFor([e1, e2], 'Bloom & Stem');

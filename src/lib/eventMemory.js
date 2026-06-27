@@ -19,13 +19,20 @@ export function vendorKey(name) {
 
 const OUTCOME_KEYS = ['on_time', 'late', 'no_show', 'great', 'poor'];
 
-// vendorMemoryFor(allEvents, vendorName, excludeEventId) → private aggregate, or null.
+// vendorMemoryFor(allEvents, vendor, excludeEventId) → private aggregate, or null.
+// `vendor` may be a bare name string (legacy) OR a vendor object {bankId, name}.
+// Sprint 61B — when a stable bankId is present we key on it (cross-event identity
+// no longer fragments on a renamed/normalized name); otherwise fall back to the
+// normalized-name key so legacy events with no bankId still match.
 // Counts an event only when this vendor was actually committed (Confirmed/Booked) —
 // a track record is of vendors USED, not merely considered. excludeEventId lets the
 // surface read "past history" relative to the event being planned.
-export function vendorMemoryFor(allEvents, vendorName, excludeEventId) {
+export function vendorMemoryFor(allEvents, vendor, excludeEventId) {
+  const isObj = vendor && typeof vendor === 'object';
+  const vendorName = isObj ? (vendor.name || vendor.vendor_name) : vendor;
+  const bankId = isObj ? vendor.bankId : null;
   const key = vendorKey(vendorName);
-  if (!key) return null;
+  if (!bankId && !key) return null;
   const events = Array.isArray(allEvents) ? allEvents : [];
   let timesUsed = 0;
   const tally = { on_time: 0, late: 0, no_show: 0, great: 0, poor: 0 };
@@ -33,7 +40,7 @@ export function vendorMemoryFor(allEvents, vendorName, excludeEventId) {
   for (const ev of events) {
     if (!ev || (excludeEventId && ev.id === excludeEventId)) continue;
     const used = (ev.vendors || []).find(
-      (v) => vendorKey(v.name) === key && (v.status === 'Confirmed' || v.status === 'Booked'),
+      (v) => (bankId ? v.bankId === bankId : vendorKey(v.name) === key) && (v.status === 'Confirmed' || v.status === 'Booked'),
     );
     if (!used) continue;
     timesUsed += 1;

@@ -20,6 +20,8 @@ export {
   saveVendor,
   deleteVendor,
   migrateLocalToCloud as migrateVendorsToCloud,
+  bankKey,
+  resolveBankId,
 } from './vendors';
 
 export {
