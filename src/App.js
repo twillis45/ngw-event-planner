@@ -36288,6 +36288,36 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
 // Sprint 49 `← Overview` back-strip. Matches the PLAN-overlay style
 // (ChecklistGenerator.jsx:206) so the back path is consistent across all 13
 // tabs — the v2 audit flagged this inconsistency as a Major-severity finding.
+// ── ReadinessTrack — the ONE unified header progress bar ──────────────────────
+// 4px-tall full-width track that lives directly under the host app-header on EVERY
+// host tab (Your Event / Plan / Budget / Guests / The Day). Fill = the event's
+// readinessScore(getEventReadiness(event)) as 0–100%. Studio Matte confidence palette
+// ONLY: green (C.success) at/above 50%, steel (C.accent) below — never amber/gold.
+// A node dot rides the fill end; faint ticks mark the 33% / 66% thirds. Honest: if the
+// score is null (nothing to measure yet) it renders an empty track, not a guess.
+function ReadinessTrack({ event }) {
+  const C = useT();
+  const score = (() => { try { return readinessScore(getEventReadiness(event)); } catch { return null; } })();
+  const pct = score == null ? 0 : Math.max(0, Math.min(100, Math.round(score)));
+  const fill = pct >= 50 ? (C.success || C.accent) : C.accent;
+  const trackBg = C.border;
+  return (
+    <div aria-hidden style={{ position: 'relative', height: 4, background: trackBg, flexShrink: 0 }}>
+      {/* faint thirds ticks — orientation, not measurement */}
+      {[33, 66].map(t => (
+        <div key={t} style={{ position: 'absolute', top: 0, bottom: 0, left: `${t}%`, width: 1, background: C.text, opacity: 0.08 }} />
+      ))}
+      {score != null && pct > 0 && (
+        <>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${pct}%`, background: `linear-gradient(90deg, ${fill}cc, ${fill})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, transition: 'width 600ms ease' }} />
+          {/* node dot at the fill end */}
+          <div style={{ position: 'absolute', top: '50%', left: `${pct}%`, width: 7, height: 7, marginLeft: -4, marginTop: -3.5, borderRadius: '50%', background: fill, boxShadow: `0 0 6px ${fill}aa`, transition: 'left 600ms ease' }} />
+        </>
+      )}
+    </div>
+  );
+}
+
 function LegacyTabHeader({ label, hint, onBack }) {
   const C = useT();
   const T = useType();
@@ -38401,15 +38431,18 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         <span aria-hidden style={{ color: idColor, display: 'flex', flexShrink: 0 }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>
         <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
       </div>
+      {/* UNIFIED HEADER FRAME (board): the single ReadinessTrack rides directly under the
+          app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
+      <ReadinessTrack event={event} />
 
       <div>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
-        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} />
+        {tab === 'Guests' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
           <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
-        {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} />
+        {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="budget" />
           <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
@@ -38422,7 +38455,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
         </>}
         {tab === 'Event Day Schedule' && <>
-          <LegacyTabHeader label="The day" hint="Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day." onBack={() => go('Command')} />
+          {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
           <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
           <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
           <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
@@ -39004,13 +39037,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} hint={isHostEvt ? "What your event will cost — and where you can spend less." : "Plan vs. actuals, what's committed, and what's left."} onBack={() => handleTabChange('Command')} />
+      {tab === 'Budget'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader (app-header + ReadinessTrack lead; PlanNowHero is first content). Planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Budget" hint="Plan vs. actuals, what's committed, and what's left." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real budget (over/under from
           spent vs total). The spending plan below recedes (one hero, Attention System). */}
       {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="budget" />}
       <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></div></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" hint={isHostEvt ? "Who's coming, their RSVPs, and your invite." : "Your guest list, RSVPs, meals, and seating."} onBack={() => handleTabChange('Command')} />
+      {tab === 'Guests'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader; planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Guests" hint="Your guest list, RSVPs, meals, and seating." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
           (confirm count · nudge outstanding · all replied). List recedes below. */}
       {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />}
@@ -39079,9 +39112,8 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {/* Tab-parity (board 2026-06-24): the host Plan tab now leads with the SAME
           ← back / title / hint header every other tab has (was missing — it jumped
           straight into the food plan). */}
-      {tab === 'Planning' && isHostEvt && (
-        <LegacyTabHeader label="Your plan" hint="Your food, supplies, and what's left to do — all in one place." onBack={() => handleTabChange('Command')} />
-      )}
+      {/* UNIFIED FRAME: host Plan drops the LegacyTabHeader — the app-header + ReadinessTrack
+          lead, and the PlanNowHero below is the tab's first content. */}
       {/* NOW-view command hero (host only). Figma: every host tab leads with the
           state-named eyebrow + action-named next-step the day-of NOW hero uses. The
           shared PlanNowHero derives state (engine level) + action (selectEventNextAction)
@@ -39166,12 +39198,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               buffet…") as a caterer's sheet for someone else. For hosts, frame it as a
               calm preview that comes alive on the day, and invite them to add the
               moments they care about — agency, not an ops dump. */}
-          <LegacyTabHeader
-            label={hostNavActive(event) ? 'The day' : 'Event Day Schedule'}
-            hint={hostNavActive(event)
-              ? 'Here’s how your day could flow — already drafted from your event. Tweak it, add the moments that matter, and it’ll be ready for the day.'
-              : "The event-day schedule. What happens, when, and who's responsible."}
-            onBack={() => handleTabChange('Command')} />
+          {/* UNIFIED FRAME: host The Day drops the LegacyTabHeader (RealityCheckPanel leads);
+              planner keeps the titled crumb header. */}
+          {!isHostEvt && (
+            <LegacyTabHeader
+              label="Event Day Schedule"
+              hint="The event-day schedule. What happens, when, and who's responsible."
+              onBack={() => handleTabChange('Command')} />
+          )}
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
           <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
@@ -39276,8 +39310,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {<div ref={headerRef} style={{ padding: hPad, paddingBottom: isMobile ? 6 : 10, position: 'sticky', top: 0, zIndex: 30, background: C.bg || '#0b0d10' }}>
         {/* Overall-progress fill along the header's bottom edge — the divider line IS the
             progress bar. STATUS-COLORED: green when on-pace/ready, steel when behind
-            (Studio Matte confidence palette — never alarming amber/red). On every tab. */}
-        {(() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
+            (Studio Matte confidence palette — never alarming amber/red).
+            UNIFIED HEADER FRAME (board): on HOST events this is the single ReadinessTrack
+            (one bar on every host tab incl. Your Event — no duplicate). The legacy
+            eventProgressStatus bar stays ONLY on the planner cockpit. */}
+        {isHostEvt ? (
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}><ReadinessTrack event={event} /></div>
+        ) : (() => { const _s = eventProgressStatus(event); const _c = ['ready','ontrack','today','done'].includes(_s.tier) ? (C.success || C.accent) : C.muted; return (
           <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 4, background: C.border }}>
             <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: _s.barFull ? '100%' : `${_s.pct}%`, background: `linear-gradient(90deg, ${_c}cc, ${_c})`, borderTopRightRadius: 4, borderBottomRightRadius: 4, boxShadow: `0 0 10px ${_c}aa`, transition: 'width 600ms ease' }} />
           </div>
@@ -39491,7 +39530,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           Host Plan: SUPPRESSED — the PlanNowHero IS the next-step on that tab (one hero,
           Attention System), so the thin spine would duplicate it. The fan-out (Budget/
           Guests heroes) will extend this suppression per-tab as each gets its own hero. */}
-      {tab !== 'Command' && tab !== 'Communication' && !dayMode && !(isHostEvt && (tab === 'Planning' || tab === 'Budget' || tab === 'Guests')) && (
+      {tab !== 'Command' && tab !== 'Communication' && !dayMode && !(isHostEvt && (tab === 'Planning' || tab === 'Budget' || tab === 'Guests' || tab === 'Event Day Schedule')) && (
         <NextStepSpine
           event={event}
           pad={hPad}

@@ -2467,28 +2467,11 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         fontFamily: FF,
       }}>
         {/* Event banner — intimate, not corporate */}
+        {/* UNIFIED HEADER FRAME (board): the EVENT BOSS PULSE eyebrow is removed so Your Event's
+            hero leads bare, identical to Plan/Budget/Guests/The Day. The app-header + ReadinessTrack
+            are the only chrome above the hero. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {/* Sprint 60.U.3 10+ — EVENT BOSS PULSE pill, same as desktop. */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '3px 9px 3px 7px', borderRadius: 99,
-            background: `${P.steelBlue}14`,
-            border: `1px solid ${P.steelBlue}33`,
-            alignSelf: 'flex-start', marginBottom: 4,
-          }}>
-            <span aria-hidden style={{
-              width: 12, height: 12, borderRadius: '50%',
-              background: `${P.steelBlue}33`, color: P.steelBlue,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: type.size['2xs'], fontWeight: 800, fontFamily: FF,
-            }}></span>
-            <span style={{
-              fontSize: type.size.xs, fontWeight: 800, letterSpacing: '0.16em',
-              textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
-            }}>Event Boss Pulse</span>
-          </div>
-          {/* Option A: name + date + countdown live in the persistent header now.
-              The Pulse leads with its pill + the facts the header doesn't carry. */}
+          {/* Option A: name + date + countdown live in the persistent header now. */}
           {d.metaParts.length > 0 && (
             <div style={{ fontSize: type.size.sm, color: P.textTertiary }}>{d.metaParts.join(' · ')}</div>
           )}
@@ -2701,30 +2684,10 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
       <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Event banner */}
+        {/* UNIFIED HEADER FRAME (board): EVENT BOSS PULSE eyebrow removed — Your Event's hero
+            leads bare like every other host tab. The app-header + ReadinessTrack are the chrome. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {/* Sprint 60.U.3 10+ — EVENT BOSS PULSE pill. Mirrors HomeHero.
-              Anchors the cockpit in product personality before the event
-              name and metadata. */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '3px 9px 3px 7px', borderRadius: 99,
-            background: `${P.steelBlue}14`,
-            border: `1px solid ${P.steelBlue}33`,
-            alignSelf: 'flex-start',
-          }}>
-            <span aria-hidden style={{
-              width: 12, height: 12, borderRadius: '50%',
-              background: `${P.steelBlue}33`, color: P.steelBlue,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: type.size['2xs'], fontWeight: 800, fontFamily: FF,
-            }}></span>
-            <span style={{
-              fontSize: type.size.xs, fontWeight: 800, letterSpacing: '0.16em',
-              textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
-            }}>Event Boss Pulse</span>
-          </div>
-          {/* Option A: name + countdown + date live in the persistent header now.
-              The Pulse leads with its pill + the facts the header doesn't carry. */}
+          {/* Option A: name + countdown + date live in the persistent header now. */}
           <div style={{ fontSize: type.size.base, color: P.textSecondary }}>
             {[
               event.type && `${event.type}${event.secondaryType ? ` + ${event.secondaryType}` : ''}`,
