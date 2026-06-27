@@ -8934,12 +8934,21 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   const C = useT();
   const T = useType();
   const [expanded, setExpanded] = useState(false);
+  // Attention System (escalation = reduction): while there's still work, show ONLY the
+  // next unconfirmed item open by default — the rest fold behind a quiet "show all" so
+  // the panel guides rather than shouting a long list. The host opts into the full list.
+  const [showAll, setShowAll] = useState(false);
   const rc = (() => { try { return playbookInfraPrompts(event); } catch { return null; } })();
   if (!rc || !rc.prompts || !rc.prompts.length) return null;
   const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
   const done = rc.prompts.filter((p) => checked[p.key]).length;
   const allDone = done === rc.prompts.length;
   const collapsed = allDone && !expanded; // collapse the checklist once everything's confirmed
+  // In-progress focus: the first still-unconfirmed prompt. Until the host taps "show all",
+  // confirmed rows + everything past the next unconfirmed item recede out of view.
+  const nextIdx = rc.prompts.findIndex((p) => !checked[p.key]);
+  const focusMode = !allDone && !showAll && nextIdx >= 0;
+  const hiddenCount = focusMode ? rc.prompts.length - 1 : 0;
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ safetyChecked: next }); };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' }; // metallic edge to match the app (done-state shown by the green eyebrow/text, not a border)
   return (
@@ -8951,13 +8960,16 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
       </button>
       {!collapsed && (
       <>
-      <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>Your day-of walkthrough — tap each as you confirm it.{rc.because ? ` These cover ${rc.because}.` : ' The things worth checking before guests arrive.'}</div>
+      <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>{focusMode ? 'One thing at a time — confirm this, then the next appears.' : 'Your day-of walkthrough — tap each as you confirm it.'}{rc.because ? ` These cover ${rc.because}.` : ' The things worth checking before guests arrive.'}</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rc.prompts.map((p, i) => {
           const on = !!checked[p.key];
+          // Focus mode: only the next unconfirmed prompt is visible; confirmed rows and
+          // everything past the next one recede entirely until the host taps "show all".
+          if (focusMode && i !== nextIdx) return null;
           return (
             <button key={p.key} type="button" onClick={() => toggle(p.key)}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: (i === 0 || focusMode) ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
               <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, marginTop: 1, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
@@ -8967,6 +8979,12 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
           );
         })}
       </div>
+      {hiddenCount > 0 && (
+        <button type="button" onClick={() => setShowAll(true)}
+          style={{ marginTop: 10, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>
+          {`Show all ${rc.prompts.length} — ${done} confirmed →`}
+        </button>
+      )}
       </>
       )}
     </div>
@@ -25885,7 +25903,11 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
               </span>
             )}
             {rushFactor.badge && (() => {
-              const rushColor = rushFactor.label === 'RUSH' ? C.danger
+              // Studio Matte / confidence-lock: an informational pricing chip never spends
+              // the reserved danger-red accent (that belongs to the over-budget hero alone).
+              // RUSH reads as steel/muted — same calm treatment as COMPRESSED — so urgency
+              // is communicated by the badge wording, not by stealing the P1 alarm color.
+              const rushColor = rushFactor.label === 'RUSH' ? C.muted
                               : rushFactor.label === 'COMPRESSED' ? C.muted
                               : C.accent2;
               return (
