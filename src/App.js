@@ -9032,12 +9032,13 @@ function useCollapsed(key, defaultCollapsed = false) {
     try { const v = localStorage.getItem(storeKey); return v == null ? defaultCollapsed : v === '1'; } catch { return defaultCollapsed; }
   });
   const toggle = () => setCollapsed((c) => { const n = !c; try { localStorage.setItem(storeKey, n ? '1' : '0'); } catch (e) { /* blocked */ } return n; });
-  return [collapsed, toggle];
+  const setPersist = (n) => setCollapsed(() => { try { localStorage.setItem(storeKey, n ? '1' : '0'); } catch (e) { /* blocked */ } return !!n; });
+  return [collapsed, toggle, setPersist];
 }
-function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobile = false, defaultCollapsed = false, accent, style, maxWidth }) {
+function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobile = false, defaultCollapsed = false, accent, style, maxWidth, autoCollapseWhenDone = false }) {
   const C = useT();
   const T = useType();
-  const [collapsed, toggle] = useCollapsed(id, defaultCollapsed);
+  const [collapsed, toggle, setCollapsedPersist] = useCollapsed(id, defaultCollapsed);
   // Global: when a panel EXPANDS, float it into the viewport so the host sees the content
   // they just opened (esp. mobile, where the body often opens below the fold).
   const cardRef = useRef(null);
@@ -9048,6 +9049,14 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
       requestAnimationFrame(() => { try { cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* noop */ } });
     }
   }, [collapsed]);
+  // Progressive disclosure: when a section's checklist becomes COMPLETE, auto-collapse it
+  // once — the settled-work exhale (Attention System). Only on the false→true edge, so it
+  // never fights a host who re-opens a finished section.
+  const wasDone = useRef(autoCollapseWhenDone);
+  useEffect(() => {
+    if (autoCollapseWhenDone && !wasDone.current && !collapsed) setCollapsedPersist(true);
+    wasDone.current = autoCollapseWhenDone;
+  }, [autoCollapseWhenDone]); // eslint-disable-line react-hooks/exhaustive-deps
   const acc = accent || C.accentTopGrad || C.accent;
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, marginBottom: 16, ...(maxWidth ? { maxWidth, margin: '0 auto 16px' } : null), ...(style || {}) };
   return (
@@ -9293,6 +9302,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const setChoice = (id, val) => onPatch({ foodChoices: { ...(event.foodChoices || {}), [id]: val } });
   // Hero preview — what the spread actually IS, at a glance (the essentials/mains).
   const _spreadActive = plan.list.filter((i) => !i.skipped);
+  // The spread is complete once every (non-skipped) item is checked off as got — when it
+  // flips complete, the card auto-collapses (settled-work exhale).
+  const spreadComplete = _spreadActive.length > 0 && _spreadActive.every((i) => !!(event.foodGot || {})[i.id]);
   const _heroItems = _spreadActive.filter((i) => i.essential);
   const heroNames = (_heroItems.length ? _heroItems : _spreadActive).slice(0, 6).map((i) => i.short || i.item);
   // "Where to shop near you" — turn the playbook's sourcing types (grocery, butcher,
@@ -9516,7 +9528,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       )}
 
       {/* the grounded shopping list — summary-first; collapsible */}
-      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
+      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} autoCollapseWhenDone={spreadComplete} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>}
         subtitle={`${plan.itemCount} items · scaled to ${plan.guests} guests`}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
