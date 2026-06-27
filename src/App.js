@@ -13,6 +13,7 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
+import { hostSpending } from './lib/hostSpending';
 import { GlassIcon, hasGlassShape } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
@@ -25181,7 +25182,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '' }) {
+function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '' }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -25215,7 +25216,14 @@ function HostSpendingPlan({ foodPlan, budget, setBudget, plannedGuests = 0, onNa
 
   const totalLow = foodLow + supLow + otherBudgeted;
   const totalHigh = foodHigh + supHigh + otherBudgeted;
-  const spentSoFar = foodSpent + supSpent + otherActual;
+  // "Spent so far" comes from the ONE spending source (hostSpending) so this number
+  // is IDENTICAL to the Budget hero's "spent" — the food bought + manual actuals,
+  // never a separate sum. Supplies bought are added on top (the food line in
+  // hostSpending excludes supplies, which are their own plan line). Falls back to
+  // the local sum only if the spending object wasn't threaded in (defensive).
+  const spentSoFar = spending
+    ? Math.round(Number(spending.spent || 0) + supSpent)
+    : (foodSpent + supSpent + otherActual);
 
   const patchRow = (id, key, val) =>
     setBudget((b) => (b || []).map((r) => (r.id === id ? { ...r, [key]: key === 'category' ? val : (Number(val) || 0) } : r)));
@@ -25710,6 +25718,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     return (
       <HostSpendingPlan
         foodPlan={event ? playbookFoodPlan(event, foodPP) : null}
+        spending={event ? hostSpending(event, foodPP && foodPP.priceFactor) : null}
         budget={budget}
         setBudget={setBudget}
         plannedGuests={plannedGuests}
@@ -38296,36 +38305,49 @@ function hostPlanAllDone(ev, fpProg) {
 //   • on plan      → ON TRACK
 //   • well under   → ALL SET
 // "Total" = the host's set total budget if present, else the sum of category
-// budgets. "Spent" = sum of row.actual. We compare spent vs total (what's gone
-// vs what you have) — the host's real "am I over?" question.
-function budgetHeroContent(event, C, steel) {
+// budgets. "Spent" = budget rows' actual + the FOOD PLAN's bought-so-far, and
+// "Committed" adds the still-planned (un-bought) food — so the hero reflects the
+// food plan, not just the manual rows. ONE source: hostSpending(event, priceFactor)
+// (which reads the SAME playbookFoodPlan the food panel renders). We compare
+// COMMITTED vs total (what's gone + what's planned vs what you have) — the host's
+// real "am I over?" question, now food-inclusive. priceFactor threads the regional
+// (BLS) food pricing in from the caller's useFoodPriceFactor; absent it, food terms
+// just use the national factor (1) and the manual-rows behavior is unchanged.
+function budgetHeroContent(event, C, steel, priceFactor) {
   try {
-    const rows = (event && event.budget) || [];
-    const budgetedSum = rows.reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0);
-    const spent = rows.reduce((s, r) => s + (Number(r && r.actual) || 0), 0);
-    const total = Number(event && event.totalBudget) > 0 ? Number(event.totalBudget) : budgetedSum;
+    const sp = hostSpending(event, priceFactor);
+    const total = sp.total;
+    const spent = sp.spent;            // rows' actual + food bought
+    const committed = sp.committed;    // spent + still-planned food
     // No real budget yet → no honest hero. Stay silent rather than invent.
-    if (total <= 0 && spent <= 0) return null;
+    if (total <= 0 && committed <= 0) return null;
     if (total <= 0) return null; // can't judge over/under without a ceiling
-    const delta = spent - total;            // >0 = over, <0 = under
+    const delta = committed - total;        // >0 = over, <0 = under (food-inclusive)
     const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
+    // The supporting line shows what's gone (spent) of the total — and, when the
+    // food plan adds still-planned cost on top of what's bought, names the committed
+    // figure too so the host sees both ("$420 spent · $980 committed of $1,200").
+    const committedTail = committed > spent
+      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} committed</span></>
+      : null;
     if (delta > 0) {
       return {
         state: 'over', live: true,
         eyebrow: 'Needs you', eyebrowColor: steel,
         title: `${fmt(delta)} over — trim a category to get back under?`,
-        line: <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span> · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
+        line: <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
         cta: 'Open budget', ctaTab: 'Budget',
       };
     }
     const under = -delta;
-    // Well under (>15% headroom) and money actually committed → the exhale.
-    if (spent > 0 && under >= total * 0.15) {
+    // Well under (>15% headroom) and money actually committed (bought or planned)
+    // → the exhale.
+    if (committed > 0 && under >= total * 0.15) {
       return {
         state: 'allset', live: false,
         eyebrow: 'All set', eyebrowColor: C.success || C.accent,
         title: `Budget's in great shape · ${fmt(spent)} of ${fmt(total)}`,
-        line: `${fmt(under)} still in reserve — you've got room.`,
+        line: <span>{fmt(under)} still in reserve — you've got room.{committedTail && <> ({fmt(committed)} committed.)</>}</span>,
         cta: 'Open budget', ctaTab: 'Budget',
       };
     }
@@ -38334,7 +38356,9 @@ function budgetHeroContent(event, C, steel) {
       state: 'onplan', live: false,
       eyebrow: 'On track', eyebrowColor: steel,
       title: `Budget's on plan · ${fmt(spent)} of ${fmt(total)}`,
-      line: under > 0 ? `${fmt(under)} left before you reach your total.` : `Right at your total — keep an eye on new costs.`,
+      line: under > 0
+        ? <span>{fmt(under)} left before you reach your total.{committedTail && <> ({fmt(committed)} committed.)</>}</span>
+        : `Right at your total — keep an eye on new costs.`,
       cta: 'Open budget', ctaTab: 'Budget',
     };
   } catch { return null; }
@@ -38423,7 +38447,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   // STATE eyebrow (steel for live work, green for ALL SET — NEVER amber per the
   // confidence-lock memory) + action headline + supporting line + steel CTA.
   if (scope === 'budget' || scope === 'guests') {
-    const sc = scope === 'budget' ? budgetHeroContent(event, C, steel) : guestsHeroContent(event, C, steel);
+    const sc = scope === 'budget' ? budgetHeroContent(event, C, steel, foodPP && foodPP.priceFactor) : guestsHeroContent(event, C, steel);
     if (!sc) return null;
     const isAllSet = sc.state === 'allset';
     // ── Guests inline-act controls (P0①) — the host ACTS in the hero (stepper + lock,
