@@ -2592,14 +2592,6 @@ function intakeVocab(type) { return (intakeFamilyConfig(type) || INTAKE_FAMILIES
 
 // Host on-ramp (board #7): the real jobs of someone hosting their own event —
 // replaces the suppressed sales-comms checklist for recordKind:'event'.
-const HOST_CHECKLIST = [
-  { key: 'invites',   label: 'Send the invites',           hint: 'Text, call, or email everyone' },
-  { key: 'headcount', label: 'Confirm who’s coming',       hint: 'Chase down the maybes' },
-  { key: 'menu',      label: 'Plan the menu',              hint: 'Food + drinks' },
-  { key: 'dietary',   label: 'Ask about allergies & diets', hint: 'Vegetarian, nut-free, etc.' },
-  { key: 'shopping',  label: 'Make a shopping list',        hint: 'Groceries, drinks, supplies' },
-  { key: 'setup',     label: 'Plan the day-of setup',       hint: 'Tables, music, where things go' },
-];
 // Returns one of the 5 family keys. The type→family table + keyword/alias inference
 // now live in the canonical taxonomy (lib/eventTaxonomy) — the SAME resolver the
 // solve, budget, and vendor engines read, so a type classifies one way everywhere.
@@ -24591,41 +24583,14 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
     );
   })() : null;
 
-  // Host on-ramp (board #7) — a real host checklist where the sales-comms panel
-  // used to be. Only for self-host events; persists to client.hostChecklist.
-  const hostChecklistCard = isHostRecord ? (() => {
-    const checked = client.hostChecklist || {};
-    const done = HOST_CHECKLIST.filter(i => checked[i.key]).length;
-    return (
-      <div style={s.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={s.cardTitle}>Party Checklist</div>
-          <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: done === HOST_CHECKLIST.length ? C.success : C.muted }}>{done}/{HOST_CHECKLIST.length}</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {HOST_CHECKLIST.map(item => {
-            const on = !!checked[item.key];
-            return (
-              <label key={item.key} onClick={() => onChange('hostChecklist', { ...checked, [item.key]: !on })}
-                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 6px', borderRadius: 8, cursor: 'pointer', userSelect: 'none' }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                <div style={{ width: 18, height: 18, borderRadius: 5, marginTop: 1, flexShrink: 0, border: `2px solid ${on ? C.success : C.muted}`, background: on ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {on && <span style={{ fontSize: T.caption, color: '#fff', fontWeight: FW.bold }}>✓</span>}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: T.secondary, fontWeight: FW.medium, color: on ? C.muted : C.text, textDecoration: on ? 'line-through' : 'none' }}>{item.label}</div>
-                  <div style={{ fontSize: T.caption, color: C.muted, marginTop: 1 }}>{item.hint}</div>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-    );
-  })() : null;
+  // Stage D (single-source task convergence): the static "Party Checklist" card
+  // was a 6-item manual toggle list disconnected from real event facts — a
+  // duplicate of the task engine. Removed. The host's "what's left" now derives
+  // entirely from effectiveDone() over event.timeline (ChecklistGenerator). The
+  // client.hostChecklist data field is left intact (no migration); it is simply
+  // no longer rendered.
 
-  const bodyPad  = bp === 'mobile' ? '16px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
+  const bodyPad = bp === 'mobile' ? '16px 14px' : bp === 'tablet' ? '20px 20px' : '28px 36px';
   const maxW     = 1200;
 
   return (
@@ -24841,7 +24806,6 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               <div>
                 {eventsSection}
                 {commsRollup}
-                {hostChecklistCard}
               </div>
               {/* Right — fee + meta */}
               <div>
@@ -24855,7 +24819,6 @@ function ClientDetail({ client, events, setClient, profile, onSelectEvent, onAdd
               {eventsSection}
               {feeCard}
               {commsRollup}
-              {hostChecklistCard}
               {notesCard}
             </div>
           )}

@@ -14,6 +14,11 @@ import {
   classifyTemplateTaskUrgency,
   deriveEventCompressionSummary,
 } from '../lib/workflowCompression';
+// Stage B (single-source task convergence): the host's "what's left" is a projection
+// of the task engine — current-only. A task whose work is proven done by real event
+// state (effectiveDone) vanishes WITHOUT the host ticking anything. The manual checkbox
+// still works (it sets `done`, which effectiveDone honors). Planner behavior unchanged.
+import { effectiveDone } from '../lib/taskEngine';
 
 const P = {
   canvas: color.surface.canvas, base: color.surface.base, card: color.surface.card,
@@ -229,14 +234,24 @@ export default function ChecklistGenerator({
   const [activeTab,   setActiveTab]   = useState('PLANNING');
   const [ownerFilter, setOwnerFilter] = useState(null);
 
-  const tasks = timeline.map(t => ({
-    ...t,
-    done: localOverride[t.id] != null ? localOverride[t.id] : (doneMap[t.id] ?? !!t.done),
-  }));
-  const doneCount = tasks.filter(t => t.done).length;
+  // Stage B: each row's `done` reflects effectiveDone — engine-satisfied OR manually
+  // ticked — so the manual checkbox, strike-through, and counts all agree with the
+  // engine. For HOST events the list is current-only: engine-satisfied (and ticked)
+  // tasks are filtered out of the rendered buckets entirely, so they vanish without
+  // any checkoff. Planner (non-host) keeps the full checklist (raw `done` only).
+  const allTasks = timeline.map(t => {
+    const manual = localOverride[t.id] != null ? localOverride[t.id] : (doneMap[t.id] ?? !!t.done);
+    const done = isHost ? effectiveDone(event, { ...t, done: manual }) : manual;
+    return { ...t, done };
+  });
+  // doneCount is honest across the full list (engine-satisfied work counts as done)
+  // even though host rows for those tasks are hidden below.
+  const doneCount = allTasks.filter(t => t.done).length;
+  // Host = current-only projection of the engine: drop everything effectiveDone.
+  const tasks = isHost ? allTasks.filter(t => !t.done) : allTasks;
   const remaining = tasks.filter(t => !t.done).length;
   const overdue   = tasks.filter(t => !t.done && isOverdue(t, eventDate)).length;
-  const total     = tasks.length;
+  const total     = allTasks.length;
 
   const catBuckets = buildCategoryBuckets(tasks);
   const tabBuckets = buildTabBuckets(tasks);

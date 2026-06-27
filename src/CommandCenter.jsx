@@ -62,6 +62,9 @@ import { becauseActive } from './lib/becauseLayer';
 // Sprint 57K: Value-Level Confidence — Pattern 014 certainty attached to a value
 // (pi.valueConfidence flag, presentation-only; classified by provenance).
 import { valueConfidence, valueConfidenceActive, valueWord } from './lib/valueConfidence';
+// Stage C (single-source task convergence): readiness counts engine-satisfied work
+// even when the host never ticks a box. effectiveDone = task.done || taskSatisfied.
+import { effectiveDone } from './lib/taskEngine';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -851,8 +854,11 @@ export function getEventReadiness(event) {
   const timeline = event.timeline || [];
   const vendors  = event.vendors || [];
 
-  const overdueCount   = timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
-  const tasksDone      = timeline.filter(t => t.done).length;
+  // Stage C: read effectiveDone (engine-satisfied OR manually ticked), not raw t.done,
+  // so rich event state (guests/budget/venue/vendor/food) counts as work handled and a
+  // satisfied task is never flagged overdue.
+  const overdueCount   = timeline.filter(t => !effectiveDone(event, t) && isTaskOverdue(t, event.date, event.type)).length;
+  const tasksDone      = timeline.filter(t => effectiveDone(event, t)).length;
   const tasksTotal     = timeline.length;
   const confirmedV     = vendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
   const unconfirmedV   = vendors.length - confirmedV;
