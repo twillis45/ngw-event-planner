@@ -51,11 +51,15 @@ create index if not exists idx_rsvp_event_time  on public.rsvp_submissions (even
 --      rsvpCode, and the resolver's `limit 1` would deliver one guest's RSVP to the
 --      wrong event. A unique index makes a duplicate code impossible to persist.
 --   2) PERF — turns the per-request public lookup from a seq scan into an index scan.
--- Partial (where the key is non-null/non-empty) so legacy/demo events that never set
--- an rsvpCode don't collide on NULL and aren't forced to carry a code.
+-- Partial on the ENTROPY FLOOR (>= 16 chars): the public resolver (rsvp.py
+-- MIN_CODE_LEN=16) refuses any shorter code, so only real >=16-char tokens can ever
+-- serve a public RSVP — those are the only codes that must be unique. Excluding short
+-- legacy/demo codes (e.g. 'bachel', 'w9k2mx', 'juneteenth') from the constraint means
+-- pre-existing duplicate short codes don't block index creation and need no migration;
+-- they simply can't be used for public RSVP. New events mint 22-char tokens.
 create unique index if not exists uq_events_rsvp_code
   on public.events ((data->>'rsvpCode'))
-  where (data->>'rsvpCode') is not null and (data->>'rsvpCode') <> '';
+  where (data->>'rsvpCode') is not null and length(data->>'rsvpCode') >= 16;
 
 -- updated_at maintenance — reuse the shared set_updated_at() from 001_initial_schema.
 drop trigger if exists rsvp_submissions_updated_at on public.rsvp_submissions;
