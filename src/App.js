@@ -38076,7 +38076,107 @@ function hostPlanAllDone(ev, fpProg) {
 // State color discipline (Studio Matte / confidence-lock memory): the eyebrow is STEEL
 // for live work and GREEN for the all-clear exhale — never amber. Amber/gold are banned
 // as a hierarchy/confidence accent here.
-function PlanNowHero({ event, profile, onNav, onSetupStep }) {
+// ─── budgetHeroContent — tab-scoped NOW hero content for the host Budget tab ─────
+// PURE derivation from the event's REAL budget (the same rows the Budget/spending
+// surfaces read). Honest only: needs a real total + at least one budgeted/spent
+// figure or it returns null (the hero hides — never an invented "$0 over").
+//   • over budget  → NEEDS YOU  (the over amount in danger red — NOT amber)
+//   • on plan      → ON TRACK
+//   • well under   → ALL SET
+// "Total" = the host's set total budget if present, else the sum of category
+// budgets. "Spent" = sum of row.actual. We compare spent vs total (what's gone
+// vs what you have) — the host's real "am I over?" question.
+function budgetHeroContent(event, C, steel) {
+  try {
+    const rows = (event && event.budget) || [];
+    const budgetedSum = rows.reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0);
+    const spent = rows.reduce((s, r) => s + (Number(r && r.actual) || 0), 0);
+    const total = Number(event && event.totalBudget) > 0 ? Number(event.totalBudget) : budgetedSum;
+    // No real budget yet → no honest hero. Stay silent rather than invent.
+    if (total <= 0 && spent <= 0) return null;
+    if (total <= 0) return null; // can't judge over/under without a ceiling
+    const delta = spent - total;            // >0 = over, <0 = under
+    const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
+    if (delta > 0) {
+      return {
+        state: 'over', live: true,
+        eyebrow: 'Needs you', eyebrowColor: steel,
+        title: `${fmt(delta)} over — trim a category to get back under?`,
+        line: <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span> · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
+        cta: 'Open budget', ctaTab: 'Budget',
+      };
+    }
+    const under = -delta;
+    // Well under (>15% headroom) and money actually committed → the exhale.
+    if (spent > 0 && under >= total * 0.15) {
+      return {
+        state: 'allset', live: false,
+        eyebrow: 'All set', eyebrowColor: C.success || C.accent,
+        title: `Budget's in great shape · ${fmt(spent)} of ${fmt(total)}`,
+        line: `${fmt(under)} still in reserve — you've got room.`,
+        cta: 'Open budget', ctaTab: 'Budget',
+      };
+    }
+    // On plan — within range, under the ceiling.
+    return {
+      state: 'onplan', live: false,
+      eyebrow: 'On track', eyebrowColor: steel,
+      title: `Budget's on plan · ${fmt(spent)} of ${fmt(total)}`,
+      line: under > 0 ? `${fmt(under)} left before you reach your total.` : `Right at your total — keep an eye on new costs.`,
+      cta: 'Open budget', ctaTab: 'Budget',
+    };
+  } catch { return null; }
+}
+
+// ─── guestsHeroContent — tab-scoped NOW hero content for the host Guests tab ──────
+// PURE derivation from event.guests / the count state, reusing the SAME readers the
+// rest of the host app uses (guestCountResolved + attendanceBand) so "confirmed",
+// "out", and "locked" mean exactly what they mean everywhere else. Honest only:
+// no guests and no count → null (hero hides).
+//   • count not locked, replies outstanding → NEEDS YOU / "send a nudge"
+//   • count not locked, no roster           → NEEDS YOU / "confirm final count"
+//   • everyone replied / locked             → ALL SET
+function guestsHeroContent(event, C, steel) {
+  try {
+    const band = attendanceBand(event);
+    const res = guestCountResolved(event);
+    const invited = band && band.applicable ? band.invited : ((event && event.guests) || []).length;
+    const planned = Number(event && event.guestCount) || Number(event && event.guestEstimate) || invited || 0;
+    // Nothing to anchor on → no honest hero.
+    if (planned <= 0 && (!band || !band.applicable)) return null;
+    if (res.resolved) {
+      const n = band && band.applicable ? band.confirmed : planned;
+      return {
+        state: 'allset', live: false,
+        eyebrow: 'All set', eyebrowColor: C.success || C.accent,
+        title: `Everyone's replied — ${n} confirmed`,
+        line: `Your guest count is locked. Quantities and seating can size to it.`,
+        cta: 'Open guest list', ctaTab: 'Guests',
+      };
+    }
+    // Roster with outstanding replies → nudge the people still out.
+    if (band && band.applicable && band.basis === 'rsvp' && (band.pending + band.maybe) > 0) {
+      const out = band.pending + band.maybe;
+      return {
+        state: 'outstanding', live: true,
+        eyebrow: 'Needs you', eyebrowColor: steel,
+        title: `${out} still ${out === 1 ? "hasn't" : "haven't"} replied — send a nudge?`,
+        line: `${band.confirmed} confirmed · ${out} still out${band.invited ? ` of ${band.invited}` : ''}`,
+        cta: 'Open guest list', ctaTab: 'Guests',
+      };
+    }
+    // Count not locked, no roster to chase → ask the host to confirm the number.
+    return {
+      state: 'confirm', live: true,
+      eyebrow: 'Needs you', eyebrowColor: steel,
+      title: `Confirm your final guest count`,
+      line: planned > 0 ? `You're planning for about ${planned} — lock it in so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
+      cta: 'Set guest count', ctaTab: 'Guests',
+    };
+  } catch { return null; }
+}
+
+function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan' }) {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
   const fpProg = useMemo(() => { try { return playbookFoodPlan(event, foodPP); } catch { return null; } }, [event, foodPP]);
@@ -38087,6 +38187,29 @@ function PlanNowHero({ event, profile, onNav, onSetupStep }) {
   const allDone = hostPlanAllDone(event, fpProg);
 
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: 18, marginBottom: 14 };
+  const steel = C.steel?.blue500 || C.accent;
+
+  // ── Tab-scoped heroes (Budget / Guests) ──────────────────────────────────────
+  // The Plan hero leads with the GLOBAL next-step; Budget and Guests instead lead
+  // with a hero ABOUT THAT TAB, derived from that tab's REAL data (honest — only
+  // real numbers; null/neutral when the data isn't there yet). Same visual shape:
+  // STATE eyebrow (steel for live work, green for ALL SET — NEVER amber per the
+  // confidence-lock memory) + action headline + supporting line + steel CTA.
+  if (scope === 'budget' || scope === 'guests') {
+    const sc = scope === 'budget' ? budgetHeroContent(event, C, steel) : guestsHeroContent(event, C, steel);
+    if (!sc) return null;
+    const isAllSet = sc.state === 'allset';
+    return (
+      <div style={{ ...card, borderColor: isAllSet ? (C.success || C.accent) : C.accent, borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: isAllSet ? (C.success || C.accent) : C.accent, background: isAllSet ? `${(C.success || C.accent)}0c` : undefined, animation: sc.live ? 'ceBreathe 3.4s ease-in-out infinite' : undefined }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: sc.eyebrowColor, padding: '2px 7px', borderRadius: 4, border: `1px solid ${sc.eyebrowColor}55`, display: 'inline-block', marginBottom: 8 }}>{sc.eyebrow}</div>
+        <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{sc.title}</div>
+        {sc.line && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{sc.line}</div>}
+        {sc.cta && (
+          <button onClick={() => { if (onNav) onNav(sc.ctaTab || (scope === 'budget' ? 'Budget' : 'Guests')); }} style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{sc.cta} →</button>
+        )}
+      </div>
+    );
+  }
 
   // ALL SET — the exhale. Mirrors the home hero's allProgDone variant: calm, green,
   // celebratory. The empty-handed screen is the reward (Attention System).
@@ -38224,8 +38347,14 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
 
       <div>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
-        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></>}
-        {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} /><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></>}
+        {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} />
+          {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes. */}
+          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="guests" />
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
+        {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} />
+          {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
+          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="budget" />
+          <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
         {tab === 'Planning' && <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
@@ -38817,9 +38946,17 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           in next sprint. */}
       {/* KPI-led screen (board 2026-06-12: KPIs lead inline) — the hint just
           restated the STILL TO PAY / BUDGET / PAID metric row, so it's dropped. */}
-      {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} hint={isHostEvt ? "What your event will cost — and where you can spend less." : "Plan vs. actuals, what's committed, and what's left."} onBack={() => handleTabChange('Command')} /><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></>}
+      {tab === 'Budget'      && <><LegacyTabHeader label={isHostEvt ? 'Spending Plan' : 'Budget'} hint={isHostEvt ? "What your event will cost — and where you can spend less." : "Plan vs. actuals, what's committed, and what's left."} onBack={() => handleTabChange('Command')} />
+      {/* NOW-view hero, host only — scoped to THIS tab's real budget (over/under from
+          spent vs total). The spending plan below recedes (one hero, Attention System). */}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="budget" />}
+      <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></div></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
-      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" hint={isHostEvt ? "Who's coming, their RSVPs, and your invite." : "Your guest list, RSVPs, meals, and seating."} onBack={() => handleTabChange('Command')} /><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></>}
+      {tab === 'Guests'      && <><LegacyTabHeader label="Guests" hint={isHostEvt ? "Who's coming, their RSVPs, and your invite." : "Your guest list, RSVPs, meals, and seating."} onBack={() => handleTabChange('Command')} />
+      {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
+          (confirm count · nudge outstanding · all replied). List recedes below. */}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="guests" />}
+      <div className={isHostEvt ? 'hp-recede' : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
@@ -39296,7 +39433,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           Host Plan: SUPPRESSED — the PlanNowHero IS the next-step on that tab (one hero,
           Attention System), so the thin spine would duplicate it. The fan-out (Budget/
           Guests heroes) will extend this suppression per-tab as each gets its own hero. */}
-      {tab !== 'Command' && tab !== 'Communication' && !dayMode && !(isHostEvt && tab === 'Planning') && (
+      {tab !== 'Command' && tab !== 'Communication' && !dayMode && !(isHostEvt && (tab === 'Planning' || tab === 'Budget' || tab === 'Guests')) && (
         <NextStepSpine
           event={event}
           pad={hPad}
