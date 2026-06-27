@@ -29044,7 +29044,10 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
   // SINGLE ATTENTION PANEL for the count (owner preference): when the count isn't
   // locked yet, this is ALL the host sees on the Guests screen — confirm the final
   // count first, then the roster. Locking sets guestMode='count' (clears the nag).
-  if (!showList) {
+  // Host: the NOW-hero above already owns the count action (stepper + Lock it), so the
+  // headcount-only panel here would duplicate it (two steppers on one screen). Recede to
+  // the roster for hosts; planners (no hero) keep the single confirm-count panel.
+  if (!showList && !guestsIsHost) {
     const hasList = guests.length > 0;
     const accent = C.accent; // steel, not amber — this is a primary action, not a caution (Studio Matte: warm = status only)
     const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (hasList) setShowList(true); } };
@@ -38185,9 +38188,24 @@ function guestsHeroContent(event, C, steel) {
   } catch { return null; }
 }
 
-function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan' }) {
+function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSetCount, onLockCount }) {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
+  // Local N for the Guests inline stepper (P0① host tabs audit) — seeded from the same
+  // readers the rest of the host app trusts. Hook lives at the TOP (rules-of-hooks):
+  // it's only USED in the guests branch, but it's always CALLED. Kept in sync with the
+  // event so an external count edit (or switching events) re-seeds the stepper.
+  const guestsSeed = (() => {
+    try {
+      return Math.max(0, Math.round(
+        Number(event && event.guestCount) ||
+        Number(event && event.guestEstimate) ||
+        (attendanceBand(event) || {}).confirmed || 0
+      ));
+    } catch { return 0; }
+  })();
+  const [localN, setLocalN] = useState(guestsSeed);
+  useEffect(() => { setLocalN(guestsSeed); }, [guestsSeed]);
   const fpProg = useMemo(() => { try { return playbookFoodPlan(event, foodPP); } catch { return null; } }, [event, foodPP]);
   const na = useMemo(() => { try { return selectEventNextAction(event); } catch { return null; } }, [event]);
   const ident = (() => { try { return evtIdentity(event.type, C); } catch { return { icon: 'sparkles', mark: 'quiet' }; } })();
@@ -38208,13 +38226,57 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan' }) {
     const sc = scope === 'budget' ? budgetHeroContent(event, C, steel) : guestsHeroContent(event, C, steel);
     if (!sc) return null;
     const isAllSet = sc.state === 'allset';
+    // ── Guests inline-act controls (P0①) — the host ACTS in the hero (stepper + lock,
+    // and a friendly nudge when replies are out) instead of bouncing to the list. Only
+    // when there's real work (state !== 'allset'). Studio Matte: steel stepper, steel/
+    // green lock — NEVER amber/gold per the confidence-lock memory. ───────────────────
+    const showGuestActs = scope === 'guests' && !isAllSet;
+    const gBand = showGuestActs ? (() => { try { return attendanceBand(event); } catch { return null; } })() : null;
+    const gOut = gBand && gBand.applicable && gBand.basis === 'rsvp' ? (gBand.pending + gBand.maybe) : 0;
+    const lockAccent = C.success || C.accent;
+    const stepBtn = {
+      width: 40, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: T.title, fontWeight: FW.heavy, lineHeight: 1, color: C.text,
+      background: C.surface || 'transparent', border: `1px solid ${C.border}`, borderRadius: 10,
+      cursor: 'pointer', userSelect: 'none',
+    };
+    const adjust = (delta) => {
+      const next = Math.max(0, Math.round((Number(localN) || 0) + delta));
+      setLocalN(next);
+      if (typeof onSetCount === 'function') onSetCount(next);
+    };
+    const sendNudge = async () => {
+      try {
+        const draft = draftRsvpChase(event, profile, { rsvpUrl: rsvpInviteUrl(event) });
+        await shareOrCopy({ title: draft.subject, text: draft.body });
+      } catch { /* best-effort share/copy */ }
+    };
     return (
       <div style={{ ...card, borderColor: isAllSet ? (C.success || C.accent) : C.accent, borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: isAllSet ? (C.success || C.accent) : C.accent, background: isAllSet ? `${(C.success || C.accent)}0c` : undefined, animation: sc.live ? 'ceBreathe 3.4s ease-in-out infinite' : undefined }}>
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: sc.eyebrowColor, padding: '2px 7px', borderRadius: 4, border: `1px solid ${sc.eyebrowColor}55`, display: 'inline-block', marginBottom: 8 }}>{sc.eyebrow}</div>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{sc.title}</div>
         {sc.line && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{sc.line}</div>}
+        {showGuestActs && (
+          <>
+            {/* −/N/+ stepper + Lock it — the PRIMARY action in the hero. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button type="button" aria-label="Fewer guests" onClick={() => adjust(-1)} style={{ ...stepBtn, opacity: localN <= 0 ? 0.45 : 1 }} disabled={localN <= 0}>−</button>
+                <div style={{ minWidth: 52, textAlign: 'center', fontSize: T.title, fontWeight: FW.heavy, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{localN}</div>
+                <button type="button" aria-label="More guests" onClick={() => adjust(1)} style={stepBtn}>+</button>
+              </div>
+              <button type="button" onClick={() => { if (typeof onLockCount === 'function') onLockCount(localN); }} style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}>Lock it</button>
+            </div>
+            {/* Friendly nudge — only when replies are genuinely outstanding. */}
+            {gOut > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <button type="button" onClick={sendNudge} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.secondary, fontWeight: FW.bold, color: steel }}>{`Send a friendly nudge to the ${gOut} →`}</button>
+              </div>
+            )}
+          </>
+        )}
         {sc.cta && (
-          <button onClick={() => { if (onNav) onNav(sc.ctaTab || (scope === 'budget' ? 'Budget' : 'Guests')); }} style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{sc.cta} →</button>
+          <button onClick={() => { if (onNav) onNav(sc.ctaTab || (scope === 'budget' ? 'Budget' : 'Guests')); }} style={{ marginTop: 12, display: 'block', fontSize: T.secondary, fontWeight: showGuestActs ? FW.bold : FW.bold, padding: showGuestActs ? '8px 0' : '9px 16px', borderRadius: showGuestActs ? 0 : 10, border: 'none', cursor: 'pointer', background: showGuestActs ? 'none' : C.accent, color: showGuestActs ? C.muted : '#fff' }}>{showGuestActs ? 'Open guest list →' : `${sc.cta} →`}</button>
         )}
       </div>
     );
@@ -38357,8 +38419,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
       <div>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
         {tab === 'Guests' && <><LegacyTabHeader label="Guests" onBack={() => go('Command')} />
-          {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="guests" />
+          {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
+              P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
+          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
           <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <><LegacyTabHeader label="Spending plan" onBack={() => go('Command')} />
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
@@ -38964,7 +39027,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Guests'      && <><LegacyTabHeader label="Guests" hint={isHostEvt ? "Who's coming, their RSVPs, and your invite." : "Your guest list, RSVPs, meals, and seating."} onBack={() => handleTabChange('Command')} />
       {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
           (confirm count · nudge outstanding · all replied). List recedes below. */}
-      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="guests" />}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />}
       <div className={isHostEvt ? 'hp-recede' : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
