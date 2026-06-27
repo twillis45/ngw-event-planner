@@ -9038,10 +9038,20 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   const C = useT();
   const T = useType();
   const [collapsed, toggle] = useCollapsed(id, defaultCollapsed);
+  // Global: when a panel EXPANDS, float it into the viewport so the host sees the content
+  // they just opened (esp. mobile, where the body often opens below the fold).
+  const cardRef = useRef(null);
+  const cardMounted = useRef(false);
+  useEffect(() => {
+    if (!cardMounted.current) { cardMounted.current = true; return; } // skip the initial mount
+    if (!collapsed && cardRef.current && typeof cardRef.current.scrollIntoView === 'function') {
+      requestAnimationFrame(() => { try { cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* noop */ } });
+    }
+  }, [collapsed]);
   const acc = accent || C.accentTopGrad || C.accent;
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, marginBottom: 16, ...(maxWidth ? { maxWidth, margin: '0 auto 16px' } : null), ...(style || {}) };
   return (
-    <div style={card}>
+    <div ref={cardRef} style={card}>
       <button type="button" onClick={toggle} aria-expanded={!collapsed}
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0, paddingRight: 4 }}>
@@ -38275,9 +38285,10 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
             )}
           </>
         )}
-        {sc.cta && (
-          <button onClick={() => { if (onNav) onNav(sc.ctaTab || (scope === 'budget' ? 'Budget' : 'Guests')); }} style={{ marginTop: 12, display: 'block', fontSize: T.secondary, fontWeight: showGuestActs ? FW.bold : FW.bold, padding: showGuestActs ? '8px 0' : '9px 16px', borderRadius: showGuestActs ? 0 : 10, border: 'none', cursor: 'pointer', background: showGuestActs ? 'none' : C.accent, color: showGuestActs ? C.muted : '#fff' }}>{showGuestActs ? 'Open guest list →' : `${sc.cta} →`}</button>
-        )}
+        {/* No nav CTA here: these heroes live ON their own tab (Budget/Guests), so a
+            button routing to that same tab went nowhere. The hero states the situation;
+            the detail is right below it. (Guests keeps its real stepper/lock/nudge above;
+            an actionable budget swap is the P1⑦ follow-up.) */}
       </div>
     );
   }
