@@ -50,6 +50,7 @@ import teamRetreat from './data/teamRetreat';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
+import { taskSatisfied } from '../taskEngine';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -836,7 +837,15 @@ const AREA_MILESTONE_CATEGORIES = {
 export function playbookAreaNextStep(event, area, asOf) {
   const cats = AREA_MILESTONE_CATEGORIES[area];
   if (!cats) return null;
-  const ms = playbookMilestones(event, asOf).filter((m) => cats.includes(m.category));
+  // State-aware: drop a `planning` SETUP milestone whose action is already proven-handled
+  // by real event state (taskSatisfied). This stops the stale composite setup string —
+  // e.g. "Set date, headcount, menu" (a `planning` milestone that surfaces on the Budget
+  // area) — from showing as a "next step" after the host has set the date / added guests /
+  // sized the budget. Scoped to `planning` so genuine upcoming guest/food/shopping
+  // milestones still surface. Single source: the SAME predicate the next-step engine uses.
+  const ms = playbookMilestones(event, asOf)
+    .filter((m) => cats.includes(m.category))
+    .filter((m) => !(m.category === 'planning' && taskSatisfied(event, { text: m.name })));
   if (!ms.length) return null;
   const dated = ms.filter((m) => m.daysOut !== null);
   let pick;

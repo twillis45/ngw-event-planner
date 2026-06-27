@@ -61,6 +61,7 @@ import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster,
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
 import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage } from './CommandCenter';
+import { effectiveDone as taskEffectiveDone } from './lib/taskEngine';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
@@ -38498,6 +38499,21 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 
   if (!na) return null;
 
+  // Single-source de-duplication (P0②): the Plan hero must lead with PLAN-DOMAIN content,
+  // never re-render the GLOBAL foundational next-step that already owns the Command / home /
+  // Focus surface. When the engine's #1 is a foundational domino that routes OFF the Plan
+  // tab — "Set the date" (start/date → Details), "Add your guest list" (start → Guests),
+  // "Set your budget" (readiness → Budget) — it belongs to Command only; suppress it here
+  // so "Set your budget" can't appear twice. The plan-local heroes (Budget/Guests scopes
+  // above, and the food/timeline plan content) carry their own tab. The hero re-appears on
+  // Plan only when the #1 is genuinely plan-domain (operational / timeline / food / heart).
+  if (scope === 'plan') {
+    const route = na.primaryRoute && (typeof na.primaryRoute === 'string' ? na.primaryRoute : na.primaryRoute.tab);
+    const GLOBAL_FOUNDATION = new Set(['start', 'readiness']);
+    const OFF_PLAN_TABS = new Set(['Guests', 'Budget', 'Details', 'Vendors', 'Decisions', 'Communication']);
+    if (GLOBAL_FOUNDATION.has(na.category) || OFF_PLAN_TABS.has(route)) return null;
+  }
+
   // State-named eyebrow from the engine's urgency level — NOT amber. critical/attention
   // both read as live steel work; the wording shifts (NEEDS YOU vs NEXT UP) by urgency.
   const STATE = na.level === 'critical'
@@ -38943,10 +38959,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     ? Number(event.guestCount)
     : (event.guests || []).filter(g => g.rsvp === 'Yes').length;
   const vendorCount  = (event.vendors  || []).length;
-  const taskDone     = (event.timeline || []).filter(t => t.done).length;
+  // Single-source progress (P0③): the "X/Y" Planning badge counts effectiveDone — manual
+  // tick OR proven by real event state — so the count is synced to actual progress. Set
+  // the budget (or add guests, source food) and the badge advances even without ticking a
+  // box, instead of showing a stale raw-`t.done` "3/6". Same predicate the next-step engine
+  // and readiness use, so the badge can't disagree with the hero.
+  const taskDone     = (event.timeline || []).filter(t => taskEffectiveDone(event, t)).length;
   const taskTotal    = (event.timeline || []).length;
   const rosCount     = effectiveRos(event).length; // 55H-B1: includes the derived playbook run-of-show
-  const overdueCount = (event.timeline || []).filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
+  const overdueCount = (event.timeline || []).filter(t => !taskEffectiveDone(event, t) && isTaskOverdue(t, event.date, event.type)).length;
   const agendaCount  = (event.agenda   || []).length;
   // Sprint 50 friction fix #10: badges for the Sprint 49 promoted tabs so the
   // sidebar surfaces operational signal for Decisions / Timeline / Checklist /

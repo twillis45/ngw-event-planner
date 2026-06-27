@@ -64,7 +64,7 @@ import { becauseActive } from './lib/becauseLayer';
 import { valueConfidence, valueConfidenceActive, valueWord } from './lib/valueConfidence';
 // Stage C (single-source task convergence): readiness counts engine-satisfied work
 // even when the host never ticks a box. effectiveDone = task.done || taskSatisfied.
-import { effectiveDone } from './lib/taskEngine';
+import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -1216,6 +1216,123 @@ export function selectStudioCommand(events = []) {
   };
 }
 
+// ── eventPlan(event) — THE single source of truth for "what to do next + progress" ──
+// One generator answers both questions so no surface can go stale or disagree:
+//   • nextActions — ordered, deduped-by-domain list of the NOT-DONE actions. [0] is THE
+//     one thing every hero/ribbon/Focus shows. The reactive #1 (caterer / decision /
+//     vendor / timeline / inbound / operational) comes straight from the existing engine
+//     (_selectEventNextActionInner) so its rich, routed, state-aware copy is preserved.
+//   • progress  — { done, total } over the CANONICAL foundational action set, with `done`
+//     computed from REAL event state via the domino predicates (NOT raw task.done). This
+//     is the synced "X/Y" badge source — set the budget and the count moves, no ticking.
+//   • handled   — the proven-done foundational facts as short whisper strings, for Focus.
+//
+// State-aware by construction: a foundational action's `done` is the same predicate the
+// engine's foundational tiers gate on (a date is set, a guest signal exists, money is on
+// the budget, food is sourced). So a satisfied sub-goal can never reach a hero — the
+// composite playbook string "Set date, headcount, menu" is decomposed here into atomic
+// dominoes ("Set the date", "Add your guest list", "Set your budget") that drop out one
+// at a time, never surfacing verbatim once any part is done.
+function _eventFoundationActions(event) {
+  if (!event) return [];
+  const guests = Array.isArray(event.guests) ? event.guests : [];
+  const hasGuestSignal = guests.length > 0
+    || Number(event.guestCount) > 0 || Number(event.guestEstimate) > 0;
+  const dateSet = !!String(event.date || '').trim()
+    && !/^(tbd|tba)$/i.test(String(event.date).trim());
+  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0) > 0
+    || Number(event.totalBudget) > 0;
+  // Food is "sourced" once the host has made any food/sourcing choice, self-provides
+  // (cook/potluck), or a named vendor exists. Inlined (vs importing the taskEngine
+  // predicates) to avoid a lint/circular-import edge in this module.
+  const foodSourcing = String((event.foodChoices && event.foodChoices.sourcing) || '').toLowerCase();
+  const selfProvides = !!foodSourcing && /host cooks|potluck|cook (it )?(yourself|everything|the mains)|\bdiy\b|self[-\s]?cater/.test(foodSourcing);
+  const aNamedVendor = Array.isArray(event.vendors) && event.vendors.some((v) => v && String(v.name || '').trim());
+  const hasFood = (event.foodChoices && Object.keys(event.foodChoices).length > 0)
+    || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0)
+    || selfProvides || aNamedVendor;
+
+  // The canonical foundational dominoes, in priority order. Each `done` is derived from
+  // real state — never from a stored task flag — so the badge and the hero agree.
+  return [
+    {
+      id: 'date', domain: 'date', title: 'Set the date.',
+      consequence: 'The date anchors every countdown, milestone, and shopping window.',
+      cta: 'Set date', route: { tab: 'Details', focusField: 'event-date' },
+      done: dateSet, handledFact: dateSet ? 'Date set' : null,
+    },
+    {
+      id: 'guests', domain: 'guests', title: 'Add your guest list.',
+      consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
+      cta: 'Add guests', route: { tab: 'Guests' },
+      done: hasGuestSignal,
+      handledFact: hasGuestSignal
+        ? `${guests.filter(g => g && g.rsvp === 'Yes').length || Number(event.guestCount) || Number(event.guestEstimate) || guests.length} guests`
+        : null,
+    },
+    {
+      id: 'budget', domain: 'budget', title: 'Set your budget.',
+      consequence: 'With your headcount in, a budget frames every food and vendor choice.',
+      cta: 'Set budget', route: { tab: 'Budget', focusField: 'hsp-budget' },
+      done: budgetIsSet,
+      handledFact: budgetIsSet
+        ? (Number(event.totalBudget) > 0 ? `Budget set · ${fmtMoney0(Number(event.totalBudget))}` : 'Budget set')
+        : null,
+    },
+    {
+      id: 'food', domain: 'food', title: 'Plan the food.',
+      consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
+      cta: 'Plan food', route: { tab: 'Planning' },
+      done: hasFood, handledFact: hasFood ? 'Food sourced' : null,
+    },
+  ];
+}
+
+// eventPlan(event) — the public single source. Exported and consumed by every surface.
+export function eventPlan(event) {
+  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [] };
+
+  const foundation = _eventFoundationActions(event);
+  const progress = {
+    done: foundation.filter(a => a.done).length,
+    total: foundation.length,
+  };
+  const handled = foundation.filter(a => a.done && a.handledFact).map(a => a.handledFact);
+
+  // The reactive engine owns the rich, routed #1 once the foundation is underway; for a
+  // brand-new event the engine ALSO returns the foundational simple-win ("Add your guest
+  // list"). Either way its output is the authoritative, state-aware top action — so we
+  // lead nextActions with it, then append the remaining not-done foundational dominoes
+  // (deduped by domain so the same domain never appears twice).
+  const top = (() => { try { return _selectEventNextActionInner(event); } catch { return null; } })();
+  const topAction = top && top.title ? {
+    id: top.category || 'top',
+    domain: top.category || 'top',
+    title: top.title,
+    consequence: top.consequence || null,
+    cta: top.primaryCta || null,
+    route: top.primaryRoute || null,
+    done: false,
+  } : null;
+
+  // Map the top action's category to a foundational domain so we can dedupe — e.g. the
+  // engine's 'readiness' budget step and the foundational 'budget' domino are the same
+  // thing and must not both appear.
+  const CATEGORY_TO_DOMAIN = { start: 'guests', readiness: 'budget' };
+  const topDomain = topAction ? (CATEGORY_TO_DOMAIN[top.category] || top.category) : null;
+
+  const seen = new Set(topDomain ? [topDomain] : []);
+  const nextActions = [];
+  if (topAction) nextActions.push(topAction);
+  for (const a of foundation) {
+    if (a.done) continue;            // satisfied dominoes never surface as a next action
+    if (seen.has(a.domain)) continue; // already represented (e.g. by the engine top)
+    seen.add(a.domain);
+    nextActions.push(a);
+  }
+  return { nextActions, progress, handled };
+}
+
 // L3 — within a single event for the Event Command Center top panel.
 // Sprint 57f.2: thin wrapper around the priority-ladder that attaches a
 // compact compression sub-badge when a higher-priority NBA pre-empted the
@@ -1230,6 +1347,12 @@ export function selectStudioCommand(events = []) {
 // function, so every one of the ~12 consumers receives byte-identical output today.
 // The engine (_selectEventNextActionInner) and the sub-badge composer below are not
 // touched; persona can only rephrase title/consequence/primaryCta (see nextActionRenderer).
+//
+// SINGLE SOURCE: this is now a thin wrapper over eventPlan — it renders the SAME #1
+// action (eventPlan(event).nextActions[0], which is _selectEventNextActionInner's result)
+// that the ribbon, Focus THE ONE, and the per-tab heroes all read, so they can never
+// disagree about the top step. The compression sub-badge + persona voice + identity
+// `because` are layered on top of that one action (kept for back-compat).
 export function selectEventNextAction(event) {
   const rendered = renderAction(_selectEventNextActionWithBadge(event), personaFor(event));
   // Sprint 60C #2 — identity whisper (annotation only, post-engine). When this
