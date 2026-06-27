@@ -21348,8 +21348,13 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             sits quietly under "Also ready." Confidence before work (Airbnb) — the breadth
             line enumerates what's genuinely done, never invented. */}
         {!isDayOf && (() => {
-          const rsvpCode = ev.rsvpCode || ev.id;
-          const rsvpUrl = rsvpCode ? `${window.location.origin}${window.location.pathname}?rsvp=${rsvpCode}` : '';
+          // Invite-readiness guard: only emit a LIVE RSVP link when the code is a real
+          // rsvpToken (≥16 chars — the backend's entropy floor, rsvp.py MIN_CODE_LEN). A
+          // short seed/legacy code, or the old `|| ev.id` slug fallback, resolves to 404
+          // server-side (confirmed via smoke), so the guest would hit "failed to post."
+          // Below the floor we emit NO link rather than a dead one — the draft omits it.
+          const rsvpReady = typeof ev.rsvpCode === 'string' && ev.rsvpCode.length >= 16;
+          const rsvpUrl = rsvpReady ? `${window.location.origin}${window.location.pathname}?rsvp=${ev.rsvpCode}` : '';
           const confirmed = (ev.guests || []).filter((g) => g && g.rsvp === 'Yes').length;
           const near = daysLeft != null && daysLeft >= 0;
           const items = [];
