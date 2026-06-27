@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment, lazy, Suspense } from 'react';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, isEmailConfigured } from './lib/commApi';
-import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox } from './lib/api/rsvp';
+import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -4694,6 +4694,10 @@ const SEED_EVENTS = [
     venueAddress: '231 6th Avenue North',
     venueCity: 'Nashville',
     venueState: 'TN',
+    // Guest-invite logistics (host-set; surfaced on the RSVP invite).
+    dressCode: 'Black tie optional',
+    parking: 'Complimentary valet at the 6th Avenue entrance',
+    hostContact: 'gala@hopefoundation.org',
     catererCount: 240,
     timeOfDay: 'evening',
     budget: [
@@ -4816,6 +4820,10 @@ const SEED_EVENTS = [
     venueAddress: '418 King Street',
     venueCity: 'Charleston',
     venueState: 'SC',
+    // Guest-invite logistics (host-set; surfaced on the RSVP invite).
+    dressCode: 'Garden party — sundresses & pastels',
+    parking: 'Street parking on King; the Queen St garage is a block away',
+    hostContact: 'emma.bridal@example.com',
     catererCount: 28,
     timeOfDay: 'morning',
     budget: [
@@ -4993,6 +5001,12 @@ const SEED_EVENTS = [
     venueAddress: '1500 Anacostia Dr SE',
     venueCity: 'Washington',
     venueState: 'DC',
+    // Guest-invite logistics (host-set; surfaced on the RSVP invite). The cookout
+    // case: come comfy, where to park, and a side to share (potluck) + text the host.
+    dressCode: 'Come comfy — red, black & green welcome',
+    parking: 'Free lot off Anacostia Dr; overflow on Fairlawn Ave',
+    bringNote: 'A side or dessert to share (chairs if you have them)',
+    hostContact: '(202) 555-0114',
     catererCount: 45,
     timeOfDay: 'evening',
     budget: [
@@ -27453,6 +27467,33 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
     return street;
   })();
 
+  // ── Host-optional logistics (the guest's real questions) ─────────────────────
+  // A premium invite answers what a guest actually needs to know so they don't have
+  // to text the host: how to dress, where to park, what to bring. We render ONLY the
+  // rows the host explicitly set — never fabricated, never an empty label. Each is a
+  // plain optional event field. "Questions?" is a contact affordance that uses the
+  // host's set contact WITHOUT exposing a raw phone number (mailto:/sms: / tel: link,
+  // labelled "Message the host" — the guest taps, the OS opens their mail/messages).
+  const _clean = (v) => { const s = String(v == null ? '' : v).trim(); return s || ''; };
+  const logistics = [
+    { key: 'dress',   label: 'Dress',   value: _clean(event.dressCode) },
+    { key: 'parking', label: 'Parking', value: _clean(event.parking) },
+    { key: 'bring',   label: 'Bring',   value: _clean(event.bringNote) },
+  ].filter(r => r.value);
+  // Contact affordance — derive a tap-to-message href from the host's set contact
+  // without ever printing the raw number/email as text. Accepts an email (mailto:),
+  // a phone (sms: preferred for a text-the-host feel, falling back to tel:), or an
+  // explicit href the host stored. Hidden entirely when no contact is set.
+  const hostContactHref = (() => {
+    const raw = _clean(event.hostContact);
+    if (!raw) return '';
+    if (/^(mailto:|sms:|tel:|https?:)/i.test(raw)) return raw;          // explicit
+    if (raw.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return `mailto:${raw}`;
+    const digits = raw.replace(/[^\d+]/g, '');
+    if (digits.replace(/\D/g, '').length >= 7) return `sms:${digits}`;  // text the host
+    return '';
+  })();
+
   // ── Add to Calendar (confirmation state) ─────────────────────────────────────
   // A guest who just said YES wants the date in their calendar. We build a proper
   // single-event .ics from the facts we already hold — never invented. If the host
@@ -28006,6 +28047,32 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                 )}
               </div>
             )}
+            {/* HOST-OPTIONAL LOGISTICS — the quiet supporting rows that stop the host's
+                phone from ringing: Dress, Parking, Bring, and a "Message the host"
+                contact. Each renders ONLY when the host set it (never fabricated, never
+                an empty label). A tight label/value ladder below the WHERE cluster — of
+                the suite, not crowding the hero. a11y: a real <dl> with paired dt/dd. */}
+            {(logistics.length > 0 || hostContactHref) && (
+              <dl style={{ marginTop: 22, marginBottom: 0, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', maxWidth: 360 }}>
+                {logistics.map(row => (
+                  <div key={row.key} style={{ textAlign: 'center' }}>
+                    <dt style={{ fontSize: T.eyebrow, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.16em', color: festive ? heroAccent : pal.muted, marginBottom: 3, textShadow: pressInk }}>{row.label}</dt>
+                    <dd style={{ margin: 0, fontSize: T.secondary, fontWeight: FW.semibold, color: pal.text, lineHeight: 1.4, wordBreak: 'break-word' }}>{row.value}</dd>
+                  </div>
+                ))}
+                {hostContactHref && (
+                  <div style={{ textAlign: 'center' }}>
+                    <dt style={{ fontSize: T.eyebrow, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.16em', color: festive ? heroAccent : pal.muted, marginBottom: 3, textShadow: pressInk }}>Questions?</dt>
+                    <dd style={{ margin: 0 }}>
+                      <a href={hostContactHref}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, textDecoration: 'none', fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.01em', color: festive && !pal.dark ? heroAccent : pal.sub, borderBottom: `1px solid ${festive ? heroAccent + (pal.dark ? '44' : '66') : (pal.dark ? 'rgba(132,158,184,0.3)' : pal.border)}`, paddingBottom: 1, lineHeight: 1.3 }}>
+                        Message the host →
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )}
             {/* Countdown — the embossed Figma unit: "UNTIL …" referent, a large
                 RAISED Playfair Black numeral, and a quiet "DAYS" label. The numeral
                 is neutral metallic (raised on both tones); the hue is only a faint
@@ -28147,8 +28214,20 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                   <p style={{ color: LC.muted, fontSize: T.body, margin: '0 0 20px', lineHeight: 1.6 }}>
                     {queued
                       ? "Your reply is saved on this device — we'll send it to the host automatically as soon as you're back online."
-                      : (rsvp === 'No' ? "We'll miss you — thank you for letting us know." : "We'll keep you updated.")}
+                      : (rsvp === 'No'
+                          ? "We'll miss you — thank you for letting us know."
+                          : rsvp === 'Maybe'
+                            ? "Thanks for letting us know — we'll send a friendly reminder before the day."
+                            : "We'll keep you updated.")}
                   </p>
+                  {/* Maybe → a quiet path back: an honest "we'll remind you" line that
+                      points at the existing change-answer action below. No new infra —
+                      it just keeps the door open so a Maybe can become a Yes. */}
+                  {!queued && rsvp === 'Maybe' && (
+                    <p style={{ color: LC.sub || LC.muted, fontSize: T.secondary, margin: '0 0 20px', lineHeight: 1.55 }}>
+                      Know for sure? You can update your answer anytime below.
+                    </p>
+                  )}
                 </>
               )}
               {rsvp === 'Yes' && (() => {
@@ -28780,7 +28859,14 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
     if (!event?.id) return;
     const key = `ngw-rsvp-queue-${event.id}`;
     try {
-      const queued = JSON.parse(localStorage.getItem(key) || '[]');
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
+      // Drop stale-PII entries (past TTL) before reading — and rewrite the queue so
+      // they don't sit on the device. Covers the no-backend demo path, where the
+      // server flush (which also purges) never runs.
+      const queued = purgeStaleOutbox(raw);
+      if (queued.length !== (Array.isArray(raw) ? raw.length : 0)) {
+        try { if (queued.length) localStorage.setItem(key, JSON.stringify(queued)); else localStorage.removeItem(key); } catch {}
+      }
       if (!queued.length) return;
       // The joyful feed: who just said YES via the link. Celebrate them on arrival.
       const arrivedYeses = queued.filter(d => d && d.rsvp === 'Yes').map(d => String(d.name || '').trim()).filter(Boolean);

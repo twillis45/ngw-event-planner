@@ -27,7 +27,7 @@ import time
 from typing import Optional, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..db import get_pool
 from ..auth import require_planner
@@ -59,10 +59,19 @@ MIN_CODE_LEN = 16
 #   - hostNames: INTENTIONAL. The host's own name on their own invitation is expected.
 #   - Everything else (guests, RSVPs, emails, phones, budget, vendors, notes, ownerId,
 #     studioId, etc.) is deliberately absent and must NEVER be added here.
+#   - dressCode / parking / bringNote: INTENTIONAL. Host-authored guest logistics
+#     ("Black tie optional", "Street parking on Elm", "Bring a side") — display copy
+#     the host wrote FOR guests, no PII. Surfaced as the invite's logistics rows.
+#   - hostContact: INTENTIONAL but contact-only. The host's chosen reply channel for
+#     guest questions (an email or phone the host opted to share on their own invite).
+#     The client renders it as a tap-to-message link ("Message the host"), never as
+#     printed raw text. Still host-controlled and invite-scoped; never auto-derived
+#     from account PII.
 PUBLIC_EVENT_FIELDS = (
     "name", "type", "date", "startTime", "timeOfDay", "endTime",
     "venue", "venueAddress", "venueCity", "venueState", "address",
     "inviteStyle", "hostNames", "rsvpCode",
+    "dressCode", "parking", "bringNote", "hostContact",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────
@@ -71,6 +80,15 @@ RSVP_RATE_WINDOW = 60          # seconds
 RSVP_IP_MAX      = 30          # POST/GET per IP per window
 RSVP_CODE_MAX    = 20          # POST per rsvp_code per window
 _rate: dict[str, list] = {}
+
+# ── Per-rsvp_code TOTAL submission ceiling (lifetime, not a window) ─────────────
+# The sliding-window limiter above caps BURST; this caps the absolute number of
+# distinct rows a single invite can ever accumulate, bounding roster-spam blast
+# radius even from a low-and-slow attacker. Legit re-submits/edits don't count:
+# an upsert on the same idempotency_key updates the existing row in place, so we
+# only block a NEW row once the code is already at/over the cap. Env-overridable.
+import os
+RSVP_CODE_MAX_TOTAL = int(os.environ.get("RSVP_CODE_MAX_TOTAL", "500"))
 
 
 def _rate_check(bucket: str, limit: int):
@@ -123,8 +141,11 @@ def _clip(v: Optional[str], n: int) -> Optional[str]:
 # ── Schemas ────────────────────────────────────────────────────────────────────
 class RsvpSubmit(BaseModel):
     idempotency_key: str = Field(..., min_length=1)
-    name: Optional[str] = None
-    rsvp: Optional[Literal["Yes", "No", "Maybe"]] = None
+    # A real guest name and a real answer are REQUIRED. Rejecting empty/garbage here
+    # (422) stops blank rows from polluting the host's roster. `name` must be at least
+    # one non-whitespace char; `rsvp` must be one of the three real answers.
+    name: str = Field(..., min_length=1)
+    rsvp: Literal["Yes", "No", "Maybe"]
     meal: Optional[str] = None
     needs: Optional[str] = None
     plus_one: Optional[str] = None
@@ -132,6 +153,15 @@ class RsvpSubmit(BaseModel):
     plus_one_needs: Optional[str] = None
     kids: int = 0
     note: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        # min_length=1 alone would accept a whitespace-only name (" "); require a
+        # real, non-whitespace value so the host never sees a nameless row.
+        if not v or not v.strip():
+            raise ValueError("name is required")
+        return v
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -209,6 +239,24 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             raise HTTPException(404, "invite not found")
         event_id, _public = resolved
 
+        # Lifetime submission ceiling per invite. A legit re-submit/edit reuses its
+        # idempotency_key and UPDATES its row in place (no new row), so we only block
+        # when this would be a brand-new row AND the code is already at/over the cap.
+        # This bounds roster-spam blast radius beyond the per-window burst limiter.
+        idk = _clip(payload.idempotency_key, MAX_KEY)
+        existing = await conn.fetchrow(
+            """select count(*) as n,
+                      bool_or(idempotency_key = $2) as is_resubmit
+                 from public.rsvp_submissions
+                where rsvp_code = $1""",
+            rsvp_code, idk,
+        )
+        if existing and not existing["is_resubmit"] and existing["n"] >= RSVP_CODE_MAX_TOTAL:
+            raise HTTPException(
+                429,
+                "This invite has reached its response limit — contact the host.",
+            )
+
         row = await conn.fetchrow(
             """
             insert into public.rsvp_submissions
@@ -230,7 +278,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             """,
             event_id,
             rsvp_code,
-            _clip(payload.idempotency_key, MAX_KEY),
+            idk,
             _clip(payload.name, MAX_NAME),
             payload.rsvp,
             _clip(payload.meal, MAX_MEAL),

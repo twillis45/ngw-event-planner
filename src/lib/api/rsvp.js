@@ -108,6 +108,23 @@ export function rsvpIdempotencyKey(eventKey) {
 // so a permanently-bad item can't loop forever. Items that still fail stay queued.
 const OUTBOX_PREFIX = 'ngw-rsvp-queue-';
 const MAX_ATTEMPTS = 5;
+// Outbox PII TTL. Outbox entries hold free-text health/allergy notes; never retain
+// that on the device indefinitely. On every flush we drop any entry older than this,
+// delivered or not, so stale PII can't linger on a guest's phone. 7 days is well past
+// any reasonable offline window for a one-time RSVP.
+const OUTBOX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Drop entries older than the TTL from a queue array. Entries carry `submittedAt`
+// (ms epoch, set by the RSVP submit handler). An entry with no/invalid timestamp is
+// kept (it can't be aged out safely), but every well-formed write has one.
+export function purgeStaleOutbox(queue, now = Date.now()) {
+  if (!Array.isArray(queue)) return [];
+  return queue.filter((e) => {
+    const ts = Number(e && e.submittedAt);
+    if (!ts || Number.isNaN(ts)) return true; // can't age it out — keep
+    return (now - ts) < OUTBOX_TTL_MS;
+  });
+}
 
 export async function flushRsvpOutbox(eventId, code) {
   if (!BASE || !eventId || !code) return { flushed: 0, remaining: 0 };
@@ -115,6 +132,9 @@ export async function flushRsvpOutbox(eventId, code) {
   let queue;
   try { queue = JSON.parse(localStorage.getItem(key) || '[]'); } catch { return { flushed: 0, remaining: 0 }; }
   if (!Array.isArray(queue) || !queue.length) return { flushed: 0, remaining: 0 };
+  // Purge stale PII first — anything past the TTL is dropped before we even try to send.
+  queue = purgeStaleOutbox(queue);
+  if (!queue.length) { try { localStorage.removeItem(key); } catch {} return { flushed: 0, remaining: 0 }; }
 
   let flushed = 0;
   const remaining = [];
