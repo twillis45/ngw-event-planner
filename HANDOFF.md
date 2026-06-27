@@ -66,7 +66,6 @@ The day-of schedule is called **"Event Day Schedule"** everywhere a USER sees it
 3. **Pipeline in-app explainer** — add a one-line purpose per lane + a short "what this is," so a new planner understands the booking funnel (Inquiry → Proposal → Contracted → Deposit → Active → Complete).
 4. **Calendar filters** — add filters by event type, client, and item kind (milestones / payments / event days) to the Master Calendar (App.js `MasterCalendarView` ~23511).
 5. **Optional cleanup** — rename the internal `'Run of Show'` route key + `draftFullROS`/`EventDayBar` vars to match the "Event Day Schedule" UI (leave `event.ros` data field to avoid a persistence migration). Cosmetic; small routing-regression risk.
-6. **Decisions NOW-view added (Figma)** — built `Decisions — NOW View` (node `2316:241`) on the "NOW-View Host Screens" page (`1292:2`) in file `CYlmJqDCXEaacCuz9wW3bd`, peer of Your Event/Plan/Budget/Guests; 5 lockable decisions (Guest Count/Seating/Vendors/Timeline/Staffing) as calm green/steel rows, hero = "Lock your final guest count". Not yet reflected in runtime.
 
 ## Memory
 Persistent notes: `/Users/toddwillis/.claude/projects/-Users-toddwillis/memory/` (`MEMORY.md` is the index — read it first). Key entries: `feedback_attention_system`, `project_next_step_spine`, `project_calendar_rework`, `feedback_ngw_design_standard`, `feedback_bless_threshold`, `feedback_prod_build_env_strip`, `feedback_screenshot_storage`.
