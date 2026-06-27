@@ -4,10 +4,27 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #070809; /* matte/050 Standard Carbon page — synced to ACTIVE_MODE 'dark' */
+  background: #141518; /* De-blued Mid Carbon — FIRST-PAINT ONLY (pre-React); App.js then syncs html/body to the live theme token. CSS can't import the JS palette, so this single value mirrors carbonNeutral.mid.bg. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
+/* Crispness — global font rendering. Antialiased grayscale is the correct, sharpest
+   smoothing on a dark UI (subpixel fringes on dark); optimizeLegibility enables kerning
+   + ligatures; geometricPrecision keeps glyph edges sharp. Applied to ALL elements so
+   text inside compositing layers (cards, blurred chips) stays crisp too. */
+html, body, button, input, textarea, select, * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+/* iOS Safari: 100vh = the LARGE viewport (height WITH toolbars hidden), so on load —
+   while the address bar is still showing — the app overshoots the visible screen and
+   doesn't "fill" right. 100dvh tracks the DYNAMIC (currently-visible) viewport; 100vh
+   stays as the fallback. Pair with viewport-fit=cover in index.html. */
+html, body { height: 100%; }
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 * {
   -webkit-tap-highlight-color: transparent;

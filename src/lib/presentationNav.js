@@ -72,7 +72,9 @@ export function hostNav(tabs, event) {
   const has = (k) => Array.isArray(event && event[k]) && event[k].length > 0;
   const allowed = new Set(HOST_KEEP);
   if (has('vendors')) allowed.add('Vendors');
-  if (has('documents')) allowed.add('Documents');
+  // Docs only surface for a host once there's a VENDOR to attach paperwork to AND
+  // actual documents exist — otherwise the tab is an empty filing cabinet (host ask).
+  if (has('documents') && has('vendors')) allowed.add('Documents');
   if (has('commClient') || has('messages')) allowed.add('Communication');
   return HOST_ORDER.filter((t) => allowed.has(t) && tabs.includes(t));
 }

@@ -120,7 +120,7 @@ const BTN_PRIMARY = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
   background: STEEL_CTA, color: '#fff', border: 'none',
   borderRadius: 8, minHeight: 32, padding: '6px 14px',
-  fontSize: 13, fontWeight: 600, fontFamily: FF,
+  fontSize: type.size['base'], fontWeight: 600, fontFamily: FF,
   cursor: 'pointer', whiteSpace: 'nowrap', boxSizing: 'border-box',
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.30)',
 };
@@ -200,7 +200,7 @@ function hostTierLabel(tier) {
 // read as one system. `c` is the semantic color (green/amber/red/steel).
 const statusChip = (c) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5,
-  fontSize: 10, fontWeight: 800, letterSpacing: '0.08em',
+  fontSize: type.size['xs'], fontWeight: 800, letterSpacing: '0.08em',
   textTransform: 'uppercase', whiteSpace: 'nowrap', lineHeight: 1.3,
   color: c, background: `${c}1a`, border: `1px solid ${c}4d`,
   borderRadius: 999, padding: '2px 8px', fontFamily: FF,
@@ -212,7 +212,7 @@ const statusChip = (c) => ({
 const ZONE_LABEL = {
   marginTop: space[5], marginBottom: space[2], paddingTop: space[3],
   borderTop: `1px solid ${P.borderSubtle}`,
-  fontSize: 10, fontWeight: 800, letterSpacing: '0.16em',
+  fontSize: type.size['xs'], fontWeight: 800, letterSpacing: '0.16em',
   textTransform: 'uppercase', color: P.steelBlue, fontFamily: FF,
 };
 
@@ -250,14 +250,14 @@ function SectionHeading({ label, hint }) {
       marginTop: space[5], marginBottom: space[3], gap: 8,
     }}>
       <span style={{
-        fontSize: 10, fontWeight: type.weight.semibold,
+        fontSize: type.size['xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.14em', textTransform: 'uppercase',
         color: P.textSecondary, fontFamily: FF,
       }}>
         {label}
       </span>
       {hint && (
-        <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
+        <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
           {hint}
         </span>
       )}
@@ -284,16 +284,16 @@ function CollapsibleSection({ label, summary, hintColor, isOpen, onToggle, child
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 10.5, fontWeight: 800,
+            fontSize: type.size['xs'], fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.steelBlue, fontFamily: FF,
           }}>{label}</span>
         </span>
         {summary && (
           <span style={{
-            fontSize: 10,
+            fontSize: type.size['xs'],
             color: hintColor || P.textTertiary,
             fontFamily: FF, fontStyle: 'italic',
           }}>{summary}</span>
@@ -370,27 +370,27 @@ function StatusRow({ label, value, status, consequence, onAddress, addressLabel 
       <span style={{
         width: 18, height: 18, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 11, fontWeight: type.weight.bold,
+        fontSize: type.size['sm'], fontWeight: type.weight.bold,
         color: v.color,
         marginTop: 1,
       }}>
         {v.badge}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, color: P.textSecondary, fontFamily: FF, marginBottom: 3 }}>
+        <div style={{ fontSize: type.size['base'], color: P.textSecondary, fontFamily: FF, marginBottom: 3 }}>
           {label}
         </div>
-        <div style={{ fontSize: 14, fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
+        <div style={{ fontSize: type.size['md'], fontWeight: type.weight.medium, color: status === 'done' ? P.textPrimary : v.color, fontFamily: FF }}>
           {value}
         </div>
         {consequence && (
-          <div style={{ fontSize: 12.5, color: P.textTertiary, fontFamily: FF, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>
+          <div style={{ fontSize: type.size['caption'], color: P.textTertiary, fontFamily: FF, marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>
             {consequence}
           </div>
         )}
       </div>
       {onAddress && (
-        <span style={{ color: P.textTertiary, fontSize: 14, flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
+        <span style={{ color: P.textTertiary, fontSize: type.size['md'], flexShrink: 0, alignSelf: 'center', marginLeft: 4 }} aria-hidden>→</span>
       )}
     </>
   );
@@ -522,7 +522,7 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
           color; no headline, no band, no CTA. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', minWidth: 0 }}>
         <span style={{
-          fontSize: 10, fontWeight: type.weight.semibold,
+          fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.16em', textTransform: 'uppercase',
           color: P.textTertiary,
         }}>
@@ -530,7 +530,7 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           {segs.map((s, i) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: P.textSecondary }}>
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: type.size['base'], color: P.textSecondary }}>
               <StatusDot level={s.level} size={7} />
               <span style={{ fontWeight: type.weight.semibold, color: P.textPrimary }}>{s.n}</span>
               {s.label}
@@ -547,7 +547,7 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: P.textSecondary, fontSize: 12.5, fontFamily: FF,
+            color: P.textSecondary, fontSize: type.size['caption'], fontFamily: FF,
             padding: '4px 2px', flexShrink: 0, borderRadius: radius.sm,
             transition: 'color 0.16s',
           }}
@@ -556,12 +556,12 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
           title={topConflict.explanation || 'Review this scheduling conflict'}
           aria-label={`Review scheduling conflict: ${conflictText}`}
         >
-          <span aria-hidden style={{ color: P.amber, fontSize: 12 }}>⚑</span>
+          <span aria-hidden style={{ color: P.amber, fontSize: type.size['caption'] }}>⚑</span>
           <span style={{ borderBottom: `1px dotted ${P.borderSubtle}` }}>{conflictText}</span>
           <span aria-hidden style={{ color: P.textTertiary }}>→</span>
         </button>
       ) : (vendors.length >= 2 ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: P.textTertiary, flexShrink: 0 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: type.size['caption'], color: P.textTertiary, flexShrink: 0 }}>
           <span aria-hidden style={{ color: P.green, fontWeight: 800 }}>✓</span>
           Schedules aligned
         </span>
@@ -646,14 +646,14 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
       <StatusDot level={readiness.level} size={8} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12.5, fontWeight: isSelected ? type.weight.semibold : type.weight.medium,
+          fontSize: type.size['lg'], fontWeight: type.weight.semibold,
           color: P.textPrimary,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {vendor.name || vendor.vendor_name || 'Unnamed Vendor'}
         </div>
         <div style={{
-          fontSize: 11, color: P.textTertiary, marginTop: 2,
+          fontSize: type.size['sm'], color: P.textTertiary, marginTop: 2,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {vendor.category || vendor.type || '—'}
@@ -663,7 +663,7 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
         {memoryOn() && (() => {
           const why = latestRationaleForSubject(event, vendor.id);
           return why ? (
-            <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 2, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: type.size['xs'], color: P.textTertiary, marginTop: 2, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ fontStyle: 'normal', fontWeight: 700, opacity: 0.7 }}>Rationale:</span> {why}
             </div>
           ) : null;
@@ -674,7 +674,7 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
           const mem = vendorMemoryFor(allEvents, vendor.name || vendor.vendor_name, event && event.id);
           const line = summarizeVendorMemory(mem);
           return line ? (
-            <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: type.size['xs'], color: P.textTertiary, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span style={{ fontWeight: 700, opacity: 0.7 }}>Memory:</span> {line}
             </div>
           ) : null;
@@ -790,7 +790,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
         gap: 8,
       }}>
         <span style={{
-          fontSize: 10, fontWeight: type.weight.medium,
+          fontSize: type.size['xs'], fontWeight: type.weight.medium,
           letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF,
         }}>
           {vendors.length} {isHostView(event) ? (vendors.length === 1 ? 'PERSON' : 'PEOPLE') : 'VENDORS'}
@@ -826,7 +826,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
                 border: `1px solid ${active ? P.steelBlue : P.borderSubtle}`,
                 borderRadius: 999, cursor: 'pointer',
                 color: active ? P.textPrimary : P.textSecondary,
-                fontFamily: FF, fontSize: 11, fontWeight: 700,
+                fontFamily: FF, fontSize: type.size['sm'], fontWeight: 700,
                 letterSpacing: '0.04em',
                 padding: isMobile ? '10px 12px' : '4px 10px',
                 minHeight: isMobile ? 44 : 34,
@@ -840,12 +840,12 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
       {/* Attribute-tag filter — show only when vendors actually carry tags. */}
       {availableTags.length > 0 && (
         <div style={{ flexShrink: 0, display: 'flex', gap: 6, padding: '6px 10px', borderBottom: `1px solid ${P.borderSubtle}`, flexWrap: 'wrap', background: P.base, alignItems: 'center' }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: P.textTertiary, fontFamily: FF }}>Attributes</span>
+          <span style={{ fontSize: type.size['xs'], fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: P.textTertiary, fontFamily: FF }}>Attributes</span>
           {availableTags.map(t => {
             const on = tagFilter === t;
             return (
               <button key={t} onClick={() => setTagFilter(on ? null : t)} aria-pressed={on}
-                style={{ background: on ? `${P.green}26` : 'transparent', border: `1px solid ${on ? P.green : P.borderSubtle}`, borderRadius: 999, cursor: 'pointer', color: on ? P.textPrimary : P.textSecondary, fontFamily: FF, fontSize: 10.5, fontWeight: 700, padding: isMobile ? '8px 11px' : '4px 9px', minHeight: isMobile ? 40 : 26, lineHeight: 1 }}>
+                style={{ background: on ? `${P.green}26` : 'transparent', border: `1px solid ${on ? P.green : P.borderSubtle}`, borderRadius: 999, cursor: 'pointer', color: on ? P.textPrimary : P.textSecondary, fontFamily: FF, fontSize: type.size['xs'], fontWeight: 700, padding: isMobile ? '8px 11px' : '4px 9px', minHeight: isMobile ? 40 : 26, lineHeight: 1 }}>
                 {on ? '✓ ' : ''}{t}
               </button>
             );
@@ -866,16 +866,16 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
               display: 'flex', flexDirection: 'column', gap: 10,
             }}>
               <div style={{
-                fontSize: 12, fontWeight: type.weight.semibold,
+                fontSize: type.size['caption'], fontWeight: type.weight.semibold,
                 letterSpacing: '0.14em', textTransform: 'uppercase',
                 color: P.textTertiary,
               }}>Vendors</div>
               <div style={{
-                fontSize: 18, fontWeight: type.weight.semibold,
+                fontSize: type.size['2xl'], fontWeight: type.weight.semibold,
                 letterSpacing: '-0.015em', lineHeight: 1.25,
                 color: P.textPrimary,
               }}>Add the people helping with this event.</div>
-              <div style={{ fontSize: 14.5, color: P.textSecondary, lineHeight: 1.5 }}>
+              <div style={{ fontSize: type.size['md'], color: P.textSecondary, lineHeight: 1.5 }}>
                 Caterers, photographers, venues, DJs, rentals, and anyone else you need to coordinate.
               </div>
               <button onClick={onAdd} style={{
@@ -883,7 +883,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
                 padding: '12px 18px', minHeight: 48,
                 borderRadius: radius.sm, border: 'none',
                 background: P.green, color: '#070809',
-                fontSize: 16, fontWeight: type.weight.semibold,
+                fontSize: type.size['xl'], fontWeight: type.weight.semibold,
                 fontFamily: FF, cursor: 'pointer',
                 alignSelf: 'flex-start',
               }}>Add a vendor</button>
@@ -899,7 +899,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
             {visible.length === 0 ? (
               <div style={{
                 padding: '20px 16px', textAlign: 'center',
-                color: P.textTertiary, fontSize: 13, fontFamily: FF,
+                color: P.textTertiary, fontSize: type.size['base'], fontFamily: FF,
               }}>
                 {tagFilter ? `No vendors tagged “${tagFilter}”.`
                   : filter === 'attention' ? 'Nothing needs attention right now — every vendor is on track.'
@@ -952,7 +952,7 @@ function ReachActions({ vendor }) {
   const btnStyle = {
     background: 'none', border: `1px solid ${P.borderSubtle}`,
     borderRadius: 8, cursor: 'pointer',
-    fontSize: 13, fontWeight: type.weight.medium,
+    fontSize: type.size['base'], fontWeight: type.weight.medium,
     color: P.textSecondary, fontFamily: FF,
     padding: '6px 14px', textDecoration: 'none', minHeight: 32,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -1054,20 +1054,20 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
           the "what needs attention" surface (next action = the lead item);
           otherwise it's a plain "Next action". */}
       <div style={{
-        fontSize: 10, fontWeight: type.weight.semibold,
+        fontSize: type.size['xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.14em', textTransform: 'uppercase',
         color: alsoItems.length ? accent : P.textTertiary, marginBottom: 6, fontFamily: FF,
       }}>
         {alsoItems.length ? `What needs attention · ${alsoItems.length + 1}` : 'Next action'}
       </div>
       <div style={{
-        fontSize: 14, fontWeight: type.weight.semibold,
+        fontSize: type.size['md'], fontWeight: type.weight.semibold,
         color: P.textPrimary, fontFamily: FF, lineHeight: 1.35,
       }}>
         {nextAction.title}
       </div>
       <div style={{
-        fontSize: 12, color: P.textSecondary, fontFamily: FF,
+        fontSize: type.size['caption'], color: P.textSecondary, fontFamily: FF,
         marginTop: 5, lineHeight: 1.45,
       }}>
         {nextAction.consequence}
@@ -1087,7 +1087,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
               border: 'none', cursor: isDone ? 'default' : 'pointer',
               background: isDone ? P.green : accent,
               color: '#070809',
-              fontSize: 11, fontWeight: type.weight.semibold,
+              fontSize: type.size['sm'], fontWeight: type.weight.semibold,
               fontFamily: FF, letterSpacing: '0.06em', textTransform: 'uppercase',
               opacity: isDone ? 0.85 : 1,
               transition: 'background 200ms ease',
@@ -1096,12 +1096,12 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
             {isDone ? doneState.label : step.ctaLabel}
           </button>
           {step.editHint && !isDone && (
-            <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
               {step.editHint}
             </span>
           )}
           {isDone && step.kind !== 'edit' && (
-            <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontFamily: FF, fontStyle: 'italic' }}>
               Logged to activity feed.
             </span>
           )}
@@ -1114,7 +1114,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
       {!expandedKind && alsoItems.length > 0 && (
         <div style={{ marginTop: space[4], paddingTop: space[3], borderTop: `1px solid ${P.borderSubtle}` }}>
           <div style={{
-            fontSize: 10, fontWeight: type.weight.semibold,
+            fontSize: type.size['xs'], fontWeight: type.weight.semibold,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: P.textTertiary, marginBottom: space[2], fontFamily: FF,
           }}>
@@ -1129,14 +1129,14 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
               // the editor; falls back to a plain row if no handler is wired.
               const body = (
                 <>
-                  <span style={{ color: col, fontSize: 12, fontWeight: 800, lineHeight: 1.4, flexShrink: 0, width: 12, textAlign: 'center' }}>
+                  <span style={{ color: col, fontSize: type.size['caption'], fontWeight: 800, lineHeight: 1.4, flexShrink: 0, width: 12, textAlign: 'center' }}>
                     {it.sev === 'critical' ? '!' : '•'}
                   </span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: P.textSecondary, lineHeight: 1.45 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: type.size['caption'], color: P.textSecondary, lineHeight: 1.45 }}>
                     <span style={{ color: P.textPrimary, fontWeight: type.weight.medium }}>{it.label}</span>
                     {it.text ? <span style={{ color: P.textTertiary }}> — {it.text}</span> : null}
                   </span>
-                  {onAddressItem && <span aria-hidden style={{ color: P.textTertiary, fontSize: 13, flexShrink: 0, alignSelf: 'center' }}>→</span>}
+                  {onAddressItem && <span aria-hidden style={{ color: P.textTertiary, fontSize: type.size['base'], flexShrink: 0, alignSelf: 'center' }}>→</span>}
                 </>
               );
               if (!onAddressItem) {
@@ -1270,10 +1270,10 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3], gap: space[3], flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary }}>
+          <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary }}>
             {step.amountLabel}
           </div>
-          <div style={{ fontSize: 18, fontWeight: type.weight.semibold, color: P.textPrimary }}>
+          <div style={{ fontSize: type.size['2xl'], fontWeight: type.weight.semibold, color: P.textPrimary }}>
             ${amt.toLocaleString()}
           </div>
         </div>
@@ -1282,7 +1282,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           aria-label="Cancel payment flow"
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, color: P.textTertiary, fontFamily: FF,
+            fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF,
             padding: '4px 8px',
           }}
         >
@@ -1291,7 +1291,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
       </div>
 
       {/* Method picker — Sprint 57d: htmlFor association for screen readers */}
-      <label htmlFor={`pay-method-${vendor.id}`} style={{ display: 'block', fontSize: 10, color: P.textTertiary, marginBottom: 4, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: type.weight.semibold }}>
+      <label htmlFor={`pay-method-${vendor.id}`} style={{ display: 'block', fontSize: type.size['xs'], color: P.textTertiary, marginBottom: 4, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: type.weight.semibold }}>
         Pay via
       </label>
       <select
@@ -1303,7 +1303,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           width: '100%', padding: '8px 10px', marginBottom: space[3],
           background: P.card, border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, color: P.textPrimary,
-          fontSize: 13, fontFamily: FF, outline: 'none', cursor: 'pointer',
+          fontSize: type.size['base'], fontFamily: FF, outline: 'none', cursor: 'pointer',
         }}
       >
         {PAY_METHODS.map(m => (
@@ -1318,7 +1318,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           background: P.card, border: `1px solid ${accent}33`,
           borderRadius: radius.sm, marginBottom: space[3],
         }}>
-          <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 6, lineHeight: 1.45 }}>
+          <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginBottom: 6, lineHeight: 1.45 }}>
             {link.startsWith('zelle:')
               ? 'Zelle has no universal deep link — copy the destination and send from your bank app.'
               : `Tap to open ${method} with the amount + note pre-filled.`}
@@ -1329,7 +1329,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
               style={{
                 padding: '8px 14px', borderRadius: radius.sm,
                 background: `${accent}22`, color: accent, border: `1px solid ${accent}66`, cursor: 'pointer',
-                fontSize: 11, fontWeight: type.weight.bold,
+                fontSize: type.size['sm'], fontWeight: type.weight.bold,
                 letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
               }}
             >
@@ -1344,7 +1344,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
                 display: 'inline-block',
                 padding: '8px 14px', borderRadius: radius.sm,
                 background: accent, color: '#070809',
-                fontSize: 11, fontWeight: type.weight.semibold,
+                fontSize: type.size['sm'], fontWeight: type.weight.semibold,
                 letterSpacing: '0.06em', textTransform: 'uppercase',
                 fontFamily: FF, textDecoration: 'none',
               }}
@@ -1358,7 +1358,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           padding: `${space[3]}px ${space[4]}px`,
           background: P.card, border: `1px solid ${P.amber}33`,
           borderRadius: radius.sm, marginBottom: space[3],
-          fontSize: 11, color: P.amber,
+          fontSize: type.size['sm'], color: P.amber,
         }}>
           No {method} handle on file for this vendor — open the Edit modal to add it, or pick a different method.
         </div>
@@ -1367,7 +1367,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           padding: `${space[3]}px ${space[4]}px`,
           background: P.card, border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, marginBottom: space[3],
-          fontSize: 11, color: P.textSecondary, lineHeight: 1.5,
+          fontSize: type.size['sm'], color: P.textSecondary, lineHeight: 1.5,
         }}>
           {offlineMsg}
           {vendor.paymentNote && (
@@ -1377,7 +1377,7 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
                 marginLeft: 6, background: 'none',
                 border: `1px solid ${P.borderSubtle}`,
                 borderRadius: radius.sm, cursor: 'pointer',
-                fontSize: 10, color: P.textSecondary, padding: '2px 6px',
+                fontSize: type.size['xs'], color: P.textSecondary, padding: '2px 6px',
                 letterSpacing: '0.06em', textTransform: 'uppercase',
               }}
             >
@@ -1390,18 +1390,18 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
       {/* "I sent it" confirmation — two-step so a paid mark is never accidental */}
       {confirming ? (
         <div style={{ display: 'flex', gap: space[3], flexWrap: 'wrap', alignItems: 'center', background: `${P.green}10`, border: `1px solid ${P.green}33`, borderRadius: radius.sm, padding: space[3] }}>
-          <span style={{ fontSize: 11.5, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
+          <span style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
             Mark ${amt.toLocaleString()} paid via {method}?
           </span>
           <button
             onClick={() => { onConfirmSent(method, amt); setConfirming(false); }}
-            style={{ padding: '7px 14px', borderRadius: radius.sm, border: 'none', cursor: 'pointer', background: P.green, color: '#070809', fontSize: 11, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF }}
+            style={{ padding: '7px 14px', borderRadius: radius.sm, border: 'none', cursor: 'pointer', background: P.green, color: '#070809', fontSize: type.size['sm'], fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF }}
           >
             Yes · mark paid
           </button>
           <button
             onClick={() => setConfirming(false)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: P.textTertiary, fontFamily: FF, padding: '4px 8px' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, padding: '4px 8px' }}
           >
             Cancel
           </button>
@@ -1414,13 +1414,13 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
               padding: '7px 14px', borderRadius: radius.sm,
               border: 'none', cursor: 'pointer',
               background: P.green, color: '#070809',
-              fontSize: 11, fontWeight: type.weight.semibold,
+              fontSize: type.size['sm'], fontWeight: type.weight.semibold,
               letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
             }}
           >
             I sent it · mark paid
           </button>
-          <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', alignSelf: 'center' }}>
+          <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', alignSelf: 'center' }}>
             Records the method used in the activity log.
           </span>
         </div>
@@ -1452,7 +1452,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
       fontFamily: FF,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3] }}>
-        <div style={{ fontSize: 11, color: P.textSecondary }}>
+        <div style={{ fontSize: type.size['sm'], color: P.textSecondary }}>
           Three ways to handle this contract:
         </div>
         <button
@@ -1460,7 +1460,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
           aria-label="Cancel contract flow"
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, color: P.textTertiary, fontFamily: FF, padding: '4px 8px',
+            fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, padding: '4px 8px',
           }}
         >
           Cancel
@@ -1472,10 +1472,10 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
         padding: space[3], marginBottom: space[3],
         background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
       }}>
-        <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
+        <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
           Paste contract link
         </div>
-        <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
+        <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
           Drive / Dropbox / DocuSign URL. Saves it to the vendor record and marks signed.
         </div>
         <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap' }}>
@@ -1488,7 +1488,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
               flex: 1, minWidth: 200, padding: '7px 10px',
               background: P.canvas, border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.sm, color: P.textPrimary,
-              fontSize: 12, fontFamily: FF, outline: 'none',
+              fontSize: type.size['caption'], fontFamily: FF, outline: 'none',
             }}
           />
           <button
@@ -1499,7 +1499,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
               border: 'none', cursor: validUrl ? 'pointer' : 'not-allowed',
               background: validUrl ? accent : P.borderSubtle,
               color: validUrl ? '#070809' : P.textTertiary,
-              fontSize: 10, fontWeight: type.weight.semibold,
+              fontSize: type.size['xs'], fontWeight: type.weight.semibold,
               letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
             }}
           >
@@ -1513,10 +1513,10 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
         padding: space[3], marginBottom: space[3],
         background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
       }}>
-        <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
+        <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
           Email vendor about contract
         </div>
-        <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
+        <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
           {mailtoHref
             ? 'Opens your mail client with a templated request for the signed contract. This is an email, not an e-signature flow.'
             : `No email on file for ${vendor.name} — add one in the editor to use this option.`}
@@ -1531,7 +1531,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
               cursor: mailtoHref ? 'pointer' : 'not-allowed',
               background: 'none',
               color: mailtoHref ? P.textPrimary : P.textTertiary,
-              fontSize: 10, fontWeight: type.weight.semibold,
+              fontSize: type.size['xs'], fontWeight: type.weight.semibold,
               letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
               textDecoration: 'none', display: 'inline-block',
             }}
@@ -1547,21 +1547,21 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
           padding: space[3], marginBottom: space[3],
           background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
         }}>
-          <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
+          <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 6 }}>
             Upload file
           </div>
-          <div style={{ fontSize: 11, color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
+          <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginBottom: 8, lineHeight: 1.45 }}>
             PDF, image, or Word document — stored securely and attached to this vendor.
           </div>
           {uploadErr && (
-            <div style={{ fontSize: 11, color: P.red, marginBottom: 8 }}>{uploadErr}</div>
+            <div style={{ fontSize: type.size['sm'], color: P.red, marginBottom: 8 }}>{uploadErr}</div>
           )}
           <div style={{ display: 'flex', gap: space[2], alignItems: 'center' }}>
             <label style={{
               padding: '6px 12px', borderRadius: radius.sm,
               border: `1px solid ${P.borderDef}`, cursor: uploading ? 'wait' : 'pointer',
               background: 'none', color: P.textPrimary,
-              fontSize: 10, fontWeight: type.weight.semibold,
+              fontSize: type.size['xs'], fontWeight: type.weight.semibold,
               letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
               display: 'inline-block',
             }}>
@@ -1607,14 +1607,14 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
                 }}
               />
             </label>
-            <span style={{ fontSize: 10, color: P.textTertiary }}>Max 10 MB</span>
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary }}>Max 10 MB</span>
           </div>
         </div>
       )}
 
       {/* Option 4: Mark received offline */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: space[2] }}>
-        <span style={{ fontSize: 11, color: P.textTertiary, fontStyle: 'italic' }}>
+        <span style={{ fontSize: type.size['sm'], color: P.textTertiary, fontStyle: 'italic' }}>
           Already received offline?
         </span>
         <button
@@ -1623,7 +1623,7 @@ function ContractFlow({ vendor, accent, onCancel, onAttachUrl, onMarkReceived, o
             padding: '6px 12px', borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`, cursor: 'pointer',
             background: 'none', color: P.textSecondary,
-            fontSize: 10, fontWeight: type.weight.medium,
+            fontSize: type.size['xs'], fontWeight: type.weight.medium,
             letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
           }}
         >
@@ -1648,7 +1648,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
       borderRadius: radius.sm,
       fontFamily: FF,
     }}>
-      <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 8 }}>
+      <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 8 }}>
         Arrival / setup time
       </div>
       <div style={{ display: 'flex', gap: space[3], alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1660,7 +1660,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
             padding: '7px 10px', minWidth: 140,
             background: P.card, border: `1px solid ${P.borderSubtle}`,
             borderRadius: radius.sm, color: P.textPrimary,
-            fontSize: 13, fontFamily: FF, outline: 'none',
+            fontSize: type.size['base'], fontFamily: FF, outline: 'none',
           }}
         />
         <button
@@ -1671,7 +1671,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
             border: 'none', cursor: valid ? 'pointer' : 'not-allowed',
             background: valid ? accent : P.borderSubtle,
             color: valid ? '#070809' : P.textTertiary,
-            fontSize: 11, fontWeight: type.weight.semibold,
+            fontSize: type.size['sm'], fontWeight: type.weight.semibold,
             letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: FF,
           }}
         >
@@ -1682,7 +1682,7 @@ function ArrivalTimeFlow({ vendor, accent, onCancel, onSave }) {
           aria-label="Cancel arrival-time edit"
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, color: P.textTertiary, fontFamily: FF, padding: '4px 8px',
+            fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, padding: '4px 8px',
           }}
         >
           Cancel
@@ -1722,7 +1722,7 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Label */}
         <div style={{
-          fontSize: 10, fontWeight: type.weight.semibold,
+          fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.16em', textTransform: 'uppercase',
           color: accent, marginBottom: 6, fontFamily: FF,
         }}>
@@ -1737,13 +1737,13 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: isMobile ? 10 : 12 }}>
           <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <div style={{
-              fontSize: isMobile ? 19 : 22, fontWeight: type.weight.semibold,
+              fontSize: isMobile ? type.size['2xl'] : type.size['3xl'], fontWeight: type.weight.semibold,
               color: P.textPrimary, fontFamily: FF, lineHeight: 1.2,
             }}>
               {vendor.name || vendor.vendor_name}
             </div>
             <div style={{
-              fontSize: 12, color: P.textSecondary, fontFamily: FF, marginTop: 4,
+              fontSize: type.size['caption'], color: P.textSecondary, fontFamily: FF, marginTop: 4,
               display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
             }}>
               <span>{vendor.category || vendor.type || 'Uncategorized'}</span>
@@ -1766,7 +1766,7 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               const chip = (key, label, color, onClick) => (
                 <button key={key} type="button" onClick={onClick || undefined} disabled={!onClick}
                   title={onClick ? `Resolve: ${label}` : label}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}40`, borderRadius: 999, padding: '3px 10px', fontFamily: FF, cursor: onClick ? 'pointer' : 'default' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: type.size['sm'], fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}40`, borderRadius: 999, padding: '3px 10px', fontFamily: FF, cursor: onClick ? 'pointer' : 'default' }}>
                   {label}{onClick ? ' →' : ''}
                 </button>
               );
@@ -1788,7 +1788,7 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
                 style={{
                   background: 'none', border: `1px solid ${P.borderSubtle}`,
                   borderRadius: 8, cursor: 'pointer',
-                  fontSize: 13, fontWeight: type.weight.medium,
+                  fontSize: type.size['base'], fontWeight: type.weight.medium,
                   color: P.textSecondary, fontFamily: FF,
                   padding: '6px 14px', minHeight: 32,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1863,16 +1863,16 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 10.5, fontWeight: 800,
+            fontSize: type.size['xs'], fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.steelBlue, fontFamily: FF,
           }}>{label}</span>
         </span>
         {collapsedHint && (
           <span style={{
-            fontSize: 10,
+            fontSize: type.size['xs'],
             color: !isOpen && attentionCount > 0 ? P.amber : P.textTertiary,
             fontFamily: FF, fontStyle: 'italic',
           }}>
@@ -1935,15 +1935,15 @@ function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
         }}
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: P.steelBlue, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: 10.5, fontWeight: 800,
+            fontSize: type.size['xs'], fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.steelBlue, fontFamily: FF,
           }}>{`Required Questions · ${cat}`}</span>
         </span>
         <span style={{
-          fontSize: 10,
+          fontSize: type.size['xs'],
           color: open > 0 ? P.amber : P.textTertiary,
           fontFamily: FF, fontStyle: 'italic',
         }}>
@@ -2031,9 +2031,9 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
                   textAlign: 'left', fontFamily: FF,
                 }}
               >
-                <span style={{ color: P.textTertiary, fontSize: 11, width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+                <span style={{ color: P.textTertiary, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
                 <span style={{
-                  fontSize: 10, fontWeight: type.weight.semibold,
+                  fontSize: type.size['xs'], fontWeight: type.weight.semibold,
                   letterSpacing: '0.10em', textTransform: 'uppercase',
                   color: P.textTertiary,
                 }}>
@@ -2042,13 +2042,13 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
               </button>
               {onRouteToLinked && g.tab && items.length > 0 && (
                 <button type="button" onClick={() => onRouteToLinked(g.tab, null)} title={`Open ${g.tab}`}
-                  style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: FF, fontSize: 10, fontWeight: type.weight.semibold, color: P.textSecondary, letterSpacing: '0.04em' }}>
+                  style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: FF, fontSize: type.size['xs'], fontWeight: type.weight.semibold, color: P.textSecondary, letterSpacing: '0.04em' }}>
                   View all →
                 </button>
               )}
               </div>
               {isOpen && (items.length === 0 ? (
-                <div style={{ fontSize: 12, color: P.textTertiary, fontStyle: 'italic', paddingLeft: 18 }}>
+                <div style={{ fontSize: type.size['caption'], color: P.textTertiary, fontStyle: 'italic', paddingLeft: 18 }}>
                   {g.empty}
                 </div>
               ) : (
@@ -2063,7 +2063,7 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
                       return (
                         <li key={it.id || i} style={{
                           display: 'flex', justifyContent: 'space-between', gap: 12,
-                          padding: '3px 0', fontSize: 12, color: P.textPrimary,
+                          padding: '3px 0', fontSize: type.size['caption'], color: P.textPrimary,
                         }}>
                           <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
                           {it.note && <span style={{ color: P.textTertiary, flexShrink: 0 }}>{it.note}</span>}
@@ -2081,14 +2081,14 @@ function LinkedWorkSection({ linked, onRouteToLinked }) {
                             gap: 12, padding: '4px 6px', margin: '1px -6px',
                             background: 'none', border: '1px solid transparent', borderRadius: radius.sm,
                             cursor: 'pointer', fontFamily: FF, textAlign: 'left',
-                            fontSize: 12, color: P.textPrimary, transition: 'all 0.1s',
+                            fontSize: type.size['caption'], color: P.textPrimary, transition: 'all 0.1s',
                           }}
                           onMouseEnter={e => { e.currentTarget.style.background = P.borderSubtle + '55'; e.currentTarget.style.borderColor = P.borderSubtle; }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent'; }}
                         >
                           <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.label}</span>
-                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0, fontSize: 11 }}>{it.note}</span>}
-                          <span style={{ color: P.textTertiary, fontSize: 11, flexShrink: 0 }}>→</span>
+                          {it.note && <span style={{ color: P.textTertiary, flexShrink: 0, fontSize: type.size['sm'] }}>{it.note}</span>}
+                          <span style={{ color: P.textTertiary, fontSize: type.size['sm'], flexShrink: 0 }}>→</span>
                         </button>
                       </li>
                     );
@@ -2173,8 +2173,8 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
           borderBottom: `1px solid ${P.borderSubtle}`,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>Contract</div>
-            <div style={{ fontSize: 11, color: contractConsequence ? P.textSecondary : P.textTertiary, lineHeight: 1.4 }}>
+            <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>Contract</div>
+            <div style={{ fontSize: type.size['sm'], color: contractConsequence ? P.textSecondary : P.textTertiary, lineHeight: 1.4 }}>
               {contractConsequence || contractValue}
             </div>
           </div>
@@ -2185,7 +2185,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
                   href={vendor.contractUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 11, fontWeight: type.weight.semibold, color: P.accent, textDecoration: 'none', padding: `3px ${space[3]}px`, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm }}
+                  style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.accent, textDecoration: 'none', padding: `3px ${space[3]}px`, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm }}
                 >
                   Open →
                 </a>
@@ -2203,7 +2203,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
                       else setExtractErr('AI extraction failed — try again');
                     }}
                     disabled={extracting}
-                    style={{ fontSize: 10, fontWeight: type.weight.semibold, color: P.textSecondary, background: 'transparent', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: `3px ${space[3]}px`, cursor: 'pointer', fontFamily: FF }}
+                    style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, color: P.textSecondary, background: 'transparent', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: `3px ${space[3]}px`, cursor: 'pointer', fontFamily: FF }}
                   >
                     {extracting ? '⏳ Analyzing…' : '✨ Analyze with AI'}
                   </button>
@@ -2211,7 +2211,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
               </div>
             )}
             <span style={{
-              fontSize: 10, fontWeight: type.weight.semibold,
+              fontSize: type.size['xs'], fontWeight: type.weight.semibold,
               letterSpacing: '0.06em', textTransform: 'uppercase',
               color: contractStatus === 'done' ? P.success
                    : contractStatus === 'attention' ? P.warn
@@ -2224,19 +2224,19 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
 
         {/* AI extraction results */}
         {extractErr && (
-          <div style={{ fontSize: 11, color: P.red, padding: `${space[2]}px 0` }}>{extractErr}</div>
+          <div style={{ fontSize: type.size['sm'], color: P.red, padding: `${space[2]}px 0` }}>{extractErr}</div>
         )}
         {extracted && (
           <div style={{ background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: space[4], marginBottom: space[3] }}>
-            <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3], display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3], display: 'flex', justifyContent: 'space-between' }}>
               <span>✨ AI-EXTRACTED · Verify against original document</span>
-              <button onClick={() => setExtracted(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontFamily: FF, fontSize: 11 }}>×</button>
+              <button onClick={() => setExtracted(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontFamily: FF, fontSize: type.size['sm'] }}>×</button>
             </div>
             {extracted.action_items?.length > 0 && (
               <div style={{ marginBottom: space[3] }}>
-                <div style={{ fontSize: 10, color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>ACTION ITEMS</div>
+                <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>ACTION ITEMS</div>
                 {extracted.action_items.map((a, i) => (
-                  <div key={i} style={{ display: 'flex', gap: space[2], fontSize: 11, color: a.priority === 'high' ? P.red : P.textSecondary, marginBottom: 3 }}>
+                  <div key={i} style={{ display: 'flex', gap: space[2], fontSize: type.size['sm'], color: a.priority === 'high' ? P.red : P.textSecondary, marginBottom: 3 }}>
                     <span>{a.priority === 'high' ? '🔴' : a.priority === 'medium' ? '🟡' : '⚪'}</span>
                     <span>{a.task}{a.due_date ? ` — ${a.due_date}` : ''}</span>
                   </div>
@@ -2245,17 +2245,17 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             )}
             {extracted.key_dates?.length > 0 && (
               <div style={{ marginBottom: space[3] }}>
-                <div style={{ fontSize: 10, color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>KEY DATES</div>
+                <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontWeight: type.weight.semibold, marginBottom: space[2] }}>KEY DATES</div>
                 {extracted.key_dates.map((d, i) => (
-                  <div key={i} style={{ fontSize: 11, color: P.textSecondary, marginBottom: 2 }}>{d.label}: {d.date}</div>
+                  <div key={i} style={{ fontSize: type.size['sm'], color: P.textSecondary, marginBottom: 2 }}>{d.label}: {d.date}</div>
                 ))}
               </div>
             )}
             {extracted.cancellation_policy && (
-              <div style={{ fontSize: 10, color: P.textTertiary, lineHeight: 1.4 }}>{extracted.cancellation_policy}</div>
+              <div style={{ fontSize: type.size['xs'], color: P.textTertiary, lineHeight: 1.4 }}>{extracted.cancellation_policy}</div>
             )}
             {extracted.disclaimer && (
-              <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
+              <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: space[3] }}>{extracted.disclaimer}</div>
             )}
           </div>
         )}
@@ -2267,15 +2267,15 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
           borderBottom: `1px solid ${P.borderSubtle}`,
         }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
-            <div style={{ fontSize: 11, color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
+            <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
+            <div style={{ fontSize: type.size['sm'], color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
           </div>
           {(() => {
             // Honesty (board): "On file" green only when actually insured — a status
             // of "Not insured" / "Expired" must NOT read as present-and-good.
             const insOk = vendor.insuranceStatus && !/\b(not|no|none|missing|expired|lapsed)\b/i.test(vendor.insuranceStatus);
             return (
-              <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
+              <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
                 {insOk ? 'On file' : vendor.insuranceStatus ? 'Not valid' : 'Not tracked'}
               </span>
             );
@@ -2290,9 +2290,9 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             borderBottom: label !== 'Menu / rider / floorplan' ? `1px solid ${P.borderSubtle}` : 'none',
           }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary }}>{label}</div>
+              <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary }}>{label}</div>
             </div>
-            <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>Not attached</span>
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic' }}>Not attached</span>
           </div>
         ))}
       </div>
@@ -2311,7 +2311,7 @@ function NotesSection({ vendor, isOpen, onToggle }) {
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: space[5], minHeight: 80,
-        fontSize: 13, color: vendor.notes ? P.textPrimary : P.textTertiary,
+        fontSize: type.size['base'], color: vendor.notes ? P.textPrimary : P.textTertiary,
         fontFamily: FF, lineHeight: type.leading.relaxed,
         whiteSpace: 'pre-wrap',
       }}>
@@ -2357,7 +2357,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
           fontFamily: FF,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[3] }}>
-            <div style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary }}>
+            <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary }}>
               Log Activity · {today}
             </div>
             {/* Fix #5: Quick-log shortcuts — one click to log common interactions */}
@@ -2370,7 +2370,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
                 <button key={label} onClick={() => setDraft(d => d ? d : text)} style={{
                   padding: '3px 7px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`,
                   background: 'transparent', cursor: 'pointer',
-                  fontSize: 10, color: P.textTertiary, fontFamily: FF,
+                  fontSize: type.size['xs'], color: P.textTertiary, fontFamily: FF,
                 }}>{label}</button>
               ))}
             </div>
@@ -2384,12 +2384,12 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
               width: '100%', minHeight: 56, resize: 'vertical',
               background: P.canvas, border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.sm, padding: '8px 10px',
-              fontSize: 13, color: P.textPrimary, fontFamily: FF,
+              fontSize: type.size['base'], color: P.textPrimary, fontFamily: FF,
               outline: 'none', boxSizing: 'border-box',
             }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: space[3] }}>
-            <span style={{ fontSize: 10, color: P.textTertiary }}>
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary }}>
               ⌘/Ctrl+Enter to add
             </span>
             <button
@@ -2400,7 +2400,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
                 border: 'none', cursor: draft.trim() ? 'pointer' : 'not-allowed',
                 background: draft.trim() ? P.green : P.borderSubtle,
                 color: draft.trim() ? '#fff' : P.textTertiary,
-                fontSize: 11, fontWeight: type.weight.semibold,
+                fontSize: type.size['sm'], fontWeight: type.weight.semibold,
                 fontFamily: FF, letterSpacing: '0.04em',
               }}
             >
@@ -2414,7 +2414,7 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
           <div style={{
             background: P.card, border: `1px solid ${P.borderSubtle}`,
             borderRadius: radius.md, padding: `${space[5]}px ${space[5]}px`,
-            fontSize: 12, color: P.textTertiary, fontFamily: FF, textAlign: 'center',
+            fontSize: type.size['caption'], color: P.textTertiary, fontFamily: FF, textAlign: 'center',
           }}>
             No activity logged yet for this vendor.
           </div>
@@ -2427,21 +2427,21 @@ function ActivityLogSection({ vendor, onAddLog, isOpen, onToggle }) {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
               <span style={{
-                fontSize: 10, fontWeight: type.weight.semibold,
+                fontSize: type.size['xs'], fontWeight: type.weight.semibold,
                 color: P.textTertiary, letterSpacing: '0.08em', textTransform: 'uppercase',
               }}>
                 {entry.date || '—'}
               </span>
               {entry.derived && (
                 <span style={{
-                  fontSize: 10, fontWeight: type.weight.medium,
+                  fontSize: type.size['xs'], fontWeight: type.weight.medium,
                   color: P.amber, letterSpacing: '0.1em', textTransform: 'uppercase',
                 }}>
                   Auto
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 13, color: P.textPrimary, lineHeight: type.leading.relaxed }}>
+            <div style={{ fontSize: type.size['base'], color: P.textPrimary, lineHeight: type.leading.relaxed }}>
               {entry.text}
             </div>
           </div>
@@ -2474,13 +2474,13 @@ function CatererDriftBanner({ vendor, event, onMarkCatererUpdated }) {
     }}>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{
-          fontSize: 10, fontWeight: type.weight.semibold,
+          fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           color: P.amber, marginBottom: 4,
         }}>
           Headcount Mismatch
         </div>
-        <div style={{ fontSize: 13, color: P.textPrimary, lineHeight: 1.4 }}>
+        <div style={{ fontSize: type.size['base'], color: P.textPrimary, lineHeight: 1.4 }}>
           Caterer holds <strong>{event.catererCount}</strong>; now <strong>{confirmedCount}</strong> confirmed
           {' '}
           <span style={{ color: P.textSecondary }}>
@@ -2525,19 +2525,19 @@ function CollapsibleList({ label, items, defaultOpen = false }) {
         style={{
           background: 'none', border: 'none', cursor: 'pointer',
           padding: 0, color: P.textTertiary, fontFamily: FF,
-          fontSize: 10, fontWeight: type.weight.semibold,
+          fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.10em', textTransform: 'uppercase',
           display: 'flex', alignItems: 'center', gap: 6,
         }}
       >
-        <span style={{ fontSize: 10 }}>{open ? '▼' : '▶'}</span>
+        <span style={{ fontSize: type.size['xs'] }}>{open ? '▼' : '▶'}</span>
         {label} · {items.length}
       </button>
       {open && (
         <ul style={{ margin: '6px 0 0', padding: '0 0 0 18px', listStyle: 'none' }}>
           {items.map((it, i) => (
             <li key={i} style={{
-              fontSize: 11, color: P.textSecondary,
+              fontSize: type.size['sm'], color: P.textSecondary,
               lineHeight: 1.5, marginBottom: 2,
               position: 'relative',
             }}>
@@ -2567,7 +2567,7 @@ function CopyableDraft({ text }) {
       <div style={{
         background: P.canvas, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.sm, padding: space[4],
-        fontSize: 12, color: P.textPrimary, fontFamily: FF,
+        fontSize: type.size['caption'], color: P.textPrimary, fontFamily: FF,
         lineHeight: 1.55, whiteSpace: 'pre-wrap',
         maxHeight: 260, overflowY: 'auto',
       }}>
@@ -2580,7 +2580,7 @@ function CopyableDraft({ text }) {
           background: copied ? P.green : 'none',
           border: `1px solid ${copied ? P.green : P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.semibold,
+          fontSize: type.size['sm'], fontWeight: type.weight.semibold,
           letterSpacing: '0.05em', textTransform: 'uppercase',
           color: copied ? P.canvas : P.textSecondary,
           fontFamily: FF, padding: '9px 14px', minHeight: 40,
@@ -2622,7 +2622,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: space[3], fontFamily: FF,
       }}>
-        <span style={{ fontSize: 11, color: P.textTertiary, fontStyle: 'italic' }}>
+        <span style={{ fontSize: type.size['sm'], color: P.textTertiary, fontStyle: 'italic' }}>
           {host ? 'Quick read dismissed for now.' : 'Readiness copilot dismissed for this session.'}
         </span>
         <button
@@ -2630,7 +2630,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
           style={{
             background: 'none', border: `1px solid ${P.borderSubtle}`,
             borderRadius: radius.sm, cursor: 'pointer',
-            fontSize: 10, fontWeight: type.weight.semibold,
+            fontSize: type.size['xs'], fontWeight: type.weight.semibold,
             letterSpacing: '0.06em', textTransform: 'uppercase',
             color: P.textSecondary, fontFamily: FF, padding: '4px 10px',
           }}
@@ -2701,13 +2701,13 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
       }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{
-            fontSize: 10, fontWeight: type.weight.semibold,
+            fontSize: type.size['xs'], fontWeight: type.weight.semibold,
             letterSpacing: '0.16em', textTransform: 'uppercase',
             color: sourceColor, marginBottom: 4,
           }}>
             Quick read
           </div>
-          <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}>
+          <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic' }}>
             {sourceLabel}
           </div>
         </div>
@@ -2722,7 +2722,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
                 border: `1px solid ${P.green}66`,
                 borderRadius: radius.sm,
                 cursor: aiLoading ? 'wait' : 'pointer',
-                fontSize: 10, fontWeight: type.weight.semibold,
+                fontSize: type.size['xs'], fontWeight: type.weight.semibold,
                 letterSpacing: '0.06em', textTransform: 'uppercase',
                 color: aiLoading ? P.textTertiary : P.green,
                 fontFamily: FF, padding: '5px 12px',
@@ -2745,7 +2745,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
             style={{
               background: 'none', border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.sm, cursor: 'pointer',
-              fontSize: 10, fontWeight: type.weight.medium,
+              fontSize: type.size['xs'], fontWeight: type.weight.medium,
               color: P.textTertiary, fontFamily: FF, padding: '5px 10px',
             }}
           >
@@ -2757,7 +2757,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
       {/* Error line (if any) */}
       {aiError && (
         <div style={{
-          fontSize: 11, color: P.amber, marginBottom: space[3],
+          fontSize: type.size['sm'], color: P.amber, marginBottom: space[3],
           fontStyle: 'italic',
         }}>
           {aiError}
@@ -2766,13 +2766,13 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
 
       {/* Headline + summary */}
       <div style={{
-        fontSize: 15, fontWeight: type.weight.semibold,
+        fontSize: type.size['lg'], fontWeight: type.weight.semibold,
         color: P.textPrimary, lineHeight: 1.35, marginBottom: 6,
       }}>
         {preview.headline}
       </div>
       <div style={{
-        fontSize: 12, color: P.textSecondary, lineHeight: 1.55,
+        fontSize: type.size['caption'], color: P.textSecondary, lineHeight: 1.55,
         marginBottom: space[5],
       }}>
         {preview.summary}
@@ -2792,7 +2792,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {preview.missing.map((m, i) => (
                 <li key={i} style={{
-                  fontSize: 12, color: P.textPrimary, lineHeight: 1.5,
+                  fontSize: type.size['caption'], color: P.textPrimary, lineHeight: 1.5,
                   marginBottom: 4, paddingLeft: 14, position: 'relative',
                 }}>
                   <span style={{ position: 'absolute', left: 0, color: P.amber, fontWeight: 700 }}>·</span>
@@ -2810,13 +2810,13 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {preview.risks.map((r, i) => (
                 <li key={i} style={{
-                  fontSize: 12, color: P.textPrimary, lineHeight: 1.5,
+                  fontSize: type.size['caption'], color: P.textPrimary, lineHeight: 1.5,
                   marginBottom: 6, paddingLeft: 14, position: 'relative',
                 }}>
                   <span style={{ position: 'absolute', left: 0, color: P.red, fontWeight: 700 }}>·</span>
                   <div>{r.risk}</div>
                   {r.consequence && (
-                    <div style={{ color: P.textTertiary, fontSize: 11, fontStyle: 'italic', marginTop: 2 }}>
+                    <div style={{ color: P.textTertiary, fontSize: type.size['sm'], fontStyle: 'italic', marginTop: 2 }}>
                       {r.consequence}
                     </div>
                   )}
@@ -2834,7 +2834,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
           <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {preview.questions.map((q, i) => (
               <li key={i} style={{
-                fontSize: 12, color: P.textPrimary, lineHeight: 1.5,
+                fontSize: type.size['caption'], color: P.textPrimary, lineHeight: 1.5,
                 marginBottom: 3, paddingLeft: 14, position: 'relative',
               }}>
                 <span style={{ position: 'absolute', left: 0, color: P.textTertiary }}>·</span>
@@ -2856,21 +2856,21 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
           marginBottom: space[4],
         }}>
           <div style={{
-            fontSize: 10, fontWeight: type.weight.semibold,
+            fontSize: type.size['xs'], fontWeight: type.weight.semibold,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.amber, marginBottom: 4,
           }}>
             Suggested next action
           </div>
           <div style={{
-            fontSize: 13, fontWeight: type.weight.semibold,
+            fontSize: type.size['base'], fontWeight: type.weight.semibold,
             color: P.textPrimary, lineHeight: 1.35,
           }}>
             {preview.nextAction.title}
           </div>
           {preview.nextAction.consequence && (
             <div style={{
-              fontSize: 11, color: P.textSecondary,
+              fontSize: type.size['sm'], color: P.textSecondary,
               lineHeight: 1.5, marginTop: 4,
             }}>
               {preview.nextAction.consequence}
@@ -2888,7 +2888,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
           />
           <CopyableDraft text={preview.draftMessage} />
           {preview.source === 'rule-based' && !aiAvailable && (
-            <div style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic', marginTop: 6 }}>
+            <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: 6 }}>
               Add your Anthropic API key in Profile to generate a tailored version.
             </div>
           )}
@@ -2906,7 +2906,7 @@ function ReadinessCopilotSection({ vendor, event, aiAvailable, onAskAi, isOpen, 
 function SubSectionLabel({ label, count, color }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: type.weight.semibold,
+      fontSize: type.size['xs'], fontWeight: type.weight.semibold,
       letterSpacing: '0.10em', textTransform: 'uppercase',
       color: color || P.textTertiary, marginBottom: 6,
     }}>
@@ -2917,7 +2917,7 @@ function SubSectionLabel({ label, count, color }) {
 
 function EmptyLine({ text }) {
   return (
-    <div style={{ fontSize: 11, color: P.textTertiary, fontStyle: 'italic' }}>
+    <div style={{ fontSize: type.size['sm'], color: P.textTertiary, fontStyle: 'italic' }}>
       {text}
     </div>
   );
@@ -3008,7 +3008,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
       {/* Top row — eyebrow chip + edit affordance */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
         <span style={{
-          fontSize: 10, fontWeight: type.weight.semibold,
+          fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.14em', textTransform: 'uppercase',
           color: looksReady ? P.green : railColor,
           padding: '2px 7px', borderRadius: 4,
@@ -3022,7 +3022,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             aria-label="Edit vendor details"
             style={{
               background: 'transparent', border: `1px solid ${P.borderSubtle}`,
-              borderRadius: radius.sm, color: P.textSecondary, fontSize: 11,
+              borderRadius: radius.sm, color: P.textSecondary, fontSize: type.size['sm'],
               padding: '4px 10px', cursor: 'pointer', fontFamily: FF, flexShrink: 0,
             }}
           >Edit</button>
@@ -3032,7 +3032,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
       {/* Headline */}
       <h2 style={{
         margin: `${space[3]}px 0 ${space[2]}px`,
-        fontSize: 22, fontWeight: type.weight.bold,
+        fontSize: type.size['3xl'], fontWeight: type.weight.bold,
         letterSpacing: '-0.02em', lineHeight: 1.2,
         color: P.textPrimary,
       }}>
@@ -3040,14 +3040,14 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
       </h2>
 
       {/* Category / status meta */}
-      <div style={{ fontSize: 12, color: P.textTertiary, marginBottom: space[3] }}>
+      <div style={{ fontSize: type.size['caption'], color: P.textTertiary, marginBottom: space[3] }}>
         {cat} · {status}
       </div>
 
       {/* Body — why it matters */}
       <p style={{
         margin: `0 0 ${space[4]}px`,
-        fontSize: 14, lineHeight: 1.5,
+        fontSize: type.size['md'], lineHeight: 1.5,
         color: P.textSecondary,
       }}>
         {body}
@@ -3066,7 +3066,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             cursor: 'pointer',
             background: ctaFill,
             color: '#fff',
-            fontSize: 15,
+            fontSize: type.size['lg'],
             fontWeight: type.weight.semibold,
             fontFamily: FF,
             letterSpacing: '0.01em',
@@ -3075,7 +3075,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             textShadow: '0 1px 0 rgba(0,0,0,0.25)',
           }}
         >
-          {ctaLabel} <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+          {ctaLabel} <span style={{ fontSize: type.size['caption'], opacity: 0.85 }}>→</span>
         </button>
       )}
 
@@ -3093,7 +3093,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             <a href={telHref} style={{
               flex: 1, textAlign: 'center',
               padding: '10px 12px',
-              fontSize: 13, fontWeight: type.weight.medium,
+              fontSize: type.size['base'], fontWeight: type.weight.medium,
               color: P.textPrimary,
               background: P.canvas,
               border: `1px solid ${P.borderSubtle}`,
@@ -3105,7 +3105,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             <a href={smsHref} style={{
               flex: 1, textAlign: 'center',
               padding: '10px 12px',
-              fontSize: 13, fontWeight: type.weight.medium,
+              fontSize: type.size['base'], fontWeight: type.weight.medium,
               color: P.textPrimary,
               background: P.canvas,
               border: `1px solid ${P.borderSubtle}`,
@@ -3117,7 +3117,7 @@ function MobileVendorSummary({ vendor, nextAction, challenges, onPrimary, onEdit
             <a href={mailHref} style={{
               flex: 1, textAlign: 'center',
               padding: '10px 12px',
-              fontSize: 13, fontWeight: type.weight.medium,
+              fontSize: type.size['base'], fontWeight: type.weight.medium,
               color: P.textPrimary,
               background: P.canvas,
               border: `1px solid ${P.borderSubtle}`,
@@ -3183,7 +3183,7 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, 
 
   return (
     <CollapsibleSection label="What this vendor will deliver" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
-      <div style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
+      <div style={{ fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
         What this vendor agreed to deliver, and whether you have it in hand. Drafts are copy-only — Event Boss never sends or emails on its own.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: space[2] }}>
@@ -3214,24 +3214,24 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, 
                   (no more detaching to its own line). PT-2: ≥10px + a leading glyph so
                   the severity isn't carried by color alone. */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>{p.promiseText}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: type.size['base'], fontWeight: type.weight.medium, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>{p.promiseText}</span>
                 <span style={{ ...statusChip(col), flexShrink: 0 }}>
                   {(sev === 'critical' ? '! ' : (p.status === 'confirmed' || p.status === 'completed') ? '✓ ' : '• ')}{PROMISE_STATUS_LABEL[p.status] || p.status}
                 </span>
-                {canAddress && <span aria-hidden style={{ color: P.textTertiary, fontSize: 13, flexShrink: 0, alignSelf: 'center' }}>→</span>}
+                {canAddress && <span aria-hidden style={{ color: P.textTertiary, fontSize: type.size['base'], flexShrink: 0, alignSelf: 'center' }}>→</span>}
               </div>
-              <div style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF, marginTop: 3 }}>
+              <div style={{ fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, marginTop: 3 }}>
                 Handled by: {ownerLabel(p.owner)}{p.dueDate ? ` · Due ${p.dueDate}` : ''}{proofTxt}
               </div>
               {nextHint && (
-                <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>→ {nextHint}</div>
+                <div style={{ fontSize: type.size['caption'], color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>→ {nextHint}</div>
               )}
               {(() => {
                 const open = !['confirmed', 'completed'].includes(p.status);
                 const plannerProof = !!(vendor.promiseEvidence && vendor.promiseEvidence[p.promiseKey]);
                 const needsProof = p.evidenceRequired && onPatchVendor && !plannerProof && open;
                 if (!open && !plannerProof) return null;
-                const btn = { background: 'none', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, letterSpacing: '0.05em', textTransform: 'uppercase', color: P.textSecondary, fontFamily: FF, padding: '9px 14px', minHeight: 40 };
+                const btn = { background: 'none', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size['sm'], fontWeight: type.weight.semibold, letterSpacing: '0.05em', textTransform: 'uppercase', color: P.textSecondary, fontFamily: FF, padding: '9px 14px', minHeight: 40 };
                 return (
                   <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center', marginTop: space[2] }}>
                     {open && (
@@ -3246,10 +3246,10 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, 
                       </button>
                     )}
                     {plannerProof && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: P.green, fontFamily: FF }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: type.size['sm'], color: P.green, fontFamily: FF }}>
                         ✓ Proof on file
                         <button type="button" onClick={(e) => { e.stopPropagation(); undoProof(p); }}
-                          style={{ background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: 10, textDecoration: 'underline', fontFamily: FF, padding: 0 }}>
+                          style={{ background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: type.size['xs'], textDecoration: 'underline', fontFamily: FF, padding: 0 }}>
                           Undo
                         </button>
                       </span>
@@ -3359,10 +3359,10 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) 
       padding: space[4], marginBottom: space[4],
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3] }}>
-        <span style={{ fontSize: 10, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: headColor, fontFamily: FF }}>
+        <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: headColor, fontFamily: FF }}>
           {allDone ? 'Fully locked in' : 'Lock-in progress'}
         </span>
-        <span style={{ fontSize: 11.5, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>{done} of {total}</span>
+        <span style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>{done} of {total}</span>
       </div>
       <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center' }}>
         {gates.map(g => {
@@ -3376,10 +3376,10 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) 
           const canAddress = g.status !== 'done' && onAddressRow;
           if (confirmKey === g.key) {
             return (
-              <span key={g.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: type.weight.medium, color: P.amber, background: `${P.amber}14`, border: `1px solid ${P.amber}40`, borderRadius: 999, padding: '4px 9px', fontFamily: FF, whiteSpace: 'nowrap' }}>
+              <span key={g.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: type.size['sm'], fontWeight: type.weight.medium, color: P.amber, background: `${P.amber}14`, border: `1px solid ${P.amber}40`, borderRadius: 999, padding: '4px 9px', fontFamily: FF, whiteSpace: 'nowrap' }}>
                 Un-mark {GATE_REVERSAL[g.key].label}?
-                <button onClick={() => reverse(g.key)} style={{ background: P.amber, color: '#070809', border: 'none', borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: FF }}>Yes</button>
-                <button onClick={() => setConfirmKey(null)} style={{ background: 'none', color: P.textTertiary, border: 'none', padding: '2px 4px', fontSize: 10, cursor: 'pointer', fontFamily: FF }}>No</button>
+                <button onClick={() => reverse(g.key)} style={{ background: P.amber, color: '#070809', border: 'none', borderRadius: 5, padding: '2px 7px', fontSize: type.size['xs'], fontWeight: 700, cursor: 'pointer', fontFamily: FF }}>Yes</button>
+                <button onClick={() => setConfirmKey(null)} style={{ background: 'none', color: P.textTertiary, border: 'none', padding: '2px 4px', fontSize: type.size['xs'], cursor: 'pointer', fontFamily: FF }}>No</button>
               </span>
             );
           }
@@ -3389,7 +3389,7 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) 
               title={canReverse ? `Mistake? Un-mark ${GATE_REVERSAL[g.key].label} as paid` : (canAddress ? `Resolve: ${g.label}` : undefined)}
               style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
-              fontSize: 11, fontWeight: type.weight.medium, color: c,
+              fontSize: type.size['sm'], fontWeight: type.weight.medium, color: c,
               background: `${c}14`, border: `1px solid ${c}40`,
               borderRadius: 999, padding: '4px 9px', fontFamily: FF, whiteSpace: 'nowrap',
               cursor: (canReverse || canAddress) ? 'pointer' : 'default',
@@ -3702,10 +3702,10 @@ function NoSelection({ count }) {
       alignItems: 'center', justifyContent: 'center', gap: 8,
       background: P.canvas,
     }}>
-      <div style={{ fontSize: 13, fontWeight: type.weight.medium, color: P.textSecondary, fontFamily: FF }}>
+      <div style={{ fontSize: type.size['base'], fontWeight: type.weight.medium, color: P.textSecondary, fontFamily: FF }}>
         {count > 0 ? 'Select a vendor to view their details' : 'No vendors added yet'}
       </div>
-      <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>
+      <div style={{ fontSize: type.size['sm'], color: P.textTertiary, fontFamily: FF, maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>
         {count > 0
           ? 'You\'ll see what\'s ready, what still needs follow-up, and what to do next — across planning, the day of, and wrap-up.'
           : 'Add vendors from the event overview to start tracking what needs follow-up.'}
@@ -3839,7 +3839,7 @@ export default function VendorPlanningWorkspace({
         style={{
           background: 'transparent', border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
+          fontSize: type.size['sm'], fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF,
           padding: '4px 10px', maxWidth: 200, overflow: 'hidden',
           textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -3848,7 +3848,7 @@ export default function VendorPlanningWorkspace({
         ← {event?.name ? (event.name.length > 24 ? event.name.slice(0, 23) + '…' : event.name) : 'Overview'}
       </button>
       <span style={{
-        fontSize: 10, fontWeight: type.weight.semibold,
+        fontSize: type.size['xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.16em', textTransform: 'uppercase',
         color: P.textTertiary, fontFamily: FF,
       }}>
@@ -3886,7 +3886,7 @@ export default function VendorPlanningWorkspace({
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '0 16px',
-                fontSize: 12, color: P.textSecondary, fontFamily: FF,
+                fontSize: type.size['caption'], color: P.textSecondary, fontFamily: FF,
               }}
             >
               ← All vendors

@@ -126,7 +126,7 @@ function Bar({ item, barColor, dashed, selected, onClick, urgency }) {
         textDecoration: item.done ? 'line-through' : 'none' }}>{item.task}</span>
       {urgency && !item.done && (
         <span style={{
-          flexShrink:0, fontSize:8, fontWeight:T.weight.semibold,
+          flexShrink:0, fontSize:T.size['2xs'], fontWeight:T.weight.semibold,
           letterSpacing:'0.06em', textTransform:'uppercase',
           color: effectiveColor, background: effectiveColor + '33',
           borderRadius: radius.sm, padding:'1px 4px', lineHeight: 1.4,
@@ -267,7 +267,7 @@ function MobileList({ lanes, eventDate, urgencyOf }) {
                   </div>
                   {u && !item.done && (
                     <span title={u.explanation} style={{
-                      flexShrink:0, fontSize:9, fontWeight:T.weight.semibold,
+                      flexShrink:0, fontSize:T.size['2xs'], fontWeight:T.weight.semibold,
                       color: uTone, background: uTone + '20',
                       border:`1px solid ${uTone}55`, borderRadius:radius.sm,
                       padding:'2px 6px', letterSpacing:'0.06em', textTransform:'uppercase',
@@ -390,7 +390,7 @@ export default function TimelineBuilder({
           style={{
             background: 'transparent', border: `1px solid ${P.borderS}`,
             borderRadius: radius.sm, cursor: 'pointer',
-            fontSize: 11, fontWeight: T.weight.medium,
+            fontSize: T.size.sm, fontWeight: T.weight.medium,
             color: P.textSec, fontFamily: FF,
             padding: '4px 10px',
           }}
@@ -398,7 +398,7 @@ export default function TimelineBuilder({
           ← Overview
         </button>
         <span style={{
-          fontSize: 9, fontWeight: T.weight.semibold,
+          fontSize: T.size['2xs'], fontWeight: T.weight.semibold,
           letterSpacing: '0.16em', textTransform: 'uppercase',
           color: P.textTer, fontFamily: FF,
         }}>
@@ -424,14 +424,14 @@ export default function TimelineBuilder({
             fontFamily: FF,
           }}>
             <span style={{
-              fontSize: 9.5, fontWeight: T.weight.semibold,
+              fontSize: T.size['2xs'], fontWeight: T.weight.semibold,
               color: tone, background: tone + '18',
               border: `1px solid ${tone}44`, borderRadius: radius.full,
               padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>
               ⏱ {compressionSummary.meta.label}
             </span>
-            <span style={{ fontSize: 11.5, color: P.textSec }}>
+            <span style={{ fontSize: T.size.sm, color: P.textSec }}>
               {compressionSummary.headline || 'Tight timeline — a few tasks moved to the front.'}
             </span>
           </div>
@@ -447,25 +447,25 @@ export default function TimelineBuilder({
           fontFamily: FF,
         }}>
           <span style={{
-            fontSize: 9, fontWeight: T.weight.semibold,
+            fontSize: T.size['2xs'], fontWeight: T.weight.semibold,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: P.textTer,
           }}>Current Phase</span>
           {phaseFocus.phase && (
-            <span style={{ fontSize: 11, fontWeight: T.weight.medium, color: P.text }}>
+            <span style={{ fontSize: T.size.sm, fontWeight: T.weight.medium, color: P.text }}>
               {phaseFocus.phase}
             </span>
           )}
           {phaseFocus.focus && (
             <>
-              <span style={{ fontSize: 11, color: P.textTer }}>·</span>
-              <span style={{ fontSize: 11, color: P.textSec }}>{phaseFocus.focus}</span>
+              <span style={{ fontSize: T.size.sm, color: P.textTer }}>·</span>
+              <span style={{ fontSize: T.size.sm, color: P.textSec }}>{phaseFocus.focus}</span>
             </>
           )}
           {phaseFocus.tips && phaseFocus.tips[0] && (
             <>
-              <span style={{ fontSize: 11, color: P.textTer }}>·</span>
-              <span style={{ fontSize: 11, color: P.textSec, fontStyle: 'italic' }}>
+              <span style={{ fontSize: T.size.sm, color: P.textTer }}>·</span>
+              <span style={{ fontSize: T.size.sm, color: P.textSec, fontStyle: 'italic' }}>
                 {phaseFocus.tips[0]}
               </span>
             </>
@@ -499,7 +499,7 @@ export default function TimelineBuilder({
       {/* Top bar */}
       <div style={{ padding:`${space[3]}px ${space[5]}px`, borderBottom:`1px solid ${P.borderS}`,
         display:'flex', alignItems:'center', justifyContent:'space-between', gap:space[4], flexShrink:0 }}>
-        <span style={{ color:P.text, fontSize:T.size.md, fontWeight:T.weight.semibold, fontFamily:FF }}>
+        <span style={{ color:P.text, fontSize:T.size.xl, fontWeight:T.weight.semibold, fontFamily:FF }}>
           Timeline Builder
         </span>
         <ViewToggle active={viewMode} onChange={setViewMode} />

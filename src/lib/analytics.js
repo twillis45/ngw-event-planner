@@ -125,7 +125,10 @@ export const EVENTS = {
   // Invite growth loop — host shares their invite link → guest RSVPs back to host.
   // The two-step viral loop we instrument to measure invite-driven growth.
   INVITE_SHARED:          'invite_shared',          // host shares/copies invite link
+  INVITE_VIEWED:          'invite_viewed',          // a guest OPENS the shared invite page (reach — did the share land?)
+  INVITE_RSVP_SUBMITTED:  'invite_rsvp_submitted',  // a guest submits the RSVP on the invite page (conversion)
   GUEST_RSVP_RECEIVED:    'guest_rsvp_received',     // a guest RSVP arrives back to the host
+  PLAN_YOURS_TAPPED:      'plan_yours_tapped',       // a guest taps the "make one free" recruit CTA on the confirmation (recruitment top-of-funnel)
 
   // Activation funnel (Sprint 55N) — denominator → setup → value → retention
   SIGNED_UP:              'signed_up',
@@ -179,6 +182,13 @@ export const EVENTS = {
   WEATHER_ALERT_SHOWN:    'weather_alert_shown',
   RSVP_REMINDER_SENT:     'rsvp_reminder_sent',
   AI_COPILOT_USED:        'ai_copilot_used',
+
+  // Funnel depth (2026-06-25) — two high-signal moments that were firing nothing:
+  //   • DAY_MODE_OPENED      — host opened event-day mode (the run of show goes live).
+  //   • SHOPPING_PLAN_VIEWED — host opened their sized shopping/food plan (value moment).
+  // (RSVP_REMINDER_SENT already exists; it was being mis-tagged as INVITE_SHARED.)
+  DAY_MODE_OPENED:        'day_mode_opened',
+  SHOPPING_PLAN_VIEWED:   'shopping_plan_viewed',
 };
 
 /**

@@ -159,7 +159,7 @@ function StatusPill({ label }) {
   const clr = pillColor(label);
   return (
     <span style={{
-      fontSize: 9, fontWeight: type.weight.medium,
+      fontSize: type.size['2xs'], fontWeight: type.weight.medium,
       letterSpacing: '0.08em', color: clr,
       padding: '2px 6px', borderRadius: 3,
       border: `1px solid ${clr}44`, background: clr + '12',
@@ -188,14 +188,14 @@ function FilterTabs({ active, counts, onChange }) {
               padding: '3px 10px', borderRadius: radius.sm,
               border: isActive ? `1px solid ${P.borderSubtle}` : '1px solid transparent',
               background: isActive ? 'rgba(110,135,148,0.18)' : 'transparent',
-              cursor: 'pointer', fontFamily: FF, fontSize: 11,
+              cursor: 'pointer', fontFamily: FF, fontSize: type.size.sm,
               fontWeight: isActive ? type.weight.semibold : type.weight.regular,
               color: isActive ? P.textPrimary : P.textSecondary,
             }}
           >
             {f}
             {counts[f] > 0 && (
-              <span style={{ marginLeft: 4, fontSize: 10, color: P.textTertiary }}>
+              <span style={{ marginLeft: 4, fontSize: type.size.xs, color: P.textTertiary }}>
                 {counts[f]}
               </span>
             )}
@@ -225,7 +225,7 @@ function ItemList({ items, filter, selected, onSelect }) {
     }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: space[7], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
+          <div style={{ padding: space[7], textAlign: 'center', fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF }}>
             No items
           </div>
         ) : filtered.map(item => {
@@ -248,20 +248,21 @@ function ItemList({ items, filter, selected, onSelect }) {
               {/* Type badge + date */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{
-                  fontSize: 9, fontWeight: type.weight.medium,
-                  letterSpacing: '0.08em', color: P.textTertiary,
+                  fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em', color: P.textTertiary,
                   fontFamily: FF,
                 }}>
                   {item.type}
                 </span>
-                <span style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF }}>
+                <span style={{ fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF }}>
                   {fmtRelative(item.date)}
                 </span>
               </div>
 
               {/* Title */}
               <div style={{
-                fontSize: 12, fontWeight: type.weight.medium,
+                fontSize: type.size.section, fontWeight: type.weight.semibold,
                 color: P.textPrimary, fontFamily: FF, lineHeight: 1.35,
               }}>
                 {item.title}
@@ -269,7 +270,7 @@ function ItemList({ items, filter, selected, onSelect }) {
 
               {/* Owner + status */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontSize: 10, color: P.textSecondary, fontFamily: FF }}>
+                <span style={{ fontSize: type.size.xs, color: P.textSecondary, fontFamily: FF }}>
                   Owner: {item.owner}
                 </span>
                 <StatusPill label={item.status} />
@@ -293,11 +294,11 @@ function DetailRow({ label, value, valueColor }) {
       gap: 16, padding: `${space[3]}px 0`,
       borderBottom: `1px solid ${P.borderSubtle}`,
     }}>
-      <span style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF }}>
+      <span style={{ fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF }}>
         {label}
       </span>
       <span style={{
-        fontSize: 12, fontWeight: type.weight.medium,
+        fontSize: type.size.caption, fontWeight: type.weight.medium,
         color: valueColor || P.textPrimary, fontFamily: FF,
         textAlign: 'right', maxWidth: '60%',
       }}>
@@ -319,8 +320,8 @@ function ImpactedTaskRow({ task }) {
     }}>
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: dot, flexShrink: 0 }} />
       <div>
-        <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF }}>{label}</div>
-        <div style={{ fontSize: 10, color: P.textTertiary, fontFamily: FF }}>{type_}</div>
+        <div style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF }}>{label}</div>
+        <div style={{ fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF }}>{type_}</div>
       </div>
     </div>
   );
@@ -367,14 +368,14 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
           <div>
             <div style={{
-              fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em',
+              fontSize: type.size['2xs'], fontWeight: type.weight.medium, letterSpacing: '0.10em',
               color: item.type === 'APPROVAL' ? P.amber : P.textTertiary,
               fontFamily: FF, marginBottom: 4,
             }}>
               {item.type}
             </div>
             <div style={{
-              fontSize: 20, fontWeight: type.weight.semibold,
+              fontSize: type.size['2xl'], fontWeight: type.weight.semibold,
               color: P.textPrimary, fontFamily: FF, lineHeight: 1.2,
             }}>
               {item.title}
@@ -384,7 +385,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
         </div>
         {item.body && (
           <div style={{
-            fontSize: 12, color: P.textSecondary, fontFamily: FF,
+            fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF,
             lineHeight: type.leading.relaxed, marginTop: 4,
           }}>
             {item.body.slice(0, 200)}{item.body.length > 200 ? '…' : ''}
@@ -407,7 +408,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
               style={{
                 height: 38, padding: '0 14px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: FF, fontSize: 12,
+                fontFamily: FF, fontSize: type.size.caption,
                 fontWeight: isActive ? type.weight.semibold : type.weight.regular,
                 color: isActive ? P.textPrimary : P.textSecondary,
                 borderBottom: isActive ? `2px solid ${P.green}` : '2px solid transparent',
@@ -434,7 +435,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                 marginBottom: 16,
               }}>
                 <div style={{
-                  fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.12em',
+                  fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em',
                   color: P.textTertiary, fontFamily: FF,
                   padding: `${space[4]}px 0 ${space[2]}px`,
                 }}>
@@ -486,7 +487,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                   marginBottom: 16,
                 }}>
                   <div style={{
-                    fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.12em',
+                    fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em',
                     color: P.textTertiary, fontFamily: FF,
                     padding: `${space[4]}px 0 ${space[2]}px`,
                   }}>
@@ -504,7 +505,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
             <div style={{
               background: P.card, border: `1px solid ${P.borderSubtle}`,
               borderRadius: radius.md, padding: space[5],
-              fontSize: 12, color: P.textTertiary, fontFamily: FF,
+              fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF,
               textAlign: 'center',
             }}>
               No supporting files attached
@@ -522,14 +523,14 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                 ))}
               </div>
             ) : (
-              <div style={{ fontSize: 12, color: P.textTertiary, fontFamily: FF, textAlign: 'center', paddingTop: space[9] }}>
+              <div style={{ fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF, textAlign: 'center', paddingTop: space[9] }}>
                 No impacted tasks linked
               </div>
             )
           )}
 
           {tab === 'Communication' && (
-            <div style={{ fontSize: 12, color: P.textTertiary, fontFamily: FF, textAlign: 'center', paddingTop: space[9] }}>
+            <div style={{ fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF, textAlign: 'center', paddingTop: space[9] }}>
               Communication history for this item will appear here
             </div>
           )}
@@ -546,7 +547,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
             background: P.base, overflowY: 'auto',
           }}>
             <div style={{
-              fontSize: 13, fontWeight: type.weight.semibold,
+              fontSize: type.size.base, fontWeight: type.weight.semibold,
               color: P.textPrimary, fontFamily: FF, marginBottom: space[5],
             }}>
               {item.type === 'DECISION' ? 'Resolve Decision' : 'Your Decision'}
@@ -560,7 +561,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                 display: 'block', width: '100%', padding: `${space[4]}px`,
                 marginBottom: 10,
                 background: P.green, border: 'none', borderRadius: radius.sm,
-                cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                 color: '#fff', fontFamily: FF, textAlign: 'center',
               }}
             >
@@ -577,7 +578,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                     display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
                     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
                     background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                     color: P.textSecondary, fontFamily: FF, textAlign: 'center',
                   }}
                 >
@@ -594,7 +595,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                     style={{
                       width: '100%', padding: `${space[4]}px`,
                       background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                      cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                      cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                       color: P.textSecondary, fontFamily: FF, appearance: 'none', textAlign: 'center', textAlignLast: 'center',
                     }}
                   >
@@ -610,7 +611,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                       display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
                       alignItems: 'center', justifyContent: 'center',
                       background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                      cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                      cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                       color: P.textSecondary, fontFamily: FF, textAlign: 'center',
                     }}
                   >
@@ -627,7 +628,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                     display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
                     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
                     background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                     color: P.textSecondary, fontFamily: FF, textAlign: 'center',
                   }}
                 >
@@ -641,7 +642,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                     display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
                     alignItems: 'center', justifyContent: 'center',
                     background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                    cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                    cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                     color: P.textSecondary, fontFamily: FF, textAlign: 'center',
                   }}
                 >
@@ -662,7 +663,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                   display: 'flex', width: '100%', padding: `${space[4]}px`, gap: 8,
                   alignItems: 'center', justifyContent: 'center', marginTop: 10,
                   background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
-                  cursor: 'pointer', fontSize: 13, fontWeight: type.weight.semibold,
+                  cursor: 'pointer', fontSize: type.size.base, fontWeight: type.weight.semibold,
                   color: sentNote ? P.green : P.textSecondary, fontFamily: FF, textAlign: 'center',
                 }}
               >
@@ -670,7 +671,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
               </button>
             ) : (
               <div style={{ marginTop: 10, border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: space[3], background: P.card }}>
-                <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>
+                <div style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>
                   Message the client about this — logs to the conversation in Messages.
                 </div>
                 <textarea
@@ -681,7 +682,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                   style={{
                     width: '100%', boxSizing: 'border-box', borderRadius: radius.sm,
                     border: `1px solid ${P.borderSubtle}`, background: P.base,
-                    padding: space[3], fontSize: 12.5, color: P.textPrimary, fontFamily: FF,
+                    padding: space[3], fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF,
                     resize: 'vertical', outline: 'none', lineHeight: 1.5,
                   }}
                 />
@@ -693,7 +694,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                       flex: 1, padding: `${space[3]}px`, borderRadius: radius.sm, border: 'none',
                       background: draft.trim() ? P.green : P.borderDef, color: '#fff',
                       cursor: draft.trim() ? 'pointer' : 'default',
-                      fontSize: 12, fontWeight: type.weight.semibold, fontFamily: FF,
+                      fontSize: type.size.caption, fontWeight: type.weight.semibold, fontFamily: FF,
                     }}
                   >
                     Send &amp; log
@@ -703,7 +704,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                     style={{
                       padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.sm,
                       background: 'transparent', border: `1px solid ${P.borderDef}`,
-                      color: P.textSecondary, cursor: 'pointer', fontSize: 12,
+                      color: P.textSecondary, cursor: 'pointer', fontSize: type.size.caption,
                       fontWeight: type.weight.semibold, fontFamily: FF,
                     }}
                   >
@@ -727,7 +728,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                 border: `1px solid ${P.borderSubtle}`,
                 background: P.card,
                 padding: space[4],
-                fontSize: 12, color: P.textPrimary, fontFamily: FF,
+                fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF,
                 minHeight: 60, resize: 'vertical', outline: 'none', lineHeight: 1.5,
               }}
             />
@@ -737,7 +738,7 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
                 the Communication tab's approval request (commApi + portal). */}
             <div style={{
               marginTop: space[3],
-              fontSize: 11, color: P.textTertiary, fontFamily: FF, lineHeight: 1.5,
+              fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF, lineHeight: 1.5,
             }}>
               Recorded on your board — the client isn't notified here. To ask the client,
               use <strong style={{ color: P.textSecondary, fontWeight: type.weight.semibold }}>Communication → request approval</strong>.
@@ -756,13 +757,13 @@ function ItemDetail({ item, onAction, note, onSaveNote, onSendMessage, onReassig
             alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
             <div style={{
-              fontSize: 12, fontWeight: type.weight.semibold,
+              fontSize: type.size.caption, fontWeight: type.weight.semibold,
               color: item.status === 'APPROVED' ? P.green : P.red,
               fontFamily: FF,
             }}>
               {item.status === 'APPROVED' ? 'Approved' : 'Rejected'}
             </div>
-            <div style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF, textAlign: 'center' }}>
+            <div style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF, textAlign: 'center' }}>
               This item has been closed
             </div>
           </div>
@@ -810,19 +811,20 @@ function MobileItemCard({ item, onAction, isTarget, onSendMessage, onReassign, r
       >
         <div style={{ flex: 1 }}>
           <div style={{
-            fontSize: 9, letterSpacing: '0.08em',
+            fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
             color: item.type === 'APPROVAL' ? P.amber : P.textTertiary,
             fontFamily: FF, marginBottom: 4,
           }}>
             {item.type}
           </div>
           <div style={{
-            fontSize: 13, fontWeight: type.weight.medium,
+            fontSize: type.size.section, fontWeight: type.weight.semibold,
             color: P.textPrimary, fontFamily: FF, lineHeight: 1.3,
           }}>
             {item.title}
           </div>
-          <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>
+          <div style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF, marginTop: 4 }}>
             Owner: {item.owner}
           </div>
         </div>
@@ -836,7 +838,7 @@ function MobileItemCard({ item, onAction, isTarget, onSendMessage, onReassign, r
           {item.body && (
             <div style={{
               padding: `${space[3]}px ${space[4]}px ${alreadyClosed ? space[4] : space[2]}px`,
-              fontSize: 12, color: P.textSecondary, fontFamily: FF,
+              fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF,
               lineHeight: type.leading.relaxed,
             }}>
               {item.body}
@@ -844,23 +846,23 @@ function MobileItemCard({ item, onAction, isTarget, onSendMessage, onReassign, r
           )}
           {!alreadyClosed && item.type === 'APPROVAL' && (
             <div style={{ padding: `${space[2]}px ${space[4]}px ${space[4]}px`, display: 'flex', gap: 8 }}>
-              <button onClick={() => onAction(item, 'approve')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Approve</button>
-              <button onClick={() => onAction(item, 'revision')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Revision</button>
-              <button onClick={() => onAction(item, 'reject')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reject</button>
+              <button onClick={() => onAction(item, 'approve')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Approve</button>
+              <button onClick={() => onAction(item, 'revision')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Revision</button>
+              <button onClick={() => onAction(item, 'reject')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reject</button>
             </div>
           )}
           {!alreadyClosed && item.type === 'DECISION' && (
             <div style={{ padding: `${space[2]}px ${space[4]}px ${space[2]}px`, display: 'flex', gap: 8 }}>
-              <button onClick={() => onAction(item, 'close')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Mark done</button>
-              <button onClick={() => onAction(item, 'extend')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Extend +1wk</button>
+              <button onClick={() => onAction(item, 'close')} style={{ flex: 1, padding: `${space[3]}px`, background: P.green, border: 'none', borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: '#fff', fontFamily: FF }}>Mark done</button>
+              <button onClick={() => onAction(item, 'extend')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Extend +1wk</button>
               {onReassign && reassignOptions.length > 0 ? (
                 <select value="" onChange={e => { if (e.target.value) onReassign(item, e.target.value); }} aria-label="Reassign to"
-                  style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF, appearance: 'none', textAlignLast: 'center' }}>
+                  style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF, appearance: 'none', textAlignLast: 'center' }}>
                   <option value="" disabled>Reassign</option>
                   {reassignOptions.filter(o => o !== item.owner).map(o => <option key={o} value={o}>{`To ${o}`}</option>)}
                 </select>
               ) : (
-                <button onClick={() => onAction(item, 'reassign')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reassign</button>
+                <button onClick={() => onAction(item, 'reassign')} style={{ flex: 1, padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>Reassign</button>
               )}
             </div>
           )}
@@ -869,18 +871,18 @@ function MobileItemCard({ item, onAction, isTarget, onSendMessage, onReassign, r
               {!composing ? (
                 <button
                   onClick={() => { if (onSendMessage) { setSentNote(false); setDraft(`Re: ${item.title}\n\n`); setComposing(true); } else onAction(item, 'message'); }}
-                  style={{ width: '100%', padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, color: sentNote ? P.green : P.textSecondary, fontFamily: FF }}>
+                  style={{ width: '100%', padding: `${space[3]}px`, background: 'transparent', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, color: sentNote ? P.green : P.textSecondary, fontFamily: FF }}>
                   {sentNote ? '✓ Logged to client thread' : '✉ Message about this'}
                 </button>
               ) : (
                 <div>
                   <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} rows={4}
-                    style={{ width: '100%', boxSizing: 'border-box', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.base, padding: space[3], fontSize: 12, color: P.textPrimary, fontFamily: FF, resize: 'vertical', outline: 'none', lineHeight: 1.5 }} />
+                    style={{ width: '100%', boxSizing: 'border-box', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.base, padding: space[3], fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF, resize: 'vertical', outline: 'none', lineHeight: 1.5 }} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button onClick={() => { const b = draft.trim(); if (b && onSendMessage) { onSendMessage(item, b); setComposing(false); setDraft(''); setSentNote(true); } }} disabled={!draft.trim()}
-                      style={{ flex: 1, padding: `${space[3]}px`, borderRadius: radius.sm, border: 'none', background: draft.trim() ? P.green : P.borderDef, color: '#fff', cursor: draft.trim() ? 'pointer' : 'default', fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF }}>Send &amp; log</button>
+                      style={{ flex: 1, padding: `${space[3]}px`, borderRadius: radius.sm, border: 'none', background: draft.trim() ? P.green : P.borderDef, color: '#fff', cursor: draft.trim() ? 'pointer' : 'default', fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF }}>Send &amp; log</button>
                     <button onClick={() => { setComposing(false); setDraft(''); }}
-                      style={{ padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.sm, background: 'transparent', border: `1px solid ${P.borderDef}`, color: P.textSecondary, cursor: 'pointer', fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF }}>Cancel</button>
+                      style={{ padding: `${space[3]}px ${space[4]}px`, borderRadius: radius.sm, background: 'transparent', border: `1px solid ${P.borderDef}`, color: P.textSecondary, cursor: 'pointer', fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF }}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -995,7 +997,7 @@ export default function DecisionApprovalCenter({
         style={{
           background: 'transparent', border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
+          fontSize: type.size.sm, fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF,
           padding: '4px 10px',
         }}
@@ -1003,7 +1005,7 @@ export default function DecisionApprovalCenter({
         ← Overview
       </button>
       <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
+        fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.16em', textTransform: 'uppercase',
         color: P.textTertiary, fontFamily: FF,
       }}>
@@ -1020,13 +1022,13 @@ export default function DecisionApprovalCenter({
         {workspaceHeader}
         <div style={{ padding: `${space[4]}px ${space[4]}px` }}>
         <div style={{
-          fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em',
+          fontSize: type.size['2xs'], fontWeight: type.weight.medium, letterSpacing: '0.10em',
           color: P.textTertiary, fontFamily: FF, marginBottom: space[4],
         }}>
           DECISIONS + APPROVALS · {items.length} ITEMS
         </div>
         {displayItems.length === 0 ? (
-          <div style={{ textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
+          <div style={{ textAlign: 'center', fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
             No decisions or approvals
           </div>
         ) : displayItems.map(item => (
@@ -1076,7 +1078,7 @@ export default function DecisionApprovalCenter({
       ) : (
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, color: P.textTertiary, fontFamily: FF,
+          fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF,
         }}>
           {items.length > 0 ? 'Select an item to view details' : 'No decisions or approvals yet'}
         </div>

@@ -675,6 +675,51 @@ describe('#2 — guest-count satisfaction (headcount mode + lock)', () => {
   });
 });
 
+describe('safe-headcount band — attendanceBand()', () => {
+  const { attendanceBand, attendanceBandLabel } = require('../index');
+  test('a roster with outstanding replies is a real range (low=confirmed, high=not-declined)', () => {
+    const ev = { guests: [
+      { rsvp: 'Yes' }, { rsvp: 'Yes' }, { rsvp: 'yes' }, // 3 confirmed
+      { rsvp: 'Maybe' },                                  // 1 maybe
+      { rsvp: '' }, { rsvp: '' },                         // 2 pending
+      { rsvp: 'No' },                                     // 1 declined (drops out)
+    ] };
+    const b = attendanceBand(ev);
+    expect(b.basis).toBe('rsvp');
+    expect(b.band).toBe(true);
+    expect(b.low).toBe(3);          // confirmed only
+    expect(b.high).toBe(6);         // confirmed + maybe + pending (no declines)
+    expect(b.planning).toBe(6);     // size to the ceiling — won't run short
+    expect(b.declined).toBe(1);
+    expect(attendanceBandLabel(b)).toBe('3–6');
+    expect(b.because).toMatch(/3 confirmed/);
+  });
+  test('a fully-replied roster collapses to ONE number (no fabricated spread)', () => {
+    const ev = { guests: [{ rsvp: 'Yes' }, { rsvp: 'Yes' }, { rsvp: 'No' }] };
+    const b = attendanceBand(ev);
+    expect(b.band).toBe(false);
+    expect(b.low).toBe(2);
+    expect(b.high).toBe(2);
+    expect(attendanceBandLabel(b)).toBe('2');
+  });
+  test('a locked headcount is a single real number, never banded', () => {
+    const b = attendanceBand({ guestMode: 'count', guestCount: 40, guests: [{ rsvp: 'Maybe' }] });
+    expect(b.basis).toBe('count');
+    expect(b.band).toBe(false);
+    expect(b.planning).toBe(40);
+    expect(attendanceBandLabel(b)).toBe('40');
+  });
+  test('an estimate-only event uses the estimate, unbanded', () => {
+    const b = attendanceBand({ guestEstimate: '30' });
+    expect(b.planning).toBe(30);
+    expect(b.band).toBe(false);
+  });
+  test('no count signal → not applicable (nothing to claim)', () => {
+    expect(attendanceBand({ guests: [] }).applicable).toBe(false);
+    expect(attendanceBandLabel(attendanceBand({ guests: [] }))).toBe(null);
+  });
+});
+
 describe('board ruling — per-guest rate on food lines', () => {
   test('per-guest-scaled items expose perGuest; flat items do not', () => {
     const p = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [] });

@@ -34,7 +34,10 @@ describe('57E-A hostNav — FLAG ON', () => {
 
   test('T4 reveal-when-data: Vendors / Documents / Messages appear only with data', () => {
     expect(hostNav(TABS, { ...HOST, vendors: [{ id: 'v1' }] })).toContain('Vendors');
-    expect(hostNav(TABS, { ...HOST, documents: [{ id: 'd1' }] })).toContain('Documents');
+    // Documents needs BOTH a vendor to attach paperwork to AND actual documents,
+    // else it's an empty filing cabinet — documents alone does not reveal the tab.
+    expect(hostNav(TABS, { ...HOST, documents: [{ id: 'd1' }], vendors: [{ id: 'v1' }] })).toContain('Documents');
+    expect(hostNav(TABS, { ...HOST, documents: [{ id: 'd1' }] })).not.toContain('Documents');
     expect(hostNav(TABS, { ...HOST, commClient: [{ id: 'm1' }] })).toContain('Communication');
     // …and stay hidden without data
     expect(hostNav(TABS, HOST)).not.toContain('Vendors');

@@ -87,15 +87,22 @@ export const VOICE = {
     }),
   },
   compression: {
-    host: () => ({
-      title: "A few things land around the same time.",
-      consequence: "We'll take them one at a time — do this one now and the home stretch stays calm. I've got the order.",
-      primaryCta: "See what's first",
+    // Owner directive 2026-06-24: the spine must say THE ACTION, never a situational
+    // narration. The engine now leads `title` with the concrete first task, so the
+    // voice NO LONGER overrides title — it only carries tone in the consequence + CTA.
+    // (renderAction merges only the OVERRIDE_FIELDS returned, so omitting `title`
+    // passes the engine's action through untouched.)
+    host: (c) => ({
+      consequence: (c && c.moreCount > 0)
+        ? `${c.moreCount} more cluster around now — do this first and I'll keep the rest in order.`
+        : "Knock this out and the home stretch stays calm — I've got the order.",
+      primaryCta: 'Do this first',
     }),
-    operator: () => ({
-      title: "The schedule is tightening.",
-      consequence: "Several items need attention now to stay on schedule.",
-      primaryCta: 'Review priorities',
+    operator: (c) => ({
+      consequence: (c && c.moreCount > 0)
+        ? `${c.moreCount} more items cluster here — clear this first to keep the schedule moving.`
+        : "Clear this now to keep the schedule on track.",
+      primaryCta: 'Handle this',
     }),
   },
   timeline: {

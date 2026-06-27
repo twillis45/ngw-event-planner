@@ -90,8 +90,8 @@ function ProgressBar({ label, tasks, hideBar = false }) {
   return (
     <div style={{ marginBottom: hideBar ? sp[3] : sp[4] }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: hideBar ? 0 : sp[2] }}>
-        <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.medium, color: P.textSecondary, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</span>
-        <span style={{ fontFamily: FF, fontSize: 11, color: P.textTertiary }}>{done}/{total}</span>
+        <span style={{ fontFamily: FF, fontSize: type.size.sm, fontWeight: type.weight.medium, color: P.textSecondary, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</span>
+        <span style={{ fontFamily: FF, fontSize: type.size.sm, color: P.textTertiary }}>{done}/{total}</span>
       </div>
       {/* UX-SAAS — a host doesn't get a project-manager completion bar; the label + count
           is enough orientation. The planner keeps the bar. */}
@@ -108,8 +108,8 @@ function ProgressBar({ label, tasks, hideBar = false }) {
 function StatCard({ label, value, valueColor }) {
   return (
     <div style={{ flex: 1, minWidth: 0, background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: r.md, padding: `${sp[4]}px ${sp[5]}px`, display: 'flex', flexDirection: 'column', gap: sp[1] }}>
-      <span style={{ fontFamily: FF, fontSize: 22, fontWeight: type.weight.semibold, color: valueColor || P.textPrimary, lineHeight: 1.2 }}>{value}</span>
-      <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.medium, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+      <span style={{ fontFamily: FF, fontSize: type.size['3xl'], fontWeight: type.weight.semibold, color: valueColor || P.textPrimary, lineHeight: 1.2 }}>{value}</span>
+      <span style={{ fontFamily: FF, fontSize: type.size.sm, fontWeight: type.weight.medium, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
     </div>
   );
 }
@@ -138,27 +138,27 @@ function CheckRow({ task, eventDate, onToggle, onOpen, urgency }) {
       </button>
 
       <button type="button" onClick={() => onOpen && onOpen(task)} disabled={!onOpen}
-        style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: onOpen ? 'pointer' : 'default', fontFamily: FF, fontSize: 13, lineHeight: 1.4, color: task.done ? P.textTertiary : P.textPrimary, textDecoration: task.done ? 'line-through' : 'none' }}>
+        style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: onOpen ? 'pointer' : 'default', fontFamily: FF, fontSize: type.size.base, lineHeight: 1.4, color: task.done ? P.textTertiary : P.textPrimary, textDecoration: task.done ? 'line-through' : 'none' }}>
         {task.task}
-        {subs.length > 0 && <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700, color: subs.filter(x => x.done).length === subs.length ? P.green : P.steelBlue || P.textSecondary, whiteSpace: 'nowrap' }}>✓ {subs.filter(x => x.done).length}/{subs.length}</span>}
-        {onOpen && <span aria-hidden style={{ marginLeft: 6, fontSize: 11, color: P.textTertiary }}>›</span>}
+        {subs.length > 0 && <span style={{ marginLeft: 8, fontSize: type.size.sm, fontWeight: 700, color: subs.filter(x => x.done).length === subs.length ? P.green : P.steelBlue || P.textSecondary, whiteSpace: 'nowrap' }}>✓ {subs.filter(x => x.done).length}/{subs.length}</span>}
+        {onOpen && <span aria-hidden style={{ marginLeft: 6, fontSize: type.size.sm, color: P.textTertiary }}>›</span>}
       </button>
 
       {task.owner && (
-        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: 10, fontWeight: type.weight.medium, color: P.textTertiary, background: P.borderSubtle, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.xs, fontWeight: type.weight.medium, color: P.textTertiary, background: P.borderSubtle, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
           {task.owner}
         </span>
       )}
 
       {task.week && (
-        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: 11, color: P.textTertiary, whiteSpace: 'nowrap' }}>
+        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.sm, color: P.textTertiary, whiteSpace: 'nowrap' }}>
           {task.week}
         </span>
       )}
 
       {urgency && !task.done && (
         <span title={urgency.explanation}
-          style={{ flexShrink: 0, fontFamily: FF, fontSize: 10, fontWeight: type.weight.semibold,
+          style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.xs, fontWeight: type.weight.semibold,
             color: uTone, background: uTone + '18', border: `1px solid ${uTone}55`,
             borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`,
             letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
@@ -167,7 +167,7 @@ function CheckRow({ task, eventDate, onToggle, onOpen, urgency }) {
       )}
 
       {showOverduePill && (
-        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: 10, fontWeight: type.weight.semibold, color: P.red, background: '#1a0608', border: `1px solid ${P.red}`, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        <span style={{ flexShrink: 0, fontFamily: FF, fontSize: type.size.xs, fontWeight: type.weight.semibold, color: P.red, background: '#1a0608', border: `1px solid ${P.red}`, borderRadius: r.sm, padding: `${sp[1]}px ${sp[3]}px`, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
           OVERDUE
         </span>
       )}
@@ -267,7 +267,7 @@ export default function ChecklistGenerator({
     return (
       <button
         onClick={() => setOwnerFilter(active ? null : owner)}
-        style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: active ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, color: active ? P.textPrimary : P.textSecondary, marginBottom: sp[1], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: active ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: type.size.caption, color: active ? P.textPrimary : P.textSecondary, marginBottom: sp[1], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
       >{owner}</button>
     );
   };
@@ -286,7 +286,7 @@ export default function ChecklistGenerator({
         style={{
           background: 'transparent', border: `1px solid ${P.borderSubtle}`,
           borderRadius: r.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
+          fontSize: type.size.sm, fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF,
           padding: '4px 10px',
         }}
@@ -294,7 +294,7 @@ export default function ChecklistGenerator({
         ← Overview
       </button>
       <span style={{
-        fontSize: 9, fontWeight: type.weight.semibold,
+        fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.16em', textTransform: 'uppercase',
         color: P.textTertiary, fontFamily: FF,
       }}>
@@ -312,7 +312,7 @@ export default function ChecklistGenerator({
       {!isMobile && (
         <div style={{ width: 200, flexShrink: 0, background: P.base, borderRight: `1px solid ${P.borderSubtle}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           <div style={{ padding: `${sp[5]}px ${sp[5]}px ${sp[3]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Progress</span>
+            <span style={{ fontFamily: FF, fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Progress</span>
           </div>
           <div style={{ padding: `${sp[5]}px ${sp[5]}px 0` }}>
             {/* P1 — host: drop the planner-only "Client" lane, hide empty Vendor/Venue
@@ -327,10 +327,10 @@ export default function ChecklistGenerator({
           {!isHost && owners.length > 0 && (
             <>
               <div style={{ padding: `${sp[5]}px ${sp[5]}px ${sp[3]}px`, borderTop: `1px solid ${P.borderSubtle}`, marginTop: sp[4] }}>
-                <span style={{ fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Filter by Owner</span>
+                <span style={{ fontFamily: FF, fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textTertiary, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Filter by Owner</span>
               </div>
               <div style={{ padding: `0 ${sp[4]}px ${sp[5]}px` }}>
-                <button onClick={() => setOwnerFilter(null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: !ownerFilter ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: 12, fontWeight: type.weight.medium, color: !ownerFilter ? P.textPrimary : P.textSecondary, marginBottom: sp[1] }}>All</button>
+                <button onClick={() => setOwnerFilter(null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: `${sp[2]}px ${sp[3]}px`, borderRadius: r.sm, background: !ownerFilter ? 'rgba(110,135,148,0.18)' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: FF, fontSize: type.size.caption, fontWeight: type.weight.medium, color: !ownerFilter ? P.textPrimary : P.textSecondary, marginBottom: sp[1] }}>All</button>
                 {owners.map(o => <OwnerBtn key={o} owner={o} />)}
               </div>
             </>
@@ -345,7 +345,7 @@ export default function ChecklistGenerator({
             of Done/Remaining/Overdue/Total steps. The planner keeps the dashboard. */}
         {isHost ? (
           <div style={{ flexShrink: 0, padding: `${sp[5]}px ${sp[6]}px`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontFamily: FF, fontSize: 16, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
+            <div style={{ fontFamily: FF, fontSize: type.size.xl, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
               {remaining === 0
                 ? 'You’re all set — nothing left to do. 🎉'
                 : <>{doneCount} done · {remaining} to go{overdue > 0 ? <span style={{ color: P.amber }}> · {overdue} need{overdue === 1 ? 's' : ''} a look</span> : null}</>}
@@ -379,14 +379,14 @@ export default function ChecklistGenerator({
               fontFamily: FF,
             }}>
               <span style={{
-                fontSize: 9.5, fontWeight: type.weight.semibold,
+                fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
                 color: tone, background: tone + '20',
                 border: `1px solid ${tone}55`, borderRadius: r.full,
                 padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>
                 ⏱ {compressionSummary.meta.label}
               </span>
-              <span style={{ fontSize: 11.5, color: P.textSecondary, flex: 1, minWidth: 200 }}>
+              <span style={{ fontSize: type.size.sm, color: P.textSecondary, flex: 1, minWidth: 200 }}>
                 {compressionSummary.headline || 'Tight timeline — some tasks moved to the front.'}
               </span>
             </div>
@@ -398,9 +398,9 @@ export default function ChecklistGenerator({
           {TABS.map(tab => {
             const active = tab === safeActiveTab;
             return (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: `${sp[4]}px ${sp[6]}px`, background: 'transparent', border: 'none', borderBottom: active ? `2px solid ${P.textPrimary}` : '2px solid transparent', cursor: 'pointer', fontFamily: FF, fontSize: 11, fontWeight: type.weight.semibold, color: active ? P.textPrimary : P.textTertiary, letterSpacing: '0.07em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: sp[2] }}>
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: `${sp[4]}px ${sp[6]}px`, background: 'transparent', border: 'none', borderBottom: active ? `2px solid ${P.textPrimary}` : '2px solid transparent', cursor: 'pointer', fontFamily: FF, fontSize: type.size.sm, fontWeight: type.weight.semibold, color: active ? P.textPrimary : P.textTertiary, letterSpacing: '0.07em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: sp[2] }}>
                 {tabLabel(tab)}
-                <span style={{ fontSize: 10, color: active ? P.textSecondary : P.textTertiary, fontWeight: type.weight.regular }}>{(tabBuckets[tab] || []).length}</span>
+                <span style={{ fontSize: type.size.xs, color: active ? P.textSecondary : P.textTertiary, fontWeight: type.weight.regular }}>{(tabBuckets[tab] || []).length}</span>
               </button>
             );
           })}
@@ -409,7 +409,7 @@ export default function ChecklistGenerator({
         {/* Checklist */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {tabTasks.length === 0
-            ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: sp[10], fontFamily: FF, fontSize: 13, color: P.textTertiary }}>{ownerFilter ? `No tasks for ${ownerFilter}` : 'No tasks in this category'}</div>
+            ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: sp[10], fontFamily: FF, fontSize: type.size.base, color: P.textTertiary }}>{ownerFilter ? `No tasks for ${ownerFilter}` : 'No tasks in this category'}</div>
             : tabTasks.map(t => <CheckRow key={t.id} task={t} eventDate={eventDate} onToggle={handleToggle} onOpen={onOpenTask} urgency={urgencyOf(t)} />)
           }
         </div>
@@ -418,7 +418,7 @@ export default function ChecklistGenerator({
         {!isHost && isMobile && owners.length > 0 && (
           <div style={{ flexShrink: 0, borderTop: `1px solid ${P.borderSubtle}`, padding: `${sp[3]}px ${sp[5]}px`, display: 'flex', gap: sp[3], overflowX: 'auto', background: P.base }}>
             {[null, ...owners].map(o => (
-              <button key={o ?? '__all'} onClick={() => setOwnerFilter(o === ownerFilter ? null : o)} style={{ flexShrink: 0, padding: `${sp[2]}px ${sp[4]}px`, borderRadius: r.full, background: ownerFilter === o ? P.borderDef : 'transparent', border: `1px solid ${P.borderSubtle}`, cursor: 'pointer', fontFamily: FF, fontSize: 11, color: ownerFilter === o ? P.textPrimary : P.textSecondary, whiteSpace: 'nowrap' }}>
+              <button key={o ?? '__all'} onClick={() => setOwnerFilter(o === ownerFilter ? null : o)} style={{ flexShrink: 0, padding: `${sp[2]}px ${sp[4]}px`, borderRadius: r.full, background: ownerFilter === o ? P.borderDef : 'transparent', border: `1px solid ${P.borderSubtle}`, cursor: 'pointer', fontFamily: FF, fontSize: type.size.sm, color: ownerFilter === o ? P.textPrimary : P.textSecondary, whiteSpace: 'nowrap' }}>
                 {o ?? 'All'}
               </button>
             ))}

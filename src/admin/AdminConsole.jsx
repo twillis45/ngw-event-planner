@@ -11,6 +11,7 @@ import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
 import {
   playbookCoverage, culturalMix, locationSpread, memoryDepth, funnelContent,
 } from '../lib/analyticsReader';
+import { type } from '../design/tokens';
 
 // Dark palette aligned with AuthGate's login screen so the console feels native.
 const D = {
@@ -26,7 +27,7 @@ function Banner({ tone = 'muted', children }) {
   return (
     <div style={{
       border: `1px solid ${c}33`, background: `${c}11`, color: c,
-      borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.5,
+      borderRadius: 8, padding: '10px 14px', fontSize: type.size.caption, lineHeight: 1.5,
       fontFamily: D.ff, marginBottom: 16,
     }}>{children}</div>
   );
@@ -39,8 +40,8 @@ function Centered({ title, body }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
     }}>
       <div style={{ maxWidth: 420, textAlign: 'center' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{title}</div>
-        <div style={{ fontSize: 13, color: D.muted, lineHeight: 1.6 }}>{body}</div>
+        <div style={{ fontSize: type.size['2xl'], fontWeight: 700, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: type.size.base, color: D.muted, lineHeight: 1.6 }}>{body}</div>
       </div>
     </div>
   );
@@ -50,13 +51,13 @@ const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'A
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
-  color: D.text, fontSize: 13, padding: '7px 11px', outline: 'none',
+  color: D.text, fontSize: type.size.base, padding: '7px 11px', outline: 'none',
   fontFamily: D.ff, flex: 1, minWidth: 160,
 };
 const btnStyle = (primary) => ({
   background: primary ? D.accent : D.surface2, color: primary ? '#fff' : D.muted,
   border: `1px solid ${primary ? D.accent : D.border}`, borderRadius: 6,
-  padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontFamily: D.ff,
+  padding: '7px 14px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff,
 });
 const fmtTs = (t) => (t ? String(t).replace('T', ' ').slice(0, 19) : '—');
 
@@ -126,7 +127,7 @@ function UsersPanel({ initialUserId }) {
         {/* Results list */}
         <div style={{ flex: '0 0 320px' }}>
           {results && results.length === 0 && (
-            <div style={{ fontSize: 12, color: D.faint }}>No users found.</div>
+            <div style={{ fontSize: type.size.caption, color: D.faint }}>No users found.</div>
           )}
           {results && results.map(u => (
             <button key={u.id} onClick={() => openUser(u.id)} style={{
@@ -135,14 +136,14 @@ function UsersPanel({ initialUserId }) {
               border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 12px',
               marginBottom: 6, cursor: 'pointer', fontFamily: D.ff,
             }}>
-              <div style={{ fontSize: 13, color: D.text, fontWeight: 600 }}>
+              <div style={{ fontSize: type.size.base, color: D.text, fontWeight: 600 }}>
                 {u.email || '(no email)'}
-                {u.role && <span style={{ color: D.accent, fontSize: 10, marginLeft: 8 }}>{u.role}</span>}
+                {u.role && <span style={{ color: D.accent, fontSize: type.size.xs, marginLeft: 8 }}>{u.role}</span>}
               </div>
-              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>
+              <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>
                 {u.name || '—'} · {u.event_count} synced event{u.event_count === 1 ? '' : 's'}
               </div>
-              <div style={{ fontSize: 10, color: D.faint, marginTop: 2, fontFamily: D.mono }}>
+              <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 2, fontFamily: D.mono }}>
                 joined {fmtTs(u.created_at)}
               </div>
             </button>
@@ -152,25 +153,25 @@ function UsersPanel({ initialUserId }) {
         {/* Detail + notes */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {!selected && (
-            <div style={{ fontSize: 12, color: D.faint }}>Select a user to see details and notes.</div>
+            <div style={{ fontSize: type.size.caption, color: D.faint }}>Select a user to see details and notes.</div>
           )}
           {selected && (
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: D.text }}>
+              <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.text }}>
                 {selected.user.email}
               </div>
-              <div style={{ fontSize: 12, color: D.muted, marginTop: 4, lineHeight: 1.7 }}>
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginTop: 4, lineHeight: 1.7 }}>
                 <div>name: {selected.user.name || '—'} · role: {selected.user.role || 'planner'} · provider: {selected.user.provider || '—'}</div>
-                <div style={{ fontFamily: D.mono, fontSize: 11, color: D.faint }}>id: {selected.user.id}</div>
+                <div style={{ fontFamily: D.mono, fontSize: type.size.sm, color: D.faint }}>id: {selected.user.id}</div>
                 <div>joined {fmtTs(selected.user.created_at)} · last sign-in {fmtTs(selected.user.last_sign_in_at)} · email confirmed {selected.user.email_confirmed_at ? 'yes' : 'no'}</div>
                 <div>{selected.event_count} server-synced event{selected.event_count === 1 ? '' : 's'} · {selected.workspaces.length} workspace{selected.workspaces.length === 1 ? '' : 's'}</div>
               </div>
 
               {selected.workspaces.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Workspaces</div>
+                  <div style={{ fontSize: type.size.sm, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Workspaces</div>
                   {selected.workspaces.map(w => (
-                    <div key={w.id} style={{ fontSize: 12, color: D.muted, padding: '3px 0' }}>
+                    <div key={w.id} style={{ fontSize: type.size.caption, color: D.muted, padding: '3px 0' }}>
                       {w.name} <span style={{ color: D.faint }}>· {w.plan} · {w.role}</span>
                     </div>
                   ))}
@@ -178,15 +179,15 @@ function UsersPanel({ initialUserId }) {
               )}
 
               {selected.coverage && (
-                <div style={{ marginTop: 12, fontSize: 11, color: D.warn, lineHeight: 1.5 }}>
+                <div style={{ marginTop: 12, fontSize: type.size.sm, color: D.warn, lineHeight: 1.5 }}>
                   ⚠ {selected.coverage}
                 </div>
               )}
 
               {/* Support notes */}
               <div style={{ marginTop: 20, borderTop: `1px solid ${D.border}`, paddingTop: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Support notes</div>
-                <div style={{ fontSize: 11, color: D.faint, marginBottom: 10 }}>Append-only — corrections are new notes, never edits.</div>
+                <div style={{ fontSize: type.size.base, fontWeight: 700, marginBottom: 4 }}>Support notes</div>
+                <div style={{ fontSize: type.size.sm, color: D.faint, marginBottom: 10 }}>Append-only — corrections are new notes, never edits.</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                   <input
                     style={inputStyle} placeholder="Add a note about this user…"
@@ -196,12 +197,12 @@ function UsersPanel({ initialUserId }) {
                   <button style={btnStyle(true)} disabled={busy || !noteBody.trim()} onClick={addNote}>Add</button>
                 </div>
                 {notes && notes.length === 0 && (
-                  <div style={{ fontSize: 12, color: D.faint }}>No notes yet.</div>
+                  <div style={{ fontSize: type.size.caption, color: D.faint }}>No notes yet.</div>
                 )}
                 {notes && notes.map(n => (
                   <div key={n.id} style={{ padding: '8px 0', borderBottom: `1px solid ${D.border}` }}>
-                    <div style={{ fontSize: 13, color: D.text, lineHeight: 1.5 }}>{n.body}</div>
-                    <div style={{ fontSize: 10, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
+                    <div style={{ fontSize: type.size.base, color: D.text, lineHeight: 1.5 }}>{n.body}</div>
+                    <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
                       {n.author_name || n.author_id} · {fmtTs(n.created_at)}
                     </div>
                   </div>
@@ -213,7 +214,7 @@ function UsersPanel({ initialUserId }) {
       </div>
 
       {coverage && !selected && (
-        <div style={{ marginTop: 14, fontSize: 11, color: D.faint }}>{coverage}</div>
+        <div style={{ marginTop: 14, fontSize: type.size.sm, color: D.faint }}>{coverage}</div>
       )}
     </div>
   );
@@ -257,7 +258,7 @@ function WorkspacesPanel({ onOpenUser }) {
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
         {/* List */}
         <div style={{ flex: '0 0 300px' }}>
-          {results && results.length === 0 && <div style={{ fontSize: 12, color: D.faint }}>No workspaces found.</div>}
+          {results && results.length === 0 && <div style={{ fontSize: type.size.caption, color: D.faint }}>No workspaces found.</div>}
           {results && results.map(w => (
             <button key={w.id} onClick={() => openWs(w.id)} style={{
               display: 'block', width: '100%', textAlign: 'left',
@@ -265,11 +266,11 @@ function WorkspacesPanel({ onOpenUser }) {
               border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 12px',
               marginBottom: 6, cursor: 'pointer', fontFamily: D.ff,
             }}>
-              <div style={{ fontSize: 13, color: D.text, fontWeight: 600 }}>
+              <div style={{ fontSize: type.size.base, color: D.text, fontWeight: 600 }}>
                 {w.name || '(unnamed)'}
-                <span style={{ color: D.accent, fontSize: 10, marginLeft: 8 }}>{w.plan}</span>
+                <span style={{ color: D.accent, fontSize: type.size.xs, marginLeft: 8 }}>{w.plan}</span>
               </div>
-              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>
+              <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>
                 {w.member_count} member{w.member_count === 1 ? '' : 's'} · created {fmtTs(w.created_at)}
               </div>
             </button>
@@ -278,20 +279,20 @@ function WorkspacesPanel({ onOpenUser }) {
 
         {/* Detail */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {!selected && <div style={{ fontSize: 12, color: D.faint }}>Select a workspace to see members and synced events.</div>}
+          {!selected && <div style={{ fontSize: type.size.caption, color: D.faint }}>Select a workspace to see members and synced events.</div>}
           {selected && (
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: D.text }}>
+              <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.text }}>
                 {selected.workspace.name || '(unnamed)'}
-                <span style={{ color: D.accent, fontSize: 11, marginLeft: 8 }}>{selected.workspace.plan}</span>
+                <span style={{ color: D.accent, fontSize: type.size.sm, marginLeft: 8 }}>{selected.workspace.plan}</span>
               </div>
-              <div style={{ fontSize: 11, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
+              <div style={{ fontSize: type.size.sm, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
                 id: {selected.workspace.id} · created {fmtTs(selected.workspace.created_at)}
               </div>
 
               {/* Members */}
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                <div style={{ fontSize: type.size.sm, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                   Members ({selected.members.length})
                 </div>
                 {selected.members.map(m => (
@@ -300,26 +301,26 @@ function WorkspacesPanel({ onOpenUser }) {
                     background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8,
                     padding: '8px 12px', marginBottom: 5, cursor: 'pointer', fontFamily: D.ff,
                   }}>
-                    <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1, minWidth: 0,
+                    <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 600, flex: 1, minWidth: 0,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m.email || '(no email)'}{m.name ? <span style={{ color: D.muted, fontWeight: 400 }}> · {m.name}</span> : null}
                     </span>
-                    <span style={{ fontSize: 11, color: D.accent }}>{m.role}</span>
+                    <span style={{ fontSize: type.size.sm, color: D.accent }}>{m.role}</span>
                   </button>
                 ))}
               </div>
 
               {/* Synced events (pointers only) */}
               <div style={{ marginTop: 18 }}>
-                <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                <div style={{ fontSize: type.size.sm, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
                   Synced events ({selected.events.length})
                 </div>
-                <div style={{ fontSize: 11, color: D.warn, marginBottom: 8, lineHeight: 1.5 }}>⚠ {selected.events_note}</div>
-                {selected.events.length === 0 && <div style={{ fontSize: 12, color: D.faint }}>No synced events.</div>}
+                <div style={{ fontSize: type.size.sm, color: D.warn, marginBottom: 8, lineHeight: 1.5 }}>⚠ {selected.events_note}</div>
+                {selected.events.length === 0 && <div style={{ fontSize: type.size.caption, color: D.faint }}>No synced events.</div>}
                 {selected.events.map(ev => (
                   <div key={ev.event_id} style={{
                     display: 'flex', gap: 12, alignItems: 'baseline',
-                    padding: '6px 0', borderBottom: `1px solid ${D.border}`, fontSize: 12,
+                    padding: '6px 0', borderBottom: `1px solid ${D.border}`, fontSize: type.size.caption,
                   }}>
                     <span style={{ color: D.muted, fontFamily: D.mono, flex: 1, minWidth: 0,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.event_id}</span>
@@ -374,11 +375,11 @@ function InvitationsPanel({ onOpenUser }) {
           }}>{sc}</button>
         ))}
         <button onClick={() => load(scope)} disabled={busy} style={{
-          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'loading…' : 'refresh'}</button>
         {stuckCount > 0 && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: D.bad, fontWeight: 700 }}>
+          <span style={{ marginLeft: 'auto', fontSize: type.size.caption, color: D.bad, fontWeight: 700 }}>
             {stuckCount} stuck
           </span>
         )}
@@ -388,7 +389,7 @@ function InvitationsPanel({ onOpenUser }) {
       {note && <Banner tone="warn">{note}</Banner>}
 
       {rows && rows.length === 0 && (
-        <div style={{ fontSize: 12, color: D.faint }}>No {scope === 'all' ? '' : 'pending '}invitations.</div>
+        <div style={{ fontSize: type.size.caption, color: D.faint }}>No {scope === 'all' ? '' : 'pending '}invitations.</div>
       )}
       {rows && rows.map(inv => (
         <div key={inv.id} style={{
@@ -398,28 +399,28 @@ function InvitationsPanel({ onOpenUser }) {
           borderRadius: 8, padding: '10px 12px', marginBottom: 6,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: D.text, fontWeight: 600 }}>
+            <div style={{ fontSize: type.size.base, color: D.text, fontWeight: 600 }}>
               {inv.invitee_user_id ? (
                 <button onClick={() => onOpenUser?.(inv.invitee_user_id)} style={{
                   background: 'none', border: 'none', color: D.text, fontWeight: 600,
-                  fontSize: 13, cursor: 'pointer', fontFamily: D.ff, padding: 0, textAlign: 'left',
+                  fontSize: type.size.base, cursor: 'pointer', fontFamily: D.ff, padding: 0, textAlign: 'left',
                 }}>{inv.email}</button>
               ) : inv.email}
-              <span style={{ color: D.accent, fontSize: 10, marginLeft: 8 }}>{inv.role}</span>
+              <span style={{ color: D.accent, fontSize: type.size.xs, marginLeft: 8 }}>{inv.role}</span>
               {inv.stuck && (
-                <span style={{ color: D.bad, fontSize: 10, marginLeft: 8, fontWeight: 700,
+                <span style={{ color: D.bad, fontSize: type.size.xs, marginLeft: 8, fontWeight: 700,
                   border: `1px solid ${D.bad}55`, borderRadius: 4, padding: '1px 5px' }}>STUCK</span>
               )}
               {inv.used_at && (
-                <span style={{ color: D.good, fontSize: 10, marginLeft: 8 }}>claimed</span>
+                <span style={{ color: D.good, fontSize: type.size.xs, marginLeft: 8 }}>claimed</span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>
+            <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>
               {inv.studio_name || '(unknown workspace)'}
               {inv.invited_by_email ? ` · by ${inv.invited_by_email}` : ''} · invited {fmtTs(inv.created_at)}
             </div>
             {inv.stuck && (
-              <div style={{ fontSize: 11, color: D.faint, marginTop: 3 }}>
+              <div style={{ fontSize: type.size.sm, color: D.faint, marginTop: 3 }}>
                 Signed up {fmtTs(inv.invitee_signed_up_at)} but the invite never attached — revoke if stale.
               </div>
             )}
@@ -458,13 +459,13 @@ function MetricsPanel() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation</div>
+        <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation</div>
         <button onClick={load} disabled={busy} style={{
-          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'loading…' : 'refresh'}</button>
         {data?.new_signups && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}>
+          <span style={{ marginLeft: 'auto', fontSize: type.size.caption, color: D.muted }}>
             <span style={{ color: D.good, fontWeight: 700 }}>+{data.new_signups.d7}</span> in 7d
             {' · '}<span style={{ color: D.muted, fontWeight: 700 }}>+{data.new_signups.d30}</span> in 30d
           </span>
@@ -473,7 +474,7 @@ function MetricsPanel() {
 
       {err && <Banner tone="bad">Error: {err}</Banner>}
 
-      {data && top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No signups yet.</div>}
+      {data && top === 0 && <div style={{ fontSize: type.size.base, color: D.faint }}>No signups yet.</div>}
 
       {data && top > 0 && (
         <div>
@@ -482,9 +483,9 @@ function MetricsPanel() {
             return (
               <div key={s.key} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
-                  <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
-                  <span style={{ fontSize: 11, color: D.faint, width: 92, textAlign: 'right' }}>
+                  <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+                  <span style={{ fontSize: type.size.lg, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+                  <span style={{ fontSize: type.size.sm, color: D.faint, width: 92, textAlign: 'right' }}>
                     {pct(s.count, top)}% of signups
                     {prev !== null && <span style={{ color: prev > 0 && s.count < prev ? D.warn : D.faint }}> · {pct(s.count, prev)}→</span>}
                   </span>
@@ -492,11 +493,11 @@ function MetricsPanel() {
                 <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct(s.count, top)}%`, background: D.accent, borderRadius: 4 }} />
                 </div>
-                {s.note && <div style={{ fontSize: 10.5, color: D.warn, marginTop: 4 }}>⚠ {s.note}</div>}
+                {s.note && <div style={{ fontSize: type.size.xs, color: D.warn, marginTop: 4 }}>⚠ {s.note}</div>}
               </div>
             );
           })}
-          <div style={{ fontSize: 11, color: D.faint, marginTop: 14, lineHeight: 1.5 }}>{data.coverage}</div>
+          <div style={{ fontSize: type.size.sm, color: D.faint, marginTop: 14, lineHeight: 1.5 }}>{data.coverage}</div>
         </div>
       )}
     </div>
@@ -546,13 +547,13 @@ function ActivationPanel({ onOpenUser }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation — by planner</div>
-        <button onClick={load} disabled={busy} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline' }}>{busy ? 'loading…' : 'refresh'}</button>
-        {rows && <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}><span style={{ color: D.good, fontWeight: 700 }}>{withEvents}</span> of {total} have synced an event</span>}
+        <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activation — by planner</div>
+        <button onClick={load} disabled={busy} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline' }}>{busy ? 'loading…' : 'refresh'}</button>
+        {rows && <span style={{ marginLeft: 'auto', fontSize: type.size.caption, color: D.muted }}><span style={{ color: D.good, fontWeight: 700 }}>{withEvents}</span> of {total} have synced an event</span>}
       </div>
 
       {err && <Banner tone="bad">Error: {err}</Banner>}
-      {rows && total === 0 && <div style={{ fontSize: 13, color: D.faint }}>No accounts yet. Recruiting (Workstream A) is the unblock.</div>}
+      {rows && total === 0 && <div style={{ fontSize: type.size.base, color: D.faint }}>No accounts yet. Recruiting (Workstream A) is the unblock.</div>}
 
       {rows && total > 0 && (
         <>
@@ -565,8 +566,8 @@ function ActivationPanel({ onOpenUser }) {
               { k: 'active', label: 'Active · has events', c: D.good },
             ].map(s => (
               <div key={s.k} style={{ flex: '1 1 120px', background: D.surface, border: `1px solid ${D.border}`, borderLeft: `2px solid ${s.c}`, borderRadius: 8, padding: '8px 11px' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: D.text, fontFamily: D.mono }}>{tally[s.k] || 0}</div>
-                <div style={{ fontSize: 10.5, color: D.muted, marginTop: 1 }}>{s.label}</div>
+                <div style={{ fontSize: type.size['2xl'], fontWeight: 700, color: D.text, fontFamily: D.mono }}>{tally[s.k] || 0}</div>
+                <div style={{ fontSize: type.size.xs, color: D.muted, marginTop: 1 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -581,18 +582,18 @@ function ActivationPanel({ onOpenUser }) {
                 padding: '9px 12px', marginBottom: 6, cursor: 'pointer', fontFamily: D.ff,
               }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: D.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {u.email || '(no email)'}{u.role && <span style={{ color: D.accent, fontSize: 10, marginLeft: 8 }}>{u.role}</span>}
+                  <span style={{ flex: 1, minWidth: 0, fontSize: type.size.base, color: D.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.email || '(no email)'}{u.role && <span style={{ color: D.accent, fontSize: type.size.xs, marginLeft: 8 }}>{u.role}</span>}
                   </span>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: st.color, flexShrink: 0 }}>{st.label}</span>
+                  <span style={{ fontSize: type.size.xs, fontWeight: 700, color: st.color, flexShrink: 0 }}>{st.label}</span>
                 </div>
-                <div style={{ fontSize: 10.5, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
+                <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 3, fontFamily: D.mono }}>
                   {u.event_count} synced · joined {fmtTs(u.created_at).slice(0, 10)} · {idle === null ? 'never signed in' : idle === 0 ? 'active today' : `idle ${idle}d`}
                 </div>
               </button>
             );
           })}
-          <div style={{ fontSize: 10.5, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
+          <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
             ⚠ "Synced an event" is a server proxy — it can't tell a real qualified event from the sample. The strict real-event funnel (qualified → completed → second event) is in PostHog.
           </div>
         </>
@@ -630,7 +631,7 @@ function ErrorsPanel() {
           <button key={h} onClick={() => setHours(h)} style={btnStyle(hours === h)}>{lbl}</button>
         ))}
         <button onClick={() => load(hours)} disabled={busy} style={{
-          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'loading…' : 'refresh'}</button>
       </div>
@@ -640,7 +641,7 @@ function ErrorsPanel() {
       {err && <Banner tone="bad">Error: {err}</Banner>}
 
       {rows && rows.length === 0 && (
-        <div style={{ fontSize: 13, color: D.good, fontWeight: 600, marginTop: 8 }}>
+        <div style={{ fontSize: type.size.base, color: D.good, fontWeight: 600, marginTop: 8 }}>
           No server-side errors in this window.
         </div>
       )}
@@ -651,13 +652,13 @@ function ErrorsPanel() {
           borderRadius: 8, padding: '9px 12px', marginBottom: 6,
         }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: SOURCE_COLOR(e.source),
+            <span style={{ fontSize: type.size.xs, fontWeight: 700, color: SOURCE_COLOR(e.source),
               textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>{e.source}</span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: D.text }}>{e.message}</span>
-            <span style={{ fontSize: 10, color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>{fmtTs(e.created_at)}</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: type.size.base, color: D.text }}>{e.message}</span>
+            <span style={{ fontSize: type.size.xs, color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>{fmtTs(e.created_at)}</span>
           </div>
           {e.context && Object.keys(e.context).length > 0 && (
-            <div style={{ fontSize: 10, color: D.faint, fontFamily: D.mono, marginTop: 3 }}>
+            <div style={{ fontSize: type.size.xs, color: D.faint, fontFamily: D.mono, marginTop: 3 }}>
               {Object.entries(e.context).map(([k, v]) => `${k}=${v}`).join(' · ')}
             </div>
           )}
@@ -698,11 +699,11 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
     <div>
       {/* Hero */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
-        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           What needs you
         </div>
         <button onClick={load} disabled={busy} style={{
-          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'refreshing…' : 'refresh'}</button>
       </div>
@@ -713,16 +714,16 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
         <>
           {needsYou === 0 ? (
             <div style={{ padding: '28px 0 8px' }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: D.good }}>Caught up</div>
-              <div style={{ fontSize: 13, color: D.muted, marginTop: 6, maxWidth: 460, lineHeight: 1.6 }}>
+              <div style={{ fontSize: type.size['3xl'], fontWeight: 700, color: D.good }}>Caught up</div>
+              <div style={{ fontSize: type.size.base, color: D.muted, marginTop: 6, maxWidth: 460, lineHeight: 1.6 }}>
                 Nobody's stuck at the front door, stalled in onboarding, or going quiet —
                 as far as server-synced state can see.
               </div>
             </div>
           ) : (
-            <div style={{ fontSize: 40, fontWeight: 800, color: D.text, lineHeight: 1.1, margin: '6px 0 18px' }}>
+            <div style={{ fontSize: 40 /* display numeral */, fontWeight: 800, color: D.text, lineHeight: 1.1, margin: '6px 0 18px' }}>
               {needsYou}
-              <span style={{ fontSize: 15, fontWeight: 600, color: D.muted, marginLeft: 10 }}>
+              <span style={{ fontSize: type.size.lg, fontWeight: 600, color: D.muted, marginLeft: 10 }}>
                 {needsYou === 1 ? 'person needs a look' : 'people need a look'}
               </span>
             </div>
@@ -733,27 +734,27 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
             <div key={b.key} style={{ marginBottom: 18 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 2 }}>
                 <span style={{
-                  fontSize: 13, fontWeight: 700,
+                  fontSize: type.size.base, fontWeight: 700,
                   color: b.total > 0 ? toneColor(b.tone) : D.faint,
                 }}>{b.label}</span>
-                <span style={{ fontSize: 12, color: D.faint, fontFamily: D.mono }}>
+                <span style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
                   {b.total}{b.total > b.items.length ? ` · showing ${b.items.length}` : ''}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: D.faint, marginBottom: 8 }}>{b.hint}</div>
+              <div style={{ fontSize: type.size.sm, color: D.faint, marginBottom: 8 }}>{b.hint}</div>
               {b.items.length === 0 ? (
-                <div style={{ fontSize: 12, color: D.faint, fontStyle: 'italic' }}>None.</div>
+                <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>None.</div>
               ) : b.items.map(it => (
                 <button key={it.id} onClick={() => onOpenUser?.(it.id)} style={{
                   display: 'flex', width: '100%', textAlign: 'left', gap: 12, alignItems: 'baseline',
                   background: D.surface, border: `1px solid ${D.border}`, borderLeft: `2px solid ${toneColor(b.tone)}`,
                   borderRadius: 8, padding: '8px 12px', marginBottom: 5, cursor: 'pointer', fontFamily: D.ff,
                 }}>
-                  <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1, minWidth: 0,
+                  <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 600, flex: 1, minWidth: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {it.email || '(no email)'}{it.name ? <span style={{ color: D.muted, fontWeight: 400 }}> · {it.name}</span> : null}
                   </span>
-                  <span style={{ fontSize: 10, color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: type.size.xs, color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>
                     {b.key === 'going_quiet' ? `last seen ${fmtTs(it.last_sign_in_at)}`
                       : b.key === 'stuck_invites' ? `invited ${fmtTs(it.created_at)}`
                       : `joined ${fmtTs(it.created_at)}`}
@@ -769,7 +770,7 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
               display: 'block', width: '100%', textAlign: 'left', marginTop: 14,
               background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: D.ff,
             }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: data.system.errors_24h > 0 ? D.bad : D.faint }}>
+              <span style={{ fontSize: type.size.caption, fontWeight: 700, color: data.system.errors_24h > 0 ? D.bad : D.faint }}>
                 {data.system.errors_24h > 0
                   ? `⚠ ${data.system.errors_24h} server error${data.system.errors_24h === 1 ? '' : 's'} in last 24h →`
                   : '✓ No server errors in last 24h'}
@@ -777,20 +778,20 @@ function TriagePanel({ onOpenUser, onGoErrors }) {
             </button>
           )}
 
-          <div style={{ fontSize: 11, color: D.faint, marginTop: 14, lineHeight: 1.5 }}>
+          <div style={{ fontSize: type.size.sm, color: D.faint, marginTop: 14, lineHeight: 1.5 }}>
             {data.coverage}
           </div>
 
           {/* De-emphasized debug affordance — the old whoami gate-check, tucked away */}
           <div style={{ marginTop: 22, borderTop: `1px solid ${D.border}`, paddingTop: 12 }}>
             <button onClick={() => { setShowGate(v => !v); if (!whoami) runGate(); }} style={{
-              background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+              background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
               cursor: 'pointer', fontFamily: D.ff,
             }}>{showGate ? '▾' : '▸'} Gate check (debug)</button>
             {showGate && (
               <pre style={{
                 marginTop: 8, background: D.surface, border: `1px solid ${D.border}`,
-                borderRadius: 8, padding: 12, fontSize: 11, color: D.muted, fontFamily: D.mono, overflowX: 'auto',
+                borderRadius: 8, padding: 12, fontSize: type.size.sm, color: D.muted, fontFamily: D.mono, overflowX: 'auto',
               }}>{whoami ? JSON.stringify(whoami, null, 2) : '— probing… —'}</pre>
             )}
           </div>
@@ -824,9 +825,9 @@ function Stat({ label, value, sub }) {
       display: 'flex', alignItems: 'baseline', gap: 10, padding: '8px 0',
       borderBottom: `1px solid ${D.border}`,
     }}>
-      <span style={{ fontSize: 13, color: D.text, flex: 1 }}>{label}</span>
-      {sub && <span style={{ fontSize: 11, color: D.faint }}>{sub}</span>}
-      <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{value}</span>
+      <span style={{ fontSize: type.size.base, color: D.text, flex: 1 }}>{label}</span>
+      {sub && <span style={{ fontSize: type.size.sm, color: D.faint }}>{sub}</span>}
+      <span style={{ fontSize: type.size.lg, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{value}</span>
     </div>
   );
 }
@@ -835,14 +836,14 @@ function Stat({ label, value, sub }) {
 function MiniBars({ map }) {
   const entries = Object.entries(map || {}).sort((a, b) => b[1] - a[1]);
   const top = entries.length ? Math.max(...entries.map(([, n]) => n)) : 0;
-  if (!entries.length) return <div style={{ fontSize: 12, color: D.faint }}>None.</div>;
+  if (!entries.length) return <div style={{ fontSize: type.size.caption, color: D.faint }}>None.</div>;
   return (
     <div>
       {entries.map(([k, n]) => (
         <div key={k} style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 3 }}>
-            <span style={{ fontSize: 12, color: D.text, flex: 1, wordBreak: 'break-word' }}>{k}</span>
-            <span style={{ fontSize: 13, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{n}</span>
+            <span style={{ fontSize: type.size.caption, color: D.text, flex: 1, wordBreak: 'break-word' }}>{k}</span>
+            <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{n}</span>
           </div>
           <div style={{ height: 7, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${top > 0 ? Math.round((n / top) * 100) : 0}%`, background: D.accent, borderRadius: 4 }} />
@@ -855,7 +856,7 @@ function MiniBars({ map }) {
 
 function EmptyBook() {
   return (
-    <div style={{ fontSize: 13, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>
+    <div style={{ fontSize: type.size.base, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>
       No events in this browser's book yet. Open or create an event in the app, then
       reload this console.
     </div>
@@ -893,13 +894,13 @@ function ExecutivePanel() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Executive</div>
+        <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Executive</div>
         <button onClick={load} disabled={busy} style={{
-          background: 'transparent', border: 'none', color: D.faint, fontSize: 11,
+          background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm,
           cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline',
         }}>{busy ? 'loading…' : 'refresh'}</button>
         {data?.new_signups && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: D.muted }}>
+          <span style={{ marginLeft: 'auto', fontSize: type.size.caption, color: D.muted }}>
             <span style={{ color: D.good, fontWeight: 700 }}>+{data.new_signups.d7}</span> in 7d
             {' · '}<span style={{ color: D.muted, fontWeight: 700 }}>+{data.new_signups.d30}</span> in 30d
           </span>
@@ -916,9 +917,9 @@ function ExecutivePanel() {
               flex: '1 1 120px', minWidth: 120, background: D.surface2,
               border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px',
             }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{s.count}</div>
-              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>{s.label}</div>
-              <div style={{ fontSize: 10, color: D.faint, marginTop: 2 }}>{pct(s.count, top)}% of signups</div>
+              <div style={{ fontSize: type.size['3xl'], fontWeight: 800, color: D.text, fontFamily: D.mono }}>{s.count}</div>
+              <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>{s.label}</div>
+              <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 2 }}>{pct(s.count, top)}% of signups</div>
             </div>
           ))}
           {triageTotal !== null && (
@@ -926,9 +927,9 @@ function ExecutivePanel() {
               flex: '1 1 120px', minWidth: 120, background: D.surface2,
               border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px',
             }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: triageTotal > 0 ? D.warn : D.text, fontFamily: D.mono }}>{triageTotal}</div>
-              <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Need attention now</div>
-              <div style={{ fontSize: 10, color: D.faint, marginTop: 2 }}>from Triage</div>
+              <div style={{ fontSize: type.size['3xl'], fontWeight: 800, color: triageTotal > 0 ? D.warn : D.text, fontFamily: D.mono }}>{triageTotal}</div>
+              <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>Need attention now</div>
+              <div style={{ fontSize: type.size.xs, color: D.faint, marginTop: 2 }}>from Triage</div>
             </div>
           )}
         </div>
@@ -942,9 +943,9 @@ function ExecutivePanel() {
             return (
               <div key={s.key} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
-                  <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
-                  <span style={{ fontSize: 11, color: D.faint, width: 92, textAlign: 'right' }}>
+                  <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+                  <span style={{ fontSize: type.size.lg, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+                  <span style={{ fontSize: type.size.sm, color: D.faint, width: 92, textAlign: 'right' }}>
                     {pct(s.count, top)}% of signups
                     {prev !== null && <span style={{ color: prev > 0 && s.count < prev ? D.warn : D.faint }}> · {pct(s.count, prev)}→</span>}
                   </span>
@@ -958,7 +959,7 @@ function ExecutivePanel() {
         </div>
       )}
 
-      {data && top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No signups yet.</div>}
+      {data && top === 0 && <div style={{ fontSize: type.size.base, color: D.faint }}>No signups yet.</div>}
 
       <Banner tone="muted">
         {data?.coverage || 'Server-synced proxy — "synced an event" cannot tell a real qualified event from the sample. The strict behavioral funnel lives in PostHog.'}
@@ -972,17 +973,17 @@ function ExecutivePanel() {
 function PostHogLinkPanel({ title, body }) {
   return (
     <div>
-      <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{title}</div>
+      <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{title}</div>
       <Banner tone="muted">
         The behavioral {title.toLowerCase()} lives in PostHog. NGW writes events to
         PostHog server-side (write-only) — this console cannot read them back, so no
         numbers are shown here. Open PostHog for the live charts.
       </Banner>
-      <div style={{ fontSize: 13, color: D.muted, lineHeight: 1.6, marginBottom: 16 }}>{body}</div>
+      <div style={{ fontSize: type.size.base, color: D.muted, lineHeight: 1.6, marginBottom: 16 }}>{body}</div>
       <a href={POSTHOG_URL} target="_blank" rel="noopener noreferrer" style={{
         display: 'inline-block', background: D.accent, color: '#fff', textDecoration: 'none',
         border: `1px solid ${D.accent}`, borderRadius: 6, padding: '8px 16px',
-        fontSize: 13, fontWeight: 600, fontFamily: D.ff,
+        fontSize: type.size.base, fontWeight: 600, fontFamily: D.ff,
       }}>Open in PostHog ↗</a>
     </div>
   );
@@ -1014,7 +1015,7 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
   }, [mode]);
   useEffect(() => { load(); }, [load]);
 
-  if (state === 'loading') return <div style={{ fontSize: 13, color: D.faint }}>Loading from PostHog…</div>;
+  if (state === 'loading') return <div style={{ fontSize: type.size.base, color: D.faint }}>Loading from PostHog…</div>;
   if (state === 'fallback') {
     return mode === 'friction'
       ? <PostHogLinkPanel title="Friction" body="Where users stall, drop off, or rage-click. Session and event-stream analysis lives in PostHog — open it to inspect paths and retention." />
@@ -1029,8 +1030,8 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
   if (mode === 'friction') {
     return (
       <div>
-        <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Friction — where they drop (PostHog · 30d)</div>
-        <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
+        <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Friction — where they drop (PostHog · 30d)</div>
+        <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
         {funnel.slice(1).map((s, i) => {
           const prev = funnel[i];
           const conv = pct(s.count, prev.count);
@@ -1038,7 +1039,7 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
           const worst = drop >= 40;
           return (
             <div key={s.key} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: D.text, marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: type.size.base, color: D.text, marginBottom: 4 }}>
                 <span>{prev.label} → {s.label}</span>
                 <span style={{ color: worst ? D.warn : D.muted, fontWeight: 700, fontFamily: D.mono }}>{conv}% kept · {drop}% lost{worst ? ' ◀ biggest leak' : ''}</span>
               </div>
@@ -1054,15 +1055,15 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
 
   return (
     <div>
-      <div style={{ fontSize: 13, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Real-event funnel (PostHog · 30d)</div>
-      <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: 11, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
-      {top === 0 && <div style={{ fontSize: 13, color: D.faint }}>No events in this window yet.</div>}
+      <div style={{ fontSize: type.size.lg, fontWeight: 700, color: D.muted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Real-event funnel (PostHog · 30d)</div>
+      <button onClick={load} style={{ background: 'transparent', border: 'none', color: D.faint, fontSize: type.size.sm, cursor: 'pointer', fontFamily: D.ff, textDecoration: 'underline', marginBottom: 12 }}>refresh</button>
+      {top === 0 && <div style={{ fontSize: type.size.base, color: D.faint }}>No events in this window yet.</div>}
       {funnel.map((s, i) => (
         <div key={s.key} style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-            <span style={{ fontSize: 13, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
-            <span style={{ fontSize: 15, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
-            <span style={{ fontSize: 11, color: D.faint, width: 96, textAlign: 'right' }}>{pct(s.count, top)}% of top{i > 0 && funnel[i - 1].count > 0 ? ` · ${pct(s.count, funnel[i - 1].count)}→` : ''}</span>
+            <span style={{ fontSize: type.size.base, color: D.text, fontWeight: 600, flex: 1 }}>{s.label}</span>
+            <span style={{ fontSize: type.size.lg, color: D.text, fontWeight: 700, fontFamily: D.mono }}>{s.count}</span>
+            <span style={{ fontSize: type.size.sm, color: D.faint, width: 96, textAlign: 'right' }}>{pct(s.count, top)}% of top{i > 0 && funnel[i - 1].count > 0 ? ` · ${pct(s.count, funnel[i - 1].count)}→` : ''}</span>
           </div>
           <div style={{ height: 8, background: D.bg, borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct(s.count, top)}%`, background: D.accent, borderRadius: 4 }} />
@@ -1076,7 +1077,7 @@ function PostHogPanel({ mode }) {  // mode: 'funnel' | 'friction'
         const map = {}; rows.forEach(r => { map[r.value] = r.count; });
         return (
           <div key={k} style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{label}</div>
+            <div style={{ fontSize: type.size.caption, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{label}</div>
             <MiniBars map={map} />
           </div>
         );
@@ -1096,12 +1097,12 @@ function PlaybookPanel({ book }) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <Stat label="Events in book" value={c.total} />
       </div>
-      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>Events by type</div>
+      <div style={{ fontSize: type.size.caption, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>Events by type</div>
       <MiniBars map={c.byType} />
       <div style={{ marginTop: 16 }}>
         <Stat label="Events with a matched playbook" value={matched} sub={`${c.total - matched} unmatched`} />
       </div>
-      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>Local content completeness</div>
+      <div style={{ fontSize: type.size.caption, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>Local content completeness</div>
       <Stat label="Qualified (has date + guest count)" value={f.qualified} sub={`of ${f.total}`} />
       <Stat label="Has a run-of-show" value={f.withRos} sub={`of ${f.total}`} />
       <Stat label="Has captured outcomes" value={f.withOutcomes} sub={`of ${f.total}`} />
@@ -1127,7 +1128,7 @@ function MemoryPanel({ book }) {
       <Stat label="Events with a written lesson" value={m.eventsWithLessons} />
       <Stat label="Confirmed vendors tracked" value={m.vendorsTracked} />
       <Stat label="Vendors rehired (≥2 events)" value={m.rehiredVendors} />
-      <div style={{ fontSize: 11, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
+      <div style={{ fontSize: type.size.sm, color: D.faint, marginTop: 12, lineHeight: 1.5 }}>
         Rehires are the compounding signal — a vendor confirmed across two or more
         events in this private book.
       </div>
@@ -1143,15 +1144,15 @@ function CulturalPanel({ book }) {
       <BookBanner />
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ flex: '1 1 120px', minWidth: 120, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.festive}</div>
-          <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Festive</div>
+          <div style={{ fontSize: type.size['3xl'], fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.festive}</div>
+          <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>Festive</div>
         </div>
         <div style={{ flex: '1 1 120px', minWidth: 120, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.sombre}</div>
-          <div style={{ fontSize: 11, color: D.muted, marginTop: 2 }}>Sombre / remembrance</div>
+          <div style={{ fontSize: type.size['3xl'], fontWeight: 800, color: D.text, fontFamily: D.mono }}>{m.sombre}</div>
+          <div style={{ fontSize: type.size.sm, color: D.muted, marginTop: 2 }}>Sombre / remembrance</div>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>By voice</div>
+      <div style={{ fontSize: type.size.caption, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 0 8px' }}>By voice</div>
       <MiniBars map={m.byVoice} />
     </div>
   );
@@ -1166,7 +1167,7 @@ function LocationPanel({ book }) {
       <BookBanner />
       <Stat label="At-home share" value={pct(s.atHomeShare)} />
       <Stat label="Missing-venue share" value={pct(s.missingVenueShare)} />
-      <div style={{ fontSize: 12, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>By market</div>
+      <div style={{ fontSize: type.size.caption, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '14px 0 8px' }}>By market</div>
       <MiniBars map={s.byMarket} />
     </div>
   );
@@ -1190,7 +1191,7 @@ function AnalyticsSuite() {
             background: sub === s ? D.surface2 : 'transparent',
             color: sub === s ? D.text : D.muted,
             border: `1px solid ${sub === s ? D.border : 'transparent'}`,
-            borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+            borderRadius: 6, padding: '6px 12px', fontSize: type.size.caption, cursor: 'pointer',
             fontFamily: D.ff, whiteSpace: 'nowrap',
           }}>{s}</button>
         ))}
@@ -1256,16 +1257,16 @@ export default function AdminConsole() {
         padding: '12px 20px', borderBottom: `1px solid ${D.border}`, background: D.surface,
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: type.size.lg, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase' }}>
             NGW Admin
           </span>
-          <span style={{ fontSize: 11, color: D.faint }}>
+          <span style={{ fontSize: type.size.sm, color: D.faint }}>
             {user.email} · role: {role}{bypass ? ' · DEV BYPASS' : ''}
           </span>
         </div>
         <button onClick={() => signOut?.()} style={{
           background: D.surface2, color: D.muted, border: `1px solid ${D.border}`,
-          borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer', fontFamily: D.ff,
+          borderRadius: 6, padding: '5px 12px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff,
         }}>Sign out</button>
       </div>
 
@@ -1276,7 +1277,7 @@ export default function AdminConsole() {
             background: tab === t ? D.surface2 : 'transparent',
             color: tab === t ? D.text : D.muted,
             border: `1px solid ${tab === t ? D.border : 'transparent'}`,
-            borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: D.ff,
+            borderRadius: 6, padding: '6px 12px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff,
           }}>{t}</button>
         ))}
       </div>
@@ -1301,17 +1302,17 @@ export default function AdminConsole() {
 
         {tab === 'Audit' && (
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Admin audit log</div>
-            <div style={{ fontSize: 12, color: D.muted, marginBottom: 12 }}>
+            <div style={{ fontSize: type.size.md, fontWeight: 700, marginBottom: 10 }}>Admin audit log</div>
+            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 12 }}>
               Immutable record of admin actions (most recent first).
             </div>
             {audit && audit.length === 0 && (
-              <div style={{ fontSize: 12, color: D.faint }}>No actions recorded yet.</div>
+              <div style={{ fontSize: type.size.caption, color: D.faint }}>No actions recorded yet.</div>
             )}
             {audit && audit.map(row => (
               <div key={row.id} style={{
                 display: 'flex', gap: 12, alignItems: 'baseline',
-                padding: '8px 0', borderBottom: `1px solid ${D.border}`, fontSize: 12,
+                padding: '8px 0', borderBottom: `1px solid ${D.border}`, fontSize: type.size.caption,
               }}>
                 <span style={{ color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>
                   {String(row.created_at).replace('T', ' ').slice(0, 19)}
@@ -1339,7 +1340,7 @@ export default function AdminConsole() {
         {tab === 'Errors' && <ErrorsPanel />}
 
         {tab === 'Providers' && (
-          <div style={{ fontSize: 13, color: D.muted }}>
+          <div style={{ fontSize: type.size.base, color: D.muted }}>
             <strong style={{ color: D.text }}>Providers</strong> — ships in A5
             (Provider / Message Status). See
             docs/ecosystem/ADMIN_SUPPORT_V1_BUILD_PLAN.md.

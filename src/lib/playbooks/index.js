@@ -215,6 +215,93 @@ export function guestCountResolved(event) {
   return { resolved: true, pending: 0 };
 }
 
+// ── Safe-headcount band (Sprint 6x · the #2-fear dissolver) ───────────────────
+// attendanceBand(event) → a HONEST range, not a fake-precise point. The single
+// number is the one shape that *increases* a host's "will I run short?" fear; a
+// band relieves it. PURE READER over the SAME RSVP states guestCountResolved()
+// reads — no new guest-count system, no invented probabilities, no no-show
+// prediction (that needs a corpus we don't have yet).
+//
+//   • Roster with outstanding replies → a real range:
+//       low  = confirmed (people locked in)
+//       high = confirmed + maybe + not-yet-replied (everyone who hasn't said no)
+//     `planning` = high, so quantities/seating size to the ceiling — you won't
+//     run short. The band is grounded entirely in actual RSVP states.
+//   • Locked count / fully-replied roster → ONE number (no fabricated spread).
+//     A number the host actually locked is real; banding it would invent data.
+//
+// Returns { applicable, basis:'rsvp'|'count', band:bool, low, high, planning,
+//           confirmed, maybe, pending, declined, invited, because }.
+export function attendanceBand(event) {
+  if (!event) return { applicable: false, band: false };
+  const list = Array.isArray(event.guests) ? event.guests : [];
+  const roster = event.guestMode !== 'count' && list.length > 0;
+  const norm = (g) => String((g && g.rsvp) || '').trim().toLowerCase();
+  if (roster) {
+    let confirmed = 0, maybe = 0, pending = 0, declined = 0;
+    for (const g of list) {
+      const r = norm(g);
+      if (r === 'yes' || r === 'attending' || r === 'accepted') confirmed++;
+      else if (r === 'maybe') maybe++;
+      else if (r === 'no' || r === 'declined' || r === 'regret' || r === 'regrets') declined++;
+      else pending++; // '' / unknown → not yet replied
+    }
+    const low = confirmed;
+    const high = confirmed + maybe + pending; // everyone who hasn't said no
+    const out = maybe + pending;
+    const band = high > low; // a real range only when replies are still outstanding
+    const because = band
+      ? `${confirmed} confirmed · ${out} ${out === 1 ? 'reply' : 'replies'} still out`
+      : `${confirmed} confirmed`;
+    return {
+      applicable: high > 0,
+      basis: 'rsvp', band,
+      low, high, planning: high,
+      confirmed, maybe, pending, declined, invited: list.length,
+      because,
+    };
+  }
+  // Locked count / estimate — a single real number, never a fabricated spread.
+  const n = Number(event.guestCount) || Number(event.guestEstimate) || list.length || 0;
+  if (n <= 0) return { applicable: false, band: false };
+  return {
+    applicable: true, basis: 'count', band: false,
+    low: n, high: n, planning: n,
+    confirmed: n, maybe: 0, pending: 0, declined: 0, invited: n,
+    because: '',
+  };
+}
+
+// A host-facing "how many to plan for" label built from the band. ONE place so
+// the headline, seating, and budget all read identically.
+//   band  → "38–44"   ·   single → "40"
+export function attendanceBandLabel(band) {
+  if (!band || !band.applicable) return null;
+  return band.band ? `${band.low}–${band.high}` : String(band.high);
+}
+
+// playbookContingencyForWeather(event, wx) — surfaces the ALREADY-AUTHORED contingency
+// plan that matches the live weather signal, so a host sees "here's the move" instead
+// of a generic "rain plan?" prompt. PURE READER over playbook.contingencies (authored
+// in 39/40 playbooks as { id, when, plan }); invents nothing. Returns { id, plan, kind }
+// or null. `wx` is the getEventWeatherRisk() result ({ kind:'rain'|'heat'|'cold'|'snow'
+// |'mixed', risk:'high'|'medium'|'low'|'clear', ... }).
+export function playbookContingencyForWeather(event, wx) {
+  if (!event || !wx || !wx.kind || wx.risk === 'clear') return null;
+  const pb = getPlaybook(event.type);
+  if (!pb || !Array.isArray(pb.contingencies) || !pb.contingencies.length) return null;
+  const kind = String(wx.kind).toLowerCase();
+  // Heat → the food-safety/ice move; everything wet (rain/snow/cold/mixed) → the
+  // cover/indoor move. Match the authored contingency by its plan text AND its `when`
+  // risk id, so it works regardless of a playbook's exact risk-id naming.
+  const isHeat = kind === 'heat';
+  const planRe = isHeat ? /ice|shade|heat|cool|cold|perishable|food.?safe|melt|water/i
+                        : /rain|canopy|cover|indoor|garage|tent|umbrella|wet|storm/i;
+  const whenRe = isHeat ? /foodsafe|heat|food/i : /weather|rain|storm|cold/i;
+  const hit = pb.contingencies.find((c) => c && (planRe.test(c.plan || '') || whenRe.test(c.when || '')));
+  return hit ? { id: hit.id, plan: hit.plan, kind } : null;
+}
+
 function dietaryResolved(event) {
   // Host explicitly noted allergies (the headcount-mode workflow) → done.
   if (event.dietaryNoted) return { resolved: true, reason: 'noted' };
@@ -520,27 +607,87 @@ function shortRental(item) {
   return String(item || '').split(/\s*[(/—]\s*|\s+-\s+/)[0].trim().toLowerCase();
 }
 
+// ── Supply cost + retail intelligence ─────────────────────────────────────────
+// rentalsGap items (chairs, coolers, platters…) carry NO authored cost. Rather than
+// invent a number per render or author costs into 40 playbooks, this ONE canonical,
+// cited table maps a supply keyword → a typical US per-unit buy/rent range + whether
+// it's normally rented (link to local rentals) or bought (link to Amazon/Walmart).
+// Matched first→last (specific before general). Provenance: trade-heuristic /
+// synthesized — typical national price bands, not a quote. supplyIntel() returns the
+// PER-UNIT range; callers multiply by quantity. No match → null (we show no cost,
+// never a fabricated one).
+const SUPPLY_INTEL = [
+  { re: /folding chair|floor cushion|seat cushion|chair/i,                 low: 2,  high: 5,   kind: 'rent', label: 'chairs' },
+  { re: /banquet table|folding table|\btable(s)?\b/i,                       low: 8,  high: 16,  kind: 'rent', label: 'tables' },
+  { re: /pop-?up canop|canop|\btent\b|shade structure/i,                    low: 45, high: 120, kind: 'rent', label: 'canopy' },
+  { re: /chafing|chafer|food warmer|sterno|warming tray/i,                  low: 12, high: 25,  kind: 'rent', label: 'warmers' },
+  { re: /speaker|\bp\.?a\.?\b|sound system|bluetooth speaker/i,             low: 25, high: 60,  kind: 'rent', label: 'sound' },
+  { re: /beverage tub|drink tub|ice chest|cooler/i,                         low: 18, high: 45,  kind: 'buy',  label: 'cooler' },
+  { re: /drink dispenser|beverage dispenser|dispenser/i,                    low: 15, high: 35,  kind: 'buy',  label: 'dispenser' },
+  { re: /pitcher|carafe/i,                                                  low: 8,  high: 18,  kind: 'buy',  label: 'pitcher' },
+  { re: /serving board|charcuterie board|platter|serving tray|\btray\b/i,   low: 8,  high: 20,  kind: 'buy',  label: 'platters' },
+  { re: /serving (spoon|utensil)|tongs|ladle|serving set/i,                 low: 6,  high: 14,  kind: 'buy',  label: 'serveware' },
+  { re: /small bowl|prep bowl|\bbowls?\b/i,                                 low: 4,  high: 12,  kind: 'buy',  label: 'bowls' },
+  { re: /string light|cafe light|fairy light|lantern|candle/i,             low: 12, high: 28,  kind: 'buy',  label: 'lighting' },
+  { re: /ice scoop|scoop/i,                                                 low: 5,  high: 12,  kind: 'buy',  label: 'scoop' },
+  { re: /linen|tablecloth|table cover|kraft paper|table runner/i,           low: 6,  high: 15,  kind: 'buy',  label: 'linens' },
+  { re: /trash|recycling|bin|bus tub|shell bucket/i,                        low: 8,  high: 20,  kind: 'buy',  label: 'cleanup' },
+  { re: /heat lamp|patio heater|fan\b/i,                                    low: 30, high: 70,  kind: 'rent', label: 'climate' },
+];
+export function supplyIntel(name) {
+  const s = String(name || '');
+  if (!s) return null;
+  for (const e of SUPPLY_INTEL) { if (e.re.test(s)) return { low: e.low, high: e.high, kind: e.kind, label: e.label }; }
+  return null;
+}
+// Retail deep links for a supply item — honest product SEARCHES (never a specific
+// listing or endorsement). Rent-type items also get a local-rental map search.
+export function supplyRetailLinks(name, anchor) {
+  const q = encodeURIComponent(String(name || '').replace(/\s*[(/—].*$/, '').trim());
+  const intel = supplyIntel(name);
+  const links = [
+    { label: 'Amazon',  url: `https://www.amazon.com/s?k=${q}` },
+    { label: 'Walmart', url: `https://www.walmart.com/search?q=${q}` },
+    { label: 'Target',  url: `https://www.target.com/s?searchTerm=${q}` },
+  ];
+  if (intel && intel.kind === 'rent') {
+    const rq = encodeURIComponent(anchor ? `party rental ${intel.label} near ${anchor}` : `party rental ${intel.label}`);
+    return { kind: 'rent', rentUrl: `https://www.google.com/maps/search/${rq}`, buy: links };
+  }
+  return { kind: 'buy', buy: links };
+}
+
 export function playbookCapacity(event) {
   if (!event) return null;
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.rentalsGap) || !playbook.rentalsGap.length) return null;
   const guests = guestCountOf(event, playbook);
+  // Single source of truth (food-engine pattern): the engine merges the host's qty
+  // OVERRIDES (event.capacityQty) and ADDED items (event.capacityAdd), and attaches
+  // per-item cost from the ONE canonical supplyIntel table — the UI only renders +
+  // checks off. qty × per-unit range = the line cost; no costing happens in the UI.
+  const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
+  const added = Array.isArray(event.capacityAdd) ? event.capacityAdd.filter((a) => a && a.name) : [];
+  const costOf = (name, q) => { const intel = supplyIntel(name); return intel ? { costLow: Math.round(intel.low * q), costHigh: Math.round(intel.high * q), kind: intel.kind } : { costLow: null, costHigh: null, kind: null }; };
   const items = [];
   for (const r of playbook.rentalsGap) {
-    let qty = null;
-    // Sprint 57H: capture the scaling FACTOR alongside the quantity (additive — the
-    // qty math is byte-identical). The factor IS the reasoning behind the number.
     let factor = null, factorType = null;
     // Quantity comes from the ONE canonical source (resolveQuantity) so the
     // explainer/capacity number always matches the food-plan number. The
-    // factor/factorType below describe the SCALING BASIS only — they are not a
-    // second quantity derivation (Sprint 57H reasoning is preserved verbatim).
-    qty = resolveQuantity(r, guests);
+    // factor/factorType describe the SCALING BASIS only (Sprint 57H reasoning).
+    const baseQty = resolveQuantity(r, guests);
     if (typeof r.qtyPerGuest === 'number') { factor = r.qtyPerGuest; factorType = 'perGuest'; }
     else if (typeof r.qtyFlat === 'number' && typeof r.qtyPer === 'number') { factor = r.qtyFlat; factorType = 'perN'; }
     else if (typeof r.qtyFlat === 'number') { factor = r.qtyFlat; factorType = 'flat'; }
-    if (qty == null || qty <= 0) continue;
-    items.push({ item: r.item, short: shortRental(r.item), qty, note: r.note || '', factor, factorType });
+    if (baseQty == null || baseQty <= 0) continue;
+    const short = shortRental(r.item);
+    const qty = (short in qtyOv) ? Math.max(0, Math.round(Number(qtyOv[short]) || 0)) : baseQty;
+    items.push({ key: short, item: r.item, short, name: short, qty, note: r.note || '', factor, factorType, added: false, ...costOf(r.item, qty) });
+  }
+  // Host-added supplies — SAME costing path (single source: supplyIntel).
+  for (const a of added) {
+    const qty = Math.max(0, Math.round(Number(a.qty) || 0));
+    items.push({ key: a.id, item: a.name, short: a.name, name: a.name, qty, note: '', factor: null, factorType: null, added: true, ...costOf(a.name, qty) });
   }
   if (!items.length) return null;
   // compact summary, e.g. "12 chairs · 24 plates · 30 glasses · 12 flatware · 4 platters"
@@ -548,11 +695,15 @@ export function playbookCapacity(event) {
   // Sprint 57H: the "because" — built ONLY from the real factors above. Per-guest
   // items show "N <item> each"; flat items show their count. No inference.
   const perGuest = items.filter((i) => i.factorType === 'perGuest').map((i) => `${i.factor} ${i.short}`);
-  const flat = items.filter((i) => i.factorType !== 'perGuest').map((i) => `${i.qty} ${i.short}`);
+  const flat = items.filter((i) => i.factorType !== 'perGuest' && !i.added).map((i) => `${i.qty} ${i.short}`);
   let because = '';
   if (perGuest.length) because = `${guests} guests × ${perGuest.join(' · ')} each`;
   if (flat.length) because += `${because ? ' + ' : ''}${flat.join(' · ')} flat`;
-  return { guests, items, summary, because };
+  // Cost totals — only from lines we can ground in the canonical table (no fabricated $).
+  const costed = items.filter((i) => i.costLow != null);
+  const costLow = costed.reduce((s, i) => s + i.costLow, 0);
+  const costHigh = costed.reduce((s, i) => s + i.costHigh, 0);
+  return { guests, items, summary, because, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length };
 }
 
 // ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────

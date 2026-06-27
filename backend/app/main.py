@@ -20,6 +20,7 @@ from .routers import admin
 from .routers import food_prices
 from .routers import instacart
 from .routers import kroger
+from .routers import rsvp
 from .emailer import is_email_configured
 from .config import STRIPE_SECRET_KEY, RESEND_WEBHOOK_SECRET
 
@@ -207,3 +208,4 @@ app.include_router(admin.router)
 app.include_router(food_prices.router)
 app.include_router(instacart.router)
 app.include_router(kroger.router)
+app.include_router(rsvp.router)

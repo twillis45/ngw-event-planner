@@ -132,6 +132,19 @@ export const dark  = bundleForMode('dark');
 export const mid   = bundleForMode('mid');
 export const light = bundleForMode('light');
 
+// ── De-blued (neutral) carbon ramp ─────────────────────────────────────
+// The Standard/Mid carbon ramps are "Studio Steel" — deliberately blue-led (blue
+// channel ~8 over red). User (2026-06-23) preferred a NEUTRAL carbon: most of the blue
+// removed (blue ~3 over red), still a hair warm-cool-balanced, never steel. Four darkness
+// levels between the deepest dark and the light theme, each {bg, panel, surface2, border}.
+// App.js DARK picks one level via CARBON_LEVEL. Single source — never hardcode these hexes.
+export const carbonNeutral = {
+  deep:   { bg: '#0D0E10', panel: '#161719', surface2: '#1C1D20', border: '#282A2E' }, // dark↔mid
+  mid:    { bg: '#141518', panel: '#1E1F22', surface2: '#25262A', border: '#313338' }, // de-blued mid (default)
+  soft:   { bg: '#1C1D20', panel: '#26272A', surface2: '#2D2F33', border: '#3B3D43' }, // mid↔light
+  softer: { bg: '#242529', panel: '#2E2F33', surface2: '#36383D', border: '#46484F' }, // lighter still
+};
+
 // ── Approved brand-color presets ───────────────────────────────────────
 // Shown in the Profile Settings Brand Color picker. Every preset sits in
 // the Studio Matte register — no SaaS blue, no neon teal, no decorative

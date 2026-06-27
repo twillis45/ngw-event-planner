@@ -22,6 +22,13 @@ APP_BASE_URL             = os.environ.get("APP_BASE_URL", "https://twillis45.git
 #                    Set it to "*" to allow any origin (safe here — the real
 #                    boundary is the Supabase JWT + per-event ownership, and the
 #                    CLIENT read channel is public by design).
+#
+#   PROD REQUIREMENT (P0 security review): production MUST set an explicit
+#   ALLOWED_ORIGINS to your real frontend origin(s) — do NOT deploy with "*".
+#   The default below is the explicit prod+localhost list (already not "*"); keep
+#   it explicit. The unauthenticated public RSVP endpoints rely on the unguessable
+#   rsvpCode as their gate (CORS is not their security boundary), but an explicit
+#   origin list still keeps browser callers scoped to your own front door.
 #   ALLOWED_ORIGIN_REGEX: also allow origins matching this regex. Defaults to
 #                    localhost + private LAN IPs (any port) so device/LAN testing
 #                    and local dev work without listing every address.

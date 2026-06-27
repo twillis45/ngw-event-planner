@@ -10,6 +10,8 @@
 // Dark ("Studio Matte") is the canonical mode. Light is a deferred parity
 // target (Sprint 8 finding) and intentionally omitted to avoid faking it.
 
+import { carbonNeutral } from '../theme/palette';
+
 // ── Primitives (raw ramps) ──────────────────────────────────────────────
 const primitive = {
   // Sprint 60.N: matte ramp realigned to mirror the locked App.js DARK
@@ -49,26 +51,36 @@ const primitive = {
 };
 
 // ── Semantic color (mirrors NGW Color collection, Studio Matte mode) ─────
+// SURFACES + BORDERS are bridged to the app's PRODUCTION carbon ramp
+// (theme/palette `carbonNeutral.mid` — the de-blued Mid Carbon the DARK theme
+// actually renders). This makes CommandCenter and any tokens consumer share ONE
+// surface source with App.js `C.*`, so a tab can never drift to the old #070809
+// Standard Carbon again (the 2026-06-23 "Your Event bg doesn't match" bug).
+const _cn = carbonNeutral.mid; // { bg, panel, surface2, border }
 export const color = {
   surface: {
-    canvas:      primitive.matte['050'], // #070809 — ambient operational space
-    base:        primitive.matte['100'],
-    card:        primitive.matte['150'],
-    elevated:    primitive.matte['200'],
-    interactive: primitive.matte['250'],
+    canvas:      _cn.bg,        // = App.js C.bg (#141518) — was #070809 (drift)
+    base:        _cn.bg,
+    card:        _cn.panel,     // = C.surface
+    elevated:    _cn.surface2,  // = C.surface2
+    interactive: _cn.border,
     strong:      primitive.matte['300'], // raised key / P1 surface
     overlay:     primitive.matte['400'],
     dim:         '#3a3d4a',              // muted / inactive / disabled edge
   },
   border: {
-    subtle:  primitive.matte['250'],
-    default: primitive.matte['300'], // #232830
+    subtle:  _cn.border,        // = C.border (#313338)
+    default: primitive.matte['300'],
     strong:  primitive.matte['350'],
   },
   text: {
     primary:   '#e8edf2',
     secondary: primitive.steel['400'], // #849eb8 — DOCTRINE LOCKED
-    tertiary:  primitive.steel['600'],
+    // Lifted steel 600 → 500 (#6a87a0) 2026-06-24 per the board: tertiary text was
+    // reading as DISABLED on the dark Pulse (caption/secondary below the legibility
+    // floor). Still a notch under secondary so the tier ladder holds. `disabled`
+    // below stays the genuinely-inert faint tier.
+    tertiary:  primitive.steel['500'],
     disabled:  primitive.matte['400'],
     inverse:   primitive.matte['050'], // dark ink on bright fills
   },
@@ -112,7 +124,14 @@ export const radius = { none: 0, sm: 8, md: 12, lg: 12, xl: 20, full: 999 };
 // ── Typography (NGW Typography) ─────────────────────────────────────────
 export const type = {
   family: "'Inter', system-ui, -apple-system, sans-serif",
-  size: { xs: 10, sm: 11, base: 13, md: 14, lg: 15, xl: 16, '2xl': 20, '3xl': 22 },
+  // Scale extended (2026-06-24) so CommandCenter's dense data UI tokenizes with no
+  // rounding gaps: caption(12) fills the old 11→13 dead zone; 2xs(9) for micro-labels;
+  // 4xl/5xl for the event-title + countdown hero numerals. Edit a value here → it
+  // propagates to every tokenized fontSize (the point of tokenizing).
+  // `section` (17) = the SECTION-TITLE tier (board 2026-06-24), mirrors App.js TYPE_SCALE.section.
+  // A card/section NAME sits here: above body (base 13 / lg 15), below the 20+ hero — so the
+  // name leads its content by SIZE, never inverted into the caption/eyebrow tier.
+  size: { '2xs': 9, xs: 10, sm: 11, caption: 12, base: 13, md: 14, lg: 15, xl: 16, section: 17, '2xl': 20, '3xl': 22, '4xl': 26, '5xl': 30 },
   weight: { regular: 400, medium: 500, semibold: 600 },
   leading: { tight: 1.2, normal: 1.4, relaxed: 1.55 },
   tracking: { label: '0.08em', normal: 0 },
@@ -147,6 +166,17 @@ export const elevation = {
   escalation:  '0 3px 12px rgba(0,0,0,0.42)',
   interrupt:   '0 6px 24px rgba(0,0,0,0.50)',
   pressInset:  'inset 0 1px 4px rgba(0,0,0,0.40)',
+  // The canonical CARD shadow — top-edge highlight + tight contact + deep lift.
+  // == App.js DARK.cardShadow (single source so every card matches everywhere).
+  card:        'inset 0 1px 0 0 rgba(255,255,255,0.09), 0 2px 5px rgba(0,0,0,0.45), 0 18px 38px -12px rgba(0,0,0,0.74)',
+};
+
+// Metallic card EDGE — the highlight→border→shadow gradient run used by metalEdge.
+// Tokenized so the gradient values aren't magic numbers scattered across files.
+export const edge = {
+  hi:  'rgba(255,255,255,0.22)', // top highlight
+  lo:  'rgba(0,0,0,0.30)',       // bottom shadow
+  mid: 0.46,                     // border-color stop position (fraction → use as `${edge.mid*100}%`)
 };
 
 // ── Legacy bridge ───────────────────────────────────────────────────────

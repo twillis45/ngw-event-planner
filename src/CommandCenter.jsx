@@ -26,7 +26,7 @@
 // artifacts retained in Figma for future iteration; not shipped on purpose.
 
 import { useState, useEffect, useMemo } from 'react';
-import { color, space, type, radius } from './design/tokens';
+import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Sprint 57f.1: derive compression urgency from the event's own timeline so
 // Event Command can surface "Tight timeline — N tasks moved to the front"
 // when the planner most needs to see it, with a CTA that routes into the
@@ -98,6 +98,17 @@ const P = {
   steelBlue:     '#4E6877',
 };
 const FF = type.family;
+// Metallic gradient edge + dimensional shadow — mirrors App.js metalEdge + cardShadow
+// so CommandCenter cards carry the SAME polish as every other tab/card in the app
+// (no flat "tab" surfaces). Spread in place of `background + border` on card surfaces.
+const cardEdge = {
+  border: '1px solid transparent',
+  // Fully tokenized (design/tokens): edge gradient + card elevation + radius — so a
+  // CommandCenter card is identical to every other card in the app, no magic values.
+  background: `linear-gradient(${P.card},${P.card}) padding-box, linear-gradient(178deg, ${edge.hi} 0%, ${P.borderSubtle} ${edge.mid * 100}%, ${edge.lo} 100%) border-box`,
+  boxShadow: elevation.card,
+  borderRadius: radius.md,
+};
 
 // ── PHASE_OFFSET mirror (kept local so adapter has no App.js dependency) ──────
 const PHASE_OFFSET = {
@@ -247,8 +258,28 @@ export function deriveCommandCenterData(event) {
     else if (d <= 304) phaseIdx = phaseOrder.indexOf('10 Months Out');
     else               phaseIdx = phaseOrder.indexOf('12 Months Out');
   }
+  // A milestone clears when its ACTION is satisfied by real event state — not only
+  // when someone manually ticks `done`. So "Prep for 'Invite guests…'" disappears the
+  // moment a count is locked or guests exist; "Set the budget" once a total is set, etc.
+  // Keyword-matched against the same domains the next-step CTA routes to. Conservative:
+  // unmatched tasks are never auto-cleared (we only hide what we can prove is handled).
+  const _stTask = (t) => {
+    const s = String(t.task || '').toLowerCase();
+    const guests   = event.guests || [];
+    const hasGuests = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
+    const hasBudget = (Number(event.totalBudget) || 0) > 0 || (event.budget || []).some(b => Number(b.budgeted) > 0);
+    const hasVenue  = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
+    const hasVendors = (event.vendors || []).some(v => v && (v.name || '').trim());
+    const hasFood   = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (event.foodAdd || []).length > 0;
+    if (/invite|rsvp|\bguest|head\s?count|who.?s coming|adult|kids?\b/.test(s)) return hasGuests;
+    if (/budget|spending plan|set (a |the )?(cost|spend)/.test(s))             return hasBudget;
+    if (/venue|location|book.*(space|hall|room|venue)|secure.*(space|venue)/.test(s)) return hasVenue;
+    if (/vendor|cater|photograph|\bdj\b|florist|hire|book a /.test(s))         return hasVendors;
+    if (/menu|food plan|what to (cook|serve|make)|plan the food/.test(s))       return hasFood;
+    return false;
+  };
   const nextUp = timeline
-    .filter(t => !t.done)
+    .filter(t => !t.done && !_stTask(t))
     .filter(t => phaseOrder.indexOf(t.week) >= phaseIdx && phaseOrder.indexOf(t.week) <= phaseIdx + 1)
     .slice(0, 4)
     .map(t => ({
@@ -1441,21 +1472,34 @@ function _selectEventNextActionInner(event) {
   const compression = deriveEventCompressionSummary(event, daysFrom, PHASE_OFFSET);
   if (compression && compression.significant) {
     const doNow = compression.doNow.length;
-    const swap  = compression.considerSwap.length;
-    const consequenceParts = [];
-    if (doNow > 0) consequenceParts.push(`${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now`);
-    if (swap  > 0) consequenceParts.push(`${swap} long-lead ${swap === 1 ? 'task' : 'tasks'} to consider swapping`);
+    // Owner directive 2026-06-24: the next step must BE the action — never a situational
+    // narration ("A few things land around the same time"). The clustering is CONTEXT,
+    // not the headline. Lead with the single concrete first task; demote the "+N more"
+    // to a quiet consequence; route STRAIGHT to that task (less friction, no extra
+    // "which one?" question). The vague headline only survives as a last-resort fallback
+    // when the engine somehow has no named first task.
+    const first = compression.doNow[0];
+    const firstText = first && (first.task || first.title)
+      ? String(first.task || first.title).trim().replace(/[.\s]+$/, '')
+      : null;
+    const more = Math.max(0, doNow - 1);
     return {
       level: 'attention',
       category: 'compression',
-      title: compression.headline || 'Tight timeline — a few tasks moved to the front.',
-      consequence: `${consequenceParts.join(' · ')}. ${compression.meta.sub}`,
-      primaryCta: 'Review tasks',
-      // Route into Planning Tasks (the editor) with the '__compressed__'
-      // sentinel as taskId. Timeline.defaultPhase consumes that sentinel
-      // and auto-selects the "Tight timeline" filter so the planner lands
-      // directly on the items the headline counted.
-      primaryRoute: { tab: 'Planning Tasks', taskId: '__compressed__' },
+      title: firstText ? firstText + '.' : (compression.headline || 'Tight timeline — a few tasks moved to the front.'),
+      consequence: firstText
+        ? `${more > 0 ? `${more} more cluster around the same time — do this one first and the rest stay in order. ` : ''}${compression.meta.sub}`
+        : `${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now. ${compression.meta.sub}`,
+      primaryCta: firstText ? 'Do this' : 'Review tasks',
+      // Surfaced so the persona voice can lead with the action without re-deriving it.
+      firstAction: firstText,
+      moreCount: more,
+      // Route STRAIGHT to the first task when we have its id (the editor scrolls to it);
+      // fall back to the '__compressed__' sentinel (Timeline auto-selects the
+      // "Tight timeline" filter) only when there's no specific task to land on.
+      primaryRoute: (first && first.id)
+        ? { tab: 'Planning Tasks', taskId: first.id }
+        : { tab: 'Planning Tasks', taskId: '__compressed__' },
       contextLine: daysSub,
     };
   }
@@ -1463,13 +1507,17 @@ function _selectEventNextActionInner(event) {
   // Tier 5: timeline risk
   const readiness = getEventReadiness(event);
   if (readiness.timeline && readiness.timeline.status === 'AT_RISK') {
+    // Owner directive 2026-06-24: a verb CTA must DEEP-LINK to the action, not dump the
+    // host on a whole tab. "Catch up" lands on the FIRST overdue task (the editor scrolls
+    // to it); fall back to the Timeline only when there's no specific task to open.
+    const firstOverdue = (event.timeline || []).find((t) => t && !t.done && isTaskOverdue(t, event.date, event.type));
     return {
       level: 'attention',
       category: 'timeline',
       title: 'Catch up on overdue planning tasks.',
       consequence: `${readiness.timeline.note}${days !== null && days >= 0 ? ` · only ${daysWord(days)} left to recover` : ''}. Falling further behind compounds vendor and budget risk.`,
       primaryCta: 'Catch up',
-      primaryRoute: { tab: 'Timeline' },
+      primaryRoute: firstOverdue ? { tab: 'Planning Tasks', taskId: firstOverdue.id } : { tab: 'Timeline' },
       contextLine: daysSub,
     };
   }
@@ -1553,7 +1601,18 @@ function _selectEventNextActionInner(event) {
       })(),
       consequence: `${nextUp.sub ? `Coming up: ${nextUp.sub}. ` : ''}Staying ahead by one step makes the rest of the timeline feel quiet.`,
       primaryCta: 'Get ahead',
-      primaryRoute: { tab: 'Timeline', timelineId: nextUp.id },
+      // "Get ahead" should land on the FIELD where you actually DO the action — e.g.
+      // "Invite guests" → Guests, "Set the budget" → Budget — not just the Timeline
+      // view of the milestone. Map the milestone's words to its action tab; fall back
+      // to the timeline (anchored to the milestone) when it isn't a domain action.
+      primaryRoute: (() => {
+        const s = String(nextUp.label || '').toLowerCase();
+        if (/guest|invite|rsvp|head\s?count|seat/.test(s)) return { tab: 'Guests' };
+        if (/budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/.test(s)) return { tab: 'Budget' };
+        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) return { tab: 'Vendors' };
+        if (/food|menu|shop|grocer|drink|supplies|seating/.test(s)) return { tab: 'Planning' };
+        return { tab: 'Timeline', timelineId: nextUp.id };
+      })(),
       contextLine: daysSub,
     };
   }
@@ -1653,25 +1712,29 @@ function SectionHeader({ label, count, countColor, action, onAction, event }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* Sprint 60.U.3 10+ — steel-blue eyebrow matches modal hierarchy */}
+        {/* Board ruling 2026-06-24 — SECTION TITLE, not a 10px eyebrow chip. These are the
+            section NAMES of the whole Pulse ("What this is", "Decisions", "Needs You", "Next
+            Up"…); at 10px uppercase steel they sat BELOW the lg/sm content they head (badly
+            inverted). Now a real section title: lg (15), sentence-case, primary — leads its
+            group by size, not hue. */}
         <span style={{
-          fontSize: 10.5, fontWeight: 800, color: P.steelBlue, fontFamily: FF,
-          letterSpacing: '0.16em', textTransform: 'uppercase',
+          fontSize: type.size.lg, fontWeight: 700, color: P.textPrimary, fontFamily: FF,
+          letterSpacing: '-0.01em',
         }}>{dispLabel}</span>
         {count !== undefined && count > 0 && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: countColor || P.textSecondary, fontFamily: FF }}>{count}</span>
+          <span style={{ fontSize: type.size.sm, fontWeight: 600, color: countColor || P.textSecondary, fontFamily: FF }}>{count}</span>
         )}
         <div style={{ flex: 1 }} />
         {action && (
           <button onClick={onAction} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0,
+            fontSize: type.size.sm, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0,
           }}>{action}</button>
         )}
       </div>
       {subtitle && (
         <div style={{
-          fontSize: 10, color: P.textTertiary, fontFamily: FF,
+          fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF,
           fontStyle: 'italic', marginTop: 2, lineHeight: 1.4,
         }}>{dispSub}</div>
       )}
@@ -1684,10 +1747,10 @@ function SectionHeader({ label, count, countColor, action, onAction, event }) {
 function NeedsSubLabel({ label, count, action, onAction }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, color: P.textSecondary, fontFamily: FF, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
-      {count > 0 && <span style={{ fontSize: 10.5, fontWeight: 600, color: P.textTertiary, fontFamily: FF }}>{count}</span>}
+      <span style={{ fontSize: type.size.xs, fontWeight: 700, color: P.textSecondary, fontFamily: FF, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+      {count > 0 && <span style={{ fontSize: type.size.xs, fontWeight: 600, color: P.textTertiary, fontFamily: FF }}>{count}</span>}
       <div style={{ flex: 1 }} />
-      {action && <button onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10.5, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0 }}>{action}</button>}
+      {action && <button onClick={onAction} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: type.size.xs, fontWeight: 500, color: P.green, fontFamily: FF, padding: 0 }}>{action}</button>}
     </div>
   );
 }
@@ -1696,7 +1759,7 @@ function Pill({ label, color, outline }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      fontSize: 8.5, fontWeight: 600, fontFamily: FF, letterSpacing: '0.10em',
+      fontSize: type.size["2xs"], fontWeight: 600, fontFamily: FF, letterSpacing: '0.10em',
       padding: '2px 7px', borderRadius: 3,
       background: outline ? 'transparent' : color,
       color: outline ? color : P.canvas,
@@ -1710,7 +1773,7 @@ function Pill({ label, color, outline }) {
 function DecisionCard({ d, onOpen, isMobile }) {
   return (
     <div style={{
-      background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10,
+      ...cardEdge, border: cardEdge.border, borderRadius: radius.md,
       padding: isMobile ? 14 : 18,
       display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12,
       fontFamily: FF,
@@ -1718,21 +1781,21 @@ function DecisionCard({ d, onOpen, isMobile }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Pill label={d.statusLabel} color={d.statusColor} />
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: d.dueColor }}>{d.dueLabel}</span>
+        <span style={{ fontSize: type.size.sm, fontWeight: 600, color: d.dueColor }}>{d.dueLabel}</span>
       </div>
       <div style={{
-        fontSize: isMobile ? 15.5 : 17, fontWeight: 600, color: P.textPrimary,
+        fontSize: type.size.lg, fontWeight: 600, color: P.textPrimary,
         letterSpacing: '-0.01em', lineHeight: 1.3,
       }}>{d.title}</div>
-      <div style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.4 }}>{d.impact}</div>
+      <div style={{ fontSize: type.size.sm, color: P.textSecondary, lineHeight: 1.4 }}>{d.impact}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 5, height: 5, borderRadius: '50%', background: P.textSecondary, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, color: P.textTertiary }}>{d.owner}</span>
+        <span style={{ fontSize: type.size.sm, color: P.textTertiary }}>{d.owner}</span>
         <div style={{ flex: 1 }} />
         <button onClick={onOpen} style={{
           background: 'transparent', color: P.textPrimary,
           border: `1px solid ${P.borderDef}`, cursor: 'pointer',
-          fontSize: 11.5, fontWeight: 600, fontFamily: FF,
+          fontSize: type.size.sm, fontWeight: 600, fontFamily: FF,
           padding: '6px 12px', borderRadius: 6, whiteSpace: 'nowrap',
         }}>Decide →</button>
       </div>
@@ -1745,19 +1808,19 @@ function ApprovalRow({ a, onOpen }) {
   return (
     <button onClick={onOpen} style={{
       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: 14,
-      background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8,
+      ...cardEdge, border: cardEdge.border, borderRadius: radius.md,
       cursor: 'pointer', fontFamily: FF, textAlign: 'left',
     }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary, lineHeight: 1.3 }}>
+        <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary, lineHeight: 1.3 }}>
           {a.title}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Pill label={a.statusLabel} color={a.statusColor} />
-          <span style={{ fontSize: 11, color: P.textSecondary }}>{a.sub} · {a.ago}</span>
+          <span style={{ fontSize: type.size.sm, color: P.textSecondary }}>{a.sub} · {a.ago}</span>
         </div>
       </div>
-      <span style={{ color: P.textTertiary, fontSize: 14 }}>›</span>
+      <span style={{ color: P.textTertiary, fontSize: type.size.md }}>›</span>
     </button>
   );
 }
@@ -1779,13 +1842,13 @@ function RequestRow({ r, onOpen, isFirst }) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
-            fontSize: 9, fontWeight: 700, color: r.sourceColor,
+            fontSize: type.size["2xs"], fontWeight: 700, color: r.sourceColor,
             letterSpacing: '0.14em', textTransform: 'uppercase',
           }}>{r.source}</span>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 10.5, color: P.textTertiary }}>{r.when}</span>
+          <span style={{ fontSize: type.size.xs, color: P.textTertiary }}>{r.when}</span>
         </div>
-        <div style={{ fontSize: 12.5, fontWeight: 500, color: P.textPrimary, lineHeight: 1.3 }}>
+        <div style={{ fontSize: type.size.base, fontWeight: 500, color: P.textPrimary, lineHeight: 1.3 }}>
           {r.title}
         </div>
       </div>
@@ -1803,11 +1866,11 @@ function QuestionRow({ q, onOpen, isFirst }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ width: 5, height: 5, borderRadius: '50%', background: q.sourceColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: P.textPrimary }}>{q.source}</span>
+        <span style={{ fontSize: type.size.sm, fontWeight: 600, color: P.textPrimary }}>{q.source}</span>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10.5, color: P.textTertiary }}>{q.when}</span>
+        <span style={{ fontSize: type.size.xs, color: P.textTertiary }}>{q.when}</span>
       </div>
-      <div style={{ fontSize: 12, color: P.textSecondary, lineHeight: 1.45 }}>"{q.snippet}"</div>
+      <div style={{ fontSize: type.size.caption, color: P.textSecondary, lineHeight: 1.45 }}>"{q.snippet}"</div>
     </button>
   );
 }
@@ -1824,17 +1887,17 @@ function TimelineRow({ t, isFirst }) {
         flexShrink: 0,
       }}>
         <span style={{
-          fontSize: 9, fontWeight: 600, color: t.color,
+          fontSize: type.size["2xs"], fontWeight: 600, color: t.color,
           letterSpacing: '0.12em',
         }}>{t.dateLabel}</span>
-        <span style={{ fontSize: 15, fontWeight: 600, color: P.textPrimary, letterSpacing: '-0.01em' }}>
+        <span style={{ fontSize: type.size.lg, fontWeight: 600, color: P.textPrimary, letterSpacing: '-0.01em' }}>
           {t.dateNum}
         </span>
       </div>
       <div style={{ width: 1, height: 28, background: P.borderSubtle, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary, lineHeight: 1.3 }}>{t.label}</div>
-        <div style={{ fontSize: 10.5, color: P.textSecondary }}>{t.sub}</div>
+        <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary, lineHeight: 1.3 }}>{t.label}</div>
+        <div style={{ fontSize: type.size.xs, color: P.textSecondary }}>{t.sub}</div>
       </div>
     </div>
   );
@@ -1850,17 +1913,17 @@ function VendorRow({ v, onOpen, isFirst }) {
     }}>
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: v.statusColor, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: P.textPrimary }}>{v.category}</div>
-        {v.name && <div style={{ fontSize: 10.5, color: P.textTertiary }}>{v.name}</div>}
+        <div style={{ fontSize: type.size.caption, fontWeight: 600, color: P.textPrimary }}>{v.category}</div>
+        {v.name && <div style={{ fontSize: type.size.xs, color: P.textTertiary }}>{v.name}</div>}
         {/* Sprint 51 Path B: caterer drift detail — surfaces the actual
             headcount delta inline so the planner sees the work before the
             click instead of having to drill in. */}
         {v.driftNote && (
-          <div style={{ fontSize: 10.5, color: P.amber, marginTop: 2 }}>{v.driftNote}</div>
+          <div style={{ fontSize: type.size.xs, color: P.amber, marginTop: 2 }}>{v.driftNote}</div>
         )}
       </div>
       <span style={{
-        fontSize: 9.5, fontWeight: 600, color: v.statusColor,
+        fontSize: type.size.xs, fontWeight: 600, color: v.statusColor,
         letterSpacing: '0.10em', flexShrink: 0,
       }}>{v.statusLabel}</span>
     </button>
@@ -1877,8 +1940,8 @@ function DocPill({ label, status, color, onClick }) {
   };
   const inner = (
     <>
-      <div style={{ fontSize: 11, fontWeight: 600, color: P.textPrimary }}>{label}</div>
-      <div style={{ fontSize: 10, color: color || P.textTertiary }}>{status}</div>
+      <div style={{ fontSize: type.size.sm, fontWeight: 600, color: P.textPrimary }}>{label}</div>
+      <div style={{ fontSize: type.size.xs, color: color || P.textTertiary }}>{status}</div>
     </>
   );
   if (!onClick) return <div style={baseStyle}>{inner}</div>;
@@ -1912,9 +1975,9 @@ function HealthList({ health, onTabChange, event }) {
       {rows.map((h, i) => <HealthRow key={h.label} h={h} isFirst={i === 0} onTabChange={onTabChange} event={event} grammar={grammar} />)}
       {onTrack.length > 0 && (
         <button type="button" onClick={() => setShowOk(v => !v)}
-          style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: rows.length ? `1px solid ${P.borderSubtle}` : 'none', padding: '12px 14px', cursor: 'pointer', fontFamily: FF, fontSize: 13, fontWeight: 600, color: P.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          style={{ width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: rows.length ? `1px solid ${P.borderSubtle}` : 'none', padding: '12px 14px', cursor: 'pointer', fontFamily: FF, fontSize: type.size.base, fontWeight: 600, color: P.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span><span style={{ color: P.green, fontWeight: 800 }}>✓</span> {onTrack.length} on track</span>
-          <span style={{ fontSize: 11, opacity: 0.8 }}>{showOk ? 'Hide' : 'Show'}</span>
+          <span style={{ fontSize: type.size.sm, opacity: 0.8 }}>{showOk ? 'Hide' : 'Show'}</span>
         </button>
       )}
     </>
@@ -1934,14 +1997,14 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
     <>
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotC, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
-        <div style={{ fontSize: 11, color: P.textSecondary }}>
+        <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
+        <div style={{ fontSize: type.size.sm, color: P.textSecondary }}>
           {/* Sprint 57K: Value-Level Confidence — Pattern 014 word travels WITH the
               value (small steel pill before the number), only when pi.valueConfidence
               is on AND this row's value provenance is classifiable. */}
           {valueConfidenceActive() && h.valueLevel && (
             <span style={{
-              display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+              display: 'inline-block', fontSize: type.size["2xs"], fontWeight: 700, letterSpacing: '0.06em',
               color: P.textSecondary, border: `1px solid ${P.borderSubtle}`, borderRadius: 4,
               padding: '0px 4px', marginRight: 6, verticalAlign: '1px', textTransform: 'uppercase',
             }}>{valueWord(h.valueLevel, event)}</span>
@@ -1952,13 +2015,13 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
             the note (tier-3 whisper); renders only when pi.because is on AND this row
             carries a traceable `because`. */}
         {becauseActive() && h.because && (
-          <div style={{ fontSize: 10.5, color: P.textTertiary, marginTop: 1 }}>
+          <div style={{ fontSize: type.size.xs, color: P.textTertiary, marginTop: 1 }}>
             <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>Because</span> {h.because}
           </div>
         )}
       </div>
-      <span style={{ fontSize: 9.5, fontWeight: 600, color: dotC, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
-      {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: 15, flexShrink: 0, marginLeft: 2 }}>›</span>}
+      <span style={{ fontSize: type.size.xs, fontWeight: 600, color: dotC, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
+      {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: type.size.lg, flexShrink: 0, marginLeft: 2 }}>›</span>}
     </>
   );
   const baseStyle = {
@@ -1981,30 +2044,49 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
 // audience's), so host/operator/planner all see the same. Renders nothing when the
 // flag is off or no meaning was captured (graceful degrade to today).
 function EventIdentityBlock({ event, isMobile }) {
+  // Attention System (board 2026-06-24): identity WHISPERS — collapsed to one quiet line
+  // by default, expands when the host reaches for it (progressive disclosure, not a
+  // permanent wall). Hook declared first, before the early returns.
+  const [open, setOpen] = useState(false);
   if (!identityOn()) return null;
   const id = eventIdentity(event);
   if (!id) return null;
+  // Board ruling 2026-06-24: don't state the must-have twice. When "The one thing that
+  // must happen" is shown above, drop any "What success looks like" bullet that just
+  // echoes it (e.g. "The must-have happens: <the must-have>") — orientation should not repeat.
+  const mh = id.mustHaveMoment ? String(id.mustHaveMoment).toLowerCase().trim() : '';
+  const successBullets = (id.success || []).filter(
+    (b) => !(mh && String(b).toLowerCase().includes(mh))
+  );
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 10, marginBottom: isMobile ? 14 : 18 }}>
-      <SectionHeader label="What this is" />
-      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: P.textPrimary, lineHeight: 1.45 }}>{id.reallyIs}</div>
-        {id.intent && <div style={{ fontSize: 11.5, color: P.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{id.intent}</div>}
-        {id.mustHaveMoment && (
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary }}>The one thing that must happen</div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary, marginTop: 3 }}>{id.mustHaveMoment}</div>
-          </div>
-        )}
-        {id.success && id.success.length > 0 && (
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: 4 }}>What success looks like</div>
-            {id.success.slice(0, 5).map((b, i) => (
-              <div key={i} style={{ fontSize: 11.5, color: P.textSecondary, lineHeight: 1.55 }}>· {b}</div>
-            ))}
-          </div>
-        )}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 6 : 8, marginBottom: isMobile ? 12 : 16 }}>
+      {/* Collapsed = one quiet line (whisper). Tap to expand the full meaning. */}
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        style={{ display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', textAlign: 'left', fontFamily: FF }}>
+        <span style={{ fontSize: type.size.xs, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.textTertiary, flexShrink: 0 }}>What this is</span>
+        {!open && <span style={{ fontSize: type.size.base, color: P.textSecondary, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{id.reallyIs}</span>}
+        <span aria-hidden style={{ marginLeft: 'auto', color: P.textTertiary, fontSize: type.size.caption, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md, padding: '14px 16px' }}>
+          <div style={{ fontSize: type.size.md, fontWeight: 600, color: P.textPrimary, lineHeight: 1.45 }}>{id.reallyIs}</div>
+          {id.intent && <div style={{ fontSize: type.size.base, color: P.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{id.intent}</div>}
+          {id.mustHaveMoment && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
+              <div style={{ fontSize: type.size.caption, fontWeight: 600, color: P.textSecondary }}>The one thing that must happen</div>
+              <div style={{ fontSize: type.size.md, fontWeight: 600, color: P.textPrimary, marginTop: 3 }}>{id.mustHaveMoment}</div>
+            </div>
+          )}
+          {successBullets.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${P.borderSubtle}` }}>
+              <div style={{ fontSize: type.size.caption, fontWeight: 600, color: P.textSecondary, marginBottom: 4 }}>What success looks like</div>
+              {successBullets.slice(0, 5).map((b, i) => (
+                <div key={i} style={{ fontSize: type.size.base, color: P.textSecondary, lineHeight: 1.55 }}>· {b}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2037,7 +2119,7 @@ function DecisionsBlock({ items, isMobile }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
       <SectionHeader label="Decisions" />
-      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+      <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
         {shown.map((it, i) => {
           const col = colorOf(it.state);
           return (
@@ -2047,12 +2129,12 @@ function DecisionsBlock({ items, isMobile }) {
             }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
-                <div style={{ fontSize: 11, color: P.textSecondary }}>
+                <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
+                <div style={{ fontSize: type.size.sm, color: P.textSecondary }}>
                   {it.confidence ? <span style={{ color: col, fontWeight: 600 }}>{it.confidence} </span> : null}{it.reason}
                 </div>
               </div>
-              <span style={{ fontSize: 9.5, fontWeight: 600, color: col, letterSpacing: '0.08em', flexShrink: 0 }}>
+              <span style={{ fontSize: type.size.xs, fontWeight: 600, color: col, letterSpacing: '0.08em', flexShrink: 0 }}>
                 {(DEC_STATE[it.state] || {}).word}
               </span>
             </div>
@@ -2068,16 +2150,16 @@ function YoureSetOn({ items, isMobile }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
       <SectionHeader label="You're Set On" count={items.length} countColor={P.green} />
-      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+      <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
         {items.map((it, i) => (
           <div key={it.key} style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', fontFamily: FF,
             borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`,
           }}>
-            <span aria-hidden style={{ color: P.green, fontSize: 14, fontWeight: 700, flexShrink: 0, width: 16, textAlign: 'center' }}>✓</span>
+            <span aria-hidden style={{ color: P.green, fontSize: type.size.md, fontWeight: 700, flexShrink: 0, width: 16, textAlign: 'center' }}>✓</span>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
-              {it.note && <div style={{ fontSize: 11, color: P.textSecondary }}>{it.note}</div>}
+              <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary }}>{it.label}</div>
+              {it.note && <div style={{ fontSize: type.size.sm, color: P.textSecondary }}>{it.note}</div>}
             </div>
           </div>
         ))}
@@ -2094,7 +2176,7 @@ function UpcomingRail({ items, onTabChange, isMobile }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
       <SectionHeader label="Coming up later" />
-      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: isMobile ? 8 : 10 }}>
+      <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
         {items.map((r, i) => (
           <button key={r.section} onClick={() => onTabChange?.(r.route)} style={{
             width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
@@ -2102,10 +2184,10 @@ function UpcomingRail({ items, onTabChange, isMobile }) {
             borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`, cursor: 'pointer', fontFamily: FF,
           }}>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: P.textSecondary }}>{r.label}</div>
-              <div style={{ fontSize: 11, color: P.textTertiary }}>{r.hint}</div>
+              <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textSecondary }}>{r.label}</div>
+              <div style={{ fontSize: type.size.sm, color: P.textTertiary }}>{r.hint}</div>
             </div>
-            <span aria-hidden style={{ color: P.textTertiary, fontSize: 14, flexShrink: 0 }}>›</span>
+            <span aria-hidden style={{ color: P.textTertiary, fontSize: type.size.md, flexShrink: 0 }}>›</span>
           </button>
         ))}
       </div>
@@ -2117,9 +2199,9 @@ function UpcomingRail({ items, onTabChange, isMobile }) {
 function EmptyState({ children }) {
   return (
     <div style={{
-      padding: '20px 14px', background: P.card, border: `1px solid ${P.borderSubtle}`,
+      padding: '20px 14px', ...cardEdge, border: cardEdge.border,
       borderRadius: 8, textAlign: 'center', fontFamily: FF,
-      fontSize: 12, color: P.textTertiary,
+      fontSize: type.size.caption, color: P.textTertiary,
     }}>
       {children}
     </div>
@@ -2136,19 +2218,21 @@ function EmptyState({ children }) {
 // Salesforce-speak was undermining the planner-native voice elsewhere.)
 function NextBestActionPanel({ command, onTabChange, isMobile }) {
   if (!command) return null;
-  // Severity color drives the left accent strip and the eyebrow label
-  // only. The primary CTA must remain steel-blue (locked: amber/red are
-  // status colors, never primary action colors).
+  // Severity color drives the left accent strip and the eyebrow label only.
+  // Studio Matte Confidence lock (board 2026-06-24): attention/"Needs you" is a
+  // confidence/attention state → STEEL, never warm gold (amber is banned from
+  // confidence signals; reserved for Kelvin/role/interaction). Critical keeps the
+  // canonical alarm red. Tiers now read steel → steelBlue → red, all on-palette.
   const accent =
     command.level === 'critical'  ? P.red :
-    command.level === 'attention' ? P.amber :
+    command.level === 'attention' ? P.steelBlue :
                                     P.textSecondary;
   const ctaTop  = P.steelBlue;            // #4E6877
   const ctaBase = '#3F5B6A';              // matches palette steelBlueDark
   const label =
-    command.level === 'critical'  ? 'Up Next · Critical' :
-    command.level === 'attention' ? 'Up Next · Needs you' :
-                                    'Up Next';
+    command.level === 'critical'  ? 'Next step · Critical' :
+    command.level === 'attention' ? 'Next step · Needs you' :
+                                    'Next step';
 
   const handleCta = () => {
     if (!command.primaryRoute) return;
@@ -2166,9 +2250,9 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
     <div style={{
       position: 'relative',
       padding: isMobile ? '18px 18px 18px 22px' : '22px 26px 22px 30px',
-      background: P.card,
-      border: `1px solid ${P.borderSubtle}`,
-      borderRadius: radius.lg,
+      // Same polish as every app card — the metallic gradient edge + dimensional
+      // lift (was flat P.card + solid border). cardEdge provides bg/border/shadow/radius.
+      ...cardEdge,
       overflow: 'hidden',
       fontFamily: FF,
       // Attention System: the hero breathes when something actually needs you;
@@ -2187,7 +2271,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
         display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
       }}>
         <span style={{
-          fontSize: 9.5, fontWeight: type.weight.semibold,
+          fontSize: type.size.xs, fontWeight: type.weight.semibold,
           letterSpacing: '0.18em', textTransform: 'uppercase',
           color: accent,
         }}>
@@ -2195,8 +2279,8 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
         </span>
         {command.contextLine && (
           <>
-            <span style={{ color: P.textTertiary, fontSize: 10 }}>·</span>
-            <span style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
+            <span style={{ color: P.textTertiary, fontSize: type.size.xs }}>·</span>
+            <span style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF }}>
               {command.contextLine}
             </span>
           </>
@@ -2205,7 +2289,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
 
       {/* Title — editorial */}
       <div style={{
-        fontSize: isMobile ? 20 : 24,
+        fontSize: isMobile ? type.size['2xl'] : type.size['3xl'],
         fontWeight: type.weight.semibold,
         letterSpacing: '-0.025em',
         lineHeight: 1.15,
@@ -2217,7 +2301,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
 
       {/* Consequence */}
       <div style={{
-        fontSize: isMobile ? 12.5 : 13.5,
+        fontSize: type.size.base,
         lineHeight: 1.55,
         color: P.textSecondary,
         marginBottom: 18,
@@ -2238,7 +2322,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
           cursor: 'pointer',
           background: `linear-gradient(180deg, ${ctaTop} 0%, ${ctaBase} 100%)`,
           color: '#eef0f4',
-          fontSize: isMobile ? 12.5 : 13,
+          fontSize: type.size.base,
           fontWeight: type.weight.semibold,
           letterSpacing: '0.01em',
           fontFamily: FF,
@@ -2250,7 +2334,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
       >
         {command.primaryCta}
-        <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+        <span style={{ fontSize: type.size.caption, opacity: 0.85 }}>→</span>
       </button>
 
       {/* Sprint 57f.2: compression sub-badge. Renders ONLY when the
@@ -2284,13 +2368,13 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
             display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
           }}>
             <span style={{
-              fontSize: 9.5, fontWeight: type.weight.semibold,
+              fontSize: type.size.xs, fontWeight: type.weight.semibold,
               color: sbTone, background: sbTone + '18',
               border: `1px solid ${sbTone}44`, borderRadius: 99,
               padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase',
               whiteSpace: 'nowrap', flexShrink: 0,
             }}>⏱ {sb.label}</span>
-            <span style={{ fontSize: 11.5, color: P.textSecondary, fontFamily: FF, flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF, flex: 1, minWidth: 0 }}>
               {summary}
             </span>
             <button
@@ -2301,7 +2385,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
                 borderRadius: radius.sm,
                 color: P.textSecondary,
                 fontFamily: FF,
-                fontSize: 11,
+                fontSize: type.size.sm,
                 fontWeight: type.weight.medium,
                 padding: '5px 12px',
                 cursor: 'pointer',
@@ -2331,16 +2415,16 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap }}>
       <SectionHeader label="Team" action="Manage →" onAction={onManage} />
-      <div data-testid="cc-team-readiness" style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10, padding: '12px 14px' }}>
+      <div data-testid="cc-team-readiness" style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md, padding: '12px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: sev, flexShrink: 0 }} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary }}>{summary.total} on this event</span>
+          <span style={{ fontSize: type.size.base, fontWeight: 700, color: P.textPrimary }}>{summary.total} on this event</span>
         </div>
-        <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 4 }}>
+        <div style={{ fontSize: type.size.caption, color: P.textSecondary, marginTop: 4 }}>
           {summary.confirmed} confirmed{summary.needsConfirmation ? ` · ${summary.needsConfirmation} need confirmation` : ''}{summary.assigned ? ` · ${summary.assigned} assigned` : ''}
         </div>
         {summary.crew.slice(0, 4).map(c => (
-          <div key={c.id} style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <div key={c.id} style={{ fontSize: type.size.caption, marginTop: 6, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ color: P.textPrimary }}>{c.name}{c.roleLabel ? ` · ${c.roleLabel}` : ''}</span>
             <span style={{ color: c.status === 'needs_confirmation' ? P.amber : c.status === 'confirmed' ? P.green : P.textTertiary, whiteSpace: 'nowrap' }}>{c.status === 'needs_confirmation' ? 'Needs confirmation' : c.status === 'confirmed' ? 'Confirmed' : 'Assigned'}</span>
           </div>
@@ -2353,7 +2437,7 @@ function TeamReadinessBlock({ summary, onManage, gap = 12 }) {
 function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
   const d = data;
   return (
-    <div style={{ background: P.canvas, minHeight: '100vh', paddingBottom: 80 }}>
+    <div style={{ background: 'transparent', minHeight: '100vh', paddingBottom: 80 }}>
       {/* Studio bar — slim header with back + brand context */}
       {onBack && (
         <div style={{
@@ -2363,15 +2447,11 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         }}>
           <button onClick={onBack} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 18, color: P.textSecondary, padding: 0,
+            fontSize: type.size.xl, color: P.textSecondary, padding: 0,
           }}>←</button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{
-              fontSize: 8.5, fontWeight: 700, color: P.textTertiary,
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-            }}>{backLabel || 'Studio'}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: P.textPrimary }}>{event.name || 'Event'}</span>
-          </div>
+          {/* P0 punch-list: the event NAME is the Pulse hero (banner below) — the studio
+              bar only carries wayfinding back to Home, no duplicate name/meta. */}
+          <span style={{ fontSize: type.size.base, fontWeight: 600, color: P.textSecondary }}>{backLabel ? backLabel.replace(/^←\s*/, '') : 'Studio'}</span>
         </div>
       )}
 
@@ -2394,24 +2474,17 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
               width: 12, height: 12, borderRadius: '50%',
               background: `${P.steelBlue}33`, color: P.steelBlue,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 7, fontWeight: 800, fontFamily: FF,
-            }}>✓</span>
+              fontSize: type.size['2xs'], fontWeight: 800, fontFamily: FF,
+            }}></span>
             <span style={{
-              fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em',
+              fontSize: type.size.xs, fontWeight: 800, letterSpacing: '0.16em',
               textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
             }}>Event Boss Pulse</span>
           </div>
-          <div style={{
-            fontSize: 26, fontWeight: 600, color: P.textPrimary,
-            letterSpacing: '-0.03em', lineHeight: 1.1,
-          }}>{event.name || 'Untitled event'}</div>
-          <div style={{ fontSize: 12.5, color: P.textSecondary }}>
-            {event.type ? `${event.type}${event.secondaryType ? ` + ${event.secondaryType}` : ''} · ` : ''}
-            {event.date ? `${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : 'Date TBD'}
-            {d.days !== null && ` · ${d.days > 0 ? `${d.days} days from now` : d.days === 0 ? 'Today' : `${Math.abs(d.days)} days ago`}`}
-          </div>
+          {/* Option A: name + date + countdown live in the persistent header now.
+              The Pulse leads with its pill + the facts the header doesn't carry. */}
           {d.metaParts.length > 0 && (
-            <div style={{ fontSize: 11.5, color: P.textTertiary }}>{d.metaParts.join(' · ')}</div>
+            <div style={{ fontSize: type.size.sm, color: P.textTertiary }}>{d.metaParts.join(' · ')}</div>
           )}
         </div>
 
@@ -2459,7 +2532,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
               </>)}
               {d.requests.length > 0 && (<>
                 <NeedsSubLabel label="Vendor asks" count={d.requests.length} action="All →" onAction={() => onTabChange?.('Communication')} />
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+                <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                   {d.requests.map((r, i) => (
                     <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />
                   ))}
@@ -2467,7 +2540,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
               </>)}
               {d.questions.length > 0 && (<>
                 <NeedsSubLabel label="Open questions" count={d.questions.length} action="View →" onAction={() => onTabChange?.('Communication')} />
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+                <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                   {d.questions.map((q, i) => (
                     <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />
                   ))}
@@ -2486,12 +2559,15 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             planner-operator framing; hosts never see them. */}
         {!d.isHost && <DecisionsBlock items={decisionItems} isMobile />}
 
-        {/* Next Up */}
-        {!dormant('nextUp') && (
+        {/* Next Up — Attention System (board 2026-06-24): for a host, an EMPTY "Next Up"
+            is noise (an empty card contradicts "nothing needs you, go enjoy this"). Hide
+            the section entirely when there's nothing upcoming; the planner keeps the
+            empty-state as an operational signal. */}
+        {!dormant('nextUp') && (d.nextUp.length > 0 || !d.isHost) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {d.nextUp.length > 0 ? (
-            <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+            <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
               {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} />)}
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
@@ -2503,7 +2579,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Vendors" action="All →" onAction={() => onTabChange?.('Vendors')} />
           {d.vendorRows.length > 0 ? (
-            <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 8 }}>
+            <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
               {d.vendorRows.map((v, i) => (
                 <VendorRow key={v.id} v={v} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
               ))}
@@ -2555,6 +2631,12 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
         <button onClick={onAddRequest}  style={actionBtnStyle}>+ Request</button>
       </div>
       )}
+      {/* Quiet rest-state — a deliberate bottom so a short Pulse reads as CALM, not an
+          unfinished void (board punch list). Reinforces the "I've got the rest" voice. */}
+      <div style={{ textAlign: 'center', padding: '30px 0 10px' }}>
+        <div aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: P.steelBlue, margin: '0 auto 9px', boxShadow: `0 0 8px ${P.steelBlue}99` }} />
+        <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>Event Boss is watching the rest — enjoy this.</div>
+      </div>
     </div>
   );
 }
@@ -2562,14 +2644,14 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
 const actionBtnStyle = {
   flex: 1, padding: '8px 0', borderRadius: 7,
   background: 'transparent', border: `1px solid ${P.borderSubtle}`,
-  color: P.textPrimary, fontSize: 11, fontWeight: 600, fontFamily: FF,
+  color: P.textPrimary, fontSize: type.size.sm, fontWeight: 600, fontFamily: FF,
   cursor: 'pointer', whiteSpace: 'nowrap',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESKTOP LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
-function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest, hideUpNext = false }) {
   const d = data;
   const width = useWindowWidth();
   // A self-host lives in ONE calm 760 column (owner directive) — so the Overview is
@@ -2577,7 +2659,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
   // the wide two-column cockpit, collapsing only on tablet/narrow.
   const twoCol = !isHost && width >= 1024;
   return (
-    <div style={{ background: P.canvas, minHeight: '100%', fontFamily: FF }}>
+    <div style={{ background: 'transparent', minHeight: '100%', fontFamily: FF }}>
       {/* Studio bar */}
       {onBack && (
         <div style={{
@@ -2587,23 +2669,30 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
         }}>
           <button onClick={onBack} style={{
             background: 'none', border: `1px solid ${P.borderSubtle}`,
-            cursor: 'pointer', fontSize: 11, fontWeight: 500,
+            cursor: 'pointer', fontSize: type.size.sm, fontWeight: 500,
             color: P.textSecondary, padding: '4px 11px', borderRadius: 5,
             fontFamily: FF,
           }}>{backLabel || '← Studio'}</button>
-          <span style={{ color: P.borderSubtle, fontSize: 16 }}>|</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: P.textPrimary }}>{event.name || 'Event'}</span>
-          {event.type && <span style={{ fontSize: 12, color: P.textSecondary }}>· {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>}
+          {/* P0: host's name/meta lives in the Pulse hero banner below — don't repeat it
+              in the studio bar. Planner cockpit keeps it (no hero banner duplication concern). */}
+          {!isHost && <>
+          <span style={{ color: P.borderSubtle, fontSize: type.size.xl }}>|</span>
+          <span style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary }}>{event.name || 'Event'}</span>
+          {event.type && <span style={{ fontSize: type.size.caption, color: P.textSecondary }}>· {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}</span>}
           {d.days !== null && (
-            <span style={{ fontSize: 12, color: d.days <= 30 && d.days > 0 ? P.amber : P.textSecondary }}>
+            <span style={{ fontSize: type.size.caption, color: d.days <= 30 && d.days > 0 ? P.amber : P.textSecondary }}>
               {/* Figma 655:60 canonical countdown */}
               · {d.days > 0 ? `${d.days} days from now` : d.days === 0 ? 'Today' : `${Math.abs(d.days)} days ago`}
             </span>
           )}
+          </>}
         </div>
       )}
 
-      <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Tab-parity (board 2026-06-24): NO horizontal padding here — the outer content
+          gutter + the 760 host column already provide it. The 32px inset made Your Event
+          696px wide while every other tab fills 760, so the header/title didn't line up. */}
+      <div style={{ padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Event banner */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -2621,28 +2710,18 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
               width: 12, height: 12, borderRadius: '50%',
               background: `${P.steelBlue}33`, color: P.steelBlue,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 7, fontWeight: 800, fontFamily: FF,
-            }}>✓</span>
+              fontSize: type.size['2xs'], fontWeight: 800, fontFamily: FF,
+            }}></span>
             <span style={{
-              fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em',
+              fontSize: type.size.xs, fontWeight: 800, letterSpacing: '0.16em',
               textTransform: 'uppercase', color: P.steelBlue, lineHeight: 1, fontFamily: FF,
             }}>Event Boss Pulse</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: 30, fontWeight: 600, color: P.textPrimary,
-              letterSpacing: '-0.03em', lineHeight: 1.1,
-            }}>{event.name || 'Untitled event'}</span>
-            {d.days !== null && (
-              <span style={{ fontSize: 13, color: P.textTertiary }}>
-                {d.days > 0 ? `${d.days} days from now` : d.days === 0 ? 'Today' : `${Math.abs(d.days)} days ago`}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 12.5, color: P.textSecondary }}>
+          {/* Option A: name + countdown + date live in the persistent header now.
+              The Pulse leads with its pill + the facts the header doesn't carry. */}
+          <div style={{ fontSize: type.size.base, color: P.textSecondary }}>
             {[
               event.type && `${event.type}${event.secondaryType ? ` + ${event.secondaryType}` : ''}`,
-              event.date && new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }),
               ...d.metaParts,
             ].filter(Boolean).join(' · ')}
           </div>
@@ -2651,11 +2730,16 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
         {/* Sprint 52: Up Next — editorial command band replacing the previous
             status headline. One title, one consequence, one CTA routing to
             the right L4 specialist. */}
-        <NextBestActionPanel
-          command={selectEventNextAction(event)}
-          onTabChange={onTabChange}
-          isMobile={false}
-        />
+        {/* Option A / desktop ribbon (2026-06-24): on desktop the next step is the
+            FULL-WIDTH spine ribbon under the header (fills the wide void). Hide this
+            in-column copy so the action shows once, not twice. */}
+        {!hideUpNext && (
+          <NextBestActionPanel
+            command={selectEventNextAction(event)}
+            onTabChange={onTabChange}
+            isMobile={false}
+          />
+        )}
 
         {/* Body — two columns on wide, one on tablet/narrow. */}
         <div style={{ display: 'grid', gridTemplateColumns: twoCol ? 'minmax(0, 1fr) 380px' : '1fr', gap: twoCol ? 28 : 20, alignItems: 'start' }}>
@@ -2684,13 +2768,13 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
                   </>)}
                   {d.requests.length > 0 && (<>
                     <NeedsSubLabel label="Vendor asks" count={d.requests.length} action="All requests →" onAction={() => onTabChange?.('Communication')} />
-                    <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                    <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                       {d.requests.map((r, i) => <RequestRow key={r.id} r={r} onOpen={() => onTabChange?.('Communication', r.id)} isFirst={i === 0} />)}
                     </div>
                   </>)}
                   {d.questions.length > 0 && (<>
                     <NeedsSubLabel label="Open questions" count={d.questions.length} action="View full stream →" onAction={() => onTabChange?.('Communication')} />
-                    <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                    <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                       {d.questions.map((q, i) => <QuestionRow key={q.id} q={q} onOpen={() => onTabChange?.('Communication', q.id)} isFirst={i === 0} />)}
                     </div>
                   </>)}
@@ -2715,18 +2799,19 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             {!isHost && !dormant('planningHealth') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Planning Health" event={event} />
-              <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+              <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                 <HealthList health={d.health} onTabChange={onTabChange} event={event} />
               </div>
             </div>
             )}
 
-            {/* Next Up */}
-            {!dormant('nextUp') && (
+            {/* Next Up — hide the empty card for a host (Attention System: no empty cards
+                contradicting "nothing needs you"). Planner keeps the empty-state signal. */}
+            {!dormant('nextUp') && (d.nextUp.length > 0 || !isHost) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {d.nextUp.length > 0 ? (
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                   {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} />)}
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
@@ -2738,7 +2823,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Vendors" action="Manage all →" onAction={() => onTabChange?.('Vendors')} />
               {d.vendorRows.length > 0 ? (
-                <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 10 }}>
+                <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                   {d.vendorRows.map((v, i) => (
                     <VendorRow key={v.id} v={v} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
                   ))}
@@ -2774,6 +2859,13 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
             <UpcomingRail items={rail} onTabChange={onTabChange} />
           </div>
         </div>
+        {/* Quiet rest-state — board ruling 2026-06-24: desktop was trailing into a void with
+            no closing anchor. Mirror the mobile "I've got the rest" footer so a short Pulse
+            reads as CALM + complete, not unfinished. */}
+        <div style={{ textAlign: 'center', padding: '30px 0 10px' }}>
+          <div aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: P.steelBlue, margin: '0 auto 9px', boxShadow: `0 0 8px ${P.steelBlue}99` }} />
+          <div style={{ fontSize: type.size.caption, color: P.textTertiary, letterSpacing: '0.02em' }}>Event Boss is watching the rest — enjoy this.</div>
+        </div>
       </div>
     </div>
   );
@@ -2782,7 +2874,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT — routes to mobile/desktop based on viewport
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CommandCenter({ event, isHost = false, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest }) {
+export default function CommandCenter({ event, isHost = false, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest, hideUpNext = false }) {
   const width = useWindowWidth();
   const isMobile = width < 768;
   const data = useMemo(() => deriveCommandCenterData(event), [event]);
@@ -2818,7 +2910,7 @@ export default function CommandCenter({ event, isHost = false, onTabChange, onBa
   const dormant = (section) => isDormant(section, event, sig);
   const rail = upcomingRail(event, sig);
   const sharedProps = { event, isHost, data, crewSummary, setItems, decisionItems, dormant, rail, onTabChange, onBack, backLabel,
-    onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest };
+    onAddDecision: addDecision, onAddApproval: addApproval, onAddRequest: addRequest, hideUpNext };
   return isMobile
     ? <MobileCommandCenter  {...sharedProps} />
     : <DesktopCommandCenter {...sharedProps} />;

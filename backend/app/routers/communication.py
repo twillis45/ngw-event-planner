@@ -107,7 +107,7 @@ async def _channel(conn, event_id: str, channel_type: str):
     return row
 
 
-async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
+async def _assert_event_access(conn, event_id: str, principal: dict, *, claim: bool = True) -> None:
     """Authorize an authenticated planner for an event — studio-scoped access only.
 
     An event belongs to a *studio*; any member of that studio may access it. The
@@ -115,6 +115,13 @@ async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
     no per-user fallback — auth.uid() is identity only, never the tenant boundary
     for operational data. The shared dev-token path (local dev only, gated by
     ALLOW_DEV_TOKEN in require_planner) skips ownership entirely.
+
+    claim (default True): the legacy/write behavior — claim an unowned (or
+    pre-studio) event for the caller's studio on first touch. The comms/write
+    paths rely on this and MUST keep claim=True. Read-only callers that must
+    NEVER mutate ownership (e.g. the RSVP host read-back, where a stranger with
+    an invite link could otherwise auto-claim someone else's event and read all
+    guest PII) MUST pass claim=False — see _assert_event_read_access below.
     """
     if not principal or principal.get("via") == "dev_token":
         return
@@ -130,6 +137,10 @@ async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
 
     row = await conn.fetchrow("select studio_id from event_owners where event_id=$1", event_id)
     if row is None:
+        if not claim:
+            # Read-only path: an unowned event is NOT readable. Never create an
+            # event_owners row here (that would be a silent ownership claim).
+            raise HTTPException(status_code=404, detail="Event not found.")
         # Claim for the caller's studio. owner_id is kept as audit attribution only;
         # it is NOT used for access decisions (studio_id is the tenant key).
         await conn.execute(
@@ -140,6 +151,10 @@ async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
 
     owning_studio = row["studio_id"]
     if owning_studio is None:
+        if not claim:
+            # Read-only path: a pre-studio (unbound) row has no tenant key, so the
+            # caller cannot prove membership. Do NOT adopt/bind it on a read.
+            raise HTTPException(status_code=403, detail="You don't have access to this event.")
         # Pre-studio row in the table (migration artifact) — adopt the caller's
         # studio so future checks have the tenant key. Access is still gated by
         # studio membership: only the caller (who is a member of their own studio)
@@ -154,6 +169,19 @@ async def _assert_event_access(conn, event_id: str, principal: dict) -> None:
         "select 1 from studio_members where studio_id=$1 and user_id=$2", owning_studio, uid)
     if not member:
         raise HTTPException(status_code=403, detail="You don't have access to this event.")
+
+
+async def _assert_event_read_access(conn, event_id: str, principal: dict) -> None:
+    """Read-only, NON-claiming ownership check.
+
+    Identical authorization to _assert_event_access but it NEVER creates or mutates
+    an event_owners row. Use this on read-back paths reachable by a caller who only
+    holds a public invite link: without this, the first authenticated touch would
+    silently claim someone else's event (and expose all guest PII). An event that is
+    not already owned by — or whose owning studio the caller is not a member of —
+    raises 404/403 instead.
+    """
+    await _assert_event_access(conn, event_id, principal, claim=False)
 
 
 # ── 1. GET /channels (idempotently ensures both exist) ──────────────────────────

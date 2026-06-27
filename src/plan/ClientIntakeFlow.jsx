@@ -61,7 +61,7 @@ const STEPS = [
 function FieldLabel({ children }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: type.weight.medium, letterSpacing: '0.08em',
+      fontSize: type.size.xs, fontWeight: type.weight.medium, letterSpacing: '0.08em',
       color: P.textTertiary, fontFamily: FF, marginBottom: 6,
     }}>
       {children}
@@ -75,7 +75,7 @@ function TextInput({ value, onChange, placeholder, multiline, rows, date, time }
     background: P.card, border: `1px solid ${P.borderSubtle}`,
     borderRadius: radius.sm,
     padding: `${space[3]}px ${space[4]}px`,
-    fontSize: 13, color: value ? P.textPrimary : P.textTertiary,
+    fontSize: type.size.base, color: value ? P.textPrimary : P.textTertiary,
     fontFamily: FF, outline: 'none',
     lineHeight: type.leading.relaxed,
     resize: 'none',
@@ -133,7 +133,7 @@ function ChipMultiSelect({ options, value, onChange }) {
         return (
           <button type="button" key={opt} onClick={() => toggle(opt)}
             style={{
-              padding: '8px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: on ? 700 : 500,
+              padding: '8px 13px', borderRadius: 999, fontSize: type.size.base, fontWeight: on ? 700 : 500,
               cursor: 'pointer', fontFamily: FF, minHeight: 36,
               border: `1px solid ${on ? P.textSecondary : P.borderSubtle}`,
               background: on ? P.textSecondary + '24' : 'transparent',
@@ -154,7 +154,7 @@ function Select({ value, onChange, options, placeholder }) {
       style={{
         width: '100%', boxSizing: 'border-box', background: P.card,
         border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
-        padding: `${space[3]}px ${space[4]}px`, fontSize: 13,
+        padding: `${space[3]}px ${space[4]}px`, fontSize: type.size.base,
         color: value ? P.textPrimary : P.textTertiary, fontFamily: FF,
         outline: 'none', height: 36, display: 'block', cursor: 'pointer',
       }}>
@@ -185,7 +185,7 @@ function ChipMulti({ value, onChange, options }) {
         return (
           <button key={opt} type="button" onClick={() => toggle(opt)}
             style={{
-              padding: `${space[2]}px ${space[3]}px`, borderRadius: 999, fontSize: 12,
+              padding: `${space[2]}px ${space[3]}px`, borderRadius: 999, fontSize: type.size.caption,
               fontFamily: FF, cursor: 'pointer', lineHeight: 1.2,
               background: on ? P.green + '22' : P.card,
               color: on ? P.textPrimary : P.textSecondary,
@@ -215,7 +215,7 @@ function CityZipInput({ value, onChange, placeholder }) {
   const base = {
     width: '100%', boxSizing: 'border-box', background: P.card,
     border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
-    padding: `${space[3]}px ${space[4]}px`, fontSize: 13,
+    padding: `${space[3]}px ${space[4]}px`, fontSize: type.size.base,
     color: value ? P.textPrimary : P.textTertiary, fontFamily: FF,
     outline: 'none', height: 36, display: 'block',
   };
@@ -240,7 +240,7 @@ function CityZipInput({ value, onChange, placeholder }) {
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); resolveZip(e.target.value); } }}
         placeholder={placeholder || 'City, ST — or type a ZIP'} style={base} />
       <datalist id="ngw-intake-cities">{cities.map(c => <option key={c} value={c} />)}</datalist>
-      {note && <div style={{ fontSize: 11, color: P.textTertiary, marginTop: 4 }}>{note}</div>}
+      {note && <div style={{ fontSize: type.size.sm, color: P.textTertiary, marginTop: 4 }}>{note}</div>}
     </div>
   );
 }
@@ -257,7 +257,7 @@ function Field({ label, children }) {
 function SectionHeading({ children }) {
   return (
     <div style={{
-      fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.14em',
+      fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em',
       color: P.textTertiary, fontFamily: FF,
       borderBottom: `1px solid ${P.borderSubtle}`,
       paddingBottom: space[3], marginBottom: space[5],
@@ -528,7 +528,7 @@ function Step4({ data, onChange }) {
         return (
           <div style={{ marginBottom: space[6] }}>
             <SectionHeading>TYPICAL SETUP — WHAT TO EXPECT</SectionHeading>
-            <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
+            <div style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF, marginBottom: space[3], lineHeight: 1.5 }}>
               Most {data.type ? data.type.toLowerCase() : 'these'} events include these. Check the ones you're planning — each seeds an editable budget line at a typical amount. Planning estimates, not quotes.
             </div>
             <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.md, overflow: 'hidden' }}>
@@ -546,8 +546,8 @@ function Step4({ data, onChange }) {
                       aria-label={`Include ${c.label}`}
                       style={{ width: 17, height: 17, flexShrink: 0, cursor: 'pointer', accentColor: P.green }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, color: P.textPrimary, fontFamily: FF, fontWeight: checked ? type.weight.semibold : type.weight.medium }}>{c.label}</div>
-                      <div style={{ fontSize: 10.5, color: P.textTertiary, fontFamily: FF, marginTop: 1 }}>typically {fmtMoney(c.low)}–{fmtMoney(c.high)}</div>
+                      <div style={{ fontSize: type.size.base, color: P.textPrimary, fontFamily: FF, fontWeight: checked ? type.weight.semibold : type.weight.medium }}>{c.label}</div>
+                      <div style={{ fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF, marginTop: 1 }}>typically {fmtMoney(c.low)}–{fmtMoney(c.high)}</div>
                     </div>
                     {checked && (
                       <div style={{ flexShrink: 0, width: 110 }}>
@@ -558,8 +558,8 @@ function Step4({ data, onChange }) {
                 );
               })}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${space[3]}px ${space[5]}px`, background: P.borderSubtle }}>
-                <span style={{ fontSize: 11, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>Selected total</span>
-                <span style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{fmtMoney(checkedTotal)}</span>
+                <span style={{ fontSize: type.size.sm, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>Selected total</span>
+                <span style={{ fontSize: type.size.caption, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{fmtMoney(checkedTotal)}</span>
               </div>
             </div>
           </div>
@@ -581,7 +581,7 @@ function Step4({ data, onChange }) {
             }}>
               {['Category', 'Budgeted', 'Actual', 'Variance'].map(h => (
                 <div key={h} style={{
-                  fontSize: 9, fontWeight: type.weight.medium,
+                  fontSize: type.size['2xs'], fontWeight: type.weight.medium,
                   letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF,
                   textAlign: h === 'Category' ? 'left' : 'right',
                 }}>{h}</div>
@@ -596,15 +596,15 @@ function Step4({ data, onChange }) {
                   borderBottom: i < budget.length - 1 ? `1px solid ${P.borderSubtle}` : 'none',
                   alignItems: 'center',
                 }}>
-                  <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF }}>{row.category}</div>
-                  <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, textAlign: 'right' }}>
+                  <div style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF }}>{row.category}</div>
+                  <div style={{ fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF, textAlign: 'right' }}>
                     {fmtMoney(row.budgeted)}
                   </div>
-                  <div style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, textAlign: 'right' }}>
+                  <div style={{ fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF, textAlign: 'right' }}>
                     {fmtMoney(row.actual)}
                   </div>
                   <div style={{
-                    fontSize: 12, fontWeight: type.weight.medium, fontFamily: FF, textAlign: 'right',
+                    fontSize: type.size.caption, fontWeight: type.weight.medium, fontFamily: FF, textAlign: 'right',
                     color: variance > 0 ? P.red : variance < 0 ? P.green : P.textSecondary,
                   }}>
                     {variance > 0 ? '+' : ''}{fmtMoney(variance)}
@@ -619,20 +619,20 @@ function Step4({ data, onChange }) {
               background: P.borderSubtle,
               borderTop: `1px solid ${P.borderSubtle}`,
             }}>
-              <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
+              <div style={{ fontSize: type.size.caption, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
                 Total
               </div>
-              <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, textAlign: 'right' }}>
+              <div style={{ fontSize: type.size.caption, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, textAlign: 'right' }}>
                 {fmtMoney(totalBudgeted)}
               </div>
               <div style={{
-                fontSize: 12, fontWeight: type.weight.semibold, fontFamily: FF, textAlign: 'right',
+                fontSize: type.size.caption, fontWeight: type.weight.semibold, fontFamily: FF, textAlign: 'right',
                 color: totalActual > totalBudgeted ? P.red : P.textPrimary,
               }}>
                 {fmtMoney(totalActual)}
               </div>
               <div style={{
-                fontSize: 12, fontWeight: type.weight.semibold, fontFamily: FF, textAlign: 'right',
+                fontSize: type.size.caption, fontWeight: type.weight.semibold, fontFamily: FF, textAlign: 'right',
                 color: totalActual > totalBudgeted ? P.red : P.green,
               }}>
                 {totalActual > totalBudgeted ? '+' : ''}{fmtMoney(totalActual - totalBudgeted)}
@@ -668,9 +668,9 @@ function StepMeaning({ data, onChange }) {
       {recap.length > 0 && (
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', marginBottom: space[6] }}>
           {recap.map((r, i) => (
-            <span key={i} style={{ fontSize: 11.5, fontWeight: type.weight.medium, color: P.textSecondary, background: P.card, border: `1px solid ${P.borderSubtle}`, padding: '3px 10px', borderRadius: 999, fontFamily: FF }}>{r}</span>
+            <span key={i} style={{ fontSize: type.size.sm, fontWeight: type.weight.medium, color: P.textSecondary, background: P.card, border: `1px solid ${P.borderSubtle}`, padding: '3px 10px', borderRadius: 999, fontFamily: FF }}>{r}</span>
           ))}
-          <span style={{ fontSize: 10.5, color: P.textTertiary, fontFamily: FF }}>· set when you created the event</span>
+          <span style={{ fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF }}>· set when you created the event</span>
         </div>
       )}
 
@@ -795,7 +795,7 @@ function Step6({ data, onChange }) {
     <div>
       <SectionHeading>CURRENT VENDORS</SectionHeading>
       {vendors.length === 0 ? (
-        <div style={{ fontSize: 12, color: P.textTertiary, fontFamily: FF, marginBottom: space[5] }}>
+        <div style={{ fontSize: type.size.base, color: P.textTertiary, fontFamily: FF, marginBottom: space[5] }}>
           No vendors added yet
         </div>
       ) : (
@@ -815,14 +815,14 @@ function Step6({ data, onChange }) {
                   : v.status === 'Partial' ? P.amber
                   : P.borderDef,
               }} />
-              <div style={{ flex: 1, fontSize: 12, color: P.textPrimary, fontFamily: FF }}>
+              <div style={{ flex: 1, fontSize: type.size.base, color: P.textPrimary, fontFamily: FF }}>
                 {v.name || v.vendor_name}
               </div>
-              <div style={{ fontSize: 11, color: P.textSecondary, fontFamily: FF }}>
+              <div style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF }}>
                 {v.category || v.type}
               </div>
               <div style={{
-                fontSize: 10, fontWeight: type.weight.medium,
+                fontSize: type.size.xs, fontWeight: type.weight.medium,
                 color: v.status === 'Confirmed' ? P.green
                   : v.status === 'Partial' ? P.amber
                   : P.textTertiary,
@@ -854,7 +854,7 @@ function Step6({ data, onChange }) {
                 background: booked ? P.green : P.borderDef,
               }} />
               <span style={{
-                fontSize: 12, color: booked ? P.textSecondary : P.textPrimary,
+                fontSize: type.size.caption, color: booked ? P.textSecondary : P.textPrimary,
                 fontFamily: FF,
                 textDecoration: booked ? 'line-through' : 'none',
               }}>
@@ -920,7 +920,7 @@ function Step7({ data }) {
   return (
     <div>
       <div style={{
-        fontSize: 14, fontWeight: type.weight.semibold,
+        fontSize: type.size.md, fontWeight: type.weight.semibold,
         color: P.textPrimary, fontFamily: FF, marginBottom: space[5],
       }}>
         Review all information before confirming.
@@ -939,8 +939,8 @@ function Step7({ data }) {
                 gap: 16, padding: `${space[3]}px 0`,
                 borderBottom: i < sec.rows.length - 1 ? `1px solid ${P.borderSubtle}` : 'none',
               }}>
-                <span style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF }}>{label}</span>
-                <span style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>
+                <span style={{ fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF }}>{label}</span>
+                <span style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>
                   {value}
                 </span>
               </div>
@@ -954,7 +954,7 @@ function Step7({ data }) {
         background: P.green + '12',
         border: `1px solid ${P.green}44`,
         borderRadius: radius.md,
-        fontSize: 12, color: P.green, fontFamily: FF,
+        fontSize: type.size.caption, color: P.green, fontFamily: FF,
       }}>
         Intake information saved to event record. Use the PLAN layer to manage ongoing coordination.
       </div>
@@ -973,7 +973,7 @@ function StepSidebar({ current, onStep, completedSteps }) {
       paddingTop: space[6],
     }}>
       <div style={{
-        fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.12em',
+        fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em',
         color: P.textTertiary, fontFamily: FF,
         padding: `0 20px ${space[4]}px`,
       }}>
@@ -992,7 +992,7 @@ function StepSidebar({ current, onStep, completedSteps }) {
               width: '100%', height: 38, padding: '0 20px',
               border: 'none', cursor: 'pointer', textAlign: 'left',
               background: isActive ? 'rgba(110,135,148,0.18)' : 'transparent',
-              fontFamily: FF, fontSize: 12,
+              fontFamily: FF, fontSize: type.size.caption,
               fontWeight: isActive ? type.weight.semibold : type.weight.regular,
               color: isActive ? P.textPrimary : P.textSecondary,
             }}
@@ -1007,7 +1007,7 @@ function StepSidebar({ current, onStep, completedSteps }) {
                 : isActive ? `1px solid ${P.textTertiary}`
                 : `1px solid ${P.borderSubtle}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: type.weight.semibold,
+              fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
               color: isDone ? '#fff' : isActive ? P.textSecondary : P.textTertiary,
               fontFamily: FF,
             }}>
@@ -1109,14 +1109,14 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
           onClick={onBack}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12, fontWeight: type.weight.semibold, letterSpacing: '0.01em',
+            fontSize: type.size.caption, fontWeight: type.weight.semibold, letterSpacing: '0.01em',
             color: P.textSecondary, padding: 0, marginBottom: 6,
             fontFamily: FF, display: 'inline-flex', alignItems: 'center', gap: 4,
           }}
         >
           ‹ Overview
         </button>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15, color: P.textPrimary, fontFamily: FF }}>
+        <div style={{ fontSize: type.size['3xl'], fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.15, color: P.textPrimary, fontFamily: FF }}>
           Client Intake
         </div>
       </div>
@@ -1126,7 +1126,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
           padding: '7px 14px', borderRadius: radius.sm, minHeight: 34,
           border: `1px solid ${P.borderSubtle}`,
           background: 'transparent', cursor: 'pointer',
-          fontSize: 12, fontWeight: type.weight.medium,
+          fontSize: type.size.caption, fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF, flexShrink: 0,
         }}
       >
@@ -1158,15 +1158,15 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             onClick={onClose}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 12, color: P.textSecondary, fontFamily: FF,
+              fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF,
               padding: 0, display: 'flex', alignItems: 'center', gap: 6,
             }}
           >
             ← {event.name || 'Event'}
           </button>
-          <span style={{ fontSize: 12, color: P.borderDef }}>|</span>
+          <span style={{ fontSize: type.size.caption, color: P.borderDef }}>|</span>
           <span style={{
-            fontSize: 13, fontWeight: type.weight.semibold,
+            fontSize: type.size.base, fontWeight: type.weight.semibold,
             color: P.textPrimary, fontFamily: FF,
           }}>
             Client Intake
@@ -1178,7 +1178,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
               padding: '4px 12px', borderRadius: radius.sm,
               border: `1px solid ${P.borderSubtle}`,
               background: 'transparent', cursor: 'pointer',
-              fontSize: 11, fontWeight: type.weight.medium,
+              fontSize: type.size.sm, fontWeight: type.weight.medium,
               color: P.textSecondary, fontFamily: FF,
             }}
           >
@@ -1248,16 +1248,16 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
                   flexShrink: 0, width: 28, height: 28, borderRadius: '50%',
                   background: `${state.color}22`, color: state.color,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 800, marginTop: 1,
+                  fontSize: type.size.base, fontWeight: 800, marginTop: 1,
                 }}>{state.color === greenIC ? '✓' : '◐'}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.16em', color: steelBlueIC, textTransform: 'uppercase' }}>Intake Confidence</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: P.textPrimary, marginTop: 2 }}>{state.label}</div>
-                  <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 5, lineHeight: 1.5 }}>{state.explain}</div>
+                  <div style={{ fontSize: type.size.xs, fontWeight: 800, letterSpacing: '0.16em', color: steelBlueIC, textTransform: 'uppercase' }}>Intake Confidence</div>
+                  <div style={{ fontSize: type.size.md, fontWeight: 700, color: P.textPrimary, marginTop: 2 }}>{state.label}</div>
+                  <div style={{ fontSize: type.size.caption, color: P.textSecondary, marginTop: 5, lineHeight: 1.5 }}>{state.explain}</div>
                   {state.missing.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                       {state.missing.map(m => (
-                        <span key={m} style={{ fontSize: 10.5, fontWeight: 700, color: amberIC, background: `${amberIC}14`, border: `1px solid ${amberIC}44`, padding: '2px 8px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{m}</span>
+                        <span key={m} style={{ fontSize: type.size.xs, fontWeight: 700, color: amberIC, background: `${amberIC}14`, border: `1px solid ${amberIC}44`, padding: '2px 8px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{m}</span>
                       ))}
                     </div>
                   )}
@@ -1269,7 +1269,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
                       background: `linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)`,
                       color: '#fff', border: 'none', cursor: 'pointer',
                       borderRadius: 8, padding: '8px 14px',
-                      fontSize: 12, fontWeight: 700, fontFamily: FF,
+                      fontSize: type.size.caption, fontWeight: 700, fontFamily: FF,
                       letterSpacing: '0.01em',
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.3)',
                     }}>
@@ -1281,13 +1281,13 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
           })()}
 
           <div style={{
-            fontSize: 18, fontWeight: type.weight.semibold,
+            fontSize: type.size['2xl'], fontWeight: type.weight.semibold,
             color: P.textPrimary, fontFamily: FF, marginBottom: space[2],
           }}>
             {STEPS[step - 1].label}
           </div>
           <div style={{
-            fontSize: 12, color: P.textSecondary, fontFamily: FF, marginBottom: space[7],
+            fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF, marginBottom: space[7],
           }}>
             Step {step} of {STEPS.length}
           </div>
@@ -1301,8 +1301,8 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
               background: '#4E687712', border: '1px solid #4E687733', borderLeft: '3px solid #4E6877',
               borderRadius: 12, fontFamily: FF,
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: P.textPrimary }}>Collecting this from the client?</div>
-              <div style={{ fontSize: 12, color: P.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+              <div style={{ fontSize: type.size.section, fontWeight: 700, color: P.textPrimary }}>Collecting this from the client?</div>
+              <div style={{ fontSize: type.size.caption, color: P.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
                 Use <strong>Share with client</strong> (top right) to send them their story to fill in — or capture what you already know here and refine it together later.
               </div>
             </div>
@@ -1331,7 +1331,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             padding: '6px 16px', borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`,
             background: 'transparent', cursor: step === 1 ? 'default' : 'pointer',
-            fontSize: 12, fontWeight: type.weight.medium,
+            fontSize: type.size.caption, fontWeight: type.weight.medium,
             color: step === 1 ? P.textTertiary : P.textSecondary,
             fontFamily: FF, opacity: step === 1 ? 0.4 : 1,
           }}
@@ -1339,7 +1339,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
           ← {step > 1 ? (isMobile ? 'Back' : STEPS[step - 2].label) : 'Back'}
         </button>
 
-        <span style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
+        <span style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF }}>
           {step} of {STEPS.length}
         </span>
 
@@ -1350,7 +1350,7 @@ export default function ClientIntakeFlow({ event, onClose, onBack, isMobile, onP
             border: `1px solid ${step === STEPS.length ? P.green : P.borderSubtle}`,
             background: step === STEPS.length ? P.green : 'transparent',
             cursor: 'pointer',
-            fontSize: 12, fontWeight: type.weight.medium,
+            fontSize: type.size.caption, fontWeight: type.weight.medium,
             color: step === STEPS.length ? '#fff' : P.textSecondary,
             fontFamily: FF,
           }}

@@ -158,8 +158,8 @@ function NeedsReplyBand({ threads, onOpen, onJumpTab }) {
         background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 12,
         display: 'flex', alignItems: 'center', gap: 10, fontFamily: FF,
       }}>
-        <span style={{ color: P.green, fontSize: 14, fontWeight: 800 }}>✓</span>
-        <span style={{ fontSize: 13.5, fontWeight: type.weight.semibold, color: P.textSecondary }}>
+        <span style={{ color: P.green, fontSize: type.size.md, fontWeight: 800 }}>✓</span>
+        <span style={{ fontSize: type.size.base, fontWeight: type.weight.semibold, color: P.textSecondary }}>
           You're caught up — no one's waiting on you.
         </span>
       </div>
@@ -188,19 +188,19 @@ function NeedsReplyBand({ threads, onOpen, onJumpTab }) {
     }}>
       <div style={{ flex: 1, minWidth: 240 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, padding: '2px 7px', borderRadius: 4, border: `1px solid ${P.amber}55` }}>
+          <span style={{ fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, padding: '2px 7px', borderRadius: 4, border: `1px solid ${P.amber}55` }}>
             Needs you · {total}
           </span>
-          {debt && <span style={{ fontSize: 11.5, color: P.textTertiary }}>{debt} waiting</span>}
+          {debt && <span style={{ fontSize: type.size.sm, color: P.textTertiary }}>{debt} waiting</span>}
         </div>
         {/* A2 — wait-time is the hero datum. The message preview is clamped to a
             single line (board fix: it was dumping the full 6-line body on mobile,
             so it stopped being a signal and became the content). */}
-        <div style={{ fontSize: 15, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
+        <div style={{ fontSize: type.size.lg, fontWeight: type.weight.semibold, color: P.textPrimary, lineHeight: 1.35 }}>
           {firstName} has been waiting <span style={{ color: P.amber }}>{wait}</span>
         </div>
         <div style={{
-          fontSize: 12.5, color: P.textTertiary, lineHeight: 1.4, marginTop: 3,
+          fontSize: type.size.caption, color: P.textTertiary, lineHeight: 1.4, marginTop: 3,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
         }}>
           {lead}
@@ -209,13 +209,13 @@ function NeedsReplyBand({ threads, onOpen, onJumpTab }) {
       <button
         onClick={() => onOpen && onOpen(oldest)}
         style={{
-          flexShrink: 0, fontFamily: FF, fontSize: 14, fontWeight: type.weight.semibold, color: '#fff',
+          flexShrink: 0, fontFamily: FF, fontSize: type.size.md, fontWeight: type.weight.semibold, color: '#fff',
           background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', border: 'none', borderRadius: 8,
           padding: '11px 18px', minHeight: 40, cursor: 'pointer',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}>
-        Review reply <span style={{ fontSize: 12, opacity: 0.85 }}>→</span>
+        Review reply <span style={{ fontSize: type.size.caption, opacity: 0.85 }}>→</span>
       </button>
     </div>
   );
@@ -336,7 +336,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               border: 'none', cursor: 'pointer',
               background: active ? 'rgba(110,135,148,0.18)' : 'transparent',
               fontFamily: FF,
-              fontSize: isMobile ? 13 : 11,
+              fontSize: isMobile ? type.size.base : type.size.sm,
               fontWeight: active ? type.weight.semibold : type.weight.regular,
               color: active ? P.textPrimary : P.textSecondary,
               position: 'relative',
@@ -346,7 +346,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               {t}
               {cnt > 0 && (
                 <span style={{
-                  fontSize: isMobile ? 11 : 10,
+                  fontSize: isMobile ? type.size.sm : type.size.xs,
                   fontWeight: type.weight.semibold,
                   color: isNRTab && cnt > 0 ? P.amber : (active ? P.textSecondary : P.textTertiary),
                 }}>{cnt}</span>
@@ -373,16 +373,16 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               background: chatStatus.color,
               boxShadow: chatStatus.live ? `0 0 0 2px ${chatStatus.color}30` : 'none',
             }} />
-            <span style={{ fontSize: 9, fontWeight: type.weight.semibold, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatStatus.color, fontFamily: FF }}>
+            <span style={{ fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatStatus.color, fontFamily: FF }}>
               {chatStatus.label}
             </span>
-            <span style={{ fontSize: 9, color: P.textTertiary, fontFamily: FF, marginLeft: 2 }}>
+            <span style={{ fontSize: type.size['2xs'], color: P.textTertiary, fontFamily: FF, marginLeft: 2 }}>
               — {chatStatus.detail}
             </span>
           </div>
         )}
         <div style={{ position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: P.textTertiary, fontSize: 12 }}>⌕</span>
+          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: P.textTertiary, fontSize: type.size.caption }}>⌕</span>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -391,12 +391,12 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               width: '100%', padding: '5px 8px 5px 22px',
               borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`,
               background: P.canvas, color: P.textPrimary,
-              fontSize: 11, fontFamily: FF, outline: 'none',
+              fontSize: type.size.sm, fontFamily: FF, outline: 'none',
               boxSizing: 'border-box',
             }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: 13, padding: 0 }}>×</button>
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: P.textTertiary, cursor: 'pointer', fontSize: type.size.base, padding: 0 }}>×</button>
           )}
         </div>
       </div>
@@ -406,7 +406,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
           50–65% of the pane as a "broken-looking" empty box). */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: space[5], textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
+          <div style={{ padding: space[5], textAlign: 'center', fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF }}>
             {search ? `No results for "${search}"` : `No ${tab.toLowerCase()} threads — they'll appear here as messages come in.`}
           </div>
         ) : filtered.map(thread => {
@@ -431,7 +431,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               {/* Row 1: sender + age */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{
-                  fontSize: isMobile ? 15 : 12,
+                  fontSize: isMobile ? type.size.lg : type.size.md,
                   fontWeight: type.weight.semibold,
                   color: P.textPrimary, fontFamily: FF,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
@@ -442,18 +442,18 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
                     reply leads with its WAIT-TIME in amber (the debt), not a neutral
                     "2d ago". Non-urgent rows keep the quiet relative timestamp. */}
                 {needsReply ? (
-                  <span style={{ fontSize: isMobile ? 12 : 10.5, color: P.amber, fontWeight: type.weight.semibold, fontFamily: FF, flexShrink: 0 }}>
+                  <span style={{ fontSize: isMobile ? type.size.caption : type.size.xs, color: P.amber, fontWeight: type.weight.semibold, fontFamily: FF, flexShrink: 0 }}>
                     waiting {fmtWait(thread.timestamp)}
                   </span>
                 ) : (
-                  <span style={{ fontSize: isMobile ? 12 : 10, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
+                  <span style={{ fontSize: isMobile ? type.size.caption : type.size.xs, color: P.textTertiary, fontFamily: FF, flexShrink: 0 }}>
                     {fmtRelative(thread.timestamp)}
                   </span>
                 )}
               </div>
               {/* Row 2: explicit role label */}
               <div style={{
-                fontSize: isMobile ? 12 : 10,
+                fontSize: isMobile ? type.size.caption : type.size.xs,
                 color: P.textTertiary, fontFamily: FF,
                 letterSpacing: '0.04em',
               }}>
@@ -464,7 +464,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
               </div>
               {/* Row 3: preview */}
               <div style={{
-                fontSize: isMobile ? 13.5 : 11,
+                fontSize: isMobile ? type.size.base : type.size.sm,
                 color: P.textSecondary, fontFamily: FF,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 lineHeight: 1.4,
@@ -499,7 +499,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <span style={{
-                      fontSize: isMobile ? 10 : 9, fontWeight: type.weight.semibold,
+                      fontSize: isMobile ? type.size.xs : type.size['2xs'], fontWeight: type.weight.semibold,
                       color: chip.color, letterSpacing: '0.10em', fontFamily: FF,
                       padding: isMobile ? '2px 7px' : '1px 5px',
                       borderRadius: 4,
@@ -518,7 +518,7 @@ function ThreadList({ threads, tab, onTab, selected, onSelect, chatStatus, isMob
             fills the remainder as a calm panel (not a black void). Cross-tab counts
             point to where the rest of the threads live. */}
         {filtered.length > 0 && (
-          <div style={{ padding: '14px 16px 18px', textAlign: 'center', fontSize: 10.5, color: P.textTertiary, fontFamily: FF, letterSpacing: '0.04em', opacity: 0.7, borderTop: `1px solid ${P.borderSubtle}` }}>
+          <div style={{ padding: '14px 16px 18px', textAlign: 'center', fontSize: type.size.xs, color: P.textTertiary, fontFamily: FF, letterSpacing: '0.04em', opacity: 0.7, borderTop: `1px solid ${P.borderSubtle}` }}>
             {(() => {
               const others = ['Client', 'Vendors', 'Team']
                 .filter(t => t !== tab && (counts[t] || 0) > 0)
@@ -672,7 +672,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
       {!isDayOf ? (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          fontSize: 10, fontFamily: FF, marginBottom: 2,
+          fontSize: type.size.xs, fontFamily: FF, marginBottom: 2,
         }}>
           <span style={{
             fontWeight: type.weight.semibold,
@@ -695,7 +695,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: FF, color: P.textTertiary, marginBottom: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: type.size.sm, fontFamily: FF, color: P.textTertiary, marginBottom: 2 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: stateChip.color, flexShrink: 0 }} />
           {composerState === 'email-live' ? `Sending as email to ${recipientInfo?.name || recipientEmail}`
             : composerState === 'email-draft' ? 'Opens email draft on tap'
@@ -712,7 +712,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
           padding: '6px 10px', borderRadius: radius.sm,
           border: `1px solid ${P.borderSubtle}`,
           background: P.canvas, color: P.textPrimary,
-          fontSize: 11.5, fontFamily: FF, outline: 'none',
+          fontSize: type.size.sm, fontFamily: FF, outline: 'none',
         }}
       />
       {onAiDraft && (
@@ -723,13 +723,13 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '6px 11px', minHeight: 32, borderRadius: 8, cursor: drafting ? 'default' : 'pointer',
               border: `1px solid ${P.steelBlue}59`, background: `${P.steelBlue}16`, color: P.steelBlue,
-              fontFamily: FF, fontSize: 11.5, fontWeight: 700, opacity: drafting ? 0.7 : 1,
+              fontFamily: FF, fontSize: type.size.sm, fontWeight: 700, opacity: drafting ? 0.7 : 1,
             }}>
             {drafting ? '✨ Drafting…' : body.trim() ? '✨ Redraft' : '✨ Draft this'}
           </button>
           {/* Count of drafts the planner has generated for this event */}
           {(event.aiDraftsCreated || 0) > 0 && (
-            <span style={{ fontSize: 11, color: P.textTertiary, fontFamily: FF }}>
+            <span style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF }}>
               {event.aiDraftsCreated} draft{event.aiDraftsCreated === 1 ? '' : 's'} created
             </span>
           )}
@@ -747,7 +747,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
           border: `1px solid ${asApproval ? P.amber : P.borderSubtle}`,
           background: asApproval ? `${P.amber}1a` : 'transparent',
           color: asApproval ? P.amber : P.textSecondary,
-          fontFamily: FF, fontSize: 11.5, fontWeight: 700,
+          fontFamily: FF, fontSize: type.size.sm, fontWeight: 700,
         }}>
         {asApproval ? '✓ Approval request' : 'Request approval'}
       </button>
@@ -769,7 +769,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
             borderRadius: radius.sm,
             border: `1px solid ${P.borderSubtle}`,
             background: P.canvas, color: P.textPrimary,
-            fontSize: isDayOf ? 16 : 12.5,
+            fontSize: isDayOf ? type.size.xl : type.size.base,
             fontFamily: FF, outline: 'none', lineHeight: 1.45,
           }}
         />
@@ -802,7 +802,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
               color: body.trim() && !busy
                 ? (primaryIsEmail ? P.canvas : '#e8edf2')
                 : P.textTertiary,
-              fontSize: isDayOf ? 15 : 12,
+              fontSize: isDayOf ? type.size.lg : type.size.caption,
               fontWeight: type.weight.semibold, fontFamily: FF,
               cursor: body.trim() && !busy ? 'pointer' : 'not-allowed',
               whiteSpace: 'nowrap',
@@ -823,7 +823,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
               style={{
                 padding: '6px 12px', borderRadius: radius.sm,
                 border: `1px solid ${P.borderSubtle}`, background: 'transparent',
-                fontSize: 11, fontWeight: type.weight.medium, fontFamily: FF,
+                fontSize: type.size.sm, fontWeight: type.weight.medium, fontFamily: FF,
                 color: P.textSecondary, cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
@@ -835,7 +835,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
       {/* Inline status — only renders briefly after submit. */}
       {status && (
         <div style={{
-          fontSize: 10.5, lineHeight: 1.4,
+          fontSize: type.size.xs, lineHeight: 1.4,
           color: status.kind === 'email' ? P.green
                : status.kind === 'sent'  ? P.green
                : status.kind === 'error' ? P.red
@@ -850,7 +850,7 @@ function Composer({ thread, event, onSend, onAiDraft, commLive, emailEnabled, re
           advisory. The hint always appears so the planner can't
           accidentally assume a Send actually sent. */}
       {!status && (
-        <div style={{ fontSize: 10.5, lineHeight: 1.4, color: P.textTertiary, fontStyle: 'italic' }}>
+        <div style={{ fontSize: type.size.xs, lineHeight: 1.4, color: P.textTertiary, fontStyle: 'italic' }}>
           {stateHint}
         </div>
       )}
@@ -899,7 +899,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
 
   if (!thread) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: P.canvas, fontSize: 12, color: P.textTertiary, fontFamily: FF }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: P.canvas, fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF }}>
         Select a thread to view the conversation
       </div>
     );
@@ -940,13 +940,13 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
         background: P.base, borderBottom: `1px solid ${P.borderSubtle}`,
         display: 'flex', alignItems: 'center', gap: 16, padding: '8px 24px', flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: 14, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
+        <span style={{ fontSize: type.size.section, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>
           {thread.name}
         </span>
-        <span style={{ fontSize: 11.5, color: P.textTertiary, fontFamily: FF }}>{event.name}</span>
+        <span style={{ fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF }}>{event.name}</span>
         {linkedDecision && onRoute && (
           <button onClick={() => onRoute('Decisions', linkedDecision.id)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.accent || P.steelBlue, fontSize: 11.5, fontWeight: type.weight.semibold, fontFamily: FF, padding: 0 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.accent || P.steelBlue, fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF, padding: 0 }}>
             Open decision →
           </button>
         )}
@@ -961,7 +961,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0,
               background: 'transparent', border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm,
-              cursor: 'pointer', padding: '4px 10px', fontFamily: FF, fontSize: 11, color: P.textSecondary,
+              cursor: 'pointer', padding: '4px 10px', fontFamily: FF, fontSize: type.size.sm, color: P.textSecondary,
             }}
           >
             {(contact.email || contact.phone)
@@ -979,22 +979,22 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
           background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: 12,
           display: 'flex', flexDirection: 'column', gap: 8, fontFamily: FF,
         }}>
-          <div style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.textTertiary }}>
+          <div style={{ fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.textTertiary }}>
             {contact.kind === 'vendor' ? 'Vendor' : 'Client'} contact · {contact.name}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="Email" type="email"
-              style={{ flex: '1 1 180px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: 12.5, fontFamily: FF, outline: 'none' }} />
+              style={{ flex: '1 1 180px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: type.size.base, fontFamily: FF, outline: 'none' }} />
             <input value={cPhone} onChange={e => setCPhone(e.target.value)} placeholder="Phone" type="tel"
-              style={{ flex: '1 1 140px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: 12.5, fontFamily: FF, outline: 'none' }} />
+              style={{ flex: '1 1 140px', minWidth: 0, padding: '7px 10px', borderRadius: radius.sm, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontSize: type.size.base, fontFamily: FF, outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
             <button onClick={saveContact}
-              style={{ minHeight: 32, padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 12.5, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              style={{ minHeight: 32, padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: type.size.base, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
               Save contact
             </button>
             <button onClick={() => setEditingContact(false)}
-              style={{ minHeight: 32, padding: '7px 14px', borderRadius: 8, border: `1px solid ${P.borderSubtle}`, background: 'transparent', color: P.textSecondary, fontSize: 12.5, fontWeight: type.weight.medium, fontFamily: FF, cursor: 'pointer' }}>
+              style={{ minHeight: 32, padding: '7px 14px', borderRadius: 8, border: `1px solid ${P.borderSubtle}`, background: 'transparent', color: P.textSecondary, fontSize: type.size.base, fontWeight: type.weight.medium, fontFamily: FF, cursor: 'pointer' }}>
               Cancel
             </button>
           </div>
@@ -1009,19 +1009,19 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
           background: P.card, border: `1px solid ${P.borderSubtle}`, borderLeft: `3px solid ${P.amber}`,
           borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <span style={{ fontSize: 9.5, fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, fontFamily: FF }}>
+          <span style={{ fontSize: type.size['2xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: P.amber, fontFamily: FF }}>
             Approval needed
           </span>
-          <span style={{ fontSize: 13, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>
+          <span style={{ fontSize: type.size.base, color: P.textPrimary, fontFamily: FF, lineHeight: 1.35 }}>
             {pendingApproval.subject || pendingApproval.body || 'Review and approve this request.'}
           </span>
           <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
             <button onClick={() => onApprove(pendingApproval.id, 'approved')}
-              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: type.size.base, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
               Approve
             </button>
             <button onClick={() => onApprove(pendingApproval.id, 'rejected')}
-              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: `1px solid ${P.red}66`, background: 'transparent', color: P.red, fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+              style={{ minHeight: 36, padding: '8px 18px', borderRadius: 8, border: `1px solid ${P.red}66`, background: 'transparent', color: P.red, fontSize: type.size.base, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
               Reject
             </button>
           </div>
@@ -1031,7 +1031,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
       {/* Messages — Fix #7: ref for scroll preservation */}
       <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space[5]}px ${space[6]}px` }}>
         {thread.messages.length === 0 ? (
-          <div style={{ textAlign: 'center', fontSize: 12, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
+          <div style={{ textAlign: 'center', fontSize: type.size.caption, color: P.textTertiary, fontFamily: FF, paddingTop: space[9] }}>
             No messages yet
           </div>
         ) : (() => {
@@ -1071,7 +1071,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                   background: P.canvas,
                   border: `1px solid ${P.borderSubtle}`,
                   color: P.textSecondary,
-                  fontSize: 12, fontFamily: FF, fontWeight: type.weight.medium,
+                  fontSize: type.size.caption, fontFamily: FF, fontWeight: type.weight.medium,
                   cursor: 'pointer',
                 }}
               >
@@ -1089,7 +1089,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                   {/* Sprint 60.Q Comms #2 Day-of: sender row scales up for
                       operational legibility. Day-of: 13px medium. Normal: 10px. */}
                   <div style={{
-                    fontSize: isDayOf ? 13 : 10,
+                    fontSize: isDayOf ? type.size.base : type.size.xs,
                     fontWeight: isDayOf ? type.weight.semibold : type.weight.regular,
                     color: P.textTertiary, fontFamily: FF, marginBottom: 4,
                   }}>
@@ -1127,14 +1127,14 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                     padding: isDayOf
                       ? `${space[4]}px ${space[5]}px`
                       : `${space[3]}px ${space[4]}px`,
-                    fontSize: isDayOf ? 16 : 12,
+                    fontSize: isDayOf ? type.size.xl : type.size.caption,
                     color: P.textPrimary, fontFamily: FF,
                     lineHeight: type.leading.relaxed,
                   }}>
                     {/* Subject line — shown when present */}
                     {(m.subject || m.subject_line) && (
                       <div style={{
-                        fontSize: 11, fontWeight: type.weight.semibold,
+                        fontSize: type.size.sm, fontWeight: type.weight.semibold,
                         color: P.textSecondary, fontFamily: FF,
                         marginBottom: 5, paddingBottom: 5,
                         borderBottom: `1px solid ${P.borderSubtle}`,
@@ -1146,26 +1146,26 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                     {editingId === m.id ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <textarea autoFocus value={editBody} onChange={e => setEditBody(e.target.value)}
-                          style={{ width: '100%', boxSizing: 'border-box', minHeight: 60, resize: 'vertical', borderRadius: 6, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontFamily: FF, fontSize: 13, padding: 8, outline: 'none' }} />
+                          style={{ width: '100%', boxSizing: 'border-box', minHeight: 60, resize: 'vertical', borderRadius: 6, border: `1px solid ${P.borderSubtle}`, background: P.canvas, color: P.textPrimary, fontFamily: FF, fontSize: type.size.base, padding: 8, outline: 'none' }} />
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={() => { onEditMessage && onEditMessage(m.id, editBody); setEditingId(null); }}
-                            style={{ minHeight: 28, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: 11.5, fontWeight: 700, fontFamily: FF, cursor: 'pointer' }}>Save</button>
-                          <button onClick={() => setEditingId(null)} style={{ minHeight: 28, padding: '4px 10px', borderRadius: 6, border: 'none', background: 'none', color: P.textTertiary, fontSize: 11.5, fontFamily: FF, cursor: 'pointer' }}>Cancel</button>
+                            style={{ minHeight: 28, padding: '4px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)', color: '#fff', fontSize: type.size.sm, fontWeight: 700, fontFamily: FF, cursor: 'pointer' }}>Save</button>
+                          <button onClick={() => setEditingId(null)} style={{ minHeight: 28, padding: '4px 10px', borderRadius: 6, border: 'none', background: 'none', color: P.textTertiary, fontSize: type.size.sm, fontFamily: FF, cursor: 'pointer' }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
-                      <>{m.body || m.text || m.message}{m.editedAt && <span style={{ fontSize: 10, color: P.textTertiary, fontStyle: 'italic' }}> · edited</span>}</>
+                      <>{m.body || m.text || m.message}{m.editedAt && <span style={{ fontSize: type.size.xs, color: P.textTertiary, fontStyle: 'italic' }}> · edited</span>}</>
                     )}
                     {/* Edit (planner messages) / Delete — quiet controls under the bubble */}
                     {editingId !== m.id && (onEditMessage || onDeleteMessage) && (
                       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
                         {isPlanner && onEditMessage && (
                           <button onClick={() => { setEditingId(m.id); setEditBody(m.body || m.text || m.message || ''); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: 10.5, fontWeight: 600, fontFamily: FF, padding: 0 }}>Edit</button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: type.size.xs, fontWeight: 600, fontFamily: FF, padding: 0 }}>Edit</button>
                         )}
                         {onDeleteMessage && (
                           <button onClick={() => { if (window.confirm('Delete this message from the thread?')) onDeleteMessage(m.id); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: 10.5, fontWeight: 600, fontFamily: FF, padding: 0 }}>Delete</button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.textTertiary, fontSize: type.size.xs, fontWeight: 600, fontFamily: FF, padding: 0 }}>Delete</button>
                         )}
                       </div>
                     )}
@@ -1185,7 +1185,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                         display: 'flex', flexDirection: 'column', gap: 8,
                       }}>
                         <span style={{
-                          fontSize: 10, color: P.amber,
+                          fontSize: type.size.xs, color: P.amber,
                           fontWeight: type.weight.semibold,
                           letterSpacing: '0.14em', textTransform: 'uppercase',
                           fontFamily: FF,
@@ -1203,7 +1203,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                               padding: '10px 16px', borderRadius: 10, border: 'none',
                               background: 'linear-gradient(180deg, #4E6877 0%, #3F5B6A 100%)',
                               color: '#e8edf2',
-                              fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF,
+                              fontSize: type.size.base, fontWeight: type.weight.semibold, fontFamily: FF,
                               cursor: 'pointer',
                               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.04), 0 4px 10px rgba(0,0,0,0.35), 0 0 0 1px rgba(193,203,208,0.18)',
                               textShadow: '0 1px 0 rgba(0,0,0,0.25)',
@@ -1219,7 +1219,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                               border: `1px solid ${P.red}66`,
                               background: 'transparent',
                               color: P.red,
-                              fontSize: 13, fontWeight: type.weight.semibold, fontFamily: FF,
+                              fontSize: type.size.base, fontWeight: type.weight.semibold, fontFamily: FF,
                               cursor: 'pointer',
                             }}
                           >
@@ -1232,7 +1232,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                       <div style={{
                         marginTop: 10, paddingTop: 8,
                         borderTop: `1px solid ${P.borderSubtle}`,
-                        fontSize: 11, color: P.green,
+                        fontSize: type.size.sm, color: P.green,
                         fontWeight: type.weight.semibold,
                         letterSpacing: '0.10em', textTransform: 'uppercase',
                         fontFamily: FF,
@@ -1246,7 +1246,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                       <div style={{
                         marginTop: 10, paddingTop: 8,
                         borderTop: `1px solid ${P.borderSubtle}`,
-                        fontSize: 11, color: P.red,
+                        fontSize: type.size.sm, color: P.red,
                         fontWeight: type.weight.semibold,
                         letterSpacing: '0.10em', textTransform: 'uppercase',
                         fontFamily: FF,
@@ -1304,7 +1304,7 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
                     return (
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        fontSize: 9.5, fontFamily: FF, marginTop: 3,
+                        fontSize: type.size['2xs'], fontFamily: FF, marginTop: 3,
                         letterSpacing: '0.04em',
                       }}>
                         <span style={{
@@ -1374,7 +1374,7 @@ function ContextPanel({ thread, event, onRoute }) {
         borderBottom: `1px solid ${P.borderSubtle}`, flexShrink: 0,
       }}>
         <span style={{
-          fontSize: 12, fontWeight: type.weight.semibold,
+          fontSize: type.size.caption, fontWeight: type.weight.semibold,
           color: P.textPrimary, fontFamily: FF,
         }}>Context</span>
       </div>
@@ -1383,9 +1383,9 @@ function ContextPanel({ thread, event, onRoute }) {
         {/* Fix #4: Event countdown always shown */}
         {daysLabel && (
           <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>EVENT</div>
-            <div style={{ fontSize: 13, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{event?.name}</div>
-            <div style={{ fontSize: 11, color: daysToEvt !== null && daysToEvt <= 14 ? P.red : daysToEvt !== null && daysToEvt <= 30 ? P.amber : P.textSecondary, fontFamily: FF, marginTop: 2 }}>
+            <div style={{ fontSize: type.size['2xs'], letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>EVENT</div>
+            <div style={{ fontSize: type.size.base, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF }}>{event?.name}</div>
+            <div style={{ fontSize: type.size.sm, color: daysToEvt !== null && daysToEvt <= 14 ? P.red : daysToEvt !== null && daysToEvt <= 30 ? P.amber : P.textSecondary, fontFamily: FF, marginTop: 2 }}>
               {daysLabel} {daysToEvt !== null && daysToEvt >= 0 ? 'from now' : ''}
             </div>
           </div>
@@ -1394,31 +1394,31 @@ function ContextPanel({ thread, event, onRoute }) {
         {/* Vendor contact — quick-reach links */}
         {linkedVendor && (
           <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>VENDOR</div>
-            <div style={{ fontSize: 12, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginBottom: 6 }}>{linkedVendor.name}</div>
+            <div style={{ fontSize: type.size['2xs'], letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 6 }}>VENDOR</div>
+            <div style={{ fontSize: type.size.caption, fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginBottom: 6 }}>{linkedVendor.name}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {vendorEmail && (
-                <a href={`mailto:${vendorEmail}`} style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>EMAIL</span> {vendorEmail}
+                <a href={`mailto:${vendorEmail}`} style={{ fontSize: type.size.sm, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: type.size['2xs'], fontWeight: 700, letterSpacing: '0.06em' }}>EMAIL</span> {vendorEmail}
                 </a>
               )}
               {vendorPhone && (
-                <a href={`tel:${vendorPhone}`} style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>CALL</span> {vendorPhone}
+                <a href={`tel:${vendorPhone}`} style={{ fontSize: type.size.sm, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: type.size['2xs'], fontWeight: 700, letterSpacing: '0.06em' }}>CALL</span> {vendorPhone}
                 </a>
               )}
               {vendorWhatsApp && (
-                <a href={`https://wa.me/${vendorWhatsApp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ color: P.textTertiary, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>WHATSAPP</span>
+                <a href={`https://wa.me/${vendorWhatsApp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: type.size.sm, color: P.accent || P.steelBlue, fontFamily: FF, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: P.textTertiary, fontSize: type.size['2xs'], fontWeight: 700, letterSpacing: '0.06em' }}>WHATSAPP</span>
                 </a>
               )}
             </div>
-            <div style={{ fontSize: 9, color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
+            <div style={{ fontSize: type.size['2xs'], color: linkedVendor.status === 'Confirmed' ? P.green : P.amber, fontWeight: type.weight.semibold, letterSpacing: '0.06em', fontFamily: FF, marginTop: 6 }}>
               {(linkedVendor.status || '').toUpperCase()}
             </div>
             {onRoute && (
               <button onClick={() => onRoute('Vendors', linkedVendor.id)}
-                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.green, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.green, fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
                 Open vendor cockpit →
               </button>
             )}
@@ -1428,12 +1428,12 @@ function ContextPanel({ thread, event, onRoute }) {
         {/* Pending approval */}
         {approvalMsg && !['approved','rejected'].includes(approvalMsg.approval_status) && (
           <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>DECISION</div>
-            <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{approvalMsg.subject || 'Approval request'}</div>
-            <span style={{ fontSize: 9, fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
+            <div style={{ fontSize: type.size['2xs'], letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>DECISION</div>
+            <div style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{approvalMsg.subject || 'Approval request'}</div>
+            <span style={{ fontSize: type.size['2xs'], fontWeight: type.weight.medium, color: P.amber, letterSpacing: '0.06em', padding: '1px 5px', borderRadius: 2, border: `1px solid ${P.amber}44`, background: P.amber + '12', fontFamily: FF }}>PENDING</span>
             {onRoute && (
               <button onClick={() => onRoute('Decisions', approvalMsg.id)}
-                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.amber, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.amber, fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
                 Open decision →
               </button>
             )}
@@ -1443,12 +1443,12 @@ function ContextPanel({ thread, event, onRoute }) {
         {/* Linked task */}
         {taskMsg && (
           <div style={{ padding: `${space[4]}px 0`, borderBottom: `1px solid ${P.borderSubtle}` }}>
-            <div style={{ fontSize: 9, letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>TASK</div>
-            <div style={{ fontSize: 12, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{taskMsg.linked_task || 'Linked task'}</div>
-            {taskMsg.task_due && <div style={{ fontSize: 10, color: P.red, fontFamily: FF }}>DUE {taskMsg.task_due.toUpperCase()}</div>}
+            <div style={{ fontSize: type.size['2xs'], letterSpacing: '0.08em', color: P.textTertiary, fontFamily: FF, marginBottom: 4 }}>TASK</div>
+            <div style={{ fontSize: type.size.caption, color: P.textPrimary, fontFamily: FF, fontWeight: type.weight.medium }}>{taskMsg.linked_task || 'Linked task'}</div>
+            {taskMsg.task_due && <div style={{ fontSize: type.size.xs, color: P.red, fontFamily: FF }}>DUE {taskMsg.task_due.toUpperCase()}</div>}
             {onRoute && (
               <button onClick={() => onRoute('Planning Tasks', taskMsg.task_id || taskMsg.id)}
-                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.textSecondary, fontSize: 11, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
+                style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: P.textSecondary, fontSize: type.size.sm, fontWeight: type.weight.semibold, fontFamily: FF, cursor: 'pointer' }}>
                 Open task →
               </button>
             )}
@@ -1458,20 +1458,20 @@ function ContextPanel({ thread, event, onRoute }) {
         {/* Open questions */}
         {openQuestions.length > 0 && (
           <>
-            <div style={{ fontSize: 9, fontWeight: type.weight.medium, letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF, marginTop: space[4], marginBottom: space[3] }}>
+            <div style={{ fontSize: type.size['2xs'], fontWeight: type.weight.medium, letterSpacing: '0.10em', color: P.textTertiary, fontFamily: FF, marginTop: space[4], marginBottom: space[3] }}>
               OPEN QUESTIONS
             </div>
             {openQuestions.map((q, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: `${space[2]}px 0` }}>
                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: P.amber, flexShrink: 0, marginTop: 5 }} />
-                <span style={{ fontSize: 12, color: P.textSecondary, fontFamily: FF, lineHeight: 1.4 }}>{q}</span>
+                <span style={{ fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF, lineHeight: 1.4 }}>{q}</span>
               </div>
             ))}
           </>
         )}
 
         {!hasContext && (
-          <div style={{ paddingTop: space[5], fontSize: 11, color: P.textTertiary, fontFamily: FF }}>No linked items</div>
+          <div style={{ paddingTop: space[5], fontSize: type.size.sm, color: P.textTertiary, fontFamily: FF }}>No linked items</div>
         )}
         <div style={{ height: space[5] }} />
       </div>
@@ -1558,7 +1558,7 @@ export default function CommunicationHub({
         style={{
           background: 'transparent', border: `1px solid ${P.borderSubtle}`,
           borderRadius: radius.sm, cursor: 'pointer',
-          fontSize: 11, fontWeight: type.weight.medium,
+          fontSize: type.size.sm, fontWeight: type.weight.medium,
           color: P.textSecondary, fontFamily: FF,
           padding: '4px 10px',
         }}
@@ -1568,7 +1568,7 @@ export default function CommunicationHub({
       {/* Sprint 61.K — steel-blue eyebrow matches modal NO GUESSWORK
           rails + LegacyTabHeader + CommandCenter SectionHeader voice. */}
       <span style={{
-        fontSize: isMobile ? 13 : 10.5,
+        fontSize: isMobile ? type.size.base : type.size.xs,
         fontWeight: 800,
         letterSpacing: isMobile ? '0' : '0.16em',
         textTransform: isMobile ? 'none' : 'uppercase',
@@ -1601,7 +1601,7 @@ export default function CommunicationHub({
         }} />
         {!isMobile && (
           <span style={{
-            fontSize: 9, fontWeight: type.weight.semibold,
+            fontSize: type.size['2xs'], fontWeight: type.weight.semibold,
             letterSpacing: '0.1em', textTransform: 'uppercase',
             color: chatStatus.color, fontFamily: FF,
           }}>
@@ -1644,7 +1644,7 @@ export default function CommunicationHub({
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '0 16px',
-                fontSize: 12, color: P.textSecondary, fontFamily: FF,
+                fontSize: type.size.caption, color: P.textSecondary, fontFamily: FF,
               }}
             >
               ← All threads
