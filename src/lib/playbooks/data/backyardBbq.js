@@ -99,6 +99,19 @@ const backyardBbq = {
     { id: 'c_heat', when: 'r_foodsafe', plan: 'Stage cold dishes over ice trays; bring perishables out in waves rather than all at once.' },
   ],
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for an
+  // OUTDOOR, grill-forward cookout. severity drives ordering (critical→low). The
+  // host taps each as confirmed; state persists in event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'weather', label: 'Rain / heat plan', detail: 'Where does everyone go if the weather turns? Canopy up or garage/indoor fallback ready before guests arrive.', severity: 'high' },
+    { id: 'food', label: 'Food safety', detail: 'Cold food on ice, hot food held, nothing perishable out more than ~1h in the heat. Grill to safe temps — chicken 165°F, burgers 160°F.', severity: 'high' },
+    { id: 'grill', label: 'Grill / fire safety', detail: 'Fuel checked, extinguisher or a hose within reach, grill on a stable surface away from the house — and never left unattended.', severity: 'high' },
+    { id: 'power', label: 'Power & outlets', detail: "Music, lights, and warmers planned to the right circuits — don't run everything off one outdoor outlet.", severity: 'med' },
+    { id: 'trash', label: 'Trash + recycling station', detail: 'Bags staged, a separate recycling bag for cans/bottles, and a spot to swap a full bag mid-party.', severity: 'med' },
+    { id: 'alcohol', label: 'Alcohol plan', detail: 'A loose cutoff and a ride-home plan so everyone gets home safe.', severity: 'med' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   schedules: {
     purchasing: [
       { when: 'T-3d', what: 'Drinks, fuel, disposables, condiments, bug/sun supplies, cleanup kit' },

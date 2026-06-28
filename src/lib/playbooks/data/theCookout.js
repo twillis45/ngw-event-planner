@@ -202,6 +202,20 @@ const theCookout = {
     ],
   },
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for a
+  // big, all-day OUTDOOR cookout: grill-forward, alcohol, kids, long heat.
+  // severity drives ordering; state persists in event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'weather', label: 'Heat / rain plan', detail: 'Shade and a rain fallback set before guests arrive — an all-day cookout in full sun runs people off without canopies and a backup.', severity: 'high' },
+    { id: 'food', label: 'Food safety', detail: 'Cold sides on ice, hot food held, nothing perishable out more than ~1h in the heat. Grill all meats to safe temps before they leave the grill.', severity: 'high' },
+    { id: 'grill', label: 'Grill / fire safety', detail: 'Fuel checked, extinguisher or hose within reach, grill stable and clear of the house — and the pit never left unattended.', severity: 'high' },
+    { id: 'child', label: 'Child safety', detail: 'A watcher assigned for the grill and any pool/water, and kids kept clear of the hot pit and coolers of ice.', severity: 'high' },
+    { id: 'power', label: 'Power & outlets', detail: "Speakers, lights, and warmers spread across circuits — don't run the whole function off one outdoor outlet.", severity: 'med' },
+    { id: 'trash', label: 'Trash + recycling station', detail: 'Heavy-duty bags staged, a recycling bag for cans/bottles, and a plan to swap bags as the day fills them.', severity: 'med' },
+    { id: 'alcohol', label: 'Alcohol plan', detail: 'A loose cutoff, water out alongside, and a ride-home plan so the grown-folks section gets home safe.', severity: 'med' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',

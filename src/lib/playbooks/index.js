@@ -795,6 +795,55 @@ export function playbookRisks(event, domain) {
   return { items, count: items.length };
 }
 
+// ── Day-of "Before the big day" readiness checklist reader ─────────────────────
+// Pure reader over the playbook's AUTHORED `dayOfChecklist` — the safety/readiness
+// items the host clears the morning of, type-appropriate (a grill cookout gets
+// food-safety + fire + weather; an indoor dinner gets a lighter set). Mirrors the
+// playbookRisks reader: never infers or invents an item, only surfaces what the
+// playbook author wrote, ordered by severity (high→low). Types that don't author
+// their own list fall back to a sensible, universal default so nothing regresses.
+//
+// Each authored item: { id, label, detail, severity }. The reader normalizes to
+// the render/persistence contract the RealityCheckPanel already uses
+// (key/short/detail) so confirm-state — event.safetyChecked[key] — survives.
+const DAYOF_RANK = { critical: 0, high: 1, med: 2, medium: 2, low: 3 };
+// Universal fallback — true for ANY hosted gathering, with no hazard that might
+// not apply (no grill/fire, no canopy/weather, no alcohol assumption). Honest
+// floor; type playbooks add the specific items their event actually carries.
+const DEFAULT_DAYOF_CHECKLIST = [
+  { id: 'food', label: 'Food safety', detail: 'Keep cold food cold and hot food hot; nothing perishable sitting out more than ~2 hours. Cook anything to safe internal temps.', severity: 'high' },
+  { id: 'cleanup', label: 'Trash + cleanup ready', detail: 'Trash and recycling bags staged, paper towels out, and a spot to swap a full bag before it overflows.', severity: 'med' },
+  { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+];
+function normalizeDayOfItems(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((it) => it && it.id && it.label)
+    .map((it) => {
+      const sev = String(it.severity || 'med').toLowerCase();
+      return {
+        id: String(it.id), key: String(it.id),                 // key === id (persistence + render contract)
+        label: String(it.label).trim(), short: String(it.label).trim(),
+        detail: String(it.detail || '').trim(), severity: sev,
+        rank: (sev in DAYOF_RANK) ? DAYOF_RANK[sev] : 2,
+      };
+    })
+    .sort((a, b) => (a.rank - b.rank));
+}
+export function playbookDayOfChecklist(event) {
+  if (!event) return null;
+  const pb = getPlaybook(event.type);
+  // Authored list when the type defines one; otherwise the universal default
+  // (so an unknown / indoor / un-authored type still gets an honest floor).
+  const authored = pb && Array.isArray(pb.dayOfChecklist) ? pb.dayOfChecklist : null;
+  const items = normalizeDayOfItems(authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST);
+  if (!items.length) return null;
+  const isDefault = !(authored && authored.length);
+  const because = isDefault
+    ? `standard ${String(event.type || 'event').toLowerCase()} safety basics`
+    : `the things that actually matter for a ${String(event.type || 'event').toLowerCase()}`;
+  return { items, count: items.length, isDefault, because };
+}
+
 // ── Dated milestones reader — the planning arc as day-of-style dated actions ───
 // Pure reader over the authored milestones: each carries a name (the action), an
 // owner, and an offsetDays back from the event, which we turn into a real due

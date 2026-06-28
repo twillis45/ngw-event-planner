@@ -162,6 +162,20 @@ const juneteenthCookout = {
     ],
   },
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for an
+  // OUTDOOR Juneteenth cookout: grill-forward, kids, alcohol, June heat.
+  // severity drives ordering; state persists in event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'weather', label: 'Heat / rain plan', detail: 'Shade and a rain fallback ready — a June cookout in full sun needs canopies, water, and a backup if the weather turns.', severity: 'high' },
+    { id: 'food', label: 'Food safety', detail: 'Cold sides on ice, hot food held, nothing perishable out more than ~1h in the heat. Grill every protein to a safe temp.', severity: 'high' },
+    { id: 'grill', label: 'Grill / fire safety', detail: 'Fuel checked, extinguisher or hose within reach, grill stable and clear of the house — never left unattended.', severity: 'high' },
+    { id: 'child', label: 'Child safety', detail: 'A watcher for the grill and any water play; kids kept clear of the hot pit and coolers.', severity: 'high' },
+    { id: 'power', label: 'Power & outlets', detail: "Speakers, lights, and warmers spread across circuits — don't overload one outdoor outlet.", severity: 'med' },
+    { id: 'trash', label: 'Trash + recycling station', detail: 'Heavy-duty bags staged, a recycling bag for cans/bottles, and foil/containers for the to-go plates.', severity: 'med' },
+    { id: 'alcohol', label: 'Alcohol plan', detail: 'A loose cutoff, water out alongside, and a ride-home plan so everyone gets home safe.', severity: 'med' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',

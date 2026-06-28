@@ -12,7 +12,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookInfraPrompts, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
 import { hostSpending } from './lib/hostSpending';
 import { GlassIcon, hasGlassShape } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
@@ -8938,17 +8938,21 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   // next unconfirmed item open by default — the rest fold behind a quiet "show all" so
   // the panel guides rather than shouting a long list. The host opts into the full list.
   const [showAll, setShowAll] = useState(false);
-  const rc = (() => { try { return playbookInfraPrompts(event); } catch { return null; } })();
-  if (!rc || !rc.prompts || !rc.prompts.length) return null;
+  // Engine-driven: the checklist is now the playbook's AUTHORED, type-appropriate
+  // dayOfChecklist (a BBQ gets food-safety/fire/weather; an indoor dinner a lighter
+  // set), with a universal default for un-authored types. items[].key === the
+  // authored id, so confirm-state (event.safetyChecked[key]) still persists.
+  const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+  if (!rc || !rc.items || !rc.items.length) return null;
   const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
-  const done = rc.prompts.filter((p) => checked[p.key]).length;
-  const allDone = done === rc.prompts.length;
+  const done = rc.items.filter((p) => checked[p.key]).length;
+  const allDone = done === rc.items.length;
   const collapsed = allDone && !expanded; // collapse the checklist once everything's confirmed
   // In-progress focus: the first still-unconfirmed prompt. Until the host taps "show all",
   // confirmed rows + everything past the next unconfirmed item recede out of view.
-  const nextIdx = rc.prompts.findIndex((p) => !checked[p.key]);
+  const nextIdx = rc.items.findIndex((p) => !checked[p.key]);
   const focusMode = !allDone && !showAll && nextIdx >= 0;
-  const hiddenCount = focusMode ? rc.prompts.length - 1 : 0;
+  const hiddenCount = focusMode ? rc.items.length - 1 : 0;
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ safetyChecked: next }); };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' }; // metallic edge to match the app (done-state shown by the green eyebrow/text, not a border)
   return (
@@ -8956,13 +8960,13 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
       <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
         style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
         <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
-        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.prompts.length} confirmed`}</div>
+        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.items.length} confirmed`}</div>
       </button>
       {!collapsed && (
       <>
       <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>{focusMode ? 'One thing at a time — confirm this, then the next appears.' : 'Your day-of walkthrough — tap each as you confirm it.'}{rc.because ? ` These cover ${rc.because}.` : ' The things worth checking before guests arrive.'}</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {rc.prompts.map((p, i) => {
+        {rc.items.map((p, i) => {
           const on = !!checked[p.key];
           // Focus mode: only the next unconfirmed prompt is visible; confirmed rows and
           // everything past the next one recede entirely until the host taps "show all".
@@ -8982,7 +8986,7 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
       {hiddenCount > 0 && (
         <button type="button" onClick={() => setShowAll(true)}
           style={{ marginTop: 10, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>
-          {`Show all ${rc.prompts.length} — ${done} confirmed →`}
+          {`Show all ${rc.items.length} — ${done} confirmed →`}
         </button>
       )}
       </>

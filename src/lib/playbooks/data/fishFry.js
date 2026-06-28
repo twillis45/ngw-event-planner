@@ -134,6 +134,19 @@ const fishFry = {
     ],
   },
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for an
+  // OUTDOOR fish fry where HOT OIL is the headline hazard. Oil/fire safety leads.
+  // severity drives ordering; state persists in event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'hotoil', label: 'Hot-oil + fryer safety', detail: 'Fryer on LEVEL ground, well away from the house, deck, and overhangs. Never overfill. Never leave it unattended. Class B/K extinguisher and a metal lid within reach — never water on a grease fire. Long tools + heat gloves; pat fish dry.', severity: 'high' },
+    { id: 'fuel', label: 'Propane / burner check', detail: 'Test-fire the burner, start with a FULL tank and a backup on hand so the fry never stalls.', severity: 'high' },
+    { id: 'food', label: 'Food safety', detail: 'Keep fish on ice until it fries; hold cooked fish hot on wire racks (not stacked on paper); cold sides on ice, nothing perishable out too long.', severity: 'high' },
+    { id: 'child', label: 'Keep kids + pets back', detail: 'A clear zone around the fryer — hot oil and curious kids/pets do not mix. Assign someone to keep the perimeter.', severity: 'high' },
+    { id: 'oildisposal', label: 'Oil cool-down + disposal', detail: 'Let oil cool FULLY (hours) before moving; strain to reuse or seal in a jug — never down the drain.', severity: 'med' },
+    { id: 'trash', label: 'Trash + cleanup station', detail: 'Heavy bags, foil, paper towels for the greasy line, and the oil-disposal jug staged.', severity: 'low' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit (burn care) on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',

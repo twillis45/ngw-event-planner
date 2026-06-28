@@ -149,6 +149,20 @@ const dayParty = {
     ],
   },
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for an
+  // OUTDOOR day party: alcohol + DJ/music + heat, NOT grill-centric (no fuel/
+  // fire item). severity drives ordering; state persists in
+  // event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'alcohol', label: 'Alcohol plan', detail: 'Pace the bar, keep water + a mocktail front-and-center, do a last call ~30 min before end, and pre-arrange rideshares / DDs. No keys leave with an over-served guest.', severity: 'high' },
+    { id: 'weather', label: 'Heat / rain plan', detail: 'Canopies up, shade and water out, and a covered/indoor fallback ready if the weather turns.', severity: 'high' },
+    { id: 'noise', label: 'Noise + neighbors', detail: 'Speakers pointed away from homes, daytime hours respected, and neighbors given a heads-up so the music never gets shut down.', severity: 'med' },
+    { id: 'food', label: 'Food safety', detail: 'Cold bites on ice, the grazing table refreshed in waves, nothing perishable out more than ~1-2h in the heat.', severity: 'med' },
+    { id: 'power', label: 'Power & outlets', detail: "DJ rig, speakers, and lights planned to the right circuits with a charged backup speaker — the music can't go quiet.", severity: 'med' },
+    { id: 'trash', label: 'Trash + recycling station', detail: 'Bags staged, a recycling bag for the cans/bottles a bar night produces, and a plan to swap bags mid-party.', severity: 'low' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',

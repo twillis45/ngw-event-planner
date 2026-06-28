@@ -159,6 +159,18 @@ const dinnerParty = {
     { id: 'c_spill', trigger: 'Spill or breakage', plan: 'Club soda + the spare place setting you kept aside. Reset and move on without a fuss — your calm sets the table’s mood.', severity: 'low' },
   ],
 
+  // Day-of "Before the big day" readiness walkthrough — authored for an INDOOR,
+  // seated dinner. No grill/fire, no weather/canopy, no outdoor-power risk: an
+  // honest, lighter set. severity drives ordering; state persists in
+  // event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'food', label: 'Food safety', detail: 'Cold dishes kept cold, hot dishes held warm, nothing perishable sitting out more than ~2 hours. Cook proteins to safe internal temps.', severity: 'high' },
+    { id: 'allergies', label: 'Allergy / dietary check', detail: "Confirm every guest's allergy or dietary need is covered, and you know which dish is which before you serve. Keep one safe vegetarian plate ready.", severity: 'high' },
+    { id: 'kitchen', label: 'Kitchen + stove safety', detail: 'Pot handles turned in, nothing flammable near burners, oven timers set so nothing burns while you host.', severity: 'med' },
+    { id: 'cleanup', label: 'Cleanup ready', detail: 'Dish soap, towels, an empty dishwasher and a bus tub staged so the kitchen never traps you mid-evening.', severity: 'low' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   // Knowledge / provenance (source-verified — see canonical
   // dinner-party.knowledge.json for the full cited principles + sources).
   knowledge: {

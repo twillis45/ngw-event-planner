@@ -134,6 +134,19 @@ const lowCountryBoil = {
     ],
   },
 
+  // Day-of "Before the big day" readiness/safety walkthrough — authored for an
+  // OUTDOOR propane-pot boil: scalding water/burner + shellfish allergy lead.
+  // severity drives ordering; state persists in event.safetyChecked[id].
+  dayOfChecklist: [
+    { id: 'burner', label: 'Burner + boiling-water safety', detail: 'Burner on LEVEL, stable ground away from the house and overhangs; pot filled no more than ~2/3 so it never boils over the flame. Never leave it unattended. Heat gloves + a long paddle; lift the heavy scalding basket with two hands. Class B extinguisher within reach; full tank + a backup.', severity: 'high' },
+    { id: 'allergy', label: 'Shellfish allergy check', detail: 'Shrimp + any crab/clam add-ins are major allergens — a reaction can be anaphylaxis-grade. Ask guests ahead; pull a shellfish-free portion of sausage/corn/potatoes BEFORE the shrimp go in. Know the nearest ER; keep any guest’s epinephrine on hand.', severity: 'high' },
+    { id: 'child', label: 'Keep kids + pets back', detail: 'A clear zone around the burner and the scalding pot — assign someone to hold the perimeter.', severity: 'high' },
+    { id: 'food', label: 'Food safety', detail: 'Keep shrimp on ice until they drop; serve the boil hot off the table; cold sides on ice, nothing perishable out too long.', severity: 'med' },
+    { id: 'weather', label: 'Wind / rain plan', detail: 'A canopy or carport for the burner — open and well ventilated, never enclosed (propane needs air) — and a cover for the eating table.', severity: 'low' },
+    { id: 'cooldown', label: 'Pot cool-down + cleanup', detail: 'Let the pot and water cool FULLY before moving; roll the paper up with shells inside; bags and shell buckets staged.', severity: 'low' },
+    { id: 'emergency', label: 'Emergency basics', detail: 'First-aid kit (burn care) on hand; know the nearest ER; phones charged.', severity: 'low' },
+  ],
+
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
