@@ -27149,7 +27149,7 @@ function InviteDome({ icon, hue = '#9aa6b2', size = 108 }) {
 // days-until (~700ms). One curve everywhere: ease-out cubic-bezier(.22,1,.36,1)
 // (the Magic Moments motion language). All data is honest — no fabricated counts.
 const CE_EASE = 'cubic-bezier(.22,1,.36,1)';
-function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
+function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventNumber = 1 }) {
   const C = useT();
   const T = useType();
   const ident = (() => { try { return evtIdentity(event.type, C); } catch { return { icon: 'sparkles', color: C.accent, mark: 'quiet' }; } })();
@@ -27204,7 +27204,7 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
       {/* Masthead */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <span style={meta}>Event Boss</span>
-        <span style={meta}>No. 01</span>
+        <span style={meta}>No. {String(Math.max(1, eventNumber)).padStart(2, '0')}</span>
       </div>
       <div style={rule} />
 
@@ -42276,12 +42276,18 @@ export default function App() {
   if (activeEvent) {
     // Magic Moment M2 — the event-open Editorial Cover. The first time a host enters
     // their event each session, it meets them as a magazine cover; "Open the event →"
-    // resolves into the event, preserving wherever they were headed (so a deep-link
-    // like "Set budget" still lands focused on the budget field after the cover).
-    if (hostNavActive(activeEvent) && !coverSeen.has(activeEvent.id)) {
+    // resolves into the event. Board ruling: an arrival, not a tollbooth — so it's
+    // SKIPPED when a next-step CTA targeted a specific field/item (a "fix one thing"
+    // deep-link), and only greets a general open.
+    const coverTargeted = initialNav && (initialNav.focusField || initialNav.foodFocus || initialNav.taskId || initialNav.decisionId || initialNav.vendorId || initialNav.commId || initialNav.timelineId || initialNav.vendorSection);
+    if (hostNavActive(activeEvent) && !coverSeen.has(activeEvent.id) && !coverTargeted) {
+      // Honest masthead "No. 0N" — this event's number among the host's events
+      // (creation order). A first-time host's event genuinely IS No. 01.
+      const hostEvents = (events || []).filter(e => { try { return hostNavActive(e); } catch { return false; } });
+      const coverNo = Math.max(1, hostEvents.findIndex(e => e.id === activeEvent.id) + 1);
       return gated(
         <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg }}>
-          <EditorialCover event={activeEvent} profile={profile}
+          <EditorialCover event={activeEvent} profile={profile} eventNumber={coverNo}
             onOpen={() => setCoverSeen(s => new Set(s).add(activeEvent.id))}
             onShare={() => { setCoverSeen(s => new Set(s).add(activeEvent.id)); setInitialNav({ tab: 'Guests' }); }} />
         </div>
