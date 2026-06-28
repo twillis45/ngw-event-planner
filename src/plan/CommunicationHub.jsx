@@ -905,12 +905,13 @@ function ConversationPane({ thread, event, client, onSend, onApprove, onDeleteMe
     );
   }
 
+  const threadMsgs = Array.isArray(thread.messages) ? thread.messages : [];
   const linkedDecision = (event.commClient || []).find(m =>
-    m.message_type === 'approval_request' && thread.messages.some(tm => tm.id === m.id)
+    m.message_type === 'approval_request' && threadMsgs.some(tm => tm.id === m.id)
   );
   // The pending approval (if any) — pinned to the top as a sticky action card so
   // the planner never scrolls the transcript to find what needs them.
-  const pendingApproval = thread.messages.find(m =>
+  const pendingApproval = threadMsgs.find(m =>
     m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status)
   );
 

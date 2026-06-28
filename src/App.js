@@ -14,7 +14,7 @@ import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/samp
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
 import { hostSpending } from './lib/hostSpending';
-import { choreography } from './design/motion';
+import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
@@ -9092,7 +9092,7 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 1 }}>
           {right}
-          <span aria-hidden style={{ color: C.muted, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease', display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
+          <span aria-hidden style={{ color: C.muted, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: transitionFor('press', ['transform']), display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
         </span>
       </button>
       {open && <div style={{ marginTop: 14 }}>{children}</div>}
@@ -11956,7 +11956,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     // Guest count
     const rawCount = answers['count'];
     const guestN   = rawCount ? parseInt(rawCount, 10) : NaN;
-    const confirmedCount = event.guests.filter(g => g.rsvp === 'Yes').length;
+    const confirmedCount = (event.guests || []).filter(g => g.rsvp === 'Yes').length;
     if (!isNaN(guestN) && guestN > 0) {
       const current = event.guestEstimate || confirmedCount;
       if (guestN !== current) {
@@ -11995,7 +11995,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     // Catering style → update catering vendor notes
     const cateringAns = answers['catering'];
     if (cateringAns) {
-      const catVendor = event.vendors.find(v => v.category === 'Catering');
+      const catVendor = (event.vendors || []).find(v => v.category === 'Catering');
       if (catVendor && !catVendor.notes?.includes(cateringAns)) {
         list.push({
           id: 'cateringNote',
@@ -12003,7 +12003,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           sub: `Adds to ${catVendor.name || 'Catering vendor'} notes`,
           apply: (e) => ({
             ...e,
-            vendors: e.vendors.map(v =>
+            vendors: (e.vendors || []).map(v =>
               v.id === catVendor.id ? { ...v, notes: [v.notes, cateringAns].filter(Boolean).join(' · ') } : v
             ),
           }),
@@ -12015,7 +12015,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     const musicAns = answers['music'];
     const museCat  = vendorCatForMusic(musicAns);
     if (museCat && musicAns && musicAns !== 'Playlist / DIY') {
-      const hasSlot = event.vendors.some(v => v.category === museCat || v.category === 'Entertainment');
+      const hasSlot = (event.vendors || []).some(v => v.category === museCat || v.category === 'Entertainment');
       if (!hasSlot) {
         list.push({
           id: 'musicVendor',
@@ -12023,7 +12023,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           sub: `Client prefers "${musicAns}" — no ${museCat} vendor added yet`,
           apply: (e) => ({
             ...e,
-            vendors: [...e.vendors, { id: uid(), name: '', category: museCat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: musicAns }],
+            vendors: [...(e.vendors || []), { id: uid(), name: '', category: museCat, status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: musicAns }],
           }),
         });
       }
@@ -12032,7 +12032,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     // Photography priority
     const photoAns = answers['photo'];
     if (photoAns === 'Top priority — no compromise') {
-      const hasPhoto = event.vendors.some(v => v.category === 'Photography');
+      const hasPhoto = (event.vendors || []).some(v => v.category === 'Photography');
       if (!hasPhoto) {
         list.push({
           id: 'photoVendor',
@@ -12040,7 +12040,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           sub: 'Client flagged photography as top priority — no photographer added yet',
           apply: (e) => ({
             ...e,
-            vendors: [...e.vendors, { id: uid(), name: '', category: 'Photography', status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: 'Top priority per intake' }],
+            vendors: [...(e.vendors || []), { id: uid(), name: '', category: 'Photography', status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: 'Top priority per intake' }],
           }),
         });
       }
@@ -12049,7 +12049,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
     // Entertainment activity for corporate / birthday
     const entertainAns = answers['entertain'];
     if (entertainAns && entertainAns !== 'None needed' && entertainAns !== 'Free socializing') {
-      const hasEnt = event.vendors.some(v => v.category === 'Entertainment');
+      const hasEnt = (event.vendors || []).some(v => v.category === 'Entertainment');
       if (!hasEnt) {
         list.push({
           id: 'entertainVendor',
@@ -12057,7 +12057,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
           sub: `Client wants "${entertainAns}"`,
           apply: (e) => ({
             ...e,
-            vendors: [...e.vendors, { id: uid(), name: '', category: 'Entertainment', status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: entertainAns }],
+            vendors: [...(e.vendors || []), { id: uid(), name: '', category: 'Entertainment', status: 'Considering', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '', contact: '', phone: '', email: '', notes: entertainAns }],
           }),
         });
       }
@@ -12123,7 +12123,7 @@ function ConsultScriptModal({ event, setEvent, onClose }) {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  const confirmedCount = event.guests.filter(g => g.rsvp === 'Yes').length;
+  const confirmedCount = (event.guests || []).filter(g => g.rsvp === 'Yes').length;
   const hasSaved       = !!event.intake?.savedAt;
 
   return (
@@ -21595,7 +21595,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             instead of going blank. The opposite of the breathing next-step: calm, warm,
             celebratory. (Attention System: the empty screen IS the reward.) */}
         {!isPost && !isDayOf && allProgDone && (
-          <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: 'ceRise 480ms cubic-bezier(.2,.7,.2,1) both' }}>
+          <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
             <div aria-hidden style={{ color: idColor, display: 'flex', justifyContent: 'flex-start', marginBottom: 10, filter: ident.mark === 'quiet' ? 'none' : `drop-shadow(0 0 12px ${idColor}44)` }}><Icon name={ident.icon} size={34} stroke={1.6} /></div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
@@ -21928,7 +21928,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
     {switcherOpen && (
       <div role="dialog" aria-label="Your events" onClick={() => setSwitcherOpen(false)}
         style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 24 }}>
-        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, ...metalEdge(C), borderRadius: isMobile ? '18px 18px 0 0' : 16, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: isMobile ? '82vh' : '80vh', overflowY: 'auto', boxSizing: 'border-box', animation: isMobile ? 'ceRise 320ms cubic-bezier(.2,.7,.2,1) both' : 'none' }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, ...metalEdge(C), borderRadius: isMobile ? '18px 18px 0 0' : 16, padding: 20, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: isMobile ? '82vh' : '80vh', overflowY: 'auto', boxSizing: 'border-box', animation: isMobile ? `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>Your events</div>
             <button onClick={() => setSwitcherOpen(false)} aria-label="Close" style={{ background: 'none', border: 'none', color: C.muted, fontSize: T.title, cursor: 'pointer', lineHeight: 1, fontFamily: 'inherit' }}>×</button>
@@ -29429,7 +29429,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           : `${firsts[0]}, ${firsts[1]} and ${firsts.length - 2} more just said yes!`;
         const green = C.success || C.accent;
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 18, maxWidth: 760, borderRadius: 14, background: `${green}14`, border: `1px solid ${green}44`, borderLeft: `3px solid ${green}`, animation: 'ceRise 420ms cubic-bezier(.2,.7,.2,1) both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', marginBottom: 18, maxWidth: 760, borderRadius: 14, background: `${green}14`, border: `1px solid ${green}44`, borderLeft: `3px solid ${green}`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
             <span aria-hidden style={{ fontSize: T.title, lineHeight: 1 }}>🎉</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{headline}</div>
