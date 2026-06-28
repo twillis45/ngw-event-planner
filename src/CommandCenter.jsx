@@ -2390,12 +2390,15 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
   const handleCta = () => {
     if (!command.primaryRoute) return;
     // Pull section/focus hints + eventId OUT of rest so `idKey` only ever picks a
-    // real item id (decisionId / vendorId / commId / timelineId).
-    const { tab, vendorSection, foodFocus, eventId, ...rest } = command.primaryRoute;
+    // real item id (decisionId / vendorId / commId / timelineId). focusField MUST be
+    // pulled out too — else it was mistaken for an item id (rest's first key) AND never
+    // forwarded, so "Set budget" landed on the tab top but never focused the $ field.
+    const { tab, vendorSection, foodFocus, focusField, eventId, ...rest } = command.primaryRoute;
     const idKey = Object.keys(rest)[0];
-    // Forward vendorSection / foodFocus as the third opts arg so the EventPlanner
-    // route chain lands in the right section, or scrolls to the right food line (#12).
-    const opts = (vendorSection || foodFocus) ? { vendorSection, foodFocus } : undefined;
+    // Forward vendorSection / foodFocus / focusField as the third opts arg so the
+    // EventPlanner route chain lands in the right section, scrolls to the right food
+    // line (#12), or focuses the right input (Board #15 — e.g. hsp-budget).
+    const opts = (vendorSection || foodFocus || focusField) ? { vendorSection, foodFocus, focusField } : undefined;
     onTabChange && onTabChange(tab, rest[idKey] || null, opts);
   };
 

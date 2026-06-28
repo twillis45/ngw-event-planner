@@ -21837,7 +21837,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           if (!fp.guestCountResolved) return null;
           const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
           return (
-            <button type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
+            <button id="hp-food-plan-card" type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
               style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
                 <span style={eyebrow}>Food plan</span>
@@ -21878,7 +21878,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* 5 · Event Day — on the day itself the hero already IS the run of show,
             so this planning-time entry is hidden then (host audit #7). */}
         {!isDayOf && (
-          <button className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
+          <button id="hp-event-day-entry" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
             style={{ width: '100%', textAlign: 'left', ...card, marginBottom: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>
               <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>View Event Day</span>
@@ -39010,6 +39010,22 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
         await shareOrCopy({ title: draft.subject, text: draft.body });
       } catch { /* best-effort share/copy */ }
     };
+    // The Next-Step Spine, on the scoped tab: once THIS tab's work is handled (budget on
+    // plan / count locked), the host must never have to hunt back to Command for what's
+    // next — the spine surfaces it RIGHT HERE. Single-source: na is the engine #1
+    // (= eventPlan.nextActions[0]). Only shown when this tab needs nothing (not live, no
+    // inline guest acts) AND the next step lives on ANOTHER tab (a same-tab CTA goes
+    // nowhere). `dispatchNext` forwards the full route (incl. focusField) through onNav.
+    const scopeTab = scope === 'budget' ? 'Budget' : 'Guests';
+    const showNext = !sc.live && !showGuestActs && na && na.primaryCta && na.primaryRoute
+      && na.primaryRoute.tab && na.primaryRoute.tab !== scopeTab;
+    const dispatchNext = () => {
+      const r = na && na.primaryRoute; if (!r || typeof onNav !== 'function') return;
+      const itemId = r.vendorId || r.decisionId || r.commId || r.taskId || r.timelineId || undefined;
+      const opts = (r.vendorSection || r.foodFocus || r.focusField)
+        ? { vendorSection: r.vendorSection, foodFocus: r.foodFocus, focusField: r.focusField } : undefined;
+      onNav(r.tab, itemId, opts);
+    };
     return (
       <div style={{ ...card, borderColor: isAllSet ? (C.success || C.accent) : C.accent, borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: isAllSet ? (C.success || C.accent) : C.accent, background: isAllSet ? `${(C.success || C.accent)}0c` : undefined, animation: sc.live ? 'ceBreathe 3.4s ease-in-out infinite' : undefined }}>
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: sc.eyebrowColor, padding: '2px 7px', borderRadius: 4, border: `1px solid ${sc.eyebrowColor}55`, display: 'inline-block', marginBottom: 8 }}>{sc.eyebrow}</div>
@@ -39057,10 +39073,16 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
             )}
           </>
         )}
-        {/* No nav CTA here: these heroes live ON their own tab (Budget/Guests), so a
-            button routing to that same tab went nowhere. The hero states the situation;
-            the detail is right below it. (Guests keeps its real stepper/lock/nudge above;
-            an actionable budget swap is the P1⑦ follow-up.) */}
+        {/* The spine surfaces here once this tab is handled — never route to this same
+            tab (that goes nowhere); only forward to the next step on ANOTHER surface. */}
+        {showNext && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Next</div>
+            <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{na.title}</div>
+            <button type="button" onClick={dispatchNext}
+              style={{ marginTop: 10, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: `1px solid ${steel}`, cursor: 'pointer', background: `${steel}1f`, color: steel }}>{na.primaryCta} →</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -39225,11 +39247,11 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Guests' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
+          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
           <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
+          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
           <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
         {tab === 'Planning' && <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
@@ -39489,6 +39511,10 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     setOpenTimelineId(resolvedView === 'timeline'    ? (norm.openId || null) : null);
     // Deep-link a specific food line on the Planning tab (foodFocus carried via opts).
     focusFood(resolvedTab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
+    // Board #15 — deep-link FOCUS a specific input on the destination tab (e.g. the
+    // empty budget $ field 'hsp-budget'). Carried via opts.focusField. Only set when
+    // provided; a plain tab switch clears any stale target so it never re-fires.
+    setOpenFocusField(opts && opts.focusField ? opts.focusField : null);
     if (resolvedView) setPlanningView(resolvedView);
     // Sprint 60.B: vendor-section landing target. Reset to null whenever
     // we leave the Vendors tab.
@@ -39538,7 +39564,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       setVendorSectionPing(p => p + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialNav?.tab, initialNav?.vendorId, initialNav?.taskId, initialNav?.decisionId, initialNav?.commId, initialNav?.timelineId, initialNav?.vendorSection]);
+  }, [initialNav?.tab, initialNav?.vendorId, initialNav?.taskId, initialNav?.decisionId, initialNav?.commId, initialNav?.timelineId, initialNav?.vendorSection, initialNav?.focusField, initialNav?.foodFocus]);
 
   const wrap = (field) => (fn) =>
     setEvent(e => ({ ...e, [field]: typeof fn === 'function' ? fn(e[field]) : fn }));
@@ -39840,13 +39866,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Budget'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader (app-header + ReadinessTrack lead; PlanNowHero is first content). Planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Budget" hint="Plan vs. actuals, what's committed, and what's left." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real budget (over/under from
           spent vs total). The spending plan below recedes (one hero, Attention System). */}
-      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />}
       <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></div></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader; planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Guests" hint="Your guest list, RSVPs, meals, and seating." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
           (confirm count · nudge outstanding · all replied). List recedes below. */}
-      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />}
       <div className={isHostEvt ? 'hp-recede' : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
       {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
@@ -40342,36 +40368,29 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             route = route || { tab: 'Command' }; // never no-op: a routeless CTA falls back to the overview
             const itemId = route.vendorId || route.decisionId || route.commId || route.taskId || route.timelineId || undefined;
             const norm = normalizeEventTabRoute(route.tab, itemId);
-            handleTabChange(route.tab, itemId, route.vendorSection ? { vendorSection: route.vendorSection } : undefined);
+            const navOpts = (route.vendorSection || route.foodFocus || route.focusField)
+              ? { vendorSection: route.vendorSection, foodFocus: route.foodFocus, focusField: route.focusField }
+              : undefined;
+            handleTabChange(route.tab, itemId, navOpts);
             // When the Spine CTA targets a sub-view of the current tab (e.g. Timeline within
-            // Planning), the tab stays the same but planningView changes — scroll the content
-            // pane so the newly-active sub-section is visible, not hidden below the food plan.
+            // Planning), scroll the content pane so the newly-active sub-section is visible.
+            // Uses the stable id= anchors added to each view container. scrollIntoView is more
+            // reliable than manual BoundingClientRect math — it works regardless of container nesting.
             if (norm.tab === tab && norm.planningView) {
-              // The existing deep-link effect (data-deeplink scroll, App.js ~33756) already
-              // scrolls to the specific task item. We just also need to scroll past the large
-              // food plan section so the sub-tabs (List/Timeline/Checklist) are visible.
-              // Use the #planning-subtabs anchor and scroll BEFORE the deep-link effect fires
-              // (which runs at 90ms). Use 50ms to win the race, then deep-link refines to item.
               setTimeout(() => {
-                const anchor = document.getElementById('planning-subtabs');
-                if (!anchor) return;
-                let container = anchor.parentElement;
-                while (container && container !== document.body) {
-                  if (['auto','scroll'].includes(getComputedStyle(container).overflowY)) break;
-                  container = container.parentElement;
-                }
-                if (!container || container === document.body) return;
-                const aRect = anchor.getBoundingClientRect();
-                const cRect = container.getBoundingClientRect();
-                const target = Math.min(
-                  container.scrollTop + (aRect.top - cRect.top) - 8,
-                  container.scrollHeight - container.clientHeight
-                );
-                if (target > container.scrollTop) {
-                  // Only scroll DOWN — never let this override an already-correct position.
-                  container.scrollTo({ top: Math.max(0, target) }); // instant, deep-link smooths from here
-                }
-              }, 50);
+                requestAnimationFrame(() => {
+                  // Target the actual view content first (most specific); fall back to the subtabs row.
+                  const viewIds = {
+                    timeline: 'planning-timeline-view',
+                    list:     'planning-task-list',
+                    checklist:'planning-checklist-view',
+                  };
+                  const anchorId = viewIds[norm.planningView] || 'planning-subtabs';
+                  const anchor = document.getElementById(anchorId) || document.getElementById('planning-subtabs');
+                  if (!anchor) return;
+                  anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+              }, 120);
             }
           }}
         />
