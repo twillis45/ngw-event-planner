@@ -40578,6 +40578,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 10px' }}><div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} /></div>
             <div style={{ fontSize: T.caption, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted, padding: '0 8px 8px' }}>Event Details</div>
             {[
+              // Host bottom nav drops "More" (5 clean lanes) — Where & when is set in the
+              // create/edit flow, so for hosts it lives here in the ⋯ menu (not orphaned).
+              isHostEvt && { icon: 'location', label: 'Where & when', onClick: () => { handleTabChange('Event Details'); setEvtActionsOpen(false); } },
               // Sprint 49 closure: 'Plan Dashboard' entry removed — PLAN overlay retired.
               // Sprint 59D: mobile drawer copy locked to Day-of/Full event view.
               { icon: 'zap',      label: dayMode ? 'Full event view' : 'Day-of view', onClick: () => { setDayMode(!dayMode); setEvtActionsOpen(false); if (!dayMode) handleTabChange('Now'); }, style: dayMode ? { color: C.accent } : {} },
@@ -40743,7 +40746,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             );
           })}
-          <button aria-label="More" onClick={() => setEvtDrawerOpen(true)} title="More"
+          {/* Host nav is a clean 5 lanes — no "More" (overflow → header ⋯). Planners
+              keep "More" for the deeper CRM surfaces (Vendors/Docs/Messages/Details). */}
+          {!isHostEvt && <button aria-label="More" onClick={() => setEvtDrawerOpen(true)} title="More"
             style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '8px 0 9px',
@@ -40771,7 +40776,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               lineHeight: 1,
               color: bottomMoreActive ? (C.steel?.blue400 || C.accent) : C.muted,
             }}>More</span>
-          </button>
+          </button>}
         </div>
       )}
     </div>
