@@ -27242,7 +27242,11 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
   const timeBit = event.startTime ? ` · ${fmtTime12(event.startTime)}` : (event.timeOfDay ? ` · ${cap(event.timeOfDay)}` : '');
   const dateLine = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + timeBit : '';
   // Honest editorial framing: bind to captured identity if present, else a calm default.
-  const eyebrow = (event.coverEyebrow || event.identityEyebrow || '').trim() || 'YOU’RE HOSTING';
+  // Honest, specific eyebrow when identity fields exist (board rec) — never fabricated.
+  // An honoree → "In honor of …"; otherwise the calm default. (No invented "Nth annual".)
+  const _honoree = (event.honoree || '').trim();
+  const eyebrow = (event.coverEyebrow || event.identityEyebrow || '').trim()
+    || (_honoree ? `In honor of ${_honoree}` : 'You’re hosting');
   const descriptor = (event.tagline || '').trim() || event.type || '';
   // On-track whisper — ONLY real facts (confirmed count + first handled milestone).
   const whisper = (() => {
