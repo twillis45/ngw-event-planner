@@ -30100,6 +30100,14 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             </div>
           )}
         </div>
+        {/* The count option is always reachable from the roster — a host who never chose
+            "just a headcount" can switch to it here, not only from the empty state. */}
+        {guestsIsHost && guests.length > 0 && (
+          <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
+            style={{ display: 'block', background: 'none', border: 'none', padding: '0 0 12px', margin: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.steel?.blue400 || C.accent, textAlign: 'left' }}>
+            Rather just track a headcount? →
+          </button>
+        )}
         {importMsg && (
           <div style={{ fontSize: T.caption, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
             {importMsg.text}
