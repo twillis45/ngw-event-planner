@@ -13565,10 +13565,10 @@ function PublicIntakeForm({ token }) {
           {/* Event details */}
           <div>
             <label style={labelStyle}>Event type <span style={{ color: C.danger }}>*</span></label>
-            <select style={fieldStyle} value={form.eventType} onChange={e => upd('eventType', e.target.value)}>
-              <option value="">Select…</option>
-              {INTAKE_EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            {/* The reworked browse (Figma 1505:5) — same picker the host uses, wherever a
+                type is input: search + categories + identity-icon rows over the full set. */}
+            <TypePicker value={form.eventType} onChange={(t) => upd('eventType', t)}
+              placeholder="Choose an event type…" fieldStyle={fieldStyle} testId="intake-event-type" C={C} />
           </div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 180px' }}>
