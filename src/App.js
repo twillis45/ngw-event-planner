@@ -40950,6 +40950,17 @@ export default function App() {
       return !(realEv || realCl);
     } catch { return false; }
   });
+  // Entry guarantee: a RETURNING user who has real events/clients must land in the app,
+  // never the welcome wall. localStorage can be empty at first paint for a signed-in user
+  // whose records live in Supabase — so the welcome's initial guess says "new user." Once
+  // the real records arrive (cloud sync, or any path that populates events/clients),
+  // dismiss the welcome so they enter their app. Seed/sample records don't count.
+  useEffect(() => {
+    if (!showWelcome) return;
+    const realEv = Array.isArray(events) && events.some(e => e && e.id && !isSeedEvent(e));
+    const realCl = Array.isArray(clients) && clients.some(c => c && c.id && !SEED_CLIENT_IDS.has(c.id));
+    if (realEv || realCl) setShowWelcome(false);
+  }, [events, clients, showWelcome]);
   const chooseAccountType = (type) => {
     setProfile(p => ({ ...p, accountType: type }));
     try { localStorage.setItem('ngw-welcome-done', '1'); } catch {}
