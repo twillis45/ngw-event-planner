@@ -40376,7 +40376,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                 timeline={event.timeline}
                 eventName={event.name}
               />
-              {client && (
+              {!isHostEvt && client && (
                 <button onClick={() => setShowPortal(true)} style={{ ...s.btn('teal'), fontSize: T.caption, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <Icon name="eye" size={13} /> Client View
                 </button>
@@ -40420,11 +40420,14 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                       </button>
                       {/* Sprint 51 follow-up: ConsultScriptModal trigger restored
                           after Overview retirement. Lives in Manage Event so it
-                          stays available without owning a primary surface. */}
+                          stays available without owning a primary surface. Planner-
+                          only — hosts never run a client consult (Ruthless Host Lens). */}
+                      {!isHostEvt && (
                       <button onClick={() => { setShowConsult(true); setDesktopEvtOverflow(false); }} style={row}>
                         <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="file" size={15} /></span>
                         Run Consult Script
                       </button>
+                      )}
                       <div style={{ margin: '4px 0', borderTop: `1px solid ${C.border}` }} />
                       <button onClick={() => { doExport(); setDesktopEvtOverflow(false); }} style={{ ...row, opacity: exporting ? 0.6 : 1 }} disabled={exporting}>
                         <span style={{ width: 18, display: 'flex', justifyContent: 'center', color: C.muted }}><Icon name="download" size={15} /></span>
@@ -40702,7 +40705,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               // Sprint 51 follow-up: ConsultScriptModal trigger restored after Overview retirement.
               !isHostEvt && { icon: 'file',     label: 'Run Consult Script', onClick: () => { setShowConsult(true); setEvtActionsOpen(false); } },
               !isHostEvt && { icon: 'send',     label: 'Share with client', onClick: () => { setShowSendClient(true); setEvtActionsOpen(false); } },
-              client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
+              !isHostEvt && client && { icon: 'eye', label: 'Client View', onClick: () => { setShowPortal(true); setEvtActionsOpen(false); } },
               { icon: 'download', label: exporting ? 'Exporting…' : 'Export', onClick: () => { doExport(); setEvtActionsOpen(false); } },
               { icon: 'copy',     label: 'Duplicate', onClick: () => { onDuplicate(); setEvtActionsOpen(false); } },
               canArchive && { icon: 'archive', label: event.archived ? 'Unarchive' : 'Archive', onClick: () => { setEvent(e => ({ ...e, archived: !e.archived })); setEvtActionsOpen(false); } },
