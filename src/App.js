@@ -10304,6 +10304,10 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   const dirty      = Boolean(form.name.trim() || form.date || form.venue || form.guestCount || form.totalBudget);
   const kitCfg     = KITS.find(k => k.id === kit) || KITS[0];
   const [hostScreen, setHostScreen] = useState(1);  // host panel screen: 1 = type/date/name · 2 = optional guests/location
+  // E1 cold-open (board verdict): the host create flow OPENS on a calm cinematic entry
+  // ("What are we planning?") — same editorial voice as the cover — that leads straight
+  // into the type browse, instead of a form on arrival. Dismissed once a type is chosen.
+  const [coldOpen, setColdOpen] = useState(true);
 
   // Lead the host forward — when an answer lands, the panel TAKES them to the
   // next live question (focus + smooth-scroll) instead of leaving the revealed
@@ -10559,7 +10563,23 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
 
           {/* UX — host create splash: the alive, minimal "name it · date it ·
               pick the type" entry. Planner keeps the full Step 1 below. */}
-          {step === 1 && hostMode && hostScreen === 1 && (() => {
+          {/* E1 · App entry — cold open (Figma 1492:2). Calm, editorial, one warm
+              question that IS the action — tapping opens the type browse. Not a dead
+              splash (board's hard condition). */}
+          {step === 1 && hostMode && hostScreen === 1 && coldOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: isMobile ? '32px 6px 8px' : '48px 8px 16px', animation: 'ceFadeIn 520ms cubic-bezier(.22,1,.36,1) both' }}>
+              <div style={{ animation: 'ceMarkResolve 420ms cubic-bezier(.22,1,.36,1) both' }}><InviteDome icon="sparkles" hue="#9aa6b2" size={96} /></div>
+              <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.muted, marginTop: 30 }}>Event Boss</div>
+              <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 1.02), fontWeight: 800, color: C.text, lineHeight: 1.14, marginTop: 12, letterSpacing: '-0.01em', animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 120ms both' }}>What are we planning?</div>
+              <div style={{ fontSize: T.body, color: C.muted, marginTop: 12, lineHeight: 1.5, maxWidth: 320, animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 200ms both' }}>Tell me the occasion. I’ll take it from there.</div>
+              <div style={{ width: '100%', marginTop: 30, animation: 'ceRise 300ms cubic-bezier(.22,1,.36,1) 300ms both' }}>
+                <TypePicker value={form.type} onChange={(t) => { upd('type', t); setTouched(tt => ({ ...tt, type: true })); setColdOpen(false); }}
+                  placeholder="Choose the occasion →" testId="ce-type" C={C} isMobile={isMobile}
+                  fieldStyle={{ width: '100%', boxSizing: 'border-box', minHeight: 56, padding: '16px 18px', fontSize: T.body, fontWeight: FW.semibold, color: C.text, background: C.bg, borderRadius: 12, outline: 'none', fontFamily: 'inherit', border: `1px solid ${steelTop}`, animation: 'ceBreathe 3.8s ease-in-out infinite' }} />
+              </div>
+            </div>
+          )}
+          {step === 1 && hostMode && hostScreen === 1 && !coldOpen && (() => {
             const typeDone = !!form.type;
             const dateDone = !!form.date;
             const nameDone = !!(form.name && form.name.trim());
