@@ -2379,10 +2379,13 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
                                     P.textSecondary;
   const ctaTop  = P.steelBlue;            // #4E6877
   const ctaBase = '#3F5B6A';              // matches palette steelBlueDark
+  // Eyebrow casing parity (Figma host hero eyebrows are ALL-CAPS): the span already
+  // applies textTransform: 'uppercase', but the source literals are uppercased too so
+  // code labels match the render and no future render that drops the transform regresses.
   const label =
-    command.level === 'critical'  ? 'Next step · Critical' :
-    command.level === 'attention' ? 'Next step · Needs you' :
-                                    'Next step';
+    command.level === 'critical'  ? 'NEXT STEP · CRITICAL' :
+    command.level === 'attention' ? 'NEXT STEP · NEEDS YOU' :
+                                    'NEXT STEP';
 
   const handleCta = () => {
     if (!command.primaryRoute) return;

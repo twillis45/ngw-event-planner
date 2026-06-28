@@ -21545,7 +21545,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             {/* NOW-view command voice (host shell doctrine): a state-named eyebrow chip
                 + urgency rail + action-named headline. The same single-command shape the
                 day-of NOW hero uses, applied to the planning surface. */}
-            <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>Needs you</div>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>NEEDS YOU</div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
             {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
             {na.primaryCta && (
@@ -31259,9 +31259,16 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 // day it reads "STARTS SOON" and "wakes up when the day begins"; on the day the
 // NOW marker goes live. Studio Matte: dark, steel, no amber — escalation = reduction.
 // Planners keep the editable RunOfShow below; this never renders for them.
-function HostRunOfShowTimeline({ event }) {
+function HostRunOfShowTimeline({ event, profile }) {
   const C = useT();
   const T = useType();
+  const bp = useContext(BpCtx);
+  const isMobile = bp === 'mobile';
+  // Local draft hand-off (Communications FROZEN + Ruthless Host Lens): we NEVER open an
+  // in-app thread/compose/DM. The host model is DRAFT → share to their OWN group chat.
+  // "Send everyone their part" reuses draftHelperBrief → the shared DraftSheet, exactly
+  // like the home day-of card (~21520). This surface adds NO message bubbles, NO compose bar.
+  const [rosDraftSheet, setRosDraftSheet] = useState(null);
   const cues = (() => { try { return effectiveRos(event) || []; } catch { return []; } })();
 
   // No authored/derived cues → the honest empty state (don't invent a schedule).
@@ -31320,6 +31327,74 @@ function HostRunOfShowTimeline({ event }) {
     : 'Your run-of-show is ready. It wakes up when the day begins.';
 
   const ROW_FONT = { fontFamily: 'inherit' };
+
+  // ── "Who's helping" roster (Figma A1 1554:6) — DERIVED, never a CRM. Each distinct
+  // ROS owner (other than the host themselves / "Everyone") becomes a person row: their
+  // name + the segments they own + their FIRST time. Vendors that are coming with a real
+  // arrival time join as helpers too (role = their category). Ruthless Host Lens: NO
+  // "vendors"/"contacts"/"CRM" words on screen, read-only, no message bubbles. Honest:
+  // we only list people the run-of-show / vendor data actually names.
+  const helpers = (() => {
+    try {
+      const hostNames = new Set(['host', 'you', 'me', 'everyone', '']);
+      const byOwner = new Map(); // key(lower) → { name, segs:[{time,seg}], firstMin }
+      for (const r of cues) {
+        if (!r) continue;
+        const seg = String(r.segment || '').trim();
+        const owner = String(r.owner || '').trim();
+        if (!seg || !owner || hostNames.has(owner.toLowerCase())) continue;
+        const key = owner.toLowerCase();
+        const mm = toMins(r.time);
+        if (!byOwner.has(key)) byOwner.set(key, { name: owner, segs: [], firstMin: mm ?? 1e9 });
+        const rec = byOwner.get(key);
+        rec.segs.push({ time: r.time, seg });
+        if (mm !== null && mm < rec.firstMin) rec.firstMin = mm;
+      }
+      const fromRos = [...byOwner.values()].map((rec) => ({
+        kind: 'person',
+        name: rec.name,
+        role: rec.segs.map((s) => s.seg).slice(0, 2).join(' · '),
+        time: rec.segs.slice().sort((a, b) => (toMins(a.time) ?? 1e9) - (toMins(b.time) ?? 1e9)).map((s) => s.time).find((t) => toMins(t) !== null) || null,
+        firstMin: rec.firstMin,
+      }));
+      // Vendors arriving with a real time (coming = confirmed/contracted/deposit) — their
+      // category is the role. Skip any whose name already appears as a ROS owner.
+      const vendorComing = new Set(['confirmed', 'contracted', 'deposit paid']);
+      const seen = new Set(fromRos.map((p) => p.name.toLowerCase()));
+      const fromVendors = (Array.isArray(event && event.vendors) ? event.vendors : [])
+        .filter((v) => v && String(v.name || '').trim() && String(v.arrivalTime || '').trim())
+        .filter((v) => vendorComing.has(String(v.status || '').toLowerCase()))
+        .filter((v) => !seen.has(String(v.name).trim().toLowerCase()))
+        .map((v) => ({
+          kind: 'person',
+          name: String(v.name).trim(),
+          role: String(v.category || 'Helping out').trim(),
+          time: v.arrivalTime,
+          firstMin: toMins(v.arrivalTime) ?? 1e9,
+        }));
+      return [...fromRos, ...fromVendors].sort((a, b) => a.firstMin - b.firstMin);
+    } catch { return []; }
+  })();
+
+  const initialOf = (name) => {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  };
+
+  // "Send everyone their part" — DRAFT, never an in-app message. Reuses draftHelperBrief
+  // (the same writer the home day-of card uses) → shared DraftSheet → host shares to
+  // their own group chat. Only meaningful once there are owned segments to brief from.
+  const hasBriefable = cues.some((r) => r && String(r.segment || '').trim());
+  const openHelperBrief = () => {
+    try {
+      const d = draftHelperBrief(event, profile, { ros: cues });
+      setRosDraftSheet({ title: 'Everyone’s part', intro: 'Pulled from your run of show — what each person’s on today, ready to drop in the group chat. Make it yours, then send.', draft: d, shareTitle: d.subject, kind: 'recap' });
+    } catch { /* never block the day-of view */ }
+  };
+
+  // Shared card style for the two day-of coordination blocks.
+  const coordCard = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18 };
 
   if (!hasCues) {
     // Honest empty state — no cues to show, so we don't fabricate any.
@@ -31386,10 +31461,58 @@ function HostRunOfShowTimeline({ event }) {
         })}
       </div>
 
+      {/* ── Day-of coordination (Figma A1 1553:3) — "Send everyone their part" + the
+          "Who's helping" roster. DRAFT-and-share only; no in-app thread (Communications
+          FROZEN). The roster is read-only, derived from the run of show + arriving vendors. */}
+      {hasBriefable && (
+        <div style={{ marginTop: 40 }}>
+          <button
+            type="button"
+            onClick={openHelperBrief}
+            style={{ ...coordCard, width: '100%', textAlign: 'left', cursor: 'pointer', borderColor: `${steelLabel}55`, display: 'block' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: steelLabel }}>SHARE THE PLAN</span>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: steelLabel, flexShrink: 0 }}>Share to the group →</span>
+            </div>
+            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: textPrimary, marginTop: 8, lineHeight: 1.25 }}>Send everyone their part</div>
+            <div style={{ fontSize: T.secondary, color: steelTime, marginTop: 6, lineHeight: 1.5 }}>One message with who’s doing what and when. Drop it in the group chat so nobody has to ask twice.</div>
+          </button>
+        </div>
+      )}
+
+      {helpers.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase', marginBottom: 12 }}>WHO’S HELPING</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {helpers.map((p, i) => (
+              <div key={`${p.name}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i === 0 ? 'none' : `1px solid ${C.border}` }}>
+                {/* Initial avatar — calm, no photos, no status hue */}
+                <div aria-hidden style={{ width: 38, height: 38, borderRadius: 999, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: T.caption, fontWeight: FW.bold, color: steelLabel, position: 'relative' }}>
+                  {initialOf(p.name)}
+                  <span aria-hidden style={{ position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: 999, background: C.success || steelLabel, border: `2px solid ${C.bg}` }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: textPrimary, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                  {p.role && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 2, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.role}</div>}
+                </div>
+                {p.time && <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steelTime, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{fmtTime12(p.time)}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Footer — muted, centered. */}
       <div style={{ marginTop: 56, textAlign: 'center' }}>
         <div style={{ fontSize: T.secondary, color: steelTime, maxWidth: 330, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>{footer}</div>
       </div>
+
+      {/* DRAFT hand-off — the shared sheet. NOT a thread: the host shares to their own chat. */}
+      {rosDraftSheet && (
+        <DraftSheet title={rosDraftSheet.title} intro={rosDraftSheet.intro} draft={rosDraftSheet.draft} shareTitle={rosDraftSheet.shareTitle} kind={rosDraftSheet.kind}
+          onClose={() => setRosDraftSheet(null)} C={C} isMobile={isMobile} />
+      )}
     </div>
   );
 }
@@ -38655,6 +38778,44 @@ function hostPlanAllDone(ev, fpProg) {
 // real "am I over?" question, now food-inclusive. priceFactor threads the regional
 // (BLS) food pricing in from the caller's useFoodPriceFactor; absent it, food terms
 // just use the national factor (1) and the manual-rows behavior is unchanged.
+// ── Swap-to-save: pick the one DISCRETIONARY budget row whose removal actually brings
+// the committed total back under the ceiling (Figma 1296:25 — "$180 over — drop the
+// photo booth to get back under?"). HONEST by construction: a row only contributes its
+// `actual` to the committed total, so dropping it lowers committed by exactly `actual`.
+// We therefore require row.actual >= delta — i.e. the drop genuinely clears the overage
+// in one tap. Essentials (Venue / Food / Catering / Rentals-as-venue) are NEVER offered;
+// among the rest we pick the largest spent row that qualifies. Returns null when no single
+// discretionary row fixes it → the hero falls back to the passive "trim a category" line.
+const BUDGET_ESSENTIAL_RE = /\b(venue|food|cater|rental|chairs?|tables?|hall|space)\b/i;
+function pickDroppableBudgetRow(event, priceFactor) {
+  const ev = event || {};
+  const rows = Array.isArray(ev.budget) ? ev.budget : [];
+  // Whether the ceiling is FIXED (host set an explicit total) or DERIVED (sum of row
+  // budgets). When derived, removing a row lowers the ceiling too, so we must simulate
+  // the FULL removal — committed AND total both move — and only offer the drop if the
+  // post-drop state is genuinely under. hostSpending is the one source for both numbers.
+  const fixedTotal = (Number(ev.totalBudget) > 0);
+  const candidates = rows
+    .filter((r) => r && (r.category || r.label))
+    .filter((r) => !BUDGET_ESSENTIAL_RE.test(String(r.category || r.label || '')))
+    .map((r) => {
+      // Simulate dropping this row entirely and re-derive over/under from the SAME
+      // hostSpending source — no parallel math, fully honest.
+      const after = { ...ev, budget: rows.filter((x) => x !== r) };
+      let sp2;
+      try { sp2 = hostSpending(after, priceFactor); } catch { sp2 = null; }
+      const clears = sp2 && (sp2.committed <= sp2.total);
+      const drop = Math.max(0, Number(r.actual) || 0) || Math.max(0, Number(r.budgeted) || 0);
+      return { row: r, drop, clears };
+    })
+    // Only rows whose REMOVAL genuinely brings the committed total back under the
+    // (possibly-lowered) ceiling, and that represent a real amount.
+    .filter((c) => c.clears && c.drop > 0)
+    .sort((a, b) => b.drop - a.drop);
+  void fixedTotal;
+  return candidates.length ? candidates[0] : null;
+}
+
 function budgetHeroContent(event, C, steel, priceFactor) {
   try {
     const sp = hostSpending(event, priceFactor);
@@ -38673,12 +38834,23 @@ function budgetHeroContent(event, C, steel, priceFactor) {
       ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} committed</span></>
       : null;
     if (delta > 0) {
+      // Swap-to-save (Figma 1296:25): when one discretionary row genuinely clears the
+      // overage, name it in the headline + offer a one-tap drop. Otherwise keep the
+      // honest passive "trim a category" line (no single row fixes it).
+      const pick = pickDroppableBudgetRow(event, priceFactor);
+      const dropLabel = pick ? String(pick.row.category || pick.row.label || 'that line').trim() : null;
       return {
         state: 'over', live: true,
-        eyebrow: 'Needs you', eyebrowColor: steel,
-        title: `${fmt(delta)} over — trim a category to get back under?`,
-        line: <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
+        eyebrow: 'NEEDS YOU', eyebrowColor: steel,
+        title: pick
+          ? `${fmt(delta)} over — drop ${dropLabel} to get back under?`
+          : `${fmt(delta)} over — trim a category to get back under?`,
+        line: pick
+          ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) brings you back under. Everything else is within plan.</span>
+          : <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
         cta: 'Open budget', ctaTab: 'Budget',
+        // The drop target threads to PlanNowHero's inline buttons (onDropBudgetRow).
+        dropRow: pick ? { id: pick.row.id, label: dropLabel, amount: pick.drop } : null,
       };
     }
     const under = -delta;
@@ -38687,7 +38859,7 @@ function budgetHeroContent(event, C, steel, priceFactor) {
     if (committed > 0 && under >= total * 0.15) {
       return {
         state: 'allset', live: false,
-        eyebrow: 'All set', eyebrowColor: C.success || C.accent,
+        eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
         title: `Budget's in great shape · ${fmt(spent)} of ${fmt(total)}`,
         line: <span>{fmt(under)} still in reserve — you've got room.{committedTail && <> ({fmt(committed)} committed.)</>}</span>,
         cta: 'Open budget', ctaTab: 'Budget',
@@ -38696,7 +38868,7 @@ function budgetHeroContent(event, C, steel, priceFactor) {
     // On plan — within range, under the ceiling.
     return {
       state: 'onplan', live: false,
-      eyebrow: 'On track', eyebrowColor: steel,
+      eyebrow: 'ON TRACK', eyebrowColor: steel,
       title: `Budget's on plan · ${fmt(spent)} of ${fmt(total)}`,
       line: under > 0
         ? <span>{fmt(under)} left before you reach your total.{committedTail && <> ({fmt(committed)} committed.)</>}</span>
@@ -38726,7 +38898,7 @@ function guestsHeroContent(event, C, steel) {
       const n = band && band.applicable ? band.confirmed : planned;
       return {
         state: 'allset', live: false,
-        eyebrow: 'All set', eyebrowColor: C.success || C.accent,
+        eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
         title: `Everyone's replied — ${n} confirmed`,
         line: `Your guest count is locked. Quantities and seating can size to it.`,
         cta: 'Open guest list', ctaTab: 'Guests',
@@ -38737,7 +38909,7 @@ function guestsHeroContent(event, C, steel) {
       const out = band.pending + band.maybe;
       return {
         state: 'outstanding', live: true,
-        eyebrow: 'Needs you', eyebrowColor: steel,
+        eyebrow: 'NEEDS YOU', eyebrowColor: steel,
         title: `${out} still ${out === 1 ? "hasn't" : "haven't"} replied — send a nudge?`,
         line: `${band.confirmed} confirmed · ${out} still out${band.invited ? ` of ${band.invited}` : ''}`,
         cta: 'Open guest list', ctaTab: 'Guests',
@@ -38746,7 +38918,7 @@ function guestsHeroContent(event, C, steel) {
     // Count not locked, no roster to chase → ask the host to confirm the number.
     return {
       state: 'confirm', live: true,
-      eyebrow: 'Needs you', eyebrowColor: steel,
+      eyebrow: 'NEEDS YOU', eyebrowColor: steel,
       title: `Confirm your final guest count`,
       line: planned > 0 ? `You're planning for about ${planned} — lock it in so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
       cta: 'Set guest count', ctaTab: 'Guests',
@@ -38754,9 +38926,13 @@ function guestsHeroContent(event, C, steel) {
   } catch { return null; }
 }
 
-function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSetCount, onLockCount }) {
+function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSetCount, onLockCount, onDropBudgetRow }) {
   const C = useT();
   const foodPP = useFoodPriceFactor(event, profile);
+  // Budget swap-to-save dismissal (Figma 1296:25 "Keep it"): a SESSION flag so the
+  // prompt doesn't nag again this view. Keyed nowhere persistent — it's intentionally
+  // ephemeral (the over-state is real; the host just chose to keep the line for now).
+  const [budgetSwapDismissed, setBudgetSwapDismissed] = useState(false);
   // Local N for the Guests inline stepper (P0① host tabs audit) — seeded from the same
   // readers the rest of the host app trusts. Hook lives at the TOP (rules-of-hooks):
   // it's only USED in the guests branch, but it's always CALLED. Kept in sync with the
@@ -38822,6 +38998,29 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: sc.eyebrowColor, padding: '2px 7px', borderRadius: 4, border: `1px solid ${sc.eyebrowColor}55`, display: 'inline-block', marginBottom: 8 }}>{sc.eyebrow}</div>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{sc.title}</div>
         {sc.line && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{sc.line}</div>}
+        {/* Swap-to-save (Figma 1296:25): when a single discretionary row clears the
+            overage, the host resolves it in one tap right here. "Drop {label}" is the
+            steel/green primary (NEVER amber per the confidence-lock memory); "Keep it"
+            is the quiet dismiss (session flag → no nag this view). Honest: only shown
+            when budgetHeroContent found a row that genuinely brings the total under. */}
+        {scope === 'budget' && sc.dropRow && !budgetSwapDismissed && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => { if (typeof onDropBudgetRow === 'function') onDropBudgetRow(sc.dropRow.id); }}
+              style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}
+            >
+              {`Drop ${sc.dropRow.label}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBudgetSwapDismissed(true)}
+              style={{ height: 44, padding: '0 16px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}
+            >
+              Keep it
+            </button>
+          </div>
+        )}
         {showGuestActs && (
           <>
             {/* −/N/+ stepper + Lock it — the PRIMARY action in the hero. */}
@@ -38854,7 +39053,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   if (allDone) {
     return (
       <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c` }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.success || C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${(C.success || C.accent)}55`, display: 'inline-block', marginBottom: 8 }}>All set</div>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.success || C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${(C.success || C.accent)}55`, display: 'inline-block', marginBottom: 8 }}>ALL SET</div>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{event.name ? ` for ${event.name}` : ''}.</div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
           Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
@@ -38883,10 +39082,10 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   // State-named eyebrow from the engine's urgency level — NOT amber. critical/attention
   // both read as live steel work; the wording shifts (NEEDS YOU vs NEXT UP) by urgency.
   const STATE = na.level === 'critical'
-    ? { label: 'Needs you', color: C.steel || C.accent }
+    ? { label: 'NEEDS YOU', color: C.steel || C.accent }
     : na.level === 'attention'
-      ? { label: 'Next up', color: C.steel || C.accent }
-      : { label: 'On track', color: C.steel || C.accent };
+      ? { label: 'NEXT UP', color: C.steel || C.accent }
+      : { label: 'ON TRACK', color: C.steel || C.accent };
 
   const onCta = () => {
     try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); } catch { /* analytics best-effort */ }
@@ -39010,7 +39209,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="budget" />
+          <PlanNowHero event={event} profile={profile} onNav={(t) => go(t)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
           <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
         {tab === 'Planning' && <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
@@ -39025,7 +39224,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           // INSTEAD of the editable planner schedule. The planner's editable
           // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
           ((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
-            ? <HostRunOfShowTimeline event={event} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} />
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
@@ -39618,7 +39817,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Budget'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader (app-header + ReadinessTrack lead; PlanNowHero is first content). Planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Budget" hint="Plan vs. actuals, what's committed, and what's left." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real budget (over/under from
           spent vs total). The spending plan below recedes (one hero, Attention System). */}
-      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="budget" />}
+      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t) => handleTabChange(t)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />}
       <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></div></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader; planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Guests" hint="Your guest list, RSVPs, meals, and seating." onBack={() => handleTabChange('Command')} />}
@@ -39803,7 +40002,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </div>
           )}
           {hostNavActive(event)
-            ? <HostRunOfShowTimeline event={event} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} />
             : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
