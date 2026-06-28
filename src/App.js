@@ -862,6 +862,12 @@ function GlobalStyles() {
       // ceMarkResolve: the identity mark resolving in (Magic Moment M2). Scale 0.7→1
       // with a ≤1.02 settle — the ONLY permitted near-bounce, very subtle.
       '@keyframes ceMarkResolve { 0% { opacity: 0; transform: scale(0.7); } 70% { opacity: 1; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); } }',
+      // ceSeal: the "locked & sealed" beat (Magic Moment M3). Plants in — no overshoot;
+      // finality should feel planted, not springy (~220ms).
+      '@keyframes ceSeal { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }',
+      // ce-press: tactile commit — the CTA compresses on press (M3: lock-cta → 0.99, ~110ms).
+      '.ce-press { transition: transform 110ms cubic-bezier(.22,1,.36,1), background-color 220ms cubic-bezier(.22,1,.36,1); }',
+      '.ce-press:active { transform: scale(0.97); }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
       // Attention System: everything that is NOT the one live thing recedes to ~0.5 and
       // brightens the moment you reach for it (hover / focus / tap-within). Same spirit as
@@ -29566,12 +29572,13 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             </span>
             <span style={{ fontSize: T.body, color: C.text }}>guests</span>
             {(() => { const isLocked = lockedCount != null && Number(hcDraft || 0) === lockedCount; return (
-            <button type="button" onClick={() => commit(hcDraft || yes || guests.length)}
+            <button type="button" className="ce-press" onClick={() => commit(hcDraft || yes || guests.length)}
               style={{ fontSize: T.body, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
             ); })()}
           </div>
           {lockedCount != null && Number(hcDraft || 0) === lockedCount && (
-            <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5 }}>
+            // M3 — the seal beat: the confirmation plants in (no overshoot) when locked.
+            <div key={lockedCount} style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5, animation: `ceSeal 220ms ${CE_EASE} both` }}>
               ✓ Locked — cooking, buying, and seating for {lockedCount}. It flows everywhere now; change it anytime above.
             </div>
           )}
@@ -39320,7 +39327,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
                 <div style={{ minWidth: 52, textAlign: 'center', fontSize: T.title, fontWeight: FW.heavy, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{localN}</div>
                 <button type="button" aria-label="More guests" onClick={() => adjust(1)} style={stepBtn}>+</button>
               </div>
-              <button type="button" onClick={() => { if (typeof onLockCount === 'function') onLockCount(localN); }} style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}>Lock it</button>
+              <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(localN); }} style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}>Lock it</button>
             </div>
             {/* Friendly nudge — only when replies are genuinely outstanding. */}
             {gOut > 0 && (
