@@ -24,7 +24,7 @@
 // real checked-off total; committed never dips below spent (the un-bought remainder
 // is clamped at ≥ 0).
 
-import { playbookFoodPlan } from './playbooks';
+import { playbookFoodPlan, guestCountResolved } from './playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -67,7 +67,15 @@ export function hostSpending(event, priceFactor) {
     plan = playbookFoodPlan(ev, { priceFactor: num(priceFactor) > 0 ? num(priceFactor) : 1 });
   } catch (_e) { plan = null; }
 
-  const hasFood = !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
+  // ENGINE RULE: never create a food budget without a real guest count. The food plan
+  // sizes to a guessed "typical" headcount when none is set (guestCountOf falls back to
+  // ~8) — that guess is fine for a labeled preview, but it must NOT become budget money.
+  // So the budget's food contribution is 0 until the host has a real count (an entered
+  // number, a roster, or a resolved RSVP count).
+  const hasRealCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0
+    || (Array.isArray(ev.guests) && ev.guests.length > 0)
+    || (() => { try { return !!guestCountResolved(ev).resolved; } catch { return false; } })();
+  const hasFood = hasRealCount && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
   const foodEstimate = hasFood ? mid(plan.foodLow, plan.foodHigh) : 0;
   const foodBought = hasFood ? foodBoughtFrom(ev, plan) : 0;
 

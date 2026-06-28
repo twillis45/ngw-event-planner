@@ -25,6 +25,26 @@ const HOST = (over = {}) => ({
   ...over,
 });
 
+describe('no food budget without a real count (engine rule)', () => {
+  test('no count → food terms are 0, even though the food plan sizes to a typical guess', () => {
+    const noCount = { id: 'e2', type: 'Dinner Party', date: '2026-08-01', totalBudget: 1200, budget: [] };
+    // The food plan still produces a typical-headcount preview…
+    const plan = playbookFoodPlan(noCount, { priceFactor: 1 });
+    expect(plan && (plan.foodLow > 0 || plan.foodHigh > 0)).toBe(true);
+    // …but the BUDGET must not pick it up.
+    const s = hostSpending(noCount, 1);
+    expect(s.hasFood).toBe(false);
+    expect(s.foodEstimate).toBe(0);
+    expect(s.foodBought).toBe(0);
+    expect(s.committed).toBe(0);
+  });
+  test('a real count (entered number) re-enables the food line', () => {
+    const s = hostSpending(HOST({ guestCount: 12 }), 1);
+    expect(s.hasFood).toBe(true);
+    expect(s.committed).toBeGreaterThan(0);
+  });
+});
+
 describe('total', () => {
   test('uses event.totalBudget when set (>0)', () => {
     expect(hostSpending(HOST({ totalBudget: 1200 })).total).toBe(1200);
