@@ -9111,7 +9111,10 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
           <span aria-hidden style={{ color: C.muted, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: transitionFor('press', ['transform']), display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
         </span>
       </button>
-      {open && <div style={{ marginTop: 14 }}>{children}</div>}
+      {/* M6 — disclosure: on expand the body fades + rises in (260ms ease-out). Kept
+          unmount-on-collapse (children stay unmounted when closed) so widely-used cards
+          don't change behavior; the full height-morph is a follow-up. */}
+      {open && <div style={{ marginTop: 14, animation: `ceRise 260ms ${CE_EASE} both` }}>{children}</div>}
     </div>
   );
 }
