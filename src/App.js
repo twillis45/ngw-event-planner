@@ -9251,6 +9251,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const T = useType();
   const foodPP = useFoodPriceFactor(event, profile);
   const plan = playbookFoodPlan(event, foodPP);
+  // Gate the spread's $ DISPLAY on a real count. Without a count, playbookFoodPlan
+  // sizes to the playbook's guessed typical (~8) — showing "$X–$Y" off that fabricates
+  // a figure the host never asked for. `plan.hasRealCount` is the single source (an
+  // explicit count/estimate or a roster); falsy → show a set-your-count prompt instead
+  // of a dollar range. The item LIST/quantities still render (sized to the typical) so
+  // the host sees the shape of the spread; only the $ is withheld until a count exists.
+  const fpHasCount = !!(plan && plan.hasRealCount);
   // Safe-headcount band — "plan for 38–44" relieves the #2 host fear where a lone
   // number lies. A real range only when RSVPs are outstanding; otherwise the count.
   const fpBand = attendanceBand(event);
@@ -9373,19 +9380,31 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* header + budget — collapsible (every planning card can fold to its header) */}
       <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} accent={fpHue} style={{ borderLeft: `3px solid ${fpHue}` }}
         title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name={fpIdent.icon} size={16} stroke={1.9} /> Food plan</span>}
-        subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests · ${money(plan.foodLow, plan.foodHigh)}`}>
+        subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)}` : ''}`}>
         {/* Hero stat — the number leads (Attention System): the $ range stands as the
             card's anchor instead of being buried mid-sentence. One stat, then the
             supporting line, then quiet captions — a real ladder, not a flat stack. */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-          <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(plan.foodLow, plan.foodHigh)}</span>
-          <span style={{ fontSize: T.secondary, color: C.muted }}>food &amp; drinks</span>
-        </div>
-        {/* One supporting line — who it's for + the per-head basis (trust = seeing the math). */}
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
-          {fpBand.band ? `Plan for ${fpBandLabel} guests` : `For ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
-          {plan.guests > 0 && plan.foodHigh > 0 && <> · about <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span></>}
-        </div>
+        {/* Hero: a $ figure only when we have a real count. With no count the spread is
+            sized to a guessed typical, so showing a dollar range would fabricate a number
+            — lead with the set-your-count prompt instead (the LIST below still shows). */}
+        {fpHasCount ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+              <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(plan.foodLow, plan.foodHigh)}</span>
+              <span style={{ fontSize: T.secondary, color: C.muted }}>food &amp; drinks</span>
+            </div>
+            {/* One supporting line — who it's for + the per-head basis (trust = seeing the math). */}
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
+              {fpBand.band ? `Plan for ${fpBandLabel} guests` : `For ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
+              {plan.guests > 0 && plan.foodHigh > 0 && <> · about <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span></>}
+            </div>
+          </>
+        ) : (
+          <div style={{ marginTop: 2 }}>
+            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Add your guest count to size this</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>Once we know how many you’re feeding, we’ll cost the food and drinks — and size the shopping list to your number.</div>
+          </div>
+        )}
         {fpBand.band && (
           <div style={{ marginTop: 7 }}>
             {/* Segmented safe-headcount bar (ported from the Figma proto — it reads the
@@ -9410,8 +9429,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             Planning for {plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}.
           </div>
         )}
-        {/* 60J — what the range means (quiet caption, not a competing line). */}
-        {plan.foodHigh > plan.foodLow && (
+        {/* 60J — what the range means (quiet caption, not a competing line). Withheld
+            until a real count exists (no count → no $ range to explain). */}
+        {fpHasCount && plan.foodHigh > plan.foodLow && (
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
             <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart · <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodHigh, plan.foodHigh)}</span> all-out · tap any item for its price.
           </div>
@@ -9545,7 +9565,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
 
       {/* the grounded shopping list — summary-first; collapsible */}
       <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} autoCollapseWhenDone={spreadComplete} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
-        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div>}
+        right={fpHasCount ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div> : <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel }}>Add count to price</div>}
         subtitle={`${plan.itemCount} items · scaled to ${plan.guests} guests`}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
           {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}

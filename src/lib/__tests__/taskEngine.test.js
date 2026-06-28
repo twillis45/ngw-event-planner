@@ -26,6 +26,15 @@ describe('taskSatisfied — derives from real event state', () => {
     expect(taskSatisfied({ vendors: [{ name: '' }] }, t('Book the photographer'))).toBe(false);
     expect(taskSatisfied({}, t('Book the photographer'))).toBe(false);
   });
+
+  test('"Set date…" composites are handled the moment the date is set', () => {
+    // The playbook setup composite anchors on the date — once the date exists the bundled
+    // string drops; the atomic headcount/food dominoes carry on via eventPlan.
+    expect(taskSatisfied({ date: '2026-09-01' }, t('Set date, headcount, menu'))).toBe(true);
+    expect(taskSatisfied({}, t('Set date, headcount, menu'))).toBe(false);
+    expect(taskSatisfied({ date: 'TBD' }, t('Set the date and venue'))).toBe(false);
+    expect(taskSatisfied({ date: '2026-09-01' }, t('Set date, headcount, vibe'))).toBe(true);
+  });
 });
 
 describe('choices are engine inputs — sourcing toggles ripple into caterer tasks', () => {

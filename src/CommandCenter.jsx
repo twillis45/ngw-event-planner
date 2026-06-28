@@ -168,6 +168,35 @@ function overdueDays(task, eventDate) {
   return Math.ceil((today - due) / 86400000);
 }
 
+// ── taskTiming — THE one source for a task's real-date-derived timing ─────────
+// Given the event's actual `event.date` + a task (its `offsetDays`, days-before-event,
+// or its `week`/PHASE_OFFSET phase), return the canonical timing DERIVED FROM THE REAL
+// DATE — never the static "2 Weeks Out" phase string (which is event-relative and lies
+// once the real countdown is near/past). Built off the SAME PHASE_OFFSET + event date
+// that isTaskOverdue/overdueDays use, so the Next-Up label, the Open-Decisions label,
+// and the readiness "overdue" count can never disagree.
+//   { dueDate:Date|null, daysUntil:number|null, overdue:bool, label:string, badge, num }
+// label examples: "Overdue 3d" / "Due today" / "Due in 5d" / "Next week" / "Due Jul 9".
+export function taskTiming(task, eventDate) {
+  if (!task || !eventDate) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
+  const daysBefore = typeof task.offsetDays === 'number' ? task.offsetDays
+    : (task.week in PHASE_OFFSET ? -PHASE_OFFSET[task.week] : null);
+  if (daysBefore == null) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
+  const due = new Date(eventDate + 'T00:00:00');
+  due.setDate(due.getDate() - daysBefore);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const daysUntil = Math.round((due - today) / 86400000);
+  const overdue = daysUntil < 0;
+  let label, badge, num;
+  if (daysUntil < 0)       { label = `Overdue ${Math.abs(daysUntil)}d`; badge = 'OVD';  num = `${Math.abs(daysUntil)}d`; }
+  else if (daysUntil === 0){ label = 'Due today';            badge = 'NOW';  num = '0d'; }
+  else if (daysUntil === 1){ label = 'Due tomorrow';         badge = 'SOON'; num = '1d'; }
+  else if (daysUntil <= 7) { label = `Due in ${daysUntil}d`; badge = 'SOON'; num = `${daysUntil}d`; }
+  else if (daysUntil <= 14){ label = 'Next week';            badge = 'SOON'; num = `${daysUntil}d`; }
+  else                     { label = `Due ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`; badge = 'WK'; num = `${daysUntil}d`; }
+  return { dueDate: due, daysUntil, overdue, label, badge, num };
+}
+
 // ── Data adapter — derives all Command Center sections from one event ────────
 export function deriveCommandCenterData(event) {
   const timeline = event.timeline || [];
@@ -181,16 +210,18 @@ export function deriveCommandCenterData(event) {
     .filter(t => !t.done && isTaskOverdue(t, event.date, event.type))
     .map(t => {
       const od = overdueDays(t, event.date);
+      const timing = taskTiming(t, event.date); // real-date-derived, single source
       return {
         id: t.id, title: t.task || 'Untitled task',
         owner: t.owner || 'You',
-        phase: t.week,
+        // phase/impact now read the REAL countdown, not the static "2 Weeks Out" phase.
+        phase: timing.label || t.week,
         // Sprint 49: Figma H vocabulary (PENDING/URGENT/AWAITING/OPEN/APPROVED/REJECTED)
         statusLabel: od > 14 ? 'OVERDUE' : 'DUE', // critical≠urgent: these are TIME states (how overdue), not severity jargon.
         statusColor: od > 14 ? P.red : P.amber,
-        dueLabel: od > 0 ? `Overdue ${od}d` : 'Today',
+        dueLabel: timing.label || (od > 0 ? `Overdue ${od}d` : 'Today'),
         dueColor: P.red,
-        impact: `${t.week} · ${t.owner || 'You'} owns`,
+        impact: `${timing.label || t.week} · ${t.owner || 'You'} owns`,
       };
     })
     .sort((a, b) => parseInt(b.dueLabel) - parseInt(a.dueLabel))
@@ -261,38 +292,28 @@ export function deriveCommandCenterData(event) {
     else if (d <= 304) phaseIdx = phaseOrder.indexOf('10 Months Out');
     else               phaseIdx = phaseOrder.indexOf('12 Months Out');
   }
-  // A milestone clears when its ACTION is satisfied by real event state — not only
-  // when someone manually ticks `done`. So "Prep for 'Invite guests…'" disappears the
-  // moment a count is locked or guests exist; "Set the budget" once a total is set, etc.
-  // Keyword-matched against the same domains the next-step CTA routes to. Conservative:
-  // unmatched tasks are never auto-cleared (we only hide what we can prove is handled).
-  const _stTask = (t) => {
-    const s = String(t.task || '').toLowerCase();
-    const guests   = event.guests || [];
-    const hasGuests = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
-    const hasBudget = (Number(event.totalBudget) || 0) > 0 || (event.budget || []).some(b => Number(b.budgeted) > 0);
-    const hasVenue  = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
-    const hasVendors = (event.vendors || []).some(v => v && (v.name || '').trim());
-    const hasFood   = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (event.foodAdd || []).length > 0;
-    if (/invite|rsvp|\bguest|head\s?count|who.?s coming|adult|kids?\b/.test(s)) return hasGuests;
-    if (/budget|spending plan|set (a |the )?(cost|spend)/.test(s))             return hasBudget;
-    if (/venue|location|book.*(space|hall|room|venue)|secure.*(space|venue)/.test(s)) return hasVenue;
-    if (/vendor|cater|photograph|\bdj\b|florist|hire|book a /.test(s))         return hasVendors;
-    if (/menu|food plan|what to (cook|serve|make)|plan the food/.test(s))       return hasFood;
-    return false;
-  };
+  // Next Up — upcoming, NOT-yet-handled tasks. effectiveDone (taskEngine) is the single
+  // satisfaction predicate: a task drops the moment real event state proves it handled
+  // (a count is locked, the budget is set…) — so "Set date, headcount, menu" never shows
+  // once the date is set. effectiveDone = task.done || taskSatisfied(event, task), the
+  // same reader every "what's left" surface uses, so the Next-Up can't disagree.
+  // Timing is DERIVED FROM THE REAL DATE via taskTiming — no static "2 Weeks Out" phase.
   const nextUp = timeline
-    .filter(t => !t.done && !_stTask(t))
+    .filter(t => !effectiveDone(event, t))
     .filter(t => phaseOrder.indexOf(t.week) >= phaseIdx && phaseOrder.indexOf(t.week) <= phaseIdx + 1)
     .slice(0, 4)
-    .map(t => ({
-      id: t.id,
-      label: t.task || 'Untitled task',
-      sub: `${t.week} · ${t.owner || 'You'}`,
-      color: isTaskOverdue(t, event.date, event.type) ? P.red : P.amber,
-      dateLabel: isTaskOverdue(t, event.date, event.type) ? 'OVD' : t.week === 'Week Of' ? 'WK' : 'SOON',
-      dateNum: t.week === 'Week Of' ? '7d' : t.week === '2 Weeks Out' ? '14d' : (t.week || '').replace(/[^0-9]/g, '') + 'm',
-    }));
+    .map(t => {
+      const timing = taskTiming(t, event.date);
+      return {
+        id: t.id,
+        label: t.task || 'Untitled task',
+        // owner stays; the static phase becomes the real-date-derived timing label.
+        sub: `${timing.label || t.week} · ${t.owner || 'You'}`,
+        color: timing.overdue ? P.red : P.amber,
+        dateLabel: timing.badge || (isTaskOverdue(t, event.date, event.type) ? 'OVD' : 'SOON'),
+        dateNum: timing.num || (t.week === 'Week Of' ? '7d' : t.week === '2 Weeks Out' ? '14d' : (t.week || '').replace(/[^0-9]/g, '') + 'm'),
+      };
+    });
 
   // Vendor rows — Sprint 49: badges use Figma page F vocabulary
   //   CONFIRMED · PARTIAL · PENDING · UNCONFIRMED · NOT STARTED

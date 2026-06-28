@@ -1006,6 +1006,14 @@ export function playbookFoodPlan(event, opts = {}) {
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   const guests = guestCountOf(event, playbook);
   const gc = guestCountResolved(event);
+  // hasRealCount — is the spread sized to a REAL number the host gave us, or to the
+  // playbook's guessed typical (~8)? Any explicit count/estimate OR a roster is real;
+  // with neither, `guests` came from the fallback and a $ figure would be fabricated.
+  // Surfaces (the food panel / The spread) gate their dollar DISPLAY on this so they
+  // never show "$X–$Y" for a count the host never entered.
+  const hasRealCount = (Number(event.guestCount) || 0) > 0
+    || (Number(event.guestEstimate) || 0) > 0
+    || (Array.isArray(event.guests) && event.guests.length > 0);
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
 
   // The food/drink CHOICES the host should make (menu style, host-vs-potluck, drinks…).
@@ -1208,6 +1216,7 @@ export function playbookFoodPlan(event, opts = {}) {
     type: playbook.type,
     guests,
     guestCountResolved: gc.resolved,
+    hasRealCount,
     choices,
     list,
     supplies,

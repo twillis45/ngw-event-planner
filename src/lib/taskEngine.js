@@ -38,7 +38,14 @@ export function taskSatisfied(event, task) {
   const hasVenue   = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
   const hasVendors = hasNamedVendor(event);
   const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);
+  const dateSet    = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
 
+  // "Set the date…" composites (playbook setup milestones like "Set date, headcount, menu")
+  // anchor on the date — they are handled the moment the date is set. The atomic headcount /
+  // food dominoes then carry on their own (eventPlan decomposes the composite), so the stale
+  // bundled string never lingers in a "what's left" list once event.date exists. FIRST so it
+  // wins over the generic headcount match below.
+  if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
   // Caterer-specific FIRST — before the generic guest/headcount match — so a sourcing
   // toggle gates catering tasks even when they also say "headcount" (e.g. "confirm
   // catering headcount"). Satisfied when a real caterer exists OR the host self-provides.

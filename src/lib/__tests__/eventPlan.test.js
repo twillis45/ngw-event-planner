@@ -5,7 +5,7 @@
 //   3. The X/Y progress badge reflects effectiveDone (set the budget → the count moves).
 //   4. Command hero, NEXT-STEP ribbon, and Focus all read nextActions[0].
 
-import { eventPlan, selectEventNextAction } from '../../CommandCenter';
+import { eventPlan, selectEventNextAction, taskTiming, deriveCommandCenterData } from '../../CommandCenter';
 import { playbookAreaNextStep } from '../playbooks';
 
 beforeEach(() => { try { localStorage.clear(); } catch {} });
@@ -109,5 +109,100 @@ describe('eventPlan — ordering, dedup, and the #1 = the hero everywhere', () =
     const top = eventPlan(ev).nextActions[0];
     // The wrapper renders the SAME action the plan leads with (title parity).
     expect(na.title).toBe(top.title);
+  });
+});
+
+// ── PART A: timing derives from the REAL event date (one source) ──────────────
+const isoForOffset = (days) => {
+  // returns a YYYY-MM-DD date `days` from today (negative = past).
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+describe('taskTiming — label derived from the real event date, never a static phase', () => {
+  test('offsetDays-based task, event 6 days out → due-in label off the real countdown', () => {
+    // event is 6 days out; a "2 Weeks Out" (offset -14) task is already overdue by 8d.
+    const eventDate = isoForOffset(6);
+    const tm = taskTiming({ week: '2 Weeks Out' }, eventDate);
+    expect(tm.overdue).toBe(true);
+    expect(tm.label).toBe('Overdue 8d');
+    expect(tm.label).not.toMatch(/Weeks Out/);
+  });
+
+  test('due today reads "Due today"', () => {
+    const eventDate = isoForOffset(14); // a 2-weeks-out task is due exactly today
+    const tm = taskTiming({ week: '2 Weeks Out' }, eventDate);
+    expect(tm.daysUntil).toBe(0);
+    expect(tm.label).toBe('Due today');
+  });
+
+  test('future due → "Due in Nd"', () => {
+    const eventDate = isoForOffset(40); // 2-weeks-out task due in 40-14 = 26d → "Due Mon D"
+    const near = taskTiming({ offsetDays: 5 }, isoForOffset(10)); // due in 5d
+    expect(near.daysUntil).toBe(5);
+    expect(near.label).toBe('Due in 5d');
+    // far future falls to a calendar date, still real-date-derived (no phase string)
+    const far = taskTiming({ week: '2 Weeks Out' }, eventDate);
+    expect(far.label).not.toMatch(/Weeks Out/);
+    expect(far.daysUntil).toBe(26);
+  });
+
+  test('undatable task (no offset, no known phase) → empty label, no crash', () => {
+    expect(taskTiming({ task: 'x' }, isoForOffset(10)).label).toBe('');
+    expect(taskTiming(null, isoForOffset(10)).label).toBe('');
+    expect(taskTiming({ week: '2 Weeks Out' }, null).label).toBe('');
+  });
+});
+
+describe('deriveCommandCenterData — Next Up drops satisfied + uses real-date timing', () => {
+  // Week-Of phase so the task lands in the Next-Up window for an event ~6 days out
+  // (proves the drop is from effectiveDone, not the phase filter).
+  const bbqWithSetdate = (over = {}) => baseBBQ({
+    timeline: [{ id: 't1', week: 'Week Of', owner: 'Host', done: false, task: 'Set date, headcount, menu' }],
+    ...over,
+  });
+
+  test('event 6 days out → no Next-Up row shows the static "2 Weeks Out"/"Week Of" phase', () => {
+    const ev = baseBBQ({
+      date: isoForOffset(6),
+      guests: [{ rsvp: 'Yes' }],
+      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice' }],
+    });
+    const d = deriveCommandCenterData(ev);
+    expect(d.nextUp.length).toBeGreaterThan(0);
+    d.nextUp.forEach((row) => {
+      expect(row.sub).not.toMatch(/Weeks Out/);
+      expect(row.sub).not.toMatch(/Months Out/);
+      expect(row.sub).not.toMatch(/Week Of/);
+    });
+  });
+
+  test('"Set date, headcount, menu" does NOT appear once the date is set (effectiveDone drop)', () => {
+    const ev = bbqWithSetdate({ date: isoForOffset(6) }); // date set, task in-window
+    const labels = deriveCommandCenterData(ev).nextUp.map((r) => r.label.toLowerCase());
+    expect(labels.some((l) => /set date, headcount, menu/.test(l))).toBe(false);
+  });
+
+  test('the composite STAYS visible when the date is NOT set (proves the drop is date-driven)', () => {
+    // No date → phaseIdx defaults to the last phase (Week Of), so a Week-Of task is in-window
+    // and effectiveDone must NOT drop it (date sub-goal not done).
+    const ev = bbqWithSetdate({ date: '' });
+    const labels = deriveCommandCenterData(ev).nextUp.map((r) => r.label.toLowerCase());
+    expect(labels.some((l) => /set date, headcount, menu/.test(l))).toBe(true);
+  });
+
+  test('Next-Up timing label matches the real countdown for an event 6 days out', () => {
+    const ev = baseBBQ({
+      date: isoForOffset(6),
+      guests: [{ rsvp: 'Yes' }],
+      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice' }],
+    });
+    const d = deriveCommandCenterData(ev);
+    const row = d.nextUp.find((r) => /ice/i.test(r.label));
+    expect(row).toBeTruthy();
+    // Week Of = offset -7 → due 6-7 = -1 day → overdue 1d (real-date-derived).
+    expect(row.sub).toMatch(/Overdue 1d|Due/);
+    expect(row.sub).not.toMatch(/Week Of/);
   });
 });
