@@ -21204,7 +21204,7 @@ function AssembleReveal({ ev, profile, onDone }) {
   );
 }
 
-function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEvent }) {
+function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent }) {
   const C = useT();
   const T = useType();
   const isMobile = useContext(BpCtx) === 'mobile';
@@ -21602,6 +21602,12 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             {guestCount > 0 && <span>· {guestCount} guests</span>}
             {isPost && <span style={{ color: C.muted, fontWeight: FW.semibold }}>· {daysAgoLabel}</span>}
           </div>
+          {onOpenDirect && (
+            <button id="hp-open-event-btn" type="button" onClick={() => onOpenDirect(ev.id)}
+              style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6, background: C.accent, border: 'none', padding: '8px 16px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: '#fff' }}>
+              Open event →
+            </button>
+          )}
           {/* Scent line — the one breadcrumb of proof that more events exist, so a host
               never wonders where a new event went. Whisper-level (steel, no border/accent);
               tapping opens the same switcher sheet as the title chevron. */}
@@ -30064,6 +30070,12 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
               secondaryCta="Import a CSV"
               onSecondary={() => setShowImport(true)}
             />
+            {/* Not everyone tracks names — a host who just wants a headcount shouldn't be
+                forced into the roster. Drop back to the calm count field. */}
+            <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
+              style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.steel?.blue400 || C.accent }}>
+              Don’t have names yet? Just track a headcount →
+            </button>
           </div>
         )}
         {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet' || guestsIsHost) ? (
@@ -42385,6 +42397,7 @@ export default function App() {
           events={events}
           profile={profile}
           onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
+          onOpenDirect={(evId) => { setCoverSeen(s => new Set(s).add(evId)); setActiveId(evId); }}
           onNew={() => setShowNew(true)}
           onProfile={() => setShowProfile(true)}
           onPatchEvent={(id, patch) => setEvents(evs => evs.map(e => e.id === id ? { ...e, ...patch } : e))}
