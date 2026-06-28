@@ -29557,7 +29557,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, padding: '2px 6px' }}>
               <button type="button" aria-label="Fewer guests" onClick={() => setHcDraft(String(Math.max(0, (Number(hcDraft) || Number(yes || guests.length) || 0) - 1)))}
                 style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: T.display, fontWeight: FW.bold, cursor: 'pointer', lineHeight: 1 }}>−</button>
-              <input type="number" inputMode="numeric" min="0" value={hcDraft} placeholder={String(yes || guests.length || 0)}
+              <input id="hc-count" type="number" inputMode="numeric" min="0" value={hcDraft} placeholder={String(yes || guests.length || 0)}
                 onChange={e => setHcDraft(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { commit(hcDraft); e.currentTarget.blur(); } }}
                 style={{ width: 66, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.display, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
@@ -39773,7 +39773,21 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // Board #15 — deep-link FOCUS a specific input on the destination tab (e.g. the
     // empty budget $ field 'hsp-budget'). Carried via opts.focusField. Only set when
     // provided; a plain tab switch clears any stale target so it never re-fires.
-    setOpenFocusField(opts && opts.focusField ? opts.focusField : null);
+    // Tab-click → focus that tab's PENDING next-action field, so the host lands ready
+    // to act (host only). Only when the field's work is still open — a done tab never
+    // pops the keyboard. An explicit opts.focusField (deep-link) always wins.
+    let autoFocusField = opts && opts.focusField ? opts.focusField : null;
+    if (!autoFocusField && isHostEvt) {
+      try {
+        if (resolvedTab === 'Budget') {
+          const set = (event.budget || []).reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0) > 0 || Number(event.totalBudget) > 0;
+          if (!set) autoFocusField = 'hsp-budget';
+        } else if (resolvedTab === 'Guests') {
+          if (!guestCountResolved(event).resolved) autoFocusField = 'hc-count';
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+    setOpenFocusField(autoFocusField);
     if (resolvedView) setPlanningView(resolvedView);
     // Sprint 60.B: vendor-section landing target. Reset to null whenever
     // we leave the Vendors tab.
