@@ -18,6 +18,7 @@
 
 const crabFeast = {
   type: 'Crab Feast',
+  vegMain: 'Grilled corn + veggie + Old Bay potato skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

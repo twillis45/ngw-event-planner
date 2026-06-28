@@ -9,6 +9,7 @@
 
 const backyardBbq = {
   type: 'Get-Together',
+  vegMain: 'Grilled portobello caps + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

@@ -16,6 +16,7 @@
 
 const repast = {
   type: 'Repast',
+  vegMain: 'Baked mac & cheese + greens & candied yam plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

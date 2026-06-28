@@ -1134,16 +1134,22 @@ export function playbookFoodPlan(event, opts = {}) {
     });
   list.push(...added);
 
-  // #16 — special-diet COUNTS drive food + budget. Vegetarians/vegans need a real
-  // plant-based main; size it to their count and let it flow into the totals so the
-  // budget reflects it. (Meat stays sized to all guests — qty is editable to trim.)
+  // #16 — special-diet COUNTS drive food + budget. Vegetarians/vegans need a REAL,
+  // named main (never a generic "plant-based main" placeholder); size it to their
+  // count and let it flow into the totals so the budget reflects it. The dish is
+  // playbook-authored (playbook.vegMain) so it's appropriate to the cuisine — e.g.
+  // a cookout gets grilled portobello + veggie skewers, a dinner party a mushroom
+  // wellington. Falls back to a real, appetizing default, never a placeholder.
   const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
   const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
   const vegN = dietCnt('Vegetarian') + dietCnt('Vegan');
   if (vegN > 0) {
+    const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
+      ? playbook.vegMain.trim()
+      : 'Stuffed peppers + grilled veg platter';
     list.push({
-      id: 'diet-veg', group: 'Food', item: `Plant-based main (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
-      short: `Plant-based main · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+      id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
+      short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
       low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
       perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),

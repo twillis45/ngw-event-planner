@@ -652,6 +652,10 @@ describe('#16 — diet counts drive food + budget', () => {
     expect(line.dietDerived).toBe(true);
     expect(line.qty).toBe(3); // 2 veg + 1 vegan
     expect(p1.foodHigh).toBeGreaterThan(p0.foodHigh); // flows into the budget
+    // The veg main must be a REAL, named dish — never a generic placeholder.
+    expect(line.item).not.toMatch(/plant[- ]based main|veg main|veggie main/i);
+    expect(line.item).toMatch(/portobello/i); // The Cookout's authored vegMain
+    expect(line.short).not.toMatch(/plant[- ]based main/i);
   });
   test('specialDiets exposes the counts for the host-facing note', () => {
     const p = playbookFoodPlan({ ...base, dietCounts: { Vegetarian: 2, 'Nut allergy': 1 } });

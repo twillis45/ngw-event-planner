@@ -9,6 +9,7 @@
 
 const sundayDinner = {
   type: 'Sunday Dinner',
+  vegMain: 'Smothered mushroom & bean main + cornbread',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

@@ -9,6 +9,7 @@
 
 const dinnerParty = {
   type: 'Dinner Party',
+  vegMain: 'Mushroom & lentil wellington',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

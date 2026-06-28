@@ -9051,10 +9051,13 @@ function useCollapsed(key, defaultCollapsed = false) {
   const setPersist = (n) => setCollapsed(() => { try { localStorage.setItem(storeKey, n ? '1' : '0'); } catch (e) { /* blocked */ } return !!n; });
   return [collapsed, toggle, setPersist];
 }
-function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobile = false, defaultCollapsed = false, accent, style, maxWidth, autoCollapseWhenDone = false }) {
+function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobile = false, defaultCollapsed = false, accent, style, maxWidth, autoCollapseWhenDone = false, forceOpen = false }) {
   const C = useT();
   const T = useType();
   const [collapsed, toggle, setCollapsedPersist] = useCollapsed(id, defaultCollapsed);
+  // A deep-link (e.g. "Take me to it →") can force the body mounted regardless of the
+  // host's collapsed choice, so the target row exists in the DOM for the scroll-to.
+  const open = forceOpen || !collapsed;
   // Global: when a panel EXPANDS, float it into the viewport so the host sees the content
   // they just opened (esp. mobile, where the body often opens below the fold).
   const cardRef = useRef(null);
@@ -9070,26 +9073,28 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   // never fights a host who re-opens a finished section.
   const wasDone = useRef(autoCollapseWhenDone);
   useEffect(() => {
-    if (autoCollapseWhenDone && !wasDone.current && !collapsed) setCollapsedPersist(true);
+    // Never auto-collapse while force-open (a deep-link is mid-flight) — it would
+    // unmount the row the deep-link is trying to scroll to.
+    if (autoCollapseWhenDone && !wasDone.current && !collapsed && !forceOpen) setCollapsedPersist(true);
     wasDone.current = autoCollapseWhenDone;
   }, [autoCollapseWhenDone]); // eslint-disable-line react-hooks/exhaustive-deps
   const acc = accent || C.accentTopGrad || C.accent;
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, marginBottom: 16, ...(maxWidth ? { maxWidth, margin: '0 auto 16px' } : null), ...(style || {}) };
   return (
-    <div ref={cardRef} style={card}>
-      <button type="button" onClick={toggle} aria-expanded={!collapsed}
+    <div ref={cardRef} id={id} style={card}>
+      <button type="button" onClick={toggle} aria-expanded={open}
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0, paddingRight: 4 }}>
           {eyebrow && <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: acc, textTransform: 'uppercase' }}>{eyebrow}</span>}
           {title && <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: eyebrow ? 6 : 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}>{title}</span>}
-          {subtitle && collapsed && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{subtitle}</span>}
+          {subtitle && !open && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{subtitle}</span>}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 1 }}>
           {right}
-          <span aria-hidden style={{ color: C.muted, transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.18s ease', display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
+          <span aria-hidden style={{ color: C.muted, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease', display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
         </span>
       </button>
-      {!collapsed && <div style={{ marginTop: 14 }}>{children}</div>}
+      {open && <div style={{ marginTop: 14 }}>{children}</div>}
     </div>
   );
 }
@@ -9275,22 +9280,30 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
+  // forceSpreadOpen mounts "The spread" card body regardless of the host's collapsed
+  // choice (and pins it through the re-tap window) so the target row is in the DOM.
+  const [forceSpreadOpen, setForceSpreadOpen] = useState(false);
+  // Re-tap nonce — tapping the SAME item id again must re-scroll. The parent bumps a
+  // counter alongside focusId so this effect re-runs even when focusId is unchanged.
+  const focusNonce = (focusId && typeof focusId === 'object') ? focusId.nonce : null;
+  const focusItemId = (focusId && typeof focusId === 'object') ? focusId.id : focusId;
   useEffect(() => {
-    if (!focusId) return undefined;
+    if (!focusItemId) return undefined;
+    setForceSpreadOpen(true);
     setShowFullSpread(true);
-    setHighlightId(focusId);
+    setHighlightId(focusItemId);
     // Poll for the row — the spread has to expand + render first, so a single 160ms
     // timeout can miss it. Retry every 120ms up to ~1.4s, then stop.
     let tries = 0;
     const iv = setInterval(() => {
       tries += 1;
-      const el = document.getElementById(`foodrow-${focusId}`);
+      const el = document.getElementById(`foodrow-${focusItemId}`);
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(iv); }
       else if (tries > 12) clearInterval(iv);
     }, 120);
-    const t2 = setTimeout(() => { setHighlightId(null); onFocusConsumed(); }, 3400);
+    const t2 = setTimeout(() => { setHighlightId(null); setForceSpreadOpen(false); onFocusConsumed(); }, 3400);
     return () => { clearInterval(iv); clearTimeout(t2); };
-  }, [focusId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focusItemId, focusNonce]); // eslint-disable-line react-hooks/exhaustive-deps
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
   const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
@@ -9439,7 +9452,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
             can resolve the area; national + a nudge to add a location otherwise. */}
         {foodPP.priceNote && (
-          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div id="food-price-note" style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {foodPP.hasRegion
               ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
               : (<>
@@ -9564,7 +9577,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       )}
 
       {/* the grounded shopping list — summary-first; collapsible */}
-      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} autoCollapseWhenDone={spreadComplete} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
+      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} autoCollapseWhenDone={spreadComplete} forceOpen={forceSpreadOpen} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
         right={fpHasCount ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div> : <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel }}>Add count to price</div>}
         subtitle={`${plan.itemCount} items · scaled to ${plan.guests} guests`}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
@@ -15501,9 +15514,7 @@ function useFoodPriceFactor(event, profile) {
       const cityMetro = event && event.market && METRO_GEO[event.market] ? METRO_GEO[event.market].city : '';
       const city = String((event && (event.city || event.venueCity)) || '').trim() || cityMetro;
       const local = city ? `${city}, ${state}` : (STATE_FULL[state] || `the ${d.regionLabel}`);
-      // Condensed: "{city} grocery prices · Jun 2026" — same meaning (where + when),
-      // none of the "What groceries cost in … right now (…)" sprawl.
-      const priceNote = pm ? `${local} grocery prices · ${pm}` : `${local} grocery prices`;
+      const priceNote = pm ? `What groceries cost in ${local} right now (${pm})` : `What groceries cost in ${local} right now`;
       setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
     });
     return () => { cancelled = true; };
@@ -21495,7 +21506,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
         {/* B3 · Day-of — the run of show IS the hero. The next timed cue, then a tap
             into the full day. The planning to-do grid is suppressed below. */}
         {isDayOf && !isPost && (
-          <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
+          <button id="hp-dayof-card" type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Event Day Schedule' })}
             style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', borderLeft: `3px solid ${C.accent}`, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
             <div style={{ ...eyebrow, color: C.accent, marginBottom: 8 }}>Today · it's the big day</div>
             {nextCue ? (
@@ -21541,7 +21552,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           // Attention System: the ONE live thing — it BREATHES (ceBreathe ring) and runs
           // bigger, the way the create panel's active question dominates. Everything below
           // recedes (.hp-recede) until you act, then the next thing lights up.
-          <div style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
+          <div id="hp-hero-card" style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
             {/* NOW-view command voice (host shell doctrine): a state-named eyebrow chip
                 + urgency rail + action-named headline. The same single-command shape the
                 day-of NOW hero uses, applied to the planning surface. */}
@@ -21583,7 +21594,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
             instead of going blank. The opposite of the breathing next-step: calm, warm,
             celebratory. (Attention System: the empty screen IS the reward.) */}
         {!isPost && !isDayOf && allProgDone && (
-          <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: 'ceRise 480ms cubic-bezier(.2,.7,.2,1) both' }}>
+          <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: 'ceRise 480ms cubic-bezier(.2,.7,.2,1) both' }}>
             <div aria-hidden style={{ color: idColor, display: 'flex', justifyContent: 'flex-start', marginBottom: 10, filter: ident.mark === 'quiet' ? 'none' : `drop-shadow(0 0 12px ${idColor}44)` }}><Icon name={ident.icon} size={34} stroke={1.6} /></div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
@@ -21741,7 +21752,7 @@ function HostHome({ events, profile, onSelectEvent, onNew, onProfile, onPatchEve
           const visible = shown.slice(0, CAP);
           const moreCount = shown.length - visible.length;
           return (
-            <div className="hp-recede" style={card}>
+            <div id="hp-needs-you" className="hp-recede" style={card}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
                 <div style={eyebrow}>Still on you</div>
                 {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.success }}>{doneCount} done</span>}
@@ -32004,11 +32015,11 @@ function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, event
       {/* The ops console (segments/arrivals/prep/unconfirmed counts) is planner
           logistics shorthand — a host reads it as software jargon. Hidden for hosts. */}
       {!isHost && (
-        <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-          <StatCard label="Total Segments"  value={ros.length} />
-          <StatCard label="Vendor Arrivals" value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
-          <StatCard label="Prep Blocks"     value={ros.filter(r => r.type === 'prep').length}   color={C.muted} />
-          <StatCard label="Unconfirmed"     value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub="vendor slots" />
+        <div id="ros-stats" style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+          <StatCard label="What's planned"    value={ros.length} />
+          <StatCard label="Vendors arriving"  value={ros.filter(r => r.type === 'vendor').length} color={C.accent2} />
+          <StatCard label="Setup steps"       value={ros.filter(r => r.type === 'prep').length}   color={C.muted} />
+          <StatCard label="Need confirmation" value={unconfirmed} color={unconfirmed > 0 ? C.danger : C.success} sub={unconfirmed > 0 ? 'tap to fix' : 'all confirmed'} />
         </div>
       )}
 
@@ -37185,6 +37196,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
         </CollapsibleCard>
       ) : (<>
       {view === 'list' && (
+        <div id="planning-task-list">
         <Timeline
           timeline={event.timeline}
           setTimeline={wrap('timeline')}
@@ -37193,8 +37205,10 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           eventType={event.type}
           foodChoices={event.foodChoices}
         />
+        </div>
       )}
       {view === 'timeline' && (
+        <div id="planning-timeline-view">
         <TimelineBuilder
           event={event}
           isMobile={isMobile}
@@ -37202,8 +37216,10 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           onBack={onBack}
           phaseFocus={phaseFocus}
         />
+        </div>
       )}
       {view === 'checklist' && (
+        <div id="planning-checklist-view">
         <ChecklistGenerator
           event={event}
           isMobile={isMobile}
@@ -37212,6 +37228,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           onToggleTask={onToggleTask}
           onOpenTask={(t) => setStepTaskId(t.id)}
         />
+        </div>
       )}
       </>)}
       {stepTask && <PlanStepModal task={stepTask} eventDate={event?.date} onClose={() => setStepTaskId(null)} onPatch={(patch) => patchTask(stepTask.id, patch)} />}
@@ -39141,6 +39158,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   const [openTaskId,     setOpenTaskId]     = useState(_norm.planningView === 'list' ? (_norm.openId || null) : (initialNav?.taskId || null));
   const [openTimelineId, setOpenTimelineId] = useState(_norm.planningView === 'timeline' ? (_norm.openId || null) : (initialNav?.timelineId || null));
   const [openFoodId,     setOpenFoodId]     = useState(initialNav?.foodFocus || null);
+  // Re-tap nonce — bumped on every food deep-link so re-tapping the SAME line re-scrolls.
+  const [foodFocusNonce, setFoodFocusNonce] = useState(0);
+  const focusFood = (id) => { setOpenFoodId(id || null); if (id) setFoodFocusNonce((n) => n + 1); };
   const [openVendorId,   setOpenVendorId]   = useState(initialNav?.vendorId || null);
   const [decPrompt,      setDecPrompt]      = useState(null);
   const [moreOpen,       setMoreOpen]       = useState(false);
@@ -39158,7 +39178,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     const norm = normalizeEventTabRoute(newTab, itemId);
     setOpenTaskId(norm.planningView === 'list' ? (norm.openId || null) : null);
     setOpenTimelineId(norm.planningView === 'timeline' ? (norm.openId || null) : null);
-    setOpenFoodId(norm.tab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
+    focusFood(norm.tab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
     setOpenVendorId(norm.tab === 'Vendors' ? (itemId || null) : null);
     if (norm.planningView) setPlanningView(norm.planningView);
     setTab(norm.tab);
@@ -39167,7 +39187,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   useEffect(() => {
     if (!initialNav) return;
     if (initialNav.tab) { const n = normalizeEventTabRoute(initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
-    if (initialNav.foodFocus) setOpenFoodId(initialNav.foodFocus);
+    if (initialNav.foodFocus) focusFood(initialNav.foodFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNav?.tab, initialNav?.foodFocus]);
 
@@ -39215,7 +39235,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id) => go(t, id)} />
-          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} /></div>
+          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
         </>}
@@ -39344,6 +39364,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // Sprint 49: decision id (timeline task id or approval message id)
   const [openDecisionId,  setOpenDecisionId] = useState(initialNav?.decisionId || null);
   const [openFoodId,      setOpenFoodId]     = useState(initialNav?.foodFocus || null); // deep-link: a food line to scroll to + highlight
+  // Re-tap nonce — bumped on every food deep-link so re-tapping the SAME line re-scrolls.
+  const [foodFocusNonce,  setFoodFocusNonce] = useState(0);
+  const focusFood = (id) => { setOpenFoodId(id || null); if (id) setFoodFocusNonce((n) => n + 1); };
   const [openFocusField,  setOpenFocusField] = useState(initialNav?.focusField || null); // Board #15: an input id to scroll to + focus (e.g. budget field)
   // Sprint 49: comm thread id (message id used to lookup the containing thread)
   const [openCommId,      setOpenCommId]     = useState(initialNav?.commId || null);
@@ -39465,7 +39488,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // Planning · Timeline inherits the timeline item id (Sprint 49 Next-Up).
     setOpenTimelineId(resolvedView === 'timeline'    ? (norm.openId || null) : null);
     // Deep-link a specific food line on the Planning tab (foodFocus carried via opts).
-    setOpenFoodId(resolvedTab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
+    focusFood(resolvedTab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
     if (resolvedView) setPlanningView(resolvedView);
     // Sprint 60.B: vendor-section landing target. Reset to null whenever
     // we leave the Vendors tab.
@@ -39506,7 +39529,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     if (initialNav.timelineId && initialNav.timelineId !== openTimelineId) setOpenTimelineId(initialNav.timelineId);
     // #12 deep-link: re-entering a mounted event with a food target (e.g. "Buy ice"
     // from the Home spine) must sync openFoodId so the food plan scrolls to the line.
-    if (initialNav.foodFocus) setOpenFoodId(initialNav.foodFocus);
+    if (initialNav.foodFocus) focusFood(initialNav.foodFocus);
     if (initialNav.focusField) setOpenFocusField(initialNav.focusField); // Board #15 re-entry sync
     // Sprint 60.B: re-fire vendor section focus on every initialNav update
     // even if the section repeats (planner clicked the same issue twice).
@@ -39901,11 +39924,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       )}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
         </div>
       )}
       {tab === 'Planning' && !isHostEvt && (
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId} onFocusConsumed={() => setOpenFoodId(null)} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
       )}
       {/* Attention pass (host): the food plan is the one bright thing on Plan;
           Seating & supplies and the planning views recede until reached. */}

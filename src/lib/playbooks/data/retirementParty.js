@@ -18,6 +18,7 @@
 
 const retirementParty = {
   type: 'Retirement Party',
+  vegMain: 'Roasted vegetable & goat cheese tart',
   solveFamily: 'retirement_party',
   family: 'host_driven',
   recordKind: 'client',

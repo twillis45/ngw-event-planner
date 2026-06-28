@@ -17,6 +17,7 @@
 
 const theCookout = {
   type: 'The Cookout',
+  vegMain: 'Grilled portobello burgers + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

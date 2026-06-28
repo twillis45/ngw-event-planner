@@ -14,6 +14,7 @@
 
 const vowRenewal = {
   type: 'Vow Renewal',
+  vegMain: 'Wild mushroom risotto',
   solveFamily: 'vow_renewal',
   family: 'full_service',
   recordKind: 'client',

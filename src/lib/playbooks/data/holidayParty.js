@@ -10,6 +10,7 @@
 
 const holidayParty = {
   type: 'Holiday Party',
+  vegMain: 'Butternut squash & sage stuffed shells',
   solveFamily: 'holiday_party',
   family: 'corporate',
   recordKind: 'client',

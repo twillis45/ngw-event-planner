@@ -19,6 +19,7 @@
 
 const kwanzaaGathering = {
   type: 'Kwanzaa Gathering',
+  vegMain: 'Jollof rice + black-eyed pea & collard stew',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

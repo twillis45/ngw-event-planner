@@ -14,6 +14,7 @@
 
 const crawfishBoil = {
   type: 'Crawfish Boil',
+  vegMain: 'Loaded boiled potatoes, corn & mushroom platter',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

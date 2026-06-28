@@ -15,6 +15,7 @@
 
 const engagementParty = {
   type: 'Engagement Party',
+  vegMain: 'Stuffed mushroom & spinach phyllo bites',
   solveFamily: 'engagement_party',
   family: 'host_driven',
   recordKind: 'client',

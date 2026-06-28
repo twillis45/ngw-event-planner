@@ -4,6 +4,7 @@
 
 const reunion = {
   type: 'Reunion',
+  vegMain: 'Grilled veggie skewers + portobello burgers',
   solveFamily: 'reunion',
   family: 'host_driven',
   recordKind: 'client',

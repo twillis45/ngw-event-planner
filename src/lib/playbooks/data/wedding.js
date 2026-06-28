@@ -18,6 +18,7 @@
 
 const wedding = {
   type: 'Wedding',
+  vegMain: 'Wild mushroom & spinach wellington',
   solveFamily: 'wedding',
   family: 'full_service',
   recordKind: 'client',

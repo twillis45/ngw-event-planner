@@ -12,6 +12,7 @@
 
 const fishFry = {
   type: 'Fish Fry',
+  vegMain: 'Fried green tomatoes + hush puppies plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

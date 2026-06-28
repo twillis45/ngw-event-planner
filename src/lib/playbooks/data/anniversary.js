@@ -10,6 +10,7 @@
 
 const anniversary = {
   type: 'Anniversary',
+  vegMain: 'Wild mushroom risotto',
   solveFamily: 'anniversary',
   family: 'host_driven',
   recordKind: 'client',

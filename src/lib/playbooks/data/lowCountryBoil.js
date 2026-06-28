@@ -14,6 +14,7 @@
 
 const lowCountryBoil = {
   type: 'Low Country Boil',
+  vegMain: 'Corn, potato & mushroom boil platter',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
