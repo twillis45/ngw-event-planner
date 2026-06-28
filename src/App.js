@@ -859,6 +859,9 @@ function GlobalStyles() {
       // (steel, on-palette; interaction state only). Both honored by the
       // prefers-reduced-motion rule below.
       '@keyframes ceRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }',
+      // ceMarkResolve: the identity mark resolving in (Magic Moment M2). Scale 0.7→1
+      // with a ≤1.02 settle — the ONLY permitted near-bounce, very subtle.
+      '@keyframes ceMarkResolve { 0% { opacity: 0; transform: scale(0.7); } 70% { opacity: 1; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
       // Attention System: everything that is NOT the one live thing recedes to ~0.5 and
       // brightens the moment you reach for it (hover / focus / tap-within). Same spirit as
@@ -27120,6 +27123,115 @@ function InviteDome({ icon, hue = '#9aa6b2', size = 108 }) {
   );
 }
 
+// ─── EditorialCover — Magic Moment M2·C (Figma 1436:22) ───────────────────────────
+// The event's magazine cover: masthead + glass identity dome + serif title + a big
+// letterpress countdown + a real on-track whisper. The identity mark is the
+// protagonist; on mount it RESOLVES (scale 0.7→1, ≤1.02 settle — the only permitted
+// near-bounce), then the title fades up (+120ms), then the numeral counts to the real
+// days-until (~700ms). One curve everywhere: ease-out cubic-bezier(.22,1,.36,1)
+// (the Magic Moments motion language). All data is honest — no fabricated counts.
+const CE_EASE = 'cubic-bezier(.22,1,.36,1)';
+function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
+  const C = useT();
+  const T = useType();
+  const ident = (() => { try { return evtIdentity(event.type, C); } catch { return { icon: 'sparkles', color: C.accent, mark: 'quiet' }; } })();
+  const hue = ident.mark === 'quiet' ? '#9aa6b2' : (ident.color || C.accent);
+  const days = daysUntil(event.date);
+  const dateObj = event.date ? new Date(event.date + 'T00:00:00') : null;
+  const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const timeBit = event.startTime ? ` · ${fmtTime12(event.startTime)}` : (event.timeOfDay ? ` · ${cap(event.timeOfDay)}` : '');
+  const dateLine = dateObj ? dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + timeBit : '';
+  // Honest editorial framing: bind to captured identity if present, else a calm default.
+  const eyebrow = (event.coverEyebrow || event.identityEyebrow || '').trim() || 'YOU’RE HOSTING';
+  const descriptor = (event.tagline || '').trim() || event.type || '';
+  // On-track whisper — ONLY real facts (confirmed count + first handled milestone).
+  const whisper = (() => {
+    try {
+      const parts = [];
+      const band = attendanceBand(event);
+      const gcr = guestCountResolved(event);
+      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+      if (yes > 0 && band && band.applicable && band.invited) parts.push(`${yes} of ${band.invited} confirmed`);
+      else if (gcr && gcr.resolved && Number(event.guestCount) > 0) parts.push(`${event.guestCount} expected`);
+      return parts.join(' · ');
+    } catch { return ''; }
+  })();
+
+  // Numeral count-up (M2: ~700ms, settles on the REAL value).
+  const [shownDays, setShownDays] = useState(reveal && days != null ? 0 : days);
+  useEffect(() => {
+    if (!reveal || days == null) { setShownDays(days); return undefined; }
+    let raf; const t0 = Date.now(); const dur = 700;
+    const tick = () => {
+      const p = Math.min(1, (Date.now() - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShownDays(Math.round(eased * days));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [days, reveal]);
+
+  const meta = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.22em', textTransform: 'uppercase', color: C.muted };
+  const rule = { height: 1, background: C.border, margin: '14px 0 0' };
+  const stagger = (delayMs) => reveal ? { animation: `ceRise 300ms ${CE_EASE} ${delayMs}ms both` } : {};
+
+  return (
+    <div style={{ maxWidth: 430, margin: '0 auto', padding: '26px 26px 34px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      {/* Masthead */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <span style={meta}>Event Boss</span>
+        <span style={meta}>No. 01</span>
+      </div>
+      <div style={rule} />
+
+      {/* Identity dome — the protagonist; resolves in on mount */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40, ...(reveal ? { animation: `ceMarkResolve 420ms ${CE_EASE} both` } : {}) }}>
+        <InviteDome icon={ident.icon} hue={hue} size={108} />
+      </div>
+
+      {/* Title block */}
+      <div style={{ textAlign: 'center', marginTop: 34 }}>
+        {eyebrow && <div style={{ ...meta, ...stagger(120) }}>{eyebrow}</div>}
+        <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 1.05), fontWeight: 800, color: C.text, lineHeight: 1.12, marginTop: 12, letterSpacing: '-0.01em', ...stagger(160) }}>{event.name || 'Your event'}</div>
+        {descriptor && <div style={{ fontFamily: FF_SERIF, fontStyle: 'italic', fontSize: T.body, color: C.muted, marginTop: 8, ...stagger(200) }}>{descriptor}</div>}
+      </div>
+
+      {/* Countdown */}
+      {days != null && days >= 0 && (
+        <div style={{ textAlign: 'center', marginTop: 40 }}>
+          <div style={{ ...meta, ...stagger(240) }}>Days until</div>
+          <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 3.1), fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8, letterSpacing: '-0.03em' }}>{shownDays}</div>
+        </div>
+      )}
+
+      {/* Date + whisper */}
+      <div style={{ textAlign: 'center', marginTop: 26, ...stagger(320) }}>
+        {dateLine && <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{dateLine}</div>}
+        {whisper && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 9, fontSize: T.secondary, color: C.muted }}>
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: C.success || C.accent, flexShrink: 0 }} />
+            <span>{whisper}</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ ...rule, marginTop: 30 }} />
+
+      {/* Actions */}
+      <div style={{ marginTop: 26 }}>
+        <button type="button" onClick={onOpen}
+          style={{ width: '100%', minHeight: 52, borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: '#fff',
+            background: `linear-gradient(180deg, ${C.steel?.blue400 || C.accent}, ${C.steel?.blue600 || '#3F5B6A'})`, boxShadow: C.cardShadow }}>Open the event →</button>
+        {onShare && (
+          <button type="button" onClick={onShare}
+            style={{ width: '100%', marginTop: 14, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.muted }}>Share the invite</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // The LIGHT analog of InviteDome — a PRINTED EDITORIAL SEAL (art-director call): on
 // cream the frosted-glass dome read as a wet glass orb, wrong for a printed invitation.
 // This is its replacement — and the board's later verdict retired the CIRCLE entirely: on
@@ -41172,6 +41284,8 @@ export default function App() {
   const [clientAutoIntake, setClientAutoIntake] = useState(false); // auto-open discovery intake for a new prospect
   const [activeId,       setActiveId]       = useState(null);
   const [initialNav,     setInitialNav]     = useState(null);
+  // Magic Moment M2 — events whose Editorial Cover has been opened this session.
+  const [coverSeen,      setCoverSeen]      = useState(() => new Set());
   // Return-to-last-event: remember the event the user was in, and reopen it when
   // they come back to the site (fresh load). The one-shot ref means tapping "Back"
   // to home later in the SAME session stays home — we only auto-restore on mount.
@@ -42110,6 +42224,19 @@ export default function App() {
   }
 
   if (activeEvent) {
+    // Magic Moment M2 — the event-open Editorial Cover. The first time a host enters
+    // their event each session, it meets them as a magazine cover; "Open the event →"
+    // resolves into the event, preserving wherever they were headed (so a deep-link
+    // like "Set budget" still lands focused on the budget field after the cover).
+    if (hostNavActive(activeEvent) && !coverSeen.has(activeEvent.id)) {
+      return gated(
+        <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg }}>
+          <EditorialCover event={activeEvent} profile={profile}
+            onOpen={() => setCoverSeen(s => new Set(s).add(activeEvent.id))}
+            onShare={() => { setCoverSeen(s => new Set(s).add(activeEvent.id)); setInitialNav({ tab: 'Guests' }); }} />
+        </div>
+      );
+    }
     // Host shell (pi.shell, default OFF) — a host event renders the dedicated
     // HostEventShell instead of the planner EventPlanner. Flag off ⇒ unchanged path.
     if (hostShellOn() && hostNavActive(activeEvent)) {
