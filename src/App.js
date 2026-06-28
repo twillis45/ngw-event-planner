@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, isEmailConfigured } from './lib/commApi';
 import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
 import ImportWizard       from './components/ImportWizard';
@@ -10186,9 +10187,13 @@ function TypePicker({ value, onChange, placeholder = 'Choose…', fieldStyle, ex
         <span style={{ color: value ? C.text : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || placeholder}</span>
         <span aria-hidden style={{ color: C.muted, fontSize: T.caption, marginLeft: 8, flexShrink: 0 }}>▾</span>
       </button>
-      {open && (
+      {/* Portal to <body>: the create modal is transform-centered (translate(-50%,-50%)),
+          which would make a position:fixed child relative to the MODAL, not the viewport —
+          clipping the browse. The portal escapes that so it fills the device viewport. */}
+      {open && createPortal(
         <EventTypeBrowse value={value} excludeValue={excludeValue}
-          onChange={(t) => onChange(t)} onClose={() => setOpen(false)} />
+          onChange={(t) => onChange(t)} onClose={() => setOpen(false)} />,
+        document.body
       )}
     </>
   );
