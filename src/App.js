@@ -870,6 +870,11 @@ function GlobalStyles() {
       '.ce-press:active { transform: scale(0.97); }',
       // ceGlow: a soft glow landing in (Magic Moment M4 — the focus-card glow lands last).
       '@keyframes ceGlow { from { opacity: 0; } to { opacity: 1; } }',
+      // ceSweep: a travelling light runs down the timeline spine when the day wakes
+      // (Magic Moment M5). Linear-ish so it reads as moving light, not a fade.
+      '@keyframes ceSweep { 0% { top: -34%; opacity: 0; } 12% { opacity: 0.95; } 100% { top: 100%; opacity: 0.15; } }',
+      // ceIgnite: the NOW node lights as the sweep reaches it (M5).
+      '@keyframes ceIgnite { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
       // Attention System: everything that is NOT the one live thing recedes to ~0.5 and
       // brightens the moment you reach for it (hover / focus / tap-within). Same spirit as
@@ -31701,6 +31706,13 @@ function HostRunOfShowTimeline({ event, profile }) {
       <div style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
         {/* Spine line */}
         <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: carbonStrong || C.border, opacity: 0.4 }} />
+        {/* M5 — the day wakes: a travelling light runs down the spine once (clipped to the
+            rail). Day-of only; the lead-up timeline stays asleep. */}
+        {isDayOf && (
+          <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, overflow: 'hidden', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${steelLabel}, transparent)`, boxShadow: `0 0 8px ${steelLabel}`, animation: `ceSweep 520ms linear both` }} />
+          </div>
+        )}
         {sorted.map((r, i) => {
           const done = cueDone(r);
           const isNow = r.id === nowCueId;
@@ -31719,6 +31731,8 @@ function HostRunOfShowTimeline({ event, profile }) {
                 border: `1.5px solid ${isNow ? steelLabel : (done ? C.tier3 : steelTime)}`,
                 opacity: done ? 0.5 : 1,
                 boxShadow: isNow ? `0 0 0 3px ${steelLabel}22` : 'none',
+                // M5 — the NOW node ignites as the sweep reaches it (after the sweep, ~+320ms).
+                ...(isNow ? { animation: `ceIgnite 300ms ${CE_EASE} 320ms both` } : {}),
               }} />
               {/* NOW marker (only on the live cue) else the time */}
               {isNow ? (
