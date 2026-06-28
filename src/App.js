@@ -1407,15 +1407,15 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'cloche':        return <svg {...p}><path d="M4 17 A8 8 0 0 1 20 17 Z"/><path d="M3 17 H21"/><path d="M12 5.5 V7 M11 5.5 H13"/><path d="M5 20 H19"/></svg>;
     case 'spade':         return <svg {...p}><path d="M12 3.5 C12 8 18 9.5 18 13.5 C18 16 16 17.2 14 16.4 C13 16 12.6 15.4 12.5 14.8 C12.7 17 13 18.8 14.5 20.5 H9.5 C11 18.8 11.3 17 11.5 14.8 C11.4 15.4 11 16 10 16.4 C8 17.2 6 16 6 13.5 C6 9.5 12 8 12 3.5 Z"/></svg>;
     case 'candle':        return <svg {...p}><path d="M9.5 9.5 V19 A1 1 0 0 0 10.5 20 H13.5 A1 1 0 0 0 14.5 19 V9.5 M9.5 10 Q12 11.5 14.5 10"/><path d="M12 3 C13.4 4.6 13.8 6 13 7.2 C12.5 8 11.5 8 11 7.2 C10.4 6.2 10.8 5 12 3 Z"/><path d="M12 8.2 V9.5"/></svg>;
-    case 'crab':          return <svg {...p}><g strokeWidth={1.3}>{/* Maryland blue crab — TOP-DOWN, the wide carapace + long sharp lateral spines that say "blue crab", thin line. */}
-      {/* Carapace — broad and flat, with a long SHARP point out each side (the signature). */}
-      <path d="M12 9.2 C10.4 9.2 9.1 9.6 8.1 10.1 L2.5 11.5 L8.1 12.6 C9.1 13.3 10.4 13.7 12 13.7 C13.6 13.7 14.9 13.3 15.9 12.6 L21.5 11.5 L15.9 10.1 C14.9 9.6 13.6 9.2 12 9.2 Z"/>
-      {/* Two claws, lifted from the front, each a slender arm to a small open pincer. */}
-      <path d="M9.5 9.6 C8.9 8.5 8.4 7.6 8.6 6.6"/><path d="M8.6 6.6 L7.7 6.0 M8.6 6.6 L9.4 6.1"/>
-      <path d="M14.5 9.6 C15.1 8.5 15.6 7.6 15.4 6.6"/><path d="M15.4 6.6 L16.3 6.0 M15.4 6.6 L14.6 6.1"/>
-      {/* Three pairs of slender walking legs, angled back; the rear pair a touch longer (swimmers). */}
-      <path d="M7.6 12.7 L5.0 13.6 M8.2 13.2 L6.2 14.6 M9.0 13.6 L7.4 15.5"/>
-      <path d="M16.4 12.7 L19.0 13.6 M15.8 13.2 L17.8 14.6 M15.0 13.6 L16.6 15.5"/>
+    case 'crab':          return <svg {...p}><g strokeWidth={1.15} strokeLinejoin="round" strokeLinecap="round">{/* Maryland blue crab — TOP-DOWN, from photo ref: wide trapezoidal carapace, long sharp lateral spine each side, two folded front claws, splayed legs. Thin line. */}
+      {/* Carapace — wide, narrower toothed front (eyes), a long SHARP point each side, rounded back. */}
+      <path d="M8.6 10.2 L2.6 11.6 L8.4 12.9 C9.7 13.7 10.7 13.9 12 13.9 C13.3 13.9 14.3 13.7 15.6 12.9 L21.4 11.6 L15.4 10.2 C14.3 9.6 13.2 9.4 12 9.4 C10.8 9.4 9.7 9.6 8.6 10.2 Z"/>
+      {/* Two front claws — folded up from the front corners, each ending in an open pincer. */}
+      <path d="M9.2 9.9 C8 9 7.1 7.9 7.1 6.7"/><path d="M7.1 6.7 C6.4 6.3 6.4 5.4 7.1 5.2 M7.1 6.7 C7.8 6.5 8.2 5.8 7.8 5.2"/>
+      <path d="M14.8 9.9 C16 9 16.9 7.9 16.9 6.7"/><path d="M16.9 6.7 C17.6 6.3 17.6 5.4 16.9 5.2 M16.9 6.7 C16.2 6.5 15.8 5.8 16.2 5.2"/>
+      {/* Walking legs — three pointed pairs splayed back from behind the spines. */}
+      <path d="M6.6 12.4 L4.2 13.3 M7.6 13 L5.6 14.5 M8.8 13.5 L7.4 15.6"/>
+      <path d="M17.4 12.4 L19.8 13.3 M16.4 13 L18.4 14.5 M15.2 13.5 L16.6 15.6"/>
     </g></svg>;
     case 'crawfish':      return <svg {...p}><path d="M7.5 13 C9.2 11.6 11.8 11.2 14 11.8 C15.7 12.3 16.6 13.4 16.4 14.6"/><path d="M10 11.6 L9.6 14.2 M12.2 11.6 L12 14.6 M14 12.2 L14 14.8"/><path d="M7.5 13 C5.6 12.4 4.2 13.4 4 15 M7.5 13 C6 11.4 4 11.6 3.2 13.2 M7.5 13 C6.4 14.8 4.6 15.2 3.6 16.8"/><path d="M16.4 14.6 C18 13.6 19.6 14.2 20 12.6 M16.4 14.6 C18.4 14.6 20 15.6 20 17.4"/><path d="M14.6 10.8 C16.4 8.8 18.6 9 19.4 7 M14 11 C15 9 17 9 17.8 7.4"/></svg>;
     case 'basket':        return <svg {...p}><path d="M5.5 11 L7 18 A2 2 0 0 0 8.9 19.4 H15.1 A2 2 0 0 0 17 18 L18.5 11"/><path d="M5.5 11 C5.5 9.6 8.4 8.6 12 8.6 C15.6 8.6 18.5 9.6 18.5 11 C18.5 12.4 15.6 13.4 12 13.4 C8.4 13.4 5.5 12.4 5.5 11 Z"/><path d="M6.6 14.6 Q12 16 17.4 14.6"/><path d="M7.4 17.4 Q12 18.6 16.6 17.4"/></svg>;
