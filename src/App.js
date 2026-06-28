@@ -27157,13 +27157,18 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
     } catch { return ''; }
   })();
 
-  // Numeral count-up (M2: ~700ms, settles on the REAL value).
+  // Numeral count-up (M2 spec: mark → title (+120ms) → numeral LAST (~+340ms), ~700ms).
+  // The count waits for the mark to resolve and the title to land, so focus pulls
+  // forward in sequence instead of everything moving at once (the "bad timing" fix).
+  const COUNT_DELAY = 340;
   const [shownDays, setShownDays] = useState(reveal && days != null ? 0 : days);
   useEffect(() => {
     if (!reveal || days == null) { setShownDays(days); return undefined; }
-    let raf; const t0 = Date.now(); const dur = 700;
+    let raf; const startAt = Date.now() + COUNT_DELAY; const dur = 700;
     const tick = () => {
-      const p = Math.min(1, (Date.now() - t0) / dur);
+      const now = Date.now();
+      if (now < startAt) { raf = requestAnimationFrame(tick); return; }
+      const p = Math.min(1, (now - startAt) / dur);
       const eased = 1 - Math.pow(1 - p, 3);
       setShownDays(Math.round(eased * days));
       if (p < 1) raf = requestAnimationFrame(tick);
@@ -27206,8 +27211,8 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
       {/* Countdown */}
       {days != null && days >= 0 && (
         <div style={{ textAlign: 'center', marginTop: 40 }}>
-          <div style={{ ...meta, ...stagger(240) }}>Days until</div>
-          <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 3.1), fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8, letterSpacing: '-0.03em' }}>{shownDays}</div>
+          <div style={{ ...meta, ...stagger(260) }}>Days until</div>
+          <div style={{ fontFamily: FF_SERIF, fontSize: Math.round((T.display || 30) * 3.1), fontWeight: 900, color: C.text, lineHeight: 1, marginTop: 8, letterSpacing: '-0.03em', ...stagger(320) }}>{shownDays}</div>
         </div>
       )}
 
