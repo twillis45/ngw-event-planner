@@ -868,6 +868,8 @@ function GlobalStyles() {
       // ce-press: tactile commit — the CTA compresses on press (M3: lock-cta → 0.99, ~110ms).
       '.ce-press { transition: transform 110ms cubic-bezier(.22,1,.36,1), background-color 220ms cubic-bezier(.22,1,.36,1); }',
       '.ce-press:active { transform: scale(0.97); }',
+      // ceGlow: a soft glow landing in (Magic Moment M4 — the focus-card glow lands last).
+      '@keyframes ceGlow { from { opacity: 0; } to { opacity: 1; } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
       // Attention System: everything that is NOT the one live thing recedes to ~0.5 and
       // brightens the moment you reach for it (hover / focus / tap-within). Same spirit as
@@ -21448,7 +21450,10 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
 
     return (
       <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden',
-        background: 'radial-gradient(120% 100% at 50% 38%, #090a0c 0%, #050608 55%, #000001 100%)' }}>
+        background: 'radial-gradient(120% 100% at 50% 38%, #090a0c 0%, #050608 55%, #000001 100%)',
+        /* M4 — the room dims in (the recede happens on the screen we left; this is the
+           landing): the dim resolves, then the ONE card rises and its glow lands last. */
+        animation: `ceFadeIn 480ms ${CE_EASE} both` }}>
         {/* Header — back to portfolio/home, identity glyph, event name */}
         <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' }}>
           <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Command' })} aria-label="Back"
@@ -21480,10 +21485,11 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           )}
 
           {/* THE ONE hero — wrapped so its glow + the vignette layer correctly:
-              vignette (zIndex 2) sits BEHIND the hero (zIndex 3) but ABOVE the whispers. */}
-          <div style={{ position: 'relative', zIndex: 3 }}>
-            {/* Soft steel glow behind the one card */}
-            <div aria-hidden style={{ position: 'absolute', inset: '-30px', borderRadius: 40, background: 'radial-gradient(60% 55% at 50% 45%, rgba(77,102,117,0.28) 0%, rgba(77,102,117,0) 70%)', pointerEvents: 'none' }} />
+              vignette (zIndex 2) sits BEHIND the hero (zIndex 3) but ABOVE the whispers.
+              M4: rises in after the room dims; its glow (above) lands last. */}
+          <div style={{ position: 'relative', zIndex: 3, animation: `ceRise 360ms ${CE_EASE} 160ms both` }}>
+            {/* Soft steel glow behind the one card — M4: lands LAST (after the card). */}
+            <div aria-hidden style={{ position: 'absolute', inset: '-30px', borderRadius: 40, background: 'radial-gradient(60% 55% at 50% 45%, rgba(77,102,117,0.28) 0%, rgba(77,102,117,0) 70%)', pointerEvents: 'none', animation: `ceGlow 400ms ${CE_EASE} 340ms both` }} />
             {theOne ? (
               <div style={{ position: 'relative', background: 'linear-gradient(160deg, #2a2c30 0%, #1b1c20 100%)', border: '1px solid rgba(111,135,148,0.42)', borderRadius: 20, padding: 24, boxShadow: '0 20px 52px rgba(0,0,0,0.7), 0 0 54px rgba(77,102,117,0.42)' }}>
                 <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, marginBottom: 14 }}>THE ONE THING TODAY</div>
