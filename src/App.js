@@ -14,6 +14,7 @@ import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/samp
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
 import { hostSpending } from './lib/hostSpending';
+import { choreography } from './design/motion';
 import { GlassIcon, hasGlassShape } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
@@ -39082,7 +39083,9 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
         {/* The spine surfaces here once this tab is handled — never route to this same
             tab (that goes nowhere); only forward to the next step on ANOTHER surface. */}
         {showNext && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          // Hero reveal = escalation (motion.js): the next step RISES in when the prior
+          // one completes, so the hand-off reads as forward motion, not a static swap.
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
             <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>Next</div>
             <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{na.title}</div>
             <button type="button" onClick={dispatchNext}
