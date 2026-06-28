@@ -28997,7 +28997,12 @@ function PublicRsvpRoute({ code, localEvent }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
+function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
+  // Guest-list-optional events (headcount-only, brand-new) carry no `guests` array;
+  // every reader below assumes an array, so normalize once (default param catches
+  // undefined; this also catches a stored null). Fixes "Cannot read 'length' of
+  // undefined" on the Guests tab for an event with no roster.
+  if (!Array.isArray(guests)) guests = [];
   const C      = useT();
   const T = useType();
   const s      = makeS(C);
@@ -30151,7 +30156,8 @@ function Guests({ guests, setGuests, event = {}, profile, setGuestCount = () => 
 
 // ─── Seating ──────────────────────────────────────────────────────────────────
 
-function Seating({ guests, setGuests, tables, onTablesChange, tableNames, onTableNamesChange }) {
+function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, onTableNamesChange }) {
+  if (!Array.isArray(guests)) guests = [];
   const C = useT();
   const T = useType();
   const s = makeS(C);
