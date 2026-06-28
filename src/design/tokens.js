@@ -142,9 +142,12 @@ export const type = {
 export const motion = {
   ease: {
     standard:    'cubic-bezier(0.2, 0, 0, 1)',     // weighted, decisive
-    out:         'cubic-bezier(0.16, 1, 0.3, 1)',  // soft ease-out
-    sharp:       'cubic-bezier(0.05, 0.7, 0.1, 1)',// sharp ease-out (emergency)
-    inOut:       'cubic-bezier(0.45, 0, 0.2, 1)',  // ambient
+    // THE one curve (Magic Moments motion language, Figma 1428 · "carry into code"):
+    // ease-out cubic-bezier(.22,1,.36,1) everywhere. Propagates to escalation/recovery/
+    // sheetDismiss/press (all read ease.out) so reveals, collapses, and presses share it.
+    out:         'cubic-bezier(.22, 1, .36, 1)',   // soft ease-out — the standard curve
+    sharp:       'cubic-bezier(0.05, 0.7, 0.1, 1)',// sharp ease-out (emergency alarms only)
+    inOut:       'cubic-bezier(0.45, 0, 0.2, 1)',  // ambient (breathing loops)
   },
   duration: {
     ambient:    310, // ambient operational updates
