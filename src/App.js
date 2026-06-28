@@ -31251,6 +31251,149 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
   );
 }
 
+// ─── Host Run of Show — the calm, read-mostly timeline (Figma 1445:2) ──────────
+// The HOST's "Day" tab. A quiet vertical run-of-show that DERIVES entirely from
+// effectiveRos(event) — never fabricates a cue. Done cues dim/strike; the current
+// cue (by time-of-day, same nextCue logic as the focus home) carries a "NOW"
+// marker on the event day. The eyebrow + footer ADAPT to proximity: before the
+// day it reads "STARTS SOON" and "wakes up when the day begins"; on the day the
+// NOW marker goes live. Studio Matte: dark, steel, no amber — escalation = reduction.
+// Planners keep the editable RunOfShow below; this never renders for them.
+function HostRunOfShowTimeline({ event }) {
+  const C = useT();
+  const T = useType();
+  const cues = (() => { try { return effectiveRos(event) || []; } catch { return []; } })();
+
+  // No authored/derived cues → the honest empty state (don't invent a schedule).
+  const hasCues = Array.isArray(cues) && cues.length > 0;
+
+  const steelLabel  = C.steel?.blue400 || C.accent;     // #8BA0AA — eyebrow / NOW
+  const steelTime   = C.steel?.blue600 || C.muted;      // #566F7D — times, details, footer
+  const textPrimary = C.text;                            // #eef0f4 — headlines
+  const textSub     = C.muted;                           // #849eb8 — date subline
+
+  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const isCueDone = (r) => !!(r && (r.done || r.confirmed === true && r.type === 'past'));
+  // A cue is "done" when explicitly marked done. (confirmed=true on a vendor row is
+  // a logistics flag, not a done state, so we only honour an explicit `done`.)
+  const cueDone = (r) => !!(r && r.done);
+
+  // Proximity drives the eyebrow + footer + whether NOW is live.
+  const daysUntil = (() => {
+    if (!event || !event.date) return null;
+    try {
+      const d = new Date(event.date + 'T00:00:00');
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      return Math.round((d - now) / 86400000);
+    } catch { return null; }
+  })();
+  const isDayOf = daysUntil === 0;
+
+  // Sorted by time; rows with no time fall to the end (kept, never dropped).
+  const sorted = [...cues].sort((a, b) => (toMins(a.time) ?? 1e9) - (toMins(b.time) ?? 1e9));
+
+  // NOW cue — same logic as the focus home's nextCue: the first OPEN cue at/after
+  // the current minute, else the first open cue. Live only on the event day.
+  const nowMins = (() => { try { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); } catch { return -1; } })();
+  const nowCue = isDayOf
+    ? (sorted.filter(r => !cueDone(r)).filter(r => { const mm = toMins(r.time); return mm !== null && mm >= nowMins; })[0]
+       || sorted.filter(r => !cueDone(r))[0]
+       || null)
+    : null;
+  const nowCueId = nowCue ? nowCue.id : null;
+
+  // Header subline — weekday, Mon D, and the start time (the earliest cue, the most
+  // honest run-of-show anchor; falls back to event.startTime if no cue time).
+  const dateLine = (() => {
+    if (!event || !event.date) return '';
+    try { return new Date(event.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }); }
+    catch { return event.date; }
+  })();
+  const firstCueTime = sorted.map(r => r.time).find(t => toMins(t) !== null);
+  const startLabel = firstCueTime ? fmtTime12(firstCueTime) : (event && event.startTime ? String(event.startTime) : '');
+  const subline = [dateLine, startLabel ? `${startLabel} start` : ''].filter(Boolean).join(' · ');
+
+  // Eyebrow + footer adapt to proximity.
+  const eyebrow = isDayOf ? 'THE DAY · HAPPENING NOW' : 'THE DAY · STARTS SOON';
+  const footer = isDayOf
+    ? 'Your run-of-show is live. Work it top to bottom — done falls away.'
+    : 'Your run-of-show is ready. It wakes up when the day begins.';
+
+  const ROW_FONT = { fontFamily: 'inherit' };
+
+  if (!hasCues) {
+    // Honest empty state — no cues to show, so we don't fabricate any.
+    return (
+      <div style={{ padding: '8px 20px 40px' }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+        {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
+        <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 330, marginLeft: 'auto', marginRight: 'auto' }}>
+          <div style={{ fontSize: T.body, color: textPrimary, fontWeight: FW.semibold, lineHeight: 1.4 }}>No run-of-show yet</div>
+          <div style={{ fontSize: T.secondary, color: steelTime, marginTop: 8, lineHeight: 1.55 }}>When you sketch the day, the timeline lands here and wakes up when the day begins.</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '8px 20px 32px', position: 'relative' }}>
+      {/* Eyebrow + subline */}
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+      {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
+
+      {/* Timeline — a thin spine down the left with a dot per cue. */}
+      <div style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
+        {/* Spine line */}
+        <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: carbonStrong || C.border, opacity: 0.4 }} />
+        {sorted.map((r, i) => {
+          const done = cueDone(r);
+          const isNow = r.id === nowCueId;
+          // Detail line = owner + a short note/location if present.
+          const detailBits = [
+            (r.owner || '').trim(),
+            (r.notes || '').trim() || (r.location || '').trim(),
+          ].filter(Boolean);
+          const detail = detailBits.join(' · ');
+          return (
+            <div key={r.id || i} style={{ position: 'relative', paddingBottom: i === sorted.length - 1 ? 0 : 30 }}>
+              {/* Dot — done: faint filled · now: bright filled · upcoming: hollow */}
+              <div aria-hidden style={{
+                position: 'absolute', left: -28, top: 4, width: 9, height: 9, borderRadius: 999,
+                background: isNow ? steelLabel : (done ? 'transparent' : 'transparent'),
+                border: `1.5px solid ${isNow ? steelLabel : (done ? C.tier3 : steelTime)}`,
+                opacity: done ? 0.5 : 1,
+                boxShadow: isNow ? `0 0 0 3px ${steelLabel}22` : 'none',
+              }} />
+              {/* NOW marker (only on the live cue) else the time */}
+              {isNow ? (
+                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelLabel, ...ROW_FONT }}>NOW</div>
+              ) : (
+                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
+                  {r.time ? fmtTime12(r.time) : ''}
+                </div>
+              )}
+              {/* Headline = the segment */}
+              <div style={{
+                fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35,
+                opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT,
+              }}>{r.segment || 'Untitled'}</div>
+              {/* Detail = owner + note/location */}
+              {detail && (
+                <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer — muted, centered. */}
+      <div style={{ marginTop: 56, textAlign: 'center' }}>
+        <div style={{ fontSize: T.secondary, color: steelTime, maxWidth: 330, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>{footer}</div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Run of Show ──────────────────────────────────────────────────────────────
 
 function RunOfShow({ ros = [], setRos, vendors = [], eventName, eventDate, eventVenue, eventId, eventType = '', isDayOf = false, honoree = '', meaning = {}, isHost = false, authored = false }) {
@@ -38877,12 +39020,19 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
         </>}
-        {tab === 'Event Day Schedule' && <>
-          {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
-          <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
-          <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
-        </>}
+        {tab === 'Event Day Schedule' && (
+          // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
+          // INSTEAD of the editable planner schedule. The planner's editable
+          // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
+          ((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
+            ? <HostRunOfShowTimeline event={event} />
+            : <>
+                {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
+                <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+                <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
+                <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
+              </>
+        )}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
@@ -39652,7 +39802,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             </div>
           )}
-          <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={hostNavActive(event)} authored={Array.isArray(event.ros) && event.ros.length > 0} />
+          {hostNavActive(event)
+            ? <HostRunOfShowTimeline event={event} />
+            : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
       {tab === 'Agenda'      && <>
