@@ -27252,7 +27252,7 @@ function InviteDome({ icon, hue = '#9aa6b2', size = 108 }) {
 // days-until (~700ms). One curve everywhere: ease-out cubic-bezier(.22,1,.36,1)
 // (the Magic Moments motion language). All data is honest — no fabricated counts.
 const CE_EASE = 'cubic-bezier(.22,1,.36,1)';
-function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventNumber = 1 }) {
+function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventNumber = 1, hasOtherEvents = false, onBackToEvents, onNew }) {
   const C = useT();
   const T = useType();
   const ident = (() => { try { return evtIdentity(event.type, C); } catch { return { icon: 'sparkles', color: C.accent, mark: 'quiet' }; } })();
@@ -27308,6 +27308,22 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
 
   return (
     <div style={{ maxWidth: 430, margin: '0 auto', padding: '26px 26px 34px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      {/* Utility bar — escape hatches from the cover: back to the host's other events,
+          and start a new one (so the editorial landing is never a dead end). */}
+      {(onBackToEvents || onNew) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          {onBackToEvents ? (
+            <button type="button" onClick={onBackToEvents} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, padding: 0 }}>
+              ‹ {hasOtherEvents ? 'Your events' : 'Home'}
+            </button>
+          ) : <span />}
+          {onNew && (
+            <button type="button" onClick={onNew} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 99, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, padding: '5px 13px' }}>
+              + New event
+            </button>
+          )}
+        </div>
+      )}
       {/* Masthead */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <span style={meta}>Event Boss</span>
@@ -42412,8 +42428,11 @@ export default function App() {
       return gated(
         <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg }}>
           <EditorialCover event={activeEvent} profile={profile} eventNumber={coverNo}
+            hasOtherEvents={events.filter(e => { try { return hostNavActive(e); } catch { return false; } }).length > 1}
             onOpen={() => setCoverSeen(s => new Set(s).add(activeEvent.id))}
-            onShare={() => { setCoverSeen(s => new Set(s).add(activeEvent.id)); setInitialNav({ tab: 'Guests' }); }} />
+            onShare={() => { setCoverSeen(s => new Set(s).add(activeEvent.id)); setInitialNav({ tab: 'Guests' }); }}
+            onBackToEvents={() => { setActiveId(null); setInitialNav(null); }}
+            onNew={() => { setActiveId(null); setInitialNav(null); setShowNew(true); }} />
         </div>
       );
     }
