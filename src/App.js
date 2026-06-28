@@ -10090,55 +10090,104 @@ function MatteDatePicker({ value, onChange, active = false, autoOpen = false, is
 // Searchable event-type picker — replaces the unruly native <select> (~50 types across
 // many optgroups). A field-styled button opens a panel with a search box that filters
 // the grouped types; type "june" → Juneteenth Cookout. Closes on pick or outside-click.
+// ─── EventTypeBrowse — the reworked event-type picker (Figma 1505:5) ──────────────
+// A full-screen BROWSE, not a dropdown: search across every type + category sections
+// with live counts, the host's most-common group (At-Home) expanded with rich rows
+// (identity icon + name + ›), the rest collapsed. Data is EVT_CATEGORIES; the per-type
+// mark is evtIdentity(type).icon. Selecting a type closes back to the form.
+function EventTypeBrowse({ value, onChange, onClose, excludeValue }) {
+  const C = useT();
+  const T = useType();
+  const [query, setQuery] = useState('');
+  const ORDER = ['At-Home Gatherings', 'Weddings & Celebrations', 'Corporate', 'Social & Fundraising', 'Holidays & Heritage'];
+  const cats = ORDER.filter(c => Array.isArray(EVT_CATEGORIES[c])).map(c => [c, EVT_CATEGORIES[c].filter(t => t !== excludeValue)]);
+  const total = cats.reduce((s, [, t]) => s + t.length, 0);
+  const [expanded, setExpanded] = useState(() => new Set(['At-Home Gatherings']));
+  const [showAll, setShowAll] = useState(() => new Set());
+  const ql = query.trim().toLowerCase();
+  const matches = ql ? cats.flatMap(([, t]) => t).filter(t => t.toLowerCase().includes(ql)) : null;
+  const steel = C.steel?.blue400 || C.accent;
+  const pick = (t) => { onChange(t); onClose(); };
+  const shortCat = (c) => c.split(/\s*&\s*| /)[0];
+  const eyebrow = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted };
+  const TypeRow = ({ t }) => {
+    const ic = (() => { try { return evtIdentity(t, C).icon; } catch { return 'sparkles'; } })();
+    return (
+      <button type="button" data-testid={`etb-type-${t}`} onClick={() => pick(t)} className="ce-press"
+        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', background: t === value ? `${steel}14` : 'transparent', border: 'none', borderRadius: 12, padding: '13px 8px', cursor: 'pointer', fontFamily: 'inherit' }}>
+        <span aria-hidden style={{ flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${C.border}`, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}><Icon name={ic} size={20} stroke={1.7} /></span>
+        <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: t === value ? FW.bold : FW.semibold, color: C.text }}>{t}</span>
+        <span aria-hidden style={{ color: C.muted, fontSize: T.body, opacity: 0.7 }}>›</span>
+      </button>
+    );
+  };
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 95, background: C.bgGrad || C.bg, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 20px calc(40px + env(safe-area-inset-bottom))', boxSizing: 'border-box' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0 8px', position: 'sticky', top: 0, background: C.bgGrad || C.bg, zIndex: 1 }}>
+          <button type="button" onClick={onClose} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted, lineHeight: 1, padding: 0 }}>‹ <span style={{ fontSize: T.body }}>Back</span></button>
+        </div>
+        <div style={{ ...eyebrow, marginTop: 10 }}>Browse</div>
+        <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginTop: 4, marginBottom: 16 }}>Event types</div>
+        {/* Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '11px 14px', marginBottom: 18 }}>
+          <Icon name="search" size={16} stroke={1.8} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${total} event types`}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontFamily: 'inherit' }} />
+        </div>
+
+        {matches ? (
+          matches.length === 0
+            ? <div style={{ fontSize: T.secondary, color: C.muted, padding: '14px 4px', lineHeight: 1.5 }}>No match — pick the closest type and Event Boss adapts the plan.</div>
+            : <div>{matches.map(t => <TypeRow key={t} t={t} />)}</div>
+        ) : (
+          cats.map(([cat, types]) => {
+            const open = expanded.has(cat);
+            const all = showAll.has(cat);
+            const shown = open ? (all ? types : types.slice(0, 4)) : [];
+            return (
+              <div key={cat} style={{ borderTop: `1px solid ${C.border}`, padding: '14px 0' }}>
+                <button type="button" onClick={() => setExpanded(s => { const n = new Set(s); n.has(cat) ? n.delete(cat) : n.add(cat); return n; })}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '4px 4px 6px' }}>
+                  <span style={{ ...eyebrow, color: steel }}>{cat}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>{types.length}</span>
+                    <span aria-hidden style={{ color: C.muted, fontSize: T.body, transform: open ? 'rotate(90deg)' : 'none', transition: transitionFor('press', ['transform']) }}>›</span>
+                  </span>
+                </button>
+                {open && shown.map(t => <TypeRow key={t} t={t} />)}
+                {open && !all && types.length > 4 && (
+                  <button type="button" onClick={() => setShowAll(s => new Set(s).add(cat))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, padding: '8px 8px 2px' }}>
+                    All {types.length} {shortCat(cat)} types →
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The field that opens the full-screen EventTypeBrowse (Figma 1505:5). The inline
+// dropdown was retired for the richer browse — search + categories + identity icons.
 function TypePicker({ value, onChange, placeholder = 'Choose…', fieldStyle, excludeValue, emptyOption, testId, C, isMobile }) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    const k = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', h); document.addEventListener('keydown', k);
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('keydown', k); };
-  }, [open]);
-  const ql = q.trim().toLowerCase();
-  const groups = Object.entries(EVT_CATEGORIES)
-    .map(([cat, types]) => [cat, types.filter((t) => t !== excludeValue && (!ql || t.toLowerCase().includes(ql)))])
-    .filter(([, t]) => t.length);
-  const pick = (t) => { onChange(t); setOpen(false); setQ(''); };
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button type="button" data-testid={testId} onClick={() => setOpen((o) => !o)}
+    <>
+      <button type="button" data-testid={testId} onClick={() => setOpen(true)}
         style={{ ...fieldStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' }}>
         <span style={{ color: value ? C.text : C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || placeholder}</span>
         <span aria-hidden style={{ color: C.muted, fontSize: T.caption, marginLeft: 8, flexShrink: 0 }}>▾</span>
       </button>
       {open && (
-        // In-flow (not absolute) so a scrollable modal body never clips the list —
-        // it pushes content down and the modal scrolls to it.
-        <div style={{ marginTop: 6, ...metalEdge(C), borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', maxHeight: isMobile ? 300 : 340, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: 10, borderBottom: `1px solid ${C.border}` }}>
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search event types…" style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: T.secondary, padding: '8px 11px', outline: 'none', fontFamily: 'inherit' }} />
-          </div>
-          <div style={{ overflowY: 'auto', padding: 6 }}>
-            {emptyOption && !ql && (
-              <button type="button" onClick={() => pick('')} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px', background: !value ? `${C.accent}1a` : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: T.secondary, color: C.muted, fontFamily: 'inherit' }}>{emptyOption}</button>
-            )}
-            {groups.length === 0
-              ? <div style={{ padding: 14, fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>No exact match — pick the closest and Event Boss adapts the plan.</div>
-              : groups.map(([cat, types]) => (
-                <div key={cat} style={{ marginBottom: 4 }}>
-                  <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, padding: '7px 8px 3px' }}>{cat}</div>
-                  {types.map((t) => (
-                    <button key={t} type="button" onClick={() => pick(t)}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px', background: t === value ? `${C.accent}22` : 'transparent', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: T.secondary, fontWeight: t === value ? 700 : 500, color: C.text, fontFamily: 'inherit' }}>{t}</button>
-                  ))}
-                </div>
-              ))}
-          </div>
-        </div>
+        <EventTypeBrowse value={value} excludeValue={excludeValue}
+          onChange={(t) => onChange(t)} onClose={() => setOpen(false)} />
       )}
-    </div>
+    </>
   );
 }
 
