@@ -21591,8 +21591,20 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
                 <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, marginBottom: 14 }}>THE ONE THING TODAY</div>
                 <div style={{ fontSize: 28, fontWeight: FW.heavy, color: fg, lineHeight: 1.18, letterSpacing: '-0.01em' }}>{theOne.headline}</div>
                 <div style={{ fontSize: 15, color: sub, lineHeight: 1.4, marginTop: 14 }}>Everything else is handled. This is the only thing that can’t slip.</div>
+                {/* A next-action (confirm the count, set the budget) is something you DO,
+                    not something to pre-check — so the CTA takes you to the action/field.
+                    Only a day-of cue you physically perform gets "Mark it done". */}
                 <button type="button" onClick={markOneDone}
-                  style={{ marginTop: 22, width: '100%', background: 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: FW.bold, color: fg, cursor: 'pointer' }}>Mark it done</button>
+                  style={{ marginTop: 22, width: '100%', background: 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: FW.bold, color: fg, cursor: 'pointer' }}>
+                  {theOne.kind === 'cue' ? 'Mark it done' : (na && na.primaryCta ? `${na.primaryCta} →` : 'Take me to it →')}
+                </button>
+                {/* An out for this step — see the whole day instead of being held on the one. */}
+                {dayRos.length > 0 && (
+                  <button type="button" onClick={() => setFocusExpanded(true)}
+                    style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: FW.medium, color: dimSteel, padding: '4px 0' }}>
+                    Not the priority? See the whole day →
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ position: 'relative', background: 'linear-gradient(160deg, #2a2c30 0%, #1b1c20 100%)', border: '1px solid rgba(111,135,148,0.42)', borderRadius: 20, padding: 24, boxShadow: '0 20px 52px rgba(0,0,0,0.7), 0 0 54px rgba(77,102,117,0.42)' }}>
