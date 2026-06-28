@@ -34271,10 +34271,19 @@ const bucketTasks = (tasks, eventDate, eventType) => {
   return { now, next, later };
 };
 
+// computeDayAlerts — day-of severity reader. Sprint 64 (Figma B2 1558:49): each
+// alert now carries a 3-tier `tier` ('critical' | 'warning' | 'heads-up'), a
+// bold `headline` (what's happening), and a separate `move` (the "→ your move"
+// action sentence — never one blob). `sev`/`text` are kept as aliases so the
+// planner EventDayBar (clock-strip) keeps reading them unchanged. The host
+// surface renders these as a calm 3-tier card stack (HostDaySeverityStack).
+// heads-up = informational time/opportunity cues (golden-hour photo, next ROS
+// segment) — escalation by REDUCTION, the calm tier.
 const computeDayAlerts = (event) => {
   const td = today8601();
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const alerts = [];
+  const push = (a) => alerts.push({ ...a, sev: a.tier, text: a.text || a.headline });
 
   if (event.date === td) {
     (event.vendors || [])
@@ -34283,28 +34292,64 @@ const computeDayAlerts = (event) => {
       .forEach(v => {
         const vm = parseMin(v.arrivalTime);
         if (vm !== null && vm < nowMin - 10)
-          alerts.push({ id: `ov-${v.id}`, sev: 'critical', text: `${v.name} arrival overdue (${fmtTime12(v.arrivalTime)})`, navTo: 'Arrivals' });
+          push({ id: `ov-${v.id}`, tier: 'critical', headline: `${v.name} hasn't arrived`, move: `Call ${v.name} now — they were due at ${fmtTime12(v.arrivalTime)}.`, navTo: 'Arrivals' });
       });
+
+    // Confirmed-but-unconfirmed-arrival vendor with an arrival time still ahead —
+    // a day-of "make sure they're coming" critical (the Figma "Caterer hasn't
+    // confirmed arrival" case). Only the soonest one, to stay calm.
+    const unconfirmed = (event.vendors || [])
+      .filter(v => v.name && v.arrivalTime && ['Confirmed','Contracted','Deposit Paid'].includes(v.status)
+                && v.arrivalStatus !== 'arrived' && v.arrivalStatus !== 'completed' && v.arrivalStatus !== 'delayed')
+      .map(v => ({ v, m: parseMin(v.arrivalTime) }))
+      .filter(x => x.m !== null && x.m >= nowMin - 10 && x.m <= nowMin + 90)
+      .sort((a, b) => a.m - b.m);
+    if (unconfirmed.length) {
+      const { v } = unconfirmed[0];
+      push({ id: `confirm-${v.id}`, tier: 'critical', headline: `${v.name} hasn't confirmed arrival`, move: `Call ${v.name} now — they're set for ${fmtTime12(v.arrivalTime)}.`, navTo: 'Arrivals' });
+    }
   }
 
   const pending = (event.commClient || []).filter(m => m.message_type === 'approval_request' && (!m.approval_status || m.approval_status === 'pending'));
   if (pending.length)
-    alerts.push({ id: 'approvals', sev: 'warning', text: `${pending.length} approval${pending.length > 1 ? 's' : ''} pending client response`, navTo: 'Communication' });
+    push({ id: 'approvals', tier: 'warning', headline: `${pending.length} approval${pending.length > 1 ? 's' : ''} waiting on a reply`, move: `Nudge them so the day-of plan can lock.`, navTo: 'Communication' });
 
   (event.vendors || []).filter(v => v.payDueDate === td && !v.balancePaid && v.name).forEach(v =>
-    alerts.push({ id: `pay-${v.id}`, sev: 'warning', text: `Payment due today: ${v.name}`, navTo: 'Vendors' })
+    push({ id: `pay-${v.id}`, tier: 'warning', headline: `Payment due today: ${v.name}`, move: `Send the balance so they're squared away.`, navTo: 'Vendors' })
   );
+
+  // RSVPs still outstanding — headcount may shift (Figma B2 warning case).
+  const yesCount = (event.guests || []).filter(g => g.rsvp === 'Yes').length;
+  const pendingRsvp = (event.guests || []).filter(g => g && g.name && (!g.rsvp || g.rsvp === 'Pending' || g.rsvp === 'Maybe')).length;
+  if (event.date === td && pendingRsvp > 0)
+    push({ id: 'rsvp-pending', tier: 'warning', headline: `${pendingRsvp} haven't RSVP'd`, move: yesCount > 0 ? `Headcount may shift — text them, or plan for ${yesCount} to be safe.` : `Headcount may shift — text them so you can plan portions.`, navTo: 'Guests' });
 
   const overdueCount = (event.timeline || []).filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
   if (overdueCount)
-    alerts.push({ id: 'overdue-tasks', sev: 'warning', text: `${overdueCount} overdue planning task${overdueCount > 1 ? 's' : ''}`, navTo: 'Planning Tasks' });
+    push({ id: 'overdue-tasks', tier: 'warning', headline: `${overdueCount} thing${overdueCount > 1 ? 's' : ''} still open`, move: `Knock them out or let them go — the day's already here.`, navTo: 'Planning Tasks' });
 
   // Guests with allergies + catering confirmed — on event day, confirm with caterer
   if (event.date === td) {
     const allergyGuests = (event.guests || []).filter(g => g.rsvp === 'Yes' && g.needs && /allerg/i.test(g.needs));
     const hasCaterer = (event.vendors || []).some(v => /cater|f&b|food|beverage/i.test(v.category) && ['Confirmed','Contracted','Deposit Paid'].includes(v.status));
     if (allergyGuests.length && hasCaterer)
-      alerts.push({ id: 'dietary', sev: 'critical', text: `${allergyGuests.length} guest${allergyGuests.length > 1 ? 's' : ''} with allergies — confirm with caterer`, navTo: 'Guests' });
+      push({ id: 'dietary', tier: 'critical', headline: `${allergyGuests.length} guest${allergyGuests.length > 1 ? 's' : ''} with allergies`, move: `Confirm the swaps with your caterer before service.`, navTo: 'Guests' });
+  }
+
+  // HEADS-UP (informational, calm) — time/opportunity cues from the authored
+  // run-of-show. A golden-hour / photo segment becomes "get the group photo";
+  // otherwise the next upcoming segment is a gentle "next up" cue. Only on the
+  // day itself, only one, never with an alarm color.
+  if (event.date === td) {
+    let ros = [];
+    try { ros = effectiveRos(event) || []; } catch { ros = []; }
+    const timed = ros.filter(r => r && r.time && r.segment).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const photoSeg = timed.find(r => /golden|photo|portrait|group.?shot|sunset/i.test(r.segment) && (parseMin(r.time) ?? -1) >= nowMin - 30);
+    const nextSeg = timed.find(r => { const m = parseMin(r.time); return m !== null && m >= nowMin; });
+    if (photoSeg)
+      push({ id: 'heads-photo', tier: 'heads-up', headline: `Golden hour at ${fmtTime12(photoSeg.time)}`, move: `Get the group photo before the light goes.`, navTo: 'Event Day Schedule' });
+    else if (nextSeg)
+      push({ id: 'heads-next', tier: 'heads-up', headline: `Next up at ${fmtTime12(nextSeg.time)} — ${nextSeg.segment}`, move: `A little ahead of time keeps the day calm.`, navTo: 'Event Day Schedule' });
   }
 
   return alerts;
@@ -34324,6 +34369,7 @@ function WeatherAlert({ event, onNavTo }) {
   const [wx, setWx] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
 
   const days = event?.date ? daysUntil(event.date) : null;
   // Outdoor by venue keyword OR by event TYPE — a cookout/BBQ/fish fry is outdoor by
@@ -34365,6 +34411,28 @@ function WeatherAlert({ event, onNavTo }) {
   // "here's the move" instead of staying dark inside confirmCopy.
   const contingency = (() => { try { return playbookContingencyForWeather(event, wx); } catch { return null; } })();
   const wxIcon = wx.risk === 'clear' ? '☀️' : wx.kind === 'heat' ? '☀️' : wx.kind === 'snow' ? '❄️' : wx.kind === 'cold' ? '🥶' : wx.risk === 'high' ? '⛈' : '🌧';
+
+  // Sprint 64 (Figma B1 1556:2): the weather "your move" CTA is a one-tap host
+  // group-chat draft — "Text guests the plan →" — not "Review vendors". Build a
+  // short, honest message from the REAL forecast (summary + what changes + the
+  // authored move). Never fabricated: it only assembles signals already shown.
+  const weatherPlanMessage = (() => {
+    const lines = [];
+    const name = (event?.name || '').trim();
+    lines.push(name ? `Heads up for ${name}:` : 'Heads up for today:');
+    if (wx.summary) lines.push(wx.summary);
+    if (contingency?.plan) lines.push(contingency.plan);
+    else if (adjustments.length) lines.push(adjustments.map(a => a.text.replace(/\s*\([^)]*\)/g, '')).slice(0, 2).join(' '));
+    lines.push("We're covered either way — see you there.");
+    return lines.filter(Boolean).join('\n\n');
+  })();
+  const textGuestsThePlan = async () => {
+    const r = await shareOrCopy({ title: event?.name ? `${event.name} — weather plan` : 'Weather plan', text: weatherPlanMessage });
+    if (r === 'shared') setShareStatus('Shared');
+    else if (r === 'copied') setShareStatus('Copied — paste into your group chat');
+    if (r === 'shared' || r === 'copied') setTimeout(() => setShareStatus(''), 2600);
+  };
+
   return (
     <div style={{
       margin: '0 0 12px', padding: '10px 16px', borderRadius: 8,
@@ -34380,7 +34448,6 @@ function WeatherAlert({ event, onNavTo }) {
           {wx.sunset && <div style={{ fontSize: T.caption, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
         </div>
-        {onNavTo && <button onClick={() => onNavTo('Vendors')} title="Confirm rain backup / tent vendor" style={{ ...s.btn('ghost'), padding: '3px 8px', fontSize: T.caption, color: riskColor, fontWeight: FW.semibold, flexShrink: 0 }}>Review vendors →</button>}
         <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: T.secondary, color: C.muted }}>×</button>
       </div>
       {adjustments.length > 0 && (
@@ -34394,10 +34461,19 @@ function WeatherAlert({ event, onNavTo }) {
           ))}
         </div>
       )}
-      {contingency && (
+      {(contingency || adjustments.length > 0) && (
         <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${riskColor}22` }}>
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: riskColor, marginBottom: 4 }}>Your move</div>
-          <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45 }}>{contingency.plan}</div>
+          {contingency && <div style={{ fontSize: T.caption, color: C.text, lineHeight: 1.45, marginBottom: 8 }}>{contingency.plan}</div>}
+          {/* Figma B1 1556:2 — one-tap host group-chat draft. Native share → clipboard. */}
+          <button
+            onClick={textGuestsThePlan}
+            data-testid="weather-text-guests"
+            style={{ ...s.btn('primary'), padding: '7px 14px', fontSize: T.secondary, fontWeight: FW.semibold, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+          >
+            Text guests the plan →
+          </button>
+          {shareStatus && <span style={{ marginLeft: 10, fontSize: T.caption, color: C.muted }}>{shareStatus}</span>}
         </div>
       )}
     </div>
@@ -34543,6 +34619,83 @@ function EventDayBar({ event, alerts, dismissed, onDismiss, onNavTo, bp }) {
         >
           Collapse alerts
         </button>
+      )}
+    </div>
+  );
+}
+
+// ─── HostDaySeverityStack ────────────────────────────────────────────────────
+// Sprint 64 (Figma B2 1558:49). The HOST day-of severity surface: a CALM 3-tier
+// CARD STACK, not the planner's dense clock-strip. Each alert is a card with a
+// colored left rail + dot + tier eyebrow + bold headline + a quieter "→ your
+// move" action line. Escalation = REDUCTION: critical reads loud (red rail),
+// warning steady (amber), heads-up whispers (steel). Closes with "Everything
+// else is on track." when nothing is critical. Host-gated by the caller
+// (hostNavActive) — the planner never sees this; it keeps EventDayBar.
+function HostDaySeverityStack({ alerts, dismissed, onDismiss, onNavTo, isMobile }) {
+  const C = useT();
+  const T = useType();
+  const visible = (alerts || []).filter(a => !dismissed.has(a.id));
+  // Tier order: critical first, then warning, then the calm heads-up tier.
+  const rank = { critical: 0, warning: 1, 'heads-up': 2 };
+  const ordered = [...visible].sort((a, b) => (rank[a.tier] ?? 3) - (rank[b.tier] ?? 3));
+  const hasCritical = ordered.some(a => a.tier === 'critical');
+
+  const tierCfg = (tier) => {
+    if (tier === 'critical') return { rail: C.danger, eyebrow: 'CRITICAL · NEEDS YOU', wash: C.danger + '12' };
+    if (tier === 'warning')  return { rail: C.warn,   eyebrow: 'WARNING',            wash: 'transparent' };
+    return { rail: C.muted, eyebrow: 'HEADS-UP', wash: 'transparent' };
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: isMobile ? '14px 16px 4px' : '16px 28px 6px' }}>
+      {ordered.map((a) => {
+        const cfg = tierCfg(a.tier);
+        return (
+          <div key={a.id} style={{
+            position: 'relative',
+            background: cfg.wash !== 'transparent' ? cfg.wash : C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            padding: isMobile ? '14px 16px 14px 18px' : '16px 18px 16px 20px',
+            overflow: 'hidden',
+          }}>
+            {/* colored left rail */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: cfg.rail, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {/* dot + tier eyebrow */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.rail, flexShrink: 0 }} />
+                  <span style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: cfg.rail }}>{cfg.eyebrow}</span>
+                </div>
+                {/* bold headline */}
+                <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, marginBottom: a.move ? 6 : 0 }}>{a.headline}</div>
+                {/* quieter "→ your move" action line */}
+                {a.move && (
+                  <button
+                    onClick={() => a.navTo && onNavTo && onNavTo(a.navTo)}
+                    disabled={!a.navTo}
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: a.navTo ? 'pointer' : 'default', fontFamily: 'inherit', width: '100%' }}
+                  >
+                    <span aria-hidden style={{ color: cfg.rail, flexShrink: 0, fontWeight: FW.bold }}>→</span>
+                    <span style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.45 }}>{a.move}</span>
+                  </button>
+                )}
+              </div>
+              <button onClick={() => onDismiss(a.id)} aria-label="Dismiss" style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="x" size={13} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      {/* Closing reassurance — only when nothing critical is on the board. */}
+      {!hasCritical && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 2px 6px' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.success, flexShrink: 0 }} />
+          <span style={{ fontSize: T.secondary, color: C.muted }}>Everything else is on track.</span>
+        </div>
       )}
     </div>
   );
@@ -39859,8 +40012,19 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {/* Weather risk alert — outdoor events within 14 days */}
       {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t) => handleTabChange(t)} />}
 
-      {/* Event Day Bar — live execution strip */}
-      {dayMode && (
+      {/* Day-of severity surface. Host (hostNavActive/recordKind=event): the calm
+          3-tier CARD STACK (Figma B2 1558:49) — colored left rails, "→ your move"
+          lines, "Everything else is on track." footer; red reserved for the genuine
+          critical P1. Planner: the dense live clock-strip (EventDayBar) is unchanged. */}
+      {dayMode && (isHostEvt ? (
+        <HostDaySeverityStack
+          alerts={dayAlerts}
+          dismissed={alertsDismissed}
+          onDismiss={dismissAlert}
+          onNavTo={(tabId) => handleTabChange(tabId)}
+          isMobile={isMobile}
+        />
+      ) : (
         <EventDayBar
           event={event}
           alerts={dayAlerts}
@@ -39869,7 +40033,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           onNavTo={(tabId) => handleTabChange(tabId)}
           bp={bp}
         />
-      )}
+      ))}
 
       {(() => {
         // Sprint 59F: Communication rail policy. Only on desktop (≥1280),
