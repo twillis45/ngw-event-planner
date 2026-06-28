@@ -27185,9 +27185,15 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true }) {
       </div>
       <div style={rule} />
 
-      {/* Identity dome — the protagonist; resolves in on mount */}
+      {/* Identity mark — the protagonist; resolves in on mount. SACRED marks (e.g.
+          Juneteenth's star+nova+horizon) are struck CLEANLY as a SacredMark — never
+          buried in the glossy decorative dome (matches the invite cover's rule). */}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40, ...(reveal ? { animation: `ceMarkResolve 420ms ${CE_EASE} both` } : {}) }}>
-        <InviteDome icon={ident.icon} hue={hue} size={108} />
+        {ident.sacred
+          ? <SacredMark icon={ident.icon} hue={hue} size={120} />
+          : ident.mark === 'quiet'
+            ? <span style={{ color: C.muted, display: 'inline-flex' }}><Icon name={ident.icon} size={48} stroke={1.5} /></span>
+            : <InviteDome icon={ident.icon} hue={hue} size={108} />}
       </div>
 
       {/* Title block */}
