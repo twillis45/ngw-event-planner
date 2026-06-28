@@ -15673,6 +15673,121 @@ function getStudioSetup(profile) {
   };
 }
 
+// ─── HostSettings — the host's own settings screen (Figma 1631:299) ───────────────
+// Hosts get a calm, full-screen settings surface — NOT the planner's CRM hub
+// (ProfileModal, with payments/DocuSign/logo/client-safe). Five sections, all real:
+// YOU (name) · YOUR AREA (metro → prices/weather) · NOTIFICATIONS (stored prefs) ·
+// ACCOUNT (email + sign out) · DEMO (sample-data note). Reached from the Home ⚙.
+function HostSettings({ profile, onChange, onClose, events = [], onClearSample }) {
+  const C = useT();
+  const T = useType();
+  const auth = useContext(AuthCtx);
+  const [areaOpen, setAreaOpen] = useState(false);
+  const initials = (profile?.name || 'You').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'Y';
+  const email = auth?.user?.email || profile?.email || '';
+  const areaLabel = (METRO_MARKETS.find(m => m.id === profile?.metroMarket) || {}).label || 'Not set';
+  const hasSample = (events || []).some(e => SEED_EVENT_IDS.has(e.id));
+  // Notification PREFERENCES (persisted on the profile). Honest: a stored choice the
+  // app honors when delivery exists — never a claim that a message was sent. Figma
+  // defaults: RSVP updates off, Day-of reminders on.
+  const notifyRsvp  = profile?.notifyRsvp  === undefined ? false : !!profile.notifyRsvp;
+  const notifyDayOf = profile?.notifyDayOf === undefined ? true  : !!profile.notifyDayOf;
+
+  const eyebrow = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 12 };
+  const sectionWrap = { padding: '22px 0', borderTop: `1px solid ${C.border}` };
+  const Toggle = ({ on, onTap, label }) => (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onTap}
+      style={{ width: 50, height: 30, flexShrink: 0, borderRadius: 99, border: 'none', cursor: 'pointer', padding: 3,
+        background: on ? (C.steel?.blue500 || C.accent) : (C.surface2 || C.border),
+        display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start', alignItems: 'center',
+        transition: transitionFor('press', ['background', 'justify-content']) }}>
+      <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }} />
+    </button>
+  );
+  const notifRow = (label, on, onTap) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '10px 0' }}>
+      <span style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{label}</span>
+      <Toggle on={on} onTap={onTap} label={label} />
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: C.bgGrad || C.bg, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 20px calc(40px + env(safe-area-inset-bottom))', boxSizing: 'border-box' }}>
+        {/* Header — ‹ Settings */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 0 12px', position: 'sticky', top: 0, background: C.bgGrad || C.bg, zIndex: 1 }}>
+          <button onClick={onClose} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted, lineHeight: 1, padding: 0 }}>‹</button>
+          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>Settings</div>
+        </div>
+
+        {/* YOU — name */}
+        <div style={{ padding: '14px 0 22px' }}>
+          <div style={eyebrow}>You</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span aria-hidden style={{ width: 48, height: 48, borderRadius: '50%', flexShrink: 0, background: C.surface2 || C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{initials}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <input value={profile?.name || ''} onChange={(e) => onChange('name', e.target.value)} placeholder="Your name"
+                style={{ width: '100%', boxSizing: 'border-box', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, outline: 'none', color: C.text, fontSize: T.title, fontWeight: FW.semibold, fontFamily: 'inherit', padding: '2px 0 6px' }} />
+              <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6 }}>Your name</div>
+            </div>
+          </div>
+        </div>
+
+        {/* YOUR AREA — metro market */}
+        <div style={sectionWrap}>
+          <div style={eyebrow}>Your area</div>
+          <button type="button" onClick={() => setAreaOpen(o => !o)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: T.title, fontWeight: FW.semibold, color: C.text }}>{areaLabel}</span>
+              <span aria-hidden style={{ color: C.muted, fontSize: T.body }}>{areaOpen ? '⌃' : '⌄'}</span>
+            </div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4 }}>Sets local prices and weather.</div>
+          </button>
+          {areaOpen && (
+            <select value={profile?.metroMarket || ''} onChange={(e) => { onChange('metroMarket', e.target.value); setAreaOpen(false); }}
+              style={{ marginTop: 12, width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontSize: T.body, fontFamily: 'inherit', outline: 'none' }}>
+              <option value="">Select your city…</option>
+              {METRO_MARKETS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          )}
+        </div>
+
+        {/* NOTIFICATIONS — stored preferences */}
+        <div style={sectionWrap}>
+          <div style={eyebrow}>Notifications</div>
+          {notifRow('RSVP updates',    notifyRsvp,  () => onChange('notifyRsvp',  !notifyRsvp))}
+          {notifRow('Day-of reminders', notifyDayOf, () => onChange('notifyDayOf', !notifyDayOf))}
+        </div>
+
+        {/* ACCOUNT — email (read-only) + sign out */}
+        <div style={sectionWrap}>
+          <div style={eyebrow}>Account</div>
+          {email
+            ? <><div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{email}</div>
+                <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Read-only</div></>
+            : <div style={{ fontSize: T.secondary, color: C.muted }}>Not signed in.</div>}
+          {auth?.signOut && (
+            <button type="button" onClick={() => { if (window.confirm('Sign out of Event Boss?')) { auth.signOut(); onClose(); } }}
+              style={{ marginTop: 16, width: '100%', minHeight: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
+          )}
+        </div>
+
+        {/* DEMO — sample-data note */}
+        {hasSample && (
+          <div style={sectionWrap}>
+            <div style={eyebrow}>Demo</div>
+            <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>This is a sample event.</div>
+            {onClearSample && (
+              <button type="button" onClick={onClearSample}
+                style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.steel?.blue400 || C.accent }}>Clear the sample data →</button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], onLoadSample, onClearSample, onOpenSample }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
@@ -42163,11 +42278,15 @@ export default function App() {
       )}
       {showNew        && <NewEventModal  onClose={() => setShowNew(false)}       onCreate={createEvent}  onOpenEvent={(id, opts) => { setActiveId(id); if (opts?.tab) setInitialNav({ tab: opts.tab }); }} onOpenAddClient={() => { setShowNew(false); setShowNewClient(true); }} clients={clients} profile={profile} />}
       {showNewClient  && <NewClientModal onClose={() => setShowNewClient(false)} onCreate={createClient} events={events} profile={profile} />}
-      {showProfile && <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events}
+      {/* Hosts get the calm HostSettings screen (Figma 1631:299); planners keep the
+          full CRM ProfileModal. Same Home ⚙ entry, persona-correct surface. */}
+      {showProfile && (accountTypeOf(profile, clients) === 'host'
+        ? <HostSettings profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} events={events} onClearSample={clearSampleData} />
+        : <ProfileModal profile={profile} onClose={() => setShowProfile(false)} onChange={updateProfile} onOpenMembers={() => setShowMembers(true)} events={events}
         onLoadSample={loadSampleData}
         onClearSample={clearSampleData}
         onOpenSample={() => { const sm = events.find(e => SEED_EVENT_IDS.has(e.id)); setShowProfile(false); if (sm) { setInitialNav({ tab: 'Command' }); setActiveId(sm.id); } }}
-      />}
+      />)}
       {showMembers && <MembersModal currentUserId={undefined} onClose={() => setShowMembers(false)} />}
       {/* Global floating compose — accessible from every screen. Sprint 60:
           onOpenConnections gives the in-compose delivery hint a route to
