@@ -14,6 +14,7 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
+import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape } from './glassIcons';
@@ -21532,6 +21533,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           const base = effectiveRos(ev) || [];
           const next = base.map(r => r.id === theOne.cue.id ? { ...r, done: true } : { ...r });
           onPatchEvent(ev.id, { ros: next });
+          feedbackSeal(); // the one thing today, done — the heaviest moment earns the seal
         } catch {}
       } else if (na) {
         // A next-action: route into its destination (the engine's existing nav). fromAction
@@ -21545,7 +21547,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
     const oneIsGuests = !!na && /guest/i.test(na.title || '') && theOne && theOne.kind === 'na';
     const lockFocusHeadcount = () => {
       const n = Math.max(0, Math.round(Number(focusHc) || 0));
-      if (n > 0 && onPatchEvent) onPatchEvent(ev.id, { guestMode: 'count', guestCount: n, guestEstimate: n });
+      if (n > 0 && onPatchEvent) { onPatchEvent(ev.id, { guestMode: 'count', guestCount: n, guestEstimate: n }); feedbackLock(); }
     };
 
     // Tokens (Studio Matte — steel, never amber/gold for the action).
@@ -25586,13 +25588,13 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
             <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0" enterKeyHint="done"
               value={budgetDraft}
               onChange={(e) => setBudgetDraft(e.target.value)}
-              onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) setBudgetSet(true); }}
+              onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) { setBudgetSet(true); feedbackBudget(); } }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
               style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.title, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
           </span>
           {/* Board #10 — an explicit confirm so a host on a phone (no keyboard "Done")
               never types a number, scrolls away, and loses it to commit-on-blur only. */}
-          <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); }}
+          <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); if (Number(budgetDraft) > 0) feedbackBudget(); }}
             style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
           {Number(budgetDraft) > 0 && (() => {
             // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
@@ -29447,7 +29449,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
   const [copied,     setCopied]   = useState(false);
   // Single source for locking a headcount — used by BOTH the planner count field and the
   // host headcount panel. Sets the number, count mode, and the locked decision.
-  const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (guests.length > 0) setShowList(true); } };
+  const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (guests.length > 0) setShowList(true); feedbackLock(); } };
   // Soft-persist: a host who types a headcount but leaves the stepper BEFORE locking
   // shouldn't lose it. On blur we keep the number (as an estimate — NOT a locked count,
   // so guestMode stays untouched and nothing claims "locked"), so it's still there when
@@ -40041,6 +40043,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       if (na && na.title) {
         const dest = na.route && na.route.tab ? na.route.tab : null;
         setAdvanceCue({ title: na.title, tab: dest });
+        feedbackAdvance();
         if (dest) handleTabChange(dest, null, na.route.focusField ? { focusField: na.route.focusField } : undefined);
       } else {
         // Nothing left to route to — the foundation is complete. Affirm it, don't nav.

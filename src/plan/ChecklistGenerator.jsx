@@ -19,6 +19,7 @@ import {
 // state (effectiveDone) vanishes WITHOUT the host ticking anything. The manual checkbox
 // still works (it sets `done`, which effectiveDone honors). Planner behavior unchanged.
 import { effectiveDone } from '../lib/taskEngine';
+import { feedbackCommit } from '../lib/feedback';
 
 const P = {
   canvas: color.surface.canvas, base: color.surface.base, card: color.surface.card,
@@ -268,6 +269,7 @@ export default function ChecklistGenerator({
   if (ownerFilter) tabTasks = tabTasks.filter(t => t.owner === ownerFilter);
 
   const handleToggle = id => {
+    feedbackCommit(); // item checked — a physical acknowledgement
     if (onToggleTask) {
       // Sprint 49: persist through host
       onToggleTask(id);
