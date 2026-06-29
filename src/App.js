@@ -30189,14 +30189,23 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             </div>
           )}
         </div>
-        {/* The count option is always reachable from the roster — a host who never chose
-            "just a headcount" can switch to it here, not only from the empty state. */}
-        {guestsIsHost && guests.length > 0 && (
-          <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
-            style={{ display: 'block', background: 'none', border: 'none', padding: '0 0 12px', margin: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.steel?.blue400 || C.accent, textAlign: 'left' }}>
-            Rather just track a headcount? →
-          </button>
-        )}
+        {/* Headcount option — prominent + WORKING for hosts: set a number instead of a
+            roster (writes guestCount + count mode directly; the prior link was a no-op
+            because the count VIEW is planner-only). Always available on the host Guests tab. */}
+        {guestsIsHost && (() => {
+          const lockHc = () => { const n = Math.max(0, Math.round(Number(hcDraft) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); } };
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 14, borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface2 || C.surface || C.bg, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>Just need a headcount?</span>
+              <input type="number" inputMode="numeric" min="0" value={hcDraft} onChange={e => setHcDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lockHc(); e.currentTarget.blur(); } }}
+                placeholder={String(yes || guests.length || 0)}
+                style={{ width: 72, background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, color: C.text, fontSize: T.body, fontWeight: FW.heavy, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
+              <button type="button" className="ce-press" onClick={lockHc}
+                style={{ minHeight: 40, padding: '0 16px', borderRadius: 10, border: 'none', background: C.accent, color: '#fff', fontSize: T.secondary, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Lock it</button>
+            </div>
+          );
+        })()}
         {importMsg && (
           <div style={{ fontSize: T.caption, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
             {importMsg.text}
@@ -30242,12 +30251,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
               secondaryCta="Import a CSV"
               onSecondary={() => setShowImport(true)}
             />
-            {/* Not everyone tracks names — a host who just wants a headcount shouldn't be
-                forced into the roster. Drop back to the calm count field. */}
-            <button type="button" onClick={() => { setShowList(false); setGuestMode('count'); }}
-              style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: 12, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.steel?.blue400 || C.accent }}>
-              Don’t have names yet? Just track a headcount →
-            </button>
+            {/* The headcount option lives in the prominent panel above (works for hosts) —
+                no dead "switch to count view" link here (that view is planner-only). */}
           </div>
         )}
         {guests.length > 0 && ((bp === 'mobile' || bp === 'tablet' || guestsIsHost) ? (
