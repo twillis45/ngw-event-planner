@@ -53,7 +53,31 @@ export function hostShellOn() {
       if (v === '0') return false;
     }
   } catch (e) { /* storage blocked */ }
-  return (typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_SHELL === 'true');
+  // Promoted to default ON (host events route through HostEventShell over the shared
+  // core). QA off: ?shell=0 / localStorage 'ngw-pi-shell'='0' / REACT_APP_PI_SHELL='false'.
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_SHELL === 'false');
+}
+
+// pi.planv2 (default OFF) — the recomposed host Plan tab: ONE command lead, the
+// prerequisite (decisions/count) before the food it sizes, and the planner ops console
+// (EventPlanningTab) shed from the host per the Ruthless Host Lens. Enable: ?pi=planv2 /
+// localStorage 'ngw-pi-planv2'='1' / REACT_APP_PI_PLANV2='true'. OFF ⇒ today's stack.
+export function planV2On() {
+  try {
+    if (typeof window !== 'undefined') {
+      const q = window.location.search || '';
+      if (/[?&]pi=planv2\b/.test(q)) return true;
+      if (/[?&]pi-off=planv2\b/.test(q)) return false;
+    }
+    if (typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem('ngw-pi-planv2');
+      if (v === '1') return true;
+      if (v === '0') return false;
+    }
+  } catch (e) { /* storage blocked */ }
+  // Promoted to default ON (the recomposed host Plan tab). QA off: ?pi-off=planv2 /
+  // localStorage 'ngw-pi-planv2'='0' / REACT_APP_PI_PLANV2='false'.
+  return !(typeof process !== 'undefined' && process.env && process.env.REACT_APP_PI_PLANV2 === 'false');
 }
 
 // Always-shown host essentials (route keys). Decisions/Client Intake/Crew/Seating/

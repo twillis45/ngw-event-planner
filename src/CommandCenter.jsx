@@ -1285,7 +1285,7 @@ function _eventFoundationActions(event) {
     {
       id: 'guests', domain: 'guests', title: 'Add your guest list.',
       consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
-      cta: 'Add guests', route: { tab: 'Guests' },
+      cta: 'Add guests', route: { tab: 'Guests', focusField: 'guests-entry' },
       done: hasGuestSignal,
       handledFact: hasGuestSignal
         ? `${guests.filter(g => g && g.rsvp === 'Yes').length || Number(event.guestCount) || Number(event.guestEstimate) || guests.length} guests`
@@ -1493,7 +1493,9 @@ function _selectEventNextActionInner(event) {
       title: 'Add your guest list.',
       consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
       primaryCta: 'Add guests',
-      primaryRoute: { tab: 'Guests' },
+      // focusField 'guests-entry' lands the host ON the count entry in FOCUS MODE
+      // (rest of the Guests tab dimmed) so they just enter the value.
+      primaryRoute: { tab: 'Guests', focusField: 'guests-entry' },
       contextLine: daysSub,
     };
   }
@@ -1820,7 +1822,9 @@ function _selectEventNextActionInner(event) {
       title: 'Start here — add who’s coming.',
       consequence: 'Your guest count is the first domino: it drives the budget, the food, and the timeline.',
       primaryCta: 'Add guests',
-      primaryRoute: { tab: 'Guests' },
+      // focusField 'guests-entry' lands the host ON the count entry in FOCUS MODE
+      // (rest of the Guests tab dimmed) so they just enter the value.
+      primaryRoute: { tab: 'Guests', focusField: 'guests-entry' },
       contextLine: daysSub,
     };
   }
@@ -1861,7 +1865,7 @@ function _selectEventNextActionInner(event) {
     consequence: days !== null && days >= 0 && days <= 30
       ? 'A readiness sweep this close to event day usually surfaces what was about to slip.'
       : 'Use the quiet window to push timeline + vendor commitments forward of schedule.',
-    primaryCta: 'Review readiness',
+    primaryCta: 'Review the timeline',
     primaryRoute: { tab: 'Timeline' },
     contextLine: daysSub,
   };

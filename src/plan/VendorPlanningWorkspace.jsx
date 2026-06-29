@@ -44,6 +44,7 @@ import {
   getHighestRiskVendor,
   getVendorPortfolioSummary,
   getActionableNextStep,
+  getVendorCOIState,
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
@@ -179,6 +180,33 @@ function hostStageWord(stage, vendor) {
   if (stage === 'Event Day') return 'Event day';
   return hostStatusWord(vendor && vendor.status);
 }
+// "14:00" → "2:00pm" (calm 12-hour, no leading zero). Returns the input on no match.
+function hostTime12(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '').trim());
+  if (!m) return t;
+  let h = +m[1]; const mm = m[2]; const ap = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return mm === '00' ? `${h}${ap}` : `${h}:${mm}${ap}`;
+}
+// The one-line host status for a vendor row ("Booked · arrives 2:00pm", "Got a
+// price · needs insurance", "Still deciding"). Honest: the insurance gate is read
+// from the SAME getVendorCOIState the cockpit uses; arrival from vendor.arrivalTime.
+// Frame 1728 — the host scans the list and knows where each person stands.
+function hostStatusLine(vendor, event, flagCoi = false) {
+  const base = hostStatusWord(vendor && vendor.status);
+  // The insurance flag is surfaced on ONE row only (the hero's vendor) so the list stays
+  // calm — every COI-required CATEGORY would otherwise read "needs insurance" by default
+  // and flood the list (Attention System: one concern, not five). `flagCoi` is set by the
+  // parent only for the single most-pressing COI vendor.
+  if (flagCoi) {
+    let coi = null;
+    try { coi = getVendorCOIState(vendor, event); } catch { coi = null; }
+    if (coi && coi.required && coi.level !== 'safe') return `${base} · needs insurance`;
+  }
+  if (base === 'Booked') return vendor && vendor.arrivalTime ? `${base} · arrives ${hostTime12(vendor.arrivalTime)}` : `${base} · sorted`;
+  if (base === 'Got a price') return `${base} · not confirmed yet`;
+  return base; // Still deciding
+}
 // Accountability tier → host phrase. The planner's compliance vocabulary
 // ("Missed promise", "Needs proof", "At risk") frames a friend you hired as a
 // delinquent contractor. Hosts get the same SIGNAL in plain, calm words.
@@ -198,12 +226,14 @@ function hostTierLabel(tier) {
 // sm/99/999) reading as inconsistency. Every status pill — readiness level,
 // accountability tier, lock-in rung, promise status — now spreads this so they
 // read as one system. `c` is the semantic color (green/amber/red/steel).
+// Figma badge spec (1583-3 / 1728-3): 9px Semi-Bold, OUTLINE (transparent bg, full-color
+// 1px border), tracking 0.5px, radius 5 — not the old filled pill. One style, every chip.
 const statusChip = (c) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5,
-  fontSize: type.size['xs'], fontWeight: 800, letterSpacing: '0.08em',
+  fontSize: type.size['2xs'], fontWeight: 600, letterSpacing: '0.5px',
   textTransform: 'uppercase', whiteSpace: 'nowrap', lineHeight: 1.3,
-  color: c, background: `${c}1a`, border: `1px solid ${c}4d`,
-  borderRadius: 999, padding: '2px 8px', fontFamily: FF,
+  color: c, background: 'transparent', border: `1px solid ${c}`,
+  borderRadius: 6, padding: '2px 8px', fontFamily: FF,
 });
 
 // Board re-audit: the detail's reference sections group under 4 plain-language
@@ -489,14 +519,27 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   const host = isHostView(event);
   if (!vendors || vendors.length === 0) return null;
 
-  // UX-SAAS: hosts get warmer count words ("needs attention", not "critical").
-  const segs = [
-    summary.safe ? { level: 'safe', n: summary.safe, label: 'on track' } : null,
-    summary.attention ? { level: 'attention', n: summary.attention, label: host ? 'to follow up on' : 'need follow-up' } : null,
-    summary.critical ? { level: 'critical', n: summary.critical, label: host ? 'needs attention' : 'critical' } : null,
-    summary.notStarted ? { level: 'not_started', n: summary.notStarted, label: host ? 'not started yet' : 'not started' } : null,
-    summary.closed ? { level: 'closed', n: summary.closed, label: host ? 'all done' : 'closed' } : null,
-  ].filter(Boolean);
+  // Host (Figma 1728-3): speak in the host's terms — "N booked · M to follow up" — not
+  // the planner's readiness words. Booked = a real status word; to-follow-up = anything
+  // still needing the host (attention + critical). Planner keeps the readiness breakdown.
+  const segs = host
+    ? (() => {
+        const bookedN = (vendors || []).filter((v) => hostStatusWord(v && v.status) === 'Booked').length;
+        // "To follow up" = the people not yet booked (got-a-price / still-deciding) — a real,
+        // calm count of what needs a host decision, not the planner's COI-inflated readiness.
+        const followN = (vendors || []).filter((v) => hostStatusWord(v && v.status) !== 'Booked').length;
+        return [
+          bookedN ? { level: 'safe', n: bookedN, label: 'booked' } : null,
+          followN ? { level: 'attention', n: followN, label: 'to follow up' } : null,
+        ].filter(Boolean);
+      })()
+    : [
+        summary.safe ? { level: 'safe', n: summary.safe, label: 'on track' } : null,
+        summary.attention ? { level: 'attention', n: summary.attention, label: 'need follow-up' } : null,
+        summary.critical ? { level: 'critical', n: summary.critical, label: 'critical' } : null,
+        summary.notStarted ? { level: 'not_started', n: summary.notStarted, label: 'not started' } : null,
+        summary.closed ? { level: 'closed', n: summary.closed, label: 'closed' } : null,
+      ].filter(Boolean);
 
   // Quiet conflict flag — top conflict only; click routes to the affected
   // vendor and centers its action card (handleSelect owns the focus).
@@ -598,7 +641,7 @@ function getVendorLastContacted(vendor, event) {
   return daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
 }
 
-function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSelected, onSelect }) {
+function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSelected, onSelect, coiHeroId = null }) {
   // Sprint 61.B — Accountability tier is now the primary signal. Readiness
   // stays as a secondary chip so the existing vendor-cockpit semantics still
   // flow through. If the parent doesn't pass an accountability prop, we
@@ -607,17 +650,23 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
   const acc = accountability || useMemo(() => quickAccountabilityForVendor(vendor, event), [vendor, event]); // eslint-disable-line react-hooks/rules-of-hooks
 
   const host = isHostView(event);
+  // Host: exactly ONE row wears the insurance flag — the insurance-hero's vendor (coiHeroId).
+  // Every other host row reads calm from its STATUS word, never the planner's COI-by-category
+  // criticality (which lit up every caterer/rental and flooded the list — Figma 1728-3 shows
+  // one flagged vendor, the rest quiet).
+  const isCoiHero = !!(host && coiHeroId && vendor.id === coiHeroId);
+  const hostWord = hostStatusWord(vendor && vendor.status);
+  const hostDot = hostWord === 'Booked' ? 'safe' : hostWord === 'Got a price' ? 'attention' : 'not_started';
+  const dotLevel = isCoiHero ? 'critical' : (host ? hostDot : readiness.level);
   const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
   const tierLabel = host ? hostTierLabel(acc.tier) : accountabilityLabel(acc.tier);
   const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
-  // The chip is reserved for the EXCEPTION — a genuinely critical vendor (red
-  // readiness) or a broken/at-risk promise. Routine follow-up rows ride on the
-  // colored dot alone, so the list reads "quiet, quiet, THIS" instead of five
-  // identical pills. A critical vendor is labelled by its real state.
+  // The chip is reserved for the EXCEPTION. Host: only the insurance-hero row gets "Needs
+  // you"; the rest stay calm. Planner: keeps the readiness/accountability chip.
   const isCritical = readiness.level === 'critical';
-  const showChip = isCritical || emphasis;
-  const chipColor = isCritical ? P.red : tierColor;
-  const chipLabel = isCritical ? (host ? 'Needs you' : 'Critical') : tierLabel;
+  const showChip = host ? isCoiHero : (isCritical || emphasis);
+  const chipColor = host ? P.red : (isCritical ? P.red : tierColor);
+  const chipLabel = host ? 'Needs you' : (isCritical ? 'Critical' : tierLabel);
   const leftStrip = isSelected ? P.steelBlue
     : emphasis ? P.red
     : acc.tier === 'needs_follow_up' ? P.amber
@@ -643,20 +692,27 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
         fontFamily: FF,
       }}
     >
-      <StatusDot level={readiness.level} size={8} />
+      <StatusDot level={dotLevel} size={8} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: type.size['lg'], fontWeight: type.weight.semibold,
-          color: P.textPrimary,
+          color: P.textPrimary, display: 'flex', alignItems: 'baseline', gap: 8,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {vendor.name || vendor.vendor_name || 'Unnamed Vendor'}
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{vendor.name || vendor.vendor_name || 'Unnamed Vendor'}</span>
+          {/* Host: the role tag rides next to the name (frame 1728) so line 2 can carry
+              the live status. Planner keeps category as its own line below. */}
+          {host && (vendor.category || vendor.type) && (
+            <span style={{ flexShrink: 0, fontSize: type.size['xs'], fontWeight: type.weight.semibold, color: P.textTertiary, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {vendor.category || vendor.type}
+            </span>
+          )}
         </div>
         <div style={{
           fontSize: type.size['sm'], color: P.textTertiary, marginTop: 2,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {vendor.category || vendor.type || '—'}
+          {host ? hostStatusLine(vendor, event, isCoiHero) : (vendor.category || vendor.type || '—')}
         </div>
         {/* Sprint 58C — Decision Memory expression: surface the captured "why this
             vendor" back where the planner sees the vendor. */}
@@ -690,6 +746,8 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
           {chipLabel}
         </span>
       )}
+      {/* Host: a quiet chevron signals each row opens the person's detail (frame 1728). */}
+      {host && <span aria-hidden style={{ flexShrink: 0, color: P.textTertiary, fontSize: type.size['lg'], opacity: 0.7, marginLeft: 2 }}>›</span>}
     </button>
   );
 }
@@ -722,7 +780,7 @@ const FILTERS = [
   { key: 'all',       label: 'All' },
 ];
 
-function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, onFilter, onAdd }) {
+function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, onFilter, onAdd, coiHeroId = null }) {
   const [filter, setFilter] = useState('attention');
   const [tagFilter, setTagFilter] = useState(null); // attribute-tag filter
 
@@ -916,6 +974,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
                 nextAction={x.next}
                 isSelected={selected?.id === x.v.id || (selected && !x.v.id && selected.name === x.v.name)}
                 onSelect={onSelect}
+                coiHeroId={coiHeroId}
               />
             ))}
           </>
@@ -3754,6 +3813,55 @@ export default function VendorPlanningWorkspace({
     [event, vendors]
   );
 
+  // Host NEEDS YOU insurance hero (frame 1728): the single most pressing COI gate.
+  // A missing certificate is the #1 reason a vendor gets turned away at load-in, so
+  // it earns a hero over the list. Honest: read from getVendorCOIState, only when a
+  // required COI is genuinely not-safe; critical outranks attention. Null otherwise.
+  const coiHero = useMemo(() => {
+    if (!isHostView(event)) return null;
+    let best = null;
+    for (const v of (vendors || [])) {
+      let coi = null;
+      try { coi = getVendorCOIState(v, event); } catch { coi = null; }
+      if (!coi || !coi.required || coi.level === 'safe') continue;
+      if (!best || (coi.level === 'critical' && best.coi.level !== 'critical')) best = { v, coi };
+    }
+    return best;
+  }, [vendors, event]);
+  const coiName = coiHero ? (coiHero.v.name || coiHero.v.vendor_name || 'your vendor') : '';
+  const coiHeroId = coiHero ? coiHero.v.id : null; // the ONE row that wears the insurance flag
+  // Frame 1728-3 phrasing: the TITLE reads by role ("Get the caterer's insurance") — far
+  // cleaner than a long business name — while the sub + button keep the name so the host
+  // knows exactly who to ask. Falls back to the name when the role isn't recognized.
+  const coiRole = (() => {
+    const c = String((coiHero && coiHero.v.category) || '').toLowerCase();
+    if (/cater/.test(c)) return 'caterer';
+    if (/dj|entertain|music|\bband\b/.test(c)) return 'DJ';
+    if (/floral|florist|flower/.test(c)) return 'florist';
+    if (/rental/.test(c)) return 'rental company';
+    if (/photo/.test(c)) return 'photographer';
+    if (/video/.test(c)) return 'videographer';
+    if (/cake|baker|pastry|dessert/.test(c)) return 'baker';
+    if (/bar|bartend/.test(c)) return 'bartender';
+    if (/venue|hall|space/.test(c)) return 'venue';
+    if (/transport|shuttle|limo|car/.test(c)) return 'transport company';
+    return null;
+  })();
+  const coiTitleWho = coiRole ? `the ${coiRole}` : coiName;
+  const InsuranceHero = coiHero ? (
+    <div style={{ flexShrink: 0, padding: '14px 16px', borderBottom: `1px solid ${P.borderSubtle}`, background: `${P.steelBlue}14` }}>
+      <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.steelBlue, fontFamily: FF }}>● Needs you</div>
+      <div style={{ fontSize: type.size['xl'], fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginTop: 4 }}>Get {coiTitleWho}’s insurance</div>
+      <div style={{ fontSize: type.size['sm'], color: P.textSecondary, fontFamily: FF, marginTop: 4, lineHeight: 1.45 }}>
+        The venue won’t let {coiName} load in without a certificate. Ask them to send it over.
+      </div>
+      <button type="button" onClick={() => handleSelect(coiHero.v, { kind: 'coi' })}
+        style={{ ...BTN_PRIMARY, marginTop: 12, minHeight: 40 }}>
+        Ask {coiName} for the certificate
+      </button>
+    </div>
+  ) : null;
+
   const initialSelected = useMemo(() => {
     if (openId) {
       const found = vendors.find(v => v.id === openId);
@@ -3864,7 +3972,11 @@ export default function VendorPlanningWorkspace({
       // the vendor detail couldn't scroll. Let it grow and the page handles scroll.
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {workspaceHeader}
-        <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
+        {mobileView === 'list' && InsuranceHero}
+        {/* One hero: when the insurance NEEDS YOU hero leads, the status bar recedes. */}
+        <div style={coiHero && mobileView === 'list' ? { opacity: 0.5 } : undefined}>
+          <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
+        </div>
         {mobileView === 'list' ? (
           <VendorList
             vendors={vendors}
@@ -3874,6 +3986,7 @@ export default function VendorPlanningWorkspace({
             allEvents={allEvents}
             isMobile
             onAdd={onAddVendor}
+            coiHeroId={coiHeroId}
           />
         ) : (
           <div ref={mobileDetailRef} style={{ display: 'flex', flexDirection: 'column', scrollMarginTop: 8 }}>
@@ -3923,7 +4036,11 @@ export default function VendorPlanningWorkspace({
       {/* One quiet status line (readiness stats + a conflict flag) — see
           VendorStatusBar. The risk-sorted list + default selection answer
           "where do I start", so there's no "Start with X" band. */}
-      <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
+      {InsuranceHero}
+      {/* One hero: when the insurance NEEDS YOU hero leads, the status bar recedes. */}
+      <div style={coiHero ? { opacity: 0.5 } : undefined}>
+        <VendorStatusBar vendors={vendors} event={event} conflicts={eventConflicts} onSelectVendor={handleSelect} />
+      </div>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <VendorList
           vendors={vendors}
@@ -3933,6 +4050,7 @@ export default function VendorPlanningWorkspace({
           allEvents={allEvents}
           isMobile={false}
           onAdd={onAddVendor}
+          coiHeroId={coiHeroId}
         />
         {selected ? (
           <VendorDetail

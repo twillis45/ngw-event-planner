@@ -13,8 +13,8 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks } from './lib/playbooks';
-import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit } from './lib/feedback';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative } from './lib/playbooks';
+import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape } from './glassIcons';
@@ -49,7 +49,7 @@ import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
 // Sprint UX-4 — Disclosure: dormant sections relocate to the host Upcoming Rail (reachable).
 import { upcomingRail } from './lib/disclosure';
-import { hostNav, hostNavActive, hostTabLabel, hostShellOn } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
+import { hostNav, hostNavActive, hostTabLabel, hostShellOn, planV2On } from './lib/presentationNav'; // Sprint 57E-A: host nav hide/reveal (pi.nav flag, presentation-only)
 // Sprint Profile Settings Review — Hybrid token strategy. New Studio Matte
 // source of truth lives in ./theme/palette.js. DARK references these tokens
 // so the shell has one source; legacy raw-hex callsites migrate as touched.
@@ -884,12 +884,22 @@ function GlobalStyles() {
       '.hp-recede { opacity: 0.5; transition: opacity 320ms ease; }',
       '.hp-recede:hover, .hp-recede:focus-within, .hp-recede:active { opacity: 1; }',
       '@media (hover: none) { .hp-recede { opacity: 0.6; } }',
+      // Focus mode (dim the room): a deeper dim than hp-recede, non-interactive, no
+      // brighten-on-hover — the spotlit hero is the only live thing on the screen.
+      '.hp-focus-dim { opacity: 0.16 !important; pointer-events: none; filter: saturate(0.6); transition: opacity 360ms ease; }',
       // hp-recede-group — one wrapper, every DIRECT child recedes independently and
       // un-dims when you reach for it. For surfaces with a stack of sections below a
       // single hero (Overview, planner cockpit) so the hero is the one bright thing.
       '.hp-recede-group > * { opacity: 0.5; transition: opacity 320ms ease; }',
       '.hp-recede-group > *:hover, .hp-recede-group > *:focus-within { opacity: 1; }',
       '@media (hover: none) { .hp-recede-group > * { opacity: 0.62; } }',
+      // pi.planv2 — host Plan tab two-column at desktop. Single column on mobile (the
+      // rail, in DOM first, leads = prerequisite-first). At ≥1024px: Food & supplies take
+      // the wide main column, decisions sit in a sticky right rail. Explicit grid placement
+      // (not DOM order) so mobile keeps prereq-first while desktop reads main-then-rail.
+      '.planv2-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }',
+      '.planv2-main > * { margin-bottom: 0; }',
+      '@media (min-width: 1024px) { .planv2-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } .planv2-main { grid-column: 1; grid-row: 1; } .planv2-rail { grid-column: 2; grid-row: 1; position: sticky; top: 16px; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
       '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
       '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',
@@ -1489,6 +1499,7 @@ const TYPE_SCALE = {
   secondary: { mobile: 14, desktop: 13 },  // supporting copy, row meta
   caption:   { mobile: 13, desktop: 12 },  // timestamps, small meta
   eyebrow:   { mobile: 12, desktop: 11 },  // uppercase labels (used sparingly)
+  micro:     { mobile: 9, desktop: 9 },     // 9px badge tier — mobile-flagship: matches the 390px frame's 9px item badges (TRADITION/DAY-OF)
 };
 // Module-level fallback for the type tokens (fixed = desktop values). Components shadow
 // this with `const T = useType()` (breakpoint-aware); module-scope style factories like
@@ -1498,7 +1509,7 @@ const TYPE_SCALE = {
 const T = {
   statXl: TYPE_SCALE.statXl.desktop, stat: TYPE_SCALE.stat.desktop, statSm: TYPE_SCALE.statSm.desktop,
   display: TYPE_SCALE.display.desktop, title: TYPE_SCALE.title.desktop, section: TYPE_SCALE.section.desktop, body: TYPE_SCALE.body.desktop,
-  secondary: TYPE_SCALE.secondary.desktop, caption: TYPE_SCALE.caption.desktop, eyebrow: TYPE_SCALE.eyebrow.desktop,
+  secondary: TYPE_SCALE.secondary.desktop, caption: TYPE_SCALE.caption.desktop, eyebrow: TYPE_SCALE.eyebrow.desktop, micro: TYPE_SCALE.micro.desktop,
 };
 // The ONE font-family token for App.js (the src/plan/* modules already use FF = type.family).
 // Set on the app root too, so most elements inherit and never need to declare it.
@@ -1514,7 +1525,7 @@ const useType = () => {
   return {
     statXl: TYPE_SCALE.statXl[k], stat: TYPE_SCALE.stat[k], statSm: TYPE_SCALE.statSm[k],
     display: TYPE_SCALE.display[k], title: TYPE_SCALE.title[k], section: TYPE_SCALE.section[k], body: TYPE_SCALE.body[k],
-    secondary: TYPE_SCALE.secondary[k], caption: TYPE_SCALE.caption[k], eyebrow: TYPE_SCALE.eyebrow[k],
+    secondary: TYPE_SCALE.secondary[k], caption: TYPE_SCALE.caption[k], eyebrow: TYPE_SCALE.eyebrow[k], micro: TYPE_SCALE.micro[k],
     w: FW, ff: FF,  // weight + family tokens, so T carries all three font properties
   };
 };
@@ -7553,7 +7564,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
         />
       )}
       {draftSheet && (
-        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems}
+        <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems} trackAs={draftSheet.trackAs} rsvpUrl={draftSheet.rsvpUrl}
           onClose={() => setDraftSheet(null)} C={C} isMobile={_vmMobile} />
       )}
     </>
@@ -9001,6 +9012,10 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
       </button>
       {!collapsed && (
       <>
+      {/* Frame 1559 — a green progress bar makes "almost there" felt, not just read. */}
+      <div style={{ height: 4, background: C.border, borderRadius: 99, overflow: 'hidden', marginTop: 10 }}>
+        <div style={{ height: '100%', width: `${Math.round((done / rc.items.length) * 100)}%`, background: C.success || C.accent, borderRadius: 99, transition: 'width 320ms cubic-bezier(0.2,0,0,1)' }} />
+      </div>
       <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>{focusMode ? 'One thing at a time — confirm this, then the next appears.' : 'Your day-of walkthrough — tap each as you confirm it.'}{rc.because ? ` These cover ${rc.because}.` : ' The things worth checking before guests arrive.'}</div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rc.items.map((p, i) => {
@@ -9016,6 +9031,8 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
                 <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
                 <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{p.detail}</span>
               </span>
+              {/* Frame 1559 — an explicit right-side status word: green "Done" or a quiet "Confirm". */}
+              <span style={{ flexShrink: 0, alignSelf: 'center', fontSize: T.caption, fontWeight: FW.bold, color: on ? (C.success || C.accent) : C.muted }}>{on ? 'Done' : 'Confirm'}</span>
             </button>
           );
         })}
@@ -9137,6 +9154,23 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
       {open && <div style={{ marginTop: 14, animation: `ceRise 260ms ${CE_EASE} both` }}>{children}</div>}
     </div>
   );
+}
+
+// storeSearchUrl(store, item, anchor) — where-to-shop link. A KNOWN retailer deep-links
+// to its product search (lands the host on CURRENT prices); a local/generic store
+// (butcher, grocery, farmers market, Black-owned market) falls back to a maps search.
+// Pure URL construction — no API, no keys.
+function storeSearchUrl(store, item, anchor) {
+  const s = String(store || '').toLowerCase();
+  const q = encodeURIComponent(String(item || '').replace(/\s*\([^)]*\)/g, '').split(/[/,]/)[0].trim() || store);
+  if (/costco/.test(s)) return `https://www.costco.com/CatalogSearch?keyword=${q}`;
+  if (/home ?depot/.test(s)) return `https://www.homedepot.com/s/${q}`;
+  if (/lowe/.test(s)) return `https://www.lowes.com/search?searchTerm=${q}`;
+  if (/amazon/.test(s)) return `https://www.amazon.com/s?k=${q}`;
+  if (/instacart/.test(s)) return `https://www.instacart.com/store/s?k=${q}`;
+  if (/walmart/.test(s)) return `https://www.walmart.com/search?q=${q}`;
+  if (/target/.test(s)) return `https://www.target.com/s?searchTerm=${q}`;
+  return `https://www.google.com/maps/search/${encodeURIComponent(anchor ? `${store} near ${anchor}` : store)}`;
 }
 
 // ── CapacityPanel — "Seating & supplies" → relocated to Plan (board ruling, 6/8).
@@ -9487,6 +9521,22 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const focusItemId = (focusId && typeof focusId === 'object') ? focusId.id : focusId;
   useEffect(() => {
     if (!focusItemId) return undefined;
+    // A deep-link from the Decisions panel targets a DECISION id (e.g. 'steam_vs_order'),
+    // not a food-line id — so open that CHOICE and scroll to it instead of hunting for a
+    // (nonexistent) spread row. This is what makes the Decisions rows actionable.
+    const isChoice = !!(plan && Array.isArray(plan.choices) && plan.choices.some((c) => c.id === focusItemId));
+    if (isChoice) {
+      setOpenChoice(focusItemId);
+      let ctries = 0;
+      const civ = setInterval(() => {
+        ctries += 1;
+        const el = document.getElementById(`fpchoice-${focusItemId}`);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(civ); }
+        else if (ctries > 14) clearInterval(civ);
+      }, 120);
+      const ct2 = setTimeout(() => { onFocusConsumed(); }, 3400);
+      return () => { clearInterval(civ); clearTimeout(ct2); };
+    }
     setForceSpreadOpen(true);
     setShowFullSpread(true);
     setHighlightId(focusItemId);
@@ -9503,7 +9553,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     return () => { clearInterval(iv); clearTimeout(t2); };
   }, [focusItemId, focusNonce]); // eslint-disable-line react-hooks/exhaustive-deps
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
+  const [dietOtherOpen, setDietOtherOpen] = useState(false); // "Other" custom-diet entry open
+  const [dietOtherName, setDietOtherName] = useState('');    // the custom diet being named
+  const [showMoreDiets, setShowMoreDiets] = useState(false); // expand the "+ N more" diet tail (1597-2)
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open
+  const [detailMore, setDetailMore] = useState(false); // sticky for the session: once the host opens "more options" on any item, every detail shows them
+  const [bulkPriced, setBulkPriced] = useState(null); // ids just locked by "price the rest at typical" — for one-tap undo
   const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
   const [shopSheet, setShopSheet] = useState(null); // "do it for me" — the shopping list draft
   // Funnel depth — the host opened their sized shopping/food plan (a value moment).
@@ -9524,6 +9579,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     const id = 'add-' + Date.now().toString(36);
     onPatch({ foodAdd: [...(event.foodAdd || []), { id, name, owner: addOwner.trim(), cost: Math.max(0, Number(addCost) || 0) }] });
     setAddName(''); setAddOwner(''); setAddCost(''); setAddOpen(false);
+    try { feedbackCommit(); } catch {} // a dish joined the plan (MEDIUM)
   };
   if (!plan) return null;
   const steel = C.accentTopGrad || C.accent;
@@ -9533,12 +9589,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const fpHue = steel; // no cultural/identity color in cards (user rule) — keep the mono icon, steel rule
   const warn = C.warn || steel;
   const money = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
-  const setChoice = (id, val) => onPatch({ foodChoices: { ...(event.foodChoices || {}), [id]: val } });
+  const setChoice = (id, val) => { onPatch({ foodChoices: { ...(event.foodChoices || {}), [id]: val } }); try { feedbackSelect(); } catch {} };
   // Hero preview — what the spread actually IS, at a glance (the essentials/mains).
   const _spreadActive = plan.list.filter((i) => !i.skipped);
   // The spread is complete once every (non-skipped) item is checked off as got — when it
   // flips complete, the card auto-collapses (settled-work exhale).
   const spreadComplete = _spreadActive.length > 0 && _spreadActive.every((i) => !!(event.foodGot || {})[i.id]);
+  // Would checking off item `id` complete the whole spread? (drives the success exhale,
+  // fired imperatively in the check-off handlers — no conditional hook after the early return).
+  const completesSpread = (id) => _spreadActive.length > 0 && _spreadActive.every((it) => it.id === id || !!(event.foodGot || {})[it.id]);
   const _heroItems = _spreadActive.filter((i) => i.essential);
   const heroNames = (_heroItems.length ? _heroItems : _spreadActive).slice(0, 6).map((i) => i.short || i.item);
   // "Where to shop near you" — turn the playbook's sourcing types (grocery, butcher,
@@ -9552,8 +9611,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     : (event.city && _shopState) ? (String(event.city).includes(',') ? event.city : `${event.city}, ${_shopState}`)
     : '';
   const shopAnchor = eventGeoQuery(event) || String(event.venue || '').trim();
-  const shopSources = shopAnchor ? [...new Set(_spreadActive.flatMap((i) => i.where || []))].filter(Boolean).slice(0, 8) : [];
-  const mapsUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(`${q} near ${shopAnchor}`)}`;
+  // Always offer the store links — a maps search works without a saved location (the map
+  // falls back to the device's location); only the "near {city}" refinement needs an anchor.
+  const shopSources = [...new Set(_spreadActive.flatMap((i) => i.where || []))].filter(Boolean).slice(0, 8);
+  const mapsUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(shopAnchor ? `${q} near ${shopAnchor}` : q)}`;
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 20, marginBottom: 16 };
 
   // "Do it for me" — the shopping list deliverable. Built here, but rendered AFTER
@@ -9563,16 +9624,20 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
     const shopAnchorStr = eventGeoQuery(event, profile);
     const left = shopItems.filter((i) => !i.got).length;
+    const openShop = () => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); };
     return (
-      <button type="button" onClick={() => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); }}
-        style={{ ...card, fontFamily: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, borderLeft: `3px solid ${steel}`, background: C.surface, display: 'block' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.01em' }}><Icon name="basket" size={16} stroke={1.9} /> Your shopping list — already written</div>
-          <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: steel, flexShrink: 0 }}>Open &amp; share →</span>
+      // Frame 1583-3: the finished list is a COLLAPSIBLE deliverable — recedes to a
+      // "X items · ready to send" header until the host opens it to order/review.
+      <CollapsibleCard id={`fp-shoplist-${event.id}`} isMobile={isMobile} defaultCollapsed accent={steel} style={{ borderLeft: `3px solid ${steel}` }}
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="basket" size={16} stroke={1.9} /> Your shopping list — already written</span>}
+        subtitle={left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab · ready to send` : 'Everything’s checked off — ready'}>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
+        {/* Frame 1583-3: two explicit actions — order it, or review the written list. */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <button type="button" onClick={openShop} style={{ flex: 1, minWidth: 160, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.heavy, color: '#eef0f4', background: 'linear-gradient(90deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '13px 16px', cursor: 'pointer' }}>Order on Instacart →</button>
+          <button type="button" onClick={openShop} style={{ flex: 1, minWidth: 160, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: C.text, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer' }}>Review the written shopping list</button>
         </div>
-        <div style={{ fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginTop: 4 }}>Ready to send</div>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
-      </button>
+      </CollapsibleCard>
     );
   })() : null;
 
@@ -9589,9 +9654,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
       )}
       {/* header + budget — collapsible (every planning card can fold to its header) */}
-      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} accent={fpHue} style={{ borderLeft: `3px solid ${fpHue}` }}
+      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} accent={fpHue} style={{ borderLeft: `3px solid ${fpHue}`, boxShadow: '0 12px 32px -10px rgba(0,0,0,0.55)' }}
         title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name={fpIdent.icon} size={16} stroke={1.9} /> Food plan</span>}
-        subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)}` : ''}`}>
+        subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)} · estimate` : ''}`}>
         {/* Hero stat — the number leads (Attention System): the $ range stands as the
             card's anchor instead of being buried mid-sentence. One stat, then the
             supporting line, then quiet captions — a real ladder, not a flat stack. */}
@@ -9600,83 +9665,117 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             — lead with the set-your-count prompt instead (the LIST below still shows). */}
         {fpHasCount ? (
           <>
+            {/* Per-guest LEADS (the figure a host actually reasons in), with the full
+                total as the supporting figure on the right. Both are real ranges off
+                foodLow/foodHigh, so per-guest × headcount ties back to the total. */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-              <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(plan.foodLow, plan.foodHigh)}</span>
-              <span style={{ fontSize: T.secondary, color: C.muted }}>food &amp; drinks</span>
+              <span style={{ fontSize: T.statSm, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{money(plan.perGuestLow || Math.round(plan.foodLow / plan.guests), plan.perGuestHigh || Math.round(plan.foodHigh / plan.guests))}</span>
+              <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.semibold }}>per guest</span>
+              <span style={{ fontSize: T.micro, color: C.muted, fontWeight: FW.semibold, letterSpacing: '0.04em', textTransform: 'uppercase' }}>estimate</span>
             </div>
-            {/* One supporting line — who it's for + the per-head basis (trust = seeing the math). */}
-            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
-              {fpBand.band ? `Plan for ${fpBandLabel} guests` : `For ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
-              {plan.guests > 0 && plan.foodHigh > 0 && <> · about <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(Math.round(plan.foodLow / plan.guests), Math.round(plan.foodHigh / plan.guests))} a head</span></>}
+            {/* who it's for + the safe-band marker (right). */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 7 }}>
+              <span style={{ fontSize: T.secondary, color: C.muted }}>
+                {fpBand.band ? `Plan for ${fpBandLabel} guests` : `Plan for ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
+              </span>
+              {fpBand.band && <span title={fpBand.basis === 'rsvp' ? 'The range to plan for — from those confirmed up to everyone who hasn’t declined' : 'The range to plan for — your headcount, give or take typical no-shows and plus-ones'} style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, background: 'rgba(132,158,184,0.12)', borderRadius: 99, padding: '3px 9px', letterSpacing: '0.02em' }}>plan-for range</span>}
             </div>
           </>
         ) : (
+          // No real count yet — still lead with a low/high estimate, but sized to the
+          // playbook's TYPICAL crowd and clearly labelled "rough" until the host gives
+          // a number. An estimate is always a range, never blank.
           <div style={{ marginTop: 2 }}>
-            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Add your guest count to size this</div>
-            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>Once we know how many you’re feeding, we’ll cost the food and drinks — and size the shopping list to your number.</div>
+            {plan.foodHigh > 0 ? (
+              // Same hierarchy as the real-count hero: per-guest LEADS, the total is the
+              // supporting figure — just labelled "rough" + sized to the typical crowd.
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: T.statSm, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{money(plan.perGuestLow || Math.round(plan.foodLow / plan.guests), plan.perGuestHigh || Math.round(plan.foodHigh / plan.guests))}</span>
+                    <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.semibold }}>per guest</span>
+                  </span>
+                  <span style={{ fontSize: T.secondary, color: C.muted, textAlign: 'right' }}>~{money(plan.foodLow, plan.foodHigh)} · <span style={{ fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.04em', textTransform: 'uppercase' }}>rough estimate</span></span>
+                </div>
+                <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Typical for a {String(event.type || 'gathering')} — about {plan.guests} guests. Add your count below to size it to yours.</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15 }}>Add your guest count to size this</div>
+                <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>Once we know how many you’re feeding, we’ll cost the food and drinks — and size the shopping list to your number.</div>
+              </>
+            )}
           </div>
         )}
-        {fpBand.band && (
+        {/* range explainer (frame copy), then the segmented safe-headcount bar. */}
+        {fpHasCount && plan.foodHigh > plan.foodLow && (
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Shopping smart at the low end, all-out at the high.</div>
+        )}
+        {/* RSVP band → segmented confirmed/maybe/pending bar (real replies). */}
+        {fpBand.band && fpBand.basis === 'rsvp' && (
           <div style={{ marginTop: 7 }}>
-            {/* Segmented safe-headcount bar (ported from the Figma proto — it reads the
-                band better than a text count): confirmed / maybe / not-yet-replied,
-                proportional to the plan-to ceiling. */}
+            {/* confirmed / maybe / not-yet-replied, proportional to the plan-to ceiling. */}
             <div style={{ display: 'flex', height: 6, borderRadius: 99, overflow: 'hidden', background: C.bg, border: `1px solid ${C.border}` }}>
               {fpBand.confirmed > 0 && <div style={{ flexGrow: fpBand.confirmed, background: C.success }} />}
               {fpBand.maybe > 0 && <div style={{ flexGrow: fpBand.maybe, background: steel }} />}
               {fpBand.pending > 0 && <div style={{ flexGrow: fpBand.pending, background: C.muted, opacity: 0.35 }} />}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6, fontSize: T.caption, color: C.muted }}>
-              {fpBand.confirmed > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />{fpBand.confirmed} yes</span>}
+              {fpBand.confirmed > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />{fpBand.confirmed} confirmed</span>}
               {fpBand.maybe > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: steel }} />{fpBand.maybe} maybe</span>}
-              {fpBand.pending > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: C.muted, opacity: 0.5 }} />{fpBand.pending} no reply</span>}
+              {fpBand.pending > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: C.muted, opacity: 0.5 }} />{fpBand.pending} pending</span>}
             </div>
-            <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>Sized to the high end so you won’t run short.</div>
           </div>
         )}
-        {/* #16 — diet counts the plan is accounting for (drives the plant-based line + budget). */}
-        {plan.specialDiets && plan.specialDiets.length > 0 && (
-          <div style={{ fontSize: T.secondary, color: steel, marginTop: 6, fontWeight: FW.semibold }}>
-            Planning for {plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}.
+        {/* Estimate band → this is a HEADCOUNT, not RSVPs. Say so plainly and point to
+            RSVPs as the way to replace the modeled swing with real numbers. */}
+        {fpBand.band && fpBand.basis === 'estimate' && (
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>
+            Your headcount of {fpBand.planned}, not RSVPs yet — {fpBand.note ? fpBand.note.charAt(0).toLowerCase() + fpBand.note.slice(1) : `most land between ${fpBand.low} and ${fpBand.high}.`} RSVPs tighten it.
           </div>
         )}
-        {/* 60J — what the range means (quiet caption, not a competing line). Withheld
-            until a real count exists (no count → no $ range to explain). */}
-        {fpHasCount && plan.foodHigh > plan.foodLow && (
-          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
-            <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodLow, plan.foodLow)}</span> shopping smart · <span style={{ color: C.text, fontWeight: FW.semibold }}>{money(plan.foodHigh, plan.foodHigh)}</span> all-out · tap any item for its price.
-          </div>
-        )}
-        {/* Pricing source — ALWAYS shown so it's never invisible. Regional once we
-            can resolve the area; national + a nudge to add a location otherwise. */}
-        {foodPP.priceNote && (
-          <div id="food-price-note" style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {foodPP.hasRegion
-              ? <span style={{ color: C.text }}>{foodPP.priceNote}.</span>
-              : (<>
-                  <span>Based on national average prices.</span>
-                  {/* Inline metro picker — set the area right here to switch to local
-                      (BLS) pricing. ~26 metros, so a native select is fine here. */}
-                  <select value={event.market || ''} onChange={(e) => onPatch({ market: e.target.value })}
-                    style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontWeight: FW.semibold, padding: '4px 8px', fontFamily: 'inherit', cursor: 'pointer' }}>
-                    <option value="">Set your area for local prices…</option>
-                    {METRO_MARKETS.filter((m) => METRO_GEO[m.id]).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-                  </select>
-                </>)}
-          </div>
-        )}
-        {/* 60H — bought-so-far updates live as the host checks off the shopping list,
-            and feeds the budget's Food line. */}
-        {plan.boughtCount > 0 && (
-          <div style={{ fontSize: T.body, marginTop: 6 }}>
-            <span style={{ color: C.muted }}>Bought so far: </span>
-            <span style={{ color: C.success, fontWeight: FW.bold }}>{money(plan.spentLow, plan.spentHigh)}</span>
-            <span style={{ color: C.muted }}> · {plan.boughtCount} of {plan.itemCount} items</span>
-          </div>
-        )}
+        {/* 1583-3 key/value block: Planning for · Bought so far · Pricing — aligned columns. */}
+        <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '7px 16px', fontSize: T.secondary, lineHeight: 1.4, alignItems: 'baseline' }}>
+          {plan.specialDiets && plan.specialDiets.length > 0 && (
+            <>
+              <span style={{ color: C.muted }}>Planning for</span>
+              <span style={{ color: steel, fontWeight: FW.semibold }}>{plan.specialDiets.map((d) => `${d.count} ${d.diet.toLowerCase()}`).join(' · ')}</span>
+            </>
+          )}
+          {plan.boughtCount > 0 && (
+            <>
+              <span style={{ color: C.muted }}>Bought so far</span>
+              <span style={{ color: C.text }}><span style={{ color: C.success, fontWeight: FW.semibold }}>{money(plan.spentLow, plan.spentHigh)}</span> · {plan.boughtCount} of {plan.itemCount} items</span>
+            </>
+          )}
+          {foodPP.hasRegion && foodPP.priceLocal ? (
+            <>
+              <span style={{ color: C.muted }}>Pricing</span>
+              {/* Location-led: the city's grocery prices read first; the month + BLS
+                  attribution sit under it as a quieter, subordinate caption. */}
+              <span>
+                <span style={{ color: C.text }}>{foodPP.priceLocal} grocery store prices</span>
+                {(foodPP.priceMonth) && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>{foodPP.priceMonth} · BLS regional grocery prices</span>}
+              </span>
+            </>
+          ) : foodPP.priceNote ? (
+            <>
+              <span style={{ color: C.muted }}>Pricing</span>
+              <span id="food-price-note" style={{ color: C.text, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>National average</span>
+                {/* Inline metro picker — set the area to switch to local (BLS) pricing. */}
+                <select value={event.market || ''} onChange={(e) => onPatch({ market: e.target.value })}
+                  style={{ background: C.bg, border: `1px solid ${C.accent}`, borderRadius: 8, color: C.text, fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 7px', fontFamily: 'inherit', cursor: 'pointer' }}>
+                  <option value="">Set your area for local prices…</option>
+                  {METRO_MARKETS.filter((m) => METRO_GEO[m.id]).map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </select>
+              </span>
+            </>
+          ) : null}
+        </div>
         {!plan.guestCountResolved && (
-          <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 10, background: 'transparent', border: 'none', color: steel, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', padding: 0 }}>
-            Set your guest count to size this exactly →
+          <button type="button" onClick={() => onNav('Guests')} style={{ marginTop: 12, background: 'transparent', border: 'none', color: steel, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', padding: 0 }}>
+            Set your guest count →
           </button>
         )}
       </CollapsibleCard>
@@ -9685,11 +9784,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           no per-guest list, so the host NOTES the allergies they know of. List mode:
           collect per-guest in the roster. */}
       {!plan.dietaryResolved && (event.guestMode === 'count' || isHostFP ? (
-        <div style={{ ...card, borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
-          {/* Role ladder: this is a peer SECTION card (Food plan / Your choices / The
-              spread) — it leads with a 17px section title, not a body sentence, so it
-              reads at the same rank as its siblings. The ask + why drop to secondary. */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, letterSpacing: '-0.01em', lineHeight: 1.3 }}><Icon name="needs" size={16} stroke={1.9} /> Allergies &amp; diets to plan around?</div>
+        // Attention hierarchy: a quiet collapsed GATE, not a second loud card competing
+        // with the Food-plan lead. Warn accent keeps it noticeable; the subtitle states
+        // the ask so the host can act without expanding.
+        <CollapsibleCard id={`fp-diet-${event.id}`} isMobile={isMobile} defaultCollapsed accent={warn} style={{ borderLeft: `3px solid ${warn}` }}
+          title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="needs" size={16} stroke={1.9} /> Allergies &amp; diets</span>}
+          subtitle="Note who needs what before you lock the menu — tap to set counts">
+          {/* The ask + why drop to secondary. */}
           <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, marginTop: 4, marginBottom: 12 }}>
             {event.guestMode === 'count' ? 'You’re going by a headcount, so just pick what applies' : 'Note what you know of — guests can add theirs when they RSVP'} — one unflagged allergy is a safety issue.
           </div>
@@ -9697,7 +9798,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               represents. Counts drive the food plan (plant-based main) + the budget. */}
           {(() => {
             const counts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
-            const setCount = (diet, v) => { const n = Math.max(0, Math.round(Number(v) || 0)); const next = { ...counts }; if (n > 0) next[diet] = n; else delete next[diet]; onPatch({ dietCounts: next }); };
+            const setCount = (diet, v) => { const n = Math.max(0, Math.round(Number(v) || 0)); const next = { ...counts }; if (n > 0) next[diet] = n; else delete next[diet]; onPatch({ dietCounts: next }); try { feedbackSelect(); } catch {} };
             // #2 — dietary the GUESTS already declared (their RSVP/needs) feeds this panel so
             // the host doesn't re-type what people told them. Single source: event.guests[].needs
             // (+ plus-one). Map each need string to a DIET_TAG, count one per person, and offer a
@@ -9710,23 +9811,78 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             const pullFromGuests = () => { const next = { ...counts }; Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); }); onPatch({ dietCounts: next }); };
             return (
               <>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
-                {DIET_TAGS.map((diet) => {
+              {(() => {
+                // 1597-2 — ACTIVE / OTHER grouped rows with − N + steppers (was a grid of
+                // raw number inputs). ACTIVE = diets with a count; OTHER = the rest, the
+                // long tail folded behind "+ N more". Steppers, not free-type, so a tap
+                // sets a count — counts drive the plant-based line + budget.
+                const customDiets = Object.keys(counts).filter((d) => !DIET_TAGS.includes(d) && (Number(counts[d]) || 0) > 0);
+                const active = [...DIET_TAGS, ...customDiets].filter((d) => (Number(counts[d]) || 0) > 0);
+                const activeLower = new Set(active.map((d) => d.toLowerCase()));
+                // Case-insensitive so a custom-cased active diet (e.g. "Gluten-Free") doesn't
+                // also appear in OTHER under the standard tag ("Gluten-free").
+                const inactive = DIET_TAGS.filter((d) => (Number(counts[d]) || 0) <= 0 && !activeLower.has(d.toLowerCase()));
+                const otherQuick = showMoreDiets ? inactive : inactive.slice(0, 2);
+                const rest = showMoreDiets ? [] : inactive.slice(2);
+                const totalActive = active.reduce((s, d) => s + (Number(counts[d]) || 0), 0);
+                const addCustomDiet = () => {
+                  const name = dietOtherName.trim();
+                  if (!name) { setDietOtherOpen(false); return; }
+                  setCount(name, Math.max(1, Number(counts[name]) || 1));
+                  setDietOtherName(''); setDietOtherOpen(false);
+                };
+                const stepBtn = (disabled) => ({ width: 32, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: disabled ? C.border : steel, fontSize: T.body, fontWeight: FW.heavy, cursor: disabled ? 'default' : 'pointer', fontFamily: 'inherit' });
+                const subhead = { fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted };
+                const stepper = (diet) => {
                   const n = Number(counts[diet]) || 0;
                   return (
-                    <div key={diet} style={{ display: 'flex', alignItems: 'center', gap: 8, background: n > 0 ? `${steel}14` : C.bg, border: `1px solid ${n > 0 ? steel : C.border}`, borderRadius: 9, padding: '6px 8px 6px 11px' }}>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
-                      {/* Controlled off event.dietCounts (single source) so setting one diet
-                          never clears another — each input always reflects the saved count and
-                          multiple diets persist together. */}
-                      <input type="number" inputMode="numeric" min="0" value={n || ''} placeholder="0"
-                        onChange={(e) => setCount(diet, e.currentTarget.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                        style={{ width: 40, ...metalEdge(C), borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
+                    <div key={diet} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: `1px solid ${C.border}` }}>
+                      <span style={{ fontSize: T.body, fontWeight: n > 0 ? FW.semibold : FW.regular, color: n > 0 ? C.text : C.muted }}>{diet}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9 }}>
+                        <button type="button" aria-label={`fewer ${diet}`} disabled={n <= 0} onClick={() => setCount(diet, n - 1)} style={stepBtn(n <= 0)}>−</button>
+                        <span style={{ minWidth: 26, textAlign: 'center', fontSize: T.body, fontWeight: FW.heavy, color: n > 0 ? C.text : C.muted }}>{n}</span>
+                        <button type="button" aria-label={`more ${diet}`} onClick={() => setCount(diet, n + 1)} style={stepBtn(false)}>+</button>
+                      </div>
                     </div>
                   );
-                })}
-              </div>
+                };
+                return (
+                  <div>
+                    {active.length > 0 && (
+                      <>
+                        <div style={{ ...subhead, marginBottom: 2 }}>Active{totalActive > 0 ? ` — ${totalActive} ${totalActive === 1 ? 'guest' : 'guests'}` : ''}</div>
+                        {active.map(stepper)}
+                      </>
+                    )}
+                    {otherQuick.length > 0 && (
+                      <>
+                        <div style={{ ...subhead, marginTop: active.length > 0 ? 14 : 0, marginBottom: 2 }}>Other — tap to set a count</div>
+                        {otherQuick.map(stepper)}
+                      </>
+                    )}
+                    {rest.length > 0 && (
+                      <button type="button" onClick={() => setShowMoreDiets(true)}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', marginTop: 8, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: C.muted, fontSize: T.caption, lineHeight: 1.5, padding: '4px 0' }}>
+                        + {rest.length} more — {rest.slice(0, 4).join(' · ')}{rest.length > 4 ? ' …' : ''}
+                      </button>
+                    )}
+                    {/* "Other": a diet the standard tags don't cover. Tap to name it. */}
+                    {dietOtherOpen ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.bg, border: `1px solid ${steel}`, borderRadius: 9, padding: '4px 6px 4px 10px', marginTop: 10 }}>
+                        <input autoFocus value={dietOtherName} placeholder="Name it…" onChange={(e) => setDietOtherName(e.currentTarget.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') addCustomDiet(); if (e.key === 'Escape') { setDietOtherName(''); setDietOtherOpen(false); } }}
+                          style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.semibold, fontFamily: 'inherit' }} />
+                        <button type="button" onClick={addCustomDiet} aria-label="Add diet" style={{ flexShrink: 0, background: steel, border: 'none', borderRadius: 7, color: '#fff', fontSize: T.secondary, fontWeight: FW.bold, padding: '4px 9px', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setDietOtherOpen(true)}
+                        style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: steel, fontSize: T.secondary, fontWeight: FW.semibold, padding: '4px 0' }}>
+                        + Other
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
               {/* Auto-pull what guests already told you via their RSVP. */}
               {pending.length > 0 && (
                 <button type="button" onClick={pullFromGuests}
@@ -9740,12 +9896,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             );
           })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-            <button type="button" onClick={() => onPatch({ dietaryNoted: true })}
+            <button type="button" onClick={() => { onPatch({ dietaryNoted: true }); try { feedbackCommit(); } catch {} }}
               style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: '#fff', background: steel, border: 'none', borderRadius: 9, padding: '9px 16px', cursor: 'pointer' }}>Save these</button>
-            <button type="button" onClick={() => onPatch({ knownAllergies: [], dietaryNoted: true })}
+            <button type="button" onClick={() => { onPatch({ knownAllergies: [], dietaryNoted: true }); try { feedbackCommit(); } catch {} }}
               style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 6px' }}>None I know of</button>
           </div>
-        </div>
+        </CollapsibleCard>
       ) : (
         <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
           <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
@@ -9755,9 +9911,16 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
       ))}
 
-      {/* the menu CHOICES — collapsible */}
-      {plan.choices.length > 0 && (
-        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="check2" size={16} stroke={1.9} /> Your choices</span>} subtitle="Each one reshapes the spread + budget">
+      {/* the menu CHOICES — collapsed by default to a one-line summary of the picks
+          (Frame 1583-3): once set they recede; the subtitle shows what's chosen, tap to
+          change. Avoids the loud wall-of-every-decision the expanded card showed. */}
+      {plan.choices.length > 0 && (() => {
+        const choiceSummary = plan.choices.map((c) => {
+          const v = String(c.chosen || '').split(/[,—–(]/)[0].trim();
+          return v.length > 28 ? v.slice(0, 27).replace(/\s\S*$/, '') + '…' : v;
+        }).filter(Boolean).join(' · ');
+        return (
+        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} defaultCollapsed title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="check2" size={16} stroke={1.9} /> Your choices</span>} subtitle={choiceSummary || 'Each one reshapes the spread + budget'}>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
           {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
               no wall of every option for every decision). */}
@@ -9765,7 +9928,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             {plan.choices.map((c) => {
               const open = openChoice === c.id;
               return (
-                <div key={c.id} style={{ borderTop: `1px solid ${C.border}` }}>
+                <div key={c.id} id={`fpchoice-${c.id}`} style={{ borderTop: `1px solid ${C.border}`, scrollMarginTop: 16 }}>
                   <button type="button" onClick={() => setOpenChoice(open ? null : c.id)}
                     style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '11px 2px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                     <span style={{ minWidth: 0 }}>
@@ -9796,15 +9959,43 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             })}
           </div>
         </CollapsibleCard>
+        );
+      })()}
+
+      {/* Sourcing (1597-2) — how the host gets the proteins reshapes the spread's cost.
+          Only shown when there's a protein to source; collapses to its current tier. */}
+      {plan.sourcingKey && plan.sourcingTiers && (
+        <CollapsibleCard id={`fp-sourcing-${event.id}`} isMobile={isMobile} defaultCollapsed
+          title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="basket" size={16} stroke={1.9} /> Sourcing</span>}
+          subtitle={`How you’re getting the proteins · ${(plan.sourcingTiers.find((t) => t.id === plan.sourcing) || {}).label || ''}`}>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 10 }}>How you’re getting the proteins — this reshapes the spread.</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {plan.sourcingTiers.map((t) => {
+              const on = plan.sourcing === t.id;
+              const cost = (plan.sourcingKey.byTier && plan.sourcingKey.byTier[t.id]) || 0;
+              return (
+                <button key={t.id} type="button" onClick={() => { onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: on ? `${steel}14` : C.bg, border: `1px solid ${on ? steel : C.border}`, borderRadius: 11, padding: '11px 13px' }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{t.label}</span>
+                    <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1 }}>{t.note} · ~${cost} {String(plan.sourcingKey.item).toLowerCase()}</span>
+                  </span>
+                  <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: on ? steel : C.muted }}>{on ? 'Current' : 'Tap to switch'}</span>
+                </button>
+              );
+            })}
+          </div>
+        </CollapsibleCard>
       )}
 
       {/* the grounded shopping list — summary-first; collapsible */}
-      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} autoCollapseWhenDone={spreadComplete} forceOpen={forceSpreadOpen} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
+      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} defaultCollapsed={!showFullSpread} autoCollapseWhenDone={spreadComplete} forceOpen={forceSpreadOpen} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The spread</span>}
         right={fpHasCount ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(plan.foodLow, plan.foodHigh)}</div> : <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel }}>Add count to price</div>}
         subtitle={`${plan.itemCount} items · scaled to ${plan.guests} guests`}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
-          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} · scaled to {plan.guests} guests{plan.boughtCount > 0 ? ` · ${plan.boughtCount} bought` : ''}
-          {plan.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>${plan.lockedTotal.toLocaleString()} locked</span></> : null}
+          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'}, scaled to {plan.guests} guests
+          {plan.boughtCount > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{plan.boughtCount} bought{plan.lockedTotal > 0 ? ` ($${plan.lockedTotal.toLocaleString()})` : ''}</span></> : null}
         </div>
         {heroNames.length > 0 && (
           <div style={{ fontSize: T.body, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
@@ -9814,11 +10005,41 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         )}
         <button type="button" onClick={() => setShowFullSpread((v) => !v)}
           style={{ marginTop: 12, fontFamily: 'inherit', background: 'transparent', border: `1px solid ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 }}>
-          {showFullSpread ? 'Hide the shopping list' : 'Show the full shopping list →'}
+          {showFullSpread ? 'Hide items' : `Show all ${plan.itemCount} items →`}
         </button>
         {showFullSpread && (
         <div style={{ marginTop: 14 }}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 14 }}>Tap an item to check it off as you shop.</div>
+        {/* Bulk affordance — explicitly commit the typical (midpoint) price for every
+            un-priced item at once, so the host isn't forced to lock each one by hand.
+            Honest: it's the host CHOOSING typical, not a silent auto-price on check-off. */}
+        {(() => {
+          const unpriced = plan.list.filter((i) => !i.skipped && i.group !== 'Supplies' && i.locked == null && !i.added && (Number(i.low) || Number(i.high)));
+          // Just-priced → offer a one-tap undo (reversible, no commitment dread).
+          if (bulkPriced && bulkPriced.length > 0) {
+            const undo = () => { const next = { ...(event.foodLocked || {}) }; bulkPriced.forEach((id) => delete next[id]); onPatch({ foodLocked: next }); setBulkPriced(null); try { feedbackSelect(); } catch {} };
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 14, fontSize: T.secondary }}>
+                <span style={{ color: C.success, fontWeight: FW.bold }}>✓ Priced {bulkPriced.length} at typical</span>
+                <button type="button" onClick={undo} style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>undo</button>
+              </div>
+            );
+          }
+          if (unpriced.length < 2) return null;
+          const priceAll = () => {
+            const next = { ...(event.foodLocked || {}) };
+            const ids = unpriced.map((i) => i.id);
+            unpriced.forEach((i) => { next[i.id] = Math.round(((Number(i.low) || 0) + (Number(i.high) || 0)) / 2); });
+            onPatch({ foodLocked: next }); setBulkPriced(ids);
+            try { feedbackLock(); } catch {}
+          };
+          return (
+            <button type="button" onClick={priceAll}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: `${steel}14`, border: `1px solid ${steel}`, borderRadius: 9, padding: '8px 13px', cursor: 'pointer' }}>
+              Price the rest at typical · {unpriced.length} item{unpriced.length === 1 ? '' : 's'} →
+            </button>
+          );
+        })()}
         {plan.groups.map((g) => (
           <div key={g} style={{ marginBottom: 14 }}>
             {/* 60J — group subtotal breaks the total range into Food vs Drinks. */}
@@ -9827,8 +10048,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
               return (
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g}</span>
-                  <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(gl, gh)}</span>
+                  <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                  <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, color: C.muted }}>{money(gl, gh)}</span>
                 </div>
               );
             })()}
@@ -9845,10 +10066,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const FRAC = { 0.5: '½', 0.25: '¼', 0.75: '¾', 0.33: '⅓', 0.34: '⅓', 0.67: '⅔', 0.2: '⅕' };
               const fmtPG = (n) => { if (n == null) return ''; if (FRAC[n]) return FRAC[n]; if (Number.isInteger(n)) return String(n); const w = Math.floor(n); const f = Math.round((n - w) * 100) / 100; return (w > 0 && FRAC[f]) ? `${w}${FRAC[f]}` : String(n); };
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
-              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); const patch = { foodLocked: next }; if (checkAfterLock === i.id) { patch.foodGot = { ...(event.foodGot || {}), [i.id]: true }; } onPatch(patch); setOpenLockId(null); setCheckAfterLock(null); };
+              // Picking Value/Premium/Custom LOCKS the cost AND checks the item off in one
+              // move (you priced it because you got it). Exhale if it completes the spread.
+              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); const willComplete = completesSpread(i.id); onPatch({ foodLocked: next, foodGot: { ...(event.foodGot || {}), [i.id]: true } }); setOpenLockId(null); setCheckAfterLock(null); try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} };
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
-              const setQty = (n) => { const next = { ...(event.foodQty || {}) }; const v = Math.max(0, Number(n) || 0); if (v > 0) next[i.id] = v; else delete next[i.id]; onPatch({ foodQty: next }); };
-              const resetQty = () => { const next = { ...(event.foodQty || {}) }; delete next[i.id]; onPatch({ foodQty: next }); };
+              // Changing the quantity RESETS any locked price — the committed $ was for the old
+              // amount, so it must re-derive from the new qty (a locked value can't go stale).
+              const unlock = (e) => { const n = { ...(event.foodLocked || {}) }; delete n[i.id]; return n; };
+              const setQty = (n) => { const next = { ...(event.foodQty || {}) }; const v = Math.max(0, Number(n) || 0); if (v > 0) next[i.id] = v; else delete next[i.id]; onPatch({ foodQty: next, foodLocked: unlock() }); };
+              const resetQty = () => { const next = { ...(event.foodQty || {}) }; delete next[i.id]; onPatch({ foodQty: next, foodLocked: unlock() }); };
               // Added dishes are fully host-authored — removing one DELETES it (no struck-through ghost).
               const removeAdded = (e) => { e.stopPropagation(); onPatch({ foodAdd: (event.foodAdd || []).filter((a) => a.id !== i.id) }); };
               const lockOpen = openLockId === i.id;
@@ -9860,56 +10086,45 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         // You can't cross it off until its cost is locked against the budget.
                         // Tapping an unpriced item opens the lock control; pricing it checks it off.
                         if (!got && i.locked == null && !i.added) { setCheckAfterLock(i.id); setOpenLockId(i.id); return; }
-                        onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: !got } });
+                        const willComplete = !got && completesSpread(i.id);
+                        const patch = { foodGot: { ...(event.foodGot || {}), [i.id]: !got } };
+                        // Unchecking RESETS the item — clear its locked cost so re-checking
+                        // forces the host to confirm a price again (no free re-check).
+                        if (got && !i.added) { const nl = { ...(event.foodLocked || {}) }; delete nl[i.id]; patch.foodLocked = nl; }
+                        onPatch(patch);
+                        if (!got) { try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} } // last item → exhale; otherwise a commit tick
                       }}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
-                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 5, marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
+                      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
                         {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
                         {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
-                        {/* Dietary heads-up — a noted restriction relates to this item (double-check). */}
-                        {Array.isArray(i.dietFlags) && i.dietFlags.map((f) => (
-                          <span key={f} title="A dietary need you noted relates to this item — double-check it"
-                            style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.warn || '#ef962e', background: `${C.warn || '#ef962e'}1c`, border: `1px solid ${(C.warn || '#ef962e')}44`, borderRadius: 6, padding: '1px 6px', marginLeft: 7, whiteSpace: 'nowrap' }}>⚠ {f}</span>
-                        ))}
+                        {/* DAY-OF (Figma 1583-3): buy/handle on the day itself (buyAt T0).
+                            Frame badge style: 9px semibold, outline, transparent, tracked. */}
+                        {i.buyAt === 'T0' && !i.added && <span style={{ fontSize: T.micro, fontWeight: FW.semibold, color: C.muted, background: 'transparent', border: `1px solid ${C.muted}`, borderRadius: 5, padding: '2px 7px', marginLeft: 7, letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Day-of</span>}
+                        {/* Authored editorial badge — TRADITION / YOURS / etc. (playbook-tagged). */}
+                        {i.badge && <span style={{ fontSize: T.micro, fontWeight: FW.semibold, color: C.accent, background: 'transparent', border: `1px solid ${C.accent}`, borderRadius: 5, padding: '2px 7px', marginLeft: 7, letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{i.badge}</span>}
+                        {/* Dietary heads-up — own line (was inline, colliding with the price
+                            column). Outline 9px to match the badge spec; a quiet "double-check". */}
+                        {Array.isArray(i.dietFlags) && i.dietFlags.length > 0 && (
+                          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
+                            {i.dietFlags.map((f) => (
+                              <span key={f} title="A dietary need you noted relates to this item — double-check it"
+                                style={{ fontSize: T.micro, fontWeight: FW.semibold, color: C.warn || '#ef962e', background: 'transparent', border: `1px solid ${C.warn || '#ef962e'}`, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>⚠ {f}</span>
+                            ))}
+                          </span>
+                        )}
                         {i.perGuest != null && (
                           <span style={{ display: 'block', fontSize: T.secondary, marginTop: 2 }}>
                             <span style={{ color: steel, fontWeight: FW.semibold }}>~{fmtPG(i.perGuest)} {i.unitBase}/guest</span>
                             <span style={{ color: C.muted }}> · typical</span>
                           </span>
                         )}
-                        {i.where && i.where.length > 0 && (
-                          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>
-                            {i.where.slice(0, 3).map((w, wi) => (
-                              <span key={w}>
-                                {wi > 0 ? ' · ' : ''}
-                                <span role="link" tabIndex={0}
-                                  onClick={(e) => { e.stopPropagation(); if (shopAnchor) window.open(mapsUrl(w), '_blank', 'noopener'); }}
-                                  style={{ cursor: shopAnchor ? 'pointer' : 'default', color: shopAnchor ? C.accent : C.muted, textDecoration: shopAnchor ? 'underline dotted' : 'none' }}>{w}</span>
-                              </span>
-                            ))}
-                          </span>
-                        )}
-                        {/* Instacart interim (no key): per-item deep link — opens Instacart
-                            (the app on mobile) to a search for this item to add to a cart. */}
-                        {(i.short || i.item) && !got && (
-                          <span style={{ display: 'block', fontSize: T.secondary, marginTop: 3 }}>
-                            <span role="link" tabIndex={0}
-                              onClick={(e) => { e.stopPropagation(); window.open(`https://www.instacart.com/store/s?k=${encodeURIComponent(i.short || i.item)}`, '_blank', 'noopener'); }}
-                              style={{ cursor: 'pointer', color: '#0AAD0A', fontWeight: FW.bold, textDecoration: 'underline dotted' }}>Find on Instacart</span>
-                          </span>
-                        )}
-                        {/* Alternatives — playbook-sourced swap suggestions shown inline so the
-                            host never needs to leave the shopping list to find a substitute. */}
-                        {Array.isArray(i.alternatives) && i.alternatives.length > 0 && !got && (
-                          <span style={{ display: 'block', marginTop: 4 }}>
-                            <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
-                            <span style={{ fontSize: T.secondary, color: C.muted }}>{i.alternatives.slice(0, 2).join(' · ')}</span>
-                          </span>
-                        )}
+                        {/* Row stays clean (Frame 1583-3) — where-to-shop, Instacart and the
+                            swap chips live in the item DETAIL (tap $) + the "Where to shop" card. */}
                       </span>
                       <span style={{ flexShrink: 0, textAlign: 'right' }}>
                         {i.qty != null && <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{i.qty} {i.unit}</span>}
@@ -9918,7 +10133,6 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           : i.locked != null
                           ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success }}>${i.locked.toLocaleString()} locked</span>
                           : <span style={{ fontSize: T.caption, color: C.muted }}>{money(i.low, i.high)}</span>}
-                        {perUnit && i.locked == null && <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{perUnit}/{i.unitBase || 'unit'}</span>}
                       </span>
                     </button>
                     {!skipped && !i.added && (
@@ -9928,42 +10142,140 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     {i.added ? (
                       <button type="button" onClick={removeAdded} title="Remove this dish" aria-label="Remove this dish"
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.title, lineHeight: 1, padding: '4px 4px' }}>×</button>
-                    ) : (
+                    ) : (lockOpen || skipped) ? (
+                      // Clean rows (frame 1583-3): the swap-out × lives in the expanded detail,
+                      // not on every row. A SKIPPED row keeps its "+ add" so it's always restorable.
                       <button type="button" onClick={toggleSkip} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>
                         {skipped ? '+ add' : '×'}
                       </button>
-                    )}
+                    ) : null}
                   </div>
-                  {lockOpen && !skipped && (
-                    <div style={{ padding: '0 0 12px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {/* 64-#3 — change the quantity; it recomputes the cost + the budget. */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: T.caption, color: C.muted }}>Quantity:</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: C.bg, border: `1px solid ${i.qtyOverridden ? C.accent : C.border}`, borderRadius: 8, padding: '4px 9px' }}>
-                          <input type="number" inputMode="decimal" defaultValue={i.qty != null ? i.qty : ''} placeholder={i.baseQty != null ? String(i.baseQty) : '—'}
-                            onKeyDown={(e) => { if (e.key === 'Enter') setQty(e.currentTarget.value); }}
-                            onBlur={(e) => setQty(e.currentTarget.value)}
-                            style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.bold, fontFamily: 'inherit' }} />
-                          <span style={{ color: C.muted, fontSize: T.caption }}>{i.unitBase || i.unit}</span>
+                  {lockOpen && !skipped && (() => {
+                    // Item detail (Figma 1593-505): basis → LOCK A COST 3-segment → quantity
+                    // stepper → swap → where-to-shop → Mark bought / Add to Instacart → Skip/Remove.
+                    const seg = (label, sub, active, onClick) => (
+                      <button type="button" onClick={onClick}
+                        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit',
+                          background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}` }}>
+                        <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: active ? '#eef0f4' : C.text }}>{label}</span>
+                        <span style={{ fontSize: T.caption, color: active ? 'rgba(238,240,244,0.8)' : C.muted }}>{sub}</span>
+                      </button>
+                    );
+                    const stepQty = (d) => { const cur = Number(i.qty) || 0; setQty(Math.max(0, Math.round((cur + d) * 100) / 100)); };
+                    const lbl = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.5px', textTransform: 'uppercase', color: steel };
+                    const linkBtn = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold };
+                    // Mark bought locks an unpriced item at the MIDPOINT (a fair estimate),
+                    // not the high end — locking at Premium overstated what the host spent.
+                    // Can't mark it bought until a price is confirmed against the budget —
+                    // no silent midpoint guess. Unpriced → keep the lock control open and
+                    // arm checkAfterLock so the host's price choice checks it off.
+                    const markBought = (e) => { e.stopPropagation(); if (i.locked == null && !i.added) { setCheckAfterLock(i.id); setOpenLockId(i.id); return; } const willComplete = completesSpread(i.id); onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: true } }); setOpenLockId(null); try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} };
+                    return (
+                    <div style={{ padding: '4px 0 14px 28px', display: 'flex', flexDirection: 'column', gap: 12 }} onClick={(e) => e.stopPropagation()}>
+                      {/* Basis sub-card — the why behind the quantity. */}
+                      {i.perGuest != null && (
+                        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 12px', fontSize: T.secondary, color: C.muted, lineHeight: 1.4 }}>
+                          {fmtPG(i.perGuest)} {i.unitBase} per guest × {plan.guests} guests{i.note && /round|whole|bushel|rack/i.test(i.note) ? ', rounded to whole units' : ''}
+                        </div>
+                      )}
+                      {/* LOCK A COST — Value / Premium / Custom. Custom IS the price input
+                          (consolidated — no separate "your own price" row). */}
+                      {(() => {
+                        const isCustom = i.locked != null && i.locked !== i.low && i.locked !== i.high;
+                        return (
+                          <div>
+                            <div style={{ ...lbl, marginBottom: 6 }}>Lock a cost</div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                              {seg('Value', `$${i.low.toLocaleString()}`, i.locked === i.low, () => setLock(i.low))}
+                              {seg('Premium', `$${i.high.toLocaleString()}`, i.locked === i.high, () => setLock(i.high))}
+                              <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, background: isCustom ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${isCustom ? 'transparent' : C.border}` }}>
+                                <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: isCustom ? '#eef0f4' : C.text }}>Custom</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                                  <span style={{ fontSize: T.caption, color: isCustom ? 'rgba(238,240,244,0.8)' : C.muted }}>$</span>
+                                  <input type="number" inputMode="numeric" defaultValue={isCustom ? i.locked : ''} placeholder="set"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
+                                    onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
+                                    style={{ width: 50, background: 'transparent', border: 'none', outline: 'none', textAlign: 'center', color: isCustom ? '#eef0f4' : C.text, fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* Progressive reveal — the primary actions (lock a cost, mark bought)
+                          stay; the secondary controls (quantity · swap · where to shop) tuck
+                          behind one toggle so the detail isn't a wall on open. */}
+                      <button type="button" onClick={() => setDetailMore((v) => !v)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: steel, fontSize: T.secondary, fontWeight: FW.semibold, padding: '2px 0' }}>
+                        {detailMore ? 'Fewer options ▴' : 'Adjust amount, swap, or where to shop ▾'}
+                      </button>
+                      {detailMore && (<>
+                      {/* Quantity stepper. */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, flex: 1 }}>Quantity</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                          <button type="button" aria-label="Less" onClick={() => stepQty(-1)} style={{ width: 38, height: 38, background: 'transparent', border: 'none', color: C.text, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                          <span style={{ minWidth: 64, textAlign: 'center', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{i.qty != null ? i.qty : i.baseQty} {i.unitBase || i.unit}</span>
+                          <button type="button" aria-label="More" onClick={() => stepQty(1)} style={{ width: 38, height: 38, background: 'transparent', border: 'none', color: C.text, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
                         </span>
-                        {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...lkBtn, color: C.muted }}>Reset to {i.baseQty} {i.unitBase}</button>}
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: T.caption, color: checkAfterLock === i.id ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === i.id ? 700 : 400 }}>{checkAfterLock === i.id ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this'll cost — pick one or enter your own:"}</span>
-                      <button type="button" onClick={() => setLock(i.low)} style={lkBtn}>Value ${i.low.toLocaleString()}</button>
-                      <button type="button" onClick={() => setLock(i.high)} style={lkBtn}>Premium ${i.high.toLocaleString()}</button>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
-                        <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
-                        <input type="number" inputMode="numeric" defaultValue={i.locked != null ? i.locked : ''} placeholder="your price"
-                          onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
-                          onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
-                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.bold, fontFamily: 'inherit' }} />
-                      </span>
-                      {i.locked != null && <button type="button" onClick={clearLock} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
+                      {/* Swap an alternative — IN PLACE (foodSwap): the line keeps its BLS-derived
+                          cost + per-guest qty and just wears the new name, so the budget adjusts
+                          to the region's values and re-scales. Revert restores the original. */}
+                      {Array.isArray(i.alternatives) && i.alternatives.length > 0 && (
+                        <div>
+                          <div style={{ ...lbl, marginBottom: 6 }}>Swap to an alternative</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {i.swappedFrom && (
+                              <button type="button" onClick={() => { const next = { ...(event.foodSwap || {}) }; delete next[i.id]; const nlock = { ...(event.foodLocked || {}) }; delete nlock[i.id]; onPatch({ foodSwap: next, foodLocked: nlock }); try { feedbackCommit(); } catch {} }}
+                                style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: `${steel}1c`, border: `1px solid ${steel}`, borderRadius: 99, padding: '6px 12px', cursor: 'pointer' }}>↺ Back to {i.swappedFrom}</button>
+                            )}
+                            {i.alternatives.slice(0, 3).map((alt) => {
+                              const na = normalizeAlternative(alt);
+                              const altName = na.name;
+                              const active = (i.short || '') === altName;
+                              // A priced alternative shows its cheaper/dearer signal so the swap is informed.
+                              const priced = Array.isArray(na.unitCostRange);
+                              return (
+                                <button key={altName} type="button" title={na.full + (priced ? ` (re-prices to $${na.unitCostRange[0]}–$${na.unitCostRange[1]}/${i.unitBase || 'unit'})` : '')}
+                                  onClick={() => { const nlock = { ...(event.foodLocked || {}) }; delete nlock[i.id]; onPatch({ foodSwap: { ...(event.foodSwap || {}), [i.id]: altName }, foodLocked: nlock }); try { feedbackSelect(); } catch {} }}
+                                  style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: active ? '#eef0f4' : C.text, background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}`, borderRadius: 99, padding: '6px 12px', cursor: 'pointer' }}>{altName}{priced && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: FW.regular }}>${na.unitCostRange[0]}–${na.unitCostRange[1]}</span>}</button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {/* Where to shop — each store is a live maps search (works even with no
+                          saved location: the map uses the device's location). */}
+                      {i.where && i.where.length > 0 && (
+                        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                          <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.semibold, color: C.text, marginBottom: 4 }}>Where to shop</span>
+                          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {i.where.slice(0, 4).map((w) => (
+                              <button key={w} type="button" onClick={() => window.open(storeSearchUrl(w, i.item, shopAnchor), '_blank', 'noopener')}
+                                style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: steel, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 99, padding: '5px 11px', cursor: 'pointer' }}>{w} ↗</button>
+                            ))}
+                          </span>
+                        </div>
+                      )}
+                      </>)}
+                      {/* Mark bought ⇄ undo (easy uncheck) / Add to Instacart. */}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {got
+                          ? <button type="button" onClick={(e) => { e.stopPropagation(); const nl = { ...(event.foodLocked || {}) }; if (!i.added) delete nl[i.id]; onPatch({ foodGot: { ...(event.foodGot || {}), [i.id]: false }, foodLocked: nl }); }} style={{ flex: 1, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: C.success || steel, background: 'transparent', border: `1px solid ${C.success || steel}`, borderRadius: 11, padding: '11px 16px', cursor: 'pointer' }}>✓ Bought · undo</button>
+                          : <button type="button" onClick={markBought} style={{ flex: 1, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.heavy, color: '#eef0f4', background: 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 11, padding: '11px 16px', cursor: 'pointer' }}>Mark bought</button>}
+                        <button type="button" onClick={() => window.open(`https://www.instacart.com/store/s?k=${encodeURIComponent(i.short || i.item)}`, '_blank', 'noopener')} style={{ flex: 1, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: C.text, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 11, padding: '11px 16px', cursor: 'pointer' }}>Add to Instacart</button>
+                      </div>
+                      {/* Skip · Clear price · Reset quantity. */}
+                      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                        <button type="button" onClick={(e) => { toggleSkip(e); setOpenLockId(null); }} style={{ ...linkBtn, color: C.muted }}>Skip this dish</button>
+                        {i.locked != null && <button type="button" onClick={clearLock} style={{ ...linkBtn, color: C.muted }}>Clear price</button>}
+                        {i.qtyOverridden && <button type="button" onClick={resetQty} style={{ ...linkBtn, color: C.muted }}>Reset quantity</button>}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -10312,7 +10624,7 @@ function EventTypeBrowse({ value, onChange, onClose, excludeValue }) {
   const ql = query.trim().toLowerCase();
   const matches = ql ? cats.flatMap(([, t]) => t).filter(t => t.toLowerCase().includes(ql)) : null;
   const steel = C.steel?.blue400 || C.accent;
-  const pick = (t) => { onChange(t); onClose(); };
+  const pick = (t) => { try { feedbackSelect(); } catch {} onChange(t); onClose(); }; // scan-a-choice tick (LIGHT)
   const shortCat = (c) => c.split(/\s*&\s*| /)[0];
   const eyebrow = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted };
   const TypeRow = ({ t }) => {
@@ -10515,18 +10827,34 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
   // field for them to find. Host create only; never yanks focus mid-edit.
   // Declared after hostMode so the deps array isn't in its temporal dead zone.
   useEffect(() => {
-    if (!hostMode || step !== 1 || hostScreen !== 1) return;
-    const target = form.type && !form.date ? 'ce-date'
-                 : form.type && form.date  ? 'ce-name'
-                 : null;
-    if (!target) return;
-    const id = setTimeout(() => {
-      const el = document.getElementById(target);
-      if (!el || document.activeElement === el) return;
-      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* older browsers */ }
-      el.focus({ preventScroll: true });
-    }, 280);  // let the reveal mount + ceRise begin before we move them
-    return () => clearTimeout(id);
+    if (!hostMode || step !== 1 || hostScreen !== 1) return undefined;
+    // After the host picks a TYPE (no date yet), the "What I'll set up" preview is the
+    // reward — let it land in view and PAUSE there so they read what the app will do,
+    // THEN gently advance to the date question ("When is it?"). The old behavior jumped
+    // straight to ce-date (block:center), shoving the preview out of the viewport on
+    // mobile. Once a date exists we move on to the name as before. (User 2026-06-29.)
+    const timers = [];
+    if (form.type && !form.date) {
+      timers.push(setTimeout(() => {
+        const sp = document.getElementById('ce-setup-preview');
+        if (sp) { try { sp.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* noop */ } }
+      }, 280)); // let the reveal mount + ceRise begin before we move them
+      // Pause on the checklist, then scroll down to the date section and focus it.
+      timers.push(setTimeout(() => {
+        const el = document.getElementById('ce-date');
+        if (!el || document.activeElement === el || form.date) return;
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* noop */ }
+        el.focus({ preventScroll: true });
+      }, 5280));
+    } else if (form.type && form.date) {
+      timers.push(setTimeout(() => {
+        const el = document.getElementById('ce-name');
+        if (!el || document.activeElement === el) return;
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* noop */ }
+        el.focus({ preventScroll: true });
+      }, 280));
+    }
+    return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.type, form.date, hostMode, step, hostScreen]);
   // Same lead, screen 2: guests → location.
@@ -10841,7 +11169,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
                   <div style={reveal(40)}>
                     <div style={groupDim(active === 'date')}>
                     {/* The lead: acknowledge, name what the engine will set up, ask the next question. */}
-                    <div style={{ marginBottom: isMobile ? 20 : 24, padding: isMobile ? '13px 14px' : '14px 16px', borderRadius: 12, background: `${C.accent}0e`, border: `1px solid ${C.accent}24`, borderLeft: `3px solid ${C.accent}` }}>
+                    <div id="ce-setup-preview" style={{ scrollMarginTop: 16, marginBottom: isMobile ? 20 : 24, padding: isMobile ? '13px 14px' : '14px 16px', borderRadius: 12, background: `${C.accent}0e`, border: `1px solid ${C.accent}24`, borderLeft: `3px solid ${C.accent}` }}>
                       {occasionBlurb(form.type, form.secondaryType) && (
                         <div style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.55, fontWeight: FW.medium, marginBottom: 10 }}>{occasionBlurb(form.type, form.secondaryType)}</div>
                       )}
@@ -15345,7 +15673,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
     setAdding(false);
   };
 
-  const removeVendor = (id) => { setVendors(prev => prev.filter(v => v.id !== id)); deleteVendor(id); };
+  const removeVendor = (id) => { setVendors(prev => prev.filter(v => v.id !== id)); deleteVendor(id); try { feedbackSeal(); } catch {} }; // someone left the plan — the weight signals consequence (HEAVY)
   const bumpRehire = (id) => {
     const v = vendors.find(x => x.id === id);
     if (!v) return;
@@ -15788,11 +16116,11 @@ function useFoodPriceFactor(event, profile) {
   const NATIONAL_NOTE = isFoodPricesConfigured()
     ? 'Using national average prices for now — add your city & state and I’ll match what groceries cost near you'
     : 'Using national average prices';
-  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false });
+  const [pp, setPp] = useState({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false, priceLocal: '', priceIsMetro: false, priceMonth: '' });
   const state = resolveEventState(event, profile);
   useEffect(() => {
     let cancelled = false;
-    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false }); return undefined; }
+    if (!state || !isFoodPricesConfigured()) { setPp({ priceFactor: 1, priceContext: null, priceNote: NATIONAL_NOTE, hasRegion: false, priceLocal: '', priceIsMetro: false }); return undefined; }
     getFoodPriceFactor({ state }).then((d) => {
       if (cancelled) return;
       const factor = Number(d.factor) > 0 ? Number(d.factor) : 1;
@@ -15800,7 +16128,12 @@ function useFoodPriceFactor(event, profile) {
       // Price 2026-06" jargon. (It IS BLS regional grocery data — kept honest, just
       // said in plain words.)
       const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const pm = d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '');
+      // Always carry a readable month. Use the backend's BLS reference month when it
+      // sends one; otherwise stamp the current month (the factor is the latest available,
+      // so "as of this month" is the honest fallback) — the pricing line is never undated.
+      const _now = new Date();
+      const _curMonth = `${MON[_now.getMonth()]} ${_now.getFullYear()}`;
+      const pm = (d.month && /^\d{4}-\d{2}$/.test(d.month) ? `${MON[Number(d.month.slice(5, 7)) - 1] || ''} ${d.month.slice(0, 4)}`.trim() : (d.month || '')) || _curMonth;
       const tail = pm ? ` (${pm})` : '';
       // The honest regional source stays in priceContext; the host-facing note names
       // the LOCAL (their city/state) — "in Atlanta, GA", not the abstract "the South".
@@ -15808,9 +16141,11 @@ function useFoodPriceFactor(event, profile) {
       const STATE_FULL = Object.fromEntries(Object.entries(STATE_NAME_TO_ABBR).map(([n, a]) => [a, n.replace(/\b\w/g, (c) => c.toUpperCase())]));
       const cityMetro = event && event.market && METRO_GEO[event.market] ? METRO_GEO[event.market].city : '';
       const city = String((event && (event.city || event.venueCity)) || '').trim() || cityMetro;
-      const local = city ? `${city}, ${state}` : (STATE_FULL[state] || `the ${d.regionLabel}`);
+      // DC has no separate city — "District Of Columbia" reads oddly, so name the city.
+      const stateFull = state === 'DC' ? 'Washington, DC' : (STATE_FULL[state] || `the ${d.regionLabel}`);
+      const local = city ? `${city}, ${state}` : stateFull;
       const priceNote = pm ? `What groceries cost in ${local} right now (${pm})` : `What groceries cost in ${local} right now`;
-      setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true });
+      setPp({ priceFactor: factor, priceContext, priceNote, hasRegion: true, priceLocal: local, priceIsMetro: !!city, priceMonth: pm });
     });
     return () => { cancelled = true; };
   }, [state]);
@@ -15990,7 +16325,7 @@ function HostSettings({ profile, onChange, onClose, events = [], onClearSample }
   const eyebrow = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 12 };
   const sectionWrap = { padding: '22px 0', borderTop: `1px solid ${C.border}` };
   const Toggle = ({ on, onTap, label }) => (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onTap}
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => { try { feedbackSettle(); } catch {} onTap && onTap(); }}
       style={{ width: 50, height: 30, flexShrink: 0, borderRadius: 99, border: 'none', cursor: 'pointer', padding: 3,
         background: on ? (C.steel?.blue500 || C.accent) : (C.surface2 || C.border),
         display: 'flex', justifyContent: on ? 'flex-end' : 'flex-start', alignItems: 'center',
@@ -21306,7 +21641,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
 // inquiry / thank-you), lets the host tweak it into their own voice, then sends it in
 // one tap (native share sheet on mobile, clipboard everywhere else). The work is
 // already done; the host just sends.
-function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile, orderItems, trackAs }) {
+function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobile, orderItems, trackAs, rsvpUrl }) {
   const [text, setText] = useState((draft && draft.body) || '');
   const T = useType();
   const [status, setStatus] = useState(null);
@@ -21314,6 +21649,26 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   const [polishing, setPolishing] = useState(false);
   const [prePolish, setPrePolish] = useState(null);  // the text before AI polish, for one-tap undo
   const [ordering, setOrdering] = useState(false);   // Instacart cart-build in flight
+  // QR share (Figma 1542-3) — an invite carries a real ≥16-char RSVP link, so a guest
+  // can scan to RSVP. Generated client-side from the SAME link the message already
+  // contains (no new data); only rendered for an invite with a real token.
+  const showQrAffordance = kind === 'invite' && !!rsvpUrl;
+  const [qrUrl, setQrUrl] = useState('');
+  const [qrOpen, setQrOpen] = useState(false);
+  useEffect(() => {
+    if (!showQrAffordance) return undefined;
+    let cancelled = false;
+    loadQRCode()
+      .then(QRCode => QRCode.toDataURL(rsvpUrl, { width: 480, margin: 1, errorCorrectionLevel: 'M', color: { dark: '#111111', light: '#ffffff' } }))
+      .then(url => { if (!cancelled) setQrUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [showQrAffordance, rsvpUrl]);
+  // Who this goes to — the recipient cue ("• To your guests").
+  const recipientLabel = kind === 'invite' ? 'your guests'
+    : kind === 'vendor' ? 'your vendor'
+    : (kind === 'thankyou' || kind === 'recap') ? 'your guests'
+    : null;
   // Send-to-store for pickup/delivery (shopping list only). Hits the backend Instacart
   // proxy; if a pre-filled cart comes back we open it, otherwise we fall back to the
   // Instacart search link — never a broken promise.
@@ -21332,8 +21687,8 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   // Close the invite loop: when the host actually puts the invite out into the world,
   // record it — this is the top of the growth funnel (host shares → guests RSVP back).
   const trackShared = (via) => { try { if (trackAs === 'rsvp') track(EVENTS.RSVP_REMINDER_SENT, { via }); else if (kind === 'invite') track(EVENTS.INVITE_SHARED, { via }); } catch {} };
-  const send = async () => { const r = await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text }); setStatus(r); if (r === 'shared' || r === 'copied') trackShared(r === 'shared' ? 'share_sheet' : 'clipboard'); };
-  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); trackShared('clipboard'); } catch { setStatus('failed'); } };
+  const send = async () => { const r = await shareOrCopy({ title: shareTitle || (draft && draft.subject) || '', text }); setStatus(r); if (r === 'shared' || r === 'copied') { trackShared(r === 'shared' ? 'share_sheet' : 'clipboard'); try { feedbackSuccess(); } catch {} } }; // it left the host's hands (SUCCESS)
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setStatus('copied'); trackShared('clipboard'); try { feedbackSuccess(); } catch {} } catch { setStatus('failed'); } };
   // Optional AI polish — warms the prose WITHOUT inventing anything. The honest
   // template is always the baseline; this only rewrites what's already there. Hard
   // rules in the prompt forbid new facts; the host can undo in one tap.
@@ -21377,7 +21732,10 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
         <textarea value={text} onChange={e => setText(e.target.value)} rows={isMobile ? 9 : 8}
           style={{ width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: T.body, lineHeight: 1.55, padding: '13px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
-          <div style={{ fontSize: T.secondary, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: T.secondary, color: C.muted }}>Tweak anything — it’s your voice. Then send it.</div>
+            {aiInputOn(aiKey) && <div style={{ fontSize: T.caption, color: C.muted, opacity: 0.8, marginTop: 1 }}>Polish warms the wording — never invents.</div>}
+          </div>
           {aiInputOn(aiKey) && (
             prePolish != null
               ? <button type="button" onClick={undoPolish} style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.muted }}>↺ Undo polish</button>
@@ -21386,12 +21744,36 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
                 </button>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        {recipientLabel && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, fontSize: T.secondary, color: C.muted }}>
+            <span aria-hidden style={{ width: 5, height: 5, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
+            <span>To <span style={{ color: C.text, fontWeight: FW.semibold }}>{recipientLabel}</span></span>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, marginTop: recipientLabel ? 8 : 16 }}>
           <button onClick={send} style={{ flex: 1, fontSize: T.body, fontWeight: FW.heavy, padding: '13px 16px', borderRadius: 12, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>Share / Send →</button>
           <button onClick={copy} style={{ fontSize: T.secondary, fontWeight: FW.bold, padding: '13px 16px', borderRadius: 12, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Copy</button>
         </div>
+        {showQrAffordance && (
+          <div style={{ marginTop: 12 }}>
+            <button type="button" onClick={() => setQrOpen(o => !o)} aria-expanded={qrOpen}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <span style={{ flexShrink: 0, width: 38, height: 38, borderRadius: 8, background: '#fff', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {qrUrl ? <img src={qrUrl} alt="" width={32} height={32} style={{ display: 'block' }} /> : null}
+              </span>
+              <span style={{ fontSize: T.secondary, color: C.text }}>Share as QR — let guests scan to RSVP</span>
+              <span aria-hidden style={{ marginLeft: 'auto', color: C.muted, fontSize: T.body, transform: qrOpen ? 'rotate(90deg)' : 'none', transition: 'transform 180ms ease' }}>›</span>
+            </button>
+            {qrOpen && qrUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 12, padding: 16, background: '#fff', borderRadius: 14, border: `1px solid ${C.border}` }}>
+                <img src={qrUrl} alt="QR code linking to your RSVP page" width={220} height={220} style={{ display: 'block' }} />
+                <div style={{ fontSize: T.caption, color: '#444', textAlign: 'center', wordBreak: 'break-all', maxWidth: 260 }}>{rsvpUrl}</div>
+              </div>
+            )}
+          </div>
+        )}
         {Array.isArray(orderItems) && orderItems.length > 0 && (
-          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: T.body, fontWeight: FW.heavy, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: '#0AAD0A', color: '#fff', fontFamily: 'inherit' }}>
+          <button onClick={orderDelivery} disabled={ordering} style={{ width: '100%', marginTop: 10, fontSize: T.body, fontWeight: FW.heavy, padding: '12px 16px', borderRadius: 12, border: 'none', cursor: ordering ? 'wait' : 'pointer', background: 'linear-gradient(90deg, #4e6877 0%, #3f5b6a 100%)', color: '#eef0f4', fontFamily: 'inherit' }}>
             {ordering ? 'One sec…' : 'Order on Instacart →'}
           </button>
         )}
@@ -21446,6 +21828,12 @@ function AssembleReveal({ ev, profile, onDone }) {
     return () => clearTimeout(t);
   }, [revealed, stages.length]);
   const done = revealed >= stages.length;
+  // SIGNATURE — "someone competent finished this." Fires once when the plan finishes
+  // assembling. Somber/quiet events stay silent (no celebratory resolve).
+  const revealFiredRef = useRef(false);
+  useEffect(() => {
+    if (done && festive && !revealFiredRef.current) { revealFiredRef.current = true; try { feedbackReveal(); } catch {} }
+  }, [done, festive]);
   return (
     <div role="dialog" aria-label="Setting up your event"
       style={{ position: 'fixed', inset: 0, zIndex: 10000,
@@ -22081,7 +22469,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
               title: "Your invite's written — send it now", sub: 'The yeses land right back here — and the rest of the plan can wait.',
               row: 'Your invite', rowSub: 'written, with your RSVP link',
               preview: (parts[1] || parts[0] || '').slice(0, 92),
-              sheet: { title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite' } });
+              sheet: { title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite', rsvpUrl } });
           }
           // RSVP reminder — the single highest-leverage nudge as the day nears: replies
           // grow the headcount that sizes everything. Only while people still owe a reply
@@ -22095,7 +22483,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
               items.push({ id: 'rsvp_reminder', score: 60 - daysLeft, eyebrow: 'Ready to send', cta: 'Open & send →',
                 title: `Nudge the ${awaitingRsvp} who haven’t replied`, sub: 'A gentle reminder — written, with your RSVP link. The yeses land right back here.',
                 row: 'Nudge the no-replies', rowSub: `${awaitingRsvp} ${awaitingRsvp === 1 ? 'reply' : 'replies'} still owed`,
-                sheet: { title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaitingRsvp} ${awaitingRsvp === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite', trackAs: 'rsvp' } });
+                sheet: { title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaitingRsvp} ${awaitingRsvp === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite', trackAs: 'rsvp', rsvpUrl } });
             }
           }
           if (ev.date && near && daysLeft <= 7) {
@@ -22373,7 +22761,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
       );
     })()}
     {draftSheet && (
-      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems}
+      <DraftSheet title={draftSheet.title} intro={draftSheet.intro} draft={draftSheet.draft} shareTitle={draftSheet.shareTitle} kind={draftSheet.kind} orderItems={draftSheet.orderItems} trackAs={draftSheet.trackAs} rsvpUrl={draftSheet.rsvpUrl}
         onClose={() => setDraftSheet(null)} C={C} isMobile={isMobile} />
     )}
     {/* Host event switcher — a bottom sheet (board winner): top-anchored trigger (the
@@ -25773,13 +26161,13 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
             <input id="hsp-budget" type="number" inputMode="numeric" min="0" placeholder="0" enterKeyHint="done"
               value={budgetDraft}
               onChange={(e) => setBudgetDraft(e.target.value)}
-              onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) { setBudgetSet(true); feedbackBudget(); } }}
+              onBlur={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); if (Number(budgetDraft) > 0) { setBudgetSet(true); feedbackCommit(); } }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
               style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.title, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
           </span>
           {/* Board #10 — an explicit confirm so a host on a phone (no keyboard "Done")
               never types a number, scrolls away, and loses it to commit-on-blur only. */}
-          <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); if (Number(budgetDraft) > 0) feedbackBudget(); }}
+          <button type="button" onClick={() => { if (onSetTotalBudget) onSetTotalBudget(Math.max(0, Math.round(Number(budgetDraft) || 0))); setBudgetSet(true); if (Number(budgetDraft) > 0) feedbackCommit(); }}
             style={{ minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none', background: budgetSet && Number(budgetDraft) > 0 ? (C.success || C.accent) : C.accent, color: '#fff', fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>{budgetSet && Number(budgetDraft) > 0 ? 'Set ✓' : 'Set'}</button>
           {Number(budgetDraft) > 0 && (() => {
             // Honest 3-state: OVER only if below the value (low) end; IN RANGE if the
@@ -25804,6 +26192,35 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
             <div style={{ width: '100%', fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 4 }}>✓ Budget set — {money(Math.round(Number(budgetDraft)))}. It frames your food, vendors, and rentals.</div>
           )}
         </div>
+        {/* Frame 1309 — once a budget is set, the compact "$total · $left" readout +
+            any category that's run over (honest: a budget row whose actual beats its
+            budgeted). $left is the target minus what's been spent so far. */}
+        {budgetSet && Number(budgetDraft) > 0 && (() => {
+          const target = Math.round(Number(budgetDraft));
+          const left = target - Math.round(spentSoFar);
+          const overRows = (rows || [])
+            .map((r) => ({ name: String(r.category || '').trim(), over: Math.round((Number(r.actual) || 0) - (Number(r.budgeted) || 0)) }))
+            .filter((r) => r.name && r.over > 0)
+            .sort((a, b) => b.over - a.over);
+          return (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={label}>Total budget</span>
+              <span style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text, marginLeft: 'auto' }}>
+                {money(target)} · <span style={{ color: left < 0 ? C.danger : C.muted, fontWeight: FW.bold }}>{left < 0 ? `${money(Math.abs(left))} over` : `${money(left)} left`}</span>
+              </span>
+              {overRows.length > 0 && (
+                <span style={{ width: '100%', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: T.caption, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: FW.semibold }}>Over</span>
+                  {overRows.slice(0, 3).map((r) => (
+                    <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.caption, fontWeight: FW.semibold, color: C.warn || '#ef962e', background: `${C.warn || '#ef962e'}1a`, border: `1px solid ${C.warn || '#ef962e'}55`, borderRadius: 99, padding: '2px 9px' }}>
+                      {r.name} {money(r.over)} over <span aria-hidden style={{ width: 5, height: 5, borderRadius: '50%', background: C.warn || '#ef962e' }} />
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Attention System: the honest total above is the hero; the breakdown
@@ -27995,6 +28412,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
     const delivered = !result || result.delivered !== false;
     setQueued(!delivered);
     setSubmitted(true);
+    try { feedbackSuccess(); } catch {} // RSVP sent — it left the guest's hands (SUCCESS)
   };
   // a11y WIN 2 — clear ONE field's error as the guest fixes it, and recompute the
   // combined live-region message from whatever invalid field remains (so a guest who
@@ -30025,11 +30443,22 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {event.guestMode === 'count' && Number(event.guestCount) > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${(C.success || C.accent)}55`, borderLeft: `3px solid ${C.success || C.accent}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
           <span aria-hidden style={{ fontSize: T.body }}>📌</span>
-          <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.5 }}>
-            <span style={{ fontWeight: FW.bold }}>Locked at {Number(event.guestCount)} guests</span> — that's your final count for food, budget &amp; seating. RSVPs below are just for tracking.
+          <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.6 }}>
+            {/* Edit-in-place — change the locked number without leaving the lock. */}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: FW.bold, verticalAlign: 'middle' }}>
+              Locked at
+              <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+                <button type="button" aria-label="fewer guests" onClick={() => { setGuestCount(Math.max(1, Number(event.guestCount) - 1)); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                <span style={{ minWidth: 34, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{Number(event.guestCount)}</span>
+                <button type="button" aria-label="more guests" onClick={() => { setGuestCount(Number(event.guestCount) + 1); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
+              </span>
+              guests
+            </span> — your final count for food, budget &amp; seating. RSVPs below are just for tracking.
           </div>
-          <button type="button" onClick={() => { setGuestMode('list'); }}
-            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Track by RSVPs instead</button>
+          {/* Unlock the headcount — revert to RSVP tracking so the count is editable
+              again and the safe-band estimate returns. */}
+          <button type="button" onClick={() => { setGuestMode('list'); try { feedbackSelect(); } catch {} }}
+            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
         </div>
       )}
 
@@ -30791,7 +31220,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
 
 // ─── Seating ──────────────────────────────────────────────────────────────────
 
-function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, onTableNamesChange }) {
+function Seating({ event, guests = [], setGuests, tables, onTablesChange, tableNames, onTableNamesChange }) {
   if (!Array.isArray(guests)) guests = [];
   const C = useT();
   const T = useType();
@@ -30828,6 +31257,38 @@ function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, o
   const mealShort     = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' };
   const selectedGuest = selected ? guests.find(g => g.id === selected) : null;
   const isMobile = bp === 'mobile' || bp === 'tablet';
+  // ── Host NOW hero (frame 1735) — "X guests still need a seat" + Seat them, then a
+  // calm one-line summary with diet/accessibility chips. Derived only from real
+  // confirmed-guest data; the planner keeps the StatCard dashboard. ──────────────
+  const isHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
+  const unseatedAll = confirmed.filter(g => !g.table);
+  const allSeated = confirmed.length > 0 && unseatedAll.length === 0;
+  const dietChips = (() => {
+    if (!confirmed.length) return [];
+    let veg = 0, gf = 0, kids = 0, wheel = 0;
+    for (const g of confirmed) {
+      const meal = String(g.meal || '');
+      if (/veg(etarian|an)?/i.test(meal)) veg++;
+      if (/gluten|^gf$/i.test(meal)) gf++;
+      if (g.kids) kids += Number(g.kids) || 0;
+      if (/wheel|accessib|\bada\b/i.test(String(g.needs || ''))) wheel++;
+    }
+    const out = [];
+    if (veg) out.push(`Veg ${veg}`);
+    if (gf) out.push(`GF ${gf}`);
+    if (kids) out.push(`Kids ${kids}`);
+    if (wheel) out.push(`Wheelchair ${wheel}`);
+    return out;
+  })();
+  const tablesEven = (() => {
+    if (seated === 0) return false;
+    const counts = Array.from({ length: tableCount }, (_, i) => confirmed.filter(g => g.table === i + 1).length).filter(n => n > 0);
+    if (counts.length < 2) return true;
+    return (Math.max(...counts) - Math.min(...counts)) <= 1;
+  })();
+  const seatThem = () => { if (unseatedAll.length) { pickUp(unseatedAll[0]); } };
+  const heroNames = unseatedAll.slice(0, 2).map(g => g.name).filter(Boolean).join(' and ');
+  const heroVerb = unseatedAll.length === 1 ? "isn't" : "aren't";
 
   return (
     <div>
@@ -30840,6 +31301,38 @@ function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, o
           onDelete={() => { setGuests(gs => gs.filter(g => g.id !== guestModalId)); setGuestModalId(null); }}
         />
       )}
+      {isHost && confirmed.length > 0 ? (
+        <>
+          <div style={{ ...s.card, marginBottom: 12, padding: 18, borderColor: allSeated ? (C.success || C.border) : C.border }}>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: allSeated ? (C.success || C.accent) : C.accent }}>
+              {allSeated ? '● All set · Seating' : '● Needs you · Seating'}
+            </div>
+            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25, marginTop: 6 }}>
+              {allSeated ? 'Everyone’s got a seat' : `${unseatedAll.length} guest${unseatedAll.length === 1 ? '' : 's'} still need a seat`}
+            </div>
+            {!allSeated && (
+              <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.45 }}>
+                {heroNames
+                  ? `${heroNames}${unseatedAll.length > 2 ? ` and ${unseatedAll.length - 2} more` : ''} ${heroVerb} at a table yet. Drop them somewhere and the room’s complete.`
+                  : 'Drop them at a table and the room’s complete.'}
+              </div>
+            )}
+            {!allSeated && (
+              <button type="button" onClick={seatThem}
+                style={{ marginTop: 12, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.heavy, color: '#fff', background: C.accent, border: 'none', borderRadius: 10, padding: '11px 18px', cursor: 'pointer' }}>
+                Seat them
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: allSeated ? (C.success || C.accent) : C.accent, flexShrink: 0 }} />
+            <span style={{ fontSize: T.secondary, color: C.muted }}>{seated} of {confirmed.length} seated{seated > 0 ? ` · ${tablesEven ? 'tables even' : 'tables uneven'}` : ''}</span>
+            {dietChips.map(ch => (
+              <span key={ch} style={{ fontSize: T.caption, fontWeight: FW.semibold, color: C.muted, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 99, padding: '2px 9px' }}>{ch}</span>
+            ))}
+          </div>
+        </>
+      ) : (
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <StatCard label="Confirmed" value={confirmed.length} color={C.accent} />
         <StatCard label="Seated" value={seated} color={seated === confirmed.length && confirmed.length > 0 ? C.success : C.muted} sub={`${unassigned.length} unassigned`} />
@@ -30849,6 +31342,7 @@ function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, o
         </div>
         <StatCard label="Avg / Table" value={confirmed.length ? Math.round(confirmed.length / tableCount) : '—'} />
       </div>
+      )}
 
       {/* Search + instruction / status banner */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
@@ -30858,7 +31352,7 @@ function Seating({ guests = [], setGuests, tables, onTablesChange, tableNames, o
       <div style={{ ...s.card, background: selected ? C.accent + '14' : C.bg, borderColor: selected ? C.accent + '88' : C.border, marginBottom: 16, padding: '10px 16px', transition: 'all 0.2s' }}>
         {selected ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent, flexShrink: 0, animation: 'pulse 1.2s infinite' }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
             <span style={{ fontSize: T.secondary, color: C.accent, fontWeight: FW.semibold }}>Seating <strong>{selectedGuest?.name}</strong> — tap any table below to assign their seat</span>
             <button aria-label="Remove" style={{ ...s.btn('ghost'), marginLeft: 'auto', fontSize: T.caption, color: C.muted }} onClick={() => setSelected(null)}>Cancel</button>
           </div>
@@ -35324,6 +35818,13 @@ function WeatherAlert({ event, onNavTo }) {
     return () => { cancelled = true; };
   }, [event?.id, event?.date, event?.venue, shouldFetch, dismissed]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // WARNING — a real weather RISK surfaces (rain/heat on an outdoor day): a sharp-but-
+  // calm double + low alert tone, once. Eyes-now, no dread (Sound Map · ALERT).
+  const wxAlertedRef = useRef(false);
+  useEffect(() => {
+    if (wx && wx.risk === 'high' && !wxAlertedRef.current) { wxAlertedRef.current = true; try { feedbackAlert(); } catch {} }
+  }, [wx]);
+
   // Rain plan (#56): show the forecast even on a CLEAR day — the host asked "is there a
   // chance of rain?" and a calm "10% — you're clear, no rain plan needed" is an answer,
   // not noise. Only truly nothing-to-show states (no fetch / loading / no data) return null.
@@ -37750,19 +38251,48 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
     return getWorkflowGuidance(event?.type, days);
   }, [event?.date, event?.type]);
 
+  // Food sourcing → tasks: the host "what's left" is a LIVE projection of the playbook's
+  // authored tasks, filtered by the SAME choiceShown predicate the food spread uses — so a
+  // sourcing choice (steam-yourself vs order-steamed) reshapes the TASK list, not just the
+  // menu. Current-only + derive-don't-store: projected rows are never persisted; a stored
+  // timeline entry (manual checkoff / planner seed) with the same id wins for `done`.
+  // Host only — the planner keeps the canonical stored timeline untouched.
+  const isHostPlan = (() => { try { return hostNavActive(event); } catch { return false; } })();
+  const hostChecklistTimeline = useMemo(() => {
+    const stored = Array.isArray(event?.timeline) ? event.timeline : [];
+    if (!isHostPlan) return stored;
+    let projected = [];
+    try { projected = playbookChecklist(event, today8601()); } catch { projected = []; }
+    if (!projected.length) return stored;
+    const storedById = new Map(stored.map((t) => [t.id, t]));
+    // A stored entry for a projected id only carries the manual done flag — merge it on.
+    // Host "what's left" is the projection ONLY: the engine ALSO backfills event.timeline
+    // with coarser, choice-AGNOSTIC milestone tasks (e.g. "Pick up steamed crabs OR steam
+    // your own"), which would double up with these finer, choice-reactive task rows. Other
+    // surfaces (Command / Calendar) still read the stored timeline; only this card swaps.
+    const rows = projected.map((p) => { const s = storedById.get(p.id); return s ? { ...p, done: !!s.done } : p; });
+    return rows;
+  }, [event, isHostPlan]);
+  const hostEvent = isHostPlan ? { ...event, timeline: hostChecklistTimeline } : event;
+
   // #13 — open a task's steps in a modal (full title + checkable sub-tasks).
   const [stepTaskId, setStepTaskId] = useState(null);
-  const stepTask = stepTaskId ? (event?.timeline || []).find((t) => t.id === stepTaskId) : null;
+  const stepTask = stepTaskId ? hostChecklistTimeline.find((t) => t.id === stepTaskId) : null;
   const patchTask = (id, patch) => setEvent((e) => ({ ...e, timeline: (e.timeline || []).map((t) => t.id === id ? { ...t, ...patch } : t) }));
-  // Toggle a task done in the canonical event.timeline (Checklist view).
+  // Toggle a task done in the canonical event.timeline (Checklist view). A projected
+  // playbook task (pbt- id) isn't in the stored timeline — persist a done marker so the
+  // manual checkoff sticks for the long tail real event-state can't prove handled.
   const onToggleTask = (taskId) => {
     // first_value only on a false→true completion (not on un-checking).
     const wasDone = (event?.timeline || []).find(t => t.id === taskId)?.done;
     if (!wasDone) recordFirstValue('task_completed', event, 'task_toggle');
-    setEvent(e => ({
-      ...e,
-      timeline: (e.timeline || []).map(t => t.id === taskId ? { ...t, done: !t.done } : t),
-    }));
+    setEvent(e => {
+      const tl = e.timeline || [];
+      if (tl.some(t => t.id === taskId)) {
+        return { ...e, timeline: tl.map(t => t.id === taskId ? { ...t, done: !t.done } : t) };
+      }
+      return { ...e, timeline: [...tl, { id: taskId, done: true }] };
+    });
   };
 
   const tabPill = (id, label, title) => {
@@ -37836,7 +38366,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
       {hostNavActive(event) ? (
         <CollapsibleCard id="host-plan-list" isMobile={isMobile} eyebrow="What's left to do">
         <ChecklistGenerator
-          event={event}
+          event={hostEvent}
           isMobile={isMobile}
           isHost={true}
           onBack={onBack}
@@ -39627,6 +40157,17 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   const daysLeft = daysUntil(event.date);
   const allDone = hostPlanAllDone(event, fpProg);
 
+  // WARNING — fire the over-budget cue ONCE, the moment the plan crosses over the
+  // ceiling (a soft low "take note" + a sharper double); never on the way back under.
+  const overBudget = useMemo(() => {
+    try { const sc = budgetHeroContent(event, C, C.accent, foodPP && foodPP.priceFactor); return !!(sc && sc.state === 'over'); } catch { return false; }
+  }, [event, C, foodPP]);
+  const wasOverRef = useRef(false);
+  useEffect(() => {
+    if (overBudget && !wasOverRef.current) { try { feedbackBudget(); } catch {} }
+    wasOverRef.current = overBudget;
+  }, [overBudget]);
+
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: 18, marginBottom: 14 };
   const steel = C.steel?.blue500 || C.accent;
 
@@ -39791,8 +40332,13 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
       return;
     }
     // A next-step CTA must always DO something: route to the action's own destination,
-    // falling back to the event overview so it never dead-ends.
-    if (onNav) onNav((na.primaryRoute && na.primaryRoute.tab) || 'Command', na.primaryRoute && na.primaryRoute.taskId);
+    // falling back to the event overview so it never dead-ends. Forward the deep-link
+    // fields (focusField / foodFocus / vendorSection) so the host lands ON the action's
+    // field, not the tab top — the reported "CTAs don't go to the focused field" bug.
+    const r = na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null;
+    const opts = r && (r.vendorSection || r.foodFocus || r.focusField)
+      ? { vendorSection: r.vendorSection, foodFocus: r.foodFocus, focusField: r.focusField } : undefined;
+    if (onNav) onNav((r && r.tab) || 'Command', r && r.taskId, opts);
   };
 
   return (
@@ -39848,7 +40394,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
   const chip = (status) => {
     const s = STATUS[status] || STATUS.ready;
     return (
-      <span style={{ flexShrink: 0, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, padding: '3px 8px', borderRadius: 5, border: `1px solid ${s.color}55`, background: `${s.color}12`, whiteSpace: 'nowrap' }}>{s.label}</span>
+      <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.5px', textTransform: 'uppercase', color: s.color, padding: '2px 8px', borderRadius: 5, border: `1px solid ${s.color}`, background: 'transparent', whiteSpace: 'nowrap' }}>{s.label}</span>
     );
   };
 
@@ -39950,6 +40496,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   };
   const wrap = (field) => (fn) => setEvent(e => ({ ...e, [field]: typeof fn === 'function' ? fn(e[field]) : fn }));
   const go = (newTab, itemId, opts) => {
+    // Host has no 'Timeline' tab — the run-of-show IS the host's timeline. Map legacy
+    // 'Timeline' routes (e.g. the "Review readiness" attention CTA) onto it so they
+    // resolve instead of dead-ending. Planner keeps its own Timeline tab (its own router).
+    if (newTab === 'Timeline') newTab = 'Event Day Schedule';
     const norm = normalizeEventTabRoute(newTab, itemId);
     setOpenTaskId(norm.planningView === 'list' ? (norm.openId || null) : null);
     setOpenTimelineId(norm.planningView === 'timeline' ? (norm.openId || null) : null);
@@ -40006,15 +40556,29 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
           <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
-        {tab === 'Planning' && <>
+        {tab === 'Planning' && (planV2On() ? <>
+          {/* pi.planv2 — recomposed: ONE command lead (PlanNowHero) full-width on top. Below,
+              a two-column grid at desktop: Food + supplies share ONE main column (one "food &
+              supplies" home, no split), decisions sit in a sticky right rail. On mobile it's a
+              single column with the rail (decisions/count prerequisite) leading. The planner ops
+              console (EventPlanningTab) is SHED (Ruthless Host Lens). */}
+          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
+          <div className="planv2-grid">
+            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
+            <div className="planv2-main hp-recede-group">
+              <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
+              <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+            </div>
+          </div>
+        </> : <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t, id) => go(t, id)} />
+          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
-        </>}
+        </>)}
         {tab === 'Event Day Schedule' && (
           // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
           // INSTEAD of the editable planner schedule. The planner's editable
@@ -40144,6 +40708,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [foodFocusNonce,  setFoodFocusNonce] = useState(0);
   const focusFood = (id) => { setOpenFoodId(id || null); if (id) setFoodFocusNonce((n) => n + 1); };
   const [openFocusField,  setOpenFocusField] = useState(initialNav?.focusField || null); // Board #15: an input id to scroll to + focus (e.g. budget field)
+  // Guest-entry FOCUS MODE — when the host arrives at Guests from the "Add your guest
+  // list" next-step, dim the rest of the tab and spotlight the count entry so they just
+  // enter the value (Attention System "focus rules" / dim-the-room). Released on lock,
+  // on tapping the dimmed area, when leaving the tab, or after a calm timeout.
+  const [guestFocus, setGuestFocus] = useState(initialNav?.focusField === 'guests-entry');
   // No-guesswork advance (host): after a deliberate foundational item is handled, the
   // engine DELIVERS what's next and moves attention there — a brief affirmation cue +
   // an auto-route to eventPlan(event).nextActions[0]. Single source: the same engine the
@@ -40203,6 +40772,17 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     timer = setTimeout(tick, 120);
     return () => { if (timer) clearTimeout(timer); };
   }, [tab, openFocusField]);
+  // Release guest FOCUS MODE automatically — once the count resolves (the host entered
+  // it), if they leave the Guests tab, or after a calm timeout so the dim never traps.
+  useEffect(() => {
+    if (!guestFocus) return undefined;
+    if (tab !== 'Guests') { setGuestFocus(false); return undefined; }
+    let resolved = false;
+    try { resolved = guestCountResolved(event).resolved; } catch { resolved = false; }
+    if (resolved) { setGuestFocus(false); return undefined; }
+    const t = setTimeout(() => setGuestFocus(false), 15000);
+    return () => clearTimeout(t);
+  }, [guestFocus, tab, event]);
   const [confirmEvtDel,   setConfirmEvtDel]  = useState(false);
   const [evtDrawerOpen,      setEvtDrawerOpen]      = useState(false);
   const [evtActionsOpen,     setEvtActionsOpen]     = useState(false);
@@ -40288,6 +40868,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       } catch (e) { /* non-fatal */ }
     }
     setOpenFocusField(autoFocusField);
+    // Guest-entry focus mode: engage only when explicitly routed there ('guests-entry'),
+    // not on a plain Guests tab click. Leaving Guests always releases it.
+    setGuestFocus(resolvedTab === 'Guests' && opts && opts.focusField === 'guests-entry');
     if (resolvedView) setPlanningView(resolvedView);
     // Sprint 60.B: vendor-section landing target. Reset to null whenever
     // we leave the Vendors tab.
@@ -40647,7 +41230,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // Documents lives in "More", so "More" correctly lights when viewing it.
     ? new Set(['Command', 'Planning', 'Event Day Schedule', 'Guests', 'Budget'])
     : new Set(['Command', 'Planning', 'Communication', ...PEOPLE_TABS, ...MONEY_TABS]);
-  const bottomMoreActive = dayMode ? !bottomNavItems.some(it => it.id === tab) : !PRIMARY_LANE_TABS.has(tab);
+  const bottomMoreActive = (bottomSheet === 'hostmore') || (dayMode ? !bottomNavItems.some(it => it.id === tab) : !PRIMARY_LANE_TABS.has(tab));
 
   // Mobile header tightened (board 2026-06-24: "too tall on mobile") — the strip wraps to
   // ~3 lines on a phone, so the loose 16px top/bottom padding stacked up. Trim to 10/8.
@@ -40698,9 +41281,33 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Guests'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader; planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Guests" hint="Your guest list, RSVPs, meals, and seating." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
           (confirm count · nudge outstanding · all replied). List recedes below. */}
-      {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />}
-      <div className={isHostEvt ? 'hp-recede' : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
-      {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
+      {isHostEvt && <div id="guests-entry" style={{ scrollMarginTop: 16 }}><PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); setGuestFocus(false); }} /></div>}
+      {/* Focus mode: a small "done" out, and the list below dims to spotlight the entry. */}
+      {isHostEvt && guestFocus && (
+        <button type="button" onClick={() => setGuestFocus(false)}
+          style={{ display: 'block', margin: '10px auto 0', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>
+          See the whole guest list →
+        </button>
+      )}
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
+          tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
+      {isHostEvt && (() => {
+        const conf = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+        if (conf.length === 0) return null; // nothing to seat until someone's confirmed
+        const unseated = conf.filter(g => !g.table).length;
+        return (
+          <button type="button" onClick={() => handleTabChange('Seating')}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', marginTop: 14, padding: '14px 16px', borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface || 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <span aria-hidden style={{ flexShrink: 0, color: C.muted, display: 'flex' }}><Icon name="seating" size={18} /></span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>Seat your guests →</span>
+              <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>{unseated > 0 ? `${unseated} still need a table` : 'Everyone has a table'}</span>
+            </span>
+          </button>
+        );
+      })()}</>}
+      {tab === 'Seating'     && <><LegacyTabHeader label="Seating" hint="Arrange tables and assign guests. Drag to move." onBack={() => handleTabChange('Command')} /><Seating   event={event} guests={event.guests}     setGuests={wrap('guests')} tables={event.tables || 5} onTablesChange={(n) => setEvent(e => ({ ...e, tables: n }))} tableNames={event.tableNames || []} onTableNamesChange={(names) => setEvent(e => ({ ...e, tableNames: names }))} /></>}
       {/* Sprint 51 perf: lazy-loaded specialists wrapped in Suspense so the
           chunk only downloads when its tab is first opened. Single Suspense
           per branch keeps the fallback scoped if multiple tabs ever switch
@@ -40772,7 +41379,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           and its CTA routes to that step's tab. The food plan below recedes so the hero
           is the single focus (Attention System: one hero). */}
       {tab === 'Planning' && isHostEvt && (
-        <PlanNowHero event={event} profile={profile} onNav={(t, id) => handleTabChange(t, id)} />
+        <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} />
       )}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
@@ -41473,7 +42080,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <div style={{ width: 36, height: 4, borderRadius: 99, background: C.border }} />
             </div>
             <div style={{ fontSize: T.section, fontWeight: FW.bold, letterSpacing: '-0.01em', color: C.text, marginBottom: 8, padding: '0 4px' }}>
-              {bottomSheet === 'people' ? 'People' : 'Money & Files'}
+              {bottomSheet === 'people' ? 'People' : bottomSheet === 'hostmore' ? 'More' : 'Money & Files'}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {(bottomSheet === 'people'
@@ -41481,6 +42088,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
                     { id: 'Vendors', icon: 'store',   label: 'Vendors', sub: `${vendorCount} on event`, testId: 'people-sheet-vendors' },
                     { id: 'Guests',  icon: 'users',   label: 'Guests',  sub: event.guestMode === 'count' ? `${confirmedG} expected` : `${confirmedG} confirmed${guestCount ? ` of ${guestCount}` : ''}`, testId: 'people-sheet-guests' },
                     { id: 'Seating', icon: 'seating', label: 'Seating', sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables', testId: 'people-sheet-seating' },
+                  ]
+                : bottomSheet === 'hostmore'
+                ? [
+                    // Host "More" (Figma 1728-3): the people-you're-hiring + the surfaces that
+                    // have no primary lane. Vendors leads (it's the People surface in the frame).
+                    { id: 'Vendors',   icon: 'store',   label: 'People you’re hiring', sub: `${vendorCount} on event`, testId: 'more-sheet-vendors' },
+                    { id: 'Seating',   icon: 'seating', label: 'Seating',   sub: (event.tables || 5) > 0 ? `${event.tables || 5} tables` : 'Add tables', testId: 'more-sheet-seating' },
+                    { id: 'Documents', icon: 'file',    label: 'Documents', sub: `${(event.documents || []).length} on event`, testId: 'more-sheet-documents' },
+                    ...(((event.messages || event.comms || []).length > 0) ? [{ id: 'Communication', icon: 'message', label: 'Messages', sub: 'Your threads', testId: 'more-sheet-messages' }] : []),
                   ]
                 : [
                     { id: 'Budget',    icon: 'dollar', label: 'Budget',    sub: 'Plan + actuals', testId: 'money-sheet-budget' },
@@ -41573,9 +42189,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               </button>
             );
           })}
-          {/* Host nav is a clean 5 lanes — no "More" (overflow → header ⋯). Planners
-              keep "More" for the deeper CRM surfaces (Vendors/Docs/Messages/Details). */}
-          {!isHostEvt && <button aria-label="More" onClick={() => setEvtDrawerOpen(true)} title="More"
+          {/* "More" lane (Figma 1728-3): hosts reach Vendors / Seating / Documents here —
+              the surfaces that have no primary lane. Planners keep their deeper-CRM drawer. */}
+          {<button aria-label="More" data-testid="bottomnav-more" onClick={() => isHostEvt ? setBottomSheet('hostmore') : setEvtDrawerOpen(true)} title="More"
             style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '8px 0 9px',
@@ -41748,6 +42364,20 @@ function WelcomeOnboarding({ onChoose }) {
 
 export default function App() {
   const bp = useBreakpoint();
+  // Keep the screen awake while the app is in the foreground (shopping, cooking, day-of)
+  // — the phone shouldn't sleep mid-use. Screen Wake Lock API; re-acquires on visibility.
+  // NOTE: requires a SECURE CONTEXT (HTTPS or localhost) — it's a no-op over plain LAN
+  // HTTP (the dev server at http://<ip>:3000), and works once deployed to HTTPS.
+  useEffect(() => {
+    let lock = null;
+    const acquire = async () => {
+      try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch (e) { /* denied / unsupported */ }
+    };
+    const onVis = () => { if (document.visibilityState === 'visible' && !lock) acquire(); };
+    acquire();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { document.removeEventListener('visibilitychange', onVis); try { if (lock) lock.release(); } catch (e) { /* noop */ } };
+  }, []);
   const [themeName, setThemeNameRaw] = useState(() => { try { return localStorage.getItem('ngw-theme') || 'dark'; } catch { return 'dark'; } });
   const setThemeName = (t) => { setThemeNameRaw(t); try { localStorage.setItem('ngw-theme', t); } catch { /* storage blocked */ } };
   const themeC = THEMES[themeName] || DARK;
@@ -42387,6 +43017,7 @@ export default function App() {
     setEvents(prev => (prev || []).filter(e => !isSeedEvent(e)));
     setClients(prev => (prev || []).filter(c => !isSeedClient(c)));
     markOnboardDone();
+    try { feedbackSeal(); } catch {} // a heavy thud marks an irreversible clear (HEAVY)
   };
 
   const activeEvent  = events.find(e => e.id === activeId);
