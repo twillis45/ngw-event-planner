@@ -39359,9 +39359,9 @@ function guestsHeroContent(event, C, steel) {
     if (planned <= 0 && (!band || !band.applicable)) return null;
     if (res.resolved) {
       const n = band && band.applicable ? band.confirmed : planned;
-      // Headcount vs roster: nobody "replied" to a headcount — only an RSVP roster gets
-      // the "everyone's replied" line. A locked count says it plainly.
-      const isRoster = band && band.applicable && band.basis === 'rsvp';
+      // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single
+      // source. Nobody "replied" to a headcount; only an RSVP roster gets that line.
+      const isRoster = res.mode === 'roster';
       return {
         state: 'allset', live: false,
         eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,

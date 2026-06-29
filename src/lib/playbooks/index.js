@@ -204,7 +204,9 @@ export function guestCountResolved(event) {
   // Headcount-only events (a cookout/BBQ you BUDGET for, not an RSVP list): an
   // explicit expected count IS the final number — there's no list to be "pending".
   // The host opted out of a roster, so the count decision is satisfied.
-  if (event.guestMode === 'count' && Number(event.guestCount) > 0) return { resolved: true, pending: 0 };
+  // `mode` is the engine's determination of HOW the count resolved — the single source
+  // every surface keys its copy off (a headcount was never "replied" to; a roster was).
+  if (event.guestMode === 'count' && Number(event.guestCount) > 0) return { resolved: true, pending: 0, mode: 'headcount' };
   // A "final" count means no still-pending RSVPs. Only a real guest list can
   // tell us this; an estimate-only event is treated as resolved (we can't see
   // maybes, and we won't block a host who already gave a number).
@@ -213,7 +215,7 @@ export function guestCountResolved(event) {
     return r === 'maybe' || r === '';
   }).length;
   if (list.length > 0 && pending > 0) return { resolved: false, pending, reason: 'pending-rsvps' };
-  return { resolved: true, pending: 0 };
+  return { resolved: true, pending: 0, mode: list.length > 0 ? 'roster' : 'estimate' };
 }
 
 // ── Safe-headcount band (Sprint 6x · the #2-fear dissolver) ───────────────────
