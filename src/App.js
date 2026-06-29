@@ -1407,15 +1407,21 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'cloche':        return <svg {...p}><path d="M4 17 A8 8 0 0 1 20 17 Z"/><path d="M3 17 H21"/><path d="M12 5.5 V7 M11 5.5 H13"/><path d="M5 20 H19"/></svg>;
     case 'spade':         return <svg {...p}><path d="M12 3.5 C12 8 18 9.5 18 13.5 C18 16 16 17.2 14 16.4 C13 16 12.6 15.4 12.5 14.8 C12.7 17 13 18.8 14.5 20.5 H9.5 C11 18.8 11.3 17 11.5 14.8 C11.4 15.4 11 16 10 16.4 C8 17.2 6 16 6 13.5 C6 9.5 12 8 12 3.5 Z"/></svg>;
     case 'candle':        return <svg {...p}><path d="M9.5 9.5 V19 A1 1 0 0 0 10.5 20 H13.5 A1 1 0 0 0 14.5 19 V9.5 M9.5 10 Q12 11.5 14.5 10"/><path d="M12 3 C13.4 4.6 13.8 6 13 7.2 C12.5 8 11.5 8 11 7.2 C10.4 6.2 10.8 5 12 3 Z"/><path d="M12 8.2 V9.5"/></svg>;
-    case 'crab':          return <svg {...p}><g strokeWidth={1.15} strokeLinejoin="round" strokeLinecap="round">{/* Maryland blue crab — TOP-DOWN, from photo ref: wide trapezoidal carapace, long sharp lateral spine each side, two folded front claws, splayed legs. Thin line. */}
-      {/* Carapace — wide, narrower toothed front (eyes), a long SHARP point each side, rounded back. */}
-      <path d="M8.6 10.2 L2.6 11.6 L8.4 12.9 C9.7 13.7 10.7 13.9 12 13.9 C13.3 13.9 14.3 13.7 15.6 12.9 L21.4 11.6 L15.4 10.2 C14.3 9.6 13.2 9.4 12 9.4 C10.8 9.4 9.7 9.6 8.6 10.2 Z"/>
-      {/* Two front claws — folded up from the front corners, each ending in an open pincer. */}
-      <path d="M9.2 9.9 C8 9 7.1 7.9 7.1 6.7"/><path d="M7.1 6.7 C6.4 6.3 6.4 5.4 7.1 5.2 M7.1 6.7 C7.8 6.5 8.2 5.8 7.8 5.2"/>
-      <path d="M14.8 9.9 C16 9 16.9 7.9 16.9 6.7"/><path d="M16.9 6.7 C17.6 6.3 17.6 5.4 16.9 5.2 M16.9 6.7 C16.2 6.5 15.8 5.8 16.2 5.2"/>
-      {/* Walking legs — three pointed pairs splayed back from behind the spines. */}
-      <path d="M6.6 12.4 L4.2 13.3 M7.6 13 L5.6 14.5 M8.8 13.5 L7.4 15.6"/>
-      <path d="M17.4 12.4 L19.8 13.3 M16.4 13 L18.4 14.5 M15.2 13.5 L16.6 15.6"/>
+    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Blue crab — matched to crab_wireframe_orange: shell w/ serrated top + smooth belly, two raised lobster-pincer claws, legs with little circle feet. */}
+      <path d="M4.8 12.3 C7 15.1 17 15.1 19.2 12.3"/>
+      <path d="M4.8 12.3 L6.2 11.4 L7.4 12.2 L8.8 11.4 L10.1 12.2 L11.5 11.4 L12.9 12.2 L14.3 11.4 L15.6 12.2 L17 11.4 L19.2 12.3"/>
+      {/* Claws — arms sweeping up from the shoulders to an open two-prong pincer. */}
+      <path d="M6.6 11.7 C5.3 10 4.3 8.6 4.5 7.0"/>
+      <path d="M4.5 7.0 C3.7 6.4 3.6 5.4 4.5 5.2 M4.5 7.0 C5.3 6.9 5.8 6.1 5.3 5.4"/>
+      <path d="M17.4 11.7 C18.7 10 19.7 8.6 19.5 7.0"/>
+      <path d="M19.5 7.0 C20.3 6.4 20.4 5.4 19.5 5.2 M19.5 7.0 C18.7 6.9 18.2 6.1 18.7 5.4"/>
+      {/* Six legs, each ending in a little circle foot. */}
+      <path d="M7.2 13.7 L5.4 14.8"/><circle cx="4.9" cy="15.1" r="0.7"/>
+      <path d="M8.6 14.3 L7.1 15.9"/><circle cx="6.6" cy="16.3" r="0.7"/>
+      <path d="M10.2 14.7 L9.2 16.6"/><circle cx="8.9" cy="17.0" r="0.7"/>
+      <path d="M16.8 13.7 L18.6 14.8"/><circle cx="19.1" cy="15.1" r="0.7"/>
+      <path d="M15.4 14.3 L16.9 15.9"/><circle cx="17.4" cy="16.3" r="0.7"/>
+      <path d="M13.8 14.7 L14.8 16.6"/><circle cx="15.1" cy="17.0" r="0.7"/>
     </g></svg>;
     case 'crawfish':      return <svg {...p}><path d="M7.5 13 C9.2 11.6 11.8 11.2 14 11.8 C15.7 12.3 16.6 13.4 16.4 14.6"/><path d="M10 11.6 L9.6 14.2 M12.2 11.6 L12 14.6 M14 12.2 L14 14.8"/><path d="M7.5 13 C5.6 12.4 4.2 13.4 4 15 M7.5 13 C6 11.4 4 11.6 3.2 13.2 M7.5 13 C6.4 14.8 4.6 15.2 3.6 16.8"/><path d="M16.4 14.6 C18 13.6 19.6 14.2 20 12.6 M16.4 14.6 C18.4 14.6 20 15.6 20 17.4"/><path d="M14.6 10.8 C16.4 8.8 18.6 9 19.4 7 M14 11 C15 9 17 9 17.8 7.4"/></svg>;
     case 'basket':        return <svg {...p}><path d="M5.5 11 L7 18 A2 2 0 0 0 8.9 19.4 H15.1 A2 2 0 0 0 17 18 L18.5 11"/><path d="M5.5 11 C5.5 9.6 8.4 8.6 12 8.6 C15.6 8.6 18.5 9.6 18.5 11 C18.5 12.4 15.6 13.4 12 13.4 C8.4 13.4 5.5 12.4 5.5 11 Z"/><path d="M6.6 14.6 Q12 16 17.4 14.6"/><path d="M7.4 17.4 Q12 18.6 16.6 17.4"/></svg>;
@@ -21310,6 +21316,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
   const [setupOpen, setSetupOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false); // host event switcher (bottom sheet)
   const [focusExpanded, setFocusExpanded] = useState(false); // Focus mode: collapsed (default) ↔ "whole day"
+  const [focusHc, setFocusHc] = useState(''); // Focus card inline headcount draft (set a count without the roster)
   const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
   // The host's focus event. A real (user-created) event ALWAYS outranks a sample/demo
   // event — a host must never open their own home inside someone else's seeded event
@@ -21527,9 +21534,18 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           onPatchEvent(ev.id, { ros: next });
         } catch {}
       } else if (na) {
-        // A next-action: route into its destination (the engine's existing nav).
-        try { onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' }); } catch {}
+        // A next-action: route into its destination (the engine's existing nav). fromAction
+        // skips the event-open cover — a fix is not an arrival ceremony.
+        try { onSelectEvent(ev.id, { ...(na.primaryRoute || { tab: 'Command' }), fromAction: true }); } catch {}
       }
+    };
+    // When THE ONE thing is the guest list, the Focus card also carries an inline
+    // headcount FIELD — set a count right here without building a roster (same option
+    // the Guests tab offers). Locks count mode + the number; the spine then advances.
+    const oneIsGuests = !!na && /guest/i.test(na.title || '') && theOne && theOne.kind === 'na';
+    const lockFocusHeadcount = () => {
+      const n = Math.max(0, Math.round(Number(focusHc) || 0));
+      if (n > 0 && onPatchEvent) onPatchEvent(ev.id, { guestMode: 'count', guestCount: n, guestEstimate: n });
     };
 
     // Tokens (Studio Matte — steel, never amber/gold for the action).
@@ -21593,6 +21609,18 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
                   style={{ marginTop: 22, width: '100%', background: 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: FW.bold, color: fg, cursor: 'pointer' }}>
                   {theOne.kind === 'cue' ? 'Mark it done' : (na && na.primaryCta ? `${na.primaryCta} →` : 'Take me to it →')}
                 </button>
+                {/* Guest list → an inline headcount FIELD right here (no roster needed). */}
+                {oneIsGuests && (
+                  <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 13, color: dimSteel, flexShrink: 0 }}>Or set a headcount</span>
+                    <input type="number" inputMode="numeric" min="0" value={focusHc} onChange={e => setFocusHc(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lockFocusHeadcount(); } }}
+                      placeholder={String(Number(ev.guestCount) || Number(ev.guestEstimate) || 0)}
+                      style={{ width: 72, background: '#15171b', border: '1px solid rgba(111,135,148,0.5)', borderRadius: 10, color: fg, fontSize: 15, fontWeight: FW.heavy, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
+                    <button type="button" onClick={lockFocusHeadcount}
+                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: `1px solid ${C.success || '#4e6877'}`, background: `${C.success || '#4e6877'}22`, color: C.success || '#9fc0d6', fontSize: 14, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Lock it</button>
+                  </div>
+                )}
                 {/* An out for this step — see the whole day instead of being held on the one. */}
                 {dayRos.length > 0 && (
                   <button type="button" onClick={() => setFocusExpanded(true)}
@@ -42419,7 +42447,7 @@ export default function App() {
     // resolves into the event. Board ruling: an arrival, not a tollbooth — so it's
     // SKIPPED when a next-step CTA targeted a specific field/item (a "fix one thing"
     // deep-link), and only greets a general open.
-    const coverTargeted = initialNav && (initialNav.focusField || initialNav.foodFocus || initialNav.taskId || initialNav.decisionId || initialNav.vendorId || initialNav.commId || initialNav.timelineId || initialNav.vendorSection);
+    const coverTargeted = initialNav && (initialNav.fromAction || initialNav.focusField || initialNav.foodFocus || initialNav.taskId || initialNav.decisionId || initialNav.vendorId || initialNav.commId || initialNav.timelineId || initialNav.vendorSection);
     if (hostNavActive(activeEvent) && !coverSeen.has(activeEvent.id) && !coverTargeted) {
       // Honest masthead "No. 0N" — this event's number among the host's events
       // (creation order). A first-time host's event genuinely IS No. 01.
