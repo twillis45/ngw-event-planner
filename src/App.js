@@ -9189,10 +9189,11 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const [supplySheet, setSupplySheet] = useState(null); // "do it for me" — the supplies draft
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
   if (!cap || !cap.items || !cap.items.length) return null;
-  // Seating is sized to the CEILING — set enough chairs for everyone who hasn't
-  // said no, not just the confirmed. Band where RSVPs are out, the count otherwise.
-  const capBand = attendanceBand(event);
-  const capGuestLabel = attendanceBandLabel(capBand) || cap.guests;
+  // Seating & durable supplies size to the CEILING — enough chairs/place settings for
+  // everyone invited, NOT the no-show-adjusted attendance band (that band rides the food,
+  // not the rentals: you seat real people and under-renting is the costly miss). So the
+  // hero speaks ONE count — cap.guests — the same number the supplies + sizing line use.
+  const capGuestLabel = cap.guests;
   const checked = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
   const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
   const ownedMap = (event.capacityOwned && typeof event.capacityOwned === 'object') ? event.capacityOwned : {};
@@ -9274,7 +9275,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
     const need = items.filter((it) => !checked[it.key] && !it.owned && !it.skipped);
     const src = need.length ? need : items.filter((it) => !it.skipped);
     const lines = src.map((it) => `[ ] ${it.qty} — ${it.name}`).join('\n');
-    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capBand.band ? `up to ${capGuestLabel}` : capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from Event Boss`;
+    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from Event Boss`;
     setSupplySheet({ title: 'Your supply checklist', intro: 'Everything to gather, sized to your count. Send it to whoever’s helping, or check it off as it lands.', draft: { subject: `Supplies for ${event.name || 'the event'}`, body }, shareTitle: `Supplies for ${event.name || 'the event'}`, kind: 'thankyou' });
   };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 20, maxWidth: 760, margin: '0 auto 16px' };
@@ -9303,7 +9304,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         {/* status band with a dot — what's covered, at the count it's sized to */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '5px 12px 5px 11px' }}>
           <span style={{ width: 8, height: 8, borderRadius: 99, background: allDone ? C.success : steel, flexShrink: 0 }} />
-          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>{capBand.band ? `Set for up to ${capGuestLabel}` : `Set for ${capGuestLabel}`} — {coversLabel}</span>
+          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Set for {capGuestLabel} — {coversLabel}</span>
         </div>
         {cap.sizing && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{cap.sizing.charAt(0).toUpperCase() + cap.sizing.slice(1)}</div>}
         {cap.sizingWhy && (
@@ -40404,16 +40405,26 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
 
   const rowBase = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
 
-  const openRow = (r) => (
-    <button key={r.id} type="button" onClick={() => go(r.route)} style={{ ...rowBase, cursor: 'pointer' }}>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{r.label}</span>
-        {r.because && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.because}</span>}
-      </span>
-      {chip(r.status)}
-      <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex' }}><Icon name="chevronRight" size={15} /></span>
-    </button>
-  );
+  const openRow = (r) => {
+    // A row is tappable only when it has a real destination (a menu/sourcing choice the
+    // Plan tab can focus, or a foundation route). A non-menu decision (venue, theme,
+    // music…) has no anchor — it shows as a calm, non-interactive "still open" prompt
+    // with NO chevron, so we never present an arrow that leads nowhere.
+    const actionable = !!r.route;
+    const inner = (
+      <>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{r.label}</span>
+          {r.because && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.because}</span>}
+        </span>
+        {chip(r.status)}
+        {actionable && <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex' }}><Icon name="chevronRight" size={15} /></span>}
+      </>
+    );
+    return actionable
+      ? <button key={r.id} type="button" onClick={() => go(r.route)} style={{ ...rowBase, cursor: 'pointer' }}>{inner}</button>
+      : <div key={r.id} style={{ ...rowBase, cursor: 'default' }}>{inner}</div>;
+  };
 
   const lockedRow = (r) => (
     <div key={r.id} style={{ ...rowBase, cursor: 'default', background: 'transparent', borderColor: `${C.border}` }}>

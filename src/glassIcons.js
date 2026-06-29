@@ -31,8 +31,10 @@ export const GLASS_SHAPES = {
   'house-key': { hue:'#3FA6A0', base:80, parts:(h)=>[{ d:`M30 80 V48 L66 22 L102 48 V80 Z`, color:h }] },
   house:       { hue:'#3FA6A0', base:80, parts:(h)=>[{ d:`M30 80 V48 L66 22 L102 48 V80 Z`, color:h }] },
   spade:  { hue:'#6E6FB0', base:84, parts:(h)=>[{ d:`M66 20 C48 40 36 48 36 60 C36 70 46 73 54 67 C52 75 48 80 42 84 L90 84 C84 80 80 75 78 67 C86 73 96 70 96 60 C96 48 84 40 66 20 Z`, color:h }] },
-  // Maryland blue crab — body + claws + legs as one filled volume
-  crab: { hue:'#2E6F8E', base:82, parts:(h)=>[
+  // Maryland blue crab — body + claws + legs as one filled volume. gscale: the authored
+  // paths are wide-but-thin and read SMALL in the dome vs peers (QA 2026-06-28), so scale
+  // the whole crab up about its center to give it the presence the Crab Feast deserves.
+  crab: { hue:'#2E6F8E', base:82, gscale:1.32, gcy:53, parts:(h)=>[
       { d:`M40 60 C40 44 52 36 66 36 C80 36 92 44 92 60 C92 70 80 76 66 76 C52 76 40 70 40 60 Z`, color:h },
       { d:`M44 40 C30 28 18 32 18 42 C18 49 26 51 30 45 C32 41 29 38 25 39 L27 43 C24 44 22 42 23 40 C25 36 33 36 38 43 Z`, color:h },
       { d:`M88 40 C102 28 114 32 114 42 C114 49 106 51 102 45 C100 41 103 38 107 39 L105 43 C108 44 110 42 109 40 C107 36 99 36 94 43 Z`, color:h } ],
@@ -119,15 +121,20 @@ export function glassSvg(iconName, hue, size = 56) {
   s += `<ellipse cx="68" cy="${fy}" rx="44" ry="5.5" fill="#000" opacity="0.4" filter="url(#bl2-${id})"/>`;
   s += `<ellipse cx="66" cy="${fy-1}" rx="30" ry="3.6" fill="#000" opacity="0.5" filter="url(#bl-${id})"/>`;
   s += `<ellipse cx="62" cy="${fy-1.5}" rx="13" ry="2.4" fill="${mix(H,'white',38)}" opacity="0.3" filter="url(#bl-${id})"/>`;
-  s += `<g>`;
-  s += parts.map((pt,k)=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="url(#f-${id}-${k})"/>`).join('');
-  s += parts.map((pt,k)=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="url(#e-${id}-${k})"/>`).join('');
-  s += parts.map((pt,k)=>`<g clip-path="url(#cp-${id}-${k})"><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="rgba(255,255,255,0.36)" stroke-width="3.2"/><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="1.3" transform="translate(0.7,1)"/></g>`).join('');
-  s += `<g clip-path="url(#cl-${id})"><rect x="0" y="0" width="132" height="98" fill="url(#sheen-${id})"/><polygon points="6,18 58,12 48,28 -4,36" fill="rgba(255,255,255,0.24)"/><circle cx="41" cy="24" r="4.6" fill="#fff" opacity="0.95"/><circle cx="50" cy="31" r="2" fill="#fff" opacity="0.6"/></g>`;
-  s += parts.map(pt=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="#5fd0ff" stroke-width="1" opacity="0.5" transform="translate(-0.7,-0.7)"/><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="#ff6b8a" stroke-width="1" opacity="0.45" transform="translate(0.8,0.9)"/>`).join('');
-  s += parts.map(pt=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="url(#rim-${id})" stroke-width="1.25"/>`).join('');
-  s += `</g>`;
-  if (sp.flames) s += sp.flames(H);
+  // A shape may declare gscale (+ optional gcx/gcy center) when its authored paths read
+  // small in the dome relative to peers (e.g. the wide-but-thin crab). We scale the WHOLE
+  // glyph — body + overlay (flames: eye-stalks/legs) — about its center so it keeps weight.
+  let g = `<g>`;
+  g += parts.map((pt,k)=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="url(#f-${id}-${k})"/>`).join('');
+  g += parts.map((pt,k)=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="url(#e-${id}-${k})"/>`).join('');
+  g += parts.map((pt,k)=>`<g clip-path="url(#cp-${id}-${k})"><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="rgba(255,255,255,0.36)" stroke-width="3.2"/><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="1.3" transform="translate(0.7,1)"/></g>`).join('');
+  g += `<g clip-path="url(#cl-${id})"><rect x="0" y="0" width="132" height="98" fill="url(#sheen-${id})"/><polygon points="6,18 58,12 48,28 -4,36" fill="rgba(255,255,255,0.24)"/><circle cx="41" cy="24" r="4.6" fill="#fff" opacity="0.95"/><circle cx="50" cy="31" r="2" fill="#fff" opacity="0.6"/></g>`;
+  g += parts.map(pt=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="#5fd0ff" stroke-width="1" opacity="0.5" transform="translate(-0.7,-0.7)"/><path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="#ff6b8a" stroke-width="1" opacity="0.45" transform="translate(0.8,0.9)"/>`).join('');
+  g += parts.map(pt=>`<path d="${pt.d}" ${pt.er?'fill-rule="evenodd"':''} fill="none" stroke="url(#rim-${id})" stroke-width="1.25"/>`).join('');
+  g += `</g>`;
+  if (sp.flames) g += sp.flames(H);
+  if (sp.gscale) { const cx = sp.gcx ?? 66, cy = sp.gcy ?? 54; g = `<g transform="translate(${cx},${cy}) scale(${sp.gscale}) translate(${-cx},${-cy})">${g}</g>`; }
+  s += g;
   return `<svg width="${size}" height="${Math.round(size*0.78)}" viewBox="0 0 132 98" aria-hidden="true">${defs}${s}</svg>`;
 }
 
