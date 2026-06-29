@@ -628,6 +628,12 @@ const SUPPLY_INTEL = [
   { re: /beverage tub|drink tub|ice chest|cooler/i,                         low: 18, high: 45,  kind: 'buy',  label: 'cooler' },
   { re: /drink dispenser|beverage dispenser|dispenser/i,                    low: 15, high: 35,  kind: 'buy',  label: 'dispenser' },
   { re: /pitcher|carafe/i,                                                  low: 8,  high: 18,  kind: 'buy',  label: 'pitcher' },
+  // Serviceware — china/glassware/flatware a host rents (or already owns). Per-unit
+  // rental bands, multiplied by qty downstream. Placed before the platter/serveware
+  // rows; none of the earlier rows match "plate"/"glass"/"flatware".
+  { re: /dinner plate|salad plate|dessert plate|\bplates?\b/i,              low: 1,  high: 2,   kind: 'rent', label: 'plates' },
+  { re: /wine glass|water glass|stemware|tumbler|\bglass(es)?\b/i,          low: 1,  high: 2,   kind: 'rent', label: 'glasses' },
+  { re: /flatware|silverware|cutlery/i,                                     low: 1,  high: 2,   kind: 'rent', label: 'flatware' },
   { re: /serving board|charcuterie board|platter|serving tray|\btray\b/i,   low: 8,  high: 20,  kind: 'buy',  label: 'platters' },
   { re: /serving (spoon|utensil)|tongs|ladle|serving set/i,                 low: 6,  high: 14,  kind: 'buy',  label: 'serveware' },
   { re: /small bowl|prep bowl|\bbowls?\b/i,                                 low: 4,  high: 12,  kind: 'buy',  label: 'bowls' },
@@ -660,18 +666,46 @@ export function supplyRetailLinks(name, anchor) {
   return { kind: 'buy', buy: links };
 }
 
+// Supply grouping — chairs/tables → SEATING; serviceware (plates/glasses/flatware,
+// platters, dispensers…) → SERVICEWARE; everything else → RENTALS & EXTRAS. Derived
+// from the item key / supplyIntel().label, never costed here. A pure classifier.
+const CAPACITY_GROUPS = ['SEATING', 'SERVICEWARE', 'RENTALS & EXTRAS'];
+function capacityGroupFor(key, label) {
+  const k = String(label || key || '').toLowerCase();
+  if (/chair|table|seat|stool|bench/.test(k)) return 'SEATING';
+  if (/plate|glass|flatware|silverware|cutlery|platter|serveware|serving|bowl|dispenser|pitcher|cooler|napkin|\bcup/.test(k)) return 'SERVICEWARE';
+  return 'RENTALS & EXTRAS';
+}
+// One verb per supply, from its supplyIntel kind + owned state. Owned → "Have these";
+// rentable → "Rent"; bought → "Delivered"; otherwise a neutral "Get".
+function capacityVerbFor(kind, isOwned) {
+  if (isOwned) return 'Have these';
+  if (kind === 'rent') return 'Rent';
+  if (kind === 'buy') return 'Delivered';
+  return 'Get';
+}
+
 export function playbookCapacity(event) {
   if (!event) return null;
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.rentalsGap) || !playbook.rentalsGap.length) return null;
   const guests = guestCountOf(event, playbook);
   // Single source of truth (food-engine pattern): the engine merges the host's qty
-  // OVERRIDES (event.capacityQty) and ADDED items (event.capacityAdd), and attaches
-  // per-item cost from the ONE canonical supplyIntel table — the UI only renders +
-  // checks off. qty × per-unit range = the line cost; no costing happens in the UI.
+  // OVERRIDES (event.capacityQty), ADDED items (event.capacityAdd), and OWNED flags
+  // (event.capacityOwned, keyed by item key), and attaches per-item cost from the ONE
+  // canonical supplyIntel table — the UI only renders + checks off. qty × per-unit
+  // range = the line cost; no costing happens in the UI. An OWNED item is "I already
+  // have it" → its line cost collapses to $0 (distinct from capacityChecked = got).
   const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
+  const owned = (event.capacityOwned && typeof event.capacityOwned === 'object') ? event.capacityOwned : {};
   const added = Array.isArray(event.capacityAdd) ? event.capacityAdd.filter((a) => a && a.name) : [];
-  const costOf = (name, q) => { const intel = supplyIntel(name); return intel ? { costLow: Math.round(intel.low * q), costHigh: Math.round(intel.high * q), kind: intel.kind } : { costLow: null, costHigh: null, kind: null }; };
+  const costOf = (name, q, isOwned) => {
+    const intel = supplyIntel(name);
+    if (isOwned) return { costLow: 0, costHigh: 0, kind: intel ? intel.kind : null, label: intel ? intel.label : null };
+    return intel
+      ? { costLow: Math.round(intel.low * q), costHigh: Math.round(intel.high * q), kind: intel.kind, label: intel.label }
+      : { costLow: null, costHigh: null, kind: null, label: null };
+  };
   const items = [];
   for (const r of playbook.rentalsGap) {
     let factor = null, factorType = null;
@@ -685,12 +719,20 @@ export function playbookCapacity(event) {
     if (baseQty == null || baseQty <= 0) continue;
     const short = shortRental(r.item);
     const qty = (short in qtyOv) ? Math.max(0, Math.round(Number(qtyOv[short]) || 0)) : baseQty;
-    items.push({ key: short, item: r.item, short, name: short, qty, note: r.note || '', factor, factorType, added: false, ...costOf(r.item, qty) });
+    const isOwned = !!owned[short];
+    const c = costOf(r.item, qty, isOwned);
+    items.push({ key: short, item: r.item, short, name: short, qty, note: r.note || '', factor, factorType, added: false, owned: isOwned, group: capacityGroupFor(short, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c });
   }
-  // Host-added supplies — SAME costing path (single source: supplyIntel).
+  // Host-added supplies — SAME costing path (single source: supplyIntel). An optional
+  // host-entered cost overrides the table (collapses the line to one number).
   for (const a of added) {
     const qty = Math.max(0, Math.round(Number(a.qty) || 0));
-    items.push({ key: a.id, item: a.name, short: a.name, name: a.name, qty, note: '', factor: null, factorType: null, added: true, ...costOf(a.name, qty) });
+    const isOwned = !!owned[a.id];
+    let c;
+    if (isOwned) c = costOf(a.name, qty, true);
+    else if (typeof a.cost === 'number' && a.cost > 0) { const intel = supplyIntel(a.name); c = { costLow: Math.round(a.cost), costHigh: Math.round(a.cost), kind: intel ? intel.kind : 'buy', label: intel ? intel.label : null }; }
+    else c = costOf(a.name, qty, false);
+    items.push({ key: a.id, item: a.name, short: a.name, name: a.name, qty, note: '', factor: null, factorType: null, added: true, owned: isOwned, group: capacityGroupFor(a.name, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c });
   }
   if (!items.length) return null;
   // compact summary, e.g. "12 chairs · 24 plates · 30 glasses · 12 flatware · 4 platters"
@@ -702,11 +744,34 @@ export function playbookCapacity(event) {
   let because = '';
   if (perGuest.length) because = `${guests} guests × ${perGuest.join(' · ')} each`;
   if (flat.length) because += `${because ? ' + ' : ''}${flat.join(' · ')} flat`;
+  // Grouped sections with per-section subtotals (Figma 1604:2). Owned lines count as $0.
+  const groups = CAPACITY_GROUPS.filter((g) => items.some((i) => i.group === g)).map((g) => {
+    const gi = items.filter((i) => i.group === g);
+    const gc = gi.filter((i) => i.costLow != null);
+    return { group: g, items: gi, costLow: gc.reduce((s, i) => s + i.costLow, 0), costHigh: gc.reduce((s, i) => s + i.costHigh, 0), hasCost: gc.length > 0 };
+  });
+  // Sizing line + explainer — ONLY from the real factors. Per-table ratio + table count
+  // appear when the playbook actually rents tables (most don't); "service for N" always.
+  const chairsItem = items.find((i) => i.short === 'chairs');
+  const tablesItem = items.find((i) => i.short === 'tables');
+  const swPerGuest = items.find((i) => i.factorType === 'perGuest' && i.group === 'SERVICEWARE');
+  const sizingParts = [];
+  if (chairsItem && tablesItem && tablesItem.qty > 0) {
+    const perTable = Math.round(chairsItem.qty / tablesItem.qty);
+    if (perTable > 0) sizingParts.push(`about ${perTable} per table`);
+    sizingParts.push(`${tablesItem.qty} ${tablesItem.qty === 1 ? 'table' : 'tables'}`);
+  }
+  sizingParts.push(`service for ${guests}`);
+  const sizing = sizingParts.join(' · ');
+  const whyBits = [`counts come from your ${guests} ${guests === 1 ? 'guest' : 'guests'}`];
+  if (chairsItem || tablesItem) whyBits.push('tables and chairs round up so no one stands');
+  if (swPerGuest) whyBits.push('serviceware runs a little over so there’s enough for spills and seconds');
+  const sizingWhy = whyBits.join('; ');
   // Cost totals — only from lines we can ground in the canonical table (no fabricated $).
   const costed = items.filter((i) => i.costLow != null);
   const costLow = costed.reduce((s, i) => s + i.costLow, 0);
   const costHigh = costed.reduce((s, i) => s + i.costHigh, 0);
-  return { guests, items, summary, because, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length };
+  return { guests, items, groups, summary, because, sizing, sizingWhy, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length };
 }
 
 // ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────

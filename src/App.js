@@ -9145,11 +9145,12 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
 function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile }) {
   const C = useT();
   const T = useType();
+  const steel = C.accentTopGrad || C.accent;
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState('');
   const [addQty, setAddQty] = useState('');
-  const [expanded, setExpanded] = useState(false); // collapse-when-satisfied (Attention System)
-  const [supplySheet, setSupplySheet] = useState(null); // "do it for me" — the supplies list draft
+  const [addCost, setAddCost] = useState('');
+  const [supplySheet, setSupplySheet] = useState(null); // "do it for me" — the supplies draft
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
   if (!cap || !cap.items || !cap.items.length) return null;
   // Seating is sized to the CEILING — set enough chairs for everyone who hasn't
@@ -9158,16 +9159,20 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const capGuestLabel = attendanceBandLabel(capBand) || cap.guests;
   const checked = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
   const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
+  const ownedMap = (event.capacityOwned && typeof event.capacityOwned === 'object') ? event.capacityOwned : {};
   const added = (Array.isArray(event.capacityAdd) ? event.capacityAdd : []).filter((a) => a && a.name);
-  // Single source of truth: the engine already merged overrides + added items AND
-  // attached per-line cost (cap.items: { key, name, qty, note, added, costLow,
-  // costHigh, kind }). The UI only renders + checks off. qtyOv/added above remain
-  // ONLY as the write-back targets for setQty/removeAdded/commitAdd.
+  // Single source of truth: the engine already merged overrides + added items + owned
+  // flags AND attached per-line cost, group, and verb (cap.items / cap.groups). The UI
+  // only renders, checks off, and toggles owned. qtyOv/added/ownedMap above are ONLY
+  // the write-back targets for setQty/removeAdded/commitAdd/toggleOwned.
   const items = cap.items;
-  const done = items.filter((it) => checked[it.key]).length;
+  const groups = cap.groups || [];
+  const done = items.filter((it) => checked[it.key] || it.owned).length;
   const allDone = items.length > 0 && done === items.length;
-  const collapsed = allDone && !expanded; // once everything's ready, the panel rests
+  // got = capacityChecked (you've acquired it); owned = capacityOwned ("I already have
+  // it", $0). Distinct fields — owned never writes to checked and vice-versa.
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityChecked: next }); };
+  const toggleOwned = (key) => { const next = { ...ownedMap }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityOwned: next }); };
   const setQty = (it, v) => {
     const n = Math.max(0, Math.round(Number(v) || 0));
     if (it.added) { onPatch({ capacityAdd: added.map((a) => (a.id === it.key ? { ...a, qty: n } : a)) }); }
@@ -9177,109 +9182,193 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const commitAdd = () => {
     const name = addName.trim(); if (!name) return;
     const id = 'cap-' + Date.now().toString(36);
-    onPatch({ capacityAdd: [...added, { id, name, qty: Math.max(1, Math.round(Number(addQty) || 1)) }] });
-    setAddName(''); setAddQty(''); setAddOpen(false);
+    // Optional cost override → stored on the added item; the engine prefers it over the
+    // supplyIntel table when present (gap 8). Auto-costs from supplyIntel otherwise.
+    const cost = Math.max(0, Math.round(Number(addCost) || 0));
+    const rec = { id, name, qty: Math.max(1, Math.round(Number(addQty) || 1)) };
+    if (cost > 0) rec.cost = cost;
+    onPatch({ capacityAdd: [...added, rec] });
+    setAddName(''); setAddQty(''); setAddCost(''); setAddOpen(false);
   };
   // Where to buy — honest live map search near the event, same contract as the food
   // plan's "Where to shop": a real Google Maps search, never an endorsement.
   const shopAnchor = (() => { try { return eventGeoQuery(event, profile); } catch { return ''; } })();
   const mapsUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(shopAnchor ? `${q} near ${shopAnchor}` : q)}`;
-  // "Do it for me" — build a ready-to-send checklist of everything still needed
-  // (sized to the count), so the host can text it to whoever's gathering supplies.
-  const openSupplyList = () => {
-    const need = items.filter((it) => !checked[it.key]);
+  const money = (lo, hi) => (Number(lo) || 0) === (Number(hi) || 0) ? `$${(Number(lo) || 0).toLocaleString()}` : `$${(Number(lo) || 0).toLocaleString()}–$${(Number(hi) || 0).toLocaleString()}`;
+  // Supplies total (gap 4): bought = the line cost of everything you've checked off as
+  // got (owned lines are $0); planned = the full sized cost. Both from cap.items only.
+  const boughtLow = items.filter((it) => checked[it.key]).reduce((s, it) => s + (it.costLow || 0), 0);
+  const boughtHigh = items.filter((it) => checked[it.key]).reduce((s, it) => s + (it.costHigh || 0), 0);
+  // What the band covers — only the categories actually present (never invented).
+  const covers = [];
+  if (items.some((i) => i.short === 'chairs')) covers.push('seats');
+  if (items.some((i) => i.short === 'tables')) covers.push('tables');
+  if (items.some((i) => i.group === 'SERVICEWARE')) covers.push('serviceware');
+  if (items.some((i) => i.group === 'RENTALS & EXTRAS')) covers.push('rentals');
+  const coversLabel = covers.length > 1 ? covers.slice(0, -1).join(', ') + ' & ' + covers[covers.length - 1] : (covers[0] || 'your setup');
+  // Hand-off (gap 7): merge supplies into the shopping list the SAME way food does —
+  // map cap.items into the shared draftShoppingList shape (no parallel store; the food
+  // shopping list is itself a derived draft). Owned lines are skipped (already had).
+  const openShoppingList = () => {
+    const shopItems = items.filter((it) => !it.owned).map((it) => ({
+      name: it.name, qty: it.qty, unit: '', got: !!checked[it.key], category: 'supplies',
+      buyAt: it.kind === 'rent' ? 'Rental' : 'Store', forgotten: false,
+      costLow: it.costLow, costHigh: it.costHigh, basis: it.note || '',
+    }));
+    const left = shopItems.filter((i) => !i.got).length;
+    const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchor });
+    setSupplySheet({ title: 'Your supply list', intro: left > 0 ? 'Your seating & supplies, sized to your count — every item and amount. Take it to the store, send it to whoever’s helping, or check it off as it lands.' : 'Everything’s checked off — you’re set.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) });
+  };
+  // Ghost: the share-as-checklist text (lighter than the shopping draft).
+  const openChecklist = () => {
+    const need = items.filter((it) => !checked[it.key] && !it.owned);
     const src = need.length ? need : items;
     const lines = src.map((it) => `[ ] ${it.qty} — ${it.name}`).join('\n');
-    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capBand.band ? `up to ${capGuestLabel}` : capGuestLabel} guests:\n\n${lines}\n\n${cap.because ? `How it's sized: ${cap.because}.\n\n` : ''}— from Event Boss`;
-    setSupplySheet({ title: 'Your supplies list', intro: 'Everything still to gather, sized to your count. Take it to the store, send it to whoever’s helping, or check it off as it lands.', draft: { subject: `Supplies for ${event.name || 'the event'}`, body }, shareTitle: `Supplies for ${event.name || 'the event'}`, kind: 'thankyou' });
+    const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capBand.band ? `up to ${capGuestLabel}` : capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from Event Boss`;
+    setSupplySheet({ title: 'Your supply checklist', intro: 'Everything to gather, sized to your count. Send it to whoever’s helping, or check it off as it lands.', draft: { subject: `Supplies for ${event.name || 'the event'}`, body }, shareTitle: `Supplies for ${event.name || 'the event'}`, kind: 'thankyou' });
   };
-  const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 20, maxWidth: 760, margin: '0 auto 16px' };
+  const eyebrow = { fontSize: T.caption, fontWeight: FW.semibold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted };
   const qtyBox = { display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '3px 8px', flexShrink: 0 };
-  const qtyInp = { width: 40, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center' };
-  const money = (lo, hi) => (Number(lo) || 0) === (Number(hi) || 0) ? `$${(Number(lo) || 0).toLocaleString()}` : `$${(Number(lo) || 0).toLocaleString()}–$${(Number(hi) || 0).toLocaleString()}`;
-  const linkChip = { fontSize: T.caption, fontWeight: FW.semibold, color: C.accentTopGrad || C.accent, textDecoration: 'none', whiteSpace: 'nowrap' };
+  const qtyInp = { width: 38, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center' };
+  const verbLink = { fontSize: T.caption, fontWeight: FW.bold, color: steel, textDecoration: 'none', whiteSpace: 'nowrap' };
+  const verbBtn = (col) => ({ fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: col, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' });
   return (
-    <div style={card}>
-      <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
-        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, letterSpacing: '-0.01em', color: allDone ? C.success : C.text }}><Icon name="seating" size={16} stroke={1.9} /> Seating &amp; supplies</div>
-        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All set ✓ · Review' : 'All set ✓ · Hide') : `${done} of ${items.length} ready`}</div>
-      </button>
-      {!collapsed && (<>
-      <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>
-        {capBand.band ? `Set for up to ${capGuestLabel} guests` : `Sized for ${capGuestLabel} guests`} — change a count or add your own. Tap the box once you have it.
-        {cap.hasCost && <> <span style={{ color: C.text, fontWeight: FW.semibold }}>About {money(cap.costLow, cap.costHigh)}</span> for what you don’t already own.</>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {items.map((it, i) => {
-          const on = !!checked[it.key];
-          return (
-            <div key={it.key} style={{ display: 'flex', alignItems: 'center', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '10px 0', opacity: on ? 0.6 : 1 }}>
-              <button type="button" onClick={() => toggle(it.key)} aria-label={on ? 'Got it' : 'Mark as got'}
-                style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? (C.success || C.accent) : C.border}`, background: on ? (C.success || C.accent) : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
-              <span style={qtyBox}>
-                <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
-                  onBlur={(e) => setQty(it, e.currentTarget.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { setQty(it, e.currentTarget.value); e.currentTarget.blur(); } }}
-                  style={qtyInp} />
-              </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, textDecoration: on ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
-                {it.note && <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
-                {/* cost + retail deep links — engine-supplied; honest searches, never a listing */}
-                {!on && (it.costLow != null || it.kind) && (() => {
-                  const rl = supplyRetailLinks(it.name, shopAnchor);
-                  return (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', marginTop: 4 }}>
-                      {it.costLow != null && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>{money(it.costLow, it.costHigh)}</span>}
-                      {rl.kind === 'rent' && <a href={rl.rentUrl} target="_blank" rel="noopener noreferrer" style={linkChip}>Rent nearby ↗</a>}
-                      {/* Declutter dense mobile rows (board): one retail link on mobile, the full set on desktop. */}
-                      {rl.buy.slice(0, isMobile ? 1 : 3).map((b) => <a key={b.label} href={b.url} target="_blank" rel="noopener noreferrer" style={linkChip}>{b.label} ↗</a>)}
-                    </span>
-                  );
-                })()}
-              </span>
-              {it.added && <button type="button" onClick={() => removeAdded(it.key)} aria-label="Remove" style={{ flexShrink: 0, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.title, lineHeight: 1, padding: '2px 4px' }}>×</button>}
-            </div>
-          );
-        })}
-      </div>
-      {/* Add your own item */}
-      <div style={{ marginTop: 10 }}>
-        {addOpen ? (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: 12, border: `1px solid ${C.border}`, borderRadius: 10, background: C.bg }}>
-            <span style={qtyBox}>
-              <input type="number" inputMode="numeric" min="1" placeholder="1" value={addQty} onChange={(e) => setAddQty(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }} style={qtyInp} />
-            </span>
-            <input autoFocus placeholder="Item — e.g. extra ice chest, string lights" value={addName} onChange={(e) => setAddName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
-              style={{ flex: 1, minWidth: 160, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 11px', color: C.text, fontSize: T.secondary, fontFamily: 'inherit', outline: 'none' }} />
-            <button type="button" onClick={commitAdd} disabled={!addName.trim()}
-              style={{ fontSize: T.secondary, fontWeight: FW.bold, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6, fontFamily: 'inherit' }}>Add</button>
-            <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddQty(''); }}
-              style={{ fontSize: T.secondary, fontWeight: FW.semibold, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Cancel</button>
+    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      {/* Hero — the $ figure leads (Attention System), mirroring the Food plan hero:
+          eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
+      <div style={{ ...card, borderLeft: `3px solid ${allDone ? C.success : steel}` }}>
+        <div style={{ ...eyebrow, display: 'inline-flex', alignItems: 'center', gap: 7 }}><Icon name="seating" size={14} stroke={1.9} /> Seating &amp; supplies</div>
+        {cap.hasCost ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+            <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(cap.costLow, cap.costHigh)}</span>
+            <span style={{ fontSize: T.secondary, color: C.muted }}>in rentals &amp; supplies</span>
           </div>
         ) : (
-          <button type="button" onClick={() => setAddOpen(true)}
-            style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: C.accentTopGrad || C.accent, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item</button>
+          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginTop: 4 }}>Your seating &amp; supplies</div>
+        )}
+        {/* status band with a dot — what's covered, at the count it's sized to */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '5px 12px 5px 11px' }}>
+          <span style={{ width: 8, height: 8, borderRadius: 99, background: allDone ? C.success : steel, flexShrink: 0 }} />
+          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>{capBand.band ? `Set for up to ${capGuestLabel}` : `Set for ${capGuestLabel}`} — {coversLabel}</span>
+        </div>
+        {cap.sizing && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{cap.sizing.charAt(0).toUpperCase() + cap.sizing.slice(1)}</div>}
+        {cap.sizingWhy && (
+          <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: `2px solid ${C.border}` }}>
+            <span style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.55 }}><span style={{ fontWeight: FW.bold, color: C.text }}>How it’s sized — </span>{cap.sizingWhy}.</span>
+          </div>
         )}
       </div>
-      {/* Do-it-for-me + where-to-buy — food-planner-grade: hand the host a ready
-          list and a live local search, never an invented store. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-        <button type="button" onClick={openSupplyList}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: T.secondary, fontWeight: FW.bold, padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff', fontFamily: 'inherit' }}>
-          <Icon name="list" size={14} color="#fff" /> Get the list
-        </button>
-        <a href={mapsUrl('party rental supply store')} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '8px 12px', textDecoration: 'none' }}>
-          <Icon name="pin" size={12} color={C.accentTopGrad || C.accent} /> Rentals &amp; supplies nearby <span style={{ color: C.accentTopGrad || C.accent }}>↗</span>
-        </a>
-        <span style={{ fontSize: T.caption, color: C.muted }}>Live map search — never endorsements</span>
+
+      {/* The supplies — grouped (SEATING / SERVICEWARE / RENTALS & EXTRAS), each with a
+          right-aligned subtotal; per-item rows with a verb that varies by item. */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, letterSpacing: '-0.01em', color: C.text }}><Icon name="list" size={16} stroke={1.9} /> The supplies</div>
+          <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${items.length} item${items.length === 1 ? '' : 's'}`}</div>
+        </div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
+
+        {groups.map((g) => (
+          <div key={g.group} style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
+              <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g.group}</span>
+              {g.hasCost && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(g.costLow, g.costHigh)}</span>}
+            </div>
+            {g.items.map((it) => {
+              const on = !!checked[it.key] || it.owned;
+              const rl = (() => { try { return supplyRetailLinks(it.name, shopAnchor); } catch { return null; } })();
+              const verbEl = it.owned ? (
+                <button type="button" onClick={() => toggleOwned(it.key)} style={verbBtn(C.success)} title="You already have these — tap to undo">Have these ✓</button>
+              ) : rl && rl.kind === 'rent' ? (
+                <a href={rl.rentUrl} target="_blank" rel="noopener noreferrer" style={verbLink}>Rent →</a>
+              ) : rl && rl.buy && rl.buy[0] ? (
+                <a href={rl.buy[0].url} target="_blank" rel="noopener noreferrer" style={verbLink}>Delivered →</a>
+              ) : null;
+              return (
+                <div key={it.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: `1px solid ${C.border}`, padding: '11px 0', opacity: checked[it.key] ? 0.55 : 1 }}>
+                  <button type="button" onClick={() => toggle(it.key)} aria-label={on ? 'Got it' : 'Mark as got'}
+                    style={{ flexShrink: 0, marginTop: 1, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
+                  <span style={{ ...qtyBox, marginTop: 0 }}>
+                    <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
+                      onBlur={(e) => setQty(it, e.currentTarget.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { setQty(it, e.currentTarget.value); e.currentTarget.blur(); } }}
+                      style={qtyInp} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, textDecoration: checked[it.key] ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                    {it.note && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
+                    {!it.owned && <button type="button" onClick={() => toggleOwned(it.key)} style={{ ...verbBtn(C.muted), marginTop: 3, textDecoration: 'underline dotted' }}>I already have these</button>}
+                  </span>
+                  <span style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                    {it.owned
+                      ? <span style={{ fontSize: T.secondary, color: C.muted }}>~$0</span>
+                      : it.costLow != null
+                      ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{money(it.costLow, it.costHigh)}</span>
+                      : null}
+                    {verbEl}
+                    {it.added && <button type="button" onClick={() => removeAdded(it.key)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.body, lineHeight: 1, padding: 0 }}>Remove ×</button>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Supplies total — bought vs planned (gap 4) */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>Supplies total</span>
+          <span style={{ fontSize: T.secondary, color: C.muted }}>
+            <span style={{ color: C.success, fontWeight: FW.bold }}>{money(boughtLow, boughtHigh)} bought</span> · ~{money(cap.costLow, cap.costHigh)} planned
+          </span>
+        </div>
+
+        {/* Add your own item — name · qty · optional ~cost (engine auto-costs otherwise) */}
+        <div style={{ marginTop: 12 }}>
+          {addOpen ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: 12, border: `1px solid ${C.border}`, borderRadius: 10, background: C.bg }}>
+              <span style={qtyBox}>
+                <input type="number" inputMode="numeric" min="1" placeholder="1" value={addQty} onChange={(e) => setAddQty(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }} style={qtyInp} />
+              </span>
+              <input autoFocus placeholder="Item — e.g. extra ice chest, string lights" value={addName} onChange={(e) => setAddName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+                style={{ flex: 1, minWidth: 150, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 11px', color: C.text, fontSize: T.secondary, fontFamily: 'inherit', outline: 'none' }} />
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '0 10px' }}>
+                <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
+                <input type="number" inputMode="numeric" placeholder="cost" value={addCost} onChange={(e) => setAddCost(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitAdd(); }}
+                  style={{ width: 56, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+              </span>
+              <button type="button" onClick={commitAdd} disabled={!addName.trim()}
+                style={{ fontSize: T.secondary, fontWeight: FW.bold, padding: '8px 15px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? steel : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6, fontFamily: 'inherit' }}>Add</button>
+              <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddQty(''); setAddCost(''); }}
+                style={{ fontSize: T.secondary, fontWeight: FW.semibold, padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted, fontFamily: 'inherit' }}>Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setAddOpen(true)}
+              style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item — name · qty · ~cost</button>
+          )}
+        </div>
       </div>
-      {cap.because && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}><span style={{ fontWeight: FW.bold }}>How we sized it:</span> {cap.because}</div>}
-      </>)}
+
+      {/* Hand-off — primary: merge into the shopping list (same path as food). Ghost:
+          share the checklist. Plus a live local rentals/supply search (never endorsed). */}
+      <div style={card}>
+        <button type="button" onClick={openShoppingList}
+          style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: T.secondary, fontWeight: FW.bold, padding: '11px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: steel, color: '#fff', fontFamily: 'inherit' }}>
+          <Icon name="basket" size={15} color="#fff" /> Add supplies to the shopping list →
+        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10 }}>
+          <button type="button" onClick={openChecklist}
+            style={{ fontSize: T.secondary, fontWeight: FW.semibold, padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Share the supply checklist</button>
+          <a href={mapsUrl('party rental supply store')} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '9px 12px', textDecoration: 'none' }}>
+            <Icon name="pin" size={12} color={steel} /> Rentals &amp; supplies nearby <span style={{ color: steel }}>↗</span>
+          </a>
+        </div>
+        <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 8 }}>Live map search — never endorsements.</span>
+      </div>
       {supplySheet && <DraftSheet {...supplySheet} onClose={() => setSupplySheet(null)} C={C} isMobile={isMobile} />}
     </div>
   );

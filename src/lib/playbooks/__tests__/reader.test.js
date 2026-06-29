@@ -379,6 +379,41 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
     const c = playbookCapacity({ id: 'e', type: 'Dinner Party' });
     expect(c.guests).toBe(8); // typicalGuests.default
   });
+
+  test('items carry a group + verb; groups carry per-section subtotals', () => {
+    const c = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    const byItem = Object.fromEntries(c.items.map(i => [i.short, i]));
+    expect(byItem.chairs.group).toBe('SEATING');
+    expect(byItem.plates.group).toBe('SERVICEWARE');
+    expect(byItem.platters.group).toBe('SERVICEWARE');
+    // rentable serviceware → "Rent" verb (single source: supplyIntel.kind)
+    expect(byItem.plates.verb).toBe('Rent');
+    // grouped sections, ordered, each with a numeric subtotal that sums its lines
+    const seating = c.groups.find(g => g.group === 'SEATING');
+    expect(seating).toBeTruthy();
+    const sumLow = seating.items.filter(i => i.costLow != null).reduce((s, i) => s + i.costLow, 0);
+    expect(seating.costLow).toBe(sumLow);
+  });
+
+  test('capacityOwned collapses a line to $0 and flips its verb to "Have these"', () => {
+    const base = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    const owned = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12, capacityOwned: { chairs: true } });
+    const oChair = owned.items.find(i => i.short === 'chairs');
+    expect(oChair.owned).toBe(true);
+    expect(oChair.costLow).toBe(0);
+    expect(oChair.costHigh).toBe(0);
+    expect(oChair.verb).toBe('Have these');
+    // owning a line lowers the planned total
+    expect(owned.costLow).toBeLessThan(base.costLow);
+  });
+
+  test('sizing line + explainer derive only from real factors', () => {
+    const c = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 30 });
+    expect(c.sizing).toMatch(/service for 30/);
+    expect(c.sizingWhy).toMatch(/counts come from your 30 guests/);
+    // Dinner Party has no rented tables → no fabricated per-table count
+    expect(c.sizing).not.toMatch(/per table/);
+  });
 });
 
 
