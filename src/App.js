@@ -29445,6 +29445,9 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
   });
   const [modalId,    setModalId]  = useState(null);
   const [copied,     setCopied]   = useState(false);
+  // Single source for locking a headcount — used by BOTH the planner count field and the
+  // host headcount panel. Sets the number, count mode, and the locked decision.
+  const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (guests.length > 0) setShowList(true); } };
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
   const [nonRespOpen, setNonRespOpen] = useState(bp !== 'mobile'); // mobile: collapse non-responder panel
   const [showRsvp,   setShowRsvp] = useState(false);
@@ -29697,9 +29700,9 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
   // headcount-only panel here would duplicate it (two steppers on one screen). Recede to
   // the roster for hosts; planners (no hero) keep the single confirm-count panel.
   if (!showList && !guestsIsHost) {
-    const hasList = guests.length > 0;
+    const hasList = guests.length > 0; void hasList;
     const accent = C.accent; // steel, not amber — this is a primary action, not a caution (Studio Matte: warm = status only)
-    const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (hasList) setShowList(true); } };
+    // commit is the single component-level lock function (defined above) — reused here.
     const card = { background: C.surface, border: `1px solid ${accent}55`, borderLeft: `3px solid ${accent}`, borderRadius: 14, boxShadow: C.cardShadow, padding: 24, maxWidth: 760, margin: '0 auto' };
     return (
       <div style={{ padding: '8px 0' }}>
@@ -30193,7 +30196,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             roster (writes guestCount + count mode directly; the prior link was a no-op
             because the count VIEW is planner-only). Always available on the host Guests tab. */}
         {guestsIsHost && (() => {
-          const lockHc = () => { const n = Math.max(0, Math.round(Number(hcDraft) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); } };
+          const lockHc = () => commit(hcDraft); // single source — the same lock used everywhere
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 14, borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface2 || C.surface || C.bg, flexWrap: 'wrap' }}>
               <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>Just need a headcount?</span>
@@ -39356,11 +39359,16 @@ function guestsHeroContent(event, C, steel) {
     if (planned <= 0 && (!band || !band.applicable)) return null;
     if (res.resolved) {
       const n = band && band.applicable ? band.confirmed : planned;
+      // Headcount vs roster: nobody "replied" to a headcount — only an RSVP roster gets
+      // the "everyone's replied" line. A locked count says it plainly.
+      const isRoster = band && band.applicable && band.basis === 'rsvp';
       return {
         state: 'allset', live: false,
         eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
-        title: `Everyone's replied — ${n} confirmed`,
-        line: `Your guest count is locked. Quantities and seating can size to it.`,
+        title: isRoster ? `Everyone's replied — ${n} confirmed` : `Headcount set — ${n} guests`,
+        line: isRoster
+          ? `Your guest count is locked. Quantities and seating can size to it.`
+          : `Your headcount's locked. Quantities and seating size to it.`,
         cta: 'Open guest list', ctaTab: 'Guests',
       };
     }
