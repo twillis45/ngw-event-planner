@@ -13,7 +13,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, supplyIntel, supplyRetailLinks } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks } from './lib/playbooks';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
@@ -39799,6 +39799,97 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   );
 }
 
+// ─── HostDecisionsPanel — the calm host "Decisions" surface (Figma 1692:3) ─────────
+// A NET-NEW host section for the Plan tab. Renders the single-source
+// playbookDecisionBoard(event) — never invents data, never speaks software/ops:
+//   • A count-lock command card when RSVPs are genuinely outstanding (honest
+//     "22 confirmed · 12 still out of 40 invited" math; "Lock it" reuses the SAME
+//     single-source count lock the Guests hero uses — guestMode/guestCount/estimate).
+//   • STILL OPEN — each open decision as a calm, tappable row with a status chip
+//     (READY TO LOCK = green · WAITING ON = amber · OVERDUE = red). Per the
+//     Studio Matte confidence lock: green/steel/amber/red only, never warm gold.
+//   • LOCKED — the decisions/facts already settled, shown quietly with their value.
+// Tapping an open row routes to where the host acts (the same foundation/decision
+// routes the rest of the app uses). Returns null when there's nothing to settle.
+function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
+  const C = useT();
+  const T = useType();
+  const board = useMemo(() => { try { return playbookDecisionBoard(event); } catch { return null; } }, [event]);
+  if (!board) return null;
+  const { open, locked, headcount } = board;
+  if (!open.length && !locked.length && !headcount) return null;
+
+  const steel = C.steel?.blue500 || C.accentTopGrad || C.accent;
+  const green = C.success || C.accent;
+  const STATUS = {
+    ready:   { label: 'READY TO LOCK', color: green },
+    waiting: { label: 'WAITING ON',    color: C.warn },
+    overdue: { label: 'OVERDUE',       color: C.danger },
+    locked:  { label: 'LOCKED',        color: green },
+  };
+
+  const go = (route) => {
+    if (!route || typeof onNav !== 'function') return;
+    const opts = (route.foodFocus || route.focusField)
+      ? { foodFocus: route.foodFocus, focusField: route.focusField } : undefined;
+    onNav(route.tab, undefined, opts);
+  };
+
+  const chip = (status) => {
+    const s = STATUS[status] || STATUS.ready;
+    return (
+      <span style={{ flexShrink: 0, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, padding: '3px 8px', borderRadius: 5, border: `1px solid ${s.color}55`, background: `${s.color}12`, whiteSpace: 'nowrap' }}>{s.label}</span>
+    );
+  };
+
+  const sectionLabel = (text) => (
+    <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, margin: '4px 2px 10px' }}>{text}</div>
+  );
+
+  const rowBase = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
+
+  const openRow = (r) => (
+    <button key={r.id} type="button" onClick={() => go(r.route)} style={{ ...rowBase, cursor: 'pointer' }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{r.label}</span>
+        {r.because && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.because}</span>}
+      </span>
+      {chip(r.status)}
+      <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex' }}><Icon name="chevronRight" size={15} /></span>
+    </button>
+  );
+
+  const lockedRow = (r) => (
+    <div key={r.id} style={{ ...rowBase, cursor: 'default', background: 'transparent', borderColor: `${C.border}` }}>
+      <span aria-hidden style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: `${green}1f`, color: green, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={12} stroke={2.4} /></span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.semibold, color: C.muted }}>{r.label}</span>
+      {r.because && <span style={{ flexShrink: 0, fontSize: T.caption, fontWeight: FW.semibold, color: C.text, maxWidth: '52%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>{r.because}</span>}
+    </div>
+  );
+
+  const settledCount = locked.length;
+  const subtitle = open.length
+    ? `${open.length} still to settle${settledCount ? ` · ${settledCount} locked` : ''}`
+    : 'Everything’s settled.';
+
+  return (
+    <CollapsibleCard id="host-decisions" isMobile={isMobile} eyebrow="Decisions" title="What to settle" subtitle={subtitle} accent={steel}>
+      {/* Count-lock command card — only when replies are genuinely outstanding (honest
+          math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
+      {headcount && (
+        <div style={{ ...metalEdge(C), borderRadius: 12, padding: 16, marginBottom: 16, borderLeft: `3px solid ${steel}` }}>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel, marginBottom: 7 }}>Lock your final guest count</div>
+          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>Lock your final guest count</div>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{headcount.because}{headcount.label ? ` — plan for ${headcount.label}.` : '.'}</div>
+          <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(headcount.planning); }} style={{ marginTop: 12, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${green}`, cursor: 'pointer', background: `${green}1f`, color: green }}>Lock it</button>
+        </div>
+      )}
+      {open.length > 0 && (<>{sectionLabel('Still open')}{open.map(openRow)}</>)}
+      {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Locked')}{locked.map(lockedRow)}</div>)}
+    </CollapsibleCard>
+  );
+}
+
 // ─── HostEventShell — the host L3 over the shared core (pi.shell, default OFF) ──────
 // Host shell decision (docs/product-os/HOST_SHELL_DECISION.md): instead of routing a
 // host through the planner EventPlanner with runtime gating, give the host its OWN slim
@@ -39906,6 +39997,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <PlanNowHero event={event} profile={profile} onNav={(t, id) => go(t, id)} />
           <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
+          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
         </>}
         {tab === 'Event Day Schedule' && (
@@ -40681,6 +40773,13 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
           <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
+        </div>
+      )}
+      {/* Decisions — what's settled vs. still open (Figma 1692:3). Sits alongside
+          "What's left to do"; the count-lock reuses the single-source guest-count lock. */}
+      {tab === 'Planning' && isHostEvt && (
+        <div className="hp-recede">
+          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} />
         </div>
       )}
       {tab === 'Planning'       && (

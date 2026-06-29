@@ -1014,6 +1014,171 @@ export function playbookAreaNextStep(event, area, asOf) {
   return { action, dueDate: pick.dueDate, daysOut: pick.daysOut, owner: pick.owner, critical: pick.critical };
 }
 
+// ── Host "Decisions" board (the calm what's-settled / what's-still-open reader) ─
+// Pure reader for the host Decisions surface (Figma 1692:3). Returns the open
+// decisions (each with an honest status), the already-settled facts/decisions, and
+// the headcount-lock hero data — ALL derived from existing engine state, never
+// fabricated. No new state, no parallel generator: it reads guestCountResolved /
+// attendanceBand (the SAME RSVP math every host surface uses), dietaryResolved, the
+// foundation facts (date/venue), and the playbook's AUTHORED decisions[].
+//
+// Returns { open:[row], locked:[row], headcount:{...}|null } where a row is
+//   { id, label, status:'ready'|'waiting'|'overdue'|'locked', because, dueDate, daysOut, route }.
+//   • locked  — host made the pick (event.foodChoices[id]) OR the fact is set
+//               (date/venue set, headcount resolved, dietary collected).
+//   • overdue — its `when` (T-Nd) deadline is past (daysOut < 0) and not locked.
+//   • waiting — blocked on an unmet prerequisite (a dependsOn decision not yet
+//               settled, or the final headcount while RSVPs are still out).
+//   • ready   — its prerequisites are met; the host just needs to commit.
+// `headcount` (the count-lock hero) is present ONLY when RSVPs are genuinely
+// outstanding (a roster with replies still out) — never an invented spread.
+
+// Short, calm noun for a decision id used inside a "waiting on …" because line.
+// Falls back to the id so an unmapped dependency still reads honestly.
+const DECISION_DEP_NOUN = {
+  format: 'the format', menu: 'the menu', dietary: 'dietary needs',
+  alcohol: 'the drinks plan', seating: 'seating', help: 'whether you bring in help',
+  theme: 'the theme', headcount: 'the headcount', count: 'the headcount',
+};
+function decisionDepNoun(id, decisions) {
+  if (DECISION_DEP_NOUN[id]) return DECISION_DEP_NOUN[id];
+  const d = (decisions || []).find((x) => x && x.id === id);
+  return d ? decisionShortLabel(d.label) : String(id);
+}
+// "Seated dinner or buffet / family-style?" → trimmed, no trailing '?', capped.
+function decisionShortLabel(label) {
+  let s = String(label || '').trim().replace(/\?+\s*$/, '');
+  if (s.length > 52) s = s.slice(0, 50).trim() + '…';
+  return s;
+}
+function joinNouns(arr) {
+  const a = arr.filter(Boolean);
+  if (a.length === 0) return '';
+  if (a.length === 1) return a[0];
+  if (a.length === 2) return `${a[0]} and ${a[1]}`;
+  return `${a.slice(0, -1).join(', ')}, and ${a[a.length - 1]}`;
+}
+function decisionDueDate(eventDate, offset) {
+  if (!eventDate || offset === null) return null;
+  const d = new Date(eventDate + 'T00:00:00');
+  d.setDate(d.getDate() + offset); // offset is negative (T-21d → -21)
+  return d.toISOString().slice(0, 10);
+}
+function friendlyDate(d) {
+  if (!d) return '';
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+  catch { return String(d); }
+}
+
+export function playbookDecisionBoard(event, asOf) {
+  const empty = { open: [], locked: [], headcount: null };
+  if (!event) return empty;
+
+  const dte = daysToEvent(event.date, asOf); // null when no date
+  const open = [];
+  const locked = [];
+
+  const dateSet = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
+  const hasVenue = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
+  const gc = guestCountResolved(event);
+  const band = attendanceBand(event);
+  const di = dietaryResolved(event);
+
+  // ── Foundation facts ───────────────────────────────────────────────────────
+  // Date — the anchor everything counts down from. Locked when set; otherwise the
+  // one foundation we DO surface as open (a venue is optional for home hosting, so
+  // an unset venue is never nagged — it only appears once settled).
+  if (dateSet) {
+    locked.push({ id: 'date', label: 'Date', status: 'locked', because: friendlyDate(event.date), dueDate: event.date, daysOut: dte, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
+  } else {
+    open.push({ id: 'date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
+  }
+  if (hasVenue) {
+    locked.push({ id: 'venue', label: 'Venue', status: 'locked', because: String(event.venue).trim(), dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
+  }
+
+  // Headcount — the count-lock. A roster with replies still out → the hero (honest
+  // confirmed/outstanding/invited math, never a fabricated spread). Resolved → a
+  // settled fact. No number at all → an open "set a count" row (can't size anything).
+  const out = (band.applicable && band.basis === 'rsvp') ? (band.maybe + band.pending) : 0;
+  let headcount = null;
+  if (gc.resolved) {
+    const n = band.applicable ? band.planning : (Number(event.guestCount) || Number(event.guestEstimate) || 0);
+    locked.push({ id: 'headcount', label: 'Headcount', status: 'locked', because: `${n} ${n === 1 ? 'guest' : 'guests'}`, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
+  } else if (out > 0) {
+    headcount = {
+      confirmed: band.confirmed,
+      outstanding: out,
+      invited: band.invited,
+      planning: band.planning,
+      label: attendanceBandLabel(band),
+      because: `${band.confirmed} confirmed · ${out} still out of ${band.invited} invited`,
+      route: { eventId: event.id, tab: 'Guests' },
+    };
+  } else {
+    open.push({ id: 'headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
+  }
+
+  // ── Playbook decisions ─────────────────────────────────────────────────────
+  const pb = getPlaybook(event.type);
+  const decisions = (pb && Array.isArray(pb.decisions)) ? pb.decisions : [];
+  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
+  // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
+  // fact is settled — dietary uses the SAME predicate the food gate / next-step use.
+  const isLocked = (d) => !!picks[d.id] || (isDietaryDecision(d) && di.resolved);
+  const lockedIds = new Set(decisions.filter(isLocked).map((d) => d.id));
+  // A prerequisite (dependsOn) is met when it's a locked decision, dietary collected,
+  // or the headcount resolved. Anything else is treated as still-pending (honest: we
+  // only claim "met" from observable state).
+  const depMet = (depId) => {
+    if (lockedIds.has(depId)) return true;
+    if (depId === 'dietary' && di.resolved) return true;
+    if (depId === 'headcount' || depId === 'count') return gc.resolved;
+    return false;
+  };
+
+  for (const d of decisions) {
+    if (!d || !d.label) continue;
+    const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
+    const daysOut = (dte !== null && offset !== null) ? dte + offset : null;
+    const dueDate = decisionDueDate(dateSet ? event.date : null, offset);
+    const route = { eventId: event.id, tab: 'Planning', foodFocus: d.id };
+
+    if (isLocked(d)) {
+      const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, route });
+      continue;
+    }
+
+    const deps = Array.isArray(d.dependsOn) ? d.dependsOn : [];
+    const unmet = deps.filter((x) => !depMet(x));
+    let status; let because;
+    if (daysOut !== null && daysOut < 0) {
+      status = 'overdue';
+      const od = Math.abs(daysOut);
+      because = `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+    } else if (unmet.length) {
+      status = 'waiting';
+      const nouns = unmet.map((x) => decisionDepNoun(x, decisions));
+      because = nouns.length ? `Waiting on ${joinNouns(nouns)}.` : 'Waiting on an earlier choice.';
+    } else {
+      status = 'ready';
+      because = daysOut === null ? 'Ready when you are.'
+        : daysOut <= 0 ? 'Good to lock today.'
+          : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
+    }
+    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, route });
+  }
+
+  // Calmest-first ordering: overdue, then ready (soonest due), then waiting.
+  const STATUS_RANK = { overdue: 0, ready: 1, waiting: 2 };
+  open.sort((a, b) => (STATUS_RANK[a.status] - STATUS_RANK[b.status])
+    || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut)));
+
+  return { open, locked, headcount };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a
