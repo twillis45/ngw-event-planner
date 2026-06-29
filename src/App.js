@@ -39888,13 +39888,18 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
       {headcount && (
         <div style={{ ...metalEdge(C), borderRadius: 12, padding: 16, marginBottom: 16, borderLeft: `3px solid ${steel}` }}>
-          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel, marginBottom: 7 }}>Lock your final guest count</div>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel, marginBottom: 7 }}>Needs you</div>
           <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>Lock your final guest count</div>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{headcount.because}{headcount.label ? ` — plan for ${headcount.label}.` : '.'}</div>
           <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(headcount.planning); }} style={{ marginTop: 12, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${green}`, cursor: 'pointer', background: `${green}1f`, color: green }}>Lock it</button>
         </div>
       )}
-      {open.length > 0 && (<>{sectionLabel('Still open')}{open.map(openRow)}</>)}
+      {/* Calm cap: the list is sorted urgent-first (overdue → ready → waiting), so the few
+          that matter lead; the rest fold into a quiet "+N more" so the panel never reads as
+          a long backlog (Ruthless Host Lens — a few things, not a worklist). */}
+      {open.length > 0 && (<>{sectionLabel('Still open')}{open.slice(0, 4).map(openRow)}{open.length > 4 && (
+        <div style={{ fontSize: T.secondary, color: C.muted, padding: '9px 2px 2px' }}>+{open.length - 4} more to settle, in their own time</div>
+      )}</>)}
       {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Locked')}{locked.map(lockedRow)}</div>)}
     </CollapsibleCard>
   );

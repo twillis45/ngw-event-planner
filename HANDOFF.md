@@ -72,3 +72,25 @@ Persistent notes: `/Users/toddwillis/.claude/projects/-Users-toddwillis/memory/`
 
 ---
 Start by confirming the dev server is running and capturing the current state of whatever surface you're asked about. Tell me your plan before large changes.
+
+---
+
+## Open backlog as of 2026-06-28 (after the big 2026-06-28 ship: advance engine, haptic/sound, composite fix, crab+paper, beverage→budget, Capacity parity, supplies options, dietary, Decisions board — all deployed)
+
+Ordered by the owner's stated priority. Items 1–2 are the headline; 3–9 are queued.
+
+1. **Food SOURCING choice → "what's left to do" tasks** (THE headline open item). Today `whenChoice` reshapes the food SPREAD + (new) beverage budget, but NOT the host task list. Root cause: `whenChoice` is never applied to the task layer; playbook `tasks`/`milestones` are NOT projected into the host checklist (`ChecklistGenerator` reads the STATIC `event.timeline`); host events seed `timeline:[]`. Fix = make the host "what's left" a live projection of playbook tasks filtered by `event.foodChoices` via the SAME `whenChoice`/`pickFor` predicate (export it from playbooks/index.js, reuse for purchases + tasks). Author choice-split crab tasks (steam-yourself → "rent a rack pot + propane"; order-steamed → "lock a hot pickup slot"). Deep + delicate — give it a fresh full context.
+
+2. **Three design tweaks** (owner flagged): (a) dietary auto-pull is one-tap by design — owner may want it SILENT/auto-merge; (b) Capacity omits a literal "10% spare" line (no 10% factor in data — currently grounded in real factors) and supplies `alternatives` are engine-derived not authored; (c) Decisions board shows ALL of a type's decisions uncapped (Dinner Party = 6) — may want a calm cap.
+
+3. **QA polish nits (render pass 2026-06-28)**: (a) crab reads SMALL in the InviteDome vs Figma 1991:32 — scale up; (b) Decisions count-lock card eyebrow "LOCK YOUR FINAL GUEST COUNT" duplicates the title verbatim — change eyebrow (e.g. "NEEDS YOU"); (c) Capacity hero mixes "Set for up to 22–34" (confirmed band) with "Service for 40" (invited) — speak one count.
+
+4. **Guests tab consolidation** (board audit found): count-lock ×2 (hero stepper + "Just need a headcount?" panel), nudge ×2, responder-summary ×3. Consolidate to one count action, one nudge, one summary; fix workflow order. Substantial UI refactor.
+
+5. **Google Places address search on WHERE** — lib `src/lib/maps.js` (`attachAutocomplete`) + key `REACT_APP_GOOGLE_MAPS_KEY` exist but UNWIRED. Wire to the WHERE input. NOTE: deploy env-strip blanks the key in prod bundle — confirm the unwired-in-prod behavior is graceful.
+
+6. **Create flow: scroll to "What I'll set up for {type}" preview** after type selection. Add a `ce-setup-preview` anchor id + scroll-into-view at the create seam.
+
+7. **Distinct per-type icons in EventTypeBrowse** — many types fall back to a generic mark via `evtIdentity(t).icon`. Add real per-type glyphs.
+
+QA harnesses to reuse: `review-artifacts/_qa_newsurfaces.mjs` + `_qa_crops.mjs` (AUTH_BYPASS side build in `build-verify/`, seeds a Crab Feast host event, screenshots cover + Plan surfaces to `review-artifacts/qa-2026-06-28/`).
