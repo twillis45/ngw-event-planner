@@ -21,7 +21,10 @@
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
-    "check:migrations": "node scripts/check-migrations.mjs"
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "grounding:audit": "node scripts/groundingAudit.mjs",
+    "grounding:json": "node scripts/groundingAudit.mjs --json",
+    "grounding:proteins": "node scripts/proteinCoverage.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"
