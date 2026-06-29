@@ -1046,10 +1046,26 @@ export function playbookFoodPlan(event, opts = {}) {
   // leave the spread + budget and the cost actually moves (the reported "changed drinks to
   // BYOB and nothing changed" gap). ICE stays: a host still supplies ice even when guests
   // bring drinks. One rule, every event type (any decision whose `blocks` names beverage).
-  const _byob = (playbook.decisions || []).some((d) =>
-    Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b)))
-    && /\b(byob|bring your own|guests bring|everyone brings)\b/i.test(pickFor(d.id) || ''));
+  // The beverage/bar decision (any decision whose `blocks` names beverage).
+  const _bevDecision = (playbook.decisions || []).find((d) =>
+    Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b))));
+  const _bevPick = (_bevDecision ? (pickFor(_bevDecision.id) || '') : '').toLowerCase();
+  const _byob = /\b(byob|bring your own|guests bring|everyone brings)\b/.test(_bevPick);
   const hostBuysIt = (p) => !(_byob && p.category === 'beverage' && !/\bice\b/i.test(p.item || ''));
+
+  // EVERY beverage choice moves the budget, not just BYOB. The drinks/bar pick scales the
+  // beverage line cost by a tier factor read from its words: a dry/family spread is cheaper
+  // (no alcohol), a full/premium bar costs more, the default is the 1.0 baseline. Ice is
+  // exempt (volume-driven, not bar-tier). One engine rule, every event type; an honest
+  // estimate adjustment (the spread already shows a range), recomputed live from the choice.
+  const beverageFactor = (() => {
+    if (!_bevPick) return 1;
+    if (/\b(full bar|full cooler|premium|top-shelf|brown liquor|spirits?|whiskey|bourbon|signature cocktail|hired bartender)\b/.test(_bevPick)) return 1.6;
+    if (/\b(add a|punch|grown section|cocktail|wine \+|signature)\b/.test(_bevPick)) return 1.25;
+    if (/\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/.test(_bevPick)) return 0.6;
+    return 1;
+  })();
+  const bevFactorFor = (p) => (p.category === 'beverage' && !/\bice\b/i.test(p.item || '')) ? beverageFactor : 1;
 
   // 64-#5 — region-gated items (whenRegion:['DMV']) commit a LOCAL dish (half-smokes,
   // mumbo sauce) only for events in that region — so localness is on the plate, not a
@@ -1084,6 +1100,10 @@ export function playbookFoodPlan(event, opts = {}) {
       const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
       let qty = qOver != null ? qOver : baseQty;
       let [uLow, uHigh] = Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0];
+      // Beverage tier factor — applied at the unit-cost level so the line total, the per-unit
+      // breakdown, and the budget all derive consistently from the drinks choice. Single source.
+      const _bev = bevFactorFor(p);
+      if (_bev !== 1) { uLow *= _bev; uHigh *= _bev; }
       // Global buyable-unit guardrail — if an author left this in a non-buyable
       // serving unit (e.g. "40 slices" of cake), convert to whole purchasable units
       // (cakes/pizzas/loaves/pies) and scale the per-unit cost so the TOTAL is
