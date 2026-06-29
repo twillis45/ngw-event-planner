@@ -1408,21 +1408,24 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'cloche':        return <svg {...p}><path d="M4 17 A8 8 0 0 1 20 17 Z"/><path d="M3 17 H21"/><path d="M12 5.5 V7 M11 5.5 H13"/><path d="M5 20 H19"/></svg>;
     case 'spade':         return <svg {...p}><path d="M12 3.5 C12 8 18 9.5 18 13.5 C18 16 16 17.2 14 16.4 C13 16 12.6 15.4 12.5 14.8 C12.7 17 13 18.8 14.5 20.5 H9.5 C11 18.8 11.3 17 11.5 14.8 C11.4 15.4 11 16 10 16.4 C8 17.2 6 16 6 13.5 C6 9.5 12 8 12 3.5 Z"/></svg>;
     case 'candle':        return <svg {...p}><path d="M9.5 9.5 V19 A1 1 0 0 0 10.5 20 H13.5 A1 1 0 0 0 14.5 19 V9.5 M9.5 10 Q12 11.5 14.5 10"/><path d="M12 3 C13.4 4.6 13.8 6 13 7.2 C12.5 8 11.5 8 11 7.2 C10.4 6.2 10.8 5 12 3 Z"/><path d="M12 8.2 V9.5"/></svg>;
-    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Blue crab — matched to crab_wireframe_orange: shell w/ serrated top + smooth belly, two raised lobster-pincer claws, legs with little circle feet. */}
-      <path d="M4.8 12.3 C7 15.1 17 15.1 19.2 12.3"/>
-      <path d="M4.8 12.3 L6.2 11.4 L7.4 12.2 L8.8 11.4 L10.1 12.2 L11.5 11.4 L12.9 12.2 L14.3 11.4 L15.6 12.2 L17 11.4 L19.2 12.3"/>
-      {/* Claws — arms sweeping up from the shoulders to an open two-prong pincer. */}
-      <path d="M6.6 11.7 C5.3 10 4.3 8.6 4.5 7.0"/>
-      <path d="M4.5 7.0 C3.7 6.4 3.6 5.4 4.5 5.2 M4.5 7.0 C5.3 6.9 5.8 6.1 5.3 5.4"/>
-      <path d="M17.4 11.7 C18.7 10 19.7 8.6 19.5 7.0"/>
-      <path d="M19.5 7.0 C20.3 6.4 20.4 5.4 19.5 5.2 M19.5 7.0 C18.7 6.9 18.2 6.1 18.7 5.4"/>
+    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Blue crab — matched to Figma 1991:32 (Editorial Crab Feast mark): wide shell w/ serrated top + smooth belly, two EYE-STALKS at the top center, two raised open-pincer claws from the corners, six legs with little circle feet. */}
+      <path d="M4.6 12.4 C7 15.4 17 15.4 19.4 12.4"/>
+      <path d="M4.6 12.4 L6.1 11.3 L7.3 12.1 L8.7 11.2 L10 12 L11.4 11.1 L12.6 12 L14 11.2 L15.3 12.1 L16.7 11.3 L19.4 12.4"/>
+      {/* Eye-stalks — two short stalks rising from the top center, each capped by an eye. */}
+      <path d="M10.8 11.5 L10.5 9.7"/><circle cx="10.4" cy="9.15" r="0.62"/>
+      <path d="M13.2 11.5 L13.5 9.7"/><circle cx="13.6" cy="9.15" r="0.62"/>
+      {/* Claws — arms sweeping up-out from the shoulders to an open two-prong pincer. */}
+      <path d="M6.4 11.6 C5 10.1 4 8.6 4.3 6.9"/>
+      <path d="M4.3 6.9 C3.4 6.4 3.3 5.2 4.4 5.0 M4.3 6.9 C5.3 6.8 5.9 5.9 5.3 5.1"/>
+      <path d="M17.6 11.6 C19 10.1 20 8.6 19.7 6.9"/>
+      <path d="M19.7 6.9 C20.6 6.4 20.7 5.2 19.6 5.0 M19.7 6.9 C18.7 6.8 18.1 5.9 18.7 5.1"/>
       {/* Six legs, each ending in a little circle foot. */}
-      <path d="M7.2 13.7 L5.4 14.8"/><circle cx="4.9" cy="15.1" r="0.7"/>
-      <path d="M8.6 14.3 L7.1 15.9"/><circle cx="6.6" cy="16.3" r="0.7"/>
-      <path d="M10.2 14.7 L9.2 16.6"/><circle cx="8.9" cy="17.0" r="0.7"/>
-      <path d="M16.8 13.7 L18.6 14.8"/><circle cx="19.1" cy="15.1" r="0.7"/>
-      <path d="M15.4 14.3 L16.9 15.9"/><circle cx="17.4" cy="16.3" r="0.7"/>
-      <path d="M13.8 14.7 L14.8 16.6"/><circle cx="15.1" cy="17.0" r="0.7"/>
+      <path d="M7 13.9 L5.2 15.0"/><circle cx="4.7" cy="15.3" r="0.66"/>
+      <path d="M8.5 14.5 L7.0 16.1"/><circle cx="6.5" cy="16.5" r="0.66"/>
+      <path d="M10.1 14.9 L9.1 16.8"/><circle cx="8.8" cy="17.2" r="0.66"/>
+      <path d="M17 13.9 L18.8 15.0"/><circle cx="19.3" cy="15.3" r="0.66"/>
+      <path d="M15.5 14.5 L17.0 16.1"/><circle cx="17.5" cy="16.5" r="0.66"/>
+      <path d="M13.9 14.9 L14.9 16.8"/><circle cx="15.2" cy="17.2" r="0.66"/>
     </g></svg>;
     case 'crawfish':      return <svg {...p}><path d="M7.5 13 C9.2 11.6 11.8 11.2 14 11.8 C15.7 12.3 16.6 13.4 16.4 14.6"/><path d="M10 11.6 L9.6 14.2 M12.2 11.6 L12 14.6 M14 12.2 L14 14.8"/><path d="M7.5 13 C5.6 12.4 4.2 13.4 4 15 M7.5 13 C6 11.4 4 11.6 3.2 13.2 M7.5 13 C6.4 14.8 4.6 15.2 3.6 16.8"/><path d="M16.4 14.6 C18 13.6 19.6 14.2 20 12.6 M16.4 14.6 C18.4 14.6 20 15.6 20 17.4"/><path d="M14.6 10.8 C16.4 8.8 18.6 9 19.4 7 M14 11 C15 9 17 9 17.8 7.4"/></svg>;
     case 'basket':        return <svg {...p}><path d="M5.5 11 L7 18 A2 2 0 0 0 8.9 19.4 H15.1 A2 2 0 0 0 17 18 L18.5 11"/><path d="M5.5 11 C5.5 9.6 8.4 8.6 12 8.6 C15.6 8.6 18.5 9.6 18.5 11 C18.5 12.4 15.6 13.4 12 13.4 C8.4 13.4 5.5 12.4 5.5 11 Z"/><path d="M6.6 14.6 Q12 16 17.4 14.6"/><path d="M7.4 17.4 Q12 18.6 16.6 17.4"/></svg>;

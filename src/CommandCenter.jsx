@@ -1309,6 +1309,26 @@ function _eventFoundationActions(event) {
   ];
 }
 
+// A playbook "planning" composite bundles several sub-goals into one milestone name
+// ("Set date, headcount, menu" / "Set date + guest count + budget"). Detect it so no hero
+// ever shows a half-done bundle — once the host handles ONE part (locks the headcount) the
+// whole string reads as stale ("why is it still telling me to set the headcount?").
+function _isSetCompositeTitle(t) {
+  return !!t && /^set\b/i.test(t) && /[,+&]|\band\b/i.test(t)
+    && /\b(date|headcount|guests?|count|menu|budget|list|format)\b/i.test(t);
+}
+// Replace such a composite with the ATOMIC remaining foundational action (date → guests →
+// budget → food). Single source: the same _eventFoundationActions dominoes eventPlan uses,
+// so the decomposition is state-aware — a locked headcount drops 'guests' and the next
+// real gap ("Set the date.") leads. Returns cmd unchanged when it isn't a composite.
+function decomposeSetComposite(cmd, event) {
+  if (!cmd || !_isSetCompositeTitle(cmd.title)) return cmd;
+  const atomic = _eventFoundationActions(event).find((a) => !a.done);
+  if (!atomic) return cmd;
+  return { ...cmd, title: atomic.title, consequence: atomic.consequence,
+    primaryCta: atomic.cta, primaryRoute: atomic.route, category: atomic.domain };
+}
+
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event) {
   if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [] };
@@ -1325,7 +1345,12 @@ export function eventPlan(event) {
   // list"). Either way its output is the authoritative, state-aware top action — so we
   // lead nextActions with it, then append the remaining not-done foundational dominoes
   // (deduped by domain so the same domain never appears twice).
-  const top = (() => { try { return _selectEventNextActionInner(event); } catch { return null; } })();
+  // Decompose a stale "Set date, headcount, menu" composite into the atomic remaining
+  // domino BEFORE it becomes the hero — the doctrine's single-source decomposition.
+  const top = decomposeSetComposite(
+    (() => { try { return _selectEventNextActionInner(event); } catch { return null; } })(),
+    event,
+  );
   const topAction = top && top.title ? {
     id: top.category || 'top',
     domain: top.category || 'top',
@@ -1375,7 +1400,10 @@ export function eventPlan(event) {
 // disagree about the top step. The compression sub-badge + persona voice + identity
 // `because` are layered on top of that one action (kept for back-compat).
 export function selectEventNextAction(event) {
-  const rendered = renderAction(_selectEventNextActionWithBadge(event), personaFor(event));
+  // Decompose any stale "Set date, headcount, menu" composite into the atomic remaining
+  // domino so the Focus "ONE thing" + spine never show a half-done bundle (same single
+  // source as eventPlan).
+  const rendered = renderAction(decomposeSetComposite(_selectEventNextActionWithBadge(event), event), personaFor(event));
   // Sprint 60C #2 — identity whisper (annotation only, post-engine). When this
   // action confidently serves the captured must-have AND the engine attached no
   // reasoning, expose the meaning link through the EXISTING `because` channel.
