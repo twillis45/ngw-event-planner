@@ -1657,29 +1657,40 @@ function _selectEventNextActionInner(event) {
     // "which one?" question). The vague headline only survives as a last-resort fallback
     // when the engine somehow has no named first task.
     const first = compression.doNow[0];
-    const firstText = first && (first.task || first.title)
+    let firstText = first && (first.task || first.title)
       ? String(first.task || first.title).trim().replace(/[.\s]+$/, '')
       : null;
-    const more = Math.max(0, doNow - 1);
-    return {
-      level: 'attention',
-      category: 'compression',
-      title: firstText ? firstText + '.' : (compression.headline || 'Tight timeline — a few tasks moved to the front.'),
-      consequence: firstText
-        ? `${more > 0 ? `${more} more cluster around the same time — do this one first and the rest stay in order. ` : ''}${compression.meta.sub}`
-        : `${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now. ${compression.meta.sub}`,
-      primaryCta: firstText ? 'Do this' : 'Review tasks',
-      // Surfaced so the persona voice can lead with the action without re-deriving it.
-      firstAction: firstText,
-      moreCount: more,
-      // Route STRAIGHT to the first task when we have its id (the editor scrolls to it);
-      // fall back to the '__compressed__' sentinel (Timeline auto-selects the
-      // "Tight timeline" filter) only when there's no specific task to land on.
-      primaryRoute: (first && first.id)
-        ? { tab: 'Planning Tasks', taskId: first.id }
-        : { tab: 'Planning Tasks', taskId: '__compressed__' },
-      contextLine: daysSub,
-    };
+    let firstRoute = (first && first.id)
+      ? { tab: 'Planning Tasks', taskId: first.id }
+      : { tab: 'Planning Tasks', taskId: '__compressed__' };
+    // A "Set date, headcount, menu" composite bundles sub-goals the host handles one at a
+    // time — it must never lead as a "do now" once any part is handled. Decompose it to the
+    // ATOMIC remaining foundational domino ("Set the date." / "Set your budget.", with its
+    // real route). If EVERY part is already done, it isn't a real do-now at all — fall
+    // through to the next genuine tier so a satisfied bundle never reaches the hero/spine.
+    let _skipCompression = false;
+    if (_isSetCompositeTitle(firstText)) {
+      const atomic = _eventFoundationActions(event).find((a) => !a.done);
+      if (!atomic) _skipCompression = true;
+      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; }
+    }
+    if (!_skipCompression) {
+      const more = Math.max(0, doNow - 1);
+      return {
+        level: 'attention',
+        category: 'compression',
+        title: firstText ? firstText + '.' : (compression.headline || 'Tight timeline — a few tasks moved to the front.'),
+        consequence: firstText
+          ? `${more > 0 ? `${more} more cluster around the same time — do this one first and the rest stay in order. ` : ''}${compression.meta.sub}`
+          : `${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now. ${compression.meta.sub}`,
+        primaryCta: firstText ? 'Do this' : 'Review tasks',
+        // Surfaced so the persona voice can lead with the action without re-deriving it.
+        firstAction: firstText,
+        moreCount: more,
+        primaryRoute: firstRoute,
+        contextLine: daysSub,
+      };
+    }
   }
 
   // Tier 5: timeline risk
