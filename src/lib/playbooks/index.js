@@ -684,6 +684,24 @@ function capacityVerbFor(kind, isOwned) {
   if (kind === 'buy') return 'Delivered';
   return 'Get';
 }
+// Honest, engine-DERIVED swap suggestions for a supply (the food plan's per-item
+// `alternatives`). Supplies carry no authored alternatives, so these are framed from
+// what we actually know — the supplyIntel kind + the group/label — never an invented
+// product name or price. Serviceware → disposables (the real cheaper path); seating →
+// borrow / BYO; then the rent↔buy framing from the kind. [] when nothing honest applies
+// (the row then falls back to its existing rental/retail "options" links). Mirrors food.
+function capacitySwaps(label, kind, group) {
+  const out = [];
+  if (['plates', 'glasses', 'flatware', 'serveware', 'platters', 'bowls'].includes(label) || group === 'SERVICEWARE') {
+    out.push('Disposables — skip the rental');
+  }
+  if (['chairs', 'tables'].includes(label)) {
+    out.push('Borrow, or ask guests to bring one');
+  }
+  if (kind === 'rent') out.push('Buy it if you’ll reuse it');
+  else if (kind === 'buy') out.push('Rent or borrow for one-time use');
+  return [...new Set(out)];
+}
 
 export function playbookCapacity(event) {
   if (!event) return null;
@@ -699,6 +717,15 @@ export function playbookCapacity(event) {
   const qtyOv = (event.capacityQty && typeof event.capacityQty === 'object') ? event.capacityQty : {};
   const owned = (event.capacityOwned && typeof event.capacityOwned === 'object') ? event.capacityOwned : {};
   const added = Array.isArray(event.capacityAdd) ? event.capacityAdd.filter((a) => a && a.name) : [];
+  // Parity with the food plan (foodSkip / foodLocked):
+  //  • capacitySkip[key]   — the host swapped this line out. Kept in the list
+  //    (struck-through, reversible) but MARKED skipped so it leaves every total.
+  //  • capacityLocked[key] — a committed dollar amount that REPLACES the supplyIntel
+  //    range for that line (a fixed cost, not a range). Owned lines ignore a lock
+  //    ($0 wins — you wouldn't price something you already have).
+  const skip = (event.capacitySkip && typeof event.capacitySkip === 'object') ? event.capacitySkip : {};
+  const lockedMap = (event.capacityLocked && typeof event.capacityLocked === 'object') ? event.capacityLocked : {};
+  const lockOf = (key, isOwned) => (!isOwned && (key in lockedMap)) ? Math.max(0, Math.round(Number(lockedMap[key]) || 0)) : null;
   const costOf = (name, q, isOwned) => {
     const intel = supplyIntel(name);
     if (isOwned) return { costLow: 0, costHigh: 0, kind: intel ? intel.kind : null, label: intel ? intel.label : null };
@@ -721,7 +748,8 @@ export function playbookCapacity(event) {
     const qty = (short in qtyOv) ? Math.max(0, Math.round(Number(qtyOv[short]) || 0)) : baseQty;
     const isOwned = !!owned[short];
     const c = costOf(r.item, qty, isOwned);
-    items.push({ key: short, item: r.item, short, name: short, qty, note: r.note || '', factor, factorType, added: false, owned: isOwned, group: capacityGroupFor(short, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c });
+    const swaps = capacitySwaps(c.label, c.kind, capacityGroupFor(short, c.label));
+    items.push({ key: short, item: r.item, short, name: short, qty, note: r.note || '', factor, factorType, added: false, owned: isOwned, skipped: !!skip[short], locked: lockOf(short, isOwned), group: capacityGroupFor(short, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c, ...(swaps.length ? { alternatives: swaps } : {}) });
   }
   // Host-added supplies — SAME costing path (single source: supplyIntel). An optional
   // host-entered cost overrides the table (collapses the line to one number).
@@ -732,7 +760,7 @@ export function playbookCapacity(event) {
     if (isOwned) c = costOf(a.name, qty, true);
     else if (typeof a.cost === 'number' && a.cost > 0) { const intel = supplyIntel(a.name); c = { costLow: Math.round(a.cost), costHigh: Math.round(a.cost), kind: intel ? intel.kind : 'buy', label: intel ? intel.label : null }; }
     else c = costOf(a.name, qty, false);
-    items.push({ key: a.id, item: a.name, short: a.name, name: a.name, qty, note: '', factor: null, factorType: null, added: true, owned: isOwned, group: capacityGroupFor(a.name, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c });
+    items.push({ key: a.id, item: a.name, short: a.name, name: a.name, qty, note: '', factor: null, factorType: null, added: true, owned: isOwned, skipped: !!skip[a.id], locked: lockOf(a.id, isOwned), group: capacityGroupFor(a.name, c.label), verb: capacityVerbFor(c.kind, isOwned), ...c });
   }
   if (!items.length) return null;
   // compact summary, e.g. "12 chairs · 24 plates · 30 glasses · 12 flatware · 4 platters"
@@ -744,11 +772,16 @@ export function playbookCapacity(event) {
   let because = '';
   if (perGuest.length) because = `${guests} guests × ${perGuest.join(' · ')} each`;
   if (flat.length) because += `${because ? ' + ' : ''}${flat.join(' · ')} flat`;
-  // Grouped sections with per-section subtotals (Figma 1604:2). Owned lines count as $0.
+  // A locked cost is fixed — it collapses the line's range to one committed number
+  // (mirrors the food plan's eff()). Owned lines are already $0 from costOf above.
+  const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
+  // Grouped sections with per-section subtotals (Figma 1604:2). Owned lines count as $0;
+  // SKIPPED (swapped-out) lines leave the subtotal but stay in the group (struck-through);
+  // a LOCKED line contributes its committed number instead of the range.
   const groups = CAPACITY_GROUPS.filter((g) => items.some((i) => i.group === g)).map((g) => {
     const gi = items.filter((i) => i.group === g);
-    const gc = gi.filter((i) => i.costLow != null);
-    return { group: g, items: gi, costLow: gc.reduce((s, i) => s + i.costLow, 0), costHigh: gc.reduce((s, i) => s + i.costHigh, 0), hasCost: gc.length > 0 };
+    const gc = gi.filter((i) => !i.skipped && i.costLow != null);
+    return { group: g, items: gi, costLow: gc.reduce((s, i) => s + eff(i, 'costLow'), 0), costHigh: gc.reduce((s, i) => s + eff(i, 'costHigh'), 0), hasCost: gc.length > 0 };
   });
   // Sizing line + explainer — ONLY from the real factors. Per-table ratio + table count
   // appear when the playbook actually rents tables (most don't); "service for N" always.
@@ -768,10 +801,14 @@ export function playbookCapacity(event) {
   if (swPerGuest) whyBits.push('serviceware runs a little over so there’s enough for spills and seconds');
   const sizingWhy = whyBits.join('; ');
   // Cost totals — only from lines we can ground in the canonical table (no fabricated $).
-  const costed = items.filter((i) => i.costLow != null);
-  const costLow = costed.reduce((s, i) => s + i.costLow, 0);
-  const costHigh = costed.reduce((s, i) => s + i.costHigh, 0);
-  return { guests, items, groups, summary, because, sizing, sizingWhy, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length };
+  // Skipped (swapped-out) lines leave every total; locked lines contribute their committed
+  // number (eff). Same money rules as the food plan's foodLow/foodHigh + lockedTotal.
+  const costed = items.filter((i) => !i.skipped && i.costLow != null);
+  const costLow = costed.reduce((s, i) => s + eff(i, 'costLow'), 0);
+  const costHigh = costed.reduce((s, i) => s + eff(i, 'costHigh'), 0);
+  const lockedItems = costed.filter((i) => i.locked != null);
+  const lockedTotal = Math.max(0, Math.round(lockedItems.reduce((s, i) => s + i.locked, 0)));
+  return { guests, items, groups, summary, because, sizing, sizingWhy, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length, lockedTotal, lockedCount: lockedItems.length };
 }
 
 // ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────

@@ -407,6 +407,49 @@ describe('55H-B3A playbookCapacity (requirements, never deficits)', () => {
     expect(owned.costLow).toBeLessThan(base.costLow);
   });
 
+  test('capacitySkip leaves every total but keeps the line (struck-through, reversible)', () => {
+    const base = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    const skipped = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12, capacitySkip: { chairs: true } });
+    const sChair = skipped.items.find(i => i.short === 'chairs');
+    expect(sChair).toBeTruthy();           // line stays in the list
+    expect(sChair.skipped).toBe(true);     // marked skipped (reversible)
+    expect(skipped.costLow).toBeLessThan(base.costLow);   // left the planned total
+    expect(skipped.costHigh).toBeLessThan(base.costHigh);
+    // the skipped line also leaves its group subtotal
+    const baseSeat = base.groups.find(g => g.items.some(i => i.short === 'chairs'));
+    const skipSeat = skipped.groups.find(g => g.group === baseSeat.group);
+    expect(skipSeat.costLow).toBeLessThan(baseSeat.costLow);
+  });
+
+  test('capacityLocked replaces the range with a fixed committed cost (flows into totals)', () => {
+    const base = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    const chair = base.items.find(i => i.short === 'chairs');
+    const others = base.costLow - chair.costLow; // every OTHER line's low
+    const locked = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12, capacityLocked: { chairs: 40 } });
+    const lChair = locked.items.find(i => i.short === 'chairs');
+    expect(lChair.locked).toBe(40);
+    // a locked line is a single number, not a range — both totals add 40 for it
+    expect(locked.costLow).toBe(others + 40);
+    expect(locked.lockedTotal).toBe(40);
+    expect(locked.lockedCount).toBe(1);
+  });
+
+  test('an owned line ignores a lock ($0 wins) and a skipped line never counts as locked', () => {
+    const ownedLocked = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12, capacityOwned: { chairs: true }, capacityLocked: { chairs: 40 } });
+    const oc = ownedLocked.items.find(i => i.short === 'chairs');
+    expect(oc.locked).toBeNull();
+    expect(oc.costLow).toBe(0);
+    const skipLocked = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12, capacitySkip: { chairs: true }, capacityLocked: { chairs: 40 } });
+    expect(skipLocked.lockedTotal).toBe(0);
+  });
+
+  test('capacity items carry honest engine-derived swaps (no invented product names)', () => {
+    const c = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 12 });
+    const chair = c.items.find(i => i.short === 'chairs');
+    expect(Array.isArray(chair.alternatives)).toBe(true);
+    expect(chair.alternatives.length).toBeGreaterThan(0);
+  });
+
   test('sizing line + explainer derive only from real factors', () => {
     const c = playbookCapacity({ id: 'e', type: 'Dinner Party', guestCount: 30 });
     expect(c.sizing).toMatch(/service for 30/);

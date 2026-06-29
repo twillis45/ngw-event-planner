@@ -9150,6 +9150,8 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const [addName, setAddName] = useState('');
   const [addQty, setAddQty] = useState('');
   const [addCost, setAddCost] = useState('');
+  const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open (mirrors FoodPlan)
+  const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
   const [supplySheet, setSupplySheet] = useState(null); // "do it for me" — the supplies draft
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
   if (!cap || !cap.items || !cap.items.length) return null;
@@ -9167,12 +9169,25 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   // the write-back targets for setQty/removeAdded/commitAdd/toggleOwned.
   const items = cap.items;
   const groups = cap.groups || [];
-  const done = items.filter((it) => checked[it.key] || it.owned).length;
-  const allDone = items.length > 0 && done === items.length;
+  // Skipped (swapped-out) lines don't count toward "all set" (parity with the food spread,
+  // which completes once every NON-skipped item is got).
+  const live = items.filter((it) => !it.skipped);
+  const done = live.filter((it) => checked[it.key] || it.owned).length;
+  const allDone = live.length > 0 && done === live.length;
   // got = capacityChecked (you've acquired it); owned = capacityOwned ("I already have
   // it", $0). Distinct fields — owned never writes to checked and vice-versa.
   const toggle = (key) => { const next = { ...checked }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityChecked: next }); };
   const toggleOwned = (key) => { const next = { ...ownedMap }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacityOwned: next }); };
+  // Swap-out (capacitySkip) + lock-a-cost (capacityLocked) — the food plan's foodSkip /
+  // foodLocked, with the SAME write-back grammar. The engine already reads these back into
+  // each item's `skipped` / `locked`; here we only toggle the maps.
+  const skipMap = (event.capacitySkip && typeof event.capacitySkip === 'object') ? event.capacitySkip : {};
+  const lockedMap = (event.capacityLocked && typeof event.capacityLocked === 'object') ? event.capacityLocked : {};
+  const toggleSkip = (key) => { const next = { ...skipMap }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacitySkip: next }); };
+  const setLock = (key, amt) => { const next = { ...lockedMap }; next[key] = Math.max(0, Math.round(Number(amt) || 0)); const patch = { capacityLocked: next }; if (checkAfterLock === key) { patch.capacityChecked = { ...checked, [key]: true }; } onPatch(patch); setOpenLockId(null); setCheckAfterLock(null); };
+  const clearLock = (key) => { const next = { ...lockedMap }; delete next[key]; onPatch({ capacityLocked: next }); setOpenLockId(null); };
+  // eff — a locked line is a fixed cost, not a range (mirrors the engine + food plan).
+  const eff = (it, k) => (it.locked != null ? it.locked : (it[k] || 0));
   const setQty = (it, v) => {
     const n = Math.max(0, Math.round(Number(v) || 0));
     if (it.added) { onPatch({ capacityAdd: added.map((a) => (a.id === it.key ? { ...a, qty: n } : a)) }); }
@@ -9196,9 +9211,10 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const mapsUrl = (q) => `https://www.google.com/maps/search/${encodeURIComponent(shopAnchor ? `${q} near ${shopAnchor}` : q)}`;
   const money = (lo, hi) => (Number(lo) || 0) === (Number(hi) || 0) ? `$${(Number(lo) || 0).toLocaleString()}` : `$${(Number(lo) || 0).toLocaleString()}–$${(Number(hi) || 0).toLocaleString()}`;
   // Supplies total (gap 4): bought = the line cost of everything you've checked off as
-  // got (owned lines are $0); planned = the full sized cost. Both from cap.items only.
-  const boughtLow = items.filter((it) => checked[it.key]).reduce((s, it) => s + (it.costLow || 0), 0);
-  const boughtHigh = items.filter((it) => checked[it.key]).reduce((s, it) => s + (it.costHigh || 0), 0);
+  // got (owned lines are $0; locked lines = their committed number; skipped lines leave
+  // the total); planned = cap.costLow/High (engine, already nets skips/locks/owned).
+  const boughtLow = items.filter((it) => checked[it.key] && !it.skipped).reduce((s, it) => s + eff(it, 'costLow'), 0);
+  const boughtHigh = items.filter((it) => checked[it.key] && !it.skipped).reduce((s, it) => s + eff(it, 'costHigh'), 0);
   // What the band covers — only the categories actually present (never invented).
   const covers = [];
   if (items.some((i) => i.short === 'chairs')) covers.push('seats');
@@ -9210,10 +9226,10 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   // map cap.items into the shared draftShoppingList shape (no parallel store; the food
   // shopping list is itself a derived draft). Owned lines are skipped (already had).
   const openShoppingList = () => {
-    const shopItems = items.filter((it) => !it.owned).map((it) => ({
+    const shopItems = items.filter((it) => !it.owned && !it.skipped).map((it) => ({
       name: it.name, qty: it.qty, unit: '', got: !!checked[it.key], category: 'supplies',
       buyAt: it.kind === 'rent' ? 'Rental' : 'Store', forgotten: false,
-      costLow: it.costLow, costHigh: it.costHigh, basis: it.note || '',
+      costLow: eff(it, 'costLow'), costHigh: eff(it, 'costHigh'), basis: it.note || '',
     }));
     const left = shopItems.filter((i) => !i.got).length;
     const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchor });
@@ -9221,8 +9237,8 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   };
   // Ghost: the share-as-checklist text (lighter than the shopping draft).
   const openChecklist = () => {
-    const need = items.filter((it) => !checked[it.key] && !it.owned);
-    const src = need.length ? need : items;
+    const need = items.filter((it) => !checked[it.key] && !it.owned && !it.skipped);
+    const src = need.length ? need : items.filter((it) => !it.skipped);
     const lines = src.map((it) => `[ ] ${it.qty} — ${it.name}`).join('\n');
     const body = `Seating & supplies for ${event.name || 'the event'} — sized for ${capBand.band ? `up to ${capGuestLabel}` : capGuestLabel} guests:\n\n${lines}\n\n${cap.sizingWhy ? `How it's sized: ${cap.sizingWhy}.\n\n` : ''}— from Event Boss`;
     setSupplySheet({ title: 'Your supply checklist', intro: 'Everything to gather, sized to your count. Send it to whoever’s helping, or check it off as it lands.', draft: { subject: `Supplies for ${event.name || 'the event'}`, body }, shareTitle: `Supplies for ${event.name || 'the event'}`, kind: 'thankyou' });
@@ -9233,6 +9249,9 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const qtyInp = { width: 38, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center' };
   const verbLink = { fontSize: T.caption, fontWeight: FW.bold, color: steel, textDecoration: 'none', whiteSpace: 'nowrap' };
   const verbBtn = (col) => ({ fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: col, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' });
+  // Cost-lock control buttons — same grammar/tokens as the FoodPlan lock panel (lkBtn).
+  const lkBtn = { fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', padding: '6px 11px', borderRadius: 8, color: C.text, background: C.bg, border: `1px solid ${C.border}` };
+  const money1 = (n) => `$${(Number(n) || 0).toLocaleString()}`;
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       {/* Hero — the $ figure leads (Attention System), mirroring the Food plan hero:
@@ -9276,7 +9295,9 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
               {g.hasCost && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(g.costLow, g.costHigh)}</span>}
             </div>
             {g.items.map((it) => {
-              const on = !!checked[it.key] || it.owned;
+              const skipped = it.skipped;
+              const on = (!!checked[it.key] || it.owned) && !skipped;
+              const lockOpen = openLockId === it.key;
               const rl = (() => { try { return supplyRetailLinks(it.name, shopAnchor); } catch { return null; } })();
               const verbEl = it.owned ? (
                 <button type="button" onClick={() => toggleOwned(it.key)} style={verbBtn(C.success)} title="You already have these — tap to undo">Have these ✓</button>
@@ -9285,30 +9306,77 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
               ) : rl && rl.buy && rl.buy[0] ? (
                 <a href={rl.buy[0].url} target="_blank" rel="noopener noreferrer" style={verbLink}>Delivered →</a>
               ) : null;
+              // Gated checkoff (mirrors FoodPlan): you can't cross off a priced-by-estimate
+              // line until its cost is locked against the budget — tapping it opens the lock.
+              const onCheck = () => {
+                if (skipped) return;
+                if (!checked[it.key] && it.locked == null && !it.owned && !it.added && it.costLow != null) { setCheckAfterLock(it.key); setOpenLockId(it.key); return; }
+                toggle(it.key);
+              };
               return (
-                <div key={it.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: `1px solid ${C.border}`, padding: '11px 0', opacity: checked[it.key] ? 0.55 : 1 }}>
-                  <button type="button" onClick={() => toggle(it.key)} aria-label={on ? 'Got it' : 'Mark as got'}
-                    style={{ flexShrink: 0, marginTop: 1, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
-                  <span style={{ ...qtyBox, marginTop: 0 }}>
-                    <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
-                      onBlur={(e) => setQty(it, e.currentTarget.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { setQty(it, e.currentTarget.value); e.currentTarget.blur(); } }}
-                      style={qtyInp} />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, textDecoration: checked[it.key] ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
-                    {it.note && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
-                    {!it.owned && <button type="button" onClick={() => toggleOwned(it.key)} style={{ ...verbBtn(C.muted), marginTop: 3, textDecoration: 'underline dotted' }}>I already have these</button>}
-                  </span>
-                  <span style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                    {it.owned
-                      ? <span style={{ fontSize: T.secondary, color: C.muted }}>~$0</span>
-                      : it.costLow != null
-                      ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{money(it.costLow, it.costHigh)}</span>
-                      : null}
-                    {verbEl}
-                    {it.added && <button type="button" onClick={() => removeAdded(it.key)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.body, lineHeight: 1, padding: 0 }}>Remove ×</button>}
-                  </span>
+                <div key={it.key} style={{ borderTop: `1px solid ${C.border}`, opacity: skipped ? 0.45 : (checked[it.key] ? 0.55 : 1) }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '11px 0' }}>
+                    <button type="button" onClick={onCheck} disabled={skipped} aria-label={on ? 'Got it' : 'Mark as got'}
+                      style={{ flexShrink: 0, marginTop: 1, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, cursor: skipped ? 'default' : 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
+                    <span style={{ ...qtyBox, marginTop: 0 }}>
+                      <input type="number" inputMode="numeric" min="0" defaultValue={it.qty}
+                        onBlur={(e) => setQty(it, e.currentTarget.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setQty(it, e.currentTarget.value); e.currentTarget.blur(); } }}
+                        style={qtyInp} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, textDecoration: (checked[it.key] || skipped) ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                      {it.note && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
+                      {/* Swaps — engine-derived honest options (disposables / borrow / rent↔buy),
+                          the same inline affordance the food rows use for `alternatives`. */}
+                      {Array.isArray(it.alternatives) && it.alternatives.length > 0 && !on && !skipped && (
+                        <span style={{ display: 'block', marginTop: 4 }}>
+                          <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>swaps: </span>
+                          <span style={{ fontSize: T.caption, color: C.muted }}>{it.alternatives.slice(0, 2).join(' · ')}</span>
+                        </span>
+                      )}
+                      {!it.owned && !skipped && <button type="button" onClick={() => toggleOwned(it.key)} style={{ ...verbBtn(C.muted), marginTop: 3, textDecoration: 'underline dotted' }}>I already have these</button>}
+                    </span>
+                    <span style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                      {it.owned
+                        ? <span style={{ fontSize: T.secondary, color: C.muted }}>~$0</span>
+                        : it.locked != null
+                        ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success }}>{money1(it.locked)} locked</span>
+                        : it.costLow != null
+                        ? <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{money(it.costLow, it.costHigh)}</span>
+                        : null}
+                      {!skipped && verbEl}
+                    </span>
+                    {/* Lock-a-cost ($) — same trailing icon + grammar as the food row. */}
+                    {!it.owned && !skipped && (
+                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : it.key)} title="Lock a cost" aria-label="Lock a cost"
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 2, background: 'transparent', border: 'none', color: it.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: T.body, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
+                    )}
+                    {/* Swap-out (×) / Add-back (+ add) — added items remove instead (food parity). */}
+                    {it.added ? (
+                      <button type="button" onClick={() => removeAdded(it.key)} title="Remove this item" aria-label="Remove this item"
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 2, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.title, lineHeight: 1, padding: '4px 4px' }}>×</button>
+                    ) : (
+                      <button type="button" onClick={() => toggleSkip(it.key)} title={skipped ? 'Add back to the list' : 'Swap out — drop from the plan'} aria-label={skipped ? 'Add back' : 'Swap out'}
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 2, background: 'transparent', border: 'none', color: skipped ? steel : C.muted, cursor: 'pointer', fontSize: skipped ? 12 : 17, fontWeight: skipped ? 700 : 400, lineHeight: 1, padding: '4px 4px' }}>{skipped ? '+ add' : '×'}</button>
+                    )}
+                  </div>
+                  {/* Cost-lock panel — Value / Premium / your-own, mirroring the FoodPlan lock. */}
+                  {lockOpen && !skipped && (
+                    <div style={{ padding: '0 0 12px 30px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
+                      {it.costLow != null && <button type="button" onClick={() => setLock(it.key, it.costLow)} style={lkBtn}>Value {money1(it.costLow)}</button>}
+                      {it.costHigh != null && <button type="button" onClick={() => setLock(it.key, it.costHigh)} style={lkBtn}>Premium {money1(it.costHigh)}</button>}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
+                        <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
+                        <input type="number" inputMode="numeric" defaultValue={it.locked != null ? it.locked : ''} placeholder="your price"
+                          onKeyDown={(e) => { if (e.key === 'Enter') setLock(it.key, e.currentTarget.value); }}
+                          onBlur={(e) => { if (e.currentTarget.value) setLock(it.key, e.currentTarget.value); }}
+                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+                      </span>
+                      {it.locked != null && <button type="button" onClick={() => clearLock(it.key)} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -9320,6 +9388,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
           <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>Supplies total</span>
           <span style={{ fontSize: T.secondary, color: C.muted }}>
             <span style={{ color: C.success, fontWeight: FW.bold }}>{money(boughtLow, boughtHigh)} bought</span> · ~{money(cap.costLow, cap.costHigh)} planned
+            {cap.lockedTotal > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{money1(cap.lockedTotal)} locked</span></> : null}
           </span>
         </div>
 
