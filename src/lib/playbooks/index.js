@@ -1041,6 +1041,16 @@ export function playbookFoodPlan(event, opts = {}) {
     return v == null ? true : (Array.isArray(p.whenChoice.in) ? p.whenChoice.in : []).includes(v);
   };
 
+  // Make the drinks/bar decision's `blocks` LIVE for BYOB. When the host picks "BYOB" /
+  // "guests bring their own", they aren't buying the drink spread — so the beverage lines
+  // leave the spread + budget and the cost actually moves (the reported "changed drinks to
+  // BYOB and nothing changed" gap). ICE stays: a host still supplies ice even when guests
+  // bring drinks. One rule, every event type (any decision whose `blocks` names beverage).
+  const _byob = (playbook.decisions || []).some((d) =>
+    Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b)))
+    && /\b(byob|bring your own|guests bring|everyone brings)\b/i.test(pickFor(d.id) || ''));
+  const hostBuysIt = (p) => !(_byob && p.category === 'beverage' && !/\bice\b/i.test(p.item || ''));
+
   // 64-#5 — region-gated items (whenRegion:['DMV']) commit a LOCAL dish (half-smokes,
   // mumbo sauce) only for events in that region — so localness is on the plate, not a
   // prompt. Region resolves from the metro/state; untagged items always show.
@@ -1066,7 +1076,7 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
-    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p))
+    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p))
     .map((p) => {
       const baseQty = resolveQuantity(p, guests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
