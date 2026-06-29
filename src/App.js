@@ -27521,8 +27521,18 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
   const rule = { height: 1, background: C.border, margin: '14px 0 0' };
   const stagger = (delayMs) => reveal ? { animation: `ceRise 300ms ${CE_EASE} ${delayMs}ms both` } : {};
 
+  // Paper tooth — a fine fibrous grain over the editorial cover so it reads as PRINTED
+  // stock, not a flat screen. Reuses the app's feTurbulence approach (a tiled data-URI),
+  // white noise at very low alpha laid in 'soft-light' so it textures the dark matte
+  // without lifting it. Gated by inviteHeavyDecorOK() — flat on reduced-motion / low-end.
+  const coverGrain = inviteHeavyDecorOK()
+    ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\")"
+    : null;
   return (
-    <div style={{ maxWidth: 430, margin: '0 auto', padding: '26px 26px 34px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+    <div style={{ position: 'relative', maxWidth: 430, margin: '0 auto', padding: '26px 26px 34px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      {/* Paper grain — sits behind the content (first child, pointer-inert), texturing the
+          stock. Subsequent normal-flow content paints over it. */}
+      {coverGrain && <div aria-hidden style={{ position: 'absolute', inset: 0, backgroundImage: coverGrain, backgroundRepeat: 'repeat', opacity: 0.6, mixBlendMode: 'soft-light', pointerEvents: 'none' }} />}
       {/* Utility bar — escape hatches from the cover: back to the host's other events,
           and start a new one (so the editorial landing is never a dead end). */}
       {(onBackToEvents || onNew) && (
