@@ -63,7 +63,7 @@ import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEve
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
-import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage } from './CommandCenter';
+import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
 import { effectiveDone as taskEffectiveDone } from './lib/taskEngine';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
@@ -29448,6 +29448,11 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
   // Single source for locking a headcount — used by BOTH the planner count field and the
   // host headcount panel. Sets the number, count mode, and the locked decision.
   const commit = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0) { setGuestCount(n); setGuestMode('count'); setLockedCount(n); if (guests.length > 0) setShowList(true); } };
+  // Soft-persist: a host who types a headcount but leaves the stepper BEFORE locking
+  // shouldn't lose it. On blur we keep the number (as an estimate — NOT a locked count,
+  // so guestMode stays untouched and nothing claims "locked"), so it's still there when
+  // they return to the Guests tab. Only writes when it actually changed.
+  const persistDraft = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0 && n !== (Number(event.guestCount) || Number(event.guestEstimate) || 0)) setGuestCount(n); };
   const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
   const [nonRespOpen, setNonRespOpen] = useState(bp !== 'mobile'); // mobile: collapse non-responder panel
   const [showRsvp,   setShowRsvp] = useState(false);
@@ -29725,6 +29730,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
                 style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: 'none', color: C.text, fontSize: T.display, fontWeight: FW.bold, cursor: 'pointer', lineHeight: 1 }}>−</button>
               <input id="hc-count" type="number" inputMode="numeric" min="0" value={hcDraft} placeholder={String(yes || guests.length || 0)}
                 onChange={e => setHcDraft(e.target.value)}
+                onBlur={() => persistDraft(hcDraft)}
                 onKeyDown={e => { if (e.key === 'Enter') { commit(hcDraft); e.currentTarget.blur(); } }}
                 style={{ width: 66, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.display, fontWeight: FW.heavy, fontFamily: 'inherit' }} />
               <button type="button" aria-label="More guests" onClick={() => setHcDraft(String((Number(hcDraft) || Number(yes || guests.length) || 0) + 1))}
@@ -30201,6 +30207,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 14, borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface2 || C.surface || C.bg, flexWrap: 'wrap' }}>
               <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>Just need a headcount?</span>
               <input type="number" inputMode="numeric" min="0" value={hcDraft} onChange={e => setHcDraft(e.target.value)}
+                onBlur={() => persistDraft(hcDraft)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lockHc(); e.currentTarget.blur(); } }}
                 placeholder={String(yes || guests.length || 0)}
                 style={{ width: 72, background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, color: C.text, fontSize: T.body, fontWeight: FW.heavy, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
@@ -39843,6 +39850,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const [foodFocusNonce,  setFoodFocusNonce] = useState(0);
   const focusFood = (id) => { setOpenFoodId(id || null); if (id) setFoodFocusNonce((n) => n + 1); };
   const [openFocusField,  setOpenFocusField] = useState(initialNav?.focusField || null); // Board #15: an input id to scroll to + focus (e.g. budget field)
+  // No-guesswork advance (host): after a deliberate foundational item is handled, the
+  // engine DELIVERS what's next and moves attention there — a brief affirmation cue +
+  // an auto-route to eventPlan(event).nextActions[0]. Single source: the same engine the
+  // spine/Focus read, so the "next" can never disagree with the rest of the app.
+  const [advanceCue, setAdvanceCue] = useState(null); // { title, tab } | null
   // Sprint 49: comm thread id (message id used to lookup the containing thread)
   const [openCommId,      setOpenCommId]     = useState(initialNav?.commId || null);
   // Sprint 49: timeline item id (task id from Next Up routing). Sprint 59B:
@@ -40002,6 +40014,47 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       if (tabScrollRef.current) tabScrollRef.current.scrollTop = 0;
     } catch (e) { /* non-fatal */ }
   }, [tab]);
+
+  // ── No-guesswork advance ─────────────────────────────────────────────────────
+  // The host should never have to hunt for "what now." When a deliberate foundational
+  // item flips done (date set · headcount locked · budget set), the engine delivers the
+  // next action and we move attention to it: switch to its tab + focus its field + show a
+  // brief "Next: …" cue. We watch ONLY the locked-in dominoes — NOT food, which is
+  // multi-step exploratory (its plan updates IN PLACE, never yanks the host mid-choice).
+  const foundationState = useMemo(() => {
+    const dateSet = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
+    const guests  = (Number(event.guestCount) || Number(event.guestEstimate) || (Array.isArray(event.guests) ? event.guests.length : 0)) > 0
+      && event.guestMode === 'count'; // a LOCKED count, not a stray estimate mid-typing
+    const budget  = (Array.isArray(event.budget) ? event.budget : []).reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0) > 0
+      || Number(event.totalBudget) > 0;
+    return { date: dateSet, guests, budget };
+  }, [event.date, event.guestCount, event.guestEstimate, event.guests, event.guestMode, event.budget, event.totalBudget]);
+  const prevFoundationRef = useRef(foundationState);
+  useEffect(() => {
+    const prev = prevFoundationRef.current;
+    prevFoundationRef.current = foundationState;
+    if (!isHostEvt) return;
+    const newlyDone = ['date', 'guests', 'budget'].some((k) => foundationState[k] && !prev[k]);
+    if (!newlyDone) return;
+    try {
+      const na = (eventPlan(event).nextActions || [])[0];
+      if (na && na.title) {
+        const dest = na.route && na.route.tab ? na.route.tab : null;
+        setAdvanceCue({ title: na.title, tab: dest });
+        if (dest) handleTabChange(dest, null, na.route.focusField ? { focusField: na.route.focusField } : undefined);
+      } else {
+        // Nothing left to route to — the foundation is complete. Affirm it, don't nav.
+        setAdvanceCue({ title: 'You’re all set — the essentials are handled.', tab: null });
+      }
+    } catch (e) { /* non-fatal */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foundationState, isHostEvt]);
+  // The cue is a brief affirmation — clear it after a beat so it never lingers as chrome.
+  useEffect(() => {
+    if (!advanceCue) return undefined;
+    const t = setTimeout(() => setAdvanceCue(null), 4200);
+    return () => clearTimeout(t);
+  }, [advanceCue]);
 
   // Sprint 49: when re-entering an already-mounted EventPlanner from L1 (Home
   // attention items) with a new initialNav, sync the tab + openId. Without
@@ -40310,6 +40363,17 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     <ErrorBoundary>
       {/* Sprint 58C — Decision Memory capture prompt (fixed overlay; renders on any tab) */}
       <RationaleModal prompt={decPrompt} onSave={saveDecision} onSkip={() => setDecPrompt(null)} />
+      {/* No-guesswork advance cue — a brief "Next: …" affirmation the engine delivers the
+          moment a foundational item is handled. Fixed above the thumb lane; self-clears. */}
+      {advanceCue && createPortal(
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 88, zIndex: 9000, display: 'flex', justifyContent: 'center', pointerEvents: 'none', padding: '0 16px' }}>
+          <div role="status" aria-live="polite" style={{ maxWidth: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(180deg, #2a2c30 0%, #1b1c20 100%)', border: '1px solid rgba(111,135,148,0.42)', borderRadius: 12, padding: '11px 16px', boxShadow: '0 12px 34px rgba(0,0,0,0.6)', animation: `ceRise 320ms ${CE_EASE} both` }}>
+            <span aria-hidden style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.2px', color: 'rgba(132,158,184,0.85)', textTransform: 'uppercase', flexShrink: 0 }}>Next</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#e8edf2', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{advanceCue.title}</span>
+          </div>
+        </div>,
+        document.body,
+      )}
       {tab === 'Command'     && (
         <CommandCenter
           event={event}
