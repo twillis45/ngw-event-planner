@@ -552,7 +552,10 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
   test('The Cookout → menu choices + a scaled, costed shopping list + food budget', () => {
     const plan = playbookFoodPlan({ id: 'c', type: 'The Cookout', guestCount: 40, guests: [] });
     expect(plan).toBeTruthy();
-    expect(plan.guests).toBe(40);
+    // A planned count sizes to the expected-attendance ceiling (researched shift),
+    // not the bare number — casual/open-door events plan a bit above (plus-ones).
+    expect(plan.guests).toBeGreaterThanOrEqual(40);
+    expect(plan.guests).toBeLessThanOrEqual(48);
     // food choices the host can make
     expect(plan.choices.length).toBeGreaterThan(0);
     plan.choices.forEach((c) => { expect(Array.isArray(c.options)).toBe(true); expect(c.chosen).toBeTruthy(); });
@@ -580,6 +583,85 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
 
   test('non-playbook type → null', () => {
     expect(playbookFoodPlan({ id: 'o', type: 'Other', guestCount: 10 })).toBeNull();
+  });
+
+  // Single source: "expected guests" comes from attendanceBand, not the raw invited
+  // list. A pure roster sizes the spread to band.high (everyone who hasn't declined),
+  // so declined guests don't inflate the food.
+  describe('sizes to the expected-attendance band (single source), not raw invited', () => {
+    const roster = (specs) => specs.map((rsvp, i) => ({ id: 'g' + i, name: 'G' + i, rsvp }));
+    test('declined guests are excluded from sizing', () => {
+      // 10 invited: 8 yes, 2 declined → plan-to ceiling is 8, not 10.
+      const ev = { id: 'c', type: 'The Cookout', guests: roster(['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'No', 'No']) };
+      const plan = playbookFoodPlan(ev);
+      expect(plan.guests).toBe(8);
+    });
+    test('outstanding replies size to the high end (won\'t run short)', () => {
+      // 10 invited: 6 yes, 2 maybe, 2 pending, 0 declined → plan to all 10.
+      const ev = { id: 'c', type: 'The Cookout', guests: roster(['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Maybe', 'Maybe', '', '']) };
+      const plan = playbookFoodPlan(ev);
+      expect(plan.guests).toBe(10);
+    });
+    test('an explicit count the host typed still wins over the roster band', () => {
+      // host set "30 expected" but only 12 in the roster → size to 30 everywhere.
+      const ev = { id: 'c', type: 'The Cookout', guestEstimate: 30, guests: roster(Array(12).fill('Yes')) };
+      const plan = playbookFoodPlan(ev);
+      expect(plan.guests).toBe(30);
+    });
+  });
+
+  // #14 — a swap to a PRICED alternative re-prices the line; a string alt keeps the cost.
+  describe('per-alternative price data re-prices the swapped line', () => {
+    const base = { id: 'jc', type: 'Juneteenth Cookout', guestCount: 30, guestCountLocked: true, guests: [], foodChoices: { menu: 'Ribs + chicken + links + the sides' } };
+    test('swapping ribs → Pork shoulder (cheaper unitCostRange) lowers that line', () => {
+      const before = playbookFoodPlan(base).list.find((i) => i.id === 'p_ribs');
+      const after = playbookFoodPlan({ ...base, foodSwap: { p_ribs: 'Pork shoulder' } }).list.find((i) => i.id === 'p_ribs');
+      expect(after.short).toBe('Pork shoulder');
+      expect(after.swappedFrom).toBeTruthy();
+      // ribs [4,8] → pork shoulder [3,6]: same qty, cheaper unit cost → lower line cost.
+      expect(after.high).toBeLessThan(before.high);
+      expect(after.perUnitHigh).toBeLessThan(before.perUnitHigh);
+    });
+    test('a string alternative still swaps (name only) and keeps the original cost', () => {
+      const before = playbookFoodPlan(base).list.find((i) => i.id === 'p_greens');
+      const after = playbookFoodPlan({ ...base, foodSwap: { p_greens: 'Mustard greens' } }).list.find((i) => i.id === 'p_greens');
+      expect(after.short).toBe('Mustard greens');
+      expect(after.high).toBe(before.high); // no price data on the string alt → unchanged
+    });
+  });
+
+  // 1597-2 — protein SOURCING tier reshapes the protein lines (not the sides).
+  describe('sourcing tier re-prices the proteins', () => {
+    const base = { id: 'jc', type: 'Juneteenth Cookout', guestCount: 30, guestCountLocked: true, guests: [], foodChoices: { menu: 'Ribs + chicken + links + the sides' } };
+    test('proteins use the deep meat factor; non-protein sides take the modest Costco bulk factor', () => {
+      const butcher = playbookFoodPlan({ ...base, sourcing: 'butcher' });
+      const costco = playbookFoodPlan({ ...base, sourcing: 'costco' });
+      const grocery = playbookFoodPlan({ ...base, sourcing: 'grocery' });
+      const ribs = (p) => p.list.find((i) => i.id === 'p_ribs');
+      expect(ribs(costco).high).toBeLessThan(ribs(butcher).high);
+      expect(ribs(grocery).high).toBeGreaterThan(ribs(butcher).high);
+      // a side (potato salad): butcher == grocery (base, no channel diff), Costco a modest bulk discount.
+      const side = (p) => p.list.find((i) => i.id === 'p_potatosalad');
+      expect(side(butcher).high).toBe(side(grocery).high);
+      expect(side(costco).high).toBeLessThan(side(butcher).high);
+    });
+    test('exposes the sourcing card data (current tier + per-tier key-protein cost)', () => {
+      const plan = playbookFoodPlan(base);
+      expect(plan.sourcing).toBe('butcher');
+      expect(plan.sourcingTiers.length).toBe(3);
+      expect(plan.sourcingKey).toBeTruthy();
+      // ribs carry AUTHORED per-tier prices → byTier costs ascend Costco < butcher < grocery.
+      expect(plan.sourcingKey.authored).toBe(true);
+      expect(plan.sourcingKey.byTier.costco).toBeLessThan(plan.sourcingKey.byTier.butcher);
+      expect(plan.sourcingKey.byTier.butcher).toBeLessThan(plan.sourcingKey.byTier.grocery);
+    });
+    test('authored per-tier prices drive the line (not the blanket factor)', () => {
+      // ribs costco range [3,4]/lb authored → exact, not 0.85×[4,8].
+      const costco = playbookFoodPlan({ ...base, sourcing: 'costco' }).list.find((i) => i.id === 'p_ribs');
+      // 30 guests → ~ planning ceiling units; per-unit cost should sit in the [3,4] band.
+      expect(costco.perUnitHigh).toBeLessThanOrEqual(4.01);
+      expect(costco.perUnitLow).toBeGreaterThanOrEqual(2.99);
+    });
   });
 });
 
@@ -784,17 +866,29 @@ describe('safe-headcount band — attendanceBand()', () => {
     expect(b.high).toBe(2);
     expect(attendanceBandLabel(b)).toBe('2');
   });
-  test('a locked headcount is a single real number, never banded', () => {
-    const b = attendanceBand({ guestMode: 'count', guestCount: 40, guests: [{ rsvp: 'Maybe' }] });
+  test('an explicitly LOCKED headcount is a single real number, never banded', () => {
+    const b = attendanceBand({ guestMode: 'count', guestCount: 40, guestCountLocked: true, guests: [{ rsvp: 'Maybe' }] });
     expect(b.basis).toBe('count');
     expect(b.band).toBe(false);
     expect(b.planning).toBe(40);
     expect(attendanceBandLabel(b)).toBe('40');
   });
-  test('an estimate-only event uses the estimate, unbanded', () => {
+  test('a planned count (not locked) applies the researched attendance shift → a band', () => {
+    // The Cookout is casual/open-door → typically 80–115% of the planned number.
+    const b = attendanceBand({ type: 'The Cookout', guestMode: 'count', guestCount: 40 });
+    expect(b.basis).toBe('estimate');
+    expect(b.band).toBe(true);
+    expect(b.planned).toBe(40);
+    expect(b.low).toBeLessThan(40);     // some no-shows
+    expect(b.high).toBeGreaterThan(40); // some plus-ones/walk-ins
+    expect(b.planning).toBe(b.high);    // size to the ceiling
+    expect(b.because).toMatch(/Planned for 40/);
+  });
+  test('an estimate-only event applies the shift around the estimate', () => {
     const b = attendanceBand({ guestEstimate: '30' });
-    expect(b.planning).toBe(30);
-    expect(b.band).toBe(false);
+    expect(b.planned).toBe(30);
+    expect(b.planning).toBe(b.high);
+    expect(b.high).toBeGreaterThanOrEqual(30);
   });
   test('no count signal → not applicable (nothing to claim)', () => {
     expect(attendanceBand({ guests: [] }).applicable).toBe(false);

@@ -65,12 +65,16 @@ const crabFeast = {
   tasks: [
     { id: 't_source', milestoneId: 'cf_source', phase: 'logistics', label: 'Call a couple of crab houses/markets; ask the day\'s sizes, live vs steamed price per dozen/bushel, and whether to pre-order', when: 'T-10d' },
     { id: 't_invite', milestoneId: 'cf_invite', phase: 'guest', label: 'Invite guests; note who are serious crab pickers vs kids/light eaters (it drives the count)', when: 'T-7d' },
-    { id: 't_reserve', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Pre-order the crabs by size and count; if ordering steamed, lock a hot pickup time near the start', when: 'T-5d' },
+    { id: 't_reserve', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Pre-order the crabs by size and count', when: 'T-5d' },
+    // Sourcing-split tasks — the host's steam-vs-order choice reshapes what's left to do.
+    { id: 't_pickup', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Lock a hot pickup slot at the crab house near your start time — they steam & season, you just pick up', when: 'T-5d', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
+    { id: 't_rentpot', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Rent or borrow a rack steamer pot (40+ qt) + propane burner — you\'re steaming your own', when: 'T-7d', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
     { id: 't_count', milestoneId: 'cf_headcount', phase: 'guest', label: 'Lock headcount; figure ~6–12 crabs per adult picker, ~half a bushel per 4–6 pickers, fewer for kids', when: 'T-3d' },
     { id: 't_shop', milestoneId: 'cf_shop', phase: 'shopping', label: 'Buy Old Bay/J.O., apple-cider vinegar, sides, beer/soda/water/tea, butter, paper table cover, mallets & knives, paper towels, cleanup', when: 'T-3d' },
     { id: 't_prep', milestoneId: 'cf_prep', phase: 'food', label: 'Make coleslaw & potato salad; set out mallets, crab knives, bibs, butter & vinegar dishes, the paper-towel rolls', when: 'T-1d' },
     { id: 't_corn', milestoneId: 'cf_setup', phase: 'food', label: 'Steam/boil the corn and (if doing your own) the shrimp; dust shrimp with Old Bay', when: 'T0 -1:00' },
-    { id: 't_steam', milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Pick up the hot steamed crabs at your slot, OR steam your own: water + apple-cider vinegar + beer below the rack, layer crabs, heavy Old Bay per layer, steam ~20–30 min until bright red', when: 'T0' },
+    { id: 't_steam', milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Pick up the hot steamed crabs at your locked slot and get them to the table fast', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
+    { id: 't_steam_self', milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Steam your own: water + apple-cider vinegar + beer below the rack, layer crabs, heavy Old Bay per layer, ~20–30 min until bright red', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
     { id: 't_setup', milestoneId: 'cf_setup', phase: 'setup', label: 'Cover the tables in newspaper/brown paper, set tools and butter/vinegar, ice the drinks, stage a trash/recycle station and a shell bucket', when: 'T0 -0:30' },
     { id: 't_dump', milestoneId: 'event', phase: 'food', label: 'Dump the hot crabs down the middle of the table, dust with extra Old Bay, and let everyone dig in; refill sides, drinks, and paper towels', when: 'T0' },
     { id: 't_clean', milestoneId: 'event', phase: 'cleanup', label: 'Roll the shell and paper straight off the table into trash bags; bag/double-bag the shell, wash mallets & dishes, store leftovers (pick extra crab meat)', when: 'T0 +4:00' },
