@@ -9629,21 +9629,45 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           {(() => {
             const counts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
             const setCount = (diet, v) => { const n = Math.max(0, Math.round(Number(v) || 0)); const next = { ...counts }; if (n > 0) next[diet] = n; else delete next[diet]; onPatch({ dietCounts: next }); };
+            // #2 — dietary the GUESTS already declared (their RSVP/needs) feeds this panel so
+            // the host doesn't re-type what people told them. Single source: event.guests[].needs
+            // (+ plus-one). Map each need string to a DIET_TAG, count one per person, and offer a
+            // one-tap merge into dietCounts — which already drives the food plan + budget.
+            const tagFor = (s) => { const t = String(s || '').trim().toLowerCase(); if (!t) return null; return DIET_TAGS.find((tag) => { const tl = tag.toLowerCase(); return tl === t || tl.startsWith(t) || (t.length > 2 && tl.startsWith(t.replace(/ (allergy|free)$/, ''))); }) || null; };
+            const guestDiet = {};
+            const addNeeds = (str) => { const seen = new Set(); String(str || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((p) => { const tag = tagFor(p); if (tag && !seen.has(tag)) { seen.add(tag); guestDiet[tag] = (guestDiet[tag] || 0) + 1; } }); };
+            (event.guests || []).forEach((g) => { if (!g) return; addNeeds(g.needs); addNeeds(g.plusOneNeeds); });
+            const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(counts[d]) || 0) < n);
+            const pullFromGuests = () => { const next = { ...counts }; Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); }); onPatch({ dietCounts: next }); };
             return (
+              <>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8 }}>
                 {DIET_TAGS.map((diet) => {
                   const n = Number(counts[diet]) || 0;
                   return (
                     <div key={diet} style={{ display: 'flex', alignItems: 'center', gap: 8, background: n > 0 ? `${steel}14` : C.bg, border: `1px solid ${n > 0 ? steel : C.border}`, borderRadius: 9, padding: '6px 8px 6px 11px' }}>
                       <span style={{ flex: 1, minWidth: 0, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{diet}</span>
-                      <input type="number" inputMode="numeric" min="0" defaultValue={n || ''} placeholder="0"
-                        onBlur={(e) => setCount(diet, e.currentTarget.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { setCount(diet, e.currentTarget.value); e.currentTarget.blur(); } }}
+                      {/* Controlled off event.dietCounts (single source) so setting one diet
+                          never clears another — each input always reflects the saved count and
+                          multiple diets persist together. */}
+                      <input type="number" inputMode="numeric" min="0" value={n || ''} placeholder="0"
+                        onChange={(e) => setCount(diet, e.currentTarget.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                         style={{ width: 40, ...metalEdge(C), borderRadius: 7, padding: '4px 6px', color: C.text, fontSize: T.body, fontWeight: FW.heavy, fontFamily: 'inherit', textAlign: 'center', outline: 'none' }} />
                     </div>
                   );
                 })}
               </div>
+              {/* Auto-pull what guests already told you via their RSVP. */}
+              {pending.length > 0 && (
+                <button type="button" onClick={pullFromGuests}
+                  style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', background: `${steel}14`, border: `1px solid ${steel}`, borderRadius: 9, padding: '9px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>From your RSVPs</span>
+                  <span style={{ fontSize: T.caption, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pending.map(([d, n]) => `${d} ×${n}`).join(' · ')}</span>
+                  <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: steel, flexShrink: 0 }}>Add →</span>
+                </button>
+              )}
+              </>
             );
           })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
