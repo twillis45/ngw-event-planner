@@ -9849,7 +9849,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             const addNeeds = (str) => { const seen = new Set(); String(str || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((p) => { const tag = tagFor(p); if (tag && !seen.has(tag)) { seen.add(tag); guestDiet[tag] = (guestDiet[tag] || 0) + 1; } }); };
             (event.guests || []).forEach((g) => { if (!g) return; addNeeds(g.needs); addNeeds(g.plusOneNeeds); });
             const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(counts[d]) || 0) < n);
-            const pullFromGuests = () => { const next = { ...counts }; Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); }); onPatch({ dietCounts: next }); };
+            const pullFromGuests = () => { const next = { ...counts }; Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); }); onPatch({ dietCounts: next, dietMergeUndo: counts }); try { feedbackSelect(); } catch {} };
             return (
               <>
               {(() => {
@@ -9931,6 +9931,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>From your RSVPs</span>
                   <span style={{ fontSize: T.caption, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pending.map(([d, n]) => `${d} ×${n}`).join(' · ')}</span>
                   <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: steel, flexShrink: 0 }}>Add →</span>
+                </button>
+              )}
+              {/* Merge-with-undo — the pull persists a snapshot so the host can revert it. */}
+              {event.dietMergeUndo && (
+                <button type="button" onClick={() => { onPatch({ dietCounts: event.dietMergeUndo, dietMergeUndo: null }); try { feedbackSelect(); } catch {} }}
+                  style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '2px 0' }}>
+                  <span style={{ fontSize: T.caption, color: C.success || steel, fontWeight: FW.bold }}>✓ Merged from your RSVPs</span>
+                  <span style={{ fontSize: T.caption, color: C.muted, textDecoration: 'underline' }}>Undo</span>
                 </button>
               )}
               </>
