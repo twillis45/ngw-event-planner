@@ -40711,7 +40711,11 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape
             travels for recognition; hue stays home on the calm overview). */}
         <span aria-hidden style={{ color: idColor, display: 'flex', flexShrink: 0 }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>
-        <div style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+          {/* Event date (+ start time) in the header — single source: event.date / event.startTime. */}
+          {event.date && (() => { let d = ''; try { d = new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); } catch {} if (!d) return null; const t = event.startTime ? ` · ${fmtTime12(event.startTime)}` : ''; return <div style={{ fontSize: T.caption, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{d}{t}</div>; })()}
+        </div>
         {/* Green LIVE · TODAY pill on the event day (Figma 1553:3) — the one "it's happening"
             signal. Studio Matte: green = live/success (never amber); a single header accent. */}
         {isEventToday && (
