@@ -32499,7 +32499,7 @@ function HostRunOfShowTimeline({ event, profile }) {
   // fires AS the sweep reaches it, not on a fixed delay (the old desync that read as "strange").
   const nowIndex = nowCueId ? sorted.findIndex((r) => r.id === nowCueId) : -1;
   const nowRatio = (nowIndex >= 0 && sorted.length > 1) ? nowIndex / (sorted.length - 1) : 0;
-  const igniteDelay = Math.round(70 + nowRatio * 430); // ~aligns with the 520ms sweep passing the node
+  const igniteDelay = Math.round(140 + nowRatio * 1040); // ~aligns with the (slower) 1300ms sweep passing the node
 
   // Header subline — weekday, Mon D, and the start time (the earliest cue, the most
   // honest run-of-show anchor; falls back to event.startTime if no cue time).
@@ -32616,7 +32616,7 @@ function HostRunOfShowTimeline({ event, profile }) {
             rail). Day-of only; the lead-up timeline stays asleep. */}
         {isDayOf && (
           <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, overflow: 'hidden', pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${live}, transparent)`, boxShadow: `0 0 8px ${live}`, animation: `ceSweep 520ms linear both` }} />
+            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${live}, transparent)`, boxShadow: `0 0 8px ${live}`, animation: `ceSweep 1300ms cubic-bezier(0.4,0,0.2,1) both` }} />
           </div>
         )}
         {sorted.map((r, i) => {
@@ -32639,11 +32639,11 @@ function HostRunOfShowTimeline({ event, profile }) {
                 boxShadow: isNow ? `0 0 0 4px ${live}33, 0 0 12px ${live}` : 'none',
                 // M5 — the NOW node ignites as the sweep reaches it (delay scaled to its
                 // position so the light "lands" on the node instead of a fixed offset).
-                ...(isNow ? { animation: `ceIgnite 300ms ${CE_EASE} ${igniteDelay}ms both` } : {}),
+                ...(isNow ? { animation: `ceIgnite 520ms ${CE_EASE} ${igniteDelay}ms both` } : {}),
               }} />
               {isNow ? (
                 /* M5·C — the live task in a green-bordered card with its eyebrow + time. */
-                <div style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 340ms ${CE_EASE} ${igniteDelay + 60}ms both` }}>
+                <div style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
                     <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />HAPPENING NOW{r.time ? ` · ${fmtTime12(r.time)}` : ''}
                   </div>
