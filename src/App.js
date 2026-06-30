@@ -40492,6 +40492,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   const idColor = ident.mark === 'quiet' ? C.accent : ident.color;
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
+  // Desktop / tablet-landscape (≥1024, same threshold the planner shell + the planv2
+  // two-column layout use): a proper left SIDE nav, not a phone-style bottom bar. The
+  // bottom bar is for phone/tablet-portrait only.
+  const isSidebarNav = bp === 'tablet-land' || bp === 'desktop';
   const isEventToday = !!event.date && event.date === today8601();
   const hasExplicitDayMode = event.dayMode === true || event.dayMode === false;
   const dayMode = hasExplicitDayMode ? event.dayMode : isEventToday;
@@ -40556,7 +40560,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: 76 }}>
+    <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: isSidebarNav ? 0 : 76 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted }}>←</button>
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape
@@ -40568,7 +40572,36 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
       <ReadinessTrack event={event} />
 
-      <div>
+      <div style={isSidebarNav ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
+        {/* Desktop / tablet-landscape: a calm left SIDE nav (the 5 host sections + the
+            "more" destinations below a divider). On phone/tablet-portrait this is null and
+            the fixed bottom bar carries navigation instead. */}
+        {isSidebarNav && (
+          <nav aria-label="Event sections" style={{ position: 'sticky', top: 0, alignSelf: 'flex-start', flexShrink: 0, width: 230, padding: '18px 12px', borderRight: `1px solid ${C.border}` }}>
+            {NAV.map(n => {
+              const active = tab === n.id;
+              return (
+                <button key={n.id} onClick={() => go(n.id)} title={n.label}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', background: active ? idColor + '16' : 'transparent', color: active ? idColor : C.muted, borderLeft: `3px solid ${active ? idColor : 'transparent'}`, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: active ? FW.bold : FW.semibold }}>
+                  <span style={{ display: 'flex', flexShrink: 0, width: 20, justifyContent: 'center' }}><Icon name={n.icon} size={18} /></span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.label}</span>
+                </button>
+              );
+            })}
+            {moreItems.length > 0 && <div style={{ height: 1, background: C.border, opacity: 0.7, margin: '10px 12px' }} />}
+            {moreItems.map(m => {
+              const active = tab === m.id;
+              return (
+                <button key={m.id} onClick={() => go(m.id)} title={m.label}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', background: active ? idColor + '16' : 'transparent', color: active ? idColor : C.muted, borderLeft: `3px solid ${active ? idColor : 'transparent'}`, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: active ? FW.bold : FW.semibold }}>
+                  <span style={{ display: 'flex', flexShrink: 0, width: 20, justifyContent: 'center' }}><Icon name={TAB_ICONS[m.id] || 'file'} size={18} /></span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+        <div style={isSidebarNav ? { flex: 1, minWidth: 0 } : undefined}>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
         {tab === 'Guests' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
@@ -40618,14 +40651,13 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
+        </div>
       </div>
 
-      {/* Bottom nav — full-bleed flush bar on mobile (thumb reach); on desktop it gates to
-          a centered, width-capped floating pill so it stops spanning the whole wide screen
-          like a phone bar. Same tabs, same routing, both viewports. */}
-      <div style={isMobile
-        ? { position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }
-        : { position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 20, width: 'min(560px, calc(100vw - 48px))', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, display: 'flex', overflow: 'hidden', boxShadow: '0 14px 36px -10px rgba(0,0,0,0.6)', zIndex: 50 }}>
+      {/* Bottom nav — full-bleed flush thumb bar for phone / tablet-portrait. On
+          tablet-landscape + desktop the left SIDE nav owns navigation and this is null. */}
+      {!isSidebarNav && (
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }}>
         {NAV.map(n => {
           const active = tab === n.id;
           return (
@@ -40640,8 +40672,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <span style={{ fontSize: T.caption, fontWeight: FW.semibold }}>More</span>
         </button>
       </div>
+      )}
 
-      {moreOpen && (<>
+      {!isSidebarNav && moreOpen && (<>
         <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 60 }} />
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '18px 18px 0 0', zIndex: 61, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <SheetGrip isMobile />
