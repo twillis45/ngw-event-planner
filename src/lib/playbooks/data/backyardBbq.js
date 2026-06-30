@@ -32,6 +32,7 @@ const backyardBbq = {
   ],
 
   decisions: [
+    { id: 'food_style', label: 'Who handles the food?', options: ['Host grills everything', 'Hire a BBQ caterer / pitmaster', 'Potluck — guests bring sides'], default: 'Host grills everything', when: 'T-14d', blocks: ['food', 'vendors'], why: 'The biggest effort lever — for 25+ guests or all-day smoking, a pitmaster is what lets the host actually host instead of standing at the grill all day.' },
     { id: 'menu', label: 'Grill menu (proteins + sides)', options: ['Burgers + dogs', 'Chicken + ribs', 'Mixed grill', 'Seafood boil / cookout'], default: 'Burgers + dogs', when: 'T-10d', blocks: ['food', 'fuel'], why: 'Drives proteins, buns, fuel, and grill time. Burgers/dogs are the lowest-effort default.' },
     { id: 'potluck', label: 'Host-provided or potluck sides?', options: ['Host provides all', 'Potluck sides', 'Host grills, guests bring drinks'], default: 'Host grills, guests bring drinks', when: 'T-10d', blocks: ['food', 'beverage_purchases'], why: 'Biggest cost/effort lever — assigning sides/drinks cuts the host load roughly in half.' },
     { id: 'alcohol', label: 'Drinks', options: ['Beer + soda + water', 'BYOB', 'Full cooler bar', 'Dry / family-friendly'], default: 'Beer + soda + water', when: 'T-7d', blocks: ['beverage_purchases'], why: 'Drives cooler + ice volume and whether anyone needs a ride.' },

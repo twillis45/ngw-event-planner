@@ -32,6 +32,7 @@ const graduation = {
   ],
 
   decisions: [
+    { id: 'food_style', label: 'How is the food handled?', options: ['Host cooks / grills', 'Drop-off catering / BBQ', 'Potluck', 'Order trays'], default: 'Host cooks / grills', when: 'T-21d', blocks: ['food', 'vendors'], why: 'An open house with churn wants self-serve food that holds — easy to host-make and over-provision, or a drop-off if the day is busy.' },
     { id: 'format', label: 'Open house or set-time party?', options: ['Open house (drop-in)', 'Set-time party', 'Joint party (multiple grads)'], default: 'Open house (drop-in)', when: 'T-21d', blocks: ['food', 'tableware'], why: 'Open houses see more total heads with churn — plan self-serve food that holds, and over-provision.' },
     { id: 'headcount', label: 'Estimate peak + total headcount', options: [], default: null, when: 'T-10d', blocks: ['food', 'cake', 'tableware'], why: 'Open-house RSVPs are fuzzy — estimate both peak-at-once and total-through-the-day; quantities key off total + a buffer.' },
     { id: 'food_style', label: 'Food style', options: ['BBQ / grill', 'Buffet / trays', 'Drop-off catering', 'Taco/food bar'], default: 'Buffet / trays', when: 'T-14d', blocks: ['food', 'vendors'], why: 'Self-serve buffet or BBQ that holds beats plated for a drop-in crowd.' },

@@ -30,6 +30,7 @@ const babyShower = {
   ],
 
   decisions: [
+    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes a brunch spread', 'Drop-off catering', 'Potluck', 'Order platters'], default: 'Host makes a brunch spread', when: 'T-21d', blocks: ['food', 'vendors'], why: 'A daytime shower is grazing food — easy to host-make, or a drop-off if the guest list is big.' },
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Lunch buffet', 'Co-ed "sip & see"'], default: 'Brunch', when: 'T-28d', blocks: ['menu', 'beverage_purchases'], why: 'Sets the menu, time of day, and whether it skews sweet or savory.' },
     { id: 'guestlist', label: 'Finalize guest list with the parent(s)', options: [], default: null, when: 'T-21d', blocks: ['food', 'favors', 'tableware'], why: 'Every quantity scales from this; confirm with the guest of honor first.' },
     { id: 'registry', label: 'Confirm registry / gift theme to share on the invite', options: ['Store registry', 'Books for baby', 'Diapers & wipes', 'No gifts'], default: 'Store registry', when: 'T-21d', why: 'Guests ask immediately; include it on the invite to reduce back-and-forth.' },

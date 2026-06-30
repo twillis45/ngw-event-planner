@@ -13,7 +13,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
@@ -27,7 +27,7 @@ import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet,
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics } from './lib/weather';
-import { getToday, daysUntil } from './lib/dates';
+import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
@@ -877,8 +877,11 @@ function GlobalStyles() {
       // "all of that is taken care of — it recedes, leaving the single thing."
       '@keyframes ceRecede { 0% { opacity: 0.92; transform: translateY(-6px) scale(1.015); } 100% { opacity: 0.7; transform: none; } }',
       // ceSweep: a travelling light runs down the timeline spine when the day wakes
-      // (Magic Moment M5). Linear-ish so it reads as moving light, not a fade.
-      '@keyframes ceSweep { 0% { top: -34%; opacity: 0; } 12% { opacity: 0.95; } 100% { top: 100%; opacity: 0.15; } }',
+      // (Magic Moment M5). Uses transform: translateY (GPU-composited) — NOT percentage `top`,
+      // which Android Chrome refuses to animate reliably (the light never travelled on Android).
+      // translateY % is relative to the light's OWN height (40% of the rail), so -130%→280%
+      // sweeps it from just above the spine to just below it.
+      '@keyframes ceSweep { 0% { transform: translateY(-130%); opacity: 0; } 12% { opacity: 0.95; } 100% { transform: translateY(280%); opacity: 0.2; } }',
       // ceIgnite: the NOW node lights as the sweep reaches it (M5).
       '@keyframes ceIgnite { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
@@ -947,6 +950,12 @@ function GlobalStyles() {
       '.a11y-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }',
       // Respect prefers-reduced-motion — disable orchestration animations
       '@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }',
+      // EXCEPTION: the day-of "the day wakes" hero moment (.ce-daywake — the timeline spine
+      // sweep + NOW-node ignite + green card rise) stays animated even under reduced-motion.
+      // It's a brief, eased opacity/scale/glow reveal with no large parallax/spin (no vestibular
+      // trigger), and it carries meaning ("the day is live"). Higher selector specificity than the
+      // universal rule above, so it wins the cascade. (Product owner: keep the animation.)
+      '@media (prefers-reduced-motion: reduce) { .ce-daywake, .ce-daywake *, .ce-daywake *::before, .ce-daywake *::after { animation-duration: 900ms !important; animation-iteration-count: 1 !important; } }',
       // ── WIN 3.1 — the invite cover reads as a PHYSICAL SHEET resting on the canvas ──
       // The hero card got a clean-rect outline that sat ON THE SAME PLANE as the canvas.
       // We make it paper: (a) a soft dark OCCLUSION/CONTACT shadow cast under+around the
@@ -2684,6 +2693,22 @@ const kitForEventType = (type) => {
   // Retirement Party, Reunion).
   if (EVT_PARENT[type] === 'Weddings & Celebrations') return 'private';
   return 'simple';
+};
+
+// Derive the coarse timeOfDay bucket from a precise clock time ("18:30" or "6:30 PM"),
+// so when the host sets an actual Start time the time-of-day stays in sync (single source:
+// the clock time is the truth; the bucket follows it). Returns null if unparseable.
+const timeOfDayFromClock = (s) => {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || ''));
+  if (!m) return null;
+  let h = Number(m[1]); const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23) return null;
+  if (h < 11) return 'morning';
+  if (h < 16) return 'afternoon';
+  if (h < 21) return 'evening';
+  return 'night';
 };
 
 // Intelligence Gap PR #1 — type-driven timeOfDay default. NewEventModal
@@ -22119,9 +22144,9 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
       if (!theOne) return;
       if (theOne.kind === 'cue') {
         try {
-          const base = effectiveRos(ev) || [];
-          const next = base.map(r => r.id === theOne.cue.id ? { ...r, done: true } : { ...r });
-          onPatchEvent(ev.id, { ros: next });
+          // Single source: persist ONLY the per-cue done flag (event.rosDone), never a full
+          // ros snapshot — the schedule stays derived so it keeps tracking timeOfDay.
+          onPatchEvent(ev.id, { rosDone: { ...(ev.rosDone || {}), [theOne.cue.id]: true } });
           feedbackSeal(); // the one thing today, done — the heaviest moment earns the seal
         } catch {}
       } else if (na) {
@@ -26639,13 +26664,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   // Health keyed to VENDOR TRUTH (board: you bust the budget at SIGNING, and a late
   // payment is the loudest thing) — not the manual actuals. Plain-language headlines.
   const budgetState =
-    overCommitted        ? { text: 'OVER BUDGET',   color: C.danger,  headline: `Booked ${fmtD(totalCommitted - totalBudgeted)} over your ${fmtD(totalBudgeted)} budget — trim a category` } :
+    overCommitted        ? { text: 'OVER BUDGET',   color: C.danger,  headline: `${fmtD(totalCommitted - totalBudgeted)} over your ${fmtD(totalBudgeted)} budget — trim a line to fix it` } :
     overdueBalance > 0   ? { text: 'PAYMENT LATE',  color: C.danger,  headline: `${fmtD(overdueBalance)} overdue to vendors — pay it now` } :
     projectedOver        ? { text: 'TRACKING OVER', color: C.muted,    headline: `Tracking to ${fmtD(projectedFinal)} — over your ${fmtD(totalBudgeted)} budget once everything's booked` } :
     overCats > 0         ? { text: 'CHECK CATEGORY', color: C.muted,   headline: `${overCats} categor${overCats === 1 ? 'y is' : 'ies are'} over budget` } :
     committedPct > 90    ? { text: 'ATTENTION',     color: C.muted,    headline: 'Almost fully booked — little room left' } :
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
-                           { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
+                           { text: 'NO BUDGET YET',  color: C.muted,   headline: 'Tell us what you’d like to spend' };
 
   // ─── Persona gate (RA-4 / DL-009) ── a self-host gets a spoken spending plan,
   // never the planner's fee/Stripe/vendor/AR cockpit (a KPI grid + "Uncontracted").
@@ -32499,7 +32524,11 @@ function HostRunOfShowTimeline({ event, profile }) {
   // fires AS the sweep reaches it, not on a fixed delay (the old desync that read as "strange").
   const nowIndex = nowCueId ? sorted.findIndex((r) => r.id === nowCueId) : -1;
   const nowRatio = (nowIndex >= 0 && sorted.length > 1) ? nowIndex / (sorted.length - 1) : 0;
-  const igniteDelay = Math.round(140 + nowRatio * 1040); // ~aligns with the (slower) 1300ms sweep passing the node
+  // Fire the NOW ignite WHEN the light actually reaches the node down the spine, accounting
+  // for the sweep's 240ms start delay + travel time. Critically this fixes a TOP now (ratio 0):
+  // it no longer ignites at 140ms (before the sweep even appears) — it waits ~420ms for the
+  // light to arrive, so even the first cue gets a coherent sweep→ignite→rise beat with runway.
+  const igniteDelay = Math.round(420 + nowRatio * 980); // 420ms (top) … 1400ms (bottom), tracking the delayed sweep
 
   // Header subline — weekday, Mon D, and the start time (the earliest cue, the most
   // honest run-of-show anchor; falls back to event.startTime if no cue time).
@@ -32512,9 +32541,15 @@ function HostRunOfShowTimeline({ event, profile }) {
   const startLabel = firstCueTime ? fmtTime12(firstCueTime) : (event && event.startTime ? String(event.startTime) : '');
   const subline = [dateLine, startLabel ? `${startLabel} start` : ''].filter(Boolean).join(' · ');
 
+  // Every cue done → the day is COMPLETE. Keep a green hero (the caught-up reward) instead of
+  // losing the "happening now" panel to an empty list. The sweep won't re-wake a finished day.
+  const allDone = isDayOf && hasCues && sorted.length > 0 && sorted.every((r) => cueDone(r));
+
   // Eyebrow + footer adapt to proximity.
-  const eyebrow = isDayOf ? 'THE DAY · LIVE NOW' : 'THE DAY · STARTS SOON';
-  const footer = isDayOf
+  const eyebrow = allDone ? 'THE DAY · COMPLETE' : (isDayOf ? 'THE DAY' : 'THE DAY · STARTS SOON');
+  const footer = allDone
+    ? 'Every moment handled. That’s a wrap — go enjoy it.'
+    : isDayOf
     ? 'Your run-of-show is live. Work it top to bottom — done falls away.'
     : 'Your run-of-show is ready. It wakes up when the day begins.';
 
@@ -32608,15 +32643,30 @@ function HostRunOfShowTimeline({ event, profile }) {
       <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
       {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
 
-      {/* Timeline — a thin spine down the left with a dot per cue. */}
-      <div style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
+      {/* Day complete — every cue done. The green hero stays (caught-up reward) so the
+          "happening now" panel is never lost to an all-done, empty list. */}
+      {allDone && (
+        <div style={{ marginTop: 22, border: `1px solid ${live}`, borderRadius: 12, padding: '14px 16px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} both` }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
+            <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />EVERYTHING HANDLED
+          </div>
+          <div style={{ fontSize: T.body, fontWeight: FW.bold, color: textPrimary, marginTop: 6, lineHeight: 1.3, ...ROW_FONT }}>That’s a wrap — every moment’s done.</div>
+          <div style={{ fontSize: T.caption, color: steelTime, marginTop: 4, lineHeight: 1.4, ...ROW_FONT }}>Go enjoy it. Nothing left on the run-of-show.</div>
+        </div>
+      )}
+
+      {/* Timeline — a thin spine down the left with a dot per cue. (ce-daywake: the day-of
+          "the day wakes" hero moment stays animated even under reduced-motion — product call.) */}
+      <div className="ce-daywake" style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
         {/* Spine line */}
         <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: isDayOf ? live : (carbonStrong || C.border), opacity: isDayOf ? 0.55 : 0.4 }} />
         {/* M5 — the day wakes: a travelling light runs down the spine once (clipped to the
             rail). Day-of only; the lead-up timeline stays asleep. */}
-        {isDayOf && (
-          <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, overflow: 'hidden', pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${live}, transparent)`, boxShadow: `0 0 8px ${live}`, animation: `ceSweep 1300ms cubic-bezier(0.4,0,0.2,1) both` }} />
+        {isDayOf && !allDone && (
+          <div aria-hidden style={{ position: 'absolute', left: -4, top: 6, bottom: 6, width: 16, overflow: 'hidden', pointerEvents: 'none' }}>
+            {/* Bright white-green core so the travelling light reads on a phone; the wider rail
+                lets its glow show (the old 2px rail clipped the glow to a dim thread). */}
+            <div style={{ position: 'absolute', top: 0, left: 7, width: 3, height: '40%', borderRadius: 3, background: `linear-gradient(to bottom, transparent, ${live}, #eafff3, ${live}, transparent)`, boxShadow: `0 0 18px ${live}, 0 0 7px #eafff3`, willChange: 'transform', animation: `ceSweep 1300ms cubic-bezier(0.4,0,0.2,1) 240ms both` }} />
           </div>
         )}
         {sorted.map((r, i) => {
@@ -36772,6 +36822,29 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
 
   return (
     <>
+      {/* Caterer reconciliation — HOST view only. The host flipped to cooking everything but a
+          caterer is still on their hire list. Calm, one-tap removal; never auto-delete a manual
+          entry (foodApproach/hostIsCooking = the single-source food lever). */}
+      {(() => {
+        let isHostV = false; try { isHostV = hostNavActive(event); } catch {}
+        if (!isHostV || !hostIsCooking(event)) return null;
+        const caterers = (event.vendors || []).filter(v => v && /cater/i.test(v.category || ''));
+        if (!caterers.length) return null;
+        const names = caterers.map(v => (v.name || '').trim()).filter(Boolean);
+        const label = names.length ? names.join(', ') : `the caterer${caterers.length > 1 ? 's' : ''}`;
+        const plural = caterers.length > 1;
+        const tone = themeC.warn || themeC.accentTopGrad || themeC.accent;
+        const removeCaterers = () => { const ids = new Set(caterers.map(v => v.id)); setVendors(prev => (prev || []).filter(v => !ids.has(v.id))); try { feedbackSelect(); } catch {} };
+        return (
+          <div style={{ margin: '0 0 16px', padding: '14px 16px', borderRadius: 12, background: `${tone}12`, border: `1px solid ${tone}38`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 15, color: themeC.text, lineHeight: 1.45 }}>You’re cooking everything now — but <strong>{label}</strong> {plural ? 'are' : 'is'} still on your hire list.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" onClick={removeCaterers} style={{ padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: themeC.accent, color: '#fff', fontWeight: FW.bold, fontFamily: 'inherit', fontSize: 14 }}>Remove {plural ? 'them' : 'it'}</button>
+              <span style={{ fontSize: 13, color: themeC.muted }}>or keep {plural ? 'them' : 'it'} if you still need {plural ? 'them' : 'it'}.</span>
+            </div>
+          </div>
+        );
+      })()}
       <VendorPlanningWorkspace
         event={event}
         allEvents={allEvents}
@@ -38977,11 +39050,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         </EDTRow>
         <HybridTemplateMerge C={C} s={s} event={event} setEvent={setEvent} />
         <EDTRow isMobile={isMobile}>
-          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => upd('date', v)} type="date" />
+          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }))} type="date" />
           <EDTField C={C} s={s}
             label="Time of day"
             value={event.timeOfDay || 'afternoon'}
-            onChange={v => upd('timeOfDay', v)}
+            onChange={v => setEvent(e => ({ ...e, timeOfDay: v, ros: [], rosEdited: false }))}
             options={[
               { value: 'morning',   label: 'Morning' },
               { value: 'afternoon', label: 'Afternoon' },
@@ -38989,7 +39062,24 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
+          {/* Actual start time — anchors the day-of run-of-show to the exact minute
+              (single source: overrides the coarse time-of-day bucket). */}
+          <EDTField C={C} s={s} label="Start time" value={event.startTime || ''} onChange={v => setEvent(e => { const tod = timeOfDayFromClock(v); return { ...e, startTime: v, ...(tod ? { timeOfDay: tod } : {}), ros: [], rosEdited: false }; })} type="time" />
+          <div /> {/* keep the grid balanced */}
         </EDTRow>
+        {/* Time intelligence — flag a past/too-soon date so the action plan never builds
+            forward on an impossible date. (eventDateStatus = the single time-intelligence source.) */}
+        {(() => {
+          const ds = eventDateStatus(event.date);
+          if (!event.date || ds.status === 'ok' || ds.status === 'soon') return null;
+          const tone = ds.severity === 'error' ? (C.danger || '#e0746a') : (C.warn || C.accentTopGrad || C.accent);
+          return (
+            <div role={ds.severity === 'error' ? 'alert' : undefined} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: -4, marginBottom: 4, padding: '9px 12px', borderRadius: 9, background: `${tone}14`, border: `1px solid ${tone}40` }}>
+              <span aria-hidden style={{ color: tone, fontWeight: FW.bold, lineHeight: 1.4 }}>{ds.severity === 'error' ? '!' : '•'}</span>
+              <span style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45 }}>{ds.reason}</span>
+            </div>
+          );
+        })()}
         {/* Personal touches — optional, collapsed by default (progressive disclosure). */}
         {showTouches ? (
           <EDTRow isMobile={isMobile}>
@@ -40083,7 +40173,7 @@ function budgetHeroContent(event, C, steel, priceFactor) {
     // food plan adds still-planned cost on top of what's bought, names the committed
     // figure too so the host sees both ("$420 spent · $980 committed of $1,200").
     const committedTail = committed > spent
-      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} committed</span></>
+      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} spoken for</span></>
       : null;
     if (delta > 0) {
       // Swap-to-save (Figma 1296:25): when one discretionary row genuinely clears the
@@ -40095,10 +40185,10 @@ function budgetHeroContent(event, C, steel, priceFactor) {
         state: 'over', live: true,
         eyebrow: 'NEEDS YOU', eyebrowColor: steel,
         title: pick
-          ? `${fmt(delta)} over — drop ${dropLabel} to get back under?`
-          : `${fmt(delta)} over — trim a category to get back under?`,
+          ? `${fmt(delta)} over — drop ${dropLabel} to get back on plan?`
+          : `${fmt(delta)} over — trim a line to get back on plan?`,
         line: pick
-          ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) brings you back under. Everything else is within plan.</span>
+          ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) gets you back on track. Everything else is within plan.</span>
           : <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
         cta: 'Open budget', ctaTab: 'Budget',
         // The drop target threads to PlanNowHero's inline buttons (onDropBudgetRow).
@@ -40147,17 +40237,20 @@ function guestsHeroContent(event, C, steel) {
     // Nothing to anchor on → no honest hero.
     if (planned <= 0 && (!band || !band.applicable)) return null;
     if (res.resolved) {
-      const n = band && band.applicable ? band.confirmed : planned;
-      // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single
-      // source. Nobody "replied" to a headcount; only an RSVP roster gets that line.
+      // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single source.
       const isRoster = res.mode === 'roster';
+      // n MUST reflect the mode. A headcount is the number the host set to cook for — NEVER the
+      // RSVP tally (reading band.confirmed here is what made it say "0 guests" when a roster
+      // existed with no Yes-replies yet). A roster shows who actually replied Yes.
+      const n = isRoster ? (band && band.applicable ? band.confirmed : planned) : planned;
       return {
         state: 'allset', live: false,
         eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
-        title: isRoster ? `Everyone's replied — ${n} confirmed` : `Headcount set — ${n} guests`,
+        // Warm, host-plain copy — no "headcount" ops-speak, and never "0 guests".
+        title: isRoster ? `Everyone's replied — ${n} confirmed` : `You're set for ${n} guest${n === 1 ? '' : 's'}`,
         line: isRoster
           ? `Your guest count is locked. Quantities and seating can size to it.`
-          : `Your headcount's locked. Quantities and seating size to it.`,
+          : `Your count's locked — food, shopping, and seating all size to it.`,
         cta: 'Open guest list', ctaTab: 'Guests',
       };
     }
@@ -40614,7 +40707,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
             signal. Studio Matte: green = live/success (never amber); a single header accent. */}
         {isEventToday && (
           <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.success, background: `${C.success}1f`, border: `1px solid ${C.success}55`, borderRadius: 999, padding: '3px 10px' }}>
-            <span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />Live · Today
+            <span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />Today
           </span>
         )}
       </div>
@@ -40695,7 +40788,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
                 <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
-                <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
+                <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>
         )}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
@@ -41603,7 +41696,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {hostNavActive(event)
             ? <HostRunOfShowTimeline event={event} profile={profile} />
-            : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
+            : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
       {tab === 'Agenda'      && <>

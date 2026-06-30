@@ -411,6 +411,36 @@ export function choiceShown(event, whenChoice) {
   return v == null ? true : (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
 }
 
+// ── Food approach: caterer vs the host handling food themselves ───────────────
+// THE single-source lever for "is a caterer in scope for this event?" Every caterer
+// reference (readiness warnings, vendor suggestions, timeline tips, the reconciliation
+// prompt) should read THIS, not re-sniff option strings. The food-approach decision is
+// one of a few known ids (sourcing/help/food_style); we only treat a decision as the lever
+// if it actually offers a caterer-ish option, then the host "uses a caterer" only when the
+// chosen option names one. Returns nulls when the playbook has no such decision (callers
+// must NOT gate on a null — never hide a caterer reference on missing data).
+const FOOD_APPROACH_DECISIONS = ['sourcing', 'help', 'food_style', 'menu'];
+const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed|-in)?\b|pizza|tray|takeout|take-?out|restaurant/i;
+export function foodApproach(event) {
+  const pb = getPlaybook(event && event.type);
+  if (!pb || !Array.isArray(pb.decisions)) return { decisionId: null, pick: null, usesCaterer: null, cooking: null };
+  for (const id of FOOD_APPROACH_DECISIONS) {
+    const dec = pb.decisions.find((d) => d.id === id);
+    if (!dec) continue;
+    // Only the lever if this decision actually offers a caterer-ish path.
+    if (!(Array.isArray(dec.options) && dec.options.some((o) => CATERER_OPTION_RE.test(String(o))))) continue;
+    const pick = choicePickFor(event, id);
+    if (pick == null) continue;
+    const usesCaterer = CATERER_OPTION_RE.test(String(pick));
+    return { decisionId: id, pick, usesCaterer, cooking: !usesCaterer };
+  }
+  return { decisionId: null, pick: null, usesCaterer: null, cooking: null };
+}
+// Host has explicitly chosen NOT to use a caterer (cooks/DIY). True only when we can tell.
+export const hostIsCooking = (event) => foodApproach(event).usesCaterer === false;
+// A caterer IS in scope. True only when we can tell.
+export const hostUsesCaterer = (event) => foodApproach(event).usesCaterer === true;
+
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
 // (the intra-day hours are ignored — only the day phase matters here). null if absent.
 function taskOffsetDays(when) {
@@ -445,11 +475,20 @@ export function playbookChecklist(event, asOf) {
   const dte = daysToEvent(event.date, asOf);
   if (dte === null) return [];
 
+  // Food-approach lever — when the host has explicitly chosen NOT to use a caterer, the
+  // "book the caterer / headcount to caterer" tasks are moot. Single source: read foodApproach,
+  // never re-sniff the decision here. Only fires when usesCaterer === false (a real decision
+  // exists and isn't a caterer); null/undecided leaves every task in place.
+  const fa = foodApproach(event);
+  const dropCaterer = fa.usesCaterer === false;
   const rows = [];
   for (const t of playbook.tasks) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
+    // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
+    // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer").
+    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
     const offset = taskOffsetDays(t.when); // days relative to event (≤ 0 = before)
     const dueInDays = offset == null ? null : dte + offset;
     const eventDay = offset != null && offset >= 0;
@@ -646,7 +685,19 @@ export function topPlaybookDecision(event, asOf) {
 // playbookType } (Rule 2). Derived at read-time, never persisted, so a playbook
 // timing change flows through automatically (Rule 5). Pre-day shopping
 // (purchasing, T-1d/T-3d) is intentionally excluded — it's planning, not day-of.
-const ROS_ANCHOR_HOUR = { morning: 10, afternoon: 15, evening: 18 };
+const ROS_ANCHOR_HOUR = { morning: 10, afternoon: 15, evening: 18, night: 19, late: 20 };
+// A precise start time (event.startTime) anchors the run-of-show to the exact minute,
+// overriding the coarse timeOfDay bucket. Tolerant of "18:30", "6:30 PM", "7:00 PM".
+// Returns minutes-since-midnight, or null when unset/unparseable (→ fall back to bucket).
+function parseRosStartMin(s) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || ''));
+  if (!m) return null;
+  let h = Number(m[1]); const mm = Number(m[2]); const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23 || mm > 59) return null;
+  return h * 60 + mm;
+}
 // kind → segment type; both 'cooking' (Dinner Party) and 'preparation' (others).
 const ROS_SCHEDULE_KINDS = [
   { key: 'cooking', segType: 'event' },
@@ -680,9 +731,14 @@ export function playbookRunOfShow(event) {
   const playbook = getPlaybook(event.type);
   if (!playbook || !playbook.schedules) return null;
   const tod = String(event.timeOfDay || '').toLowerCase();
-  const base = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
-  const baseMin = base * 60;
+  const bucketHour = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
+  // Precise start time wins over the coarse bucket (single source: the actual time the
+  // host set on "Where & when"). Falls back to the timeOfDay anchor when unset.
+  const startMin = parseRosStartMin(event.startTime);
+  const baseMin = startMin != null ? startMin : bucketHour * 60;
 
+  // Food-approach lever — drop "caterer arrives / load-in" day-of cues when the host cooks.
+  const dropCatererCue = foodApproach(event).usesCaterer === false;
   const rows = [];
   let seq = 0;
   for (const kind of ROS_SCHEDULE_KINDS) {
@@ -690,6 +746,7 @@ export function playbookRunOfShow(event) {
     for (const entry of list) {
       const off = rosWhenOffset(entry.when);
       if (off === null) continue;
+      if (dropCatererCue && /cater(er|ing)/i.test(entry.what)) continue;
       const total = baseMin + off;
       rows.push({
         id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
@@ -711,7 +768,7 @@ export function playbookRunOfShow(event) {
   // Anchor a "Guests arrive" hero segment unless an entry already lands there.
   if (!rows.some((r) => r._min === baseMin)) {
     rows.push({
-      id: `pb-ros-${event.id}-arrival`, time: `${rosPad2(base)}:00`, _min: baseMin,
+      id: `pb-ros-${event.id}-arrival`, time: `${rosPad2(Math.floor(baseMin / 60))}:${String(baseMin % 60).padStart(2, '0')}`, _min: baseMin,
       segment: 'Guests arrive', location: '', type: 'event', owner: 'Host',
       confirmed: false, notes: '', source: 'playbook', generated: true, playbookType: playbook.type,
     });
@@ -726,8 +783,18 @@ export function playbookRunOfShow(event) {
 // host edits (which seeds + saves them), the saved schedule wins.
 export function effectiveRos(event) {
   const stored = event && Array.isArray(event.ros) ? event.ros : [];
-  if (stored.length) return stored;
-  return playbookRunOfShow(event) || [];
+  // SINGLE SOURCE OF TRUTH for the run-of-show. The playbook-derived schedule tracks the
+  // event's timeOfDay live (anchors 10/15/18), so changing "Where & when" reflows the whole
+  // day. A stored ros wins ONLY when the host has genuinely taken ownership in the ROS editor
+  // (event.rosEdited), or when the event has no playbook to derive from. Per-cue "done" state
+  // is kept SEPARATELY in event.rosDone and overlaid here — marking a cue done must never
+  // freeze the schedule into a snapshot that then stops tracking timeOfDay.
+  const derived = playbookRunOfShow(event);
+  const owned = stored.length && ((event && event.rosEdited) || !derived || !derived.length);
+  const base = owned ? stored : (derived || stored);
+  const doneMap = event && event.rosDone;
+  if (!doneMap || !base.length) return base;
+  return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
 }
 
 // ── Capacity requirements (Sprint 55H-B3A · NGW Pattern 009) ──────────────────

@@ -31,6 +31,7 @@ const sweet16 = {
   ],
 
   decisions: [
+    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
     {
       id: 'venue_type',
       label: 'Where is the party?',

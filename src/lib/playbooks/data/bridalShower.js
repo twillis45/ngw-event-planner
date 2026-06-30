@@ -36,6 +36,7 @@ const bridalShower = {
   ],
 
   decisions: [
+    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes the spread', 'Caterer / tea service', 'Potluck', 'Restaurant'], default: 'Host makes the spread', when: 'T-21d', blocks: ['food', 'vendors'], why: 'A shower spread is host-friendly; a caterer or restaurant suits a larger or fancier one.' },
     { id: 'style', label: 'Shower style', options: ['Brunch', 'Afternoon tea / sweets', 'Garden luncheon', 'Cocktail-hour shower'], default: 'Brunch', when: 'T-14d', blocks: ['menu', 'beverage_purchases'], why: 'Sets the menu, time of day, and whether the bar skews mimosa/coffee (brunch) or punch/tea (afternoon).' },
     { id: 'guestlist', label: 'Confirm guest list with the bride (and her mother / future MIL)', options: [], default: null, when: 'T-14d', blocks: ['food', 'favors', 'seating', 'tableware'], why: 'Every quantity and the seat count scale from this — and the bride must approve who is invited (no shower guest should be off the wedding list).' },
     { id: 'registry', label: 'Confirm registry to share on the invite', options: ['Store registry', 'Honeymoon fund', 'Cash / gift card', 'No gifts (presence only)'], default: 'Store registry', when: 'T-14d', why: 'Guests ask immediately; include it on the invite to reduce back-and-forth and steer the gift haul.' },
