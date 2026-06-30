@@ -872,6 +872,10 @@ function GlobalStyles() {
       '.ce-press:active { transform: scale(0.97); }',
       // ceGlow: a soft glow landing in (Magic Moment M4 — the focus-card glow lands last).
       '@keyframes ceGlow { from { opacity: 0; } to { opacity: 1; } }',
+      // ceRecede: the M4·B "receding" beat — the day's handled work starts present, then
+      // settles BACK (dims + lifts away) so the one focus card can take the room. Reads as
+      // "all of that is taken care of — it recedes, leaving the single thing."
+      '@keyframes ceRecede { 0% { opacity: 0.92; transform: translateY(-6px) scale(1.015); } 100% { opacity: 0.7; transform: none; } }',
       // ceSweep: a travelling light runs down the timeline spine when the day wakes
       // (Magic Moment M5). Linear-ish so it reads as moving light, not a fade.
       '@keyframes ceSweep { 0% { top: -34%; opacity: 0; } 12% { opacity: 0.95; } 100% { top: 100%; opacity: 0.15; } }',
@@ -22168,7 +22172,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
 
           {/* Handled (whisper) — the proof that everything else is already taken care of. */}
           {handled.length > 0 && (
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', opacity: 0.7, marginBottom: 30 }}>
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', opacity: 0.7, marginBottom: 30, animation: `ceRecede 640ms ${CE_EASE} both` }}>
               {handled.map((h, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, color: sub }}>
                   <span style={{ fontSize: 12, color: dimRow }}>✓</span>
