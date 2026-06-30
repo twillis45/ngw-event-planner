@@ -21988,7 +21988,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
     && (() => { try { return hostNavActive(ev); } catch { return false; } })();
   const dayRos = (isDayOf || isFocus) ? (() => { try { return effectiveRos(ev) || []; } catch { return []; } })() : [];
   const nowMins = (() => { try { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); } catch { return -1; } })();
-  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(t || '').trim()); if (!m) return null; let h = Number(m[1]); const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + Number(m[2]); }; // honors both 24h ("14:00") and 12h ("2:00 PM") cue times so the NOW marker lands right (M5)
   // A ROS cue is "open" until marked done (focus advances through them in order).
   const isCueDone = (r) => !!(r && r.done);
   const nextCue = (isDayOf || isFocus)
@@ -32441,7 +32441,7 @@ function HostRunOfShowTimeline({ event, profile }) {
   const textPrimary = C.text;                            // #eef0f4 — headlines
   const textSub     = C.muted;                           // #849eb8 — date subline
 
-  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(t || '').trim()); if (!m) return null; let h = Number(m[1]); const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + Number(m[2]); }; // honors both 24h ("14:00") and 12h ("2:00 PM") cue times so the NOW marker lands right (M5)
   const isCueDone = (r) => !!(r && (r.done || r.confirmed === true && r.type === 'past'));
   // A cue is "done" when explicitly marked done. (confirmed=true on a vendor row is
   // a logistics flag, not a done state, so we only honour an explicit `done`.)

@@ -121,10 +121,9 @@ const backyardBbq = {
     ],
     preparation: [
       { when: 'T-1d', what: 'Marinate proteins; make cold sides; check fuel + grill' },
-      { when: 'T0 -1h', what: 'Set up coolers + ice, shade, seating, drinks station' },
     ],
     setup: [
-      { when: 'T0 -1h', what: 'Coolers + ice, canopy/shade, chairs, food + drinks tables' },
+      { when: 'T0 -1h', what: 'Set up coolers + ice, canopy/shade, chairs, food + drinks tables' },
       { when: 'T0 -0:45', what: 'Light the grill; stage trash + recycling bins' },
     ],
     cleanup: [
