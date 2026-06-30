@@ -9309,7 +9309,12 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         </div>
         {/* the $ demoted to a quiet supporting figure — not a competing hero number */}
         {cap.hasCost && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8 }}>~{money(cap.costLow, cap.costHigh)} in rentals &amp; supplies</div>}
-        {cap.sizing && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{cap.sizing.charAt(0).toUpperCase() + cap.sizing.slice(1)}</div>}
+        {(() => {
+          // The hero title already states "Set for N", so drop the redundant "service for N"
+          // clause from the sizing line and keep only the extra detail (per-table · tables).
+          const extra = String(cap.sizing || '').split(' · ').filter((s) => !/^service for/i.test(s.trim())).join(' · ');
+          return extra ? <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{extra.charAt(0).toUpperCase() + extra.slice(1)}</div> : null;
+        })()}
         {cap.sizingWhy && (
           <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: `2px solid ${C.border}` }}>
             <span style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.55 }}><span style={{ fontWeight: FW.bold, color: C.text }}>How it’s sized — </span>{cap.sizingWhy}.</span>
@@ -38290,15 +38295,22 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
   // playbook task (pbt- id) isn't in the stored timeline — persist a done marker so the
   // manual checkoff sticks for the long tail real event-state can't prove handled.
   const onToggleTask = (taskId) => {
+    // The DISPLAYED done-state is the projected row's (a stored marker if any, else the
+    // derived state). Flip THAT — so a projected playbook task that's derived-done can be
+    // UN-checked. Previously the add-branch hard-coded done:true, which silently re-checked
+    // a derived-done task the host tapped to clear (the reported "can't uncheck" bug).
+    const curRows = isHostPlan ? hostChecklistTimeline : (event?.timeline || []);
+    const curDone = !!(curRows.find(t => t.id === taskId)?.done);
     // first_value only on a false→true completion (not on un-checking).
-    const wasDone = (event?.timeline || []).find(t => t.id === taskId)?.done;
-    if (!wasDone) recordFirstValue('task_completed', event, 'task_toggle');
+    if (!curDone) recordFirstValue('task_completed', event, 'task_toggle');
     setEvent(e => {
       const tl = e.timeline || [];
       if (tl.some(t => t.id === taskId)) {
         return { ...e, timeline: tl.map(t => t.id === taskId ? { ...t, done: !t.done } : t) };
       }
-      return { ...e, timeline: [...tl, { id: taskId, done: true }] };
+      // Not stored yet → persist a marker with the FLIPPED displayed state (so the very
+      // first tap on a derived-done row un-checks it, and on an undone row checks it).
+      return { ...e, timeline: [...tl, { id: taskId, done: !curDone }] };
     });
   };
 
@@ -40561,7 +40573,14 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape
             travels for recognition; hue stays home on the calm overview). */}
         <span aria-hidden style={{ color: idColor, display: 'flex', flexShrink: 0 }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>
-        <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        {/* Green LIVE · TODAY pill on the event day (Figma 1553:3) — the one "it's happening"
+            signal. Studio Matte: green = live/success (never amber); a single header accent. */}
+        {isEventToday && (
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.success, background: `${C.success}1f`, border: `1px solid ${C.success}55`, borderRadius: 999, padding: '3px 10px' }}>
+            <span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />Live · Today
+          </span>
+        )}
       </div>
       {/* UNIFIED HEADER FRAME (board): the single ReadinessTrack rides directly under the
           app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
@@ -42580,7 +42599,16 @@ export default function App() {
     lastEventRestored.current = true;            // one shot, this page load only
     if (activeId) return;                        // a deep-link/route already chose one
     let last = null; try { last = localStorage.getItem('ngw-last-event'); } catch (e) { /* blocked */ }
-    if (last && events.some((e) => e.id === last)) setActiveId(last);
+    if (last && events.some((e) => e.id === last)) {
+      // On the EVENT DAY, don't silently re-open the event — land on the Focus home (the
+      // dim-the-room "one thing now" day-of surface, which only renders on HostHome) so the
+      // host meets the day, not a planning tab. Outside the day, restore the last event as
+      // before. The event is still one tap away from Focus.
+      const le = events.find((e) => e.id === last);
+      const happeningToday = !!le && le.date === today8601()
+        && (() => { try { return hostNavActive(le); } catch { return false; } })();
+      if (!happeningToday) setActiveId(last);
+    }
   }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showNew,        setShowNew]        = useState(false);
   const [showNewClient,  setShowNewClient]  = useState(false);
