@@ -30036,7 +30036,7 @@ function PublicRsvpRoute({ code, localEvent }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
+function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, setKidsCount = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
   // Guest-list-optional events (headcount-only, brand-new) carry no `guests` array;
   // every reader below assumes an array, so normalize once (default param catches
   // undefined; this also catches a stored null). Fixes "Cannot read 'length' of
@@ -30477,6 +30477,30 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
         </div>
       )}
+
+      {/* Crowd mix — kids / light eaters refine the PROTEIN count. Writes event.kidsCount; the
+          food engine trims the protein lines + budget to match, leaving sides/drinks at the
+          full count. Crab feast wears the playbook's "serious pickers vs kids" framing. Mobile-
+          first: the stepper wraps below the label on a narrow screen. Only after a count locks. */}
+      {event.guestMode === 'count' && Number(event.guestCount) > 0 && (() => {
+        const total = Number(event.guestCount) || 0;
+        const kids = Math.max(0, Math.min(total, Math.round(Number(event.kidsCount) || 0)));
+        const setK = (v) => setKidsCount(Math.max(0, Math.min(total, Math.round(Number(v) || 0))));
+        const isCrab = /crab/i.test(event.type || '');
+        return (
+          <div id="headcount-mix" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: T.body, color: C.text, fontWeight: FW.semibold, lineHeight: 1.4 }}>Of your {total}, how many are kids / light eaters?</div>
+              <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{isCrab ? 'Serious crab pickers eat far more — this trims the crab count + budget for the kids.' : 'Trims the protein count + budget to match — sides and drinks stay the same.'}</div>
+            </div>
+            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
+              <button type="button" aria-label="fewer kids / light eaters" onClick={() => { setK(kids - 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+              <span style={{ minWidth: 36, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{kids}</span>
+              <button type="button" aria-label="more kids / light eaters" onClick={() => { setK(kids + 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
+            </span>
+          </div>
+        );
+      })()}
 
       {/* The joyful feed — when people say yes via the link, it should feel like a
           celebration, not a row in a table updating. Bright, warm, and it fades on its
@@ -40633,7 +40657,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -41376,7 +41400,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
