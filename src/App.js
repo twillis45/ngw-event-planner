@@ -9297,19 +9297,18 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
           eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
       <div style={{ ...card, borderLeft: `3px solid ${allDone ? C.success : steel}` }}>
         <div style={{ ...eyebrow, display: 'inline-flex', alignItems: 'center', gap: 7 }}><Icon name="seating" size={14} stroke={1.9} /> Seating &amp; supplies</div>
-        {cap.hasCost ? (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(cap.costLow, cap.costHigh)}</span>
-            <span style={{ fontSize: T.secondary, color: C.muted }}>in rentals &amp; supplies</span>
-          </div>
-        ) : (
-          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginTop: 4 }}>Your seating &amp; supplies</div>
-        )}
-        {/* status band with a dot — what's covered, at the count it's sized to */}
+        {/* Board (10+ pass 2): the Plan tab keeps ONE money hero — the Food plan's $/guest.
+            This SECONDARY supplies card leads with its PURPOSE (what it's set for + what's
+            covered) and demotes the $ to a quiet supporting figure, so two big money ranges
+            don't compete for the eye on a planning tab. */}
+        <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginTop: 4 }}>{cap.hasCost ? `Set for ${capGuestLabel}` : 'Your seating & supplies'}</div>
+        {/* status band with a dot — what's covered */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '5px 12px 5px 11px' }}>
           <span style={{ width: 8, height: 8, borderRadius: 99, background: allDone ? C.success : steel, flexShrink: 0 }} />
-          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Set for {capGuestLabel} — {coversLabel}</span>
+          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>{coversLabel}</span>
         </div>
+        {/* the $ demoted to a quiet supporting figure — not a competing hero number */}
+        {cap.hasCost && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8 }}>~{money(cap.costLow, cap.costHigh)} in rentals &amp; supplies</div>}
         {cap.sizing && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{cap.sizing.charAt(0).toUpperCase() + cap.sizing.slice(1)}</div>}
         {cap.sizingWhy && (
           <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: `2px solid ${C.border}` }}>
