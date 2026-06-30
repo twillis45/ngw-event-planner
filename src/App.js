@@ -9990,7 +9990,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const on = plan.sourcing === t.id;
               const cost = (plan.sourcingKey.byTier && plan.sourcingKey.byTier[t.id]) || 0;
               return (
-                <button key={t.id} type="button" onClick={() => { onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
+                <button key={t.id} type="button" onClick={() => { if (!on) { try { track(EVENTS.SOURCE_SELECTED, { source: t.id, scope: 'global' }); } catch {} } onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: on ? `${steel}14` : C.bg, border: `1px solid ${on ? steel : C.border}`, borderRadius: 11, padding: '11px 13px' }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
                   <span style={{ flex: 1, minWidth: 0 }}>

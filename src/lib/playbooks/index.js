@@ -53,6 +53,7 @@ import { quantityBasis } from '../quantities/quantityBasis';
 import { taskSatisfied } from '../taskEngine';
 import { expectedFromPlanned, attendanceShift } from '../attendanceModel';
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
+import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -1842,6 +1843,11 @@ export function playbookFoodPlan(event, opts = {}) {
     hasRealCount,
     choices,
     list,
+    // FOOD-2A Stage 1 — additive, read-only: the same `list`, projected into the normalized
+    // Effective Item shape. `list` above is UNTOUCHED (every existing consumer/test reads it
+    // unchanged); this is a parallel view future stages (category defaults, item overrides,
+    // already-have flags) attach to without re-plumbing consumers. No math, no behavior change.
+    effectiveItems: list.map((i) => resolveEffectiveItem(i, event)),
     supplies,
     suppliesLow: Math.max(0, Math.round(supSum('low') / 5) * 5),
     suppliesHigh: Math.max(0, Math.round(supSum('high') / 5) * 5),

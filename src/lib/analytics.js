@@ -156,6 +156,11 @@ export const EVENTS = {
   EVENT_COMPLETED:        'event_completed',
   OUTCOME_CAPTURED:       'outcome_captured',
 
+  // Food sourcing (FOOD-2A Stage 0) — which buying style a host picks. The sourcing
+  // model was previously write-only (no telemetry); this closes that blind spot so we
+  // can see tier adoption before evolving the model. Behavioral only, no PII.
+  SOURCE_SELECTED:        'source_selected',
+
   // Vendors
   VENDOR_ADDED:           'vendor_added',
   VENDOR_CONTRACT_SENT:   'vendor_contract_sent_docusign',
