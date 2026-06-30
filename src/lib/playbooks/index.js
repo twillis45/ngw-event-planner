@@ -1601,6 +1601,15 @@ export function playbookFoodPlan(event, opts = {}) {
   const _byob = /\b(byob|bring your own|guests bring|everyone brings)\b/.test(_bevPick);
   const hostBuysIt = (p) => !(_byob && p.category === 'beverage' && !/\bice\b/i.test(p.item || ''));
 
+  // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
+  // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
+  // above), and the food cost becomes a per-guest catering line injected below. Beverages +
+  // supplies stay (the host still handles drinks/ice). Cooking/undecided ⇒ no change (byte-identical).
+  const _usesCaterer = foodApproach(event).usesCaterer === true;
+  const hostCooksIt = (p) => !(_usesCaterer && p.category === 'food');
+  const _catVendor = _usesCaterer ? (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || ''))) : null;
+  const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
+
   // EVERY beverage choice moves the budget, not just BYOB. The drinks/bar pick scales the
   // beverage line cost by a tier factor read from its words: a dry/family spread is cheaper
   // (no alcohol), a full/premium bar costs more, the default is the 1.0 baseline. Ice is
@@ -1693,7 +1702,7 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
-    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p))
+    .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p) && hostCooksIt(p))
     .map((p) => {
       // In-place swap chosen for this line (event.foodSwap[id] = the alternative's name).
       const swappedName = (p.id in swapMap && String(swapMap[p.id] || '').trim()) ? String(swapMap[p.id]).trim() : null;
@@ -1856,6 +1865,20 @@ export function playbookFoodPlan(event, opts = {}) {
       const flags = itemDietaryFlags(it.item || it.short, activeDiets);
       if (flags.length) it.dietFlags = flags;
     }
+  }
+
+  // Food-approach: caterer chosen → inject the per-guest catering line (the homemade food rows
+  // were dropped by hostCooksIt above). Same row shape as a host-added dish, so it flows into the
+  // food total, the Food group, and effectiveItems like any other line. pf = regional factor.
+  if (_usesCaterer && _cateringRate) {
+    const [cgLow, cgHigh] = _cateringRate;
+    list.unshift({
+      id: 'fa-catering', group: 'Food', short: 'Catering (the food)',
+      item: 'Catering — the caterer provides the food', owner: '', qty: guests, unit: 'guest',
+      essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
+      low: Math.round(guests * cgLow * pf), high: Math.round(guests * cgHigh * pf),
+      units: guests, unitBase: '',
+    });
   }
 
   // Essential NON-food supplies (kraft-paper table cover, propane, safety kit…) —

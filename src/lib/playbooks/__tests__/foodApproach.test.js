@@ -1,5 +1,5 @@
 // Caterer-vs-cook lever (foodApproach / hostIsCooking) + the engine gating it drives.
-import { foodApproach, hostIsCooking, hostUsesCaterer, playbookChecklist, playbookRunOfShow, getPlaybook } from '../index';
+import { foodApproach, hostIsCooking, hostUsesCaterer, playbookChecklist, playbookRunOfShow, playbookFoodPlan, getPlaybook } from '../index';
 
 const future = (() => { const d = new Date('2026-01-01T00:00:00'); d.setDate(d.getDate() + 40); return d.toISOString().slice(0, 10); })();
 const ev = (type, foodChoices = {}) => ({ id: 'e', type, date: future, guestCount: 20, guestEstimate: 20, foodChoices });
@@ -48,5 +48,28 @@ describe('engine gating driven by the lever', () => {
   test('playbookRunOfShow drops caterer cues when the host cooks', () => {
     const cookRos = playbookRunOfShow(ev('Birthday', { food_style: 'Cook/grill yourself' })) || [];
     expect(cookRos.every((r) => !/cater(er|ing)/i.test(r.segment))).toBe(true);
+  });
+});
+
+describe('food_style → BUDGET (catering line replaces the homemade spread)', () => {
+  const fp = (foodChoices) => playbookFoodPlan({ id: 'e', type: 'Birthday', date: future, guestCount: 20, guestEstimate: 20, foodChoices });
+  test('cooking → no catering line; real Food rows present', () => {
+    const plan = fp({ food_style: 'Cook/grill yourself' });
+    expect(plan.list.some((i) => i.id === 'fa-catering')).toBe(false);
+    expect(plan.list.some((i) => i.group === 'Food')).toBe(true);
+  });
+  test('caterer → homemade Food rows drop; a per-guest catering line replaces them', () => {
+    const plan = fp({ food_style: 'Drop-off catering' });
+    const catering = plan.list.find((i) => i.id === 'fa-catering');
+    expect(catering).toBeTruthy();
+    expect(catering.high).toBeGreaterThan(0);
+    // the caterer provides the food → no OTHER Food-group rows remain
+    expect(plan.list.filter((i) => i.group === 'Food' && i.id !== 'fa-catering').length).toBe(0);
+    // beverages are NOT dropped (host still buys drinks)
+    // (Drinks group may or may not exist per playbook; just assert catering is in the food total)
+    expect(plan.foodHigh).toBeGreaterThanOrEqual(catering.high);
+  });
+  test('the food budget CHANGES between cook and cater', () => {
+    expect(fp({ food_style: 'Drop-off catering' }).foodHigh).not.toBe(fp({ food_style: 'Cook/grill yourself' }).foodHigh);
   });
 });
