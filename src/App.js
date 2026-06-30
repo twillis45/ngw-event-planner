@@ -9684,14 +9684,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
               <span style={{ fontSize: T.statSm, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{money(plan.perGuestLow || Math.round(plan.foodLow / plan.guests), plan.perGuestHigh || Math.round(plan.foodHigh / plan.guests))}</span>
               <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.semibold }}>per guest</span>
-              <span style={{ fontSize: T.micro, color: C.muted, fontWeight: FW.semibold, letterSpacing: '0.04em', textTransform: 'uppercase' }}>estimate</span>
             </div>
             {/* who it's for + the safe-band marker (right). */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 7 }}>
               <span style={{ fontSize: T.secondary, color: C.muted }}>
                 {fpBand.band ? `Plan for ${fpBandLabel} guests` : `Plan for ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
               </span>
-              {fpBand.band && <span title={fpBand.basis === 'rsvp' ? 'The range to plan for — from those confirmed up to everyone who hasn’t declined' : 'The range to plan for — your headcount, give or take typical no-shows and plus-ones'} style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, background: 'rgba(132,158,184,0.12)', borderRadius: 99, padding: '3px 9px', letterSpacing: '0.02em' }}>plan-for range</span>}
+              {fpBand.band && <span title={fpBand.basis === 'rsvp' ? 'The range to plan for — from those confirmed up to everyone who hasn’t declined' : 'The range to plan for — your headcount, give or take typical no-shows and plus-ones. RSVPs tighten it.'} style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, background: 'rgba(132,158,184,0.12)', borderRadius: 99, padding: '3px 9px', letterSpacing: '0.02em' }}>plan-for range</span>}
             </div>
           </>
         ) : (
@@ -9722,7 +9721,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         )}
         {/* range explainer (frame copy), then the segmented safe-headcount bar. */}
         {fpHasCount && plan.foodHigh > plan.foodLow && (
-          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Shopping smart at the low end, all-out at the high.</div>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Budget to the low end; stock to the high to be safe.</div>
         )}
         {/* RSVP band → segmented confirmed/maybe/pending bar (real replies). */}
         {fpBand.band && fpBand.basis === 'rsvp' && (
@@ -9740,13 +9739,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             </div>
           </div>
         )}
-        {/* Estimate band → this is a HEADCOUNT, not RSVPs. Say so plainly and point to
-            RSVPs as the way to replace the modeled swing with real numbers. */}
-        {fpBand.band && fpBand.basis === 'estimate' && (
-          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>
-            Your headcount of {fpBand.planned}, not RSVPs yet — {fpBand.note ? fpBand.note.charAt(0).toLowerCase() + fpBand.note.slice(1) : `most land between ${fpBand.low} and ${fpBand.high}.`} RSVPs tighten it.
-          </div>
-        )}
+        {/* Estimate-basis explainer removed (board): the "give or take no-shows/plus-ones ·
+            RSVPs tighten it" signal now lives in the plan-for-range pill's tooltip, so the
+            hero stops triple-hedging the same approximation under the number. */}
         {/* 1583-3 key/value block: Planning for · Bought so far · Pricing — aligned columns. */}
         <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '7px 16px', fontSize: T.secondary, lineHeight: 1.4, alignItems: 'baseline' }}>
           {plan.specialDiets && plan.specialDiets.length > 0 && (
@@ -40329,13 +40324,14 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
     if (GLOBAL_FOUNDATION.has(na.category) || OFF_PLAN_TABS.has(route)) return null;
   }
 
-  // State-named eyebrow from the engine's urgency level — NOT amber. critical/attention
-  // both read as live steel work; the wording shifts (NEEDS YOU vs NEXT UP) by urgency.
+  // State-named eyebrow from the engine's urgency level — NOT amber. This hero only ever
+  // renders WHEN there's a live next step (it returns null once everything's settled), so
+  // the calm tier is never truly "all clear" — it's "here's the next thing, no rush." Hence
+  // NEEDS YOU when urgent, NEXT UP otherwise; "ON TRACK"/"ALL SET" are reserved for the
+  // surfaces that show when there's nothing to do (board, render-grounded).
   const STATE = na.level === 'critical'
     ? { label: 'NEEDS YOU', color: C.steel || C.accent }
-    : na.level === 'attention'
-      ? { label: 'NEXT UP', color: C.steel || C.accent }
-      : { label: 'ON TRACK', color: C.steel || C.accent };
+    : { label: 'NEXT UP', color: C.steel || C.accent };
 
   const onCta = () => {
     try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); } catch { /* analytics best-effort */ }
