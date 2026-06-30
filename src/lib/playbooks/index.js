@@ -1595,6 +1595,21 @@ export function playbookFoodPlan(event, opts = {}) {
   // flat-cost dish. `swappedFrom` carries the original name so the host can revert.
   const swapMap = (event.foodSwap && typeof event.foodSwap === 'object') ? event.foodSwap : {};
 
+  // PORTION SKEW — appetite-driven food (the PROTEINS) is over-bought when the crowd skews to
+  // kids / light eaters. event.kidsCount (default 0 → today's flat math, byte-identical) shifts
+  // ONLY the protein lines: a kid/light eater eats ~40% of an adult's protein (a grounded
+  // catering heuristic; crab/cookout playbooks already say "fewer for kids" but never sized it).
+  // Sides/drinks are far less appetite-elastic, so they keep the full count. Single source →
+  // the food total + budget follow automatically. Never below 1 effective adult-equivalent.
+  const _kids = Math.max(0, Math.round(Number(event.kidsCount) || 0));
+  const KID_PROTEIN_FACTOR = 0.4;
+  const proteinGuests = _kids > 0 ? Math.max(1, guests - _kids * (1 - KID_PROTEIN_FACTOR)) : guests;
+  // The appetite-driven mains a kid/light eater eats less of. Plural-tolerant on purpose
+  // (matches "crabs", "ribs", "wings") — broader than the sourcing isProteinItem, whose
+  // strict word boundaries miss plurals (that's why crabs weren't scaling). Used ONLY for
+  // the kid portion-scale, so it can't shift sourcing/pricing behavior.
+  const isAppetiteFood = (name) => /(rib|chicken|brisket|sausage|hot ?link|half-?smoke|pork|beef|turkey|seafood|shrimp|prawn|fish|crab|crawfish|lobster|lamb|oxtail|wing|meatball|steak|burger|salmon|bacon|ham|goat|jerk|drumstick|thigh|fillet|filet|whiting|catfish|porg)/i.test(String(name || ''));
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p))
@@ -1607,7 +1622,10 @@ export function playbookFoodPlan(event, opts = {}) {
         ? p.alternatives.map(normalizeAlternative).find((a) => a.name === swappedName) : null;
       const effPerGuest = (swapAlt && swapAlt.qtyPerGuest != null) ? swapAlt.qtyPerGuest : p.qtyPerGuest;
       const pForQty = (effPerGuest !== p.qtyPerGuest) ? { ...p, qtyPerGuest: effPerGuest } : p;
-      const baseQty = resolveQuantity(pForQty, guests);
+      // Proteins size off the appetite-adjusted count (kids/light eaters at 0.4); everything
+      // else off the full guest count. _kids === 0 ⇒ proteinGuests === guests ⇒ no change.
+      const _qtyGuests = (_kids > 0 && isAppetiteFood(swappedName || p.item)) ? proteinGuests : guests;
+      const baseQty = resolveQuantity(pForQty, _qtyGuests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
       // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
       const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
