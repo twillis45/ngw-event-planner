@@ -30368,14 +30368,14 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
     return (
       <div style={{ padding: '8px 0' }}>
         <div style={card}>
-          <div style={{ fontSize: T.secondary, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
+          <div style={{ fontSize: T.secondary, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Your guest count</div>
           <div style={{ fontSize: T.body, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: FW.semibold }}>
             {hasList
               ? `${yes} confirmed${awaiting > 0 ? ` · ${awaiting} still out` : ''} of ${guests.length} invited.`
               : 'How many are you planning for?'}
           </div>
           <div style={{ fontSize: T.body, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-            Lock the number you're cooking and buying for — it becomes your final count everywhere (food plan, budget, seating).
+            Set the number you're cooking and buying for — it becomes your count everywhere (food plan, budget, seating).
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: T.body, color: C.text }}>About</span>
@@ -30395,18 +30395,18 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             <span style={{ fontSize: T.body, color: C.text }}>guests</span>
             {(() => { const isLocked = lockedCount != null && Number(hcDraft || 0) === lockedCount; return (
             <button type="button" className="ce-press" onClick={() => commit(hcDraft || yes || guests.length)}
-              style={{ fontSize: T.body, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
+              style={{ fontSize: T.body, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Set ✓' : 'Set it'}</button>
             ); })()}
           </div>
           {lockedCount != null && Number(hcDraft || 0) === lockedCount && (
             // M3 — the seal beat: the confirmation plants in (no overshoot) when locked.
             <div key={lockedCount} style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5, animation: `ceSeal 220ms ${CE_EASE} both` }}>
-              ✓ Locked — cooking, buying, and seating for {lockedCount}. It flows everywhere now; change it anytime above.
+              ✓ All set for {lockedCount} — food, shopping, and seating all use this. Change it anytime above.
             </div>
           )}
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
             style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
-            {hasList ? 'Open the full guest list →' : "Track who's coming with RSVPs instead →"}
+            {hasList ? 'Open the full guest list →' : "See who's coming with RSVPs instead →"}
           </button>
         </div>
       </div>
