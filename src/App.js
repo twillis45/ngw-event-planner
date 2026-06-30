@@ -9444,7 +9444,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                   {/* Cost-lock panel — Value / Premium / your-own, mirroring the FoodPlan lock. */}
                   {lockOpen && !skipped && (
                     <div style={{ padding: '0 0 12px 30px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
+                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Add what you spent to check it off — it counts toward your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
                       {it.costLow != null && <button type="button" onClick={() => setLock(it.key, it.costLow)} style={lkBtn}>Value {money1(it.costLow)}</button>}
                       {it.costHigh != null && <button type="button" onClick={() => setLock(it.key, it.costHigh)} style={lkBtn}>Premium {money1(it.costHigh)}</button>}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
@@ -40269,8 +40269,8 @@ function guestsHeroContent(event, C, steel) {
     return {
       state: 'confirm', live: true,
       eyebrow: 'NEEDS YOU', eyebrowColor: steel,
-      title: `Confirm your final guest count`,
-      line: planned > 0 ? `You're planning for about ${planned} — lock it in so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
+      title: `How many are you expecting?`,
+      line: planned > 0 ? `You're planning for about ${planned} — set it so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
       cta: 'Set guest count', ctaTab: 'Guests',
     };
   } catch { return null; }
