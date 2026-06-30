@@ -75,11 +75,14 @@ Start by confirming the dev server is running and capturing the current state of
 
 ---
 
-## Open backlog as of 2026-06-28 (after the big 2026-06-28 ship: advance engine, haptic/sound, composite fix, crab+paper, beverage→budget, Capacity parity, supplies options, dietary, Decisions board — all deployed)
+## Deploy reconciliation 2026-06-29
+The 2026-06-28 batch (advance engine, haptic/sound, beverage→budget, Capacity parity, supplies, dietary, Decisions board) plus the 2026-06-29 batch below were all committed locally but **never pushed or deployed** — `main` was ahead 15 of origin. On 2026-06-29 a session committed the remaining uncommitted work in 3 logical commits (`293ea32` PWA+grounding tooling, `59f7b2e` sizing/sourcing engine, `175f119` host UI wiring), pushed `main`, and deployed the frontend (`gh-pages`, prod bundle `main.dfa04300.js`). All 580 tests green; prod verified live. **Don't trust "shipped" notes until you confirm the live bundle hash — gh-pages deploy is independent of a `main` push.**
 
-Ordered by the owner's stated priority. Items 1–2 are the headline; 3–9 are queued.
+## Open backlog as of 2026-06-28
 
-1. **Food SOURCING choice → "what's left to do" tasks** (THE headline open item). Today `whenChoice` reshapes the food SPREAD + (new) beverage budget, but NOT the host task list. Root cause: `whenChoice` is never applied to the task layer; playbook `tasks`/`milestones` are NOT projected into the host checklist (`ChecklistGenerator` reads the STATIC `event.timeline`); host events seed `timeline:[]`. Fix = make the host "what's left" a live projection of playbook tasks filtered by `event.foodChoices` via the SAME `whenChoice`/`pickFor` predicate (export it from playbooks/index.js, reuse for purchases + tasks). Author choice-split crab tasks (steam-yourself → "rent a rack pot + propane"; order-steamed → "lock a hot pickup slot"). Deep + delicate — give it a fresh full context.
+Ordered by the owner's stated priority. Items 1–2 were the headline; 3–9 are queued.
+
+1. **Food SOURCING choice → "what's left to do" tasks** — ✅ **DONE & DEPLOYED 2026-06-29** (commit `59f7b2e`). Host "what's left" is now a live projection of `playbookChecklist(event, asOf)` filtered by `event.foodChoices` via the shared `choiceShown`/`choicePickFor` predicate; Crab Feast steam-vs-order split authored (steam-yourself → rent a rack pot; order-steamed → lock a hot pickup slot). Also shipped: protein sourcing tiers (`lib/sourcing.js`, butcher/Costco/grocery factor moves the budget) + grounded attendance-band model (`lib/attendanceModel.js`). To extend to other types: add `whenChoice` to tasks in their `data/*.js`, no engine change.
 
 2. **Three design tweaks** (owner flagged): (a) dietary auto-pull is one-tap by design — owner may want it SILENT/auto-merge; (b) Capacity omits a literal "10% spare" line (no 10% factor in data — currently grounded in real factors) and supplies `alternatives` are engine-derived not authored; (c) Decisions board shows ALL of a type's decisions uncapped (Dinner Party = 6) — may want a calm cap.
 

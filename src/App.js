@@ -897,7 +897,11 @@ function GlobalStyles() {
       // rail, in DOM first, leads = prerequisite-first). At ≥1024px: Food & supplies take
       // the wide main column, decisions sit in a sticky right rail. Explicit grid placement
       // (not DOM order) so mobile keeps prereq-first while desktop reads main-then-rail.
-      '.planv2-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }',
+      // minmax(0, 1fr) (not bare 1fr = minmax(auto,1fr)): the `auto` min is min-content, so a
+      // wide unsplittable child (e.g. an expanded supplies row) would blow the single mobile
+      // column out past the viewport. minmax(0,…) lets the track shrink so the column always
+      // fits and its content wraps/ellipsizes instead of forcing a horizontal scroll.
+      '.planv2-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }',
       '.planv2-main > * { margin-bottom: 0; }',
       '@media (min-width: 1024px) { .planv2-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } .planv2-main { grid-column: 1; grid-row: 1; } .planv2-rail { grid-column: 2; grid-row: 1; position: sticky; top: 16px; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
@@ -9315,13 +9319,21 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
       </div>
 
       {/* The supplies — grouped (SEATING / SERVICEWARE / RENTALS & EXTRAS), each with a
-          right-aligned subtotal; per-item rows with a verb that varies by item. */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, letterSpacing: '-0.01em', color: C.text }}><Icon name="list" size={16} stroke={1.9} /> The supplies</div>
-          <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${items.length} item${items.length === 1 ? '' : 's'}`}</div>
-        </div>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
+          right-aligned subtotal; per-item rows with a verb that varies by item. The long
+          checklist folds into a CollapsibleCard (mirrors the Food plan's "The spread") so
+          the hero leads and the worklist stays out of the way until the host opens it; it
+          auto-collapses once every item is handled (the settled-work exhale). */}
+      <CollapsibleCard
+        id={`cap-supplies-${event.id}`}
+        isMobile={isMobile}
+        defaultCollapsed
+        autoCollapseWhenDone={allDone}
+        accent={steel}
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The supplies</span>}
+        subtitle={allDone ? 'All set ✓ — tap to review' : `${items.length} item${items.length === 1 ? '' : 's'} · change counts, mark what you have, add your own`}
+        right={<span style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted, whiteSpace: 'nowrap' }}>{allDone ? 'All set ✓' : `${done}/${live.length}`}</span>}
+      >
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
 
         {groups.map((g) => (
           <div key={g.group} style={{ marginTop: 14 }}>
@@ -9454,7 +9466,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
               style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item — name · qty · ~cost</button>
           )}
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Hand-off — primary: merge into the shopping list (same path as food). Ghost:
           share the checklist. Plus a live local rentals/supply search (never endorsed). */}
@@ -40403,7 +40415,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
     <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, margin: '4px 2px 10px' }}>{text}</div>
   );
 
-  const rowBase = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
+  const rowBase = { boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
 
   const openRow = (r) => {
     // A row is tappable only when it has a real destination (a menu/sourcing choice the
@@ -40608,7 +40620,12 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
       </div>
 
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }}>
+      {/* Bottom nav — full-bleed flush bar on mobile (thumb reach); on desktop it gates to
+          a centered, width-capped floating pill so it stops spanning the whole wide screen
+          like a phone bar. Same tabs, same routing, both viewports. */}
+      <div style={isMobile
+        ? { position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }
+        : { position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 20, width: 'min(560px, calc(100vw - 48px))', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, display: 'flex', overflow: 'hidden', boxShadow: '0 14px 36px -10px rgba(0,0,0,0.6)', zIndex: 50 }}>
         {NAV.map(n => {
           const active = tab === n.id;
           return (

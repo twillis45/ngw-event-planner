@@ -105,6 +105,18 @@ describe('decision status derivation', () => {
     expect(menu.because).not.toMatch(/the format/);
   });
 
+  test('only menu/sourcing decisions carry a route; non-menu ones are calm (no dead arrow)', () => {
+    const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-02-01', guests: roster(22, 6, 12) }, '2026-01-01');
+    const find = (id) => b.open.find((r) => r.id === id);
+    // A food/menu choice (format blocks the menu) routes to the Plan tab's "Your choices".
+    expect(find('format').route).toMatchObject({ tab: 'Planning', foodFocus: 'format' });
+    // Non-menu decisions (seating layout, hiring help) have NO Plan-tab anchor → route null,
+    // so the panel renders them without a chevron instead of an arrow that leads nowhere.
+    expect(find('seating')).toBeTruthy();
+    expect(find('seating').route).toBeNull();
+    expect(find('help').route).toBeNull();
+  });
+
   test('open rows are ordered overdue → ready → waiting', () => {
     const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-01-05', guests: roster(22, 6, 12) }, '2026-01-01');
     const ranks = { overdue: 0, ready: 1, waiting: 2 };

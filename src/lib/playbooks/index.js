@@ -1219,6 +1219,21 @@ function friendlyDate(d) {
   catch { return String(d); }
 }
 
+// A playbook decision is a MENU / sourcing CHOICE (vs a logistics, venue, theme, or
+// music call) when it carries options AND its id/label/blocks mention food, drink, or
+// the spread. This is the SINGLE predicate that (a) lists the decision in the FoodPlan
+// "Your choices" card the host can actually act on, and (b) tells the Decisions board it
+// has a real Plan-tab destination. Non-menu decisions have NO anchor on the Plan tab, so
+// the board must not render a dead arrow for them (it would route to a nonexistent
+// food line and do nothing — an affordance that lies). Keep this in lockstep with the
+// `choices` filter in playbookFoodPlan — both must use this one function.
+const MENU_DECISION_RE = /food|menu|drink|beverage|potluck|cater|spread|bar|dish|fish|fillings?|meat|protein|reveal/;
+export function isMenuDecision(d) {
+  if (!d || !Array.isArray(d.options) || d.options.length === 0) return false;
+  const hay = `${d.id || ''} ${d.label || ''} ${(d.blocks || []).join(' ')}`.toLowerCase();
+  return MENU_DECISION_RE.test(hay);
+}
+
 export function playbookDecisionBoard(event, asOf) {
   const empty = { open: [], locked: [], headcount: null };
   if (!event) return empty;
@@ -1296,7 +1311,11 @@ export function playbookDecisionBoard(event, asOf) {
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
     const daysOut = (dte !== null && offset !== null) ? dte + offset : null;
     const dueDate = decisionDueDate(dateSet ? event.date : null, offset);
-    const route = { eventId: event.id, tab: 'Planning', foodFocus: d.id };
+    // Only a menu/sourcing choice has a real Plan-tab destination (the FoodPlan "Your
+    // choices" card focuses it). A non-menu decision (venue, theme, music, seating…) has
+    // no anchor, so it gets NO route — the board renders it as a calm "still open" prompt
+    // instead of a tappable row whose arrow would lead nowhere.
+    const route = isMenuDecision(d) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id } : null;
 
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
@@ -1472,12 +1491,9 @@ export function playbookFoodPlan(event, opts = {}) {
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
 
   // The food/drink CHOICES the host should make (menu style, host-vs-potluck, drinks…).
+  // Same predicate the Decisions board uses to decide a decision is actionable here.
   const choices = (playbook.decisions || [])
-    .filter((d) => {
-      const hay = `${d.id || ''} ${d.label || ''} ${(d.blocks || []).join(' ')}`.toLowerCase();
-      return Array.isArray(d.options) && d.options.length > 0
-        && /food|menu|drink|beverage|potluck|cater|spread|bar|dish|fish|fillings?|meat|protein|reveal/.test(hay);
-    })
+    .filter(isMenuDecision)
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 
   // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase
