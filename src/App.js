@@ -19413,7 +19413,7 @@ function DailyBriefing({ events, onSelectEvent }) {
         const out = (r && r.text || '').trim();
         if (out) setText(out); else { setText(deterministic()); setUsedAI(false); }
       } else {
-        await askClaude(aiKey, prompt, { maxTokens: 220, onChunk: t => setText(t) });
+        await askNGW('event_brief', prompt, { aiKey, maxTokens: 220, onChunk: t => setText(t) });
       }
     } catch (e) {
       // 401 from the proxy ("please sign in") or any error → honest local summary.
@@ -22187,13 +22187,14 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
               : <span style={{ color: ident.mark === 'quiet' ? sub : idColor, display: 'flex' }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>}
           </span>
           <span style={{ fontSize: 16, fontWeight: FW.medium, color: fg, letterSpacing: '-0.01em' }}>{ev.name || 'Your event'}</span>
+          {/* FOCUS — top-right of the header chrome (M4·C parity), not floating in the body */}
+          <span aria-hidden style={{ marginLeft: 'auto', fontSize: 10, fontWeight: FW.bold, letterSpacing: '0.15em', color: dimSteel, opacity: 0.7, textTransform: 'uppercase', flexShrink: 0 }}>FOCUS</span>
         </div>
 
         {/* The dim-the-room body: whispers sit at the base; the vignette dims everything
             but the center; the glowing ONE card floats above it all. */}
         <div style={{ position: 'relative', maxWidth: 480, margin: '0 auto', padding: '0 22px 80px' }}>
-          {/* FOCUS eyebrow */}
-          <div style={{ fontSize: 11, fontWeight: FW.bold, letterSpacing: '1.5px', color: dimSteel, opacity: 0.7, textAlign: 'center', margin: '20px 0 26px' }}>FOCUS</div>
+          {/* FOCUS label moved to the header top-right (M4·C parity) */}
 
           {/* Handled (whisper) — the proof that everything else is already taken care of. */}
           {handled.length > 0 && (
@@ -37770,11 +37771,11 @@ function EventCommTab({ event, setEvent, client, setClient, openId, isMobile, on
         if (out && onChunk) onChunk(out);
       } catch (e) {
         // Fall back to the planner's own Anthropic key if they have one.
-        if (aiKey) out = await askClaude(aiKey, prompt, { maxTokens: 320, onChunk });
+        if (aiKey) out = await askNGW('vendor_followup', prompt, { aiKey, maxTokens: 320, onChunk });
         else throw e;
       }
     } else {
-      out = await askClaude(aiKey, prompt, { maxTokens: 320, onChunk });
+      out = await askNGW('vendor_followup', prompt, { aiKey, maxTokens: 320, onChunk });
     }
     // Count every draft the planner generates (persists on the event's jsonb).
     if (out) setEvent(e => ({ ...e, aiDraftsCreated: (e.aiDraftsCreated || 0) + 1 }));
