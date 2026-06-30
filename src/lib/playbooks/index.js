@@ -504,6 +504,20 @@ export function playbookChecklist(event, asOf) {
       provenance: { source: `${playbook.type} playbook`, taskId: t.id },
     });
   }
+  // Food-approach: when the host is using a caterer, surface the one task that choice creates —
+  // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
+  // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
+  // playbook that already authors a caterer task isn't doubled.
+  if (fa.usesCaterer === true && !rows.some((r) => /cater/i.test(r.task))) {
+    const off = -7;
+    rows.push({
+      id: `pbt-${event.id}-fa-caterer`,
+      task: 'Confirm your caterer and send them the final headcount',
+      category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+      dueInDays: dte + off,
+      provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
+    });
+  }
   // Soonest-due first; undated tasks sink to the bottom in authored order.
   rows.sort((a, b) => {
     const av = a.dueInDays == null ? Infinity : a.dueInDays;
