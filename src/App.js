@@ -32437,6 +32437,7 @@ function HostRunOfShowTimeline({ event, profile }) {
   const hasCues = Array.isArray(cues) && cues.length > 0;
 
   const steelLabel  = C.steel?.blue400 || C.accent;     // #8BA0AA — eyebrow / NOW
+  const live        = C.success || C.accent;            // GREEN — the LIVE / happening-now state (event day)
   const steelTime   = C.steel?.blue600 || C.muted;      // #566F7D — times, details, footer
   const textPrimary = C.text;                            // #eef0f4 — headlines
   const textSub     = C.muted;                           // #849eb8 — date subline
@@ -32470,6 +32471,11 @@ function HostRunOfShowTimeline({ event, profile }) {
        || null)
     : null;
   const nowCueId = nowCue ? nowCue.id : null;
+  // M5 timing — where the NOW node sits down the spine (0=top … 1=bottom), so the ignite
+  // fires AS the sweep reaches it, not on a fixed delay (the old desync that read as "strange").
+  const nowIndex = nowCueId ? sorted.findIndex((r) => r.id === nowCueId) : -1;
+  const nowRatio = (nowIndex >= 0 && sorted.length > 1) ? nowIndex / (sorted.length - 1) : 0;
+  const igniteDelay = Math.round(70 + nowRatio * 430); // ~aligns with the 520ms sweep passing the node
 
   // Header subline — weekday, Mon D, and the start time (the earliest cue, the most
   // honest run-of-show anchor; falls back to event.startTime if no cue time).
@@ -32483,7 +32489,7 @@ function HostRunOfShowTimeline({ event, profile }) {
   const subline = [dateLine, startLabel ? `${startLabel} start` : ''].filter(Boolean).join(' · ');
 
   // Eyebrow + footer adapt to proximity.
-  const eyebrow = isDayOf ? 'THE DAY · HAPPENING NOW' : 'THE DAY · STARTS SOON';
+  const eyebrow = isDayOf ? 'THE DAY · LIVE NOW' : 'THE DAY · STARTS SOON';
   const footer = isDayOf
     ? 'Your run-of-show is live. Work it top to bottom — done falls away.'
     : 'Your run-of-show is ready. It wakes up when the day begins.';
@@ -32562,7 +32568,7 @@ function HostRunOfShowTimeline({ event, profile }) {
     // Honest empty state — no cues to show, so we don't fabricate any.
     return (
       <div style={{ padding: '8px 20px 40px' }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
         {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
         <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 330, marginLeft: 'auto', marginRight: 'auto' }}>
           <div style={{ fontSize: T.body, color: textPrimary, fontWeight: FW.semibold, lineHeight: 1.4 }}>No run-of-show yet</div>
@@ -32575,18 +32581,18 @@ function HostRunOfShowTimeline({ event, profile }) {
   return (
     <div style={{ padding: '8px 20px 32px', position: 'relative' }}>
       {/* Eyebrow + subline */}
-      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
       {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
 
       {/* Timeline — a thin spine down the left with a dot per cue. */}
       <div style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
         {/* Spine line */}
-        <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: carbonStrong || C.border, opacity: 0.4 }} />
+        <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: isDayOf ? live : (carbonStrong || C.border), opacity: isDayOf ? 0.55 : 0.4 }} />
         {/* M5 — the day wakes: a travelling light runs down the spine once (clipped to the
             rail). Day-of only; the lead-up timeline stays asleep. */}
         {isDayOf && (
           <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, overflow: 'hidden', pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${steelLabel}, transparent)`, boxShadow: `0 0 8px ${steelLabel}`, animation: `ceSweep 520ms linear both` }} />
+            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${live}, transparent)`, boxShadow: `0 0 8px ${live}`, animation: `ceSweep 520ms linear both` }} />
           </div>
         )}
         {sorted.map((r, i) => {
@@ -32600,32 +32606,34 @@ function HostRunOfShowTimeline({ event, profile }) {
           const detail = detailBits.join(' · ');
           return (
             <div key={r.id || i} style={{ position: 'relative', paddingBottom: i === sorted.length - 1 ? 0 : 30 }}>
-              {/* Dot — done: faint filled · now: bright filled · upcoming: hollow */}
+              {/* Dot — done: faint filled · NOW: bigger green node (M5·C) · upcoming: hollow */}
               <div aria-hidden style={{
-                position: 'absolute', left: -28, top: 4, width: 9, height: 9, borderRadius: 999,
-                background: isNow ? steelLabel : (done ? 'transparent' : 'transparent'),
-                border: `1.5px solid ${isNow ? steelLabel : (done ? C.tier3 : steelTime)}`,
+                position: 'absolute', left: isNow ? -30 : -28, top: isNow ? 6 : 4, width: isNow ? 13 : 9, height: isNow ? 13 : 9, borderRadius: 999,
+                background: isNow ? live : 'transparent',
+                border: `1.5px solid ${isNow ? live : (done ? C.tier3 : steelTime)}`,
                 opacity: done ? 0.5 : 1,
-                boxShadow: isNow ? `0 0 0 3px ${steelLabel}22` : 'none',
-                // M5 — the NOW node ignites as the sweep reaches it (after the sweep, ~+320ms).
-                ...(isNow ? { animation: `ceIgnite 300ms ${CE_EASE} 320ms both` } : {}),
+                boxShadow: isNow ? `0 0 0 4px ${live}33, 0 0 12px ${live}` : 'none',
+                // M5 — the NOW node ignites as the sweep reaches it (delay scaled to its
+                // position so the light "lands" on the node instead of a fixed offset).
+                ...(isNow ? { animation: `ceIgnite 300ms ${CE_EASE} ${igniteDelay}ms both` } : {}),
               }} />
-              {/* NOW marker (only on the live cue) else the time */}
               {isNow ? (
-                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelLabel, ...ROW_FONT }}>NOW</div>
-              ) : (
-                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
-                  {r.time ? fmtTime12(r.time) : ''}
+                /* M5·C — the live task in a green-bordered card with its eyebrow + time. */
+                <div style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 340ms ${CE_EASE} ${igniteDelay + 60}ms both` }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />HAPPENING NOW{r.time ? ` · ${fmtTime12(r.time)}` : ''}
+                  </div>
+                  <div style={{ fontSize: T.body, fontWeight: FW.bold, color: textPrimary, marginTop: 6, lineHeight: 1.3, ...ROW_FONT }}>{r.segment || 'Untitled'}</div>
+                  {detail && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 4, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>}
                 </div>
-              )}
-              {/* Headline = the segment */}
-              <div style={{
-                fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35,
-                opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT,
-              }}>{r.segment || 'Untitled'}</div>
-              {/* Detail = owner + note/location */}
-              {detail && (
-                <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
+                    {r.time ? fmtTime12(r.time) : ''}
+                  </div>
+                  <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35, opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT }}>{r.segment || 'Untitled'}</div>
+                  {detail && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>}
+                </>
               )}
             </div>
           );
