@@ -10331,7 +10331,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* Where to shop — the spread's sourcing types, as LIVE local searches. Honest:
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
-        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="store" size={16} stroke={1.9} /> Where to shop{shopCity ? ` · ${shopCity}` : ''}</span>} subtitle="Tap a place — live local search">
+        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="store" size={16} stroke={1.9} /> Where to shop{shopCity ? ` · ${shopCity}` : ''}</span>} subtitle="Tap a place — live local search">
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 10 }}>Live map searches near you — never endorsements.</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {shopSources.map((src) => (
