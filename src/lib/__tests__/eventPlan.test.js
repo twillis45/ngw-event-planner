@@ -5,7 +5,7 @@
 //   3. The X/Y progress badge reflects effectiveDone (set the budget → the count moves).
 //   4. Command hero, NEXT-STEP ribbon, and Focus all read nextActions[0].
 
-import { eventPlan, selectEventNextAction, taskTiming, deriveCommandCenterData } from '../../CommandCenter';
+import { eventPlan, selectEventNextAction, taskTiming, deriveCommandCenterData, _stripLeadingDateClause } from '../../CommandCenter';
 import { playbookAreaNextStep } from '../playbooks';
 
 beforeEach(() => { try { localStorage.clear(); } catch {} });
@@ -76,6 +76,19 @@ describe('eventPlan — state-aware foundation (no satisfied sub-goal in a next 
     const ev = baseBBQ({ date: future(40), guests: [{ rsvp: 'Yes' }] });
     const step = playbookAreaNextStep(ev, 'Budget');
     if (step) expect(step.action.toLowerCase()).not.toMatch(/set date, headcount, menu/);
+  });
+
+  test('a stale "Set date, …" composite is stripped of its date clause when the date is set', () => {
+    const dated = { date: future(40) };
+    // date set → leading "date" clause dropped, connector preserved across forms.
+    expect(_stripLeadingDateClause('Set date, headcount, menu', dated)).toBe('Set headcount, menu');
+    expect(_stripLeadingDateClause('Set date, headcount & the steam-vs-order call', dated)).toBe('Set headcount & the steam-vs-order call');
+    expect(_stripLeadingDateClause('Set date + window + rough headcount', dated)).toBe('Set window + rough headcount');
+    // no date → never strip (defensive: a real "set date" stays when there genuinely is none).
+    expect(_stripLeadingDateClause('Set date, headcount, menu', { date: '' })).toBe('Set date, headcount, menu');
+    expect(_stripLeadingDateClause('Set date, headcount, menu', { date: 'TBD' })).toBe('Set date, headcount, menu');
+    // not a date-led composite → untouched.
+    expect(_stripLeadingDateClause('Lock the menu', dated)).toBe('Lock the menu');
   });
 
   test('budget done → "Set your budget" is no longer offered as a next action', () => {

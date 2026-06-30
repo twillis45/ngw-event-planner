@@ -13,7 +13,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
@@ -27,7 +27,7 @@ import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet,
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics } from './lib/weather';
-import { getToday, daysUntil } from './lib/dates';
+import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
@@ -872,9 +872,16 @@ function GlobalStyles() {
       '.ce-press:active { transform: scale(0.97); }',
       // ceGlow: a soft glow landing in (Magic Moment M4 — the focus-card glow lands last).
       '@keyframes ceGlow { from { opacity: 0; } to { opacity: 1; } }',
+      // ceRecede: the M4·B "receding" beat — the day's handled work starts present, then
+      // settles BACK (dims + lifts away) so the one focus card can take the room. Reads as
+      // "all of that is taken care of — it recedes, leaving the single thing."
+      '@keyframes ceRecede { 0% { opacity: 0.92; transform: translateY(-6px) scale(1.015); } 100% { opacity: 0.7; transform: none; } }',
       // ceSweep: a travelling light runs down the timeline spine when the day wakes
-      // (Magic Moment M5). Linear-ish so it reads as moving light, not a fade.
-      '@keyframes ceSweep { 0% { top: -34%; opacity: 0; } 12% { opacity: 0.95; } 100% { top: 100%; opacity: 0.15; } }',
+      // (Magic Moment M5). Uses transform: translateY (GPU-composited) — NOT percentage `top`,
+      // which Android Chrome refuses to animate reliably (the light never travelled on Android).
+      // translateY % is relative to the light's OWN height (40% of the rail), so -130%→280%
+      // sweeps it from just above the spine to just below it.
+      '@keyframes ceSweep { 0% { transform: translateY(-130%); opacity: 0; } 12% { opacity: 0.95; } 100% { transform: translateY(280%); opacity: 0.2; } }',
       // ceIgnite: the NOW node lights as the sweep reaches it (M5).
       '@keyframes ceIgnite { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }',
       '@keyframes ceBreathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(96,148,200,0.34); } 50% { box-shadow: 0 0 0 5px rgba(96,148,200,0.11); } }',
@@ -897,7 +904,11 @@ function GlobalStyles() {
       // rail, in DOM first, leads = prerequisite-first). At ≥1024px: Food & supplies take
       // the wide main column, decisions sit in a sticky right rail. Explicit grid placement
       // (not DOM order) so mobile keeps prereq-first while desktop reads main-then-rail.
-      '.planv2-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }',
+      // minmax(0, 1fr) (not bare 1fr = minmax(auto,1fr)): the `auto` min is min-content, so a
+      // wide unsplittable child (e.g. an expanded supplies row) would blow the single mobile
+      // column out past the viewport. minmax(0,…) lets the track shrink so the column always
+      // fits and its content wraps/ellipsizes instead of forcing a horizontal scroll.
+      '.planv2-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }',
       '.planv2-main > * { margin-bottom: 0; }',
       '@media (min-width: 1024px) { .planv2-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } .planv2-main { grid-column: 1; grid-row: 1; } .planv2-rail { grid-column: 2; grid-row: 1; position: sticky; top: 16px; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
@@ -939,6 +950,12 @@ function GlobalStyles() {
       '.a11y-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }',
       // Respect prefers-reduced-motion — disable orchestration animations
       '@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }',
+      // EXCEPTION: the day-of "the day wakes" hero moment (.ce-daywake — the timeline spine
+      // sweep + NOW-node ignite + green card rise) stays animated even under reduced-motion.
+      // It's a brief, eased opacity/scale/glow reveal with no large parallax/spin (no vestibular
+      // trigger), and it carries meaning ("the day is live"). Higher selector specificity than the
+      // universal rule above, so it wins the cascade. (Product owner: keep the animation.)
+      '@media (prefers-reduced-motion: reduce) { .ce-daywake, .ce-daywake *, .ce-daywake *::before, .ce-daywake *::after { animation-duration: 900ms !important; animation-iteration-count: 1 !important; } }',
       // ── WIN 3.1 — the invite cover reads as a PHYSICAL SHEET resting on the canvas ──
       // The hero card got a clean-rect outline that sat ON THE SAME PLANE as the canvas.
       // We make it paper: (a) a soft dark OCCLUSION/CONTACT shadow cast under+around the
@@ -2676,6 +2693,22 @@ const kitForEventType = (type) => {
   // Retirement Party, Reunion).
   if (EVT_PARENT[type] === 'Weddings & Celebrations') return 'private';
   return 'simple';
+};
+
+// Derive the coarse timeOfDay bucket from a precise clock time ("18:30" or "6:30 PM"),
+// so when the host sets an actual Start time the time-of-day stays in sync (single source:
+// the clock time is the truth; the bucket follows it). Returns null if unparseable.
+const timeOfDayFromClock = (s) => {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || ''));
+  if (!m) return null;
+  let h = Number(m[1]); const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23) return null;
+  if (h < 11) return 'morning';
+  if (h < 16) return 'afternoon';
+  if (h < 21) return 'evening';
+  return 'night';
 };
 
 // Intelligence Gap PR #1 — type-driven timeOfDay default. NewEventModal
@@ -9293,20 +9326,24 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
           eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
       <div style={{ ...card, borderLeft: `3px solid ${allDone ? C.success : steel}` }}>
         <div style={{ ...eyebrow, display: 'inline-flex', alignItems: 'center', gap: 7 }}><Icon name="seating" size={14} stroke={1.9} /> Seating &amp; supplies</div>
-        {cap.hasCost ? (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{money(cap.costLow, cap.costHigh)}</span>
-            <span style={{ fontSize: T.secondary, color: C.muted }}>in rentals &amp; supplies</span>
-          </div>
-        ) : (
-          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginTop: 4 }}>Your seating &amp; supplies</div>
-        )}
-        {/* status band with a dot — what's covered, at the count it's sized to */}
+        {/* Board (10+ pass 2): the Plan tab keeps ONE money hero — the Food plan's $/guest.
+            This SECONDARY supplies card leads with its PURPOSE (what it's set for + what's
+            covered) and demotes the $ to a quiet supporting figure, so two big money ranges
+            don't compete for the eye on a planning tab. */}
+        <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.15, marginTop: 4 }}>{cap.hasCost ? `Set for ${capGuestLabel}` : 'Your seating & supplies'}</div>
+        {/* status band with a dot — what's covered */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 8, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '5px 12px 5px 11px' }}>
           <span style={{ width: 8, height: 8, borderRadius: 99, background: allDone ? C.success : steel, flexShrink: 0 }} />
-          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Set for {capGuestLabel} — {coversLabel}</span>
+          <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>{coversLabel}</span>
         </div>
-        {cap.sizing && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{cap.sizing.charAt(0).toUpperCase() + cap.sizing.slice(1)}</div>}
+        {/* the $ demoted to a quiet supporting figure — not a competing hero number */}
+        {cap.hasCost && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8 }}>~{money(cap.costLow, cap.costHigh)} in rentals &amp; supplies</div>}
+        {(() => {
+          // The hero title already states "Set for N", so drop the redundant "service for N"
+          // clause from the sizing line and keep only the extra detail (per-table · tables).
+          const extra = String(cap.sizing || '').split(' · ').filter((s) => !/^service for/i.test(s.trim())).join(' · ');
+          return extra ? <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>{extra.charAt(0).toUpperCase() + extra.slice(1)}</div> : null;
+        })()}
         {cap.sizingWhy && (
           <div style={{ marginTop: 12, paddingLeft: 12, borderLeft: `2px solid ${C.border}` }}>
             <span style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.55 }}><span style={{ fontWeight: FW.bold, color: C.text }}>How it’s sized — </span>{cap.sizingWhy}.</span>
@@ -9315,13 +9352,21 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
       </div>
 
       {/* The supplies — grouped (SEATING / SERVICEWARE / RENTALS & EXTRAS), each with a
-          right-aligned subtotal; per-item rows with a verb that varies by item. */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, letterSpacing: '-0.01em', color: C.text }}><Icon name="list" size={16} stroke={1.9} /> The supplies</div>
-          <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? 'All set ✓' : `${items.length} item${items.length === 1 ? '' : 's'}`}</div>
-        </div>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
+          right-aligned subtotal; per-item rows with a verb that varies by item. The long
+          checklist folds into a CollapsibleCard (mirrors the Food plan's "The spread") so
+          the hero leads and the worklist stays out of the way until the host opens it; it
+          auto-collapses once every item is handled (the settled-work exhale). */}
+      <CollapsibleCard
+        id={`cap-supplies-${event.id}`}
+        isMobile={isMobile}
+        defaultCollapsed
+        autoCollapseWhenDone={allDone}
+        accent={steel}
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="list" size={16} stroke={1.9} /> The supplies</span>}
+        subtitle={allDone ? 'All set ✓ — tap to review' : `${items.length} item${items.length === 1 ? '' : 's'} · change counts, mark what you have, add your own`}
+        right={<span style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted, whiteSpace: 'nowrap' }}>{allDone ? 'All set ✓' : `${done}/${live.length}`}</span>}
+      >
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
 
         {groups.map((g) => (
           <div key={g.group} style={{ marginTop: 14 }}>
@@ -9399,7 +9444,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                   {/* Cost-lock panel — Value / Premium / your-own, mirroring the FoodPlan lock. */}
                   {lockOpen && !skipped && (
                     <div style={{ padding: '0 0 12px 30px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Lock what you spent to check it off — it goes against your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
+                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Add what you spent to check it off — it counts toward your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
                       {it.costLow != null && <button type="button" onClick={() => setLock(it.key, it.costLow)} style={lkBtn}>Value {money1(it.costLow)}</button>}
                       {it.costHigh != null && <button type="button" onClick={() => setLock(it.key, it.costHigh)} style={lkBtn}>Premium {money1(it.costHigh)}</button>}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
@@ -9454,7 +9499,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
               style={{ width: '100%', textAlign: 'left', background: 'transparent', border: `1px dashed ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '10px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add an item — name · qty · ~cost</button>
           )}
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Hand-off — primary: merge into the shopping list (same path as food). Ghost:
           share the checklist. Plus a live local rentals/supply search (never endorsed). */}
@@ -9672,14 +9717,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
               <span style={{ fontSize: T.statSm, fontWeight: FW.heavy, color: C.text, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{money(plan.perGuestLow || Math.round(plan.foodLow / plan.guests), plan.perGuestHigh || Math.round(plan.foodHigh / plan.guests))}</span>
               <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.semibold }}>per guest</span>
-              <span style={{ fontSize: T.micro, color: C.muted, fontWeight: FW.semibold, letterSpacing: '0.04em', textTransform: 'uppercase' }}>estimate</span>
             </div>
             {/* who it's for + the safe-band marker (right). */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 7 }}>
               <span style={{ fontSize: T.secondary, color: C.muted }}>
                 {fpBand.band ? `Plan for ${fpBandLabel} guests` : `Plan for ${plan.guests} guest${plan.guests === 1 ? '' : 's'}${!plan.guestCountResolved ? ' (estimate)' : ''}`}
               </span>
-              {fpBand.band && <span title={fpBand.basis === 'rsvp' ? 'The range to plan for — from those confirmed up to everyone who hasn’t declined' : 'The range to plan for — your headcount, give or take typical no-shows and plus-ones'} style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, background: 'rgba(132,158,184,0.12)', borderRadius: 99, padding: '3px 9px', letterSpacing: '0.02em' }}>plan-for range</span>}
+              {fpBand.band && <span title={fpBand.basis === 'rsvp' ? 'The range to plan for — from those confirmed up to everyone who hasn’t declined' : 'The range to plan for — your headcount, give or take typical no-shows and plus-ones. RSVPs tighten it.'} style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, background: 'rgba(132,158,184,0.12)', borderRadius: 99, padding: '3px 9px', letterSpacing: '0.02em' }}>plan-for range</span>}
             </div>
           </>
         ) : (
@@ -9710,7 +9754,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         )}
         {/* range explainer (frame copy), then the segmented safe-headcount bar. */}
         {fpHasCount && plan.foodHigh > plan.foodLow && (
-          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Shopping smart at the low end, all-out at the high.</div>
+          <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>Budget to the low end; stock to the high to be safe.</div>
         )}
         {/* RSVP band → segmented confirmed/maybe/pending bar (real replies). */}
         {fpBand.band && fpBand.basis === 'rsvp' && (
@@ -9728,13 +9772,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             </div>
           </div>
         )}
-        {/* Estimate band → this is a HEADCOUNT, not RSVPs. Say so plainly and point to
-            RSVPs as the way to replace the modeled swing with real numbers. */}
-        {fpBand.band && fpBand.basis === 'estimate' && (
-          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 7, lineHeight: 1.5 }}>
-            Your headcount of {fpBand.planned}, not RSVPs yet — {fpBand.note ? fpBand.note.charAt(0).toLowerCase() + fpBand.note.slice(1) : `most land between ${fpBand.low} and ${fpBand.high}.`} RSVPs tighten it.
-          </div>
-        )}
+        {/* Estimate-basis explainer removed (board): the "give or take no-shows/plus-ones ·
+            RSVPs tighten it" signal now lives in the plan-for-range pill's tooltip, so the
+            hero stops triple-hedging the same approximation under the number. */}
         {/* 1583-3 key/value block: Planning for · Bought so far · Pricing — aligned columns. */}
         <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '7px 16px', fontSize: T.secondary, lineHeight: 1.4, alignItems: 'baseline' }}>
           {plan.specialDiets && plan.specialDiets.length > 0 && (
@@ -9975,7 +10015,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const on = plan.sourcing === t.id;
               const cost = (plan.sourcingKey.byTier && plan.sourcingKey.byTier[t.id]) || 0;
               return (
-                <button key={t.id} type="button" onClick={() => { onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
+                <button key={t.id} type="button" onClick={() => { if (!on) { try { track(EVENTS.SOURCE_SELECTED, { source: t.id, scope: 'global' }); } catch {} } onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: on ? `${steel}14` : C.bg, border: `1px solid ${on ? steel : C.border}`, borderRadius: 11, padding: '11px 13px' }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
@@ -10324,7 +10364,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* Where to shop — the spread's sourcing types, as LIVE local searches. Honest:
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
-        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="store" size={16} stroke={1.9} /> Where to shop{shopCity ? ` · ${shopCity}` : ''}</span>} subtitle="Tap a place — live local search">
+        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="store" size={16} stroke={1.9} /> Where to shop{shopCity ? ` · ${shopCity}` : ''}</span>} subtitle="Tap a place — live local search">
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 10 }}>Live map searches near you — never endorsements.</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {shopSources.map((src) => (
@@ -21973,7 +22013,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
     && (() => { try { return hostNavActive(ev); } catch { return false; } })();
   const dayRos = (isDayOf || isFocus) ? (() => { try { return effectiveRos(ev) || []; } catch { return []; } })() : [];
   const nowMins = (() => { try { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); } catch { return -1; } })();
-  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(t || '').trim()); if (!m) return null; let h = Number(m[1]); const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + Number(m[2]); }; // honors both 24h ("14:00") and 12h ("2:00 PM") cue times so the NOW marker lands right (M5)
   // A ROS cue is "open" until marked done (focus advances through them in order).
   const isCueDone = (r) => !!(r && r.done);
   const nextCue = (isDayOf || isFocus)
@@ -22104,9 +22144,9 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
       if (!theOne) return;
       if (theOne.kind === 'cue') {
         try {
-          const base = effectiveRos(ev) || [];
-          const next = base.map(r => r.id === theOne.cue.id ? { ...r, done: true } : { ...r });
-          onPatchEvent(ev.id, { ros: next });
+          // Single source: persist ONLY the per-cue done flag (event.rosDone), never a full
+          // ros snapshot — the schedule stays derived so it keeps tracking timeOfDay.
+          onPatchEvent(ev.id, { rosDone: { ...(ev.rosDone || {}), [theOne.cue.id]: true } });
           feedbackSeal(); // the one thing today, done — the heaviest moment earns the seal
         } catch {}
       } else if (na) {
@@ -22157,7 +22197,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
 
           {/* Handled (whisper) — the proof that everything else is already taken care of. */}
           {handled.length > 0 && (
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', opacity: 0.7, marginBottom: 30 }}>
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 9, alignItems: 'center', opacity: 0.7, marginBottom: 30, animation: `ceRecede 640ms ${CE_EASE} both` }}>
               {handled.map((h, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, color: sub }}>
                   <span style={{ fontSize: 12, color: dimRow }}>✓</span>
@@ -26624,13 +26664,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   // Health keyed to VENDOR TRUTH (board: you bust the budget at SIGNING, and a late
   // payment is the loudest thing) — not the manual actuals. Plain-language headlines.
   const budgetState =
-    overCommitted        ? { text: 'OVER BUDGET',   color: C.danger,  headline: `Booked ${fmtD(totalCommitted - totalBudgeted)} over your ${fmtD(totalBudgeted)} budget — trim a category` } :
+    overCommitted        ? { text: 'OVER BUDGET',   color: C.danger,  headline: `${fmtD(totalCommitted - totalBudgeted)} over your ${fmtD(totalBudgeted)} budget — trim a line to fix it` } :
     overdueBalance > 0   ? { text: 'PAYMENT LATE',  color: C.danger,  headline: `${fmtD(overdueBalance)} overdue to vendors — pay it now` } :
     projectedOver        ? { text: 'TRACKING OVER', color: C.muted,    headline: `Tracking to ${fmtD(projectedFinal)} — over your ${fmtD(totalBudgeted)} budget once everything's booked` } :
     overCats > 0         ? { text: 'CHECK CATEGORY', color: C.muted,   headline: `${overCats} categor${overCats === 1 ? 'y is' : 'ies are'} over budget` } :
     committedPct > 90    ? { text: 'ATTENTION',     color: C.muted,    headline: 'Almost fully booked — little room left' } :
     totalBudgeted > 0    ? { text: 'ON TRACK',      color: C.success, headline: 'Budget on track' } :
-                           { text: 'NOT SET',       color: C.muted,   headline: 'Set a budget to start tracking' };
+                           { text: 'NO BUDGET YET',  color: C.muted,   headline: 'Tell us what you’d like to spend' };
 
   // ─── Persona gate (RA-4 / DL-009) ── a self-host gets a spoken spending plan,
   // never the planner's fee/Stripe/vendor/AR cockpit (a KPI grid + "Uncontracted").
@@ -30021,7 +30061,7 @@ function PublicRsvpRoute({ code, localEvent }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
+function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, setKidsCount = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
   // Guest-list-optional events (headcount-only, brand-new) carry no `guests` array;
   // every reader below assumes an array, so normalize once (default param catches
   // undefined; this also catches a stored null). Fixes "Cannot read 'length' of
@@ -30328,14 +30368,14 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
     return (
       <div style={{ padding: '8px 0' }}>
         <div style={card}>
-          <div style={{ fontSize: T.secondary, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Confirm your final guest count</div>
+          <div style={{ fontSize: T.secondary, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Your guest count</div>
           <div style={{ fontSize: T.body, color: C.text, marginBottom: 4, lineHeight: 1.5, fontWeight: FW.semibold }}>
             {hasList
               ? `${yes} confirmed${awaiting > 0 ? ` · ${awaiting} still out` : ''} of ${guests.length} invited.`
               : 'How many are you planning for?'}
           </div>
           <div style={{ fontSize: T.body, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-            Lock the number you're cooking and buying for — it becomes your final count everywhere (food plan, budget, seating).
+            Set the number you're cooking and buying for — it becomes your count everywhere (food plan, budget, seating).
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: T.body, color: C.text }}>About</span>
@@ -30355,18 +30395,18 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             <span style={{ fontSize: T.body, color: C.text }}>guests</span>
             {(() => { const isLocked = lockedCount != null && Number(hcDraft || 0) === lockedCount; return (
             <button type="button" className="ce-press" onClick={() => commit(hcDraft || yes || guests.length)}
-              style={{ fontSize: T.body, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Locked ✓' : 'Lock it'}</button>
+              style={{ fontSize: T.body, fontWeight: FW.bold, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: isLocked ? (C.success || C.accent) : C.accent, color: '#fff', fontFamily: 'inherit' }}>{isLocked ? 'Set ✓' : 'Set it'}</button>
             ); })()}
           </div>
           {lockedCount != null && Number(hcDraft || 0) === lockedCount && (
             // M3 — the seal beat: the confirmation plants in (no overshoot) when locked.
             <div key={lockedCount} style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.success || C.accent, marginTop: 14, lineHeight: 1.5, animation: `ceSeal 220ms ${CE_EASE} both` }}>
-              ✓ Locked — cooking, buying, and seating for {lockedCount}. It flows everywhere now; change it anytime above.
+              ✓ All set for {lockedCount} — food, shopping, and seating all use this. Change it anytime above.
             </div>
           )}
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
             style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
-            {hasList ? 'Open the full guest list →' : "Track who's coming with RSVPs instead →"}
+            {hasList ? 'Open the full guest list →' : "See who's coming with RSVPs instead →"}
           </button>
         </div>
       </div>
@@ -30462,6 +30502,30 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
         </div>
       )}
+
+      {/* Crowd mix — kids / light eaters refine the PROTEIN count. Writes event.kidsCount; the
+          food engine trims the protein lines + budget to match, leaving sides/drinks at the
+          full count. Crab feast wears the playbook's "serious pickers vs kids" framing. Mobile-
+          first: the stepper wraps below the label on a narrow screen. Only after a count locks. */}
+      {event.guestMode === 'count' && Number(event.guestCount) > 0 && (() => {
+        const total = Number(event.guestCount) || 0;
+        const kids = Math.max(0, Math.min(total, Math.round(Number(event.kidsCount) || 0)));
+        const setK = (v) => setKidsCount(Math.max(0, Math.min(total, Math.round(Number(v) || 0))));
+        const isCrab = /crab/i.test(event.type || '');
+        return (
+          <div id="headcount-mix" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: T.body, color: C.text, fontWeight: FW.semibold, lineHeight: 1.4 }}>Of your {total}, how many are kids / light eaters?</div>
+              <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{isCrab ? 'Serious crab pickers eat far more — this trims the crab count + budget for the kids.' : 'Trims the protein count + budget to match — sides and drinks stay the same.'}</div>
+            </div>
+            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
+              <button type="button" aria-label="fewer kids / light eaters" onClick={() => { setK(kids - 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+              <span style={{ minWidth: 36, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{kids}</span>
+              <button type="button" aria-label="more kids / light eaters" onClick={() => { setK(kids + 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
+            </span>
+          </div>
+        );
+      })()}
 
       {/* The joyful feed — when people say yes via the link, it should feel like a
           celebration, not a row in a table updating. Bright, warm, and it fades on its
@@ -32422,11 +32486,12 @@ function HostRunOfShowTimeline({ event, profile }) {
   const hasCues = Array.isArray(cues) && cues.length > 0;
 
   const steelLabel  = C.steel?.blue400 || C.accent;     // #8BA0AA — eyebrow / NOW
+  const live        = C.success || C.accent;            // GREEN — the LIVE / happening-now state (event day)
   const steelTime   = C.steel?.blue600 || C.muted;      // #566F7D — times, details, footer
   const textPrimary = C.text;                            // #eef0f4 — headlines
   const textSub     = C.muted;                           // #849eb8 — date subline
 
-  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const toMins = (t) => { const m = /^(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(t || '').trim()); if (!m) return null; let h = Number(m[1]); const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + Number(m[2]); }; // honors both 24h ("14:00") and 12h ("2:00 PM") cue times so the NOW marker lands right (M5)
   const isCueDone = (r) => !!(r && (r.done || r.confirmed === true && r.type === 'past'));
   // A cue is "done" when explicitly marked done. (confirmed=true on a vendor row is
   // a logistics flag, not a done state, so we only honour an explicit `done`.)
@@ -32455,6 +32520,15 @@ function HostRunOfShowTimeline({ event, profile }) {
        || null)
     : null;
   const nowCueId = nowCue ? nowCue.id : null;
+  // M5 timing — where the NOW node sits down the spine (0=top … 1=bottom), so the ignite
+  // fires AS the sweep reaches it, not on a fixed delay (the old desync that read as "strange").
+  const nowIndex = nowCueId ? sorted.findIndex((r) => r.id === nowCueId) : -1;
+  const nowRatio = (nowIndex >= 0 && sorted.length > 1) ? nowIndex / (sorted.length - 1) : 0;
+  // Fire the NOW ignite WHEN the light actually reaches the node down the spine, accounting
+  // for the sweep's 240ms start delay + travel time. Critically this fixes a TOP now (ratio 0):
+  // it no longer ignites at 140ms (before the sweep even appears) — it waits ~420ms for the
+  // light to arrive, so even the first cue gets a coherent sweep→ignite→rise beat with runway.
+  const igniteDelay = Math.round(420 + nowRatio * 980); // 420ms (top) … 1400ms (bottom), tracking the delayed sweep
 
   // Header subline — weekday, Mon D, and the start time (the earliest cue, the most
   // honest run-of-show anchor; falls back to event.startTime if no cue time).
@@ -32467,9 +32541,15 @@ function HostRunOfShowTimeline({ event, profile }) {
   const startLabel = firstCueTime ? fmtTime12(firstCueTime) : (event && event.startTime ? String(event.startTime) : '');
   const subline = [dateLine, startLabel ? `${startLabel} start` : ''].filter(Boolean).join(' · ');
 
+  // Every cue done → the day is COMPLETE. Keep a green hero (the caught-up reward) instead of
+  // losing the "happening now" panel to an empty list. The sweep won't re-wake a finished day.
+  const allDone = isDayOf && hasCues && sorted.length > 0 && sorted.every((r) => cueDone(r));
+
   // Eyebrow + footer adapt to proximity.
-  const eyebrow = isDayOf ? 'THE DAY · HAPPENING NOW' : 'THE DAY · STARTS SOON';
-  const footer = isDayOf
+  const eyebrow = allDone ? 'THE DAY · COMPLETE' : (isDayOf ? 'THE DAY' : 'THE DAY · STARTS SOON');
+  const footer = allDone
+    ? 'Every moment handled. That’s a wrap — go enjoy it.'
+    : isDayOf
     ? 'Your run-of-show is live. Work it top to bottom — done falls away.'
     : 'Your run-of-show is ready. It wakes up when the day begins.';
 
@@ -32547,7 +32627,7 @@ function HostRunOfShowTimeline({ event, profile }) {
     // Honest empty state — no cues to show, so we don't fabricate any.
     return (
       <div style={{ padding: '8px 20px 40px' }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
         {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
         <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 330, marginLeft: 'auto', marginRight: 'auto' }}>
           <div style={{ fontSize: T.body, color: textPrimary, fontWeight: FW.semibold, lineHeight: 1.4 }}>No run-of-show yet</div>
@@ -32560,18 +32640,33 @@ function HostRunOfShowTimeline({ event, profile }) {
   return (
     <div style={{ padding: '8px 20px 32px', position: 'relative' }}>
       {/* Eyebrow + subline */}
-      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
       {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
 
-      {/* Timeline — a thin spine down the left with a dot per cue. */}
-      <div style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
+      {/* Day complete — every cue done. The green hero stays (caught-up reward) so the
+          "happening now" panel is never lost to an all-done, empty list. */}
+      {allDone && (
+        <div style={{ marginTop: 22, border: `1px solid ${live}`, borderRadius: 12, padding: '14px 16px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} both` }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
+            <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />EVERYTHING HANDLED
+          </div>
+          <div style={{ fontSize: T.body, fontWeight: FW.bold, color: textPrimary, marginTop: 6, lineHeight: 1.3, ...ROW_FONT }}>That’s a wrap — every moment’s done.</div>
+          <div style={{ fontSize: T.caption, color: steelTime, marginTop: 4, lineHeight: 1.4, ...ROW_FONT }}>Go enjoy it. Nothing left on the run-of-show.</div>
+        </div>
+      )}
+
+      {/* Timeline — a thin spine down the left with a dot per cue. (ce-daywake: the day-of
+          "the day wakes" hero moment stays animated even under reduced-motion — product call.) */}
+      <div className="ce-daywake" style={{ position: 'relative', marginTop: 26, paddingLeft: 28 }}>
         {/* Spine line */}
-        <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: carbonStrong || C.border, opacity: 0.4 }} />
+        <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, background: isDayOf ? live : (carbonStrong || C.border), opacity: isDayOf ? 0.55 : 0.4 }} />
         {/* M5 — the day wakes: a travelling light runs down the spine once (clipped to the
             rail). Day-of only; the lead-up timeline stays asleep. */}
-        {isDayOf && (
-          <div aria-hidden style={{ position: 'absolute', left: 4, top: 6, bottom: 6, width: 2, borderRadius: 2, overflow: 'hidden', pointerEvents: 'none' }}>
-            <div style={{ position: 'absolute', left: 0, width: 2, height: '34%', borderRadius: 2, background: `linear-gradient(to bottom, transparent, ${steelLabel}, transparent)`, boxShadow: `0 0 8px ${steelLabel}`, animation: `ceSweep 520ms linear both` }} />
+        {isDayOf && !allDone && (
+          <div aria-hidden style={{ position: 'absolute', left: -4, top: 6, bottom: 6, width: 16, overflow: 'hidden', pointerEvents: 'none' }}>
+            {/* Bright white-green core so the travelling light reads on a phone; the wider rail
+                lets its glow show (the old 2px rail clipped the glow to a dim thread). */}
+            <div style={{ position: 'absolute', top: 0, left: 7, width: 3, height: '40%', borderRadius: 3, background: `linear-gradient(to bottom, transparent, ${live}, #eafff3, ${live}, transparent)`, boxShadow: `0 0 18px ${live}, 0 0 7px #eafff3`, willChange: 'transform', animation: `ceSweep 1300ms cubic-bezier(0.4,0,0.2,1) 240ms both` }} />
           </div>
         )}
         {sorted.map((r, i) => {
@@ -32585,32 +32680,34 @@ function HostRunOfShowTimeline({ event, profile }) {
           const detail = detailBits.join(' · ');
           return (
             <div key={r.id || i} style={{ position: 'relative', paddingBottom: i === sorted.length - 1 ? 0 : 30 }}>
-              {/* Dot — done: faint filled · now: bright filled · upcoming: hollow */}
+              {/* Dot — done: faint filled · NOW: bigger green node (M5·C) · upcoming: hollow */}
               <div aria-hidden style={{
-                position: 'absolute', left: -28, top: 4, width: 9, height: 9, borderRadius: 999,
-                background: isNow ? steelLabel : (done ? 'transparent' : 'transparent'),
-                border: `1.5px solid ${isNow ? steelLabel : (done ? C.tier3 : steelTime)}`,
+                position: 'absolute', left: isNow ? -30 : -28, top: isNow ? 6 : 4, width: isNow ? 13 : 9, height: isNow ? 13 : 9, borderRadius: 999,
+                background: isNow ? live : 'transparent',
+                border: `1.5px solid ${isNow ? live : (done ? C.tier3 : steelTime)}`,
                 opacity: done ? 0.5 : 1,
-                boxShadow: isNow ? `0 0 0 3px ${steelLabel}22` : 'none',
-                // M5 — the NOW node ignites as the sweep reaches it (after the sweep, ~+320ms).
-                ...(isNow ? { animation: `ceIgnite 300ms ${CE_EASE} 320ms both` } : {}),
+                boxShadow: isNow ? `0 0 0 4px ${live}33, 0 0 12px ${live}` : 'none',
+                // M5 — the NOW node ignites as the sweep reaches it (delay scaled to its
+                // position so the light "lands" on the node instead of a fixed offset).
+                ...(isNow ? { animation: `ceIgnite 520ms ${CE_EASE} ${igniteDelay}ms both` } : {}),
               }} />
-              {/* NOW marker (only on the live cue) else the time */}
               {isNow ? (
-                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelLabel, ...ROW_FONT }}>NOW</div>
-              ) : (
-                <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
-                  {r.time ? fmtTime12(r.time) : ''}
+                /* M5·C — the live task in a green-bordered card with its eyebrow + time. */
+                <div style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />HAPPENING NOW{r.time ? ` · ${fmtTime12(r.time)}` : ''}
+                  </div>
+                  <div style={{ fontSize: T.body, fontWeight: FW.bold, color: textPrimary, marginTop: 6, lineHeight: 1.3, ...ROW_FONT }}>{r.segment || 'Untitled'}</div>
+                  {detail && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 4, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>}
                 </div>
-              )}
-              {/* Headline = the segment */}
-              <div style={{
-                fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35,
-                opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT,
-              }}>{r.segment || 'Untitled'}</div>
-              {/* Detail = owner + note/location */}
-              {detail && (
-                <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
+                    {r.time ? fmtTime12(r.time) : ''}
+                  </div>
+                  <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35, opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT }}>{r.segment || 'Untitled'}</div>
+                  {detail && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>}
+                </>
               )}
             </div>
           );
@@ -36725,6 +36822,29 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
 
   return (
     <>
+      {/* Caterer reconciliation — HOST view only. The host flipped to cooking everything but a
+          caterer is still on their hire list. Calm, one-tap removal; never auto-delete a manual
+          entry (foodApproach/hostIsCooking = the single-source food lever). */}
+      {(() => {
+        let isHostV = false; try { isHostV = hostNavActive(event); } catch {}
+        if (!isHostV || !hostIsCooking(event)) return null;
+        const caterers = (event.vendors || []).filter(v => v && /cater/i.test(v.category || ''));
+        if (!caterers.length) return null;
+        const names = caterers.map(v => (v.name || '').trim()).filter(Boolean);
+        const label = names.length ? names.join(', ') : `the caterer${caterers.length > 1 ? 's' : ''}`;
+        const plural = caterers.length > 1;
+        const tone = themeC.warn || themeC.accentTopGrad || themeC.accent;
+        const removeCaterers = () => { const ids = new Set(caterers.map(v => v.id)); setVendors(prev => (prev || []).filter(v => !ids.has(v.id))); try { feedbackSelect(); } catch {} };
+        return (
+          <div style={{ margin: '0 0 16px', padding: '14px 16px', borderRadius: 12, background: `${tone}12`, border: `1px solid ${tone}38`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 15, color: themeC.text, lineHeight: 1.45 }}>You’re cooking everything now — but <strong>{label}</strong> {plural ? 'are' : 'is'} still on your hire list.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button type="button" onClick={removeCaterers} style={{ padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: themeC.accent, color: '#fff', fontWeight: FW.bold, fontFamily: 'inherit', fontSize: 14 }}>Remove {plural ? 'them' : 'it'}</button>
+              <span style={{ fontSize: 13, color: themeC.muted }}>or keep {plural ? 'them' : 'it'} if you still need {plural ? 'them' : 'it'}.</span>
+            </div>
+          </div>
+        );
+      })()}
       <VendorPlanningWorkspace
         event={event}
         allEvents={allEvents}
@@ -38284,15 +38404,22 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
   // playbook task (pbt- id) isn't in the stored timeline — persist a done marker so the
   // manual checkoff sticks for the long tail real event-state can't prove handled.
   const onToggleTask = (taskId) => {
+    // The DISPLAYED done-state is the projected row's (a stored marker if any, else the
+    // derived state). Flip THAT — so a projected playbook task that's derived-done can be
+    // UN-checked. Previously the add-branch hard-coded done:true, which silently re-checked
+    // a derived-done task the host tapped to clear (the reported "can't uncheck" bug).
+    const curRows = isHostPlan ? hostChecklistTimeline : (event?.timeline || []);
+    const curDone = !!(curRows.find(t => t.id === taskId)?.done);
     // first_value only on a false→true completion (not on un-checking).
-    const wasDone = (event?.timeline || []).find(t => t.id === taskId)?.done;
-    if (!wasDone) recordFirstValue('task_completed', event, 'task_toggle');
+    if (!curDone) recordFirstValue('task_completed', event, 'task_toggle');
     setEvent(e => {
       const tl = e.timeline || [];
       if (tl.some(t => t.id === taskId)) {
         return { ...e, timeline: tl.map(t => t.id === taskId ? { ...t, done: !t.done } : t) };
       }
-      return { ...e, timeline: [...tl, { id: taskId, done: true }] };
+      // Not stored yet → persist a marker with the FLIPPED displayed state (so the very
+      // first tap on a derived-done row un-checks it, and on an undone row checks it).
+      return { ...e, timeline: [...tl, { id: taskId, done: !curDone }] };
     });
   };
 
@@ -38923,11 +39050,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         </EDTRow>
         <HybridTemplateMerge C={C} s={s} event={event} setEvent={setEvent} />
         <EDTRow isMobile={isMobile}>
-          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => upd('date', v)} type="date" />
+          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }))} type="date" />
           <EDTField C={C} s={s}
             label="Time of day"
             value={event.timeOfDay || 'afternoon'}
-            onChange={v => upd('timeOfDay', v)}
+            onChange={v => setEvent(e => ({ ...e, timeOfDay: v, ros: [], rosEdited: false }))}
             options={[
               { value: 'morning',   label: 'Morning' },
               { value: 'afternoon', label: 'Afternoon' },
@@ -38935,7 +39062,24 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               { value: 'night',     label: 'Night' },
             ]}
           />
+          {/* Actual start time — anchors the day-of run-of-show to the exact minute
+              (single source: overrides the coarse time-of-day bucket). */}
+          <EDTField C={C} s={s} label="Start time" value={event.startTime || ''} onChange={v => setEvent(e => { const tod = timeOfDayFromClock(v); return { ...e, startTime: v, ...(tod ? { timeOfDay: tod } : {}), ros: [], rosEdited: false }; })} type="time" />
+          <div /> {/* keep the grid balanced */}
         </EDTRow>
+        {/* Time intelligence — flag a past/too-soon date so the action plan never builds
+            forward on an impossible date. (eventDateStatus = the single time-intelligence source.) */}
+        {(() => {
+          const ds = eventDateStatus(event.date);
+          if (!event.date || ds.status === 'ok' || ds.status === 'soon') return null;
+          const tone = ds.severity === 'error' ? (C.danger || '#e0746a') : (C.warn || C.accentTopGrad || C.accent);
+          return (
+            <div role={ds.severity === 'error' ? 'alert' : undefined} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: -4, marginBottom: 4, padding: '9px 12px', borderRadius: 9, background: `${tone}14`, border: `1px solid ${tone}40` }}>
+              <span aria-hidden style={{ color: tone, fontWeight: FW.bold, lineHeight: 1.4 }}>{ds.severity === 'error' ? '!' : '•'}</span>
+              <span style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.45 }}>{ds.reason}</span>
+            </div>
+          );
+        })()}
         {/* Personal touches — optional, collapsed by default (progressive disclosure). */}
         {showTouches ? (
           <EDTRow isMobile={isMobile}>
@@ -40029,7 +40173,7 @@ function budgetHeroContent(event, C, steel, priceFactor) {
     // food plan adds still-planned cost on top of what's bought, names the committed
     // figure too so the host sees both ("$420 spent · $980 committed of $1,200").
     const committedTail = committed > spent
-      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} committed</span></>
+      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} spoken for</span></>
       : null;
     if (delta > 0) {
       // Swap-to-save (Figma 1296:25): when one discretionary row genuinely clears the
@@ -40041,10 +40185,10 @@ function budgetHeroContent(event, C, steel, priceFactor) {
         state: 'over', live: true,
         eyebrow: 'NEEDS YOU', eyebrowColor: steel,
         title: pick
-          ? `${fmt(delta)} over — drop ${dropLabel} to get back under?`
-          : `${fmt(delta)} over — trim a category to get back under?`,
+          ? `${fmt(delta)} over — drop ${dropLabel} to get back on plan?`
+          : `${fmt(delta)} over — trim a line to get back on plan?`,
         line: pick
-          ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) brings you back under. Everything else is within plan.</span>
+          ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) gets you back on track. Everything else is within plan.</span>
           : <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
         cta: 'Open budget', ctaTab: 'Budget',
         // The drop target threads to PlanNowHero's inline buttons (onDropBudgetRow).
@@ -40093,17 +40237,20 @@ function guestsHeroContent(event, C, steel) {
     // Nothing to anchor on → no honest hero.
     if (planned <= 0 && (!band || !band.applicable)) return null;
     if (res.resolved) {
-      const n = band && band.applicable ? band.confirmed : planned;
-      // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single
-      // source. Nobody "replied" to a headcount; only an RSVP roster gets that line.
+      // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single source.
       const isRoster = res.mode === 'roster';
+      // n MUST reflect the mode. A headcount is the number the host set to cook for — NEVER the
+      // RSVP tally (reading band.confirmed here is what made it say "0 guests" when a roster
+      // existed with no Yes-replies yet). A roster shows who actually replied Yes.
+      const n = isRoster ? (band && band.applicable ? band.confirmed : planned) : planned;
       return {
         state: 'allset', live: false,
         eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
-        title: isRoster ? `Everyone's replied — ${n} confirmed` : `Headcount set — ${n} guests`,
+        // Warm, host-plain copy — no "headcount" ops-speak, and never "0 guests".
+        title: isRoster ? `Everyone's replied — ${n} confirmed` : `You're set for ${n} guest${n === 1 ? '' : 's'}`,
         line: isRoster
           ? `Your guest count is locked. Quantities and seating can size to it.`
-          : `Your headcount's locked. Quantities and seating size to it.`,
+          : `Your count's locked — food, shopping, and seating all size to it.`,
         cta: 'Open guest list', ctaTab: 'Guests',
       };
     }
@@ -40122,8 +40269,8 @@ function guestsHeroContent(event, C, steel) {
     return {
       state: 'confirm', live: true,
       eyebrow: 'NEEDS YOU', eyebrowColor: steel,
-      title: `Confirm your final guest count`,
-      line: planned > 0 ? `You're planning for about ${planned} — lock it in so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
+      title: `How many are you expecting?`,
+      line: planned > 0 ? `You're planning for about ${planned} — set it so the rest can size to it.` : `Set how many you're expecting so quantities can size to it.`,
       cta: 'Set guest count', ctaTab: 'Guests',
     };
   } catch { return null; }
@@ -40317,13 +40464,14 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
     if (GLOBAL_FOUNDATION.has(na.category) || OFF_PLAN_TABS.has(route)) return null;
   }
 
-  // State-named eyebrow from the engine's urgency level — NOT amber. critical/attention
-  // both read as live steel work; the wording shifts (NEEDS YOU vs NEXT UP) by urgency.
+  // State-named eyebrow from the engine's urgency level — NOT amber. This hero only ever
+  // renders WHEN there's a live next step (it returns null once everything's settled), so
+  // the calm tier is never truly "all clear" — it's "here's the next thing, no rush." Hence
+  // NEEDS YOU when urgent, NEXT UP otherwise; "ON TRACK"/"ALL SET" are reserved for the
+  // surfaces that show when there's nothing to do (board, render-grounded).
   const STATE = na.level === 'critical'
     ? { label: 'NEEDS YOU', color: C.steel || C.accent }
-    : na.level === 'attention'
-      ? { label: 'NEXT UP', color: C.steel || C.accent }
-      : { label: 'ON TRACK', color: C.steel || C.accent };
+    : { label: 'NEXT UP', color: C.steel || C.accent };
 
   const onCta = () => {
     try { track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category }); } catch { /* analytics best-effort */ }
@@ -40403,7 +40551,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
     <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, margin: '4px 2px 10px' }}>{text}</div>
   );
 
-  const rowBase = { display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
+  const rowBase = { boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.surface || 'transparent', marginBottom: 8, fontFamily: 'inherit' };
 
   const openRow = (r) => {
     // A row is tappable only when it has a real destination (a menu/sourcing choice the
@@ -40480,6 +40628,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   const idColor = ident.mark === 'quiet' ? C.accent : ident.color;
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
+  // Desktop / tablet-landscape (≥1024, same threshold the planner shell + the planv2
+  // two-column layout use): a proper left SIDE nav, not a phone-style bottom bar. The
+  // bottom bar is for phone/tablet-portrait only.
+  const isSidebarNav = bp === 'tablet-land' || bp === 'desktop';
   const isEventToday = !!event.date && event.date === today8601();
   const hasExplicitDayMode = event.dayMode === true || event.dayMode === false;
   const dayMode = hasExplicitDayMode ? event.dayMode : isEventToday;
@@ -40544,25 +40696,61 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: 76 }}>
+    <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: isSidebarNav ? 0 : 76 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted }}>←</button>
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape
             travels for recognition; hue stays home on the calm overview). */}
         <span aria-hidden style={{ color: idColor, display: 'flex', flexShrink: 0 }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>
-        <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
+        {/* Green LIVE · TODAY pill on the event day (Figma 1553:3) — the one "it's happening"
+            signal. Studio Matte: green = live/success (never amber); a single header accent. */}
+        {isEventToday && (
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.success, background: `${C.success}1f`, border: `1px solid ${C.success}55`, borderRadius: 999, padding: '3px 10px' }}>
+            <span style={{ width: 7, height: 7, borderRadius: 99, background: C.success }} />Today
+          </span>
+        )}
       </div>
       {/* UNIFIED HEADER FRAME (board): the single ReadinessTrack rides directly under the
           app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
       <ReadinessTrack event={event} />
 
-      <div>
+      <div style={isSidebarNav ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
+        {/* Desktop / tablet-landscape: a calm left SIDE nav (the 5 host sections + the
+            "more" destinations below a divider). On phone/tablet-portrait this is null and
+            the fixed bottom bar carries navigation instead. */}
+        {isSidebarNav && (
+          <nav aria-label="Event sections" style={{ position: 'sticky', top: 0, alignSelf: 'flex-start', flexShrink: 0, width: 230, padding: '18px 12px', borderRight: `1px solid ${C.border}` }}>
+            {NAV.map(n => {
+              const active = tab === n.id;
+              return (
+                <button key={n.id} onClick={() => go(n.id)} title={n.label}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', background: active ? idColor + '16' : 'transparent', color: active ? idColor : C.muted, borderLeft: `3px solid ${active ? idColor : 'transparent'}`, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: active ? FW.bold : FW.semibold }}>
+                  <span style={{ display: 'flex', flexShrink: 0, width: 20, justifyContent: 'center' }}><Icon name={n.icon} size={18} /></span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.label}</span>
+                </button>
+              );
+            })}
+            {moreItems.length > 0 && <div style={{ height: 1, background: C.border, opacity: 0.7, margin: '10px 12px' }} />}
+            {moreItems.map(m => {
+              const active = tab === m.id;
+              return (
+                <button key={m.id} onClick={() => go(m.id)} title={m.label}
+                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', marginBottom: 2, borderRadius: 9, border: 'none', cursor: 'pointer', background: active ? idColor + '16' : 'transparent', color: active ? idColor : C.muted, borderLeft: `3px solid ${active ? idColor : 'transparent'}`, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: active ? FW.bold : FW.semibold }}>
+                  <span style={{ display: 'flex', flexShrink: 0, width: 20, justifyContent: 'center' }}><Icon name={TAB_ICONS[m.id] || 'file'} size={18} /></span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+        <div style={isSidebarNav ? { flex: 1, minWidth: 0 } : undefined}>
         {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
         {tab === 'Guests' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -40600,14 +40788,18 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
                 <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
-                <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
+                <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>
         )}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
+        </div>
       </div>
 
+      {/* Bottom nav — full-bleed flush thumb bar for phone / tablet-portrait. On
+          tablet-landscape + desktop the left SIDE nav owns navigation and this is null. */}
+      {!isSidebarNav && (
       <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: 'flex', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 50 }}>
         {NAV.map(n => {
           const active = tab === n.id;
@@ -40623,8 +40815,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <span style={{ fontSize: T.caption, fontWeight: FW.semibold }}>More</span>
         </button>
       </div>
+      )}
 
-      {moreOpen && (<>
+      {!isSidebarNav && moreOpen && (<>
         <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 60 }} />
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: C.surface, borderTop: `1px solid ${C.border}`, borderRadius: '18px 18px 0 0', zIndex: 61, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <SheetGrip isMobile />
@@ -41300,7 +41493,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
@@ -41503,7 +41696,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {hostNavActive(event)
             ? <HostRunOfShowTimeline event={event} profile={profile} />
-            : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
+            : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
       {tab === 'Agenda'      && <>
@@ -42535,7 +42728,16 @@ export default function App() {
     lastEventRestored.current = true;            // one shot, this page load only
     if (activeId) return;                        // a deep-link/route already chose one
     let last = null; try { last = localStorage.getItem('ngw-last-event'); } catch (e) { /* blocked */ }
-    if (last && events.some((e) => e.id === last)) setActiveId(last);
+    if (last && events.some((e) => e.id === last)) {
+      // On the EVENT DAY, don't silently re-open the event — land on the Focus home (the
+      // dim-the-room "one thing now" day-of surface, which only renders on HostHome) so the
+      // host meets the day, not a planning tab. Outside the day, restore the last event as
+      // before. The event is still one tap away from Focus.
+      const le = events.find((e) => e.id === last);
+      const happeningToday = !!le && le.date === today8601()
+        && (() => { try { return hostNavActive(le); } catch { return false; } })();
+      if (!happeningToday) setActiveId(last);
+    }
   }, [events]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showNew,        setShowNew]        = useState(false);
   const [showNewClient,  setShowNewClient]  = useState(false);

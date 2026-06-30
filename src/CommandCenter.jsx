@@ -1321,12 +1321,30 @@ function _isSetCompositeTitle(t) {
 // budget → food). Single source: the same _eventFoundationActions dominoes eventPlan uses,
 // so the decomposition is state-aware — a locked headcount drops 'guests' and the next
 // real gap ("Set the date.") leads. Returns cmd unchanged when it isn't a composite.
+// A host event ALWAYS has a date (it's chosen at creation), so a next-step CTA must never
+// tell the host to "set date." Strip a satisfied LEADING date clause from a "Set date, …"
+// composite — "Set date, headcount, menu" → "Set headcount, menu" — keeping the connector
+// grammar intact. No-op when the date isn't set (defensive) or the title isn't such a string.
+export function _stripLeadingDateClause(title, event) {
+  const dateSet = !!String((event && event.date) || '').trim()
+    && !/^(tbd|tba)$/i.test(String((event && event.date) || '').trim());
+  if (!dateSet) return title;
+  const re = /^(set\s+)(?:the\s+)?date(\s+window)?\s*(?:,|\+|&|\band\b)\s*/i;
+  return re.test(title) ? title.replace(re, '$1') : title;
+}
+
 function decomposeSetComposite(cmd, event) {
   if (!cmd || !_isSetCompositeTitle(cmd.title)) return cmd;
   const atomic = _eventFoundationActions(event).find((a) => !a.done);
-  if (!atomic) return cmd;
-  return { ...cmd, title: atomic.title, consequence: atomic.consequence,
-    primaryCta: atomic.cta, primaryRoute: atomic.route, category: atomic.domain };
+  if (atomic) {
+    return { ...cmd, title: atomic.title, consequence: atomic.consequence,
+      primaryCta: atomic.cta, primaryRoute: atomic.route, category: atomic.domain };
+  }
+  // No atomic foundational gap remains, but a stale "Set date, …" composite still surfaced.
+  // Don't return it verbatim — strip the already-satisfied date clause so the CTA can never
+  // say "set date" for an event that necessarily has one.
+  const title = _stripLeadingDateClause(cmd.title, event);
+  return title !== cmd.title ? { ...cmd, title } : cmd;
 }
 
 // eventPlan(event) — the public single source. Exported and consumed by every surface.

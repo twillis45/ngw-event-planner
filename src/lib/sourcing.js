@@ -1,3 +1,14 @@
+// FOOD-2A Stage 0 — price-table provenance. Metadata ONLY: no function reads these at
+// runtime, so this changes no math. It exists so the canonical $ ranges below carry a
+// visible vintage + a review cadence (the audit flagged "stale prices, no versioning").
+// Bump `asOf`/`version` whenever the ranges are re-researched.
+export const PRICE_TABLE_META = {
+  version: '1.0.0',
+  asOf: '2026-01',            // the vintage of the researched ranges below
+  reviewCadence: 'yearly',   // re-verify the canonical ranges at least annually
+  source: 'BLS APU + 2025–26 retail price guides (per-line `sources`)',
+};
+
 // Protein SOURCING tiers (Figma 1597-2 "Sourcing"). How the host gets the proteins
 // reshapes the spread's cost: a warehouse/bulk run is cheapest, a butcher is the
 // flavor-first middle, and pre-marinated grocery trays cost a convenience premium.

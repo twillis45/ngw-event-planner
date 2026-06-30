@@ -328,12 +328,51 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     expect(r.length).toBeGreaterThan(0);
     expect(r[0].generated).toBe(true);
   });
-  test('manual/imported ros (non-empty) → returned verbatim, never overwritten', () => {
+  test('host-owned ros (rosEdited) → returned verbatim, never overwritten', () => {
     const manual = [{ id: 'm1', time: '19:00', segment: 'My own segment' }];
-    expect(effectiveRos({ ...dp, ros: manual })).toBe(manual);
+    expect(effectiveRos({ ...dp, ros: manual, rosEdited: true })).toBe(manual);
+  });
+  test('SINGLE SOURCE: a stored ros NOT owned by the host (no rosEdited) does NOT win — the playbook-derived schedule does, so timeOfDay still drives it', () => {
+    const stale = [{ id: 'm1', time: '19:00', segment: 'Stale snapshot' }];
+    const r = effectiveRos({ ...dp, ros: stale });
+    expect(r).not.toBe(stale);
+    expect(r.every((row) => row.segment !== 'Stale snapshot')).toBe(true);
+    expect(r[0].generated).toBe(true);
+  });
+  test('SINGLE SOURCE: changing timeOfDay reflows the derived schedule (evening → morning shifts every cue earlier)', () => {
+    const eve = effectiveRos({ ...dp, ros: [] });        // evening anchor (18:00)
+    const morn = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning' }); // morning anchor (10:00)
+    const firstMin = (rows) => { const [h, m] = rows[0].time.split(':').map(Number); return h * 60 + m; };
+    expect(firstMin(morn)).toBeLessThan(firstMin(eve));
+  });
+  test('per-cue done lives in event.rosDone and overlays the DERIVED schedule (never freezes it)', () => {
+    const derived = effectiveRos({ ...dp, ros: [] });
+    const id = derived[0].id;
+    const withDone = effectiveRos({ ...dp, ros: [], rosDone: { [id]: true } });
+    expect(withDone.find((r) => r.id === id).done).toBe(true);
+    // and it's still the derived schedule, not a snapshot
+    expect(withDone[0].generated).toBe(true);
   });
   test('non-playbook with empty ros → empty (current behavior unchanged)', () => {
     expect(effectiveRos({ id: 'w', type: 'Other', date: '2026-06-20', ros: [] })).toEqual([]);
+  });
+  test('non-playbook WITH a stored ros → still wins (no derived source to prefer)', () => {
+    const manual = [{ id: 'x1', time: '12:00', segment: 'Custom' }];
+    expect(effectiveRos({ id: 'w', type: 'Other', date: '2026-06-20', ros: manual })).toBe(manual);
+  });
+  test('SINGLE SOURCE: a precise startTime anchors the run-of-show to the exact minute', () => {
+    const r = effectiveRos({ ...dp, ros: [], startTime: '19:30' });
+    expect(r.some((row) => row.time === '19:30')).toBe(true);
+  });
+  test('startTime overrides the coarse timeOfDay bucket', () => {
+    const firstMin = (rows) => { const [h, m] = rows[0].time.split(':').map(Number); return h * 60 + m; };
+    const bucket = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning' });            // 10:00 anchor
+    const precise = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning', startTime: '18:00' });
+    expect(firstMin(precise)).toBeGreaterThan(firstMin(bucket));
+  });
+  test('startTime tolerant of 12-hour format ("6:30 PM" → 18:30)', () => {
+    const r = effectiveRos({ ...dp, ros: [], startTime: '6:30 PM' });
+    expect(r.some((row) => row.time === '18:30')).toBe(true);
   });
 });
 
