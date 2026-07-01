@@ -49,7 +49,7 @@ Each numeric domain stores **observations** (not just a single number) so confid
 
 ```
 Observation = { eventId, date, estimate, actual, delta, ratio }   // ratio = actual / estimate
-Rollup      = { ratio, confidence, n, lastN: [Observation…] }     // n capped (keep last ~8)
+Rollup      = { ratio, confidence, stability, n, lastN: [Observation…] }  // per-domain (§5); confidence + stability both computed; n capped (~8)
 ```
 
 ### 2a. Attendance — `domains.attendance`
@@ -124,19 +124,47 @@ Estimate (already in the system)  →  Reality (host confirms/enters)  →  Delt
 
 ---
 
-## 5. Confidence rules
+## 5. Confidence AND stability — two independent, per-domain gates
 
-Confidence is a function of **observation count** (and recency), per domain:
+Confidence alone is not enough — a household can be *confidently* unpredictable. Two orthogonal signals, **computed per domain (each matures independently)**, together decide whether memory may drive a decision.
 
-| n (observations) | Confidence | Behavior |
+### 5a. Confidence — "do we have enough observations?" (per domain)
+Every domain carries its **own** confidence; they do not move together. Attendance can be **High** while Ice is **Low** and Budget is **None** — and each behaves accordingly (attendance adjusts, ice doesn't, budget uses defaults, cooking-pace adjusts). Confidence is a function of observation count (and recency):
+
+| n (observations, this domain) | Confidence | Behavior |
 |---|---|---|
-| 0 | — | invisible; L2 playbook default only |
-| 1–2 | **Low** | **noted, not applied** — shown as "we're starting to learn this," never changes a number |
-| 3–4 | **Medium** | **suggested** — surfaced as an opt-in adjustment with reason ("apply −14%?") |
-| 5+ | **High** | **default-applied** *(post-confirmation era)* — pre-applied with the because, one-tap to revert |
+| 0 | **None** | invisible; L2 playbook default only |
+| 1–2 | **Low** | noted, not applied — "we're starting to learn this," never changes a number |
+| 3–4 | **Medium** | suggested — opt-in adjustment with its because |
+| 5+ | **High** | default-applied (with the because + one-tap revert) |
 
-- A domain's confidence also **decays** if its observations are stale (>~18 months) — old patterns shouldn't silently drive a changed household.
-- Confidence is always **displayed** next to any learned number (the user's spec: "confidence: High/Medium").
+Confidence **decays** if a domain's observations are stale (>~18 months) — old patterns shouldn't silently drive a changed household.
+
+### 5b. Stability — "are the observations consistent?" (per domain)
+Confidence measures *how many*; **stability** measures *how consistent*. Attendance ratios `80% · 125% · 72% · 118%` average to 99% (**High confidence**) but the household is **unstable** — the mean is meaningless. Stability = the spread (e.g. coefficient of variation) of the last-N ratios in that domain.
+
+| Spread of last-N ratios | Stability |
+|---|---|
+| tight (low variance) | **High** — a real, repeatable pattern |
+| moderate | **Medium** |
+| wide (bounces around) | **Low** — keep asking, don't automate |
+
+### 5c. The combined gate
+A domain may **auto-apply** only at **Confidence ≥ Medium AND Stability ≥ Medium**. Otherwise:
+- **High confidence + Low stability ⇒ keep asking** ("your attendance varies a lot — we'll ask rather than assume").
+- **Low confidence ⇒ noted only.**
+
+A **stable** household earns automation; an **unstable** one keeps getting asked. That distinction — automate the predictable, keep asking the volatile — is a major trust feature and is honest about when memory has *earned* the right to decide.
+
+### 5d. Explainability (provenance) — every learned number shows its work
+No memory-driven change may appear without its **because** — the observations behind it. This is the single biggest trust feature in the platform. Never *"We adjusted your food quantities."* Always:
+
+> **We planned 16 lb of burgers** (was 18) because:
+> • your last 5 cookouts averaged **84% attendance**
+> • guests typically ate **~1.4 burgers/person**
+> Confidence: High · Stability: High · **[Revert]**
+
+The because is generated from the **same** observations the rollup used (domain + last-N + ratio), so it can never disagree with the number it explains. Every reader in the [readers registry](./INTELLIGENCE_READERS_REGISTRY.md) MUST supply a because template + declare its min-confidence and min-stability.
 
 ---
 
@@ -152,7 +180,7 @@ Confidence is a function of **observation count** (and recency), per domain:
 
 ## 7. First engines allowed to read it forward (conservative)
 
-Start with the **three** highest-signal, lowest-risk readers; everything else waits. Each reads through a single helper `hostIntel(profile).<domain>` and applies **only at Medium+ confidence**, always with the because + a revert.
+Start with the **three** highest-signal, lowest-risk readers; everything else waits. Each reads through a single helper `hostIntel(profile).<domain>`, **must be registered in the [Intelligence Readers Registry](./INTELLIGENCE_READERS_REGISTRY.md) before it may consume memory**, and applies **only at Confidence ≥ Medium AND Stability ≥ Medium (§5c)** — always with the because (§5d) + a revert.
 
 1. **Attendance band** (`attendanceBand` / `sizingGuests`) — apply the attendance ratio to the plan-to number: *"You usually see ~14% fewer than planned — size food for 36?"* This is the highest-leverage read (it moves food/seating/budget downstream). **First.**
 2. **Food per-item sizing** (`playbookFoodPlan`) — apply per-item consumption ratios to quantities: *"Last 2 crab feasts you had leftover Old Bay — plan 1½ instead of 2."* Uses the FOOD-2C `displayName`/`rawCategory` so it lands cleanly on the Effective Item seam.
@@ -175,7 +203,7 @@ Start with the **three** highest-signal, lowest-risk readers; everything else wa
 
 - **P1 — Store + reader (no reads-forward).** Add `profile.hostIntelligence` shape + `hostIntel(profile)` empty-safe reader. Ships inert. Zero behavior change.
 - **P2 — Reality Reconciliation capture.** The "How'd it go?" card in `PostEventRecap`; writes attendance + food-leftover + budget observations. The profile starts filling. Still no reads-forward.
-- **P3 — The inspectable profile.** "What Event Boss has learned" view (privacy §6): see/edit/clear. Confidence displayed. Builds trust *before* anything auto-applies.
+- **P3 — Inline surfacing (NOT a dashboard).** Memory appears ONLY where it changes a decision — *"We remembered…"* on the burger quantity, *"Last time…"* on the ice, *"Based on…"* on arrival times — each with its because + revert (§5d). **No standalone "Host Intelligence Dashboard"** (everyone builds one; almost nobody revisits it). The only central surface is a lightweight *audit/clear* affordance in settings for the privacy guarantee (§6), reached deliberately — not a browsing view. **Memory is invisible until it's useful.**
 - **P4 — First read-forward (attendance).** Behind Medium+ confidence + one-tap confirm. Then food per-item, then weather→ice — one at a time, each render- and reconciliation-verified.
 - Reconciliation quality-gates the whole thing: prediction (L5) remains gated on `eventsObserved` being real (ties to activation — memory can't compound without real events).
 
@@ -186,6 +214,9 @@ Start with the **three** highest-signal, lowest-risk readers; everything else wa
 - **No cross-host learning here** (that's the corpus, separate consent).
 - **No prediction / risk / probability** (L5, later — memory first).
 - **No silent overrides** — everything learned is shown, confirmed, revertable.
+- **No memory dashboard** — memory surfaces inline, only where it changes a decision (§9 P3); no browsing view.
+- **No automation on unstable domains** — High confidence + Low stability keeps *asking*, never assumes (§5c).
+- **No unregistered readers** — an engine may not consume memory until it's in the [Intelligence Readers Registry](./INTELLIGENCE_READERS_REGISTRY.md).
 - **No guessed multipliers** — thin memory ⇒ L2 defaults, full stop.
 - **No new engine forks** — reconciliation reads the SAME estimates the plan already produces (`attendanceBand`, `playbookFoodPlan`, the roll-up) and the SAME item identity the Effective Item seam owns.
 - **No guest PII in intelligence** — operational patterns only.
