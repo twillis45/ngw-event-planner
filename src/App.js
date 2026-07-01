@@ -44,6 +44,10 @@ import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
 import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+// FOOD-2B — the shopping list's shopItems now come through the Effective Item seam
+// (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
+// mapping; see src/lib/__tests__/shoppingEffectiveItemsParity.test.js.
+import { foodShopItems } from './lib/foodShopItems';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -9738,7 +9742,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // The spread (you make the menu calls → take the finished list), so the panel reads
   // decisions → menu → list instead of dropping the deliverable on you up front.
   const shoppingListCta = (isHostFP && Array.isArray(plan.list) && plan.list.some((i) => i && !i.skipped)) ? (() => {
-    const shopItems = plan.list.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
+    const shopItems = foodShopItems(plan, event);
     const shopAnchorStr = eventGeoQuery(event, profile);
     const left = shopItems.filter((i) => !i.got).length;
     const openShop = () => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); };
@@ -22641,7 +22645,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           if (Array.isArray(fpItems) && fpItems.some((i) => i && !i.skipped)) {
             // fpItems (= the plan list) now includes the Supplies group, so the hand-off
             // carries supplies as real checkable lines without a separate append.
-            const shopItems = fpItems.filter((i) => i && !i.skipped).map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(ev.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
+            const shopItems = foodShopItems(fpProg, ev);
             const left = shopItems.filter((i) => !i.got).length;
             const d = draftShoppingList(ev, profile, { items: shopItems, anchor: eventGeoQuery(ev, profile) });
             items.push({ id: 'shopping', score: 50, eyebrow: 'Ready to share', cta: 'Open & share →',
