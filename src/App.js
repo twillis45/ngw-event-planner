@@ -9194,7 +9194,7 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 1 }}>
           {right}
-          <span aria-hidden style={{ color: C.muted, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: transitionFor('press', ['transform']), display: 'flex' }}><Icon name="chevronDown" size={16} /></span>
+          <span aria-hidden style={{ color: C.muted, transform: open ? 'none' : 'rotate(-90deg)', transition: transitionFor('press', ['transform']), display: 'flex', marginTop: 2 }}><Icon name="chevronDown" size={18} /></span>
         </span>
       </button>
       {/* M6 — disclosure: on expand the body fades + rises in (260ms ease-out). Kept
