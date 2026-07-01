@@ -11,7 +11,7 @@ import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
 import {
   playbookCoverage, culturalMix, locationSpread, memoryDepth, funnelContent,
 } from '../lib/analyticsReader';
-import { evaluationAudit } from '../lib/intelEval';
+import { evaluationAudit, conversionAudit } from '../lib/intelEval';
 import { hostShellOn, planV2On } from '../lib/presentationNav';
 import { type } from '../design/tokens';
 
@@ -1201,6 +1201,7 @@ function IntelligencePanel({ book }) {
   const [decision, setDecision] = useState('All');
   const [sel, setSel] = useState(null); // { eventId, recId }
   let audit; try { audit = evaluationAudit(book); } catch { audit = null; }
+  let conv; try { conv = conversionAudit(book); } catch { conv = null; }
   if (!audit) return (<div><BookBanner /><Banner tone="bad">Could not read evaluation data (safe fallback — nothing scored).</Banner></div>);
   const T = audit.totals;
   const ctrl = { background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '7px 10px', fontFamily: D.ff, outline: 'none' };
@@ -1290,6 +1291,41 @@ function IntelligencePanel({ book }) {
           </tbody>
         </table>
       </div>
+
+      {conv && (
+        <>
+          <div style={IE.eyebrow}>Conversion — local acceptance &amp; reconciliation</div>
+          <div style={{ fontSize: type.size.caption, color: D.faint, marginBottom: 8, lineHeight: 1.5 }}>This browser only · "conversion" = the recommendation's lifecycle outcome, NOT a purchase. Paid / CTA / signup conversion is behavioral (PostHog) — see Unavailable below.</div>
+          {conv.funnel.map((f) => (
+            <div key={f.stage} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+              <span style={{ width: 180, flexShrink: 0, fontSize: type.size.caption, color: D.muted }}>{f.stage}</span>
+              <span style={{ fontFamily: D.mono, fontSize: type.size.sm, color: D.text }}>{f.value}</span>
+              {f.pct != null && <span style={{ fontSize: type.size.caption, color: D.faint }}>· {f.pct}%</span>}
+            </div>
+          ))}
+          <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+            {Object.values(conv.rates).map((r) => <IntelKpi key={r.label} label={r.label} value={r.pct == null ? '—' : r.pct + '%'} />)}
+          </div>
+          {['byType', 'byConfidence', 'byReader', 'byEngine'].map((dim) => {
+            const rows = conv.byDimension[dim]; if (!rows.length) return null;
+            const title = { byType: 'By type', byConfidence: 'By confidence', byReader: 'By reader', byEngine: 'By engine' }[dim];
+            return (
+              <div key={dim} style={{ marginTop: 12 }}>
+                <div style={{ fontSize: type.size.caption, fontWeight: 700, color: D.muted, marginBottom: 4 }}>{title}</div>
+                {rows.map((g) => <div key={g.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: type.size.caption, color: D.text, padding: '3px 0' }}><span>{g.key}</span><span style={{ color: D.muted }}>{g.shown} shown · {g.accepted} acc · {g.reverted} rev · {g.acceptRate == null ? '—' : g.acceptRate + '%'}</span></div>)}
+              </div>
+            );
+          })}
+          <div style={{ ...IE.eyebrow, marginTop: 18 }}>Unavailable — behavioral conversion (PostHog)</div>
+          {conv.unavailable.map((u, i) => (
+            <div key={i} style={{ padding: '6px 0', borderTop: `1px solid ${D.border}` }}>
+              <div style={{ fontSize: type.size.caption, color: D.warn, fontWeight: 700 }}>⚠ {u.metric}</div>
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginTop: 2 }}>{u.reason}</div>
+              <div style={{ fontSize: type.size.caption, color: D.faint, marginTop: 2 }}>Needs: {u.needs}</div>
+            </div>
+          ))}
+        </>
+      )}
 
       {drill && (
         <div style={{ marginTop: 18, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14, background: D.surface }}>

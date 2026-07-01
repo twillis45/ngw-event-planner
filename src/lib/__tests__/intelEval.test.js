@@ -5,7 +5,7 @@ import {
   createEvaluation, appendLifecycle, recordDecision, attachActual,
   upsertEvaluation, updateEvaluation, hasEvaluation, evaluationStats, evalId,
   EVAL_VERSION, LIFECYCLE_STATES, DECISION_COST,
-  validateEvaluation, evaluationAudit,
+  validateEvaluation, evaluationAudit, conversionAudit,
 } from '../intelEval';
 
 const AT = '2026-07-01T10:00:00.000Z';
@@ -208,6 +208,58 @@ describe('Stage 1A — evaluationAudit (admin dataset)', () => {
     expect(passed.integrity.some((i) => i.code === 'missing_actual')).toBe(true);
     const upcoming = evaluationAudit([{ id: 'cf1', date: '2026-12-01', intelEvaluations: [acc] }], '2026-07-01');
     expect(upcoming.integrity.some((i) => i.code === 'missing_actual')).toBe(false);
+  });
+});
+
+describe('Stage 1B — conversionAudit (transaction / conversion, NO scoring)', () => {
+  const rec = (over = {}) => ({ ...mkRec(over), lifecycle: [{ state: 'created', at: AT }, { state: 'presented', at: AT }, { state: 'accepted', at: AT }] });
+  const reverted = (over = {}) => ({ ...mkRec(over), lifecycle: [{ state: 'created', at: AT }, { state: 'presented', at: AT }, { state: 'reverted', at: AT }] });
+
+  test('EMPTY ⇒ present:false, zeros, unavailable list still documented', () => {
+    const c = conversionAudit([]);
+    expect(c.present).toBe(false);
+    expect(c.rates.shownToAccepted.pct).toBeNull();
+    expect(c.unavailable.length).toBeGreaterThanOrEqual(6);
+    expect(c.unavailable.every((u) => u.metric && u.needs)).toBe(true);
+  });
+
+  test('local rates: shown→accepted, shown→reverted, qualified-event→shown', () => {
+    const withActual = attachActual(rec(), 36, AT);
+    const events = [
+      { id: 'cf1', type: 'Crab Feast', date: '2026-06-01', guestCount: 40, intelEvaluations: [withActual] }, // qualified + rec + accepted + reconciled
+      { id: 'cf2', type: 'Cookout', date: '2026-06-05', guestCount: 20, intelEvaluations: [reverted({ readerId: 'R1' })] }, // qualified + rec + reverted
+      { id: 'q3', date: '2026-06-10', guestCount: 10 }, // qualified, NO rec
+      { id: 'nd' }, // not qualified
+    ];
+    const c = conversionAudit(events, '2026-07-01');
+    expect(c.present).toBe(true);
+    expect(c.qualifiedEvents).toBe(3);
+    expect(c.rates.eventToShown).toMatchObject({ num: 2, den: 3, pct: 67 });   // 2 of 3 qualified events got a rec
+    expect(c.rates.shownToAccepted).toMatchObject({ num: 1, den: 2, pct: 50 });
+    expect(c.rates.shownToReverted).toMatchObject({ num: 1, den: 2, pct: 50 });
+    expect(c.rates.shownToReconciled).toMatchObject({ num: 1, den: 2, pct: 50 });
+  });
+
+  test('by-dimension slices (type / confidence / reader / engine)', () => {
+    const events = [{ id: 'cf1', type: 'Crab Feast', date: '2026-06-01', guestCount: 40, intelEvaluations: [rec(), reverted({ readerId: 'R2' })] }];
+    const c = conversionAudit(events, '2026-07-01');
+    expect(c.byDimension.byConfidence.find((g) => g.key === 'Medium').shown).toBe(2);
+    expect(c.byDimension.byReader.map((g) => g.key).sort()).toEqual(['R1', 'R2']);
+    expect(c.byDimension.byType[0]).toMatchObject({ key: 'attendance', shown: 2, accepted: 1, reverted: 1, acceptRate: 50 });
+  });
+
+  test('behavioral funnels are UNAVAILABLE, never faked (CTA / paid / signup / repeat)', () => {
+    const c = conversionAudit([{ id: 'cf1', date: '2026-06-01', guestCount: 40, intelEvaluations: [rec()] }]);
+    const metrics = c.unavailable.map((u) => u.metric).join(' | ');
+    expect(metrics).toMatch(/CTA click/);
+    expect(metrics).toMatch(/paid conversion/);
+    expect(metrics).toMatch(/signup/);
+    expect(metrics).toMatch(/repeat session/);
+    expect(c.note).toMatch(/NOT a purchase/i);
+  });
+
+  test('never throws on malformed', () => {
+    for (const bad of [null, undefined, 'x', [null, 'y']]) expect(() => conversionAudit(bad)).not.toThrow();
   });
 });
 

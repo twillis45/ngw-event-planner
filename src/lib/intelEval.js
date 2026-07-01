@@ -189,6 +189,7 @@ export function evaluationAudit(events, asOf) {
         eventId: e.id, eventLabel: label,
         recommendationType: (isObj(r.metadata) && r.metadata.domain) || (isObj(r.recommendation) && r.recommendation.domain) || 'unknown',
         reader: r.readerId || 'unknown', source: (isObj(r.metadata) && r.metadata.source) || null,
+        confidence: (isObj(r.recommendation) && r.recommendation.confidence) || null,
         snapshot: isObj(r.recommendation) ? { from: r.recommendation.from, to: r.recommendation.to, because: r.recommendation.because } : null,
         baselinePresent, decision, actualAttached: hasActual, evaluationReady: ready,
         version: r.version ?? null, engine: (isObj(r.metadata) && r.metadata.readerVersion) || null,
@@ -212,6 +213,82 @@ export function evaluationAudit(events, asOf) {
 }
 
 function safeNow() { try { return new Date(); } catch { return new Date(0); } }
+
+// ── Stage 1B: conversion / transaction monitoring (visibility only — NO scoring) ─────────────────
+// Correlates intelligence moments with LOCAL, measurable outcomes (a recommendation's lifecycle +
+// whether the event qualified/reconciled). It does NOT fabricate paid/CTA/signup conversion: those
+// are behavioral events that live in PostHog (write-only in-app) and are returned in `unavailable`
+// with the exact join that's missing. `conversion` here means the recommendation LIFECYCLE outcome
+// (accepted/reverted/reconciled), never a purchase — labeled as such in the UI.
+export function conversionAudit(events, asOf) {
+  const evs = Array.isArray(events) ? events : [];
+  const audit = evaluationAudit(events, asOf); // reuses the validated record scan
+  const T = audit.totals;
+  const rate = (n, d) => (d > 0 ? Math.round((n / d) * 100) : null);
+
+  // Qualified events = a local activation proxy (date + a real headcount) — same rule as funnelContent.
+  let qualified = 0;
+  for (const e of evs) {
+    if (!isObj(e)) continue;
+    const gc = Number(e.guestCount) || Number(e.guestEstimate) || (Array.isArray(e.guests) ? e.guests.length : 0);
+    if (e.date && gc > 0) qualified += 1;
+  }
+
+  // The LOCAL transaction funnel around intelligence moments (this browser's book).
+  const funnel = [
+    { stage: 'Qualified events', value: qualified, pct: null, available: true },
+    { stage: 'Events with a recommendation', value: audit.eventsWithEvaluations, pct: rate(audit.eventsWithEvaluations, qualified), available: true },
+    { stage: 'Recommendations shown', value: T.shown, pct: null, available: true },
+    { stage: 'Accepted', value: T.accepted, pct: rate(T.accepted, T.shown), available: true },
+    { stage: 'Reverted', value: T.reverted, pct: rate(T.reverted, T.shown), available: true },
+    { stage: 'Overridden', value: T.overridden, pct: rate(T.overridden, T.shown), available: true },
+    { stage: 'Outcome reconciled', value: T.actualsAttached, pct: rate(T.actualsAttached, T.shown), available: true },
+  ];
+
+  const rates = {
+    shownToAccepted: { label: 'Shown → accepted', num: T.accepted, den: T.shown, pct: rate(T.accepted, T.shown), available: true },
+    shownToReverted: { label: 'Shown → reverted', num: T.reverted, den: T.shown, pct: rate(T.reverted, T.shown), available: true },
+    overriddenRate: { label: 'Shown → overridden', num: T.overridden, den: T.shown, pct: rate(T.overridden, T.shown), available: true },
+    eventToShown: { label: 'Qualified event → recommendation shown', num: audit.eventsWithEvaluations, den: qualified, pct: rate(audit.eventsWithEvaluations, qualified), available: true },
+    shownToReconciled: { label: 'Shown → outcome reconciled', num: T.actualsAttached, den: T.shown, pct: rate(T.actualsAttached, T.shown), available: true },
+  };
+
+  // Slice acceptance by the record's frozen dimensions.
+  const group = (keyFn) => {
+    const m = {};
+    for (const r of audit.records) {
+      const k = keyFn(r) || 'unknown';
+      m[k] = m[k] || { key: k, shown: 0, accepted: 0, reverted: 0 };
+      m[k].shown += 1;
+      if (r.decision === 'Accepted') m[k].accepted += 1;
+      if (r.decision === 'Reverted') m[k].reverted += 1;
+    }
+    return Object.values(m).map((g) => ({ ...g, acceptRate: rate(g.accepted, g.shown) })).sort((a, b) => b.shown - a.shown);
+  };
+  const byDimension = {
+    byType: group((r) => r.recommendationType),
+    byConfidence: group((r) => r.confidence),
+    byReader: group((r) => r.reader),
+    byEngine: group((r) => `${r.reader} v${r.engine ?? '?'}`),
+  };
+
+  // HONEST gaps — behavioral conversion that cannot be computed in-app (PostHog write-only / no event).
+  const unavailable = [
+    { metric: 'Recommendation shown → CTA click rate', reason: 'CTA clicks are not joined to a recommendation locally; behavioral funnels live in PostHog (write-only in-app).', needs: 'PostHog funnel intel_rec_shown → <cta_event>, or a new intel_rec_cta_clicked event on the record.' },
+    { metric: 'Recommendation accepted → CTA click rate', reason: 'No local accepted→CTA join.', needs: 'PostHog funnel intel_attendance_applied → <cta_event>.' },
+    { metric: 'Recommendation accepted → signup / event-created rate', reason: 'Signup has NO analytics event today; cross-session isn’t readable from this browser.', needs: 'A new sign_up event + PostHog funnel intel_rec_shown → sign_up / event_created (event_created already fires).' },
+    { metric: 'Recommendation exposure → paid conversion', reason: 'No paid/subscription analytics event exists; paid state is server/Stripe only.', needs: 'A new subscription_started/paid event + PostHog funnel intel_rec_shown → paid.' },
+    { metric: 'Recommendation shown → repeat session / event', reason: 'Sessions are PostHog-only; second_event_created fires to PostHog, not readable in-app.', needs: 'PostHog funnel intel_rec_shown → second_event_created / returning session.' },
+    { metric: 'Recommendation reverted → drop-off rate', reason: 'Drop-off is a behavioral/session metric; the revert COUNT is local but “what the host did after reverting” is not.', needs: 'PostHog funnel intel_attendance_reverted → no_return / session_end.' },
+  ];
+
+  return {
+    present: T.records > 0,
+    qualifiedEvents: qualified,
+    funnel, rates, byDimension, unavailable,
+    note: 'Local acceptance & reconciliation only (this browser). “Conversion” = the recommendation’s lifecycle outcome, NOT a purchase. Paid/CTA/signup conversion is behavioral (PostHog) and shown as unavailable.',
+  };
+}
 
 // Observatory counts (deliverable 9) — totals only, NO scoring, NO percentages. `completed` = an
 // actual has been attached (evaluable); `pending` = awaiting reconciliation.
