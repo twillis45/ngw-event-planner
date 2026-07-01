@@ -30156,7 +30156,57 @@ function PublicRsvpRoute({ code, localEvent }) {
 
 // ─── Guests ───────────────────────────────────────────────────────────────────
 
-function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, setKidsCount = () => {}, onSetInviteStyle = () => {}, focusCount = false }) {
+// Guest-brief host choices — the 2-3 things a machine can't know (gift wish · kids · plus-ones)
+// that fill out draftGuestBrief. Radio-row selection parity. Patches event.giftWish/kidsPolicy/
+// plusOnePolicy; anything left unset simply doesn't appear in the shared brief (honest silence).
+function GuestBriefDetails({ event = {}, onPatchEvent = () => {} }) {
+  const C = useT();
+  const T = useType();
+  const steel = C.accentTopGrad || C.accent;
+  const [open, setOpen] = useState(false);
+  const gw = (event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
+  const GIFTS = [['registry', 'Registry'], ['no_gifts', 'No gifts — your presence is enough'], ['charity', 'A donation to a cause'], ['potluck', 'Potluck — everyone brings a dish'], ['contribution', 'Chip in per person']];
+  const DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignment (optional)', contribution: '$ per person' };
+  const setGift = (mode) => onPatchEvent({ giftWish: gw.mode === mode ? null : { mode, detail: '' } });
+  const Row = ({ on, label, onClick }) => (
+    <button type="button" onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '11px 2px' }}>
+      <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: on ? FW.bold : FW.semibold, color: C.text }}>{label}</span>
+    </button>
+  );
+  const Head = ({ children }) => <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase', margin: '18px 0 2px' }}>{children}</div>;
+  const giftLabel = gw.mode ? (GIFTS.find(([m]) => m === gw.mode) || [])[1] : 'not set — the invite stays quiet on gifts';
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginTop: 16, textAlign: 'left' }}>
+      <button type="button" onClick={() => setOpen((v) => !v)} style={{ display: 'flex', width: '100%', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text }}>Guest brief — a few extras</span>
+          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2 }}>Gifts: {giftLabel}</span>
+        </span>
+        <span aria-hidden style={{ color: C.muted, fontSize: 18, display: 'inline-block', transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform 140ms ease' }}>⌄</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase', marginTop: 12 }}>Gifts — “do I bring something?”</div>
+          {GIFTS.map(([mode, label]) => <Row key={mode} on={gw.mode === mode} label={label} onClick={() => setGift(mode)} />)}
+          {gw.mode && gw.mode !== 'no_gifts' && (
+            <input value={gw.detail || ''} onChange={(e) => onPatchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } })} placeholder={DETAIL[gw.mode] || ''}
+              style={{ width: '100%', boxSizing: 'border-box', marginTop: 10, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', color: C.text, fontSize: T.body, fontFamily: 'inherit', outline: 'none' }} />
+          )}
+          <Head>Kids</Head>
+          <Row on={event.kidsPolicy === 'kids_welcome'} label="Kids are welcome" onClick={() => onPatchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? 'unset' : 'kids_welcome' })} />
+          <Row on={event.kidsPolicy === 'adults_only'} label="Adults-only" onClick={() => onPatchEvent({ kidsPolicy: event.kidsPolicy === 'adults_only' ? 'unset' : 'adults_only' })} />
+          <Head>Plus-ones</Head>
+          <Row on={(event.plusOnePolicy || 'named_only') === 'named_only'} label="Named guests only" onClick={() => onPatchEvent({ plusOnePolicy: 'named_only' })} />
+          <Row on={event.plusOnePolicy === 'plus_one_ok'} label="Plus-ones welcome" onClick={() => onPatchEvent({ plusOnePolicy: 'plus_one_ok' })} />
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: 14, lineHeight: 1.5 }}>These fill out the guest brief you share from your home screen. Leave anything unset and the brief simply won’t mention it.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = () => {}, setGuestMode = () => {}, setKidsCount = () => {}, onSetInviteStyle = () => {}, onPatchEvent = () => {}, focusCount = false }) {
   // Guest-list-optional events (headcount-only, brand-new) carry no `guests` array;
   // every reader below assumes an array, so normalize once (default param catches
   // undefined; this also catches a stored null). Fixes "Cannot read 'length' of
@@ -30499,6 +30549,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
               ✓ All set for {lockedCount} — food, shopping, and seating all use this. Change it anytime above.
             </div>
           )}
+          <GuestBriefDetails event={event} onPatchEvent={onPatchEvent} />
           <button type="button" onClick={() => { setShowList(true); setGuestMode('list'); }}
             style={{ marginTop: 20, background: 'transparent', border: 'none', color: C.muted, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit' }}>
             {hasList ? 'Open the full guest list →' : "See who's coming with RSVPs instead →"}
@@ -30946,6 +30997,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           </div>
         );
       })()}
+
+      {guestsIsHost && <GuestBriefDetails event={event} onPatchEvent={onPatchEvent} />}
 
       <div style={s.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -40854,7 +40907,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -41597,7 +41650,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
