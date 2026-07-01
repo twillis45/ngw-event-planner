@@ -62,6 +62,19 @@ export function resolveEffectiveItem(item, event, ctx) {
     id: it.id,
     name: it.item || it.short || '',
     category: categoryOf(it),
+    // FOOD-2C — faithful pass-throughs so the shopping list can fully own the seam.
+    // These are ADDITIVE and do NOT touch `name`/`category` above (FOOD-2A pins those).
+    //   displayName — the SHORT-first label the shopping list renders (`short || item`),
+    //                 distinct from `name` (item-first). Same value the legacy shop mapping used.
+    //   rawCategory — the untouched raw `cat` (stays `undefined` on host-added lines that
+    //                 carry none). The aisle sort reads THIS, never the derived `category`,
+    //                 so adding category DEFAULTS to `category` later can't move the sort.
+    //   forgotten   — the ⭐ "commonly forgotten" flag + its sort key.
+    //   basis       — the per-guest "because" string ("½ lb/guest"); '' / absent when none.
+    displayName: it.short || it.item || '',
+    rawCategory: it.cat,
+    forgotten: it.forgotten,
+    basis: it.basis,
     qty: it.qty != null ? it.qty : null,
     unit: it.unit || '',
     // The line is in the rendered list, so it is visible by construction (the engine already
