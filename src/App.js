@@ -9379,11 +9379,11 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         defaultCollapsed
         autoCollapseWhenDone={allDone}
         accent={steel}
-        title="The supplies"
-        subtitle={allDone ? 'All set ✓ — tap to review' : `${items.length} item${items.length === 1 ? '' : 's'} · change counts, mark what you have, add your own`}
+        title="To arrange — supplies & rentals"
+        subtitle={allDone ? 'All lined up ✓ — tap to review' : `${items.length} item${items.length === 1 ? '' : 's'} · reserve, borrow, or line up what you need`}
         right={<span style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted, whiteSpace: 'nowrap' }}>{allDone ? 'All set ✓' : `${done}/${live.length}`}</span>}
       >
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 6, lineHeight: 1.5 }}>Change a count, mark what you already have, or add your own. Tap the box once it’s handled.</div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 6, lineHeight: 1.5 }}>Reserve rentals, mark what you’ve lined up or already own, or add your own. Tap the box once it’s handled.</div>
 
         {groups.map((g) => (
           <div key={g.group} style={{ marginTop: 14 }}>
@@ -10063,7 +10063,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         subtitle={fpHasCount ? `${plan.itemCount} items · ${money(plan.foodLow, plan.foodHigh)}` : `${plan.itemCount} items · add a count to price`}>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginTop: -2, marginBottom: 6 }}>{fpHasCount ? money(plan.foodLow, plan.foodHigh) : 'Add a count to price'}</div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
-          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'}, scaled to {plan.guests} guests
+          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} to buy, scaled to {plan.guests} guests
           {plan.boughtCount > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{plan.boughtCount} bought{plan.lockedTotal > 0 ? ` ($${plan.lockedTotal.toLocaleString()})` : ''}</span></> : null}
         </div>
         {/* Flattened to ONE level — the priced grouped list renders directly below (dropped the
@@ -10385,23 +10385,40 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {shopSources.length > 0 && (
         <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed title={`Where to shop${shopCity ? ` · ${shopCity}` : ''}`} subtitle="Tap a place — live local search">
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 6 }}>Organized by trip — each place, and what you’d grab there. Live map searches, never endorsements.</div>
-          {/* NEAR YOU — each local store is a ROW (= a shopping trip): the place + WHAT you'd
-              get there (item-first, from each item's `where`) + a live maps search. Row grammar. */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {shopSources.map((src) => {
-              const itemsHere = _spreadActive.filter((i) => (i.where || []).includes(src)).map((i) => i.short || i.item);
-              return (
-                <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: `1px solid ${C.border}`, textDecoration: 'none' }}>
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: T.body, fontWeight: FW.bold, color: C.text }}><Icon name="pin" size={12} color={steel} /> {src}</span>
-                    {itemsHere.length > 0 && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, paddingLeft: 18, lineHeight: 1.4 }}>{itemsHere.slice(0, 4).join(', ')}{itemsHere.length > 4 ? ` +${itemsHere.length - 4} more` : ''}</span>}
-                  </span>
-                  <span style={{ flexShrink: 0, color: steel, fontSize: T.body }}>↗</span>
-                </a>
-              );
-            })}
-          </div>
+          {/* NEAR YOU — the FEWEST trips that get everything (board call): assign each item to
+              its PRIMARY source (first `where`), merge near-dup labels (crab house / local crab
+              house), sort biggest-run-first, cap at 4. Each item appears ONCE — no store repeated
+              across rows, no "8 stores for 2 trips" noise. Row grammar. */}
+          {(() => {
+            const norm = (s) => String(s).toLowerCase().replace(/^local\s+/, '').replace(/\s+/g, ' ').trim();
+            const tripsMap = {};
+            _spreadActive.forEach((i) => {
+              const store = (i.where || [])[0]; // primary source — each item counted once
+              if (!store) return;
+              const k = norm(store);
+              if (!tripsMap[k]) tripsMap[k] = { label: store, items: [] };
+              tripsMap[k].items.push(i.short || i.item);
+            });
+            const trips = Object.values(tripsMap).sort((a, b) => b.items.length - a.items.length).slice(0, 4);
+            if (!trips.length) return null;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {trips.map((t, idx) => (
+                  <a key={t.label} href={mapsUrl(t.label)} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: `1px solid ${C.border}`, textDecoration: 'none' }}>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: T.body, fontWeight: FW.bold, color: C.text }}>
+                        <Icon name="pin" size={12} color={steel} /> {t.label}
+                        {idx === 0 && trips.length > 1 && <span style={{ fontSize: T.micro, fontWeight: FW.semibold, color: steel, letterSpacing: '0.04em', textTransform: 'uppercase' }}>· main run</span>}
+                      </span>
+                      <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, paddingLeft: 18, lineHeight: 1.4 }}>{t.items.slice(0, 5).join(', ')}{t.items.length > 5 ? ` +${t.items.length - 5} more` : ''}</span>
+                    </span>
+                    <span style={{ flexShrink: 0, color: steel, fontSize: T.body }}>↗</span>
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
           {/* #9 — the best ONLINE options for meat + groceries (real, reputable
               national retailers; delivered, not endorsements). Shown only for the
               sourcing types this spread actually calls for. */}
