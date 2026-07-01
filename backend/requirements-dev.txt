@@ -1,0 +1,3 @@
+# Backend test dependencies (Stage 1C). Runtime deps are in requirements.txt.
+# The route tests stub asyncpg, so only pytest is needed to run tests/.
+pytest>=7.0

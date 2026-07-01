@@ -10,6 +10,7 @@ docs/ecosystem/ADMIN_SUPPORT_V1_BUILD_PLAN.md.
 """
 import json as _json
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
@@ -19,8 +20,13 @@ from pydantic import BaseModel, Field
 from ..auth import require_admin
 from ..config import POSTHOG_QUERY_API_KEY, POSTHOG_PROJECT_ID, POSTHOG_QUERY_HOST
 from ..db import get_pool
+from ..intel_audit import evaluation_audit
 
 log = logging.getLogger("ngw.admin")
+
+# INTEL-QA-1 Stage 1C — how many recent events to scan for intelEvaluations (bounded so the fleet
+# aggregation never scans an unbounded table). Records in the RESPONSE are separately capped.
+INTEL_EVENT_SCAN_CAP = 5000
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -96,6 +102,81 @@ async def list_audit(
                 pass
         out.append(d)
     return {"rows": out}
+
+
+@router.get("/intelligence")
+async def intelligence(
+    limit: int = 200,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """INTEL-QA-1 Stage 1C — fleet intelligence CAPTURE health.
+
+    Aggregates persisted ``event.intelEvaluations[]`` across admin scope into the frontend
+    ``evaluationAudit`` shape. NON-PII (only event type + short id + the eval records, which carry
+    no guest data). CAPTURE ONLY — never scores/grades (Stage 2). Server-synced events only.
+    """
+    actor = await require_admin(authorization, x_planner_token)
+    cap = max(1, min(limit, 1000))
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "select id, data from public.events order by updated_at desc limit $1",
+            INTEL_EVENT_SCAN_CAP,
+        )
+    # Build NON-PII event dicts — ONLY the fields the aggregator needs. Guest names/emails/notes/
+    # addresses/vendors and the rest of the payload are dropped here and never returned.
+    events = []
+    for r in rows:
+        data = r["data"]
+        if isinstance(data, str):
+            try:
+                data = _json.loads(data)
+            except Exception:
+                data = {}
+        if not isinstance(data, dict):
+            data = {}
+        events.append({
+            "id": r["id"],
+            "type": data.get("type"),
+            "date": data.get("date"),
+            "guestCount": data.get("guestCount"),
+            "guestEstimate": data.get("guestEstimate"),
+            "intelEvaluations": data.get("intelEvaluations"),
+        })
+
+    intel = evaluation_audit(events)
+    all_records = intel["records"]
+    truncated = len(all_records) > cap
+    intel["records"] = all_records[:cap]
+    t = intel["totals"]
+
+    await audit(actor, "intelligence")
+    return {
+        "audit": intel,
+        "summary": {
+            "totalEventsScanned": intel["scannedEvents"],
+            "eventsWithIntelEvaluations": intel["eventsWithEvaluations"],
+            "totalRecommendationRecords": t["records"],
+            "recommendationsPresented": t["shown"],
+            "acceptedRecommendations": t["accepted"],
+            "revertedRecommendations": t["reverted"],
+            "overriddenRecommendations": t["overridden"],
+            "actualsAttached": t["actualsAttached"],
+            "evaluationReadyRecords": t["evaluationReady"],
+            "malformedRecords": t["malformed"],
+            "duplicateWarnings": t["duplicateWarnings"],
+        },
+        "provenance": {
+            "source": "server",
+            "scope": "admin",
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "recordCap": cap,
+            "recordsReturned": len(intel["records"]),
+            "truncated": truncated,
+            "eventsScanCap": INTEL_EVENT_SCAN_CAP,
+        },
+    }
 
 
 # ─── S1: Triage ───────────────────────────────────────────────────────────────
