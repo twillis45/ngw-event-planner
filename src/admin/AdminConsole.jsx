@@ -13,7 +13,21 @@ import {
 } from '../lib/analyticsReader';
 import { evaluationAudit, conversionAudit } from '../lib/intelEval';
 import { hostShellOn, planV2On } from '../lib/presentationNav';
+import { getEventSyncStatus, makeEventSyncRow, SYNC_STATUS_LABEL } from '../lib/syncStatus';
+import { getLastSyncTime } from '../lib/api';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { type } from '../design/tokens';
+
+// hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
+function hasSupabaseSession() {
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && /^sb-.*-auth-token$/.test(k) && window.localStorage.getItem(k)) return true;
+    }
+  } catch { /* localStorage blocked */ }
+  return false;
+}
 
 // Dark palette aligned with AuthGate's login screen so the console feels native.
 const D = {
@@ -1234,6 +1248,7 @@ function IntelligencePanel({ book }) {
   );
   if (!audit) return (<div><SourceBadge /><Banner tone="bad">Could not read evaluation data (safe fallback — nothing scored).</Banner></div>);
   const T = audit.totals || {};
+  const pendingActualsCount = (audit.integrity || []).filter(i => i.code === 'missing_actual').length;
   const ctrl = { background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '7px 10px', fontFamily: D.ff, outline: 'none' };
 
   if (!T.records) {
@@ -1257,6 +1272,16 @@ function IntelligencePanel({ book }) {
       <SourceBadge />
       {!useServer && <BookBanner />}
       <Banner tone="muted">Capture + integrity only. Scoring not started · Learning loop not active yet · Better-than-baseline pending (Stage 2).</Banner>
+      {useServer && (
+        <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 7, background: D.surface2, border: `1px solid ${D.border}` }}>
+          <strong style={{ color: D.text }}>Server Fleet scope:</strong> Server Fleet only includes server-synced events. Local-only and sample events are not included in fleet counts or recommendation records.
+        </div>
+      )}
+      {!useServer && (
+        <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 7, background: D.surface2, border: `1px solid ${D.border}` }}>
+          <strong style={{ color: D.text }}>Browser book scope:</strong> This view shows only this browser's local events. Local-only and sample events are included here; they are excluded from Server Fleet counts.
+        </div>
+      )}
 
       <div style={IE.eyebrow}>Overview</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
@@ -1271,7 +1296,14 @@ function IntelligencePanel({ book }) {
         <IntelKpi label="Evaluation-ready" value={T.evaluationReady} />
         <IntelKpi label="Malformed" value={T.malformed} tone={T.malformed ? D.bad : undefined} />
         <IntelKpi label="Duplicate warnings" value={T.duplicateWarnings} tone={T.duplicateWarnings ? D.bad : undefined} />
+        <IntelKpi label="Pending actuals" value={pendingActualsCount} tone={pendingActualsCount > 0 ? D.warn : undefined} />
       </div>
+
+      {pendingActualsCount > 0 && (
+        <Banner tone="warn">
+          {pendingActualsCount} accepted recommendation{pendingActualsCount !== 1 ? 's' : ''} on past event{pendingActualsCount !== 1 ? 's' : ''} {pendingActualsCount === 1 ? 'is' : 'are'} missing actual outcomes — evaluation readiness is blocked until hosts enter their final guest count.
+        </Banner>
+      )}
 
       <div style={IE.eyebrow}>Recommendation lifecycle funnel</div>
       {audit.funnel.map((f) => (
@@ -1358,6 +1390,44 @@ function IntelligencePanel({ book }) {
           ))}
         </>
       )}
+
+      {/* INTEL-QA-1 Sync Status Visibility — dev/debug sync list (never shown in production) */}
+      {process.env.NODE_ENV !== 'production' && Array.isArray(book) && book.length > 0 && (() => {
+        const _isCloud = isSupabaseConfigured() && hasSupabaseSession();
+        const _hasSynced = !!getLastSyncTime();
+        const _lastSync = getLastSyncTime();
+        const syncRows = book.map(e => makeEventSyncRow(e, { isSample: false, isCloudSession: _isCloud, hasSynced: _hasSynced }, _lastSync));
+        const thDev = { textAlign: 'left', padding: '5px 8px', fontSize: type.size.caption, color: D.muted, borderBottom: `1px solid ${D.border}` };
+        const tdDev = { padding: '5px 8px', fontSize: type.size.caption, color: D.text, borderBottom: `1px solid ${D.border}`, fontFamily: D.mono };
+        return (
+          <div style={{ marginTop: 18 }}>
+            <div style={IE.eyebrow}>Dev — Event sync status list</div>
+            <div style={{ fontSize: type.size.caption, color: D.faint, marginBottom: 8, lineHeight: 1.5 }}>
+              Dev/QA only · No PII · Derived from session state (isCloudSession={String(_isCloud)}, hasSynced={String(_hasSynced)}, lastSync={_lastSync || 'none'})
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead><tr>
+                  {['ID', 'Name', 'Sync status', 'Has intel', 'Last sync'].map(h => <th key={h} style={thDev}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {syncRows.map(r => (
+                    <tr key={r.id}>
+                      <td style={tdDev}>{r.id}</td>
+                      <td style={{ ...tdDev, fontFamily: 'inherit' }}>{r.name || '—'}</td>
+                      <td style={{ ...tdDev, color: r.syncStatus === 'server-synced' ? D.good : r.syncStatus === 'unknown' ? D.warn : D.muted }}>
+                        {SYNC_STATUS_LABEL[r.syncStatus] || r.syncStatus}
+                      </td>
+                      <td style={{ ...tdDev, color: r.hasIntel ? D.good : D.faint }}>{r.hasIntel ? 'yes' : 'no'}</td>
+                      <td style={tdDev}>{r.updatedAt || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
 
       {drill && (
         <div style={{ marginTop: 18, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14, background: D.surface }}>

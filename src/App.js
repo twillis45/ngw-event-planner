@@ -54,6 +54,10 @@ import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntellig
 import { intelligenceObservatory } from './lib/analyticsReader';
 // INTEL-QA-1 Stage 1 — evaluation capture (measure-only; scores nothing).
 import { createEvaluation, appendLifecycle, recordDecision, attachActual, upsertEvaluation, updateEvaluation, hasEvaluation, evalId, DECISION_COST, evaluationStats } from './lib/intelEval';
+import { needsActual, pendingCloseouts } from './lib/closeoutIntel';
+import { applyQaSeed, removeQaSeed, hasAnyQaObs } from './lib/qaMemorySeed';
+import { getEventSyncStatus, makeEventSyncRow, SYNC_STATUS_LABEL } from './lib/syncStatus';
+import { getLastSyncTime } from './lib/api';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -197,6 +201,15 @@ const ClientIntakeFlow        = lazy(() => import('./plan/ClientIntakeFlow'));
     window.history.replaceState({}, '', url);
   } catch { /* demo seed is best-effort */ }
 })();
+
+// INTEL-QA-1 Stage 1D-C — dev/test URL gate for QA attendance seed.
+// CRA bakes NODE_ENV at build time so this is statically false in the production
+// bundle and tree-shaken away. Even if somehow reached, qaMemorySeed.js throws in
+// production as a second safety layer.
+// Activate: navigate to the app with ?qaSeed=attendance in the URL.
+const IS_QA_SEED_PARAM = process.env.NODE_ENV !== 'production'
+  && typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('qaSeed') === 'attendance';
 
 // Lightweight fallback for lazy-loaded specialists.
 const SpecialistFallback = () => (
@@ -21564,7 +21577,12 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onPatchProfil
           numbers are what make next time's plan sharper. */}
       <div style={cardStyle}>
         <div style={eyebrowStyle}>The final numbers</div>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2, marginBottom: 8 }}>I filled in what I have — just confirm or tweak.</div>
+        {needsActual(ev) && !recap.guestCountActual && (
+          <div style={{ fontSize: T.secondary, color: C.accent, fontWeight: FW.semibold, marginTop: 4, marginBottom: 8, padding: '7px 10px', borderRadius: 8, background: `${C.accent}12`, border: `1px solid ${C.accent}28` }}>
+            Your plan sized for {plannedCount || '?'} — enter the actual count to close this out.
+          </div>
+        )}
+        {!needsActual(ev) && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2, marginBottom: 8 }}>I filled in what I have — just confirm or tweak.</div>}
         <label style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>How many actually came?</label>
         <input type="number" inputMode="numeric" min="0" defaultValue={recap.guestCountActual ?? (plannedCount || '')} placeholder="Final guest count"
           onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ guestCountActual: n }); if (n && plannedCount > 0) { harvestToMemory({ attendance: { planned: plannedCount, actual: n } }); attachActualToEval('R1', n); } }} style={recapInput} />
@@ -22392,10 +22410,35 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
     </div>
   );
 
+  // INTEL-QA-1 Stage 1D-C — apply QA attendance seed once on mount when ?qaSeed=attendance
+  // is present. Idempotent: skips if seed is already in the profile. Disabled in production.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!IS_QA_SEED_PARAM) return;
+    if (hasAnyQaObs(profile)) return;
+    onPatchProfile(p => applyQaSeed(p));
+  }, []); // intentional empty deps — one-shot activation on mount
+
+  // Banner visible whenever QA seed obs are present in dev/test. Never shown in production
+  // (NODE_ENV check is baked at build time). Copy is explicit about test context.
+  const QaBanner = (process.env.NODE_ENV !== 'production' && hasAnyQaObs(profile)) ? (
+    <div style={{ background: '#5c2d00', borderBottom: '2px solid #c46200', padding: '9px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <span style={{ fontSize: T.secondary, color: '#ffd280', fontWeight: FW.semibold, fontFamily: 'inherit' }}>
+        QA MODE · Test attendance seed active — observations are synthetic and tagged _qa:true. Not real host data.
+      </span>
+      <button type="button"
+        onClick={() => onPatchProfile(p => removeQaSeed(p))}
+        style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 7, border: '1px solid #c46200', background: 'transparent', color: '#ffd280', cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }}>
+        Remove QA seed
+      </button>
+    </div>
+  ) : null;
+
   if (!focus) {
     return (
       <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg }}>
         {Header}
+        {QaBanner}
         {/* Host width parity (board ruling 760) — same column as every host surface. */}
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginBottom: 8 }}>Let’s plan your event.</div>
@@ -22717,6 +22760,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
     <>
     <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg }}>
       {Header}
+      {QaBanner}
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '20px 16px 60px' }}>
         {/* 1 · Event Summary */}
         <div style={{ ...card, background: 'transparent', border: 'none', padding: '8px 4px 16px', position: 'relative' }}>
@@ -22772,6 +22816,22 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             {guestCount > 0 && <span>· {guestCount} guests</span>}
             {isPost && <span style={{ color: C.muted, fontWeight: FW.semibold }}>· {daysAgoLabel}</span>}
           </div>
+          {/* INTEL-QA-1 Sync Status badge — only shown when Supabase is configured (meaningful in cloud sessions).
+              Suppressed in dev-bypass/local-only mode where everything is knowably local. */}
+          {isSupabaseConfigured() && (() => {
+            const _isCloud = hasSupabaseSession();
+            const _hasSynced = !!getLastSyncTime();
+            const _status = getEventSyncStatus(ev, { isSample: isSeedEvent(ev), isCloudSession: _isCloud, hasSynced: _hasSynced });
+            const _label = SYNC_STATUS_LABEL[_status];
+            const _isOk  = _status === 'server-synced';
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', marginTop: 7, padding: '3px 8px', borderRadius: 6,
+                background: _isOk ? `${C.success || '#4e6877'}14` : `${C.muted}12`,
+                border: `1px solid ${_isOk ? (C.success || '#4e6877') + '30' : C.border}` }}>
+                <span style={{ fontSize: T.caption, color: _isOk ? (C.success || '#9fc0d6') : C.muted, fontWeight: FW.semibold }}>{_label}</span>
+              </div>
+            );
+          })()}
           {onOpenDirect && (
             <button id="hp-open-event-btn" type="button" onClick={() => onOpenDirect(ev.id)}
               style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6, background: C.accent, border: 'none', padding: '8px 16px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: '#fff' }}>
@@ -22797,6 +22857,30 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
 
         {/* B2 · Post-event — recap replaces the whole planning home once the date passed. */}
         {isPost && <PostEventRecap ev={ev} profile={profile} daysAgoLabel={daysAgoLabel} onPatchEvent={onPatchEvent} onPatchProfile={onPatchProfile} onSelectEvent={onSelectEvent} onDraft={setDraftSheet} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
+
+        {/* INTEL-QA-1 Stage 1D-B — other past events (not the focus event) that have
+            an accepted attendance recommendation but are still missing a final guest count.
+            PostEventRecap only renders for the focus event, so non-focus past events would
+            never be nudged without this secondary prompt. */}
+        {(() => {
+          const othersPending = pendingCloseouts(myEvents.filter(e => e.id !== ev.id));
+          if (!othersPending.length) return null;
+          return (
+            <div style={card}>
+              <div style={eyebrow}>One more thing — past events need a final count</div>
+              <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, marginBottom: 10, lineHeight: 1.5 }}>
+                {othersPending.length === 1 ? 'One past event is' : `${othersPending.length} past events are`} still missing a final guest count.
+              </div>
+              {othersPending.map(e => (
+                <button key={e.id} type="button" onClick={() => onSelectEvent(e.id)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '10px 0', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>{e.name || `Your ${e.type || 'event'}`}</span>
+                  <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>Enter count →</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* B3 · Day-of — the run of show IS the hero. The next timed cue, then a tap
             into the full day. The planning to-do grid is suppressed below. */}
