@@ -48,6 +48,9 @@ import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpC
 // (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
 // mapping; see src/lib/__tests__/shoppingEffectiveItemsParity.test.js.
 import { foodShopItems } from './lib/foodShopItems';
+// INTEL-1 — Host Intelligence (Level-4 memory). P2 uses applyReconciliation/isReconciled to write
+// reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
+import { applyReconciliation } from './lib/hostIntel';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -21153,10 +21156,111 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle, isMobile = fals
 // second orientation read directly under EventBriefing on the host home. Host audit #7
 // flagged the double essay; EventBriefing carries the personalized version alone now.)
 
+// INTEL-1 P2 — Reality Reconciliation. A SKIPPABLE "how'd it go?" card in the post-event recap.
+// Captures only the realities the plan can't know (actual attendance · leftovers on the top items ·
+// spend vs plan · ice/drinks · one lesson), reads the ESTIMATE from the existing engines, and writes
+// reconciled observations to profile.hostIntelligence via the pure P1 helpers. Idempotent by ev.id.
+// NO reads-forward, no learned adjustments shown — this is capture only (do not let P2 become
+// personalization). Spec: docs/architecture/INTEL_1_HOST_INTELLIGENCE_PROFILE.md §3.
+function HowdItGoCard({ ev, profile, onPatchProfile = () => {}, C, cardStyle, eyebrowStyle }) {
+  const T = useType();
+  const [dismissed, setDismissed] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [food, setFood] = useState({});
+  const [ice, setIce] = useState('');
+  const [lesson, setLesson] = useState('');
+
+  // Attendance + spend are NOT asked here — they're captured once, in "the final numbers" card
+  // below, and harvested into memory there (single-source, no double-ask). This card owns the
+  // things nothing else captures: per-item leftovers, ice/drinks, and one lesson.
+  const fp = useMemo(() => { try { return playbookFoodPlan(ev) || {}; } catch { return {}; } }, [ev]);
+  const topFood = (Array.isArray(fp.list) ? fp.list : [])
+    .filter((i) => i && i.group !== 'Supplies' && i.group !== 'Drinks' && Number(i.qty) > 0)
+    .slice(0, 3);
+
+  const CONSUMED = { none: 1, some: 0.85, lots: 0.65 };
+  const ICE = { short: 1.4, right: 1, much: 0.7 };
+
+  const anyAnswer = Object.keys(food).some((k) => food[k]) || !!ice || !!lesson.trim();
+
+  const save = () => {
+    const entry = {
+      eventId: ev.id,
+      date: (ev.date && String(ev.date).slice(0, 10)) || undefined,
+      food: topFood.filter((i) => food[i.id]).map((i) => ({ itemId: i.id, planned: Number(i.qty), consumedRatio: CONSUMED[food[i.id]] })),
+      ice: ice ? { ratio: ICE[ice] } : null,
+      lesson: lesson.trim() || null,
+    };
+    // Build from the LATEST profile inside the updater (avoids staleness); pure + idempotent.
+    onPatchProfile((p) => ({ ...p, hostIntelligence: applyReconciliation(p && p.hostIntelligence, entry) }));
+    setSaved(true);
+    try { track(EVENTS.OUTCOME_CAPTURED, { kind: 'reconciliation' }); } catch {}
+  };
+
+  if (dismissed) return null;
+
+  const steel = C.accentTopGrad || C.accent;
+  const Seg3 = ({ value, opts, onPick }) => (
+    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+      {opts.map(([v, label]) => {
+        const on = value === v;
+        return (
+          <button key={v} type="button" onClick={() => onPick(v)}
+            style={{ flex: 1, padding: '9px 6px', borderRadius: 9, border: `1px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}1f` : 'transparent', color: on ? C.text : C.muted, fontWeight: on ? FW.bold : FW.semibold, fontSize: T.caption, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+        );
+      })}
+    </div>
+  );
+  const label = { fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, display: 'block', marginTop: 16 };
+
+  // Collapse to a quiet confirmation ONLY after THIS card's own save (local `saved`). We do NOT
+  // key on the global reconciled marker — the attendance/cost harvest below flips that, and this
+  // card must stay open so the host can still add leftovers/ice/lesson after entering the numbers.
+  if (saved) {
+    return (
+      <div style={{ ...cardStyle, marginTop: 16 }}>
+        <div style={{ fontSize: T.secondary, color: C.muted, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: C.success || steel }}>✓</span> Saved — this makes next time's plan sharper.
+          <button type="button" onClick={() => setSaved(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: steel, fontWeight: FW.semibold, fontSize: T.caption, cursor: 'pointer', fontFamily: 'inherit' }}>Update</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...cardStyle, marginTop: 16 }}>
+      <div style={eyebrowStyle}>How'd it go?</div>
+      <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>A few quick things — so next time's plan is sharper</div>
+      <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3 }}>All optional. Skip anything.</div>
+
+      {topFood.map((i) => (
+        <div key={i.id}>
+          <label style={label}>{i.short || i.item} — leftovers?</label>
+          <Seg3 value={food[i.id]} opts={[['none', 'Ran out'], ['some', 'Some left'], ['lots', 'Lots left']]} onPick={(v) => setFood((f) => ({ ...f, [i.id]: f[i.id] === v ? undefined : v }))} />
+        </div>
+      ))}
+
+      <label style={label}>Ice &amp; drinks?</label>
+      <Seg3 value={ice} opts={[['short', 'Ran short'], ['right', 'Just right'], ['much', 'Too much']]} onPick={(v) => setIce((s) => (s === v ? '' : v))} />
+
+      <label style={label}>One thing to remember?</label>
+      <input type="text" value={lesson} onChange={(e) => setLesson(e.target.value)} placeholder="e.g. order the crabs a day earlier"
+        style={{ width: '100%', boxSizing: 'border-box', marginTop: 8, padding: '10px 12px', fontSize: T.secondary, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', outline: 'none' }} />
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center' }}>
+        <button type="button" onClick={save} disabled={!anyAnswer}
+          style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, padding: '10px 18px', borderRadius: 10, border: 'none', cursor: anyAnswer ? 'pointer' : 'default', background: anyAnswer ? C.accent : C.border, color: '#fff', opacity: anyAnswer ? 1 : 0.6 }}>Save what we learned</button>
+        <button type="button" onClick={() => setDismissed(true)}
+          style={{ background: 'none', border: 'none', color: C.muted, fontWeight: FW.semibold, fontSize: T.secondary, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
+      </div>
+    </div>
+  );
+}
+
 // B2 — Post-event recap. Once the date has passed, a host should NOT see "book a caterer."
 // The home flips to closing the event out: did the one thing happen, how did it feel, and
 // the handful of wrap-up tasks (thank-yous, balances, returns, photos). No planning nags.
-function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent, onDraft, C, cardStyle, eyebrowStyle }) {
+function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onPatchProfile = () => {}, onSelectEvent, onDraft, C, cardStyle, eyebrowStyle }) {
   const mh = (ev.must_have_moment || '').trim();
   const mhPick = mustHaveOutcome(ev);
   const feelPick = feelingOutcome(ev);
@@ -21175,6 +21279,10 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
   const confirmedVendors = (ev.vendors || []).filter(v => v && (v.status === 'Confirmed' || v.status === 'Booked') && (v.name || '').trim());
   const recap = (ev.recap && typeof ev.recap === 'object') ? ev.recap : {};
   const patchRecap = (patch) => onPatchEvent(ev.id, { recap: { ...recap, ...patch } });
+  // INTEL-1 P2 — harvest the numbers the host ALREADY confirms in "the final numbers" into the
+  // Host Intelligence Profile as observations (single-source: the "How'd it go?" card never
+  // re-asks attendance/cost). Idempotent by ev.id via applyReconciliation.
+  const harvestToMemory = (entry) => onPatchProfile((p) => ({ ...p, hostIntelligence: applyReconciliation(p && p.hostIntelligence, { eventId: ev.id, date: (ev.date && String(ev.date).slice(0, 10)) || undefined, ...entry }) }));
   const recapInput = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '10px 12px', fontSize: T.secondary, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', outline: 'none' };
   const wrap = ev.wrapDone || {};
   const toggleWrap = (id) => onPatchEvent(ev.id, { wrapDone: { ...wrap, [id]: !wrap[id] } });
@@ -21225,6 +21333,9 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
         <Seg value={feelPick} signals={FEELING_SIGNALS} labels={FEELING_LABEL} onPick={(s) => setOutcome('feeling', s)} />
       </div>
 
+      {/* INTEL-1 P2 — skippable Reality Reconciliation capture; writes reconciled observations to
+          profile.hostIntelligence. No reads-forward / learned adjustments shown (capture only). */}
+      <HowdItGoCard ev={ev} profile={profile} onPatchProfile={onPatchProfile} C={C} cardStyle={cardStyle} eyebrowStyle={eyebrowStyle} />
       {/* Wrap-up tasks — the real after-the-party to-dos, collapsible by completion. */}
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
@@ -21280,10 +21391,10 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onSelectEvent
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2, marginBottom: 8 }}>I filled in what I have — just confirm or tweak.</div>
         <label style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>How many actually came?</label>
         <input type="number" inputMode="numeric" min="0" defaultValue={recap.guestCountActual ?? (plannedCount || '')} placeholder="Final guest count"
-          onBlur={(e) => patchRecap({ guestCountActual: Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null })} style={recapInput} />
+          onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ guestCountActual: n }); if (n && plannedCount > 0) harvestToMemory({ attendance: { planned: plannedCount, actual: n } }); }} style={recapInput} />
         <label style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, marginTop: 12 }}>What did it actually cost?</label>
         <input type="number" inputMode="numeric" min="0" defaultValue={recap.totalActual ?? (totalActual || '')} placeholder="Total actual spend"
-          onBlur={(e) => patchRecap({ totalActual: Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null })} style={recapInput} />
+          onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ totalActual: n }); const est = Number(ev.totalBudget) || 0; if (n && est > 0) harvestToMemory({ budget: { estimate: est, ratio: n / est } }); }} style={recapInput} />
         <div style={{ fontSize: T.caption, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>Planned for {plannedCount || 0} · budgeted ${(Number(ev.totalBudget) || 0).toLocaleString()}</div>
       </div>
 
@@ -22046,7 +22157,7 @@ function AssembleReveal({ ev, profile, onDone }) {
   );
 }
 
-function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent }) {
+function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent, onPatchProfile = () => {} }) {
   const C = useT();
   const T = useType();
   const isMobile = useContext(BpCtx) === 'mobile';
@@ -22509,7 +22620,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
         </div>
 
         {/* B2 · Post-event — recap replaces the whole planning home once the date passed. */}
-        {isPost && <PostEventRecap ev={ev} profile={profile} daysAgoLabel={daysAgoLabel} onPatchEvent={onPatchEvent} onSelectEvent={onSelectEvent} onDraft={setDraftSheet} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
+        {isPost && <PostEventRecap ev={ev} profile={profile} daysAgoLabel={daysAgoLabel} onPatchEvent={onPatchEvent} onPatchProfile={onPatchProfile} onSelectEvent={onSelectEvent} onDraft={setDraftSheet} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
 
         {/* B3 · Day-of — the run of show IS the hero. The next timed cue, then a tap
             into the full day. The planning to-do grid is suppressed below. */}
@@ -44097,6 +44208,7 @@ export default function App() {
           onNew={() => setShowNew(true)}
           onProfile={() => setShowProfile(true)}
           onPatchEvent={(id, patch) => setEvents(evs => evs.map(e => e.id === id ? { ...e, ...patch } : e))}
+          onPatchProfile={(fn) => setProfile(fn)}
         />
       ) : (
       <MainDashboard

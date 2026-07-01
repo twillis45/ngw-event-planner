@@ -5,6 +5,7 @@
 import {
   hostIntel, emptyHostIntelligence, appendObservation, appendFoodObservation,
   markEventObserved, clearDomain, clearAllHostIntelligence, CONFIDENCE, STABILITY,
+  applyReconciliation, isReconciled,
 } from '../hostIntel';
 
 const ASOF = '2026-07-01';
@@ -142,6 +143,87 @@ describe('append helpers — pure, immutable, dedupe, cap, NO PII', () => {
     expect(hi.domains.food.items.brisket.observations).toHaveLength(1);
     hi = markEventObserved(hi);
     expect(hi.eventsObserved).toBe(1);
+  });
+});
+
+describe('P2 — applyReconciliation (Reality Reconciliation write)', () => {
+  const D = '2026-07-01';
+  const full = (eventId) => ({
+    eventId, date: D,
+    attendance: { planned: 42, actual: 36 },
+    food: [{ itemId: 'brisket', planned: 18, consumedRatio: 0.85 }, { itemId: 'oldbay', planned: 2, consumedRatio: 0.65 }],
+    budget: { estimate: 850, ratio: 1.2 },
+    ice: { ratio: 1.4 },
+    lesson: 'Order more ice next time',
+  });
+
+  test('attendance write — stores estimate/actual on the attendance domain', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), { eventId: 'e1', date: D, attendance: { planned: 42, actual: 36 } });
+    const o = hi.domains.attendance.observations[0];
+    expect(o).toMatchObject({ eventId: 'e1', estimate: 42, actual: 36 });
+    expect(hi.eventsObserved).toBe(1);
+  });
+  test('food write — one observation per item, keyed by itemId', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), full('e1'));
+    expect(hi.domains.food.items.brisket.observations[0]).toMatchObject({ estimate: 18, actual: 18 * 0.85 });
+    expect(hi.domains.food.items.oldbay.observations[0].actual).toBeCloseTo(2 * 0.65, 5);
+  });
+  test('spend write — budget domain records estimate × ratio', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), { eventId: 'e1', date: D, budget: { estimate: 850, ratio: 1.2 } });
+    expect(hi.domains.budget.observations[0]).toMatchObject({ estimate: 850, actual: 850 * 1.2 });
+  });
+  test('ice write — weather domain records the ratio (estimate 1)', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), { eventId: 'e1', date: D, ice: { ratio: 1.4 } });
+    expect(hi.domains.weather.observations[0]).toMatchObject({ estimate: 1, actual: 1.4 });
+  });
+  test('lesson write — host note on lessons[], no numeric observation', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), { eventId: 'e1', date: D, lesson: '  Start prep earlier  ' });
+    expect(hi.lessons).toEqual([{ eventId: 'e1', date: D, text: 'Start prep earlier' }]);
+    expect(hi.eventsObserved).toBe(1); // a lesson alone counts as a reconciliation
+  });
+
+  test('SKIP — all fields empty writes nothing (store unchanged, not reconciled)', () => {
+    const before = emptyHostIntelligence();
+    const after = applyReconciliation(before, { eventId: 'e1', date: D, attendance: null, food: null, budget: null, ice: null, lesson: '' });
+    expect(after).toBe(before); // unchanged reference — nothing written
+    expect(isReconciled({ hostIntelligence: after }, 'e1')).toBe(false);
+    // partial skip: only attendance answered ⇒ only attendance written, no fake food/budget
+    const partial = applyReconciliation(emptyHostIntelligence(), { eventId: 'e1', date: D, attendance: { planned: 40, actual: 38 } });
+    expect(partial.domains.food).toBeUndefined();
+    expect(partial.domains.budget).toBeUndefined();
+  });
+  test('IDEMPOTENCY — re-running the same eventId edits, never duplicates', () => {
+    let hi = applyReconciliation(emptyHostIntelligence(), full('e1'));
+    hi = applyReconciliation(hi, { ...full('e1'), attendance: { planned: 42, actual: 40 } }); // corrected
+    expect(hi.domains.attendance.observations).toHaveLength(1);   // not 2
+    expect(hi.domains.attendance.observations[0].actual).toBe(40); // corrected value
+    expect(hi.domains.food.items.brisket.observations).toHaveLength(1);
+    expect(hi.lessons).toHaveLength(1);
+    expect(hi.eventsObserved).toBe(1);                            // still one reconciled event
+    // a DIFFERENT event increments
+    hi = applyReconciliation(hi, full('e2'));
+    expect(hi.eventsObserved).toBe(2);
+  });
+  test('MALFORMED profile input — builds from empty, never throws; no eventId ⇒ no-op', () => {
+    for (const bad of [null, undefined, 'garbage', { domains: 'nope' }, 42]) {
+      expect(() => applyReconciliation(bad, full('e1'))).not.toThrow();
+    }
+    expect(applyReconciliation('garbage', full('e1')).domains.attendance.observations).toHaveLength(1);
+    const noId = applyReconciliation(emptyHostIntelligence(), { attendance: { planned: 40, actual: 38 } });
+    expect(noId.eventsObserved).toBe(0); // no event key ⇒ nothing written
+  });
+  test('NO guest PII — the whole reconciled store serializes without any PII', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), { ...full('e1'), lesson: 'went great' });
+    const s = JSON.stringify(hi);
+    // observations carry only eventId/date/estimate/actual; food keyed by item id; no guest fields
+    for (const o of hi.domains.attendance.observations) expect(Object.keys(o).sort()).toEqual(['actual', 'date', 'estimate', 'eventId']);
+    expect(s).not.toMatch(/name|address|email|phone|guest/i);
+  });
+  test('isReconciled reflects the reconciled marker', () => {
+    const hi = applyReconciliation(emptyHostIntelligence(), full('e1'));
+    expect(isReconciled({ hostIntelligence: hi }, 'e1')).toBe(true);
+    expect(isReconciled({ hostIntelligence: hi }, 'e2')).toBe(false);
+    expect(isReconciled(null, 'e1')).toBe(false);
   });
 });
 

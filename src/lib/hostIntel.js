@@ -168,6 +168,63 @@ export function markEventObserved(hostIntelligence) {
   return { ...hi, version: 1, eventsObserved: ((num(hi.eventsObserved)) || 0) + 1 };
 }
 
+// ── P2: Reality Reconciliation write (pure, idempotent by eventId) ────────────
+// Build the reconciled observations from a single "how'd it go?" entry. SKIPPED fields write
+// NOTHING (no fake observations). Re-applying the same eventId edits in place (dedupe) and does
+// not double-count eventsObserved. Malformed input ⇒ builds from an empty store, never throws.
+//
+// entry = {
+//   eventId, date,
+//   attendance: { planned, actual } | null,
+//   food:       [ { itemId, planned, consumedRatio } ] | null,   // consumedRatio: none=1, some=.85, lots=.65
+//   budget:     { estimate, ratio } | null,                       // ratio: under=.85, right=1, over=1.2
+//   ice:        { ratio } | null,                                 // short=1.4, right=1, too-much=.7 (estimate=1)
+//   lesson:     string | null,                                    // host free-text note (no PII stored structurally)
+// }
+export function applyReconciliation(hostIntelligence, entry) {
+  let hi = isObj(hostIntelligence) ? hostIntelligence : emptyHostIntelligence();
+  const e = isObj(entry) ? entry : {};
+  const eventId = e.eventId;
+  if (!eventId) return hi; // never write without a real event key
+  const date = e.date;
+  let wrote = false;
+
+  if (isObj(e.attendance) && num(e.attendance.planned) > 0 && num(e.attendance.actual) != null) {
+    hi = appendObservation(hi, 'attendance', { eventId, date, estimate: e.attendance.planned, actual: e.attendance.actual });
+    wrote = true;
+  }
+  (Array.isArray(e.food) ? e.food : []).forEach((f) => {
+    if (isObj(f) && f.itemId && num(f.planned) > 0 && num(f.consumedRatio) != null) {
+      hi = appendFoodObservation(hi, f.itemId, { eventId, date, estimate: f.planned, actual: f.planned * f.consumedRatio });
+      wrote = true;
+    }
+  });
+  if (isObj(e.budget) && num(e.budget.estimate) > 0 && num(e.budget.ratio) != null) {
+    hi = appendObservation(hi, 'budget', { eventId, date, estimate: e.budget.estimate, actual: e.budget.estimate * e.budget.ratio });
+    wrote = true;
+  }
+  if (isObj(e.ice) && num(e.ice.ratio) != null) {
+    hi = appendObservation(hi, 'weather', { eventId, date, estimate: 1, actual: e.ice.ratio });
+    wrote = true;
+  }
+  if (e.lesson && String(e.lesson).trim()) {
+    const kept = (Array.isArray(hi.lessons) ? hi.lessons : []).filter((l) => isObj(l) && l.eventId !== eventId);
+    hi = { ...hi, lessons: [...kept, { eventId, date, text: String(e.lesson).trim() }].slice(-20) };
+    wrote = true;
+  }
+
+  if (!wrote) return hi; // all fields skipped ⇒ existing store unchanged, nothing reconciled
+
+  const reconciled = { ...(isObj(hi.reconciled) ? hi.reconciled : {}), [eventId]: date || true };
+  return { ...hi, version: 1, reconciled, eventsObserved: Object.keys(reconciled).length };
+}
+
+// Has this event already been reconciled? (for the card's idempotent "saved / edit" state)
+export function isReconciled(profile, eventId) {
+  const hi = (isObj(profile) && isObj(profile.hostIntelligence)) ? profile.hostIntelligence : null;
+  return !!(hi && isObj(hi.reconciled) && eventId && hi.reconciled[eventId]);
+}
+
 // ── delete at the data level (privacy guarantee) ─────────────────────────────
 export function clearDomain(hostIntelligence, domain) {
   const hi = isObj(hostIntelligence) ? hostIntelligence : emptyHostIntelligence();
