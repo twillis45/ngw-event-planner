@@ -9604,6 +9604,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // forceSpreadOpen mounts "The spread" card body regardless of the host's collapsed
   // choice (and pins it through the re-tap window) so the target row is in the DOM.
   const [forceSpreadOpen, setForceSpreadOpen] = useState(false);
+  const [forceChoicesOpen, setForceChoicesOpen] = useState(false); // deep-link forces the "Your choices" card open so the target row mounts (Decisions → choice actionable)
   // Re-tap nonce — tapping the SAME item id again must re-scroll. The parent bumps a
   // counter alongside focusId so this effect re-runs even when focusId is unchanged.
   const focusNonce = (focusId && typeof focusId === 'object') ? focusId.nonce : null;
@@ -9615,6 +9616,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     // (nonexistent) spread row. This is what makes the Decisions rows actionable.
     const isChoice = !!(plan && Array.isArray(plan.choices) && plan.choices.some((c) => c.id === focusItemId));
     if (isChoice) {
+      setForceChoicesOpen(true); // force the "Your choices" CARD open so the target row mounts in the DOM
       setOpenChoice(focusItemId);
       let ctries = 0;
       const civ = setInterval(() => {
@@ -9623,7 +9625,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(civ); }
         else if (ctries > 14) clearInterval(civ);
       }, 120);
-      const ct2 = setTimeout(() => { onFocusConsumed(); }, 3400);
+      const ct2 = setTimeout(() => { setForceChoicesOpen(false); onFocusConsumed(); }, 3400);
       return () => { clearInterval(civ); clearTimeout(ct2); };
     }
     setForceSpreadOpen(true);
@@ -10013,7 +10015,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           return v.length > 28 ? v.slice(0, 27).replace(/\s\S*$/, '') + '…' : v;
         }).filter(Boolean).join(' · ');
         return (
-        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} defaultCollapsed title="Your choices" subtitle={choiceSummary || 'Each one reshapes the spread + budget'}>
+        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} defaultCollapsed forceOpen={forceChoicesOpen} title="Your choices" subtitle={choiceSummary || 'Each one reshapes the spread + budget'}>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
           {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
               no wall of every option for every decision). */}
