@@ -98,22 +98,24 @@ describe('FOOD-2B · golden — shopping list: plan.list vs effectiveItems-backe
   });
 });
 
-// ── Seam-gap documentation: a NAIVE full migration DRIFTS (this is WHY name/category/cost/
-// forgotten/basis stayed on plan.list). We assert the drift so the boundary is pinned and
-// the suite stays green.
-describe('FOOD-2B · seam gap — naive full swap onto effectiveItems is UNSAFE', () => {
+// ── Boundary documentation: reading the WRONG seam fields still DRIFTS. FOOD-2C added the
+// RIGHT fields (displayName / rawCategory / forgotten / basis), but the item-first `eff.name`
+// and the group-DERIVED `eff.category` remain (FOOD-2A pins them). A naive swap that grabs
+// those instead of the new short-first / raw-cat fields — and drops forgotten/basis — still
+// drifts. We assert that drift so the "read the right field" boundary stays pinned.
+describe('FOOD-2C · boundary — reading the WRONG seam fields (name/category derived) is UNSAFE', () => {
   const naiveShopItems = (plan) => plan.list
     .filter((i) => i && !i.skipped)
     .map((i) => {
       const e = resolveEffectiveItem(i, {});
       return {
-        name: e.name,                 // item-first (drifts vs short-first)
+        name: e.name,                 // item-first (drifts vs short-first eff.displayName)
         qty: e.qty, unit: e.unit,
         got: e.flags.got,
-        category: e.category,         // derived (drifts on host-added)
+        category: e.category,         // derived (drifts on host-added vs eff.rawCategory)
         where: e.source.options,
         buyAt: e.buyAt,
-        // forgotten + basis simply do not exist on the Effective Item → dropped
+        // forgotten + basis deliberately dropped here (they DO exist on the seam now)
         costLow: e.cost.low, costHigh: e.cost.high,
       };
     });
@@ -139,9 +141,24 @@ describe('FOOD-2B · seam gap — naive full swap onto effectiveItems is UNSAFE'
     expect(reasons.size).toBeGreaterThan(0);
   });
 
-  test('the Effective Item carries neither `forgotten` nor `basis` (the structural gap)', () => {
-    const e = resolveEffectiveItem({ id: 'x', item: 'Ribs', short: 'Ribs', low: 40, high: 80, forgotten: true, basis: '½ lb/guest' }, {});
-    expect(e.forgotten).toBeUndefined();
-    expect(e.basis).toBeUndefined();
+  test('FOOD-2C closed the structural gap: the Effective Item now carries `forgotten`, `basis`, `displayName`, `rawCategory` as faithful pass-throughs', () => {
+    const e = resolveEffectiveItem({ id: 'x', item: 'Ribs', short: 'Baby-backs', cat: 'meat', low: 40, high: 80, forgotten: true, basis: '½ lb/guest' }, {});
+    // forgotten / basis are now present and faithful (the shopping list can own them).
+    expect(e.forgotten).toBe(true);
+    expect(e.basis).toBe('½ lb/guest');
+    // displayName is SHORT-first (what shopping renders); eff.name stays item-first (FOOD-2A).
+    expect(e.displayName).toBe('Baby-backs');
+    expect(e.name).toBe('Ribs');
+    // rawCategory is the untouched raw `cat`; the derived category is separate and unchanged.
+    expect(e.rawCategory).toBe('meat');
+    expect(e.category).toBe('meat');
+  });
+
+  test('rawCategory stays undefined (not derived) on a host-added line with no `cat`, so the aisle sort is untouched', () => {
+    // The derived `category` falls back to a group-derived value; `rawCategory` must NOT —
+    // it mirrors the raw `cat` (absent here) so the shopping aisle sort is byte-identical.
+    const e = resolveEffectiveItem({ id: 'a', item: "Auntie's salad", short: "Auntie's salad", group: 'Food', low: 0, high: 0, added: true }, {});
+    expect(e.rawCategory).toBeUndefined();
+    expect(e.category).toBe('food'); // derived stays defensive (FOOD-2A behavior preserved)
   });
 });

@@ -7,26 +7,27 @@
 // — so the shopping surface genuinely consumes the seam.
 //
 // WHAT MIGRATED (sourced from effectiveItems, proven byte-identical in rendered output):
-//   got   ← eff.flags.got     (both `!!event.foodGot[id]`)
-//   qty   ← eff.qty
-//   unit  ← eff.unit
-//   where ← eff.source.options
+//   got       from eff.flags.got     (both `!!event.foodGot[id]`)
+//   qty       from eff.qty
+//   unit      from eff.unit
+//   where     from eff.source.options
+//   name      from eff.displayName   (FOOD-2C: the seam now carries the SHORT-first label
+//                                     `short || item`, distinct from item-first eff.name)
+//   category  from eff.rawCategory   (FOOD-2C: the seam now carries the untouched raw `cat`;
+//                                     the aisle sort reads THIS, never the derived eff.category,
+//                                     so adding category DEFAULTS later can't move the sort)
+//   forgotten from eff.forgotten     (FOOD-2C: faithful pass-through of the ⭐ flag)
 //
-// WHAT STAYED ON `plan.list` (and WHY it CANNOT move without changing behavior — the
-// FOOD-2A seam does not yet carry these faithfully for this consumer):
-//   name      — shopping uses `short || item` (short-first); eff.name is `item || short`
-//               (item-first, frozen by FOOD-2A tests). Swapping would rename items in the
-//               host-facing list → copy drift. UNSAFE.
-//   category  — shopping uses the RAW `cat`; eff.category DERIVES a category from `group`
-//               when `cat` is absent (host-added dishes). Swapping would re-rank the aisle
-//               sort for host-added lines → order drift. UNSAFE.
+// WHAT STILL READS `plan.list` (and WHY — the seam carries the value, but the consumer needs a
+// companion field the seam does not yet own, OR the raw shape must be preserved byte-for-byte):
 //   buyAt     — the Effective Item coerces an absent `buyAt` to `null`; the legacy object left
 //               it `undefined`. Rendered output is identical, but keeping the raw value emits a
-//               BYTE-identical object (these objects also flow to `orderItems`). UNSAFE to swap.
+//               BYTE-identical object (these objects also flow to `orderItems`). Left as-is.
 //   costLow/  — shopping uses raw `low`/`high`; eff.cost collapses a HOST-LOCKED line to the
 //   costHigh    locked number. Swapping would change the modeled est-total for locked lines.
-//   forgotten — not present on the Effective Item at all (drops the ⭐ + forgotten-sort).
-//   basis     — not present on the Effective Item at all (drops the per-guest "because").
+//   basis     — eff.basis is now the faithful raw `basis`, but the shopping value is
+//               `qtyOverridden ? '' : basis`; the `qtyOverridden` gate is not on the seam,
+//               so the gating stays here until the seam carries qtyOverridden too.
 //
 // Pure, read-only, no invention. Identical output to the legacy mapping (see
 // __tests__/shoppingEffectiveItemsParity.test.js).
@@ -38,16 +39,16 @@ export function foodShopItems(plan, event) {
   return list.filter((i) => i && !i.skipped).map((i) => {
     const e = effById.get(i.id);
     return {
-      name: i.short || i.item,                              // list (short-first) — see header
+      name: e ? e.displayName : (i.short || i.item),        // effectiveItems (short-first)
       qty: e ? e.qty : i.qty,                               // effectiveItems
       unit: e ? e.unit : i.unit,                            // effectiveItems
       got: e ? e.flags.got : !!foodGot[i.id],               // effectiveItems
-      category: i.cat,                                      // list (raw cat) — see header
+      category: e ? e.rawCategory : i.cat,                  // effectiveItems (raw cat)
       where: e ? e.source.options : i.where,                // effectiveItems
       buyAt: i.buyAt,                                       // list (raw) — see header
-      forgotten: i.forgotten,                               // list — not on the seam
+      forgotten: e ? e.forgotten : i.forgotten,             // effectiveItems
       costLow: i.low, costHigh: i.high,                     // list (uncollapsed) — see header
-      basis: i.qtyOverridden ? '' : i.basis,                // list — not on the seam
+      basis: i.qtyOverridden ? '' : i.basis,                // list (qtyOverridden gate) — see header
     };
   });
 }
