@@ -9689,18 +9689,17 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     const left = shopItems.filter((i) => !i.got).length;
     const openShop = () => { const d = draftShoppingList(event, profile, { items: shopItems, anchor: shopAnchorStr }); setShopSheet({ title: 'Your shopping list', intro: 'Built from your menu, sized to your count — every item and amount. Take it to the store, send it to whoever’s shopping, or order it for pickup/delivery.', draft: d, shareTitle: d.subject, kind: 'thankyou', orderItems: shopItems.filter((i) => !i.got) }); };
     return (
-      // Frame 1583-3: the finished list is a COLLAPSIBLE deliverable — recedes to a
-      // "X items · ready to send" header until the host opens it to order/review.
-      <CollapsibleCard id={`fp-shoplist-${event.id}`} isMobile={isMobile} defaultCollapsed
-        title="Your shopping list — already written"
-        subtitle={left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab · ready to send` : 'Everything’s checked off — ready'}>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>{left > 0 ? `${left} item${left === 1 ? '' : 's'} to grab, with amounts. Take it to the store or hand it off.` : 'Everything’s checked off — you’re ready.'}</div>
+      // De-dup (board): NOT a twin card of The spread — a hand-off block rendered at the END
+      // of the spread. Same list, one surface: edit above, send from here.
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{left > 0 ? `Ready to send — ${left} item${left === 1 ? '' : 's'} to grab` : 'Everything’s checked off — ready'}</div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>{left > 0 ? 'The full list with amounts — take it to the store or hand it off.' : 'You’re ready.'}</div>
         {/* Frame 1583-3: two explicit actions — order it, or review the written list. */}
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <button type="button" onClick={openShop} style={{ flex: 1, minWidth: 160, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.heavy, color: '#eef0f4', background: 'linear-gradient(90deg, #4e6877 0%, #3f5b6a 100%)', border: 'none', borderRadius: 12, padding: '13px 16px', cursor: 'pointer' }}>Order on Instacart →</button>
-          <button type="button" onClick={openShop} style={{ flex: 1, minWidth: 160, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: C.text, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer' }}>Review the written shopping list</button>
+          <button type="button" onClick={openShop} style={{ flex: 1, minWidth: 160, fontFamily: 'inherit', fontSize: T.body, fontWeight: FW.bold, color: C.text, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer' }}>Share the written list</button>
         </div>
-      </CollapsibleCard>
+      </div>
     );
   })() : null;
 
@@ -10376,24 +10375,32 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </div>
         </div>
         )}
+        {/* De-dup (board): the send-off hand-off lives at the END of The spread — same list,
+            one card. No separate "already written" twin below. */}
+        {shoppingListCta}
       </CollapsibleCard>
-
-      {/* The finished list — placed AFTER The spread so the panel reads
-          decisions → menu → list, not deliverable-first. */}
-      {shoppingListCta}
 
       {/* Where to shop — the spread's sourcing types, as LIVE local searches. Honest:
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
         <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed title={`Where to shop${shopCity ? ` · ${shopCity}` : ''}`} subtitle="Tap a place — live local search">
-          <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 10 }}>Live map searches near you — never endorsements.</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {shopSources.map((src) => (
-              <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: T.caption, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '5px 10px 5px 9px', textDecoration: 'none' }}>
-                <Icon name="pin" size={11} color={steel} /> {src} <span style={{ color: steel }}>↗</span>
-              </a>
-            ))}
+          <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 6 }}>Organized by trip — each place, and what you’d grab there. Live map searches, never endorsements.</div>
+          {/* NEAR YOU — each local store is a ROW (= a shopping trip): the place + WHAT you'd
+              get there (item-first, from each item's `where`) + a live maps search. Row grammar. */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {shopSources.map((src) => {
+              const itemsHere = _spreadActive.filter((i) => (i.where || []).includes(src)).map((i) => i.short || i.item);
+              return (
+                <a key={src} href={mapsUrl(src)} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: `1px solid ${C.border}`, textDecoration: 'none' }}>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: T.body, fontWeight: FW.bold, color: C.text }}><Icon name="pin" size={12} color={steel} /> {src}</span>
+                    {itemsHere.length > 0 && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, paddingLeft: 18, lineHeight: 1.4 }}>{itemsHere.slice(0, 4).join(', ')}{itemsHere.length > 4 ? ` +${itemsHere.length - 4} more` : ''}</span>}
+                  </span>
+                  <span style={{ flexShrink: 0, color: steel, fontSize: T.body }}>↗</span>
+                </a>
+              );
+            })}
           </div>
           {/* #9 — the best ONLINE options for meat + groceries (real, reputable
               national retailers; delivered, not endorsements). Shown only for the
@@ -10410,26 +10417,31 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               { name: 'Amazon Fresh', url: 'https://www.amazon.com/fresh' },
               { name: 'Walmart Grocery', url: 'https://www.walmart.com/cp/grocery/5431943' },
             ];
-            const hasMeat = shopSources.some((s) => /butcher|meat/i.test(s));
+            const hasMeat = shopSources.some((s) => /butcher|meat|crab|seafood|fish/i.test(s));
             const hasGrocery = shopSources.some((s) => /grocer|grocery|store|market|costco|sam'?s/i.test(s));
-            const online = [...(hasMeat ? ONLINE_MEAT : []), ...(hasGrocery ? ONLINE_GROCERY : [])];
-            if (!online.length) return null;
+            const groups = [...(hasMeat ? [['Proteins', ONLINE_MEAT]] : []), ...(hasGrocery ? [['Groceries + sides', ONLINE_GROCERY]] : [])];
+            if (!groups.length) return null;
+            const chip = (o) => {
+              // Retailer favicon on a small white tile — legible on the dark chip. Not an endorsement.
+              const dom = (() => { try { return new URL(o.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+              return (
+                <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: T.caption, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '3px 10px 3px 5px', textDecoration: 'none' }}>
+                  {dom && <img src={`https://www.google.com/s2/favicons?domain=${dom}&sz=64`} alt="" width={14} height={14} loading="lazy" style={{ borderRadius: 3, background: '#fff', padding: 1, display: 'block', flexShrink: 0 }} />}
+                  {o.name}<span style={{ color: steel, marginLeft: 3 }}>↗</span>
+                </a>
+              );
+            };
             return (
-              <div style={{ marginTop: 11, paddingTop: 11, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.1em', color: C.muted, textTransform: 'uppercase', marginRight: 2 }}>Delivered</span>
-                {online.map((o) => {
-                  // Retailer-specific icon — the brand's own favicon, derived from its
-                  // domain (Amazon, Instacart, Walmart, ButcherBox…). A small white tile
-                  // keeps light marks legible on the dark chip. Not an endorsement.
-                  const dom = (() => { try { return new URL(o.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
-                  return (
-                  <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.caption, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '4px 11px 4px 6px', textDecoration: 'none' }}>
-                    {dom && <img src={`https://www.google.com/s2/favicons?domain=${dom}&sz=64`} alt="" width={15} height={15} loading="lazy" style={{ borderRadius: 3, background: '#fff', padding: 1, display: 'block', flexShrink: 0 }} />}
-                    {o.name} <span style={{ color: steel }}>↗</span>
-                  </a>
-                  );
-                })}
+              <div style={{ marginTop: 2 }}>
+                {/* DELIVERED — online options grouped by what they carry (item-first, like the local trips). */}
+                <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase', padding: '11px 0 4px', borderTop: `1px solid ${C.border}` }}>Delivered</div>
+                {groups.map(([label, opts]) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: T.secondary, color: C.muted, minWidth: 100, flexShrink: 0 }}>{label}</span>
+                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>{opts.map(chip)}</span>
+                  </div>
+                ))}
               </div>
             );
           })()}
