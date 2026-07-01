@@ -9145,6 +9145,14 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
 // id (localStorage) so "hide what's settled" survives reload — same intent as the
 // locked guest count / budget. The header stays a real button (a11y), the body is
 // removed (not just hidden) when collapsed so long screens actually get shorter.
+// Accordion — one open card at a time within a provider (used on the Plan tab). A card that
+// opens claims `openId`; its siblings collapse when another claims it. No provider = no accordion,
+// so CollapsibleCard behaves exactly as before everywhere else.
+const AccordionCtx = createContext(null);
+function AccordionProvider({ children }) {
+  const [openId, setOpenId] = useState(null);
+  return <AccordionCtx.Provider value={{ openId, setOpenId }}>{children}</AccordionCtx.Provider>;
+}
 function useCollapsed(key, defaultCollapsed = false) {
   const storeKey = `ngw-collapse-v2-${key}`; // v2: reset stale persistence so the Plan tab starts collapsed (M6·A)
   const [collapsed, setCollapsed] = useState(() => {
@@ -9158,6 +9166,13 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   const C = useT();
   const T = useType();
   const [collapsed, toggle, setCollapsedPersist] = useCollapsed(id, defaultCollapsed);
+  // Accordion (opt-in via AccordionProvider): opening this card collapses its siblings; when a
+  // sibling claims "open", this one collapses. Inert outside a provider.
+  const _acc = useContext(AccordionCtx);
+  useEffect(() => {
+    if (_acc && _acc.openId && _acc.openId !== id && !collapsed) setCollapsedPersist(true);
+  }, [_acc && _acc.openId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleCard = () => { const willOpen = collapsed; toggle(); if (willOpen && _acc) _acc.setOpenId(id); };
   // A deep-link (e.g. "Take me to it →") can force the body mounted regardless of the
   // host's collapsed choice, so the target row exists in the DOM for the scroll-to.
   const open = forceOpen || !collapsed;
@@ -9185,7 +9200,7 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, marginBottom: 16, ...(maxWidth ? { maxWidth, margin: '0 auto 16px' } : null), ...(style || {}) };
   return (
     <div ref={cardRef} id={id} style={card}>
-      <button type="button" onClick={toggle} aria-expanded={open}
+      <button type="button" onClick={toggleCard} aria-expanded={open}
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0, paddingRight: 4 }}>
           {eyebrow && <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: acc, textTransform: 'uppercase' }}>{eyebrow}</span>}
@@ -40813,7 +40828,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
           <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></>}
-        {tab === 'Planning' && (planV2On() ? <>
+        {tab === 'Planning' && (<AccordionProvider>{planV2On() ? <>
           {/* pi.planv2 — recomposed: ONE command lead (PlanNowHero) full-width on top. Below,
               a two-column grid at desktop: Food + supplies share ONE main column (one "food &
               supplies" home, no split), decisions sit in a sticky right rail. On mobile it's a
@@ -40835,7 +40850,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
-        </>)}
+        </>}</AccordionProvider>)}
         {tab === 'Event Day Schedule' && (
           // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
           // INSTEAD of the editable planner schedule. The planner's editable
