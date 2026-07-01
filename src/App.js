@@ -9234,6 +9234,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const [addQty, setAddQty] = useState('');
   const [addCost, setAddCost] = useState('');
   const [openLockId, setOpenLockId] = useState(null); // which item's cost-lock control is open (mirrors FoodPlan)
+  const [collapsedGroups, setCollapsedGroups] = useState({}); // per-section collapse in To-arrange (SEATING/SERVICEWARE/RENTALS)
   const [checkAfterLock, setCheckAfterLock] = useState(null); // item the host tried to check off before pricing it
   const [supplySheet, setSupplySheet] = useState(null); // "do it for me" — the supplies draft
   const cap = (() => { try { return playbookCapacity(event); } catch { return null; } })();
@@ -9387,11 +9388,22 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
 
         {groups.map((g) => (
           <div key={g.group} style={{ marginTop: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g.group}</span>
-              {g.hasCost && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(g.costLow, g.costHigh)}</span>}
-            </div>
-            {g.items.map((it) => {
+            {(() => {
+              const gc = !!collapsedGroups[g.group];
+              const gGot = g.items.filter((it) => (!!checked[it.key] || it.owned) && !it.skipped).length;
+              return (
+                <button type="button" onClick={() => setCollapsedGroups((m) => ({ ...m, [g.group]: !m[g.group] }))}
+                  style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 2, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span aria-hidden style={{ fontSize: T.caption, color: C.muted, display: 'inline-block', transform: gc ? 'rotate(-90deg)' : 'none', transition: 'transform 140ms ease' }}>▾</span>
+                    <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.12em', color: steel, textTransform: 'uppercase' }}>{g.group}</span>
+                    {gc && <span style={{ fontSize: T.caption, color: C.muted, letterSpacing: 0, textTransform: 'none' }}>{g.items.length} item{g.items.length === 1 ? '' : 's'}{gGot > 0 ? ` · ${gGot} lined up` : ''}</span>}
+                  </span>
+                  {g.hasCost && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{money(g.costLow, g.costHigh)}</span>}
+                </button>
+              );
+            })()}
+            {!collapsedGroups[g.group] && g.items.map((it) => {
               const skipped = it.skipped;
               const on = (!!checked[it.key] || it.owned) && !skipped;
               const lockOpen = openLockId === it.key;
@@ -9572,6 +9584,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // glanceable summary while the host is still planning.
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(true); // The spread is ONE level: expanding the card shows the priced list directly (no "show all" gate)
+  const [collapsedGroups, setCollapsedGroups] = useState({}); // per-section collapse in The spread (FOOD/DRINKS/SUPPLIES)
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
@@ -10103,18 +10116,26 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         })()}
         {plan.groups.map((g) => (
           <div key={g} style={{ marginBottom: 14 }}>
-            {/* 60J — group subtotal breaks the total range into Food vs Drinks. */}
+            {/* 60J — group subtotal + a per-section collapse toggle (chevron rotates). */}
             {(() => {
               const gi = plan.list.filter((i) => i.group === g && !i.skipped);
               const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
+              const gAll = plan.list.filter((i) => i.group === g);
+              const gGot = gAll.filter((i) => (event.foodGot || {})[i.id] && !i.skipped).length;
+              const gc = !!collapsedGroups[g];
               return (
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                <button type="button" onClick={() => setCollapsedGroups((m) => ({ ...m, [g]: !m[g] }))}
+                  style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span aria-hidden style={{ fontSize: T.caption, color: C.muted, display: 'inline-block', transform: gc ? 'rotate(-90deg)' : 'none', transition: 'transform 140ms ease' }}>▾</span>
+                    <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase' }}>{g}</span>
+                    {gc && <span style={{ fontSize: T.caption, color: C.muted, letterSpacing: 0, textTransform: 'none' }}>{gAll.length} item{gAll.length === 1 ? '' : 's'}{gGot > 0 ? ` · ${gGot} got` : ''}</span>}
+                  </span>
                   <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, color: C.muted }}>{money(gl, gh)}</span>
-                </div>
+                </button>
               );
             })()}
-            {plan.list.filter((i) => i.group === g).map((i) => {
+            {!collapsedGroups[g] && plan.list.filter((i) => i.group === g).map((i) => {
               const got = (event.foodGot || {})[i.id] && !i.skipped;
               const skipped = i.skipped;
               // 60I — the per-unit math behind the line total ("$4–$8/lb"), regional-adjusted.
@@ -10419,45 +10440,27 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               </div>
             );
           })()}
-          {/* #9 — the best ONLINE options for meat + groceries (real, reputable
-              national retailers; delivered, not endorsements). Shown only for the
-              sourcing types this spread actually calls for. */}
+          {/* DELIVERED (board): ONE clear delivery tied to the main run — not a brand wall.
+              Protein delivery ONLY for SHIPPABLE mains (beef/poultry); local/perishable seafood +
+              crab don't ship, so no protein-box brands for a crab feast (the category error). */}
           {(() => {
-            const ONLINE_MEAT = [
-              { name: 'ButcherBox', url: 'https://www.butcherbox.com' },
-              { name: 'Crowd Cow', url: 'https://www.crowdcow.com' },
-              { name: 'Porter Road', url: 'https://porterroad.com' },
-              { name: 'Snake River Farms', url: 'https://www.snakeriverfarms.com' },
-            ];
-            const ONLINE_GROCERY = [
-              { name: 'Instacart', url: 'https://www.instacart.com' },
-              { name: 'Amazon Fresh', url: 'https://www.amazon.com/fresh' },
-              { name: 'Walmart Grocery', url: 'https://www.walmart.com/cp/grocery/5431943' },
-            ];
-            const hasMeat = shopSources.some((s) => /butcher|meat|crab|seafood|fish/i.test(s));
-            const hasGrocery = shopSources.some((s) => /grocer|grocery|store|market|costco|sam'?s/i.test(s));
-            const groups = [...(hasMeat ? [['Proteins', ONLINE_MEAT]] : []), ...(hasGrocery ? [['Groceries + sides', ONLINE_GROCERY]] : [])];
-            if (!groups.length) return null;
-            const chip = (o) => {
-              // Retailer favicon on a small white tile — legible on the dark chip. Not an endorsement.
-              const dom = (() => { try { return new URL(o.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
-              return (
-                <a key={o.name} href={o.url} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: T.caption, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, padding: '3px 10px 3px 5px', textDecoration: 'none' }}>
-                  {dom && <img src={`https://www.google.com/s2/favicons?domain=${dom}&sz=64`} alt="" width={14} height={14} loading="lazy" style={{ borderRadius: 3, background: '#fff', padding: 1, display: 'block', flexShrink: 0 }} />}
-                  {o.name}<span style={{ color: steel, marginLeft: 3 }}>↗</span>
-                </a>
-              );
-            };
+            const hasGrocery = shopSources.some((s) => /grocer|grocery|store|market|costco|sam'?s|deli|farm/i.test(s));
+            const localPerishable = /crab|seafood|fish|dock|oyster|shrimp|lobster/i;
+            const hasShippableMeat = shopSources.some((s) => /butcher|beef|steak|poultry|chicken|\bmeat\b/i.test(s) && !localPerishable.test(s));
+            const rows = [];
+            if (hasGrocery) rows.push({ label: 'Have the grocery run delivered', via: 'Instacart', url: 'https://www.instacart.com' });
+            if (hasShippableMeat) rows.push({ label: 'Ship the meat', via: 'ButcherBox', url: 'https://www.butcherbox.com' });
+            if (!rows.length) return null;
             return (
-              <div style={{ marginTop: 2 }}>
-                {/* DELIVERED — online options grouped by what they carry (item-first, like the local trips). */}
-                <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.11em', color: steel, textTransform: 'uppercase', padding: '11px 0 4px', borderTop: `1px solid ${C.border}` }}>Delivered</div>
-                {groups.map(([label, opts]) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: T.secondary, color: C.muted, minWidth: 100, flexShrink: 0 }}>{label}</span>
-                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>{opts.map(chip)}</span>
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {rows.map((r) => (
+                  <a key={r.via} href={r.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: `1px solid ${C.border}`, textDecoration: 'none' }}>
+                    <span style={{ minWidth: 0, flex: 1, fontSize: T.body, fontWeight: FW.bold, color: C.text }}>
+                      {r.label}<span style={{ fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}> · {r.via}</span>
+                    </span>
+                    <span style={{ flexShrink: 0, color: steel, fontSize: T.body }}>↗</span>
+                  </a>
                 ))}
               </div>
             );
