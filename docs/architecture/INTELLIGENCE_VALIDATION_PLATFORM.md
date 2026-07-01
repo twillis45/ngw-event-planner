@@ -145,6 +145,9 @@ Extends the existing `?observatory=1` dev screen. Same honesty guardrail (this-b
 
 **Every accuracy tile carries its `n`** and greys out below the sample-size floor (§8). No tile ever shows a percentage it can't support.
 
+### Stage 1C — server observability contract (`GET /api/admin/intelligence`)
+The admin server (separate backend, `REACT_APP_API_BASE_URL`) should expose a **capture-only** endpoint that aggregates persisted `event.intelEvaluations[]` across admin scope into the **exact `evaluationAudit` shape** — which is already pure + **non-PII** (counts/ratios/because/grades-null + a `type · shortId` label; guest data never enters, proven by test). No new warehouse (it queries the existing events table). It must **not** score/grade (Stage 2). Payload: `{ audit: {scannedEvents, eventsWithEvaluations, totals{11 KPIs}, funnel, records[capped], integrity}, conversion?, scope, source:'server' }`. The client (shipped) tries it first, shows a **Server Fleet** badge on success, and **degrades to This Browser** on any failure — never fabricating fleet numbers. *Until the backend route ships, the client always falls back to the local book (verified).*
+
 ---
 
 ## 5. Calibration System (deliverable 5 / Part 5) — design only

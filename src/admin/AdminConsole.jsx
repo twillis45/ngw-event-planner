@@ -1200,18 +1200,49 @@ function IntelligencePanel({ book }) {
   const [filter, setFilter] = useState('');
   const [decision, setDecision] = useState('All');
   const [sel, setSel] = useState(null); // { eventId, recId }
-  let audit; try { audit = evaluationAudit(book); } catch { audit = null; }
-  let conv; try { conv = conversionAudit(book); } catch { conv = null; }
-  if (!audit) return (<div><BookBanner /><Banner tone="bad">Could not read evaluation data (safe fallback — nothing scored).</Banner></div>);
-  const T = audit.totals;
+  // Stage 1C — server-fleet first, client-book fallback. The server endpoint may 404 until the
+  // backend implements it; on ANY failure we degrade to this browser's book. Never fakes fleet data.
+  const [server, setServer] = useState({ status: isAdminApiConfigured() ? 'loading' : 'unconfigured', data: null });
+  useEffect(() => {
+    if (!isAdminApiConfigured()) return undefined;
+    let live = true;
+    adminApi.intelligence()
+      .then((d) => { if (live) setServer({ status: 'ok', data: d }); })
+      .catch(() => { if (live) setServer({ status: 'error', data: null }); });
+    return () => { live = false; };
+  }, []);
+  const useServer = server.status === 'ok' && !!server.data && !!(server.data.audit || server.data.totals);
+  let audit = null, conv = null;
+  if (useServer) {
+    const d = server.data.audit || server.data;
+    audit = { totals: d.totals || {}, funnel: Array.isArray(d.funnel) ? d.funnel : [], records: Array.isArray(d.records) ? d.records : [], integrity: Array.isArray(d.integrity) ? d.integrity : [], scannedEvents: d.scannedEvents ?? null, eventsWithEvaluations: d.eventsWithEvaluations ?? null };
+    conv = server.data.conversion || null;
+  } else {
+    try { audit = evaluationAudit(book); } catch { audit = null; }
+    try { conv = conversionAudit(book); } catch { conv = null; }
+  }
+  const src = useServer ? 'Server Fleet' : 'This Browser';
+  const srcMsg = useServer ? 'Server fleet data — admin scope.'
+    : server.status === 'error' ? 'Fleet intelligence unavailable — showing this browser only.'
+    : server.status === 'loading' ? 'Loading fleet data…'
+    : 'Admin API not configured — showing this browser only.';
+  const SourceBadge = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: type.size.caption, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 99, background: useServer ? `${D.good}22` : `${D.warn}22`, color: useServer ? D.good : D.warn }}>{src}</span>
+      <span style={{ fontSize: type.size.caption, color: D.muted }}>{srcMsg}</span>
+    </div>
+  );
+  if (!audit) return (<div><SourceBadge /><Banner tone="bad">Could not read evaluation data (safe fallback — nothing scored).</Banner></div>);
+  const T = audit.totals || {};
   const ctrl = { background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '7px 10px', fontFamily: D.ff, outline: 'none' };
 
-  if (T.records === 0) {
+  if (!T.records) {
     return (
       <div>
-        <BookBanner />
+        <SourceBadge />
+        {!useServer && <BookBanner />}
         <Banner tone="muted">Capture only — Scoring not started · Learning loop not active yet.</Banner>
-        <div style={{ fontSize: type.size.base, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>No recommendation records captured in this browser's book yet. When R1 shows a recommendation on an event, a record is frozen here.</div>
+        <div style={{ fontSize: type.size.base, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>No recommendation records {useServer ? 'in the fleet scope' : "in this browser's book"} yet. When R1 shows a recommendation on an event, a record is frozen.</div>
       </div>
     );
   }
@@ -1223,7 +1254,8 @@ function IntelligencePanel({ book }) {
 
   return (
     <div>
-      <BookBanner />
+      <SourceBadge />
+      {!useServer && <BookBanner />}
       <Banner tone="muted">Capture + integrity only. Scoring not started · Learning loop not active yet · Better-than-baseline pending (Stage 2).</Banner>
 
       <div style={IE.eyebrow}>Overview</div>

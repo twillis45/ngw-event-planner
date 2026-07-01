@@ -209,6 +209,13 @@ describe('Stage 1A — evaluationAudit (admin dataset)', () => {
     const upcoming = evaluationAudit([{ id: 'cf1', date: '2026-12-01', intelEvaluations: [acc] }], '2026-07-01');
     expect(upcoming.integrity.some((i) => i.code === 'missing_actual')).toBe(false);
   });
+
+  test('Stage 1C — audit payload is SERVER-SAFE (non-PII) even if events carry guest data', () => {
+    const events = [{ id: 'cf1', type: 'Crab Feast', date: '2026-06-01', guestCount: 40, name: "Ada's Crab Feast", guests: [{ name: 'Ada Lovelace', email: 'ada@x.com', address: '10 Downing St' }], intelEvaluations: [rec()] }];
+    const s = JSON.stringify(evaluationAudit(events));
+    expect(s).not.toMatch(/Ada Lovelace|ada@x\.com|Downing/); // the shape the server returns carries no guest PII
+    expect(s).toMatch(/Crab Feast/); // event TYPE is fine (non-PII), used for the safe label
+  });
 });
 
 describe('Stage 1B — conversionAudit (transaction / conversion, NO scoring)', () => {

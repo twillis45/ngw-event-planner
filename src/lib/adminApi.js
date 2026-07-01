@@ -68,6 +68,12 @@ export const adminApi = {
   // ANALYTICS-1 — Executive overview (future endpoint; may 404 today — callers must
   // degrade gracefully and fall back to activation()/triage()).
   overview: ()            => req('GET', '/api/admin/metrics/overview'),
+  // INTEL-QA-1 Stage 1C — fleet intelligence observability. Aggregates persisted
+  // event.intelEvaluations[] across admin scope into a NON-PII payload (the evaluationAudit shape:
+  // { summary/totals, funnel, records (capped), integrity } + optional conversion + provenance).
+  // FUTURE backend endpoint; may 404 until deployed — callers MUST degrade gracefully to the
+  // client-book reader. Capture only — the server must NOT score/grade (Stage 2).
+  intelligence: () => req('GET', '/api/admin/intelligence'),
   // ANALYTICS-1 — PostHog HogQL read proxy. Returns {configured:false} (200) until the
   // backend has POSTHOG_QUERY_API_KEY/PROJECT_ID set + deployed; callers fall back to
   // the PostHog link-out in that case.
