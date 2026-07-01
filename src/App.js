@@ -21056,8 +21056,7 @@ function seasonBriefText(event) {
 // EventBriefing — "what you're getting into": a synthesized read from the event type,
 // venue, scale, season/weather, and the heart. Composes existing grounded readers;
 // invents nothing.
-function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
-  const [briefOpen, setBriefOpen] = useState(false);
+function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle, isMobile = false }) {
   const about = useMemo(() => { try { return playbookAbout(ev.type); } catch { return null; } }, [ev.type]);
   // B1 — same regional price factor as the home card / Plan / Money, so "THE SCALE"
   // food $ matches every other surface for the same event.
@@ -21083,31 +21082,24 @@ function EventBriefing({ ev, foodPP, C, cardStyle, eyebrowStyle }) {
   if (!points.length) return null;
   // Host audit: this was a paragraph WALL the host skimmed past. Collapse it behind a
   // one-line teaser so it orients on tap, never dominates. Reachable, not a dump.
+  // Board fix #3: now uses the Plan tab's CollapsibleCard grammar (green dot + title +
+  // one-line summary + chevron), so the home reference cards match Plan exactly.
   const teaser = ((points[0] && points[0].text) || '').replace(/\s+/g, ' ').slice(0, 96).trim();
   return (
-    <div style={cardStyle}>
-      <button type="button" onClick={() => setBriefOpen((o) => !o)}
-        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <span style={{ minWidth: 0 }}>
-          <span style={{ ...eyebrowStyle, marginBottom: 0 }}>What you're getting into</span>
-          {!briefOpen && <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>{teaser}…</span>}
-        </span>
-        <span aria-hidden style={{ flexShrink: 0, color: C.muted, fontSize: T.body, marginTop: 1, transform: briefOpen ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
-      </button>
-      {briefOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-          {points.map((p) => (
-            <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
-              <span aria-hidden style={{ flexShrink: 0, marginTop: 2 }}><Icon name={p.icon} size={15} stroke={1.9} color={C.accentTopGrad || C.accent} /></span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
-                <span style={{ display: 'block', fontSize: T.secondary, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <CollapsibleCard id={`hp-briefing-${ev.id}`} isMobile={isMobile} defaultCollapsed
+      title="What you're getting into" subtitle={`${teaser}…`} style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {points.map((p) => (
+          <div key={p.k} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+            <span aria-hidden style={{ flexShrink: 0, marginTop: 2 }}><Icon name={p.icon} size={15} stroke={1.9} color={C.accentTopGrad || C.accent} /></span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.05em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{p.label}</span>
+              <span style={{ display: 'block', fontSize: T.secondary, color: C.text, marginTop: 2, lineHeight: 1.5 }}>{p.text}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </CollapsibleCard>
   );
 }
 
@@ -22509,69 +22501,6 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           </button>
         )}
 
-        {/* UX-9 · one-time create receipt (relocated from the success modal) */}
-        {!isPost && !isDayOf && <HostWelcomeCard ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
-
-        {/* "Caught up" = every progress area is done. The next-action engine always
-            suggests SOME optional polish, so we key the exhale off real completion, not
-            off na being empty — and when caught up we show the exhale INSTEAD of a
-            breathing next-step. */}
-        {/* 2 · Next Step */}
-        {!isPost && !isDayOf && !allProgDone && na && (
-          // Attention System: the ONE live thing — it BREATHES (ceBreathe ring) and runs
-          // bigger, the way the create panel's active question dominates. Everything below
-          // recedes (.hp-recede) until you act, then the next thing lights up.
-          <div id="hp-hero-card" style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, animation: 'ceBreathe 3.4s ease-in-out infinite' }}>
-            {/* NOW-view command voice (host shell doctrine): a state-named eyebrow chip
-                + urgency rail + action-named headline. The same single-command shape the
-                day-of NOW hero uses, applied to the planning surface. */}
-            <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>NEEDS YOU</div>
-            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
-            {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
-            {na.primaryCta && (
-              <button onClick={() => {
-                  track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category });
-                  // Setup categories open the guided wizard; navigation categories route
-                  // directly to their destination (compression→Timeline, operational→Plan, etc.).
-                  const wizardCategories = new Set(['start', 'readiness']);
-                  if (wizardCategories.has(na.category)) {
-                    // BUG fix: open the wizard AT the step this action is about — not always
-                    // step 0 (the heart). "Set your budget" routes to { tab:'Budget',
-                    // focusField:'hsp-budget' }; match that to the live wizard steps so the
-                    // host lands on the budget question, not the heart-of-it screen first.
-                    const liveSteps = prog.filter((p) => p.state !== 'done');
-                    const route = na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null;
-                    let idx = -1;
-                    if (route) {
-                      if (route.focusField) idx = liveSteps.findIndex((p) => p.focusField === route.focusField);
-                      if (idx < 0 && route.tab) idx = liveSteps.findIndex((p) => p.tab === route.tab);
-                    }
-                    setSetupOpen(idx >= 0 ? idx : true);
-                  } else {
-                    // Global guarantee: a Next-Step CTA must always DO something.
-                    // Route to the action's own destination when it has one; otherwise
-                    // fall back to the event's overview so the button never dead-ends.
-                    onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' });
-                  }
-                }}
-                style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
-            )}
-          </div>
-        )}
-
-        {/* The exhale — when nothing needs the host, the screen rewards being caught up
-            instead of going blank. The opposite of the breathing next-step: calm, warm,
-            celebratory. (Attention System: the empty screen IS the reward.) */}
-        {!isPost && !isDayOf && allProgDone && (
-          <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
-            <div aria-hidden style={{ color: idColor, display: 'flex', justifyContent: 'flex-start', marginBottom: 10, filter: ident.mark === 'quiet' ? 'none' : `drop-shadow(0 0 12px ${idColor}44)` }}><Icon name={ident.icon} size={34} stroke={1.6} /></div>
-            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
-            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
-              Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
-            </div>
-          </div>
-        )}
-
         {/* The entire planning home — suppressed once the event has passed (B2). */}
         {!isPost && (<>
         {/* "Do it for me" — THE HEAD START. The magic isn't a stack of cards; it's the
@@ -22696,80 +22625,134 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             </div>
           );
         })()}
-        {/* 3 · What still needs you — Attention System: HIDE what's on-track (done
-            collapses to a count), show only the areas being worked, and reward an
-            empty list. No wall of green checks competing with the live action.
-            B3 — suppressed on the event day itself (the run of show leads instead). */}
+        {/* UX-9 · one-time create receipt (relocated from the success modal). Re-homed
+            BELOW the head start so the confidence surface ("I've made a head start") leads. */}
+        {!isDayOf && <HostWelcomeCard ev={ev} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
+
+        {/* 2 · ONE command surface — board fix: the home had THREE competing command
+            surfaces (the breathing "NEEDS YOU" hero, the separate "Still on you" tracker,
+            and the head-start draft hero). This collapses the first two into a SINGLE
+            surface: the engine's one next-step LEADS as the breathing hero, and the
+            remaining open areas fold in beneath it. No action is lost — the lead keeps the
+            full CTA/route (wizard-jump vs. direct route) logic; each tracker row keeps its
+            dated next step + wizard jump. Caught-up shows the exhale below instead. */}
         {!isDayOf && (() => {
-          const live = prog.filter(p => p.state !== 'done');
+          // Lead = the engine's single next action (na); shown unless everything's done.
+          const showLead = !allProgDone && !!na;
+          const live = prog.filter((p) => p.state !== 'done');
           const doneCount = prog.length - live.length;
-          // Host audit — on a BRAND-NEW event this list was a stack of "To do" rows right
-          // under the hero, and its top row just REPEATED the hero's own task ("Add your
-          // guest list" / "Guests: To do"). The single breathing next-step already IS what
-          // needs the host; a pre-filled chore list on arrival reads as "look how much you
-          // signed up for." So the tracker stays hidden until the host has actually
-          // finished something — then it earns its place as "here's what's left," not
-          // "here's everything." We also drop the row the hero is currently driving so the
-          // same task never appears twice. (Heart / food "Your choices" have their own
-          // cards.) Indices kept against the FULL live list so the wizard still jumps right.
-          if (doneCount === 0) return null;
           const heroTab = na && na.primaryRoute && (typeof na.primaryRoute === 'string' ? na.primaryRoute : na.primaryRoute.tab);
           const hidden = new Set(['Heart', 'Your choices']);
-          const shown = live.map((p, i) => ({ p, i })).filter(({ p }) => !hidden.has(p.label) && p.tab !== heroTab);
-          if (shown.length === 0) return null;  // only Heart/choices/the hero left → their own surfaces carry it
+          // The tracker earns its place only once the host has finished something (else a
+          // brand-new event reads as a chore list). Drop Heart/choices (own surfaces) and
+          // the row the lead is already driving, so the same task never appears twice.
+          // Indices are kept against the FULL live list so the wizard still jumps right.
+          const shown = doneCount === 0 ? [] : live.map((p, i) => ({ p, i })).filter(({ p }) => !hidden.has(p.label) && p.tab !== heroTab);
           const CAP = 3;
           const visible = shown.slice(0, CAP);
           const moreCount = shown.length - visible.length;
+          if (!showLead && visible.length === 0) return null;
           return (
-            <div id="hp-needs-you" className="hp-recede" style={card}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <div style={eyebrow}>Still on you</div>
-                {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.success }}>{doneCount} done</span>}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
-                {visible.map(({ p, i }) => {
-                  // Day-of grammar on the planning home: each area carries its next
-                  // concrete dated step (from the authored milestones) + owner when
-                  // it isn't the host. Falls back to the plain status word when the
-                  // area has no dated milestone (e.g. Heart) or the type has no playbook.
-                  const step = (() => { try { return playbookAreaNextStep(ev, p.label); } catch { return null; } })();
-                  const overdue = step && typeof step.daysOut === 'number' && step.daysOut < 0;
-                  const due = step && step.dueDate ? new Date(step.dueDate + 'T00:00:00') : null;
-                  const dueText = due
-                    ? (overdue ? `${Math.abs(step.daysOut)}d overdue` : `by ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
-                    : stateMeta[p.state].t;
-                  const dueColor = due ? (overdue ? (C.danger || C.warn) : C.muted) : stateMeta[p.state].c;
-                  return (
-                  <button key={p.label} type="button"
-                    onClick={() => setSetupOpen(i)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '8px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{p.label}</span>
-                      {step && step.action && (
-                        <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {step.action}{step.owner && step.owner !== 'host' ? ` · ${step.owner}` : ''}
+            <div id="hp-hero-card" style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, ...(showLead ? { animation: 'ceBreathe 3.4s ease-in-out infinite' } : null) }}>
+              {/* NOW-view command voice (host shell doctrine): a state-named eyebrow chip +
+                  action-named headline — the single-command shape the day-of NOW hero uses. */}
+              {showLead && (
+                <>
+                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>NEEDS YOU</div>
+                  <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
+                  {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
+                  {na.primaryCta && (
+                    <button onClick={() => {
+                        track(EVENTS.HOST_NEXT_STEP_CLICKED, { category: na.category });
+                        // Setup categories open the guided wizard AT the step this action is
+                        // about; navigation categories route directly to their destination.
+                        const wizardCategories = new Set(['start', 'readiness']);
+                        if (wizardCategories.has(na.category)) {
+                          const liveSteps = prog.filter((p) => p.state !== 'done');
+                          const route = na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null;
+                          let idx = -1;
+                          if (route) {
+                            if (route.focusField) idx = liveSteps.findIndex((p) => p.focusField === route.focusField);
+                            if (idx < 0 && route.tab) idx = liveSteps.findIndex((p) => p.tab === route.tab);
+                          }
+                          setSetupOpen(idx >= 0 ? idx : true);
+                        } else {
+                          // Global guarantee: a Next-Step CTA must always DO something.
+                          onSelectEvent(ev.id, na.primaryRoute || { tab: 'Command' });
+                        }
+                      }}
+                      style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>{na.primaryCta} →</button>
+                  )}
+                </>
+              )}
+              {/* The rest of what's still open — folded into the SAME surface (one command
+                  voice), each row keeping its dated next step + wizard jump. Earns its place
+                  only after the host has finished something (doneCount>0). */}
+              {visible.length > 0 && (
+                <div style={{ marginTop: showLead ? 16 : 0, paddingTop: showLead ? 14 : 0, borderTop: showLead ? `1px solid ${C.border}` : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={eyebrow}>{showLead ? 'Also still on you' : 'Still on you'}</div>
+                    {doneCount > 0 && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.success }}>{doneCount} done</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
+                    {visible.map(({ p, i }) => {
+                      // Day-of grammar on the planning home: each area carries its next
+                      // concrete dated step (from the authored milestones) + owner when it
+                      // isn't the host. Falls back to the plain status word when there's no
+                      // dated milestone (e.g. Heart) or the type has no playbook.
+                      const step = (() => { try { return playbookAreaNextStep(ev, p.label); } catch { return null; } })();
+                      const overdue = step && typeof step.daysOut === 'number' && step.daysOut < 0;
+                      const due = step && step.dueDate ? new Date(step.dueDate + 'T00:00:00') : null;
+                      const dueText = due
+                        ? (overdue ? `${Math.abs(step.daysOut)}d overdue` : `by ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+                        : stateMeta[p.state].t;
+                      const dueColor = due ? (overdue ? (C.danger || C.warn) : C.muted) : stateMeta[p.state].c;
+                      return (
+                      <button key={p.label} type="button"
+                        onClick={() => setSetupOpen(i)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, width: '100%', background: 'none', border: 'none', padding: '8px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.surface2 || C.bg; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{p.label}</span>
+                          {step && step.action && (
+                            <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {step.action}{step.owner && step.owner !== 'host' ? ` · ${step.owner}` : ''}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                      <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: dueColor }}>{dueText}</span>
-                      <span aria-hidden style={{ color: C.muted, fontSize: T.body, opacity: 0.6 }}>›</span>
-                    </span>
-                  </button>
-                  );
-                })}
-                {moreCount > 0 && (
-                  <button type="button" onClick={() => setSetupOpen(visible[visible.length - 1].i)}
-                    style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, color: C.muted }}>
-                    +{moreCount} more, one step at a time ›
-                  </button>
-                )}
-              </div>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+                          <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: dueColor }}>{dueText}</span>
+                          <span aria-hidden style={{ color: C.muted, fontSize: T.body, opacity: 0.6 }}>›</span>
+                        </span>
+                      </button>
+                      );
+                    })}
+                    {moreCount > 0 && (
+                      <button type="button" onClick={() => setSetupOpen(visible[visible.length - 1].i)}
+                        style={{ alignSelf: 'flex-start', marginTop: 4, background: 'none', border: 'none', padding: '4px 6px', margin: '4px -6px 0', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, color: C.muted }}>
+                        +{moreCount} more, one step at a time ›
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
+
+        {/* The exhale — when nothing needs the host, the screen rewards being caught up
+            instead of going blank. The opposite of the breathing next-step: calm, warm,
+            celebratory. (Attention System: the empty screen IS the reward.) */}
+        {!isDayOf && allProgDone && (
+          <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
+            <div aria-hidden style={{ color: idColor, display: 'flex', justifyContent: 'flex-start', marginBottom: 10, filter: ident.mark === 'quiet' ? 'none' : `drop-shadow(0 0 12px ${idColor}44)` }}><Icon name={ident.icon} size={34} stroke={1.6} /></div>
+            <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
+              Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
+            </div>
+          </div>
+        )}
 
         {/* 4 · What Matters Most — populated; or a contextual capture prompt when empty. */}
         {!id && onPatchEvent && (
@@ -22792,6 +22775,11 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           </div>
         )}
 
+        {/* Reference cards — board fix #3: these adopt the Plan tab's CollapsibleCard
+            grammar (plain title + one-line summary + green dot + chevron, default-collapsed)
+            inside an AccordionProvider so only one is open at a time, exactly like Plan.
+            The live command surface above stays open; these are reference, so they collapse. */}
+        <AccordionProvider>
         {/* Food plan — a COMPACT summary on the home (Attention System: one glance,
             not the whole plan). The full choices + spread + shopping list live on the
             Plan tab; the home shows the estimate + progress + a way in. */}
@@ -22806,17 +22794,17 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           if (!fp.guestCountResolved) return null;
           const fmtR = (lo, hi) => lo === hi ? `$${lo.toLocaleString()}` : `$${lo.toLocaleString()}–$${hi.toLocaleString()}`;
           return (
-            <button id="hp-food-plan-card" type="button" className="hp-recede" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
-              style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'block', border: `1px solid ${C.border}`, background: C.surface }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                <span style={eyebrow}>Food plan</span>
-                <span style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>
+            <CollapsibleCard id={`hp-food-plan-${ev.id}`} isMobile={isMobile} defaultCollapsed
+              title="Food plan"
+              subtitle={`Sized for ${fp.guests} guests · ${fp.itemCount} item${fp.itemCount === 1 ? '' : 's'}${fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''}`}
+              right={<span style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{fmtR(fp.foodLow, fp.foodHigh)}</span>}
+              style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
+                {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}, sized for {fp.guests} guests{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought so far` : ''}. Estimate {fmtR(fp.foodLow, fp.foodHigh)} on food & drink.
               </div>
-              <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, marginTop: 6 }}>Sized for {fp.guests} guests</div>
-              <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 3 }}>
-                {fp.itemCount} item{fp.itemCount === 1 ? '' : 's'}{fp.boughtCount > 0 ? ` · ${fp.boughtCount} bought` : ''} · tap to open your food plan →
-              </div>
-            </button>
+              <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Planning', ...(firstUnboughtFood ? { foodFocus: firstUnboughtFood.id } : {}) })}
+                style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: C.accent, color: '#fff' }}>Open your food plan →</button>
+            </CollapsibleCard>
           );
         })()}
 
@@ -22826,8 +22814,10 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           const railItems = upcomingRail(ev);
           if (!railItems.length) return null;
           return (
-            <div className="hp-recede" style={card}>
-              <div style={eyebrow}>Coming up later</div>
+            <CollapsibleCard id={`hp-rail-${ev.id}`} isMobile={isMobile} defaultCollapsed
+              title="Coming up later"
+              subtitle={`${railItems.map((r) => r.label).slice(0, 3).join(', ')}${railItems.length > 3 ? '…' : ''}`}
+              style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {railItems.map((r, i) => (
                   <button key={r.section} onClick={() => onSelectEvent(ev.id, { tab: r.route })}
@@ -22840,7 +22830,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
                   </button>
                 ))}
               </div>
-            </div>
+            </CollapsibleCard>
           );
         })()}
 
@@ -22860,7 +22850,8 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             venue · scale · weather · heart). The generic "About a {type}" essay that
             used to sit under it was a redundant second read (host audit #7) and is
             removed — this one card orients without repeating itself. Planning-time only. */}
-        {!isDayOf && <EventBriefing ev={ev} foodPP={foodPP} C={C} cardStyle={card} eyebrowStyle={eyebrow} />}
+        {!isDayOf && <EventBriefing ev={ev} foodPP={foodPP} C={C} isMobile={isMobile} cardStyle={card} eyebrowStyle={eyebrow} />}
+        </AccordionProvider>
         </>)}
       </div>
     </div>
