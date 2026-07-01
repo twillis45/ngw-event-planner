@@ -42,3 +42,4 @@ yarn-error.log*
 /scripts/vendorProbe.js
 /scripts/assembleSampleEvents.js
 .claude/worktrees/
+build-verify/
