@@ -9273,6 +9273,40 @@ function CostLockSegments({ low, high, locked, onLock }) {
     </div>
   );
 }
+// PlanBudgetRollup (board ruling) — ONE quiet running-total line at the foot of the Plan tab:
+// "Your plan so far: ~$X" (+ "of your $Y budget" only when a total is set), tapping into the
+// Budget tab. NO per-card over/under gauges — the Budget tab is the single source for over/under;
+// this just gives the calm running estimate once. Neutral (no status color) by doctrine.
+function PlanBudgetRollup({ event = {}, isMobile = false, onNav = () => {} }) {
+  const C = useT();
+  const T = useType();
+  const steel = C.accentTopGrad || C.accent;
+  const money = (n) => `$${Math.round(Number(n) || 0).toLocaleString()}`;
+  const range = useMemo(() => {
+    try {
+      const fp = playbookFoodPlan(event) || {};
+      const cap = playbookCapacity(event) || {};
+      const lo = (Number(fp.foodLow) || 0) + (Number(cap.costLow) || 0);
+      const hi = (Number(fp.foodHigh) || 0) + (Number(cap.costHigh) || 0);
+      return { lo, hi };
+    } catch { return { lo: 0, hi: 0 }; }
+  }, [event]);
+  if (!(range.hi > 0)) return null;
+  const total = Number(event.totalBudget) || 0;
+  const est = range.lo === range.hi ? money(range.hi) : `${money(range.lo)}–${money(range.hi)}`;
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <button type="button" onClick={() => onNav('Budget')}
+        style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '18px 2px 4px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>Your plan so far{total > 0 ? ` · of your ${money(total)} budget` : ''}</span>
+          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>~{est} <span style={{ fontSize: T.caption, fontWeight: FW.regular, color: C.muted }}>estimate — food + supplies</span></span>
+        </span>
+        <span style={{ flexShrink: 0, fontSize: T.secondary, color: steel, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>{total > 0 ? 'See over/under →' : 'Budget →'}</span>
+      </button>
+    </div>
+  );
+}
 function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile }) {
   const C = useT();
   const T = useType();
@@ -40935,6 +40969,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
           </div>
+          <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
         </> : <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
@@ -40943,6 +40978,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
+          <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
         {tab === 'Event Day Schedule' && (
           // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
