@@ -22301,7 +22301,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
         animation: `ceFadeIn 480ms ${CE_EASE} both` }}>
         {/* Header — back to portfolio/home, identity glyph, event name */}
         <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' }}>
-          <button type="button" onClick={() => onSelectEvent(ev.id, { tab: 'Command' })} aria-label="Back"
+          <button type="button" onClick={() => onSelectEvent(null)} aria-label="Back to all events"
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: sub, fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center' }}>‹</button>
           <span aria-hidden style={{ display: 'flex', alignItems: 'center' }}>
             {ident.mark !== 'quiet' && hasGlassShape(ident.icon)
@@ -43998,7 +43998,7 @@ export default function App() {
           events={events}
           setClient={setClient}
           profile={profile}
-          onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
+          onSelectEvent={(evId, nav) => { if (evId == null) { setActiveId(null); setInitialNav(null); } else { setInitialNav(nav || null); setActiveId(evId); } }}
           onAddEvent={() => setShowNew(true)}
           onBack={() => setActiveClientId(null)}
           onDelete={deleteClient}
@@ -44029,7 +44029,7 @@ export default function App() {
         <HostHome
           events={events}
           profile={profile}
-          onSelectEvent={(evId, nav) => { setInitialNav(nav || null); setActiveId(evId); }}
+          onSelectEvent={(evId, nav) => { if (evId == null) { setActiveId(null); setInitialNav(null); } else { setInitialNav(nav || null); setActiveId(evId); } }}
           onOpenDirect={(evId) => { setCoverSeen(s => new Set(s).add(evId)); setActiveId(evId); }}
           onNew={() => setShowNew(true)}
           onProfile={() => setShowProfile(true)}
