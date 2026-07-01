@@ -9571,7 +9571,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // (something bought, or inside the ~1-week shop window); otherwise it stays a
   // glanceable summary while the host is still planning.
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
-  const [showFullSpread, setShowFullSpread] = useState(() => !!(plan && (plan.boughtCount > 0 || (_dte !== null && _dte <= 7))));
+  const [showFullSpread, setShowFullSpread] = useState(true); // The spread is ONE level: expanding the card shows the priced list directly (no "show all" gate)
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
@@ -10037,13 +10037,13 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           title="Sourcing"
           subtitle={`How you’re getting the proteins · ${(plan.sourcingTiers.find((t) => t.id === plan.sourcing) || {}).label || ''}`}>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 10 }}>How you’re getting the proteins — this reshapes the spread.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {plan.sourcingTiers.map((t) => {
               const on = plan.sourcing === t.id;
               const cost = (plan.sourcingKey.byTier && plan.sourcingKey.byTier[t.id]) || 0;
               return (
                 <button key={t.id} type="button" onClick={() => { if (!on) { try { track(EVENTS.SOURCE_SELECTED, { source: t.id, scope: 'global' }); } catch {} } onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: on ? `${steel}14` : C.bg, border: `1px solid ${on ? steel : C.border}`, borderRadius: 11, padding: '11px 13px' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '12px 2px' }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{t.label}</span>
@@ -10067,16 +10067,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'}, scaled to {plan.guests} guests
           {plan.boughtCount > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{plan.boughtCount} bought{plan.lockedTotal > 0 ? ` ($${plan.lockedTotal.toLocaleString()})` : ''}</span></> : null}
         </div>
-        {heroNames.length > 0 && (
-          <div style={{ fontSize: T.body, color: C.text, marginTop: 10, lineHeight: 1.5 }}>
-            {heroNames.join(' · ')}
-            {plan.itemCount > heroNames.length ? <span style={{ color: C.muted }}> · +{plan.itemCount - heroNames.length} more</span> : null}
-          </div>
-        )}
-        <button type="button" onClick={() => setShowFullSpread((v) => !v)}
-          style={{ marginTop: 12, fontFamily: 'inherit', background: 'transparent', border: `1px solid ${C.border}`, color: steel, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '8px 14px', borderRadius: 8 }}>
-          {showFullSpread ? 'Hide items' : `Show all ${plan.itemCount} items →`}
-        </button>
+        {/* Flattened to ONE level — the priced grouped list renders directly below (dropped the
+            few-names preview + the "Show all items" gate now that the CARD itself collapses). */}
         {showFullSpread && (
         <div style={{ marginTop: 14 }}>
         <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 14 }}>Tap an item to check it off as you shop.</div>
@@ -10167,7 +10159,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
                       <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
+                        <span style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
                         {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
                         {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
