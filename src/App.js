@@ -9017,7 +9017,7 @@ function ROSModal({ entry, onClose, onChange, onDelete, ownerOptions }) {
 function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   const C = useT();
   const T = useType();
-  const [expanded, setExpanded] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // M6·A/B: tap the header to collapse/expand anytime
   // Attention System (escalation = reduction): while there's still work, show ONLY the
   // next unconfirmed item open by default — the rest fold behind a quiet "show all" so
   // the panel guides rather than shouting a long list. The host opts into the full list.
@@ -9031,7 +9031,7 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
   const done = rc.items.filter((p) => checked[p.key]).length;
   const allDone = done === rc.items.length;
-  const collapsed = allDone && !expanded; // collapse the checklist once everything's confirmed
+  // collapse is host-controlled via the header chevron (M6·A/B — not tied to allDone)
   // In-progress focus: the first still-unconfirmed prompt. Until the host taps "show all",
   // confirmed rows + everything past the next unconfirmed item recede out of view.
   const nextIdx = rc.items.findIndex((p) => !checked[p.key]);
@@ -9041,10 +9041,18 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' }; // metallic edge to match the app (done-state shown by the green eyebrow/text, not a border)
   return (
     <div style={card}>
-      <button type="button" onClick={() => { if (allDone) setExpanded((v) => !v); }} disabled={!allDone}
-        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: allDone ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: allDone ? C.success : (C.accentTopGrad || C.accent), textTransform: 'uppercase' }}>Before the big day</div>
-        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: allDone ? C.success : C.muted }}>{allDone ? (collapsed ? 'All confirmed ✓ · Review' : 'All confirmed ✓ · Hide') : `${done} of ${rc.items.length} confirmed`}</div>
+      {/* M6·A/B — green dot + plain-case title; the "N of M" rests as a one-line summary under
+          it; a chevron rotates on collapse; tap the whole header to expand/collapse anytime. */}
+      <button type="button" onClick={() => setCollapsed((v) => !v)}
+        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 99, background: C.success || C.accent, flexShrink: 0 }} />
+            <span style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text }}>Before the big day</span>
+          </div>
+          <div style={{ fontSize: T.caption, color: allDone ? C.success : C.muted, marginTop: 3, marginLeft: 16 }}>{allDone ? 'All confirmed ✓' : `${done} of ${rc.items.length} confirmed`}</div>
+        </div>
+        <span aria-hidden style={{ color: C.muted, display: 'flex', flexShrink: 0, marginTop: 2, transform: collapsed ? 'rotate(-90deg)' : 'none', transition: transitionFor('press', ['transform']) }}><Icon name="chevronDown" size={18} /></span>
       </button>
       {!collapsed && (
       <>
