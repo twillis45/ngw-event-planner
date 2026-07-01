@@ -1,7 +1,7 @@
 // playbookDecisionBoard — the host "Decisions" reader (Figma 1692:3). Pure, derived
 // entirely from existing engine state (guestCountResolved / attendanceBand /
 // dietaryResolved / foundation facts / authored decisions[]). No fabricated counts.
-import { playbookDecisionBoard } from '../index';
+import { playbookDecisionBoard, playbookDecisionOptions } from '../index';
 
 const roster = (yes, no, pending) => ([
   ...Array.from({ length: yes }, (_, i) => ({ name: `Y${i}`, rsvp: 'Yes' })),
@@ -117,6 +117,53 @@ describe('decision status derivation', () => {
     expect(find('help').route).toBeNull();
   });
 
+  test('open rows are ordered overdue → ready → waiting', () => {
+    const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-01-05', guests: roster(22, 6, 12) }, '2026-01-01');
+    const ranks = { overdue: 0, ready: 1, waiting: 2 };
+    const seq = b.open.map((r) => ranks[r.status]);
+    const sorted = [...seq].sort((a, b2) => a - b2);
+    expect(seq).toEqual(sorted);
+  });
+});
+
+describe('playbookDecisionOptions — inline-settle accessor for the Decisions board', () => {
+  const evt = { id: 'e', type: 'Dinner Party', date: '2026-02-01' };
+
+  test('a menu decision id returns its option list + engine-default chosen', () => {
+    const o = playbookDecisionOptions(evt, 'format');
+    expect(o).toBeTruthy();
+    expect(o.id).toBe('format');
+    expect(Array.isArray(o.options) && o.options.length).toBeTruthy();
+    // chosen falls back to the SAME choicePickFor() default the spread/budget use,
+    // so it's a member of the option set before the host has touched anything.
+    expect(o.options).toContain(o.chosen);
+  });
+
+  test('an explicit pick becomes the chosen value (single-source foodChoices)', () => {
+    const picked = { ...evt, foodChoices: { format: 'Family-style' } };
+    expect(playbookDecisionOptions(picked, 'format').chosen).toBe('Family-style');
+  });
+
+  test('non-menu / unknown / missing ids return null (board keeps route-away)', () => {
+    expect(playbookDecisionOptions(evt, 'seating')).toBeNull();
+    expect(playbookDecisionOptions(evt, 'nope')).toBeNull();
+    expect(playbookDecisionOptions(null, 'format')).toBeNull();
+    expect(playbookDecisionOptions(evt, '')).toBeNull();
+  });
+
+  test('every menu decision on the board has a resolvable option set', () => {
+    const b = playbookDecisionBoard(evt, '2026-01-01');
+    const menuRows = [...b.open, ...b.locked].filter((r) => r.route && r.route.foodFocus);
+    expect(menuRows.length).toBeGreaterThan(0);
+    for (const r of menuRows) {
+      const o = playbookDecisionOptions(evt, r.id);
+      expect(o).toBeTruthy();
+      expect(o.options.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('ordering guard (kept)', () => {
   test('open rows are ordered overdue → ready → waiting', () => {
     const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-01-05', guests: roster(22, 6, 12) }, '2026-01-01');
     const ranks = { overdue: 0, ready: 1, waiting: 2 };

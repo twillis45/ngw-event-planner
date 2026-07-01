@@ -1433,6 +1433,30 @@ export function playbookDecisionBoard(event, asOf) {
   return { open, locked, headcount };
 }
 
+// Options accessor for a single menu/sourcing decision, so the Decisions board can
+// settle it INLINE (radio divider-rows) without routing the host to the FoodPlan
+// "Your choices" mirror. Returns null unless `id` is a genuine menu decision with
+// options — the board keeps its route-away behavior for everything else. The
+// `chosen` value uses the SAME choicePickFor() fallback the spread/budget/task
+// engine uses (explicit pick → authored default), and a pick is applied through the
+// SAME single-source path (event.foodChoices[id]) that "Your choices" writes — the
+// board never invents a parallel choice store. Shape mirrors playbookFoodPlan's
+// `choices` rows: { id, label, options, why, chosen }.
+export function playbookDecisionOptions(event, id) {
+  if (!event || !id) return null;
+  const pb = getPlaybook(event.type);
+  const decisions = (pb && Array.isArray(pb.decisions)) ? pb.decisions : [];
+  const d = decisions.find((x) => x && x.id === id);
+  if (!d || !isMenuDecision(d)) return null;
+  return {
+    id: d.id,
+    label: d.label,
+    options: Array.isArray(d.options) ? d.options : [],
+    why: d.why || '',
+    chosen: choicePickFor(event, d.id),
+  };
+}
+
 // ── Typical-setup budget categories (engine-derived) ──────────────────────────
 // Roll the playbook's real purchases up into a handful of budget categories,
 // each with a low/high $ range computed from actual quantity × unit-cost — NOT a
