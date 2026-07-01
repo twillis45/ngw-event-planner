@@ -10135,14 +10135,22 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {plan.sourcingTiers.map((t) => {
               const on = plan.sourcing === t.id;
-              const cost = (plan.sourcingKey.byTier && plan.sourcingKey.byTier[t.id]) || 0;
+              const byTier = plan.sourcingKey.byTier || {};
+              const cost = byTier[t.id] || 0;
+              // Decision delta: on non-current tiers, show save/add vs the current tier.
+              // Display-only (reads existing byTier); honest-empty when either value is missing/0 or equal.
+              const currentCost = byTier[plan.sourcing] || 0;
+              const delta = cost - currentCost;
+              const deltaLabel = (!on && cost && currentCost && delta !== 0)
+                ? (delta < 0 ? ` · saves ~$${Math.abs(delta)}` : ` · ~$${Math.abs(delta)} more`)
+                : '';
               return (
                 <button key={t.id} type="button" onClick={() => { if (!on) { try { track(EVENTS.SOURCE_SELECTED, { source: t.id, scope: 'global' }); } catch {} } onPatch({ sourcing: t.id }); try { feedbackSelect(); } catch {} }}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '12px 2px' }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{t.label}</span>
-                    <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1 }}>{t.note} · ~${cost} {String(plan.sourcingKey.item).toLowerCase()}</span>
+                    <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1 }}>{t.note} · ~${cost} {String(plan.sourcingKey.item).toLowerCase()}{deltaLabel}</span>
                   </span>
                   <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: on ? steel : C.muted }}>{on ? 'Current' : 'Tap to switch'}</span>
                 </button>
