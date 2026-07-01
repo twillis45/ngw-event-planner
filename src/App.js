@@ -10346,11 +10346,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       {Array.isArray(i.alternatives) && i.alternatives.length > 0 && (
                         <div>
                           <div style={{ ...lbl, marginBottom: 6 }}>Swap to an alternative</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            {i.swappedFrom && (
-                              <button type="button" onClick={() => { const next = { ...(event.foodSwap || {}) }; delete next[i.id]; const nlock = { ...(event.foodLocked || {}) }; delete nlock[i.id]; onPatch({ foodSwap: next, foodLocked: nlock }); try { feedbackCommit(); } catch {} }}
-                                style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: `${steel}1c`, border: `1px solid ${steel}`, borderRadius: 99, padding: '6px 12px', cursor: 'pointer' }}>↺ Back to {i.swappedFrom}</button>
-                            )}
+                          {/* Selection parity — alternatives are radio divider-rows (circle + name +
+                              price + Current), the same pick language as Sourcing / Your choices. */}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {i.alternatives.slice(0, 3).map((alt) => {
                               const na = normalizeAlternative(alt);
                               const altName = na.name;
@@ -10360,9 +10358,20 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                               return (
                                 <button key={altName} type="button" title={na.full + (priced ? ` (re-prices to $${na.unitCostRange[0]}–$${na.unitCostRange[1]}/${i.unitBase || 'unit'})` : '')}
                                   onClick={() => { const nlock = { ...(event.foodLocked || {}) }; delete nlock[i.id]; onPatch({ foodSwap: { ...(event.foodSwap || {}), [i.id]: altName }, foodLocked: nlock }); try { feedbackSelect(); } catch {} }}
-                                  style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: active ? '#eef0f4' : C.text, background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}`, borderRadius: 99, padding: '6px 12px', cursor: 'pointer' }}>{altName}{priced && <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: FW.regular }}>${na.unitCostRange[0]}–${na.unitCostRange[1]}</span>}</button>
+                                  style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '11px 2px' }}>
+                                  <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${active ? steel : C.border}`, background: active ? steel : 'transparent' }} />
+                                  <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: active ? FW.bold : FW.semibold, color: C.text }}>{altName}{priced && <span style={{ marginLeft: 7, color: C.muted, fontWeight: FW.regular, fontSize: T.caption }}>${na.unitCostRange[0]}–${na.unitCostRange[1]}</span>}</span>
+                                  {active && <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>Current</span>}
+                                </button>
                               );
                             })}
+                            {i.swappedFrom && (
+                              <button type="button" onClick={() => { const next = { ...(event.foodSwap || {}) }; delete next[i.id]; const nlock = { ...(event.foodLocked || {}) }; delete nlock[i.id]; onPatch({ foodSwap: next, foodLocked: nlock }); try { feedbackCommit(); } catch {} }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '11px 2px' }}>
+                                <span aria-hidden style={{ flexShrink: 0, width: 16, textAlign: 'center', color: steel, fontSize: T.body }}>↺</span>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.bold, color: steel }}>Back to {i.swappedFrom}</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
