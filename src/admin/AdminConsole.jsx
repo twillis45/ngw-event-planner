@@ -11,6 +11,7 @@ import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
 import {
   playbookCoverage, culturalMix, locationSpread, memoryDepth, funnelContent,
 } from '../lib/analyticsReader';
+import { evaluationAudit } from '../lib/intelEval';
 import { type } from '../design/tokens';
 
 // Dark palette aligned with AuthGate's login screen so the console feels native.
@@ -47,7 +48,7 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Metrics', 'Errors', 'Providers', 'Audit'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Metrics', 'Errors', 'Providers', 'Audit'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -1173,6 +1174,143 @@ function LocationPanel({ book }) {
   );
 }
 
+// ── INTEL-QA-1 Stage 1A — Intelligence Observatory (evaluation CAPTURE visibility) ───────────────
+// Admin-only (this panel renders only inside the role-gated AdminConsole). Reads THIS browser's book
+// via evaluationAudit — a pure, capture-only reader. NO scoring, NO grades, NO learning: the copy is
+// deliberately honest about that. Never crashes on missing/malformed intelEvaluations.
+const IE = { eyebrow: { fontSize: type.size.eyebrow || type.size.caption, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: D.muted, margin: '22px 0 10px' } };
+function IntelKpi({ label, value, tone }) {
+  return (
+    <div style={{ background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '11px 13px', minWidth: 118, flex: '1 0 118px' }}>
+      <div style={{ fontSize: type.size.xl, fontWeight: 700, color: tone || D.text, fontFamily: D.mono }}>{value}</div>
+      <div style={{ fontSize: type.size.caption, color: D.muted, marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+function IEBlock({ title, obj }) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: type.size.caption, fontWeight: 700, color: D.muted, marginBottom: 4 }}>{title}</div>
+      <pre style={{ margin: 0, fontSize: type.size.sm, color: D.text, fontFamily: D.mono, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(obj ?? null, null, 2)}</pre>
+    </div>
+  );
+}
+function IntelligencePanel({ book }) {
+  const [filter, setFilter] = useState('');
+  const [decision, setDecision] = useState('All');
+  const [sel, setSel] = useState(null); // { eventId, recId }
+  let audit; try { audit = evaluationAudit(book); } catch { audit = null; }
+  if (!audit) return (<div><BookBanner /><Banner tone="bad">Could not read evaluation data (safe fallback — nothing scored).</Banner></div>);
+  const T = audit.totals;
+  const ctrl = { background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '7px 10px', fontFamily: D.ff, outline: 'none' };
+
+  if (T.records === 0) {
+    return (
+      <div>
+        <BookBanner />
+        <Banner tone="muted">Capture only — Scoring not started · Learning loop not active yet.</Banner>
+        <div style={{ fontSize: type.size.base, color: D.faint, padding: '24px 0', lineHeight: 1.6 }}>No recommendation records captured in this browser's book yet. When R1 shows a recommendation on an event, a record is frozen here.</div>
+      </div>
+    );
+  }
+
+  const rows = audit.records.filter((r) => (decision === 'All' || r.decision === decision) && (!filter || `${r.eventLabel} ${r.reader} ${r.recommendationType}`.toLowerCase().includes(filter.toLowerCase())));
+  const drill = sel ? (() => { const e = (book || []).find((x) => x && x.id === sel.eventId); const rec = e && (e.intelEvaluations || []).find((r) => r && r.id === sel.recId); return rec ? { rec, event: e } : null; })() : null;
+  const th = { textAlign: 'left', padding: '7px 10px', fontSize: type.size.caption, color: D.muted, borderBottom: `1px solid ${D.border}`, whiteSpace: 'nowrap' };
+  const td = { padding: '7px 10px', fontSize: type.size.caption, color: D.text, borderBottom: `1px solid ${D.border}`, whiteSpace: 'nowrap' };
+
+  return (
+    <div>
+      <BookBanner />
+      <Banner tone="muted">Capture + integrity only. Scoring not started · Learning loop not active yet · Better-than-baseline pending (Stage 2).</Banner>
+
+      <div style={IE.eyebrow}>Overview</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+        <IntelKpi label="Events scanned" value={audit.scannedEvents} />
+        <IntelKpi label="Events w/ evaluations" value={audit.eventsWithEvaluations} />
+        <IntelKpi label="Recommendation records" value={T.records} />
+        <IntelKpi label="Shown" value={T.shown} />
+        <IntelKpi label="Accepted" value={T.accepted} />
+        <IntelKpi label="Reverted" value={T.reverted} />
+        <IntelKpi label="Overridden" value={T.overridden} />
+        <IntelKpi label="Actuals attached" value={T.actualsAttached} />
+        <IntelKpi label="Evaluation-ready" value={T.evaluationReady} />
+        <IntelKpi label="Malformed" value={T.malformed} tone={T.malformed ? D.bad : undefined} />
+        <IntelKpi label="Duplicate warnings" value={T.duplicateWarnings} tone={T.duplicateWarnings ? D.bad : undefined} />
+      </div>
+
+      <div style={IE.eyebrow}>Recommendation lifecycle funnel</div>
+      {audit.funnel.map((f) => (
+        <div key={f.stage} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+          <span style={{ width: 128, flexShrink: 0, fontSize: type.size.caption, color: D.muted, textTransform: 'capitalize' }}>{f.stage}</span>
+          {f.available ? (
+            <>
+              <div style={{ height: 13, background: D.accent, borderRadius: 3, width: `${Math.max(2, Math.round(((f.value || 0) / Math.max(1, T.records)) * 240))}px`, opacity: 0.85 }} />
+              <span style={{ fontFamily: D.mono, fontSize: type.size.sm, color: D.text }}>{f.value}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>unavailable — {f.note}</span>
+          )}
+        </div>
+      ))}
+
+      <div style={IE.eyebrow}>Data integrity</div>
+      {audit.integrity.length === 0
+        ? <div style={{ fontSize: type.size.base, color: D.good }}>✓ No integrity issues detected.</div>
+        : audit.integrity.map((i, idx) => (
+          <div key={idx} style={{ fontSize: type.size.caption, color: i.level === 'error' ? D.bad : D.warn, padding: '3px 0' }}>
+            {i.level === 'error' ? '✕' : '⚠'} <span style={{ fontFamily: D.mono }}>[{i.code}]</span> {i.message} <span style={{ color: D.faint }}>· {i.eventId || '—'}</span>
+          </div>
+        ))}
+
+      <div style={IE.eyebrow}>Evaluation records</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by event / reader / type…" style={{ ...ctrl, flex: 1 }} />
+        <select value={decision} onChange={(e) => setDecision(e.target.value)} style={ctrl}>{['All', 'Accepted', 'Reverted', 'Overridden', 'Pending'].map((d) => <option key={d}>{d}</option>)}</select>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 720 }}>
+          <thead><tr>{['Event', 'Type', 'Reader', 'Recommendation', 'Baseline', 'Decision', 'Actual', 'Eval-ready', 'Engine', ''].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.eventId + i}>
+                <td style={td}>{r.eventLabel}</td>
+                <td style={td}>{r.recommendationType}</td>
+                <td style={td}>{r.reader}</td>
+                <td style={td}>{r.snapshot ? `${r.snapshot.from} → ${r.snapshot.to}` : '—'}</td>
+                <td style={td}>{r.baselinePresent ? 'yes' : <span style={{ color: D.warn }}>no</span>}</td>
+                <td style={td}>{r.decision}</td>
+                <td style={td}>{r.actualAttached ? 'attached' : <span style={{ color: D.faint }}>pending</span>}</td>
+                <td style={td}>{r.evaluationReady ? 'ready' : <span style={{ color: D.faint }}>pending</span>}</td>
+                <td style={td}>{r.reader} v{r.engine ?? '?'} · rec v{r.version ?? '?'}</td>
+                <td style={td}><button onClick={() => setSel({ eventId: r.eventId, recId: `${r.reader}:${r.eventId}` })} style={{ ...ctrl, cursor: 'pointer', padding: '4px 10px' }}>view</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {drill && (
+        <div style={{ marginTop: 18, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14, background: D.surface }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 700, color: D.text }}>{drill.rec.id} <span style={{ color: D.faint, fontWeight: 400 }}>· {drill.rec.readerId}</span></div>
+            <button onClick={() => setSel(null)} style={{ ...ctrl, cursor: 'pointer' }}>close</button>
+          </div>
+          <div style={{ fontSize: type.size.caption, color: D.muted, marginTop: 4 }}>Actual attached: {drill.rec.actual ? 'yes' : 'no'} · Better-than-baseline pending (Stage 2 scoring not started)</div>
+          <IEBlock title="Frozen recommendation snapshot" obj={drill.rec.recommendation} />
+          <IEBlock title="Baseline (today's default)" obj={drill.rec.baseline} />
+          <IEBlock title="Counterfactual (default / reader / host / actual)" obj={drill.rec.counterfactual} />
+          <IEBlock title="Lifecycle (append-only history)" obj={drill.rec.lifecycle} />
+          <IEBlock title="Actual (write-once, real only)" obj={drill.rec.actual} />
+          <IEBlock title="Reserved — evaluation (Stage 2)" obj={drill.rec.evaluation} />
+          <IEBlock title="Reserved — utility (future)" obj={drill.rec.utility} />
+          {(() => { const iss = audit.integrity.filter((x) => x.recId === drill.rec.id); return iss.length ? <IEBlock title="Integrity warnings" obj={iss} /> : <div style={{ marginTop: 10, fontSize: type.size.caption, color: D.good }}>✓ No integrity issues on this record.</div>; })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalyticsSuite() {
   const [sub, setSub] = useState('Executive');
   // Read the local book once per sub-tab change (cheap; panels re-derive).
@@ -1334,6 +1472,7 @@ export default function AdminConsole() {
         {tab === 'Activation' && <ActivationPanel onOpenUser={goToUser} />}
 
         {tab === 'Analytics' && <AnalyticsSuite />}
+        {tab === 'Intelligence' && <IntelligencePanel book={readLocalBook()} />}
 
         {tab === 'Metrics' && <MetricsPanel />}
 

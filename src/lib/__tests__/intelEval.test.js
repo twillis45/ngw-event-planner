@@ -5,6 +5,7 @@ import {
   createEvaluation, appendLifecycle, recordDecision, attachActual,
   upsertEvaluation, updateEvaluation, hasEvaluation, evaluationStats, evalId,
   EVAL_VERSION, LIFECYCLE_STATES, DECISION_COST,
+  validateEvaluation, evaluationAudit,
 } from '../intelEval';
 
 const AT = '2026-07-01T10:00:00.000Z';
@@ -134,6 +135,79 @@ describe('malformed + version compatibility', () => {
     expect(appendLifecycle(legacy, 'accepted').lifecycle).toHaveLength(2);
     expect(mkRec().version).toBe(EVAL_VERSION);
     expect(LIFECYCLE_STATES).toContain('evaluated');
+  });
+});
+
+describe('Stage 1A — validateEvaluation (integrity)', () => {
+  const clean = () => attachActual(appendLifecycle(appendLifecycle(mkRec(), 'presented'), 'accepted'), 36, AT);
+  test('clean record ⇒ no issues', () => {
+    expect(validateEvaluation(clean())).toEqual([]);
+  });
+  test('non-object / missing id ⇒ malformed', () => {
+    expect(validateEvaluation(null)[0].code).toBe('malformed');
+    expect(validateEvaluation({ recommendation: {}, baseline: { value: 1 }, version: EVAL_VERSION }).some((i) => i.code === 'malformed')).toBe(true);
+  });
+  test('missing baseline / snapshot / version flagged', () => {
+    const codes = (r) => validateEvaluation(r).map((i) => i.code);
+    expect(codes({ id: 'x', version: EVAL_VERSION, recommendation: { from: 1 }, lifecycle: [] })).toContain('missing_baseline');
+    expect(codes({ id: 'x', version: EVAL_VERSION, baseline: { value: 1 }, lifecycle: [] })).toContain('missing_snapshot');
+    expect(codes({ id: 'x', recommendation: {}, baseline: { value: 1 }, lifecycle: [] })).toContain('version_unknown');
+  });
+  test('lifecycle out of order flagged', () => {
+    const r = { ...mkRec(), lifecycle: [{ state: 'accepted' }, { state: 'created' }] };
+    expect(validateEvaluation(r).some((i) => i.code === 'lifecycle_order')).toBe(true);
+  });
+  test('malformed actual flagged; accepted+eventPassed+no-actual flagged', () => {
+    expect(validateEvaluation({ ...mkRec(), actual: { note: 'x' } }).some((i) => i.code === 'actual_malformed')).toBe(true);
+    const acc = appendLifecycle(mkRec(), 'accepted');
+    expect(validateEvaluation(acc, { eventPassed: true }).some((i) => i.code === 'missing_actual')).toBe(true);
+    expect(validateEvaluation(acc, { eventPassed: false }).some((i) => i.code === 'missing_actual')).toBe(false); // pending, not a gap
+  });
+});
+
+describe('Stage 1A — evaluationAudit (admin dataset)', () => {
+  const rec = (over = {}) => ({ ...mkRec(over), lifecycle: [{ state: 'created', at: AT }, { state: 'presented', at: AT }, { state: 'accepted', at: AT }] });
+  test('EMPTY / malformed book ⇒ zeroes, never throws', () => {
+    for (const bad of [null, undefined, 'x', [], [null, 'y']]) {
+      expect(() => evaluationAudit(bad)).not.toThrow();
+      expect(evaluationAudit(bad).totals.records).toBe(0);
+    }
+  });
+  test('KPIs + funnel + records over a populated book', () => {
+    const done = attachActual(rec(), 36, AT);
+    const pending = rec({ readerId: 'R2' });
+    const events = [
+      { id: 'cf1', type: 'Crab Feast', date: '2026-06-01', intelEvaluations: [done, pending] },
+      { id: 'x2', type: 'Cookout', intelEvaluations: [] },
+      { id: 'x3' },
+    ];
+    const a = evaluationAudit(events, '2026-07-01');
+    expect(a.scannedEvents).toBe(3);
+    expect(a.eventsWithEvaluations).toBe(1);
+    expect(a.totals).toMatchObject({ records: 2, shown: 2, accepted: 2, actualsAttached: 1, evaluationReady: 1, malformed: 0, duplicateWarnings: 0 });
+    expect(a.funnel.find((f) => f.stage === 'eligible').available).toBe(false); // honest: unavailable
+    expect(a.funnel.find((f) => f.stage === 'evaluation ready').value).toBe(1);
+    expect(a.records).toHaveLength(2);
+    expect(a.records[0]).toMatchObject({ eventLabel: 'Crab Feast · cf1', decision: 'Accepted', actualAttached: true, evaluationReady: true, baselinePresent: true });
+  });
+  test('DUPLICATE ids in one event ⇒ duplicateWarnings + integrity error', () => {
+    const r = rec();
+    const a = evaluationAudit([{ id: 'cf1', intelEvaluations: [r, r] }]);
+    expect(a.totals.duplicateWarnings).toBe(1);
+    expect(a.integrity.some((i) => i.code === 'duplicate_id')).toBe(true);
+  });
+  test('MALFORMED record ⇒ counted + integrity, does not crash the scan', () => {
+    const a = evaluationAudit([{ id: 'cf1', intelEvaluations: [null, 'garbage', rec()] }]);
+    expect(a.totals.malformed).toBe(2);
+    expect(a.totals.records).toBe(3);
+    expect(a.integrity.some((i) => i.code === 'malformed')).toBe(true);
+  });
+  test('missing-actual gap only for a passed event', () => {
+    const acc = appendLifecycle(mkRec(), 'accepted'); // accepted, no actual
+    const passed = evaluationAudit([{ id: 'cf1', date: '2026-06-01', intelEvaluations: [acc] }], '2026-07-01');
+    expect(passed.integrity.some((i) => i.code === 'missing_actual')).toBe(true);
+    const upcoming = evaluationAudit([{ id: 'cf1', date: '2026-12-01', intelEvaluations: [acc] }], '2026-07-01');
+    expect(upcoming.integrity.some((i) => i.code === 'missing_actual')).toBe(false);
   });
 });
 

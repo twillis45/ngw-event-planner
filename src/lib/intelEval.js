@@ -117,6 +117,102 @@ export function updateEvaluation(list, id, fn) {
 
 export const hasEvaluation = (list, id) => (Array.isArray(list) ? list.some((r) => r && r.id === id) : false);
 
+// ── Stage 1A: admin audit (visibility only — NO scoring, NO grades, NO calibration) ─────────────
+const CANON_ORDER = Object.fromEntries(LIFECYCLE_STATES.map((s, i) => [s, i]));
+
+// Validate ONE record's data integrity. Returns an array of {code, level, message} — empty if clean.
+// `eventPassed` lets us flag an accepted recommendation whose event is over but still has no actual.
+export function validateEvaluation(record, opts) {
+  const o = isObj(opts) ? opts : {};
+  const issues = [];
+  if (!isObj(record)) return [{ code: 'malformed', level: 'error', message: 'Record is not an object' }];
+  if (!record.id) issues.push({ code: 'malformed', level: 'error', message: 'Missing record id' });
+  if (record.version !== EVAL_VERSION) issues.push({ code: 'version_unknown', level: 'warn', message: `Record version ${record.version == null ? 'missing' : record.version} (expected ${EVAL_VERSION})` });
+  if (!isObj(record.recommendation)) issues.push({ code: 'missing_snapshot', level: 'error', message: 'Missing frozen recommendation snapshot' });
+  if (!isObj(record.baseline) || num(record.baseline.value) == null) issues.push({ code: 'missing_baseline', level: 'warn', message: 'Missing baseline (default) value' });
+  // lifecycle order — canonical indices must be non-decreasing
+  const states = Array.isArray(record.lifecycle) ? record.lifecycle.map((h) => h && h.state) : [];
+  let prev = -1, ordered = true;
+  for (const s of states) { const i = CANON_ORDER[s]; if (i == null) continue; if (i < prev) { ordered = false; break; } prev = i; }
+  if (!ordered) issues.push({ code: 'lifecycle_order', level: 'warn', message: 'Lifecycle transitions are out of canonical order' });
+  // actual integrity
+  if (record.actual != null && (!isObj(record.actual) || num(record.actual.value) == null)) issues.push({ code: 'actual_malformed', level: 'error', message: 'Attached actual is malformed (no numeric value)' });
+  // accepted + event over + no actual = a real capture gap (not just pending)
+  const accepted = states.includes('accepted');
+  const hasActual = isObj(record.actual) && num(record.actual.value) != null;
+  if (accepted && o.eventPassed && !hasActual) issues.push({ code: 'missing_actual', level: 'warn', message: 'Event has passed but no actual outcome was attached' });
+  return issues;
+}
+
+// The full admin dataset — KPIs, lifecycle funnel, a records table, and integrity warnings — over
+// this browser's book. Pure. Honest: "eligible" is UNAVAILABLE (only shown recs are persisted); no
+// stage is scored. Never throws on malformed input.
+export function evaluationAudit(events, asOf) {
+  const evs = Array.isArray(events) ? events : [];
+  const now = asOf ? new Date(asOf) : safeNow();
+  const T = { records: 0, shown: 0, accepted: 0, reverted: 0, overridden: 0, actualsAttached: 0, evaluationReady: 0, malformed: 0, duplicateWarnings: 0 };
+  let scannedEvents = 0, eventsWithEvaluations = 0;
+  const records = [], integrity = [];
+
+  for (const e of evs) {
+    if (!isObj(e)) continue;
+    scannedEvents += 1;
+    const list = Array.isArray(e.intelEvaluations) ? e.intelEvaluations : [];
+    if (!list.length) continue;
+    eventsWithEvaluations += 1;
+    const eventPassed = (() => { try { const d = new Date(String(e.date).slice(0, 10)); return !isNaN(d) && d < now; } catch { return false; } })();
+    const label = `${(e.type || 'Event')} · ${String(e.id || '?').slice(0, 6)}`;
+    const seen = new Set();
+
+    for (const r of list) {
+      T.records += 1;
+      const issues = validateEvaluation(r, { eventPassed });
+      const fatal = issues.find((i) => i.code === 'malformed');
+      if (fatal) { T.malformed += 1; integrity.push({ eventId: e.id, recId: (isObj(r) && r.id) || null, ...fatal }); continue; }
+      if (r.id) { if (seen.has(r.id)) { T.duplicateWarnings += 1; integrity.push({ eventId: e.id, recId: r.id, code: 'duplicate_id', level: 'error', message: `Duplicate record id ${r.id} within one event` }); } seen.add(r.id); }
+      for (const iss of issues) integrity.push({ eventId: e.id, recId: r.id || null, ...iss });
+
+      const states = Array.isArray(r.lifecycle) ? r.lifecycle.map((h) => h && h.state) : [];
+      if (states.includes('presented') || states.includes('created')) T.shown += 1;
+      if (states.includes('accepted')) T.accepted += 1;
+      if (states.includes('reverted')) T.reverted += 1;
+      if (states.includes('overridden')) T.overridden += 1;
+      const hasActual = isObj(r.actual) && num(r.actual.value) != null;
+      if (hasActual) T.actualsAttached += 1;
+      const baselinePresent = isObj(r.baseline) && num(r.baseline.value) != null;
+      const ready = hasActual && baselinePresent && isObj(r.recommendation);
+      if (ready) T.evaluationReady += 1;
+
+      const decision = states.includes('reverted') ? 'Reverted' : states.includes('overridden') ? 'Overridden' : states.includes('accepted') ? 'Accepted' : 'Pending';
+      const at = (s) => { const h = (Array.isArray(r.lifecycle) ? r.lifecycle : []).find((x) => x && x.state === s); return h ? h.at : null; };
+      records.push({
+        eventId: e.id, eventLabel: label,
+        recommendationType: (isObj(r.metadata) && r.metadata.domain) || (isObj(r.recommendation) && r.recommendation.domain) || 'unknown',
+        reader: r.readerId || 'unknown', source: (isObj(r.metadata) && r.metadata.source) || null,
+        snapshot: isObj(r.recommendation) ? { from: r.recommendation.from, to: r.recommendation.to, because: r.recommendation.because } : null,
+        baselinePresent, decision, actualAttached: hasActual, evaluationReady: ready,
+        version: r.version ?? null, engine: (isObj(r.metadata) && r.metadata.readerVersion) || null,
+        createdAt: r.timestamp || at('created'), presentedAt: at('presented'),
+        decidedAt: at('reverted') || at('overridden') || at('accepted') || null,
+      });
+    }
+  }
+
+  const funnel = [
+    { stage: 'eligible', value: null, available: false, note: 'Not persisted — only shown recommendations are captured' },
+    { stage: 'created', value: T.records, available: true },
+    { stage: 'presented', value: T.shown, available: true },
+    { stage: 'accepted', value: T.accepted, available: true },
+    { stage: 'reverted', value: T.reverted, available: true },
+    { stage: 'overridden', value: T.overridden, available: true },
+    { stage: 'actual attached', value: T.actualsAttached, available: true },
+    { stage: 'evaluation ready', value: T.evaluationReady, available: true },
+  ];
+  return { scannedEvents, eventsWithEvaluations, totals: T, funnel, records, integrity };
+}
+
+function safeNow() { try { return new Date(); } catch { return new Date(0); } }
+
 // Observatory counts (deliverable 9) — totals only, NO scoring, NO percentages. `completed` = an
 // actual has been attached (evaluable); `pending` = awaiting reconciliation.
 export function evaluationStats(events) {
