@@ -50,7 +50,7 @@ import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpC
 import { foodShopItems } from './lib/foodShopItems';
 // INTEL-1 — Host Intelligence (Level-4 memory). P2 uses applyReconciliation/isReconciled to write
 // reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
-import { applyReconciliation } from './lib/hostIntel';
+import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence } from './lib/hostIntel';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -16574,6 +16574,42 @@ function HostSettings({ profile, onChange, onClose, events = [], onClearSample }
               style={{ marginTop: 16, width: '100%', minHeight: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: T.body, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
           )}
         </div>
+
+        {/* WHAT EVENT BOSS REMEMBERS — INTEL-1 P3. A deliberate inspect + clear surface for the
+            host's own learned memory. Plain language, no recommendations, no read-forward, no
+            "we remembered…" surfacing — just what's been learned + the ability to clear it. */}
+        {(() => {
+          const mem = summarizeHostIntel(profile);
+          return (
+            <div style={sectionWrap}>
+              <div style={eyebrow}>What Event Boss remembers</div>
+              {!mem.present ? (
+                <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
+                  Nothing yet. As you close out events — how many came, what was left over — what Event Boss learns shows up here, in plain language. It only ever remembers your own events, never guest details.
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, marginBottom: 2 }}>
+                    Learned from {mem.eventsObserved} event{mem.eventsObserved === 1 ? '' : 's'} you've closed out — your own events only, no guest details.
+                  </div>
+                  {mem.groups.map((g) => (
+                    <div key={g.domain} style={{ padding: '14px 0 4px', borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                        <span style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text }}>{g.title}</span>
+                        <button type="button" onClick={() => onChange('hostIntelligence', clearDomain(profile.hostIntelligence, g.domain))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted, flexShrink: 0, padding: '2px 0' }}>Clear</button>
+                      </div>
+                      {g.lines.map((ln, i) => <div key={i} style={{ fontSize: T.secondary, color: C.text, marginTop: 6, lineHeight: 1.45 }}>{ln}</div>)}
+                      {g.note && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6 }}>{g.note}</div>}
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => { if (window.confirm('Clear everything Event Boss has learned from your events? This can’t be undone.')) onChange('hostIntelligence', emptyHostIntelligence()); }}
+                    style={{ marginTop: 18, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.danger || C.steel?.blue400 || C.accent }}>Clear everything Event Boss remembers</button>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* DEMO — sample-data note */}
         {hasSample && (

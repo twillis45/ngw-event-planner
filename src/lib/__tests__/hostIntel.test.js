@@ -6,6 +6,7 @@ import {
   hostIntel, emptyHostIntelligence, appendObservation, appendFoodObservation,
   markEventObserved, clearDomain, clearAllHostIntelligence, CONFIDENCE, STABILITY,
   applyReconciliation, isReconciled,
+  summarizeHostIntel, clearMemoryDomain, clearAllMemory,
 } from '../hostIntel';
 
 const ASOF = '2026-07-01';
@@ -224,6 +225,79 @@ describe('P2 — applyReconciliation (Reality Reconciliation write)', () => {
     expect(isReconciled({ hostIntelligence: hi }, 'e1')).toBe(true);
     expect(isReconciled({ hostIntelligence: hi }, 'e2')).toBe(false);
     expect(isReconciled(null, 'e1')).toBe(false);
+  });
+});
+
+describe('P3 — summarizeHostIntel + clear (Settings "What Event Boss remembers")', () => {
+  // A host profile with UNRELATED keys + a populated, stable, Medium-confidence memory.
+  const populated = () => {
+    let hi = emptyHostIntelligence();
+    for (const [i, d] of [['e1', '2026-06-01'], ['e2', '2026-06-08'], ['e3', '2026-06-15']].entries()) {
+      hi = applyReconciliation(hi, {
+        eventId: d[0], date: d[1],
+        attendance: { planned: 40, actual: 34 - i }, // 34/35/33 → ~14% fewer, stable
+        food: [{ itemId: 'brisket', planned: 18, consumedRatio: 0.85 }, { itemId: 'old_bay', planned: 2, consumedRatio: 0.65 }],
+        budget: { estimate: 800, ratio: 1.2 },
+        ice: { ratio: 1.4 },
+        lesson: i === 0 ? 'order crabs a day earlier' : null,
+      });
+    }
+    return { name: 'Maya Carter', accountType: 'host', savedVendors: [{ id: 'v1' }], hostIntelligence: hi };
+  };
+
+  test('EMPTY memory ⇒ honest-empty (present:false, no groups)', () => {
+    for (const p of [{}, { hostIntelligence: emptyHostIntelligence() }, { hostIntelligence: { version: 1, eventsObserved: 0, domains: {} } }]) {
+      const s = summarizeHostIntel(p, ASOF);
+      expect(s.present).toBe(false);
+      expect(s.groups).toEqual([]);
+    }
+  });
+
+  test('POPULATED ⇒ attendance/food/spend/ice/lesson facts in plain language, NO guest PII', () => {
+    const s = summarizeHostIntel(populated(), ASOF);
+    expect(s.present).toBe(true);
+    const byDomain = Object.fromEntries(s.groups.map((g) => [g.domain, g]));
+    expect(byDomain.attendance.lines[0]).toMatch(/fewer guests show up than you plan/i);
+    expect(byDomain.food.lines.join(' ')).toMatch(/Brisket.*left over/i);
+    expect(byDomain.food.lines.join(' ')).toMatch(/Old Bay/); // itemId humanized, not a raw slug
+    expect(byDomain.budget.lines[0]).toMatch(/over your plan/i);
+    expect(byDomain.weather.lines[0]).toMatch(/need about \d+% more/i);
+    expect(byDomain.lessons.lines[0]).toMatch(/order crabs a day earlier/);
+    expect(byDomain.attendance.note).toMatch(/Getting a feel|Confident|learning/);
+    // NO guest PII and no profile identity leaks into the summary
+    const blob = JSON.stringify(s);
+    expect(blob).not.toMatch(/Maya|Carter|address|email|phone/i);
+  });
+
+  test('MALFORMED memory ⇒ no throw, honest-empty', () => {
+    for (const p of [null, undefined, 'garbage', { hostIntelligence: 'x' }, { hostIntelligence: { domains: 'nope' } }]) {
+      expect(() => summarizeHostIntel(p, ASOF)).not.toThrow();
+      expect(summarizeHostIntel(p, ASOF).present).toBe(false);
+    }
+  });
+
+  test('CLEAR DOMAIN removes just that domain; unrelated profile data untouched', () => {
+    const before = populated();
+    const after = clearMemoryDomain(before, 'attendance');
+    expect(after.hostIntelligence.domains.attendance).toBeUndefined();
+    expect(after.hostIntelligence.domains.budget).toBeDefined();       // siblings kept
+    expect(after.hostIntelligence.domains.food).toBeDefined();
+    expect(after.name).toBe('Maya Carter');                            // unrelated profile intact
+    expect(after.savedVendors).toEqual([{ id: 'v1' }]);
+    expect(before.hostIntelligence.domains.attendance).toBeDefined();  // input not mutated
+    // lessons is a domain too
+    const noLessons = clearMemoryDomain(before, 'lessons');
+    expect(noLessons.hostIntelligence.lessons).toBeUndefined();
+    expect(noLessons.hostIntelligence.domains.food).toBeDefined();
+  });
+
+  test('CLEAR ALL resets memory only; the rest of the profile survives', () => {
+    const after = clearAllMemory(populated());
+    expect(after.hostIntelligence).toEqual(emptyHostIntelligence());
+    expect(summarizeHostIntel(after, ASOF).present).toBe(false);
+    expect(after.name).toBe('Maya Carter');                            // no accidental deletion
+    expect(after.accountType).toBe('host');
+    expect(after.savedVendors).toEqual([{ id: 'v1' }]);
   });
 });
 

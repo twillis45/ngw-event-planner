@@ -226,11 +226,81 @@ export function isReconciled(profile, eventId) {
 }
 
 // ── delete at the data level (privacy guarantee) ─────────────────────────────
+// clearDomain handles the keyed domains AND the top-level `lessons` list.
 export function clearDomain(hostIntelligence, domain) {
   const hi = isObj(hostIntelligence) ? hostIntelligence : emptyHostIntelligence();
+  if (domain === 'lessons') { const next = { ...hi }; delete next.lessons; return next; }
   const domains = { ...(isObj(hi.domains) ? hi.domains : {}) };
   delete domains[domain];
   return { ...hi, domains };
 }
 
 export function clearAllHostIntelligence() { return emptyHostIntelligence(); }
+
+// Profile-safe clears for the Settings UI — return a NEW profile with ONLY hostIntelligence
+// changed; every other profile key is preserved (no accidental deletion of unrelated data).
+export function clearMemoryDomain(profile, domain) {
+  const p = isObj(profile) ? profile : {};
+  return { ...p, hostIntelligence: clearDomain(p.hostIntelligence, domain) };
+}
+export function clearAllMemory(profile) {
+  const p = isObj(profile) ? profile : {};
+  return { ...p, hostIntelligence: clearAllHostIntelligence() };
+}
+
+// ── P3: plain-language summary for the "What Event Boss remembers" Settings section ──────────
+// Pure. Turns stored observations into calm, human sentences — NO recommendations, no read-forward,
+// no PII (observations only ever hold eventId/date/estimate/actual + host-typed lesson text).
+const humanize = (id) => String(id || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+const pctDelta = (r) => Math.round(Math.abs((num(r) || 1) - 1) * 100);
+function noteFor(rollup) {
+  let n = rollup.confidence === CONFIDENCE.LOW ? 'Just starting to learn this'
+    : rollup.confidence === CONFIDENCE.MEDIUM ? 'Getting a feel for this' : 'Confident';
+  if (rollup.stability === STABILITY.LOW) n += ' · but it varies a lot';
+  return n;
+}
+
+export function summarizeHostIntel(profile, asOf) {
+  const h = hostIntel(profile, asOf);
+  const groups = [];
+  if (!h.present) return { present: false, eventsObserved: 0, groups };
+
+  const att = h.get('attendance');
+  if (att.confidence !== CONFIDENCE.NONE && num(att.ratio) != null) {
+    const d = pctDelta(att.ratio);
+    groups.push({ domain: 'attendance', title: 'Guest turnout',
+      lines: [d === 0 ? 'About the number you plan for shows up.' : `About ${d}% ${att.ratio < 1 ? 'fewer' : 'more'} guests show up than you plan for.`],
+      note: noteFor(att) });
+  }
+
+  const foodItems = (h.raw && isObj(h.raw.domains) && isObj(h.raw.domains.food) && isObj(h.raw.domains.food.items)) ? h.raw.domains.food.items : {};
+  const foodLines = Object.keys(foodItems).map((id) => {
+    const r = h.getFood(id);
+    if (r.confidence === CONFIDENCE.NONE || num(r.ratio) == null) return null;
+    const d = pctDelta(r.ratio);
+    if (d === 0) return `${humanize(id)}: usually about right.`;
+    return r.ratio < 1 ? `${humanize(id)}: usually about ${d}% left over.` : `${humanize(id)}: usually runs about ${d}% short.`;
+  }).filter(Boolean);
+  if (foodLines.length) groups.push({ domain: 'food', title: 'Food amounts', lines: foodLines, note: '' });
+
+  const bud = h.get('budget');
+  if (bud.confidence !== CONFIDENCE.NONE && num(bud.ratio) != null) {
+    const d = pctDelta(bud.ratio);
+    groups.push({ domain: 'budget', title: 'Spending',
+      lines: [d === 0 ? 'Spending lands about on your plan.' : `Spending runs about ${d}% ${bud.ratio > 1 ? 'over' : 'under'} your plan.`],
+      note: noteFor(bud) });
+  }
+
+  const wx = h.get('weather');
+  if (wx.confidence !== CONFIDENCE.NONE && num(wx.ratio) != null) {
+    const d = pctDelta(wx.ratio);
+    groups.push({ domain: 'weather', title: 'Ice & cooling',
+      lines: [d === 0 ? 'Ice: about the amount you plan.' : `Ice: you tend to need about ${d}% ${wx.ratio > 1 ? 'more' : 'less'}.`],
+      note: noteFor(wx) });
+  }
+
+  const lessons = (h.raw && Array.isArray(h.raw.lessons)) ? h.raw.lessons : [];
+  if (lessons.length) groups.push({ domain: 'lessons', title: 'Your notes', lines: lessons.map((l) => `“${(l && l.text) || ''}”`), note: '' });
+
+  return { present: groups.length > 0, eventsObserved: h.eventsObserved, groups };
+}
