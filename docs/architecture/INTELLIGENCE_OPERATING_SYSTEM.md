@@ -119,6 +119,28 @@ This loop is the **only** thing that turns single events into a compounding prof
 
 ---
 
+## 4.5 Precedence — the resolution order (CANONICAL, load-bearing)
+
+Three intelligence layers now stack. They resolve in ONE fixed order — a higher layer is the default, a lower layer may only *refine* it under its own gate, and the user always wins:
+
+1. **Ground truth** — the playbook / L2 default. Always the baseline.
+2. **Context Intelligence** (L3) — today's event (place · tradition · season) refines the baseline.
+3. **Host Intelligence** (L4) — the household's learned reality refines the *Context-adjusted* value — **only** when `Applicability.eligible` (Confidence ≥ Medium AND Stability ≥ Medium AND enough recent, non-expired observations; §5c + the Applicability object §5e).
+4. **User override** — the host's explicit choice. **Always wins**, and persists (e.g. the R1 "Keep {planned}" revert).
+
+**Host Intelligence must NEVER bypass Context Intelligence.** It refines the Context-adjusted value; it does not replace the chain. Every reader in the [Readers Registry](./INTELLIGENCE_READERS_REGISTRY.md) resolves in this order, and its `because` names which layer spoke. This precedence is part of the OS — no reader may reorder it.
+
+---
+
+## 4.6 The two registries + the Observatory (governance triad)
+
+From R1 onward, the system *changes plans*, so three governance surfaces are load-bearing and must stay current:
+- **[Readers Registry](./INTELLIGENCE_READERS_REGISTRY.md)** — every engine that *consumes* memory/context (nine-field contract).
+- **[Writers Registry](./INTELLIGENCE_WRITERS_REGISTRY.md)** — every surface that *writes* an observation (nine-field contract). No unregistered writes.
+- **Intelligence Observatory** (admin) — the visibility layer: applicability rate, accept-vs-revert (trust), average adjustment, confidence/stability by domain, time-to-applicable, memory-by-playbook, active readers. **Ships before R2** — validate that R1 helps before adding readers that change more behavior.
+
+---
+
 ## 5. Sequencing principle — memory before prediction
 
 Do **not** build AI forecasts / risk scores / probability engines / smart recommendations until the system has enough **reconciled observations** (§4) to justify them. Context (L3) makes the first event smart with *no* history; Memory (L4) needs history; Prediction (L5) needs *enough* history. Ship in that order.
@@ -128,20 +150,25 @@ Do **not** build AI forecasts / risk scores / probability engines / smart recomm
 ## 6. Canonical roadmap (revised, ratified)
 
 1. **✅ Canonical Intelligence OS** — freeze the audit *(this document)*
-2. **✅ Effective Item seam** — the single read-model *(FOOD-2A/2B/2C complete; the seam now owns name/category/forgotten/qty/unit/where/got for the shopping list; **Stage-2 category defaults are SAFE** to attempt, targeting derived `eff.category` only)*
-3. **⬜ Host Intelligence Profile (INTEL-1)** — the learned profile of §3c (structure + storage; starts empty, honest-confidence). **Spec:** [INTEL_1_HOST_INTELLIGENCE_PROFILE.md](./INTEL_1_HOST_INTELLIGENCE_PROFILE.md)
-4. **⬜ Reality Reconciliation** — the estimate→reality→store loop of §4 (outcome capture at event close). *Specced with INTEL-1 as a pair (same doc).*
-5. **⬜ Context Intelligence** — culture + location + season + tradition as one L3 engine (§3b). **Spec:** [CONTEXT_INTELLIGENCE.md](./CONTEXT_INTELLIGENCE.md) *(context packs attach to the existing playbook layer — the Crab Feast playbook already IS one; no engine fork)*
-6. **⬜ Weather → Action** — weather drives plan changes (ice/shade/rain-plan), not just a display
-7. **⬜ Prediction** — L5, only once §3/§4 have data
-8. **⬜ Notification Intelligence** — the right nudge, at the right time, to the right guest (builds on the draft-and-share scheduler)
-9. **⬜ Automation / Agent layer** — the plan acts, with the host in the loop
+2. **✅ Effective Item seam** — the single read-model *(FOOD-2A/2B/2C; Stage-2 category defaults SAFE)*
+3. **✅ Host Intelligence store (INTEL-1 P1)** — inert store + `hostIntel(profile)` reader
+4. **✅ Reality Reconciliation (P2)** — the "How'd it go?" capture at event close
+5. **✅ Inspect / Clear (P3)** — "What Event Boss remembers" in Settings
+6. **✅ Attendance Read-Forward (P4 R1)** — the FIRST governed reader (gated + clamped + because + revert)
+7. **🚧 Intelligence Observatory (admin)** — 🚨 **Memory Validation gate.** Applicability rate · accept-vs-revert (trust) · avg adjustment · confidence/stability by domain · time-to-applicable · memory-by-playbook · active readers. **Must exist before R2** — prove R1 helps before adding readers that change more behavior.
+8. **🚧 Intelligence Writers Registry** — 🚨 the write-side contract ([doc](./INTELLIGENCE_WRITERS_REGISTRY.md)); no unregistered writes
+9. **⬜ R2 Food Read-Forward** — per-item quantities, **observation-first** (store est/eaten, engine computes); only after #7+#8
+10. **⬜ R3 Ice Read-Forward** — outdoor ice delta (subsumes the old "Weather→Action" for ice)
+11. **⬜ Context Intelligence readers** — culture/location/season packs ([spec](./CONTEXT_INTELLIGENCE.md)); resolve per §4.5 precedence
+12. **⬜ Prediction Layer** — L5, only once memory is proven + broad
+13. **⬜ Automation / Agent layer** — the plan acts, host in the loop *(Notification Intelligence folds in here)*
 
-Each capability is grounded in data the system actually has at that step; nothing speculative ships early.
+**The pivot at #6→#7:** up to R1 this was infrastructure; from here every reader changes user behavior. The cost of a bad read-forward now exceeds the cost of more architecture — so #7 (Observatory) and #8 (Writers Registry) gate #9+. Each later capability is grounded in data the system actually has, resolves in the §4.5 precedence order, and validates trust before it widens.
 
 ---
 
 ## 7. Change log
+- **v1.0.6 (2026-07-02)** — **Memory Validation Sprint** (the #6→#7 pivot: don't just keep building). (1) **Precedence** made canonical (§4.5): Ground truth → Context → Host (only if applicable) → User override always wins; Host never bypasses Context. (2) **Applicability** upgraded to a first-class object on every rollup — `{eligible, reason, confidence, stability, observations, required, lastUpdated, staleAfterMonths, fresh}` — one contract every future reader gates on. (3) **[Intelligence Writers Registry](./INTELLIGENCE_WRITERS_REGISTRY.md)** created — the write-side twin (W1 post-event live; W2–W7 proposed). (4) **Intelligence Observatory** (admin, `?observatory=1`): applicability/confidence/stability by domain · time-to-applicable · memory-by-playbook · active readers · honest PostHog pointer for behavioral trust. **This gates R2** — validate R1 helps before adding readers. Suite 733.
 - **v1.0.5 (2026-07-02)** — INTEL-1 **P4 R1 shipped** — the FIRST read-forward. `attendanceAdjustment` (pure) sizes the FoodPlan's plan-to count by learned turnout, **only** at Confidence ≥ Medium AND Stability ≥ Medium AND not reverted, **clamped ±25%**; renders the because ("…size for 34?") with a one-tap **"Keep {planned}"** revert (per-event flag) + `intel_attendance_applied`/`_reverted` analytics. No memory / low / unstable / reverted ⇒ identical to before. R1 marked 🟢 live in the readers registry. Scope-contained: attendance count only (flows to food sizing) — **no food/ice/budget personalization, no prediction, no Context**. 8 R1 tests; suite 724. Roadmap #3/#4 (Host Intelligence + Reconciliation) now complete end-to-end: store → capture → inspect/clear → first governed read-forward.
 - **v1.0.4 (2026-07-02)** — INTEL-1 **P3 shipped**: a deliberate "What Event Boss remembers" section in HostSettings — plain-language learned facts (turnout / food / spending / ice / notes) with per-domain **Clear** + clear-all; honest-empty when thin; no PII; **no dashboard, no recommendations, no read-forward**. `summarizeHostIntel` (pure) + profile-safe clears (unrelated profile data preserved). Suite 716. **P1–P3 complete → the store, the loop, and the inspect/clear surface all exist; only P4 (first read-forward) remains before memory changes a plan.**
 - **v1.0.3 (2026-07-02)** — INTEL-1 **P1 + P2 shipped** (roadmap #3/#4). P1: the inert `profile.hostIntelligence` store + pure `hostIntel(profile)` reader (per-domain confidence + stability + explainability + applicable; honest-empty; no consumer). P2: the skippable "How'd it go?" Reality Reconciliation card in `PostEventRecap` — captures per-item leftovers/ice/lesson and harvests attendance+cost from the existing "final numbers" (single-source, no double-ask), writing reconciled observations via pure idempotent helpers. **Capture only — no reads-forward** (that's P4). 26 hostIntel tests; suite 711. Store + loop now exist to catch the first reconciled event.

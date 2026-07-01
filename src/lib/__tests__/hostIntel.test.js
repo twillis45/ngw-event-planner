@@ -369,6 +369,31 @@ describe('P4 R1 — attendanceAdjustment (attendance read-forward)', () => {
   });
 });
 
+describe('Applicability — first-class object on every rollup', () => {
+  const attP = (actuals) => { let hi = emptyHostIntelligence(); actuals.forEach((a, i) => { hi = appendObservation(hi, 'attendance', { eventId: 'e' + i, date: `2026-0${i + 1}-01`, estimate: 40, actual: a }); }); return { hostIntelligence: hi }; };
+  test('EMPTY ⇒ eligible:false, honest reason, required + expiration present', () => {
+    const app = hostIntel({}, ASOF).get('attendance').applicability;
+    expect(app.eligible).toBe(false);
+    expect(app).toMatchObject({ observations: 0, required: 3, staleAfterMonths: 18, fresh: false, lastUpdated: null });
+    expect(app.reason).toMatch(/No events closed out yet/);
+  });
+  test('APPLICABLE ⇒ eligible:true, human reason, lastUpdated', () => {
+    const app = hostIntel(attP([34, 35, 33]), ASOF).get('attendance').applicability;
+    expect(app.eligible).toBe(true);
+    expect(app.reason).toMatch(/3 recent events · Medium confidence · (High|Medium) stability/);
+    expect(app.lastUpdated).toBe('2026-03-01');
+    expect(app.observations).toBe(3);
+  });
+  test('reason names the gap — too few vs too volatile', () => {
+    expect(hostIntel(attP([34, 35]), ASOF).get('attendance').applicability.reason).toMatch(/Only 2 events — still learning \(need 3\)/);
+    expect(hostIntel(attP([28, 50, 29, 48]), ASOF).get('attendance').applicability.reason).toMatch(/Varies too much/);
+  });
+  test('applicable === applicability.eligible (back-compat)', () => {
+    const r = hostIntel(attP([34, 35, 33]), ASOF).get('attendance');
+    expect(r.applicable).toBe(r.applicability.eligible);
+  });
+});
+
 describe('delete at the data level (privacy)', () => {
   test('clearDomain removes one domain; clearAll returns empty', () => {
     const hi = appendObservation(appendObservation(emptyHostIntelligence(), 'attendance', obs('a',40,34)), 'weather', obs('b',20,28));

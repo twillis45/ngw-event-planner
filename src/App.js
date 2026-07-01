@@ -51,6 +51,7 @@ import { foodShopItems } from './lib/foodShopItems';
 // INTEL-1 — Host Intelligence (Level-4 memory). P2 uses applyReconciliation/isReconciled to write
 // reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
 import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence, attendanceAdjustment, attendanceAnalyticsPayload } from './lib/hostIntel';
+import { intelligenceObservatory } from './lib/analyticsReader';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -16650,7 +16651,76 @@ function HostSettings({ profile, onChange, onClose, events = [], onClearSample }
   );
 }
 
-function ProfileModal({ profile, onClose, onChange, onOpenMembers, events = [], onLoadSample, onClearSample, onOpenSample }) {
+// INTEL Observatory — the Memory Validation admin surface (?observatory=1). A DEV tool, not user
+// UI: renders intelligenceObservatory(profile, events) — what memory has learned, how mature it is,
+// which readers are active. This browser only; behavioral trust (accept/revert) lives in PostHog.
+function IntelligenceObservatory({ profile, events, onClose }) {
+  const o = intelligenceObservatory(profile, events);
+  const BG = '#0e1013', CARD = '#16191e', LINE = '#232830', FG = '#e6edf3', MUT = '#8b98a5', OK = '#4e9a6a', WARN = '#c98a3a';
+  const pill = (txt, on) => <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: on ? `${OK}22` : `${MUT}22`, color: on ? OK : MUT, letterSpacing: '0.03em' }}>{txt}</span>;
+  const card = { background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: 16, marginBottom: 12 };
+  const eyebrow = { fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUT, marginBottom: 10 };
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: BG, color: FG, overflowY: 'auto', fontFamily: '-apple-system, ui-monospace, monospace' }}>
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '20px 18px 60px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>Intelligence Observatory</div>
+          <button onClick={onClose} style={{ background: 'none', border: `1px solid ${LINE}`, color: MUT, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Close</button>
+        </div>
+        <div style={{ fontSize: 12, color: MUT, marginBottom: 18 }}>Memory Validation · this browser only · behavioral trust (accept/revert) lives in PostHog</div>
+
+        <div style={card}>
+          <div style={eyebrow}>Summary</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+            {[['Events reconciled', o.eventsObserved], ['Domains tracked', o.summary.trackedDomains], ['Read-forward eligible', o.summary.applicableDomains], ['Avg confidence', o.summary.avgConfidence], ['Avg stability', o.summary.avgStability]].map(([k, v]) => (
+              <div key={k}><div style={{ fontSize: 22, fontWeight: 800 }}>{v}</div><div style={{ fontSize: 11, color: MUT }}>{k}</div></div>
+            ))}
+          </div>
+        </div>
+
+        <div style={card}>
+          <div style={eyebrow}>Domains — maturity + applicability</div>
+          {o.domains.length === 0 && <div style={{ fontSize: 13, color: MUT }}>No reconciled memory yet. Close out events to populate.</div>}
+          {o.domains.map((d) => (
+            <div key={d.key} style={{ padding: '12px 0', borderTop: `1px solid ${LINE}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontWeight: 700 }}>{d.title}</span>{pill(d.eligible ? 'ELIGIBLE' : 'HOLDING', d.eligible)}
+                <span style={{ marginLeft: 'auto', fontSize: 12, color: MUT }}>{d.confidence} conf · {d.stability} stab · n={d.n}</span>
+              </div>
+              <div style={{ fontSize: 12, color: MUT, marginTop: 5 }}>{d.reason}</div>
+              <div style={{ fontSize: 11, color: MUT, marginTop: 4 }}>last updated {d.lastUpdated || '—'}{d.timeToApplicableDays != null ? ` · ${d.timeToApplicableDays}d to applicable` : ''}</div>
+            </div>
+          ))}
+          {o.food.items > 0 && <div style={{ padding: '12px 0', borderTop: `1px solid ${LINE}`, fontSize: 12, color: MUT }}>Food (R2 candidate): {o.food.items} items · {o.food.eligibleItems} eligible</div>}
+        </div>
+
+        <div style={card}>
+          <div style={eyebrow}>Active readers</div>
+          {o.readers.map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700 }}>{r.id}</span><span style={{ color: MUT, fontSize: 13 }}>{r.name}</span>{pill(r.status.toUpperCase(), true)}{pill(r.eligibleNow ? 'firing' : 'idle', r.eligibleNow)}
+            </div>
+          ))}
+        </div>
+
+        {o.byPlaybook.length > 0 && (
+          <div style={card}>
+            <div style={eyebrow}>Memory by playbook</div>
+            {o.byPlaybook.map((b) => <div key={b.type} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 13 }}><span>{b.type}</span><span style={{ color: MUT }}>{b.count}</span></div>)}
+          </div>
+        )}
+
+        <div style={{ ...card, borderColor: `${WARN}55` }}>
+          <div style={eyebrow}>Trust (behavioral — PostHog)</div>
+          <div style={{ fontSize: 13, color: FG, lineHeight: 1.5 }}>{o.trust.note}</div>
+          <div style={{ fontSize: 12, color: MUT, marginTop: 8 }}>{o.trust.events.join(' · ')}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], onLoadSample, onClearSample, onOpenSample }) {
   // Sprint 48: Studio Matte applied to match Figma page M (677:3). Same
   // ThemeCtx.Provider pattern as MainDashboard / MasterCalendarView — dark
   // mode only; light mode preserved.
@@ -44044,6 +44114,15 @@ export default function App() {
   const vendorCode   = urlParams.get('vendor');
   const portalToken  = urlParams.get('portal');
   const intakeToken  = urlParams.get('intake');
+
+  // INTEL Observatory — a hidden dev/admin route (Memory Validation). Renders this browser's Host
+  // Intelligence maturity; no user nav points here. ?observatory=1
+  if (urlParams.get('observatory')) {
+    return providers(
+      <IntelligenceObservatory profile={profile} events={events}
+        onClose={() => { try { const u = new URL(window.location.href); u.searchParams.delete('observatory'); window.location.href = u.toString(); } catch { window.location.search = ''; } }} />
+    );
+  }
 
   if (rsvpCode) {
     const localRsvpEvent = events.find(e => e.rsvpCode === rsvpCode || e.id === rsvpCode);

@@ -25,11 +25,26 @@ export const DOMAINS = ['attendance', 'food', 'budget', 'cooking', 'guests', 'we
 // The canonical EMPTY host-intelligence object — the honest-empty default so no caller needs a guard.
 export const emptyHostIntelligence = () => ({ version: 1, eventsObserved: 0, domains: {} });
 
+const REQUIRED_OBS = 3; // observations needed for Medium confidence (the eligibility floor)
+
+// Applicability — the FIRST-CLASS contract every read-forward gates on (not a bare boolean). It
+// bundles WHY a domain is/isn't eligible so every engine + the Observatory read the same shape.
+function applicabilityFor(confidence, stability, n, freshN, lastUpdated) {
+  const eligible = rank[confidence] >= rank.Medium && rank[stability] >= rank.Medium;
+  let reason;
+  if (eligible) reason = `${freshN} recent event${freshN === 1 ? '' : 's'} · ${confidence} confidence · ${stability} stability`;
+  else if (rank[confidence] < rank.Medium) reason = n === 0 ? 'No events closed out yet' : `Only ${n} event${n === 1 ? '' : 's'} — still learning (need ${REQUIRED_OBS})`;
+  else if (stability === STABILITY.LOW) reason = 'Varies too much to rely on yet';
+  else reason = 'Not enough signal yet';
+  return { eligible, reason, confidence, stability, observations: n, freshObservations: freshN, required: REQUIRED_OBS, lastUpdated: lastUpdated || null, staleAfterMonths: STALE_MONTHS, fresh: freshN > 0 };
+}
+
 // The honest-empty rollup a reader returns for an absent / thin / malformed domain.
 const emptyRollup = () => ({
   n: 0, freshN: 0, ratio: null,
   confidence: CONFIDENCE.NONE, stability: STABILITY.NONE,
-  applicable: false,           // P1 never acts on this; P4 readers gate on it (Medium+ conf AND stab)
+  applicable: false,           // = applicability.eligible (kept for back-compat)
+  applicability: applicabilityFor(CONFIDENCE.NONE, STABILITY.NONE, 0, 0, null),
   observations: [],            // explainability: the facts behind the ratio (empty here)
 });
 
@@ -87,13 +102,17 @@ function rollupFrom(observations, now) {
   const ratios = clean.map((o) => o.ratio);
   const confidence = confidenceFor(fresh.length);
   const stability = stabilityFor(ratios);
+  const lastUpdated = clean[clean.length - 1].date || null;
+  const applicability = applicabilityFor(confidence, stability, clean.length, fresh.length, lastUpdated);
   return {
     n: clean.length,
     freshN: fresh.length,
     ratio: weightedRatio(ratios),
     confidence,
     stability,
-    applicable: atLeastMedium(confidence) && atLeastMedium(stability), // P4 gate; exposed, never acted on here
+    applicable: applicability.eligible,   // = applicability.eligible (kept for back-compat)
+    applicability,                         // the first-class contract every read-forward gates on
+    lastUpdated,
     observations: clean, // explainability: the exact facts a `because` would cite
   };
 }

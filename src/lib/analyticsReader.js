@@ -15,6 +15,7 @@
 import { getPlaybook } from './playbooks';
 import { eventCulturalMeta, isAtHome, placePhrase } from './doItForMe';
 import { getLesson } from './eventMemory';
+import { hostIntel } from './hostIntel';
 
 // ── Seed / sample filtering ───────────────────────────────────────────────────
 // App.js owns the canonical SEED_EVENT_IDS set; we do NOT import from there (it
@@ -145,4 +146,79 @@ export function funnelContent(events) {
     if (arr(e && e.decisionMemory).length > 0) withDecisions += 1;
   }
   return { total: evs.length, qualified, withRos, withOutcomes, withDecisions };
+}
+
+// ── intelligenceObservatory(profile, events, asOf) — INTEL Observatory (admin) ─────────────────
+// The Memory Validation surface: what the Host Intelligence layer has learned, how mature it is,
+// and which readers are active. PURE, this-browser only. Behavioral trust (accept-vs-revert, avg
+// adjustment) is BEHAVIORAL and lives in PostHog (intel_attendance_applied/_reverted) — NOT readable
+// in-app, so we name it, never fake it.
+const OBS_TITLES = { attendance: 'Attendance', budget: 'Spending', weather: 'Ice & cooling', cooking: 'Cooking pace', guests: 'Guest mix' };
+
+function timeToApplicableDays(observations) {
+  const dated = arr(observations).map((o) => o && o.date && new Date(String(o.date).slice(0, 10)))
+    .filter((d) => d && !isNaN(d)).sort((a, b) => a - b);
+  if (dated.length < 3) return null;                 // 3 obs = the Medium (eligible) threshold
+  return Math.round((dated[2] - dated[0]) / 86400000); // days from 1st reconciled event to the 3rd
+}
+
+export function intelligenceObservatory(profile, events, asOf) {
+  const now = asOf ? new Date(asOf) : new Date();
+  const h = hostIntel(profile, now);
+  const RANK = { None: 0, Low: 1, Medium: 2, High: 3 };
+  const NAMES = ['None', 'Low', 'Medium', 'High'];
+  const avg = (vals) => (vals.length ? NAMES[Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)] : 'None');
+
+  // Numeric domains (the read-forward candidates).
+  const domains = [];
+  for (const key of ['attendance', 'budget', 'weather']) {
+    const r = h.get(key);
+    if (!r || r.n === 0) continue;
+    domains.push({
+      key, title: OBS_TITLES[key] || key,
+      confidence: r.confidence, stability: r.stability,
+      eligible: r.applicability.eligible, reason: r.applicability.reason,
+      n: r.n, freshN: r.freshN, lastUpdated: r.lastUpdated,
+      timeToApplicableDays: timeToApplicableDays(r.observations),
+      ratio: r.ratio,
+    });
+  }
+  // Food per-item (R2 candidate) — how many items, how many already eligible.
+  const foodItems = (h.raw && h.raw.domains && h.raw.domains.food && h.raw.domains.food.items) || {};
+  const foodKeys = Object.keys(foodItems);
+  const foodEligible = foodKeys.filter((id) => h.getFood(id).applicability.eligible).length;
+
+  // Memory by playbook — which event TYPES generated reconciled memory (best-effort join).
+  const reconciled = (h.raw && h.raw.reconciled && typeof h.raw.reconciled === 'object') ? h.raw.reconciled : {};
+  const byTypeMap = {};
+  for (const eid of Object.keys(reconciled)) {
+    const e = arr(events).find((x) => x && x.id === eid);
+    const t = (e && (e.type || 'Other')) || 'Other';
+    byTypeMap[t] = (byTypeMap[t] || 0) + 1;
+  }
+  const byPlaybook = Object.entries(byTypeMap).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
+
+  // Active readers (the Readers Registry, live entries) + whether each is eligible right now.
+  const readers = [
+    { id: 'R1', name: 'Attendance → food/plan sizing', domain: 'attendance', status: 'live', eligibleNow: h.get('attendance').applicability.eligible },
+  ];
+
+  return {
+    present: h.present && (domains.length > 0 || foodKeys.length > 0),
+    eventsObserved: h.eventsObserved,
+    summary: {
+      trackedDomains: domains.length + (foodKeys.length ? 1 : 0),
+      applicableDomains: domains.filter((d) => d.eligible).length + (foodEligible > 0 ? 1 : 0),
+      avgConfidence: avg(domains.map((d) => RANK[d.confidence])),
+      avgStability: avg(domains.map((d) => RANK[d.stability])),
+    },
+    domains,
+    food: { items: foodKeys.length, eligibleItems: foodEligible },
+    byPlaybook,
+    readers,
+    trust: {
+      note: 'Accept-vs-revert and average adjustment are behavioral — tracked to PostHog as intel_attendance_applied / intel_attendance_reverted. Not readable in-app; view them in the PostHog dashboard.',
+      events: ['intel_attendance_applied', 'intel_attendance_reverted'],
+    },
+  };
 }
