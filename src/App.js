@@ -32691,7 +32691,12 @@ function HostRunOfShowTimeline({ event, profile }) {
           time: v.arrivalTime,
           firstMin: toMins(v.arrivalTime) ?? 1e9,
         }));
-      return [...fromRos, ...fromVendors].sort((a, b) => a.firstMin - b.firstMin);
+      // Single-source caterer lever: if the host chose to cook everything, the caterer is no
+      // longer helping — drop any caterer row (a ROS owner OR a vendor still on file from before
+      // the switch). Mirrors how foodApproach drops caterer tasks/cues/budget elsewhere.
+      const cooking = (() => { try { return hostIsCooking(event); } catch { return false; } })();
+      const isCaterer = (p) => /cater(er|ing)/i.test(`${p.name || ''} ${p.role || ''}`);
+      return [...fromRos, ...fromVendors].filter((p) => !(cooking && isCaterer(p))).sort((a, b) => a.firstMin - b.firstMin);
     } catch { return []; }
   })();
 
