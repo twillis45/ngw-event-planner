@@ -138,6 +138,7 @@ From R1 onward, the system *changes plans*, so three governance surfaces are loa
 - **[Readers Registry](./INTELLIGENCE_READERS_REGISTRY.md)** — every engine that *consumes* memory/context (nine-field contract).
 - **[Writers Registry](./INTELLIGENCE_WRITERS_REGISTRY.md)** — every surface that *writes* an observation (nine-field contract). No unregistered writes.
 - **Intelligence Observatory** (admin) — the visibility layer: applicability rate, accept-vs-revert (trust), average adjustment, confidence/stability by domain, time-to-applicable, memory-by-playbook, active readers. **Ships before R2** — validate that R1 helps before adding readers that change more behavior.
+- **[Intelligence Validation Platform](./INTELLIGENCE_VALIDATION_PLATFORM.md)** (INTEL-QA-1, design) — the accuracy layer above the Observatory: every recommendation becomes an evaluation record, reality scores it (grade + baseline comparison), and calibration measures whether confidence is earned. Turns "accepted" into "correct." Trust ≠ accuracy; nothing self-graded without a baseline; no single score. Staged: telemetry → scoring → calibration → prediction-validation → continuous QA.
 
 ---
 
