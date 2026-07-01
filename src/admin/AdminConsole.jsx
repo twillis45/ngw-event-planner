@@ -12,6 +12,7 @@ import {
   playbookCoverage, culturalMix, locationSpread, memoryDepth, funnelContent,
 } from '../lib/analyticsReader';
 import { evaluationAudit } from '../lib/intelEval';
+import { hostShellOn, planV2On } from '../lib/presentationNav';
 import { type } from '../design/tokens';
 
 // Dark palette aligned with AuthGate's login screen so the console feels native.
@@ -48,7 +49,7 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Metrics', 'Errors', 'Providers', 'Audit'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Metrics', 'Errors', 'Providers', 'Audit', 'Settings'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -1311,6 +1312,43 @@ function IntelligencePanel({ book }) {
   );
 }
 
+// ── Admin Settings — session, environment, feature flags, and safe actions ───────────────────────
+function AdminSettingsPanel() {
+  const { user, bypass, signOut, configured } = useAuth();
+  const role = (user && user.app_metadata && user.app_metadata.role) || '—';
+  const email = (user && user.email) || '—';
+  const flag = (fn) => { try { return fn() ? 'on' : 'off'; } catch { return '?'; } };
+  const piFlags = (() => { try { return Object.keys(localStorage).filter((k) => /^ngw-pi-/.test(k)).map((k) => [k.replace(/^ngw-/, ''), localStorage.getItem(k)]); } catch { return []; } })();
+  const Head = ({ children }) => <div style={{ fontSize: type.size.caption, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: D.muted, margin: '22px 0 8px' }}>{children}</div>;
+  const btn = { background: D.surface2, border: `1px solid ${D.border}`, color: D.text, borderRadius: 8, padding: '9px 15px', cursor: 'pointer', fontFamily: D.ff, fontSize: type.size.caption };
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <Head>Session</Head>
+      <Stat label="Signed in as" value={email} />
+      <Stat label="Role" value={role} />
+      <Stat label="Session type" value={bypass ? 'Dev bypass' : 'Supabase'} />
+      <Head>Environment</Head>
+      <Stat label="Admin API" value={isAdminApiConfigured() ? 'configured' : 'not configured (local-only)'} />
+      <Stat label="Auth backend" value={configured ? 'Supabase' : 'bypass'} />
+      <Head>Feature flags (read-only)</Head>
+      <Stat label="pi.shell — host shell" value={flag(hostShellOn)} />
+      <Stat label="pi.planV2 — plan v2" value={flag(planV2On)} />
+      {piFlags.length > 0
+        ? piFlags.map(([k, v]) => <Stat key={k} label={k} value={String(v)} />)
+        : <div style={{ fontSize: type.size.caption, color: D.faint, padding: '6px 0' }}>No pi-* overrides set in this browser.</div>}
+      <div style={{ fontSize: type.size.caption, color: D.faint, marginTop: 8, lineHeight: 1.5 }}>Flags are set via env / URL (e.g. <span style={{ fontFamily: D.mono }}>?devrole=admin</span>), not edited here — this panel shows their resolved state.</div>
+      <Head>Console</Head>
+      <div style={{ fontSize: type.size.base, color: D.muted, lineHeight: 1.5 }}>The <strong style={{ color: D.text }}>Intelligence</strong> tab shows evaluation capture health for this browser's book. Behavioral trust (accept vs revert) lives in PostHog.</div>
+      <Head>Actions</Head>
+      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+        <button style={btn} onClick={() => window.location.reload()}>Reload console</button>
+        {signOut && <button style={{ ...btn, background: 'transparent' }} onClick={() => { if (window.confirm('Sign out of the admin console?')) signOut(); }}>Sign out</button>}
+      </div>
+      <div style={{ marginTop: 18 }}><Banner tone="muted">Admin settings are per-session. Flags are read-only here (set via env/URL). Extend this panel as operator controls are needed.</Banner></div>
+    </div>
+  );
+}
+
 function AnalyticsSuite() {
   const [sub, setSub] = useState('Executive');
   // Read the local book once per sub-tab change (cheap; panels re-derive).
@@ -1473,6 +1511,7 @@ export default function AdminConsole() {
 
         {tab === 'Analytics' && <AnalyticsSuite />}
         {tab === 'Intelligence' && <IntelligencePanel book={readLocalBook()} />}
+        {tab === 'Settings' && <AdminSettingsPanel />}
 
         {tab === 'Metrics' && <MetricsPanel />}
 
