@@ -2582,7 +2582,8 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
             marginTop: 12,
             paddingTop: 12,
             borderTop: `1px solid ${P.borderSubtle}`,
-            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 8 : 10, flexWrap: 'wrap',
           }}>
             <span style={{
               fontSize: type.size.xs, fontWeight: type.weight.semibold,
@@ -2591,7 +2592,7 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
               padding: '2px 8px', letterSpacing: '0.06em', textTransform: 'uppercase',
               whiteSpace: 'nowrap', flexShrink: 0,
             }}>⏱ {sb.label}</span>
-            <span style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF, flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: type.size.sm, color: P.textSecondary, fontFamily: FF, ...(isMobile ? {} : { flex: 1, minWidth: 0 }) }}>
               {summary}
             </span>
             <button
