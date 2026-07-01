@@ -16,6 +16,7 @@ import { getPlaybook } from './playbooks';
 import { eventCulturalMeta, isAtHome, placePhrase } from './doItForMe';
 import { getLesson } from './eventMemory';
 import { hostIntel } from './hostIntel';
+import { evaluationStats } from './intelEval';
 
 // ── Seed / sample filtering ───────────────────────────────────────────────────
 // App.js owns the canonical SEED_EVENT_IDS set; we do NOT import from there (it
@@ -203,9 +204,13 @@ export function intelligenceObservatory(profile, events, asOf) {
     { id: 'R1', name: 'Attendance → food/plan sizing', domain: 'attendance', status: 'live', eligibleNow: h.get('attendance').applicability.eligible },
   ];
 
+  // INTEL-QA-1 Stage 1 — evaluation CAPTURE counts only (no scoring, no percentages).
+  const evaluations = evaluationStats(events);
+
   return {
-    present: h.present && (domains.length > 0 || foodKeys.length > 0),
+    present: (h.present && (domains.length > 0 || foodKeys.length > 0)) || evaluations.total > 0,
     eventsObserved: h.eventsObserved,
+    evaluations,
     summary: {
       trackedDomains: domains.length + (foodKeys.length ? 1 : 0),
       applicableDomains: domains.filter((d) => d.eligible).length + (foodEligible > 0 ? 1 : 0),

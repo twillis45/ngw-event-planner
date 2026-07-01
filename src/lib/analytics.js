@@ -162,6 +162,15 @@ export const EVENTS = {
   INTEL_ATTENDANCE_APPLIED:  'intel_attendance_applied',
   INTEL_ATTENDANCE_REVERTED: 'intel_attendance_reverted',
 
+  // INTEL-QA-1 Stage 1 — evaluation capture. Every recommendation becomes an evaluation record;
+  // these mark its lifecycle so a FUTURE stage can score it. _shown when presented, _overridden
+  // when the host sets their own number, _evaluated when the real outcome is attached at
+  // reconciliation (NOT scored — just "an actual now exists"). Accept/revert reuse the existing
+  // intel_attendance_* events. Payload is behavioral only (readerId + counts), no PII.
+  INTEL_REC_SHOWN:       'intel_rec_shown',
+  INTEL_REC_OVERRIDDEN:  'intel_rec_overridden',
+  INTEL_REC_EVALUATED:   'intel_rec_evaluated',
+
   // Food sourcing (FOOD-2A Stage 0) — which buying style a host picks. The sourcing
   // model was previously write-only (no telemetry); this closes that blind spot so we
   // can see tier adoption before evolving the model. Behavioral only, no PII.

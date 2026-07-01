@@ -52,6 +52,8 @@ import { foodShopItems } from './lib/foodShopItems';
 // reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
 import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence, attendanceAdjustment, attendanceAnalyticsPayload } from './lib/hostIntel';
 import { intelligenceObservatory } from './lib/analyticsReader';
+// INTEL-QA-1 Stage 1 — evaluation capture (measure-only; scores nothing).
+import { createEvaluation, appendLifecycle, recordDecision, attachActual, upsertEvaluation, updateEvaluation, hasEvaluation, evalId, DECISION_COST, evaluationStats } from './lib/intelEval';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -9649,8 +9651,34 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // event ⇒ existing behavior EXACTLY. Only R1 (attendance) — no food/ice/budget personalization.
   const attAdj = useMemo(() => { try { return attendanceAdjustment(profile, event); } catch { return { applied: false, planned: 0, suggested: 0, because: null }; } }, [profile, event]);
   const sizingEvent = attAdj.applied ? { ...event, guestCount: attAdj.suggested } : event;
-  useEffect(() => { if (attAdj.applied) { try { trackOnce(`intel-att-applied-${event.id}`, EVENTS.INTEL_ATTENDANCE_APPLIED, attendanceAnalyticsPayload(attAdj)); } catch {} } }, [attAdj.applied, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const revertAttendance = () => { try { track(EVENTS.INTEL_ATTENDANCE_REVERTED, attendanceAnalyticsPayload(attAdj)); } catch {} onPatch({ intelAttendanceReverted: true }); };
+  // R1 analytics (unchanged) + INTEL-QA-1 evaluation capture. The existing intel_attendance_applied
+  // fires exactly as before; additionally, the first time R1 is shown we FREEZE an immutable
+  // evaluation snapshot on event.intelEvaluations (idempotent — never re-created, never mutated).
+  // Purely additive: no reader/plan/memory behavior changes.
+  useEffect(() => {
+    if (!attAdj.applied) return;
+    try { trackOnce(`intel-att-applied-${event.id}`, EVENTS.INTEL_ATTENDANCE_APPLIED, attendanceAnalyticsPayload(attAdj)); } catch {}
+    const id = evalId('R1', event.id);
+    if (hasEvaluation(event.intelEvaluations, id)) return;            // snapshot already frozen
+    try {
+      let at = null; try { at = new Date().toISOString(); } catch {}
+      const rec = appendLifecycle(appendLifecycle(createEvaluation({
+        eventId: event.id, readerId: 'R1', at,
+        recommendation: { from: attAdj.planned, to: attAdj.suggested, ratio: attAdj.ratio, clamped: attAdj.clamped, clampHit: attAdj.clampHit, because: attAdj.because, confidence: attAdj.confidence, stability: attAdj.stability, gate: { eligible: true, observations: attAdj.n, required: 3 }, observations: attAdj.n, applied: true },
+        baseline: { value: attAdj.planned, source: 'playbook' },     // today's DEFAULT (no memory)
+        counterfactual: { default: attAdj.planned, reader: attAdj.suggested, host: attAdj.suggested },
+        metadata: { readerVersion: 1, layer: 'host', domain: 'attendance', source: 'attendance-memory', decisionCost: DECISION_COST.HIGH },
+      }, at), 'presented', at), 'accepted', at);                       // R1 auto-applies ⇒ accepted-by-default
+      onPatch({ intelEvaluations: upsertEvaluation(event.intelEvaluations, rec) });
+      track(EVENTS.INTEL_REC_SHOWN, { readerId: 'R1', ...attendanceAnalyticsPayload(attAdj) });
+    } catch {}
+  }, [attAdj.applied, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const revertAttendance = () => {
+    try { track(EVENTS.INTEL_ATTENDANCE_REVERTED, attendanceAnalyticsPayload(attAdj)); } catch {}
+    let evs = event.intelEvaluations;
+    try { evs = updateEvaluation(event.intelEvaluations, evalId('R1', event.id), (r) => recordDecision(appendLifecycle(r, 'reverted'), attAdj.planned)); } catch {}
+    onPatch({ intelAttendanceReverted: true, intelEvaluations: evs });
+  };
   const plan = playbookFoodPlan(sizingEvent, foodPP);
   // Gate the spread's $ DISPLAY on a real count. Without a count, playbookFoodPlan
   // sizes to the playbook's guessed typical (~8) — showing "$X–$Y" off that fabricates
@@ -16679,6 +16707,16 @@ function IntelligenceObservatory({ profile, events, onClose }) {
         </div>
 
         <div style={card}>
+          <div style={eyebrow}>Evaluation capture (INTEL-QA-1 · Stage 1)</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
+            {[['Recommendations', o.evaluations.total], ['Pending outcome', o.evaluations.pending], ['Outcome captured', o.evaluations.completed]].map(([k, v]) => (
+              <div key={k}><div style={{ fontSize: 22, fontWeight: 800 }}>{v}</div><div style={{ fontSize: 11, color: MUT }}>{k}</div></div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: MUT, marginTop: 10 }}>Capture only — scoring/accuracy is Stage 2 (not built). "Outcome captured" = a real reconciled actual is attached, evaluable later.</div>
+        </div>
+
+        <div style={card}>
           <div style={eyebrow}>Domains — maturity + applicability</div>
           {o.domains.length === 0 && <div style={{ fontSize: 13, color: MUT }}>No reconciled memory yet. Close out events to populate.</div>}
           {o.domains.map((d) => (
@@ -21412,6 +21450,15 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onPatchProfil
   // Host Intelligence Profile as observations (single-source: the "How'd it go?" card never
   // re-asks attendance/cost). Idempotent by ev.id via applyReconciliation.
   const harvestToMemory = (entry) => onPatchProfile((p) => ({ ...p, hostIntelligence: applyReconciliation(p && p.hostIntelligence, { eventId: ev.id, date: (ev.date && String(ev.date).slice(0, 10)) || undefined, ...entry }) }));
+  // INTEL-QA-1 Stage 1 — at reconciliation, attach the REAL observed attendance to R1's evaluation
+  // record (write-once; never estimated). Idempotent: no R1 record OR already-attached ⇒ no-op.
+  const attachActualToEval = (readerId, actualValue) => {
+    try {
+      let at = null; try { at = new Date().toISOString(); } catch {}
+      const evs = updateEvaluation(ev.intelEvaluations, evalId(readerId, ev.id), (r) => attachActual(r, actualValue, at));
+      if (evs !== ev.intelEvaluations) { onPatchEvent(ev.id, { intelEvaluations: evs }); try { track(EVENTS.INTEL_REC_EVALUATED, { readerId, domain: 'attendance' }); } catch {} }
+    } catch { /* capture must never break reconciliation */ }
+  };
   const recapInput = { width: '100%', boxSizing: 'border-box', marginTop: 6, padding: '10px 12px', fontSize: T.secondary, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'inherit', outline: 'none' };
   const wrap = ev.wrapDone || {};
   const toggleWrap = (id) => onPatchEvent(ev.id, { wrapDone: { ...wrap, [id]: !wrap[id] } });
@@ -21520,7 +21567,7 @@ function PostEventRecap({ ev, profile, daysAgoLabel, onPatchEvent, onPatchProfil
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 2, marginBottom: 8 }}>I filled in what I have — just confirm or tweak.</div>
         <label style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>How many actually came?</label>
         <input type="number" inputMode="numeric" min="0" defaultValue={recap.guestCountActual ?? (plannedCount || '')} placeholder="Final guest count"
-          onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ guestCountActual: n }); if (n && plannedCount > 0) harvestToMemory({ attendance: { planned: plannedCount, actual: n } }); }} style={recapInput} />
+          onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ guestCountActual: n }); if (n && plannedCount > 0) { harvestToMemory({ attendance: { planned: plannedCount, actual: n } }); attachActualToEval('R1', n); } }} style={recapInput} />
         <label style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, marginTop: 12 }}>What did it actually cost?</label>
         <input type="number" inputMode="numeric" min="0" defaultValue={recap.totalActual ?? (totalActual || '')} placeholder="Total actual spend"
           onBlur={(e) => { const n = Math.max(0, Math.round(Number(e.currentTarget.value) || 0)) || null; patchRecap({ totalActual: n }); const est = Number(ev.totalBudget) || 0; if (n && est > 0) harvestToMemory({ budget: { estimate: est, ratio: n / est } }); }} style={recapInput} />

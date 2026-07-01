@@ -267,7 +267,7 @@ These would manufacture fake intelligence and violate the Honesty doctrine. Bann
 
 | Stage | Ships | Scope | Depends on | Backward-compat |
 |---|---|---|---|---|
-| **1 · Telemetry** | `intel_rec_shown` + `IntelEvaluation` record created/updated on `event.intelEvaluations` (lifecycle fields only, NO scoring). `intel_*_written`/skipped/dedupe counters on W1. | Instrument what already fires; persist the immutable snapshot. | nothing | pure-additive optional field |
+| **1 · Telemetry** ✅ **SHIPPED 2026-07-02** | `intel_rec_shown`/`_overridden`/`_evaluated` + the `IntelEvaluation` record (frozen snapshot + baseline + counterfactual + append-only lifecycle + write-once actual + reserved evaluation/utility) on `event.intelEvaluations`; R1 wired (create-on-show, revert-lifecycle, attach-actual at reconciliation); Observatory capture counts. `src/lib/intelEval.js` + 17 tests. NO scoring. | Instrument what already fires; persist the immutable snapshot. | nothing | pure-additive optional field — zero behavior drift |
 | **2 · Recommendation Evaluation** | pure `scoreEvaluation(record, actual)` + `intel_rec_scored`; join W1 reconciliation → score attendance records; baseline-vs-rec. Observatory v2 Accuracy section. | Turn records into grades. | Stage 1 + reconciled events | read-only; no reader change |
 | **3 · Calibration** | calibration table (measured), Observatory calibration curve; **display only, no feedback into gates.** | "High confidence → how often right." | Stage 2 + n≥8/bucket | reader gates frozen |
 | **4 · Prediction validation** | *scaffold only* — the eval harness generalized to score any future L5 prediction. Empty until predictions exist. | Future-proof the harness. | Stage 3 + a prediction to score | no-op today |
