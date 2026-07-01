@@ -9240,6 +9240,39 @@ function storeSearchUrl(store, item, anchor) {
 // ── CapacityPanel — "Seating & supplies" → relocated to Plan (board ruling, 6/8).
 // The confirm-the-quantities checklist the host works before the day; counts also
 // surface as dollars in Money. Full detail lives here, not as an Overview footer.
+// CostLockSegments — the ONE 3-segment Value / Premium / Custom cost-lock control, shared by
+// The spread (FoodPlan) and To-arrange (CapacityPanel) so the grammar can't drift between copies.
+// Custom IS the price input. onLock receives the chosen amount (Value/Premium) or the typed value.
+function CostLockSegments({ low, high, locked, onLock }) {
+  const C = useT();
+  const T = useType();
+  const money1 = (n) => `$${(Number(n) || 0).toLocaleString()}`;
+  const isCustom = locked != null && locked !== low && locked !== high;
+  const seg = (label, sub, active, onClick) => (
+    <button type="button" onClick={onClick}
+      style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit',
+        background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}` }}>
+      <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: active ? '#eef0f4' : C.text }}>{label}</span>
+      <span style={{ fontSize: T.caption, color: active ? 'rgba(238,240,244,0.8)' : C.muted }}>{sub}</span>
+    </button>
+  );
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+      {low != null && seg('Value', money1(low), locked === low, () => onLock(low))}
+      {high != null && seg('Premium', money1(high), locked === high, () => onLock(high))}
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, background: isCustom ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${isCustom ? 'transparent' : C.border}` }}>
+        <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: isCustom ? '#eef0f4' : C.text }}>Custom</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <span style={{ fontSize: T.caption, color: isCustom ? 'rgba(238,240,244,0.8)' : C.muted }}>$</span>
+          <input type="number" inputMode="numeric" defaultValue={isCustom ? locked : ''} placeholder="set"
+            onKeyDown={(e) => { if (e.key === 'Enter') onLock(e.currentTarget.value); }}
+            onBlur={(e) => { if (e.currentTarget.value) onLock(e.currentTarget.value); }}
+            style={{ width: 50, background: 'transparent', border: 'none', outline: 'none', textAlign: 'center', color: isCustom ? '#eef0f4' : C.text, fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+        </span>
+      </span>
+    </div>
+  );
+}
 function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile }) {
   const C = useT();
   const T = useType();
@@ -9489,34 +9522,8 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                   {lockOpen && !skipped && (
                     <div style={{ padding: '0 0 14px 30px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Add what you spent to check it off — it counts toward your budget:' : "Set what this’ll cost — pick one, or enter your own:"}</span>
-                      {/* Cost-lock parity with The spread: 3-segment Value / Premium / Custom (Custom IS the input). */}
-                      {(() => {
-                        const isCustom = it.locked != null && it.locked !== it.costLow && it.locked !== it.costHigh;
-                        const seg = (label, sub, active, onClick) => (
-                          <button type="button" onClick={onClick}
-                            style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit',
-                              background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}` }}>
-                            <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: active ? '#eef0f4' : C.text }}>{label}</span>
-                            <span style={{ fontSize: T.caption, color: active ? 'rgba(238,240,244,0.8)' : C.muted }}>{sub}</span>
-                          </button>
-                        );
-                        return (
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-                            {it.costLow != null && seg('Value', money1(it.costLow), it.locked === it.costLow, () => setLock(it.key, it.costLow))}
-                            {it.costHigh != null && seg('Premium', money1(it.costHigh), it.locked === it.costHigh, () => setLock(it.key, it.costHigh))}
-                            <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, background: isCustom ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${isCustom ? 'transparent' : C.border}` }}>
-                              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: isCustom ? '#eef0f4' : C.text }}>Custom</span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                                <span style={{ fontSize: T.caption, color: isCustom ? 'rgba(238,240,244,0.8)' : C.muted }}>$</span>
-                                <input type="number" inputMode="numeric" defaultValue={isCustom ? it.locked : ''} placeholder="set"
-                                  onKeyDown={(e) => { if (e.key === 'Enter') setLock(it.key, e.currentTarget.value); }}
-                                  onBlur={(e) => { if (e.currentTarget.value) setLock(it.key, e.currentTarget.value); }}
-                                  style={{ width: 50, background: 'transparent', border: 'none', outline: 'none', textAlign: 'center', color: isCustom ? '#eef0f4' : C.text, fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }} />
-                              </span>
-                            </span>
-                          </div>
-                        );
-                      })()}
+                      {/* Cost-lock: the shared 3-segment control (parity with The spread — one source). */}
+                      <CostLockSegments low={it.costLow} high={it.costHigh} locked={it.locked} onLock={(amt) => setLock(it.key, amt)} />
                       {it.locked != null && <button type="button" onClick={() => clearLock(it.key)} style={{ ...lkBtn, color: C.muted, alignSelf: 'flex-start' }}>Clear</button>}
                     </div>
                   )}
@@ -10272,16 +10279,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     ) : null}
                   </div>
                   {lockOpen && !skipped && (() => {
-                    // Item detail (Figma 1593-505): basis → LOCK A COST 3-segment → quantity
-                    // stepper → swap → where-to-shop → Mark bought / Add to Instacart → Skip/Remove.
-                    const seg = (label, sub, active, onClick) => (
-                      <button type="button" onClick={onClick}
-                        style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit',
-                          background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}` }}>
-                        <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: active ? '#eef0f4' : C.text }}>{label}</span>
-                        <span style={{ fontSize: T.caption, color: active ? 'rgba(238,240,244,0.8)' : C.muted }}>{sub}</span>
-                      </button>
-                    );
+                    // Item detail (Figma 1593-505): basis → LOCK A COST 3-segment (shared
+                    // <CostLockSegments>) → quantity stepper → swap → where-to-shop → Mark bought.
                     const stepQty = (d) => { const cur = Number(i.qty) || 0; setQty(Math.max(0, Math.round((cur + d) * 100) / 100)); };
                     const lbl = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.5px', textTransform: 'uppercase', color: steel };
                     const linkBtn = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold };
@@ -10299,30 +10298,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           {fmtPG(i.perGuest)} {i.unitBase} per guest × {plan.guests} guests{i.note && /round|whole|bushel|rack/i.test(i.note) ? ', rounded to whole units' : ''}
                         </div>
                       )}
-                      {/* LOCK A COST — Value / Premium / Custom. Custom IS the price input
-                          (consolidated — no separate "your own price" row). */}
-                      {(() => {
-                        const isCustom = i.locked != null && i.locked !== i.low && i.locked !== i.high;
-                        return (
-                          <div>
-                            <div style={{ ...lbl, marginBottom: 6 }}>Lock a cost</div>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-                              {seg('Value', `$${i.low.toLocaleString()}`, i.locked === i.low, () => setLock(i.low))}
-                              {seg('Premium', `$${i.high.toLocaleString()}`, i.locked === i.high, () => setLock(i.high))}
-                              <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, background: isCustom ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${isCustom ? 'transparent' : C.border}` }}>
-                                <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: isCustom ? '#eef0f4' : C.text }}>Custom</span>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                                  <span style={{ fontSize: T.caption, color: isCustom ? 'rgba(238,240,244,0.8)' : C.muted }}>$</span>
-                                  <input type="number" inputMode="numeric" defaultValue={isCustom ? i.locked : ''} placeholder="set"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') setLock(e.currentTarget.value); }}
-                                    onBlur={(e) => { if (e.currentTarget.value) setLock(e.currentTarget.value); }}
-                                    style={{ width: 50, background: 'transparent', border: 'none', outline: 'none', textAlign: 'center', color: isCustom ? '#eef0f4' : C.text, fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }} />
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      {/* LOCK A COST — the shared 3-segment control (one source of truth; see CostLockSegments). */}
+                      <div>
+                        <div style={{ ...lbl, marginBottom: 6 }}>Lock a cost</div>
+                        <CostLockSegments low={i.low} high={i.high} locked={i.locked} onLock={(amt) => setLock(amt)} />
+                      </div>
                       {/* Progressive reveal — the primary actions (lock a cost, mark bought)
                           stay; the secondary controls (quantity · swap · where to shop) tuck
                           behind one toggle so the detail isn't a wall on open. */}
