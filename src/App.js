@@ -22053,6 +22053,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
   const [setupOpen, setSetupOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false); // host event switcher (bottom sheet)
   const [focusExpanded, setFocusExpanded] = useState(false); // Focus mode: collapsed (default) ↔ "whole day"
+  const [focusDismissed, setFocusDismissed] = useState(false); // ‹ on the day-of FOCUS takeover dismisses it → the normal portfolio home (isFocus is DATE-based, so clearing activeId alone just re-shows it)
   const [focusHc, setFocusHc] = useState(''); // Focus card inline headcount draft (set a count without the roster)
   const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
   // The host's focus event. A real (user-created) event ALWAYS outranks a sample/demo
@@ -22216,7 +22217,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
   // The flagship "dim the room" day-of view: a near-black screen with ONE card.
   // Everything DERIVES from the engine — never fabricate a fact. (Attention System:
   // ONE hero, evidence whispers, motion = change only.)
-  if (isFocus) {
+  if (isFocus && !focusDismissed) {
     // THE ONE headline reads as the clean cue line (no time prefix — the time lives in
     // the cue text, e.g. "…by noon"). The "Then" line + the ROS rows carry the clock.
     const cueLabel = (r) => (r ? (r.segment || 'Next up') : '');
@@ -22301,8 +22302,8 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
         animation: `ceFadeIn 480ms ${CE_EASE} both` }}>
         {/* Header — back to portfolio/home, identity glyph, event name */}
         <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' }}>
-          <button type="button" onClick={() => onSelectEvent(null)} aria-label="Back to all events"
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: sub, fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center' }}>‹</button>
+          <button type="button" onClick={() => setFocusDismissed(true)} aria-label="Back to all events"
+            style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0', cursor: 'pointer', color: sub, fontSize: 14, fontWeight: FW.semibold, lineHeight: 1, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ fontSize: 20 }}>‹</span> All events</button>
           <span aria-hidden style={{ display: 'flex', alignItems: 'center' }}>
             {ident.mark !== 'quiet' && hasGlassShape(ident.icon)
               ? <GlassIcon icon={ident.icon} hue={idColor} size={22} />
