@@ -43,7 +43,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -22596,6 +22596,16 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
               row: 'Your invite', rowSub: 'written, with your RSVP link',
               preview: (parts[1] || parts[0] || '').slice(0, 92),
               sheet: { title: 'Your guest invite', intro: 'Written from your event details, with your RSVP link built in — replies come straight back here. Review it, make it yours, and send it to your people.', draft: d, shareTitle: d.subject, kind: 'invite', rsvpUrl } });
+          }
+          // The full guest brief — everything a guest needs to show up right (superset of the
+          // day-before note): when/where/parking/bring/dress/gifts. Available any time there's a
+          // date; scored below the invite so the invite leads and the brief fills in the rest.
+          if (ev.date) {
+            const d = draftGuestBrief(ev, profile, { rsvpUrl });
+            items.push({ id: 'guestbrief', score: confirmed > 0 ? 38 : 28, eyebrow: 'Ready to send', cta: 'Open & send →',
+              title: 'Send the full guest brief', sub: 'When, where, parking, what to bring, dress — everything to show up right, already written.',
+              row: 'The guest brief', rowSub: 'when · where · bring · parking · dress',
+              sheet: { title: 'The guest brief', intro: 'Everything a guest needs to show up right — when, where, parking, what to bring, dress, and your gift wishes — drafted from your event. Make it yours and send.', draft: d, shareTitle: d.subject, kind: 'invite', rsvpUrl } });
           }
           // RSVP reminder — the single highest-leverage nudge as the day nears: replies
           // grow the headcount that sizes everything. Only while people still owe a reply

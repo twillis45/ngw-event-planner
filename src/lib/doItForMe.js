@@ -158,6 +158,80 @@ export function draftInvite(event, profile, opts = {}) {
   return { subject, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
+// The gift-wish line, tone-aware. Somber events never say "registry"/"contribution".
+function giftWishLine(gw, v) {
+  if (!gw || !gw.mode) return '';
+  const detail = (gw.detail || '').trim();
+  switch (gw.mode) {
+    case 'no_gifts':     return 'Your presence is the gift — no gifts, please.';
+    case 'registry':     return v.sombre ? '' : (detail ? `Registry: ${detail}` : '');
+    case 'charity':      return detail ? `In lieu of gifts, a donation to ${detail} means the world.` : 'In lieu of gifts, a donation to a cause we love means the world.';
+    case 'contribution': return v.sombre ? '' : (detail ? `We’re splitting costs — about ${detail.startsWith('$') ? detail : '$' + detail}/person.` : '');
+    default:             return '';
+  }
+}
+
+// The GUEST BRIEF — everything a guest needs to show up right (the OUT list): a superset of the
+// invite. DERIVED from event facts + playbook signals, HONEST-EMPTY (a line prints only when real),
+// tone-gated by inviteVoice (a somber event never gets a festive brief). Host overrides live in
+// event.guestBrief / giftWish; the host confirms + shares. Spec: docs/ecosystem/INVITE_RSVP_MODEL.md.
+export function draftGuestBrief(event, profile, opts = {}) {
+  if (!event) return { subject: '', body: '' };
+  const v = inviteVoice(event);
+  const date = fmtLongDate(event.date);
+  const time = timePhrase(event);
+  const place = placePhrase(event);
+  const host = hostName(profile);
+  const atHome = isAtHome(event);
+  const gb = (event.guestBrief && typeof event.guestBrief === 'object') ? event.guestBrief : {};
+  const gw = (event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : null;
+  const when = [date, time].filter(Boolean).join(' · ');
+
+  const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head];
+  if (v.line) lines.push(v.line);
+  lines.push('');
+  if (when) lines.push(`📅 ${when}`);
+  if (place) lines.push(`📍 ${place}`);
+
+  // Parking — override wins; else a light at-home default. Never invented for a real venue.
+  const parking = (gb.parking || '').trim() || (atHome ? 'Street parking; a rideshare can drop right at the door.' : '');
+  if (parking) lines.push(`🚗 ${parking}`);
+  // Arrival window — override only (we don't guess come-anytime vs seated-start).
+  if ((gb.arrival || '').trim()) lines.push(`🕐 ${gb.arrival.trim()}`);
+  // Dress / vibe — override, else casual only for an at-home, non-somber gathering.
+  const dress = (gb.dress || '').trim() || (atHome && !v.sombre ? 'Come as you are — it’s casual.' : '');
+  if (dress) lines.push(`👕 ${dress}`);
+
+  // What to bring — reuse the host's existing bring fields; potluck gift-wish cross-wires here.
+  const bring = (event.whatToBring || event.guestBring || event.bringNote || '').trim();
+  if (bring) lines.push(`🧺 Bring: ${bring}`);
+  else if (gw && gw.mode === 'potluck') lines.push(`🧺 Potluck — bring a dish to share${(gw.detail || '').trim() ? ` (${gw.detail.trim()})` : ''}.`);
+
+  // Gift wish — the host's one answer to "do I bring a gift?" Silence when unset.
+  if (gw && gw.mode && gw.mode !== 'potluck') { const gl = giftWishLine(gw, v); if (gl) lines.push(`🎁 ${gl}`); }
+
+  // Kids / +1 — only when the host set a real stance (defaults need no words).
+  if (event.kidsPolicy === 'adults_only') lines.push('🚫 Adults-only, please.');
+  else if (event.kidsPolicy === 'kids_welcome') lines.push('🧒 Kids are welcome.');
+  if (event.plusOnePolicy === 'plus_one_ok') lines.push('➕ Feel free to bring a plus-one.');
+  else if (event.plusOnePolicy === 'no_plus_ones') lines.push('➕ Named guests only, please.');
+
+  // Rain plan + accessibility — overrides only, never guessed.
+  if ((gb.rainPlan || '').trim()) lines.push(`☔ Rain plan: ${gb.rainPlan.trim()}`);
+  if ((gb.accessibility || '').trim()) lines.push(`♿ ${gb.accessibility.trim()}`);
+
+  // Day-of contact — override, else point them to the host by name.
+  const contact = (gb.contact || '').trim() || (host ? `Text ${host} if you’re running late or can’t find us.` : '');
+  if (contact) { lines.push(''); lines.push(`📱 ${contact}`); }
+
+  const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
+  if (rsvpUrl) { lines.push(''); lines.push(v.sombre ? 'Please let us know if you’ll be joining us:' : 'Let us know if you can make it:'); lines.push(rsvpUrl); }
+  if (host) { lines.push(''); lines.push(`— ${host}`); }
+
+  const subject = v.sombre ? `Details${event.honoree ? ' — ' + String(event.honoree).trim() : ''}` : `The details — ${subjectThing(event)}`;
+  return { subject, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
 // #2 — the vendor inquiry. Drafts the "are you available + what's your pricing" note
 // from the event facts. `vendor` is optional (category + name personalize it).
 export function draftVendorOutreach(event, vendor, profile) {

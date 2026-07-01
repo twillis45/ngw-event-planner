@@ -39,6 +39,22 @@ export const eventDateStatus = (d, opts = {}) => {
   return { valid: true, status: 'ok', days, blocking: false, severity: 'info', reason: `${dayWord(days)} out.` };
 };
 
+// RSVP deadline — the date guests should reply by. Default = event date − 7 days (same
+// local-midnight model as daysUntil). An explicit event.rsvpDeadline override wins. Returns
+// { iso, days, hard, source } — hard=false when the event is <7 days out (no firm date to give;
+// the ask becomes "as soon as you can"). null when there's no usable event date.
+export const rsvpDeadlineFor = (event) => {
+  if (!event || !event.date) return null;
+  if (event.rsvpDeadline) return { iso: event.rsvpDeadline, days: daysUntil(event.rsvpDeadline), hard: true, source: 'override' };
+  const dte = daysUntil(event.date);
+  if (dte === null) return null;
+  if (dte < 7) return { iso: null, days: dte, hard: false, source: 'soon' };
+  const base = new Date(String(event.date).slice(0, 10) + 'T00:00:00');
+  base.setDate(base.getDate() - 7);
+  const iso = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
+  return { iso, days: daysUntil(iso), hard: true, source: 'derived' };
+};
+
 // A single plan task's temporal standing, given its IDEAL lead (days-before-event, e.g. 7
 // for a "T-7d" task) and how many days remain. Drives the action plan: a task whose ideal
 // window has already passed is 'overdue' (do it ASAP), not silently "upcoming".
