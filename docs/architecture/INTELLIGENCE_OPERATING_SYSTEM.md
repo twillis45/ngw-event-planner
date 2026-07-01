@@ -128,7 +128,7 @@ Do **not** build AI forecasts / risk scores / probability engines / smart recomm
 ## 6. Canonical roadmap (revised, ratified)
 
 1. **✅ Canonical Intelligence OS** — freeze the audit *(this document)*
-2. **✅ Effective Item seam** — the single read-model *(FOOD-2A/2B; 2C completing parity)*
+2. **✅ Effective Item seam** — the single read-model *(FOOD-2A/2B/2C complete; the seam now owns name/category/forgotten/qty/unit/where/got for the shopping list; **Stage-2 category defaults are SAFE** to attempt, targeting derived `eff.category` only)*
 3. **⬜ Host Intelligence Profile (INTEL-1)** — the learned profile of §3c (structure + storage; starts empty, honest-confidence)
 4. **⬜ Reality Reconciliation** — the estimate→reality→store loop of §4 (outcome capture at event close)
 5. **⬜ Context Intelligence** — culture + location + season + tradition as one L3 engine (§3b)
@@ -142,6 +142,7 @@ Each capability is grounded in data the system actually has at that step; nothin
 ---
 
 ## 7. Change log
+- **v1.0.1 (2026-07-02)** — FOOD-2C shipped: the Effective Item now carries `displayName` (short-first), `rawCategory`, `forgotten`, `basis`; the shopping list migrated name/category/forgotten onto the seam with byte-identical golden parity (685 tests). **Verdict: Stage-2 category defaults are now SAFE** — the shopping aisle sort reads the faithful `eff.rawCategory`, insulated from the derived `eff.category` that defaults would attach to. Roadmap #2 complete.
 - **v1.0 (2026-07-02)** — Froze the audit. Established the six-question intelligence-debt gate, the five levels, and the two-pillar engine model (Context L3 + Host L4). Renamed "Memory" → Host Intelligence Profile. Elevated **Context Intelligence** to a canonical engine. Added **Reality Reconciliation** as the compounding loop. Ratified the 9-step roadmap. Superseded ad-hoc intelligence audits.
 
 *(Do not re-generate the audit. Add a dated change-log entry here when an engine ships, and check the roadmap box.)*
