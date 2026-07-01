@@ -13,7 +13,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
@@ -40707,9 +40707,11 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 //   • LOCKED — the decisions/facts already settled, shown quietly with their value.
 // Tapping an open row routes to where the host acts (the same foundation/decision
 // routes the rest of the app uses). Returns null when there's nothing to settle.
-function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
+function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice }) {
   const C = useT();
   const T = useType();
+  // Which menu/sourcing row is expanded in place (settle inline, no route-away).
+  const [openMenuId, setOpenMenuId] = useState(null);
   const board = useMemo(() => { try { return playbookDecisionBoard(event); } catch { return null; } }, [event]);
   if (!board) return null;
   const { open, locked, headcount } = board;
@@ -40749,7 +40751,17 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
     // Plan tab can focus, or a foundation route). A non-menu decision (venue, theme,
     // music…) has no anchor — it shows as a calm, non-interactive "still open" prompt
     // with NO chevron, so we never present an arrow that leads nowhere.
+    //
+    // A MENU/sourcing decision (route.foodFocus) SETTLES IN PLACE: tapping expands the
+    // row to the same radio divider-rows the FoodPlan "Your choices" card uses, and a
+    // pick writes through the SAME single-source path (event.foodChoices via onSetChoice)
+    // — no route to the FoodPlan mirror, no parallel choice store. Foundation routes
+    // (date/venue/headcount → Event Details/Guests) KEEP their existing route-away.
+    const menuOpts = (r.route && r.route.foodFocus && typeof onSetChoice === 'function')
+      ? playbookDecisionOptions(event, r.id) : null;
+    const inlineable = !!(menuOpts && menuOpts.options.length);
     const actionable = !!r.route;
+    const expanded = inlineable && openMenuId === r.id;
     const inner = (
       <>
         <span style={{ flex: 1, minWidth: 0 }}>
@@ -40757,9 +40769,40 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount }) {
           {r.because && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.because}</span>}
         </span>
         {chip(r.status)}
-        {actionable && <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex' }}><Icon name="chevronRight" size={15} /></span>}
+        {inlineable
+          ? <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}><Icon name="chevronRight" size={15} /></span>
+          : (actionable && <span aria-hidden style={{ color: C.muted, flexShrink: 0, display: 'flex' }}><Icon name="chevronRight" size={15} /></span>)}
       </>
     );
+    // Inline menu/sourcing decision: header toggles the expansion; options settle it.
+    if (inlineable) {
+      return (
+        <div key={r.id} style={{ marginBottom: 8 }}>
+          <button type="button" onClick={() => setOpenMenuId(expanded ? null : r.id)} style={{ ...rowBase, marginBottom: expanded ? 0 : 8, borderBottomLeftRadius: expanded ? 0 : 11, borderBottomRightRadius: expanded ? 0 : 11, borderBottom: expanded ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }}>{inner}</button>
+          {expanded && (
+            <div style={{ border: `1px solid ${C.border}`, borderTop: 'none', borderBottomLeftRadius: 11, borderBottomRightRadius: 11, background: C.surface || 'transparent', padding: '2px 14px 10px' }}>
+              {/* Choice parity — the SAME radio divider-rows as FoodPlan "Your choices" /
+                  "Sourcing": circle (filled steel when selected) + name + "CURRENT". One
+                  selection language across the whole app; picking writes event.foodChoices. */}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {menuOpts.options.map((o) => {
+                  const on = o === menuOpts.chosen;
+                  return (
+                    <button key={o} type="button" onClick={() => { onSetChoice(r.id, o); setOpenMenuId(null); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '11px 2px' }}>
+                      <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: on ? FW.bold : FW.semibold, color: C.text }}>{o}</span>
+                      {on && <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>Current</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {menuOpts.why && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 9, lineHeight: 1.5 }}>{menuOpts.why}</div>}
+            </div>
+          )}
+        </div>
+      );
+    }
     return actionable
       ? <button key={r.id} type="button" onClick={() => go(r.route)} style={{ ...rowBase, cursor: 'pointer' }}>{inner}</button>
       : <div key={r.id} style={{ ...rowBase, cursor: 'default' }}>{inner}</div>;
@@ -40958,7 +41001,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               console (EventPlanningTab) is SHED (Ruthless Host Lens). */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="planv2-grid">
-            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
+            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
               <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
@@ -40971,7 +41014,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
-          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} /></div>
+          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
           <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
@@ -41802,7 +41845,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           "What's left to do"; the count-lock reuses the single-source guest-count lock. */}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} />
+          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} />
         </div>
       )}
       {tab === 'Planning'       && (
