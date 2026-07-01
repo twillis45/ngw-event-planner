@@ -9108,10 +9108,15 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
   return (
     <div style={card}>
+      {/* M6·A/B — matches the "Before the big day" card: plain-case title, a one-line summary
+          when collapsed, a chevron that rotates. No green dot (this isn't an on-track section). */}
       <button type="button" onClick={() => setExpanded((v) => !v)}
-        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-        <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: C.accentTopGrad || C.accent, textTransform: 'uppercase' }}>{title}</div>
-        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.muted }}>{expanded ? 'Hide' : `${rk.count} the pros plan for →`}</div>
+        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text }}>{title}</div>
+          {!expanded && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3 }}>{rk.count} thing{rk.count === 1 ? '' : 's'} the pros plan for</div>}
+        </div>
+        <span aria-hidden style={{ color: C.muted, display: 'flex', flexShrink: 0, marginTop: 2, transform: expanded ? 'none' : 'rotate(-90deg)', transition: transitionFor('press', ['transform']) }}><Icon name="chevronDown" size={18} /></span>
       </button>
       {expanded && (
         <>
