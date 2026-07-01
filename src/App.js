@@ -29959,6 +29959,10 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                     })()}
                   </div>
 
+                  {/* P2 policy-aware: the host's plus-one stance (event.plusOnePolicy) gates this
+                      whole section — "no plus-ones" hides the offer entirely, so the guest is never
+                      prompted for something the host doesn't allow. */}
+                  {event?.plusOnePolicy !== 'no_plus_ones' && (
                   <div style={{ marginBottom: 22 }}>
                     {/* a11y P2 item 3 — real checkbox semantics on the restyled toggle:
                         role="checkbox" + aria-checked, keyboard-operable (Space/Enter),
@@ -29991,7 +29995,11 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                       </div>
                     )}
                   </div>
+                  )}
 
+                  {/* P2 policy-aware: an adults-only event (event.kidsPolicy) hides the children
+                      stepper — the guest isn't asked to count kids they can't bring. */}
+                  {event?.kidsPolicy !== 'adults_only' && (
                   <div style={{ marginBottom: 22 }}>
                     {/* a11y P2 item 3 — stepper wrapped in role="group" + aria-label, the
                         −/+ buttons carry intent labels, and the count is announced via an
@@ -30003,6 +30011,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                       <button type="button" aria-label="Add a child" onClick={() => setKids(kids + 1)} style={{ width: 40, height: 40, borderRadius: 10, border: `2px solid ${LC.border}`, background: LC.bg, color: LC.text, fontSize: T.title, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: FW.bold }}>+</button>
                     </div>
                   </div>
+                  )}
                 </>
               )}
 
