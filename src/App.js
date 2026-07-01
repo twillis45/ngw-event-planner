@@ -925,8 +925,11 @@ function GlobalStyles() {
       // One fast, consistent reveal — a short eased fade + tiny lift, keyed on `tab`
       // so it restarts on every switch. 190ms / motion.ease.out (cubic-bezier(0.16,1,0.3,1)).
       // NO slide-across, NO bounce. Honored by the prefers-reduced-motion rule below.
-      '@keyframes ngwTabIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }',
-      '.ngw-tabview { animation: ngwTabIn 190ms cubic-bezier(0.16, 1, 0.3, 1) both; }',
+      // M6·C/D — screen push: content moves IN from the right; the header/chrome sits OUTSIDE
+      // .ngw-tabview so it stays put (Smart-Animate-match). A short GPU translateX (not a full-
+      // width slide, which would overflow the tab column) reads as "move in from right" cleanly.
+      '@keyframes ngwTabIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }',
+      '.ngw-tabview { animation: ngwTabIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform; }',
       // Focus indicator for keyboard navigation. The :focus-visible polyfill
       // is built into all modern browsers (Chrome 86+, Firefox 85+, Safari 15.4+).
       'button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }',
