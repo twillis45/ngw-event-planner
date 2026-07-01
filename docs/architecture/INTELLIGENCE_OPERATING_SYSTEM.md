@@ -131,7 +131,7 @@ Do **not** build AI forecasts / risk scores / probability engines / smart recomm
 2. **✅ Effective Item seam** — the single read-model *(FOOD-2A/2B/2C complete; the seam now owns name/category/forgotten/qty/unit/where/got for the shopping list; **Stage-2 category defaults are SAFE** to attempt, targeting derived `eff.category` only)*
 3. **⬜ Host Intelligence Profile (INTEL-1)** — the learned profile of §3c (structure + storage; starts empty, honest-confidence). **Spec:** [INTEL_1_HOST_INTELLIGENCE_PROFILE.md](./INTEL_1_HOST_INTELLIGENCE_PROFILE.md)
 4. **⬜ Reality Reconciliation** — the estimate→reality→store loop of §4 (outcome capture at event close). *Specced with INTEL-1 as a pair (same doc).*
-5. **⬜ Context Intelligence** — culture + location + season + tradition as one L3 engine (§3b)
+5. **⬜ Context Intelligence** — culture + location + season + tradition as one L3 engine (§3b). **Spec:** [CONTEXT_INTELLIGENCE.md](./CONTEXT_INTELLIGENCE.md) *(context packs attach to the existing playbook layer — the Crab Feast playbook already IS one; no engine fork)*
 6. **⬜ Weather → Action** — weather drives plan changes (ice/shade/rain-plan), not just a display
 7. **⬜ Prediction** — L5, only once §3/§4 have data
 8. **⬜ Notification Intelligence** — the right nudge, at the right time, to the right guest (builds on the draft-and-share scheduler)
