@@ -1,0 +1,4 @@
+name,email,phone,group,rsvp_status,meal_preference,plus_one_name,table_number,dietary_restrictions,notes
+Sarah Chen,sarah@example.com,555-0101,Family,Yes,Standard,James Chen,1,,
+Marcus Williams,marcus@example.com,,Friends,Maybe,Vegetarian,,,No gluten,Plus one TBD
+Dr. Patricia Okafor,patricia@example.com,,Work,No,—,,,,"Out of town, confirmed via phone"
