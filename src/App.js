@@ -9146,7 +9146,7 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
 // locked guest count / budget. The header stays a real button (a11y), the body is
 // removed (not just hidden) when collapsed so long screens actually get shorter.
 function useCollapsed(key, defaultCollapsed = false) {
-  const storeKey = `ngw-collapse-${key}`;
+  const storeKey = `ngw-collapse-v2-${key}`; // v2: reset stale persistence so the Plan tab starts collapsed (M6·A)
   const [collapsed, setCollapsed] = useState(() => {
     try { const v = localStorage.getItem(storeKey); return v == null ? defaultCollapsed : v === '1'; } catch { return defaultCollapsed; }
   });
