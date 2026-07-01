@@ -10770,12 +10770,16 @@ function EventTypeBrowse({ value, onChange, onClose, excludeValue }) {
   const eyebrow = { fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted };
   const TypeRow = ({ t }) => {
     const ic = (() => { try { return evtIdentity(t, C).icon; } catch { return 'sparkles'; } })();
+    const on = t === value;
+    // Selection parity (whole-app audit): a divider ROW with the identity glyph (recognition) +
+    // a right-side radio circle (filled = selected) — the same pick language as Sourcing / Your
+    // choices. No bg-tint pill, no misleading chevron (picking a type is a select, not a drill-in).
     return (
       <button type="button" data-testid={`etb-type-${t}`} onClick={() => pick(t)} className="ce-press"
-        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left', background: t === value ? `${steel}14` : 'transparent', border: 'none', borderRadius: 12, padding: '13px 8px', cursor: 'pointer', fontFamily: 'inherit' }}>
-        <span aria-hidden style={{ flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${C.border}`, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted }}><Icon name={ic} size={20} stroke={1.7} /></span>
-        <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: t === value ? FW.bold : FW.semibold, color: C.text }}>{t}</span>
-        <span aria-hidden style={{ color: C.muted, fontSize: T.body, opacity: 0.7 }}>›</span>
+        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '13px 6px', cursor: 'pointer', fontFamily: 'inherit' }}>
+        <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', border: `1px solid ${on ? steel : C.border}`, background: on ? `${steel}14` : C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', color: on ? steel : C.muted }}><Icon name={ic} size={17} stroke={1.7} /></span>
+        <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: on ? FW.bold : FW.semibold, color: C.text }}>{t}</span>
+        <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
       </button>
     );
   };
