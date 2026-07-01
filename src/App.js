@@ -9545,16 +9545,14 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         </div>
       </CollapsibleCard>
 
-      {/* Hand-off — primary: merge into the shopping list (same path as food). Ghost:
-          share the checklist. Plus a live local rentals/supply search (never endorsed). */}
+      {/* Hand-off (board): this is the ARRANGE list, not a shopping list — reserve/borrow/buy.
+          Primary shares the list (to whoever's handling it); + a live local rentals search. */}
       <div style={card}>
-        <button type="button" onClick={openShoppingList}
+        <button type="button" onClick={openChecklist}
           style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: T.secondary, fontWeight: FW.bold, padding: '11px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: steel, color: '#fff', fontFamily: 'inherit' }}>
-          <Icon name="basket" size={15} color="#fff" /> Add supplies to the shopping list →
+          Share this list — to reserve, borrow or buy →
         </button>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 10 }}>
-          <button type="button" onClick={openChecklist}
-            style={{ fontSize: T.secondary, fontWeight: FW.semibold, padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.text, fontFamily: 'inherit' }}>Share the supply checklist</button>
           <a href={mapsUrl('party rental supply store')} target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '9px 12px', textDecoration: 'none' }}>
             <Icon name="pin" size={12} color={steel} /> Rentals &amp; supplies nearby <span style={{ color: steel }}>↗</span>
@@ -10027,21 +10025,25 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                   <button type="button" onClick={() => setOpenChoice(open ? null : c.id)}
                     style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '11px 2px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, fontFamily: 'inherit' }}>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>{c.label}</span>
+                      <span style={{ display: 'block', fontSize: T.caption, color: C.muted }}>{c.label}</span>
                       <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: c.chosen ? C.text : steel, marginTop: 2, lineHeight: 1.3 }}>{c.chosen || 'Choose →'}</span>
                     </span>
                     <span aria-hidden style={{ flexShrink: 0, marginTop: 2, color: C.muted, fontSize: T.body, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}>›</span>
                   </button>
                   {open && (
                     <div style={{ padding: '0 2px 12px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {/* Choice parity — options are picked the SAME way as Sourcing (radio
+                          divider-rows: circle + name + "Current"), not chips. One selection
+                          language across the whole screen. */}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {c.options.map((o) => {
                           const on = o === c.chosen;
                           return (
                             <button key={o} type="button" onClick={() => { setChoice(c.id, o); setOpenChoice(null); }}
-                              style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', padding: '9px 14px', borderRadius: 10,
-                                color: on ? '#fff' : C.text, background: on ? steel : C.bg, border: `1px solid ${on ? steel : C.border}`, transition: 'background 140ms ease, border-color 140ms ease' }}>
-                              {o}
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', fontFamily: 'inherit', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '11px 2px' }}>
+                              <span aria-hidden style={{ flexShrink: 0, width: 16, height: 16, borderRadius: '50%', border: `2px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent' }} />
+                              <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: on ? FW.bold : FW.semibold, color: C.text }}>{o}</span>
+                              {on && <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: steel }}>Current</span>}
                             </button>
                           );
                         })}
