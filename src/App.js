@@ -28451,6 +28451,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
   const [plusOneNeeds, setPlusOneNeeds] = useState('');
   const [kids,        setKids]        = useState(0);
   const [note,        setNote]        = useState('');   // optional note to the host (writes to payload.note)
+  const [mailingAddress, setMailingAddress] = useState(''); // P3 — only shown when event.collectAddresses; writes guests[].mailingAddress
   const [submitted,   setSubmitted]   = useState(false);
   const [queued,      setQueued]      = useState(false); // honest outbox: true ⇒ saved offline, not yet delivered to host
   const [sending,     setSending]     = useState(false); // in-flight server write (guards double-tap)
@@ -28557,6 +28558,8 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
       plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
       kids: rsvp === 'Yes' ? kids : 0,
       note: note.trim(),
+      // P3 — mailing address only when the host opted into a mail flow AND the guest supplied it.
+      ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
     };
     if (guestMode) { try { track(EVENTS.INVITE_RSVP_SUBMITTED, { event_type: event.type, rsvp }); } catch {} } // share-loop conversion
     // Honest outbox: onSubmit MAY return a promise resolving to a delivery result.
@@ -30044,6 +30047,18 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
                 </>
               )}
 
+                {/* P3 — mailing address: shown ONLY when the host opted into a mail flow
+                    (event.collectAddresses). Always optional, reason-framed. Writes guests[].mailingAddress. */}
+                {event.collectAddresses && (
+                  <div style={{ marginBottom: 18 }}>
+                    <label htmlFor={`${uid}-addr`} style={{ fontSize: T.body, fontWeight: FW.semibold, color: LC.text, display: 'block', marginBottom: 8 }}>
+                      Mailing address <span style={{ fontWeight: FW.regular, color: LC.muted }}>— optional, so we can mail you a thank-you</span>
+                    </label>
+                    <textarea id={`${uid}-addr`} autoCapitalize="words" enterKeyHint="enter"
+                      style={{ ...lInput, minHeight: 60, resize: 'vertical', lineHeight: 1.5 }} value={mailingAddress} onChange={e => setMailingAddress(e.target.value)}
+                      placeholder="Street, city, state, ZIP" />
+                  </div>
+                )}
                 {/* Note to the host — open to every answer. A "no" can leave a warm word;
                     a "yes" can add anything the host should know. Writes to payload.note. */}
                 <div>
@@ -30238,6 +30253,11 @@ function GuestBriefDetails({ event = {}, onPatchEvent = () => {} }) {
           <Head>Plus-ones</Head>
           <Row on={(event.plusOnePolicy || 'named_only') === 'named_only'} label="Named guests only" onClick={() => onPatchEvent({ plusOnePolicy: 'named_only' })} />
           <Row on={event.plusOnePolicy === 'plus_one_ok'} label="Plus-ones welcome" onClick={() => onPatchEvent({ plusOnePolicy: 'plus_one_ok' })} />
+          {/* P3 — mail-intent gate: address collection is OFF by default; it turns on ONLY when the
+              host opts into a real mailing outcome (thank-yous / favors), never a generic setting. */}
+          <Head>By mail</Head>
+          <Row on={!!event.collectAddresses} label="I’ll mail thank-you cards or favors" onClick={() => onPatchEvent({ collectAddresses: !event.collectAddresses })} />
+          {event.collectAddresses && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2, paddingLeft: 18, lineHeight: 1.5 }}>Guests get an optional address field on their RSVP, framed with the reason — never required.</div>}
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 14, lineHeight: 1.5 }}>These fill out the guest brief you share from your home screen. Leave anything unset and the brief simply won’t mention it.</div>
         </div>
       )}
@@ -30397,8 +30417,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             if (first.length >= 4 && gFirst === first) return true;
             return false;
           });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, partyNotes: data.note || g.partyNotes } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
+          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, address: data.mailingAddress || g.address, partyNotes: data.note || g.partyNotes } : g);
+          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: data.mailingAddress || '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
         });
       });
       localStorage.removeItem(key);
@@ -30440,8 +30460,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             if (first.length >= 4 && gFirst === first) return true;
             return false;
           });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, partyNotes: data.note || g.partyNotes } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
+          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, address: data.mailingAddress || g.address, partyNotes: data.note || g.partyNotes } : g);
+          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: data.mailingAddress || '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
         });
       });
     })();
@@ -30498,11 +30518,11 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
     });
     if (existing) {
       setGuests(gs => gs.map(g => g.id === existing.id
-        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, partyNotes: data.note || g.partyNotes }
+        ? { ...g, rsvp: data.rsvp, meal: data.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, address: data.mailingAddress || g.address, partyNotes: data.note || g.partyNotes }
         : g
       ));
     } else {
-      setGuests(gs => [...gs, { id: uid(), name: data.name, firstName: data.firstName || '', lastName: data.lastName || '', group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, plusOneNeeds: data.plusOneNeeds || '', kids: data.kids, table: null, email: '', phone: '', address: '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }]);
+      setGuests(gs => [...gs, { id: uid(), name: data.name, firstName: data.firstName || '', lastName: data.lastName || '', group: 'Friends', rsvp: data.rsvp, meal: data.meal, needs: data.needs, plusOne: data.plusOne, plusOneMeal: data.plusOneMeal, plusOneNeeds: data.plusOneNeeds || '', kids: data.kids, table: null, email: '', phone: '', address: data.mailingAddress || '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }]);
     }
   };
 
