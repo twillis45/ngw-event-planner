@@ -156,6 +156,12 @@ export const EVENTS = {
   EVENT_COMPLETED:        'event_completed',
   OUTCOME_CAPTURED:       'outcome_captured',
 
+  // INTEL-1 P4 R1 — attendance read-forward (the first Host-Intelligence reader that changes a
+  // plan). _applied when learned memory adjusts the plan-to count; _reverted when the host keeps
+  // their own number for an event. Payload: delta%/planned/suggested/n/confidence/stability/clamped.
+  INTEL_ATTENDANCE_APPLIED:  'intel_attendance_applied',
+  INTEL_ATTENDANCE_REVERTED: 'intel_attendance_reverted',
+
   // Food sourcing (FOOD-2A Stage 0) — which buying style a host picks. The sourcing
   // model was previously write-only (no telemetry); this closes that blind spot so we
   // can see tier adoption before evolving the model. Behavioral only, no PII.

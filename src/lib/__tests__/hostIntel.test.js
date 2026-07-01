@@ -7,6 +7,7 @@ import {
   markEventObserved, clearDomain, clearAllHostIntelligence, CONFIDENCE, STABILITY,
   applyReconciliation, isReconciled,
   summarizeHostIntel, clearMemoryDomain, clearAllMemory,
+  attendanceAdjustment, attendanceAnalyticsPayload,
 } from '../hostIntel';
 
 const ASOF = '2026-07-01';
@@ -298,6 +299,73 @@ describe('P3 — summarizeHostIntel + clear (Settings "What Event Boss remembers
     expect(after.name).toBe('Maya Carter');                            // no accidental deletion
     expect(after.accountType).toBe('host');
     expect(after.savedVendors).toEqual([{ id: 'v1' }]);
+  });
+});
+
+describe('P4 R1 — attendanceAdjustment (attendance read-forward)', () => {
+  // Build a profile whose attendance rolls up from these actuals against a planned count.
+  const attProfile = (actuals, planned = 40) => {
+    let hi = emptyHostIntelligence();
+    actuals.forEach((a, i) => { hi = appendObservation(hi, 'attendance', { eventId: 'e' + i, date: `2026-0${i + 1}-01`, estimate: planned, actual: a }); });
+    return { hostIntelligence: hi };
+  };
+  const ev = (over = {}) => ({ id: 'cf1', guestCount: 40, ...over });
+
+  test('ABSENT memory ⇒ applied:false, suggested === planned (existing behavior)', () => {
+    const a = attendanceAdjustment({}, ev(), ASOF);
+    expect(a.applied).toBe(false);
+    expect(a.suggested).toBe(40);
+    expect(a.because).toBeNull();
+  });
+  test('LOW confidence (2 obs) ⇒ applied:false, unchanged', () => {
+    const a = attendanceAdjustment(attProfile([34, 35]), ev(), ASOF);
+    expect(a.confidence).toBe(CONFIDENCE.LOW);
+    expect(a.applied).toBe(false);
+    expect(a.suggested).toBe(40);
+  });
+  test('UNSTABLE (bouncy) ⇒ applied:false even at high confidence', () => {
+    const a = attendanceAdjustment(attProfile([28, 50, 29, 48]), ev(), ASOF);
+    expect(a.stability).toBe(STABILITY.LOW);
+    expect(a.applied).toBe(false);
+    expect(a.suggested).toBe(40);
+  });
+  test('APPLICABLE (stable, Medium+) ⇒ adjusts within clamp, because present', () => {
+    const a = attendanceAdjustment(attProfile([34, 35, 33]), ev(), ASOF);
+    expect(a.confidence).toBe(CONFIDENCE.MEDIUM);
+    expect(a.stability).not.toBe(STABILITY.LOW);
+    expect(a.applied).toBe(true);
+    expect(a.suggested).toBe(34);          // ~0.85 × 40
+    expect(a.clamped).toBe(false);
+    expect(a.because).toBe('Based on your last events, fewer people usually came than planned — size for 34?');
+  });
+  test('CLAMP HIGH ⇒ big upward memory capped at +25%', () => {
+    const a = attendanceAdjustment(attProfile([60, 62, 58]), ev(), ASOF); // ~1.5×
+    expect(a.applied).toBe(true);
+    expect(a.suggested).toBe(50);          // 40 × 1.25 cap
+    expect(a.clamped).toBe(true);
+    expect(a.clampHit).toBe('high');
+    expect(a.because).toMatch(/more people usually came/);
+  });
+  test('CLAMP LOW ⇒ big downward memory capped at −25%', () => {
+    const a = attendanceAdjustment(attProfile([18, 19, 17]), ev(), ASOF); // ~0.45×
+    expect(a.applied).toBe(true);
+    expect(a.suggested).toBe(30);          // 40 × 0.75 floor
+    expect(a.clamped).toBe(true);
+    expect(a.clampHit).toBe('low');
+  });
+  test('REVERTED for this event ⇒ applied:false, default sizing restored', () => {
+    const p = attProfile([34, 35, 33]);
+    expect(attendanceAdjustment(p, ev(), ASOF).applied).toBe(true);                       // would apply…
+    expect(attendanceAdjustment(p, ev({ intelAttendanceReverted: true }), ASOF).applied).toBe(false); // …but reverted
+    expect(attendanceAdjustment(p, ev({ intelAttendanceReverted: true }), ASOF).suggested).toBe(40);
+  });
+  test('ANALYTICS payload is well-formed (delta%, n, confidence, stability, clamp)', () => {
+    const a = attendanceAdjustment(attProfile([34, 35, 33]), ev(), ASOF);
+    const pay = attendanceAnalyticsPayload(a);
+    expect(pay).toMatchObject({ delta: -15, planned: 40, suggested: 34, n: 3, confidence: CONFIDENCE.MEDIUM, clamped: false });
+    expect(pay.stability).toMatch(/Medium|High/);
+    // clamp-high payload carries clamped:true and a +25% delta
+    expect(attendanceAnalyticsPayload(attendanceAdjustment(attProfile([60, 62, 58]), ev(), ASOF))).toMatchObject({ delta: 25, clamped: true });
   });
 });
 

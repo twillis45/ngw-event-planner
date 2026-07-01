@@ -35,18 +35,20 @@ A reader that can't fill all nine is not ready to ship.
 
 ### Status legend: 🟢 live · 🟡 approved-unbuilt · ⚪ proposed
 
-### R1 · Attendance band → plan-to number  ⚪ proposed (INTEL-1 P4, first)
+### R1 · Attendance → plan-to count (food/spending sizing)  🟢 live (INTEL-1 P4, shipped 2026-07-02)
 | Field | Value |
 |---|---|
-| **Reader** | `attendanceBand` / `sizingGuests` consumers (index.js) |
+| **Reader** | `attendanceAdjustment(profile, event)` (hostIntel.js) consumed in `FoodPlan` (App.js): sizes `playbookFoodPlan`/`attendanceBand` for the adjusted count |
 | **Source + domains** | Host Intelligence · `attendance` |
-| **Min confidence** | Medium |
-| **Min stability** | Medium (High conf + Low stability ⇒ ask, per INTEL-1 §5c) |
-| **Max adjustment** | ±25% off the planned count |
-| **Fallback** | planned `guestCount` / L2 band, unchanged |
-| **Because** | "You usually see ~{Δ}% {fewer/more} than planned (last {n} events)." |
-| **Override** | one-tap "use my planned number"; edits the count directly |
-| **Analytics** | `intel_attendance_applied` / `_reverted` (with Δ, n, confidence, stability) |
+| **Min confidence** | Medium (via the domain's `applicable`) |
+| **Min stability** | Medium — High conf + Low stability ⇒ NOT applied (keep asking, INTEL-1 §5c) |
+| **Max adjustment** | **±25%** off the planned count (`ATTENDANCE_CLAMP`); `clampHit` records which bound bound |
+| **Fallback** | planned `guestCount` / L2 band, byte-identical — when absent/low/unstable/reverted, `applied:false` ⇒ `sizingEvent === event` |
+| **Because** | "Based on your last events, {fewer/more} people usually came than planned — size for {suggested}?" — rendered ONLY when applied |
+| **Override** | one-tap **"Keep {planned}"** ⇒ sets `event.intelAttendanceReverted` (per-event); restores default sizing. Host can also clear the domain in Settings (P3) |
+| **Analytics** | `intel_attendance_applied` (trackOnce/event) · `intel_attendance_reverted` (on revert) — payload `{delta%, planned, suggested, n, confidence, stability, clamped}` |
+
+*Scope note: R1 adjusts the **attendance count** only. It naturally flows into food/capacity sizing (more/fewer people ⇒ more/less food) — that is NOT R2 food personalization (per-item consumption ratios), which stays store-only.*
 
 ### R2 · Food per-item sizing → quantities  ⚪ proposed (INTEL-1 P4, second)
 | Field | Value |

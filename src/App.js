@@ -50,7 +50,7 @@ import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpC
 import { foodShopItems } from './lib/foodShopItems';
 // INTEL-1 — Host Intelligence (Level-4 memory). P2 uses applyReconciliation/isReconciled to write
 // reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
-import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence } from './lib/hostIntel';
+import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence, attendanceAdjustment, attendanceAnalyticsPayload } from './lib/hostIntel';
 import { instacartCart, INSTACART_FALLBACK } from './lib/instacart';
 // Sprint 60F — Moment Library v1 (ROS-only): authored type→moments → Run of Show.
 import { momentsOn, suggestableMoments, buildMomentSegment } from './lib/momentLibrary';
@@ -9642,7 +9642,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const C = useT();
   const T = useType();
   const foodPP = useFoodPriceFactor(event, profile);
-  const plan = playbookFoodPlan(event, foodPP);
+  // INTEL-1 P4 R1 — attendance read-forward. When learned turnout is applicable + stable (and the
+  // host hasn't reverted it for this event), size the plan-to count by memory, clamped to ±25%.
+  // No / low-confidence / unstable / reverted memory ⇒ attAdj.applied is false ⇒ sizingEvent ===
+  // event ⇒ existing behavior EXACTLY. Only R1 (attendance) — no food/ice/budget personalization.
+  const attAdj = useMemo(() => { try { return attendanceAdjustment(profile, event); } catch { return { applied: false, planned: 0, suggested: 0, because: null }; } }, [profile, event]);
+  const sizingEvent = attAdj.applied ? { ...event, guestCount: attAdj.suggested } : event;
+  useEffect(() => { if (attAdj.applied) { try { trackOnce(`intel-att-applied-${event.id}`, EVENTS.INTEL_ATTENDANCE_APPLIED, attendanceAnalyticsPayload(attAdj)); } catch {} } }, [attAdj.applied, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const revertAttendance = () => { try { track(EVENTS.INTEL_ATTENDANCE_REVERTED, attendanceAnalyticsPayload(attAdj)); } catch {} onPatch({ intelAttendanceReverted: true }); };
+  const plan = playbookFoodPlan(sizingEvent, foodPP);
   // Gate the spread's $ DISPLAY on a real count. Without a count, playbookFoodPlan
   // sizes to the playbook's guessed typical (~8) — showing "$X–$Y" off that fabricates
   // a figure the host never asked for. `plan.hasRealCount` is the single source (an
@@ -9652,7 +9660,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const fpHasCount = !!(plan && plan.hasRealCount);
   // Safe-headcount band — "plan for 38–44" relieves the #2 host fear where a lone
   // number lies. A real range only when RSVPs are outstanding; otherwise the count.
-  const fpBand = attendanceBand(event);
+  const fpBand = attendanceBand(sizingEvent);
   const fpBandLabel = attendanceBandLabel(fpBand);
   // A host collects dietary by COUNT, inline (they note the allergies they know of and
   // guests self-report the rest via RSVP) — they don't keep a planner-style per-guest
@@ -9808,6 +9816,21 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
           <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
+        </div>
+      )}
+      {/* INTEL-1 P4 R1 — the because. Shown ONLY when learned attendance is applied (Medium+
+          confidence, stable, within ±25%, not reverted). One-tap "Keep N" reverts to the host's
+          own number for this event and restores default sizing. Provenance + a revert, never a
+          silent override. */}
+      {attAdj.applied && (
+        <div style={{ ...card, borderLeft: `3px solid ${steel}`, marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 190 }}>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: steel }}>From what Event Boss remembers</div>
+            <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{attAdj.because}</div>
+            <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Sized for {attAdj.suggested} instead of {attAdj.planned}. Your plan, your call.</div>
+          </div>
+          <button type="button" onClick={revertAttendance}
+            style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, padding: '9px 15px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>Keep {attAdj.planned}</button>
         </div>
       )}
       {/* header + budget — collapsible (every planning card can fold to its header) */}

@@ -1,9 +1,9 @@
 // INTEL-1 P1 — Host Intelligence store + reader (INERT).
 //
 // Level-4 memory: learned operational behavior, stored as reconciled estimate-vs-reality
-// OBSERVATIONS (facts, not conclusions). This module is PURE and INERT — it defines the shape,
-// a reader, and append/clear helpers. It does NOT change any estimate, recommendation, or plan,
-// and NOTHING in the app consumes it yet (that is P4, gated by the readers registry).
+// OBSERVATIONS (facts, not conclusions). Pure. The store/reader/reconciliation/summary are inert;
+// the ONLY read-forward is `attendanceAdjustment` (P4 R1), gated + clamped, registered in
+// INTELLIGENCE_READERS_REGISTRY. No other engine consumes memory yet.
 //
 // Spec: docs/architecture/INTEL_1_HOST_INTELLIGENCE_PROFILE.md
 //       docs/architecture/INTELLIGENCE_READERS_REGISTRY.md
@@ -14,6 +14,7 @@
 
 const MAX_OBS = 8;          // keep only the last N observations per rollup
 const STALE_MONTHS = 18;    // observations older than this stop counting toward confidence
+const ATTENDANCE_CLAMP = 0.25; // P4 R1 — attendance memory may move the plan-to count at most ±25%
 
 export const CONFIDENCE = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
 export const STABILITY  = { NONE: 'None', LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' };
@@ -303,4 +304,51 @@ export function summarizeHostIntel(profile, asOf) {
   if (lessons.length) groups.push({ domain: 'lessons', title: 'Your notes', lines: lessons.map((l) => `“${(l && l.text) || ''}”`), note: '' });
 
   return { present: groups.length > 0, eventsObserved: h.eventsObserved, groups };
+}
+
+// ── P4 · R1: attendance read-forward (the FIRST reader that changes a plan) ──────────────────
+// Pure. Given the host's memory + this event, returns whether the plan-to headcount should shift,
+// clamped to ±25%, ONLY when the attendance domain is applicable (Confidence ≥ Medium AND Stability
+// ≥ Medium) and the host hasn't reverted it for this event. No memory / low confidence / unstable /
+// reverted ⇒ `applied:false, suggested === planned` (existing behavior, exactly). The `because` is
+// present ONLY when applied. Registered as R1 in INTELLIGENCE_READERS_REGISTRY.md.
+export function attendanceAdjustment(profile, event, asOf) {
+  const ev = isObj(event) ? event : {};
+  const planned = Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
+  const r = hostIntel(profile, asOf).get('attendance');
+  const base = {
+    applied: false, planned, suggested: planned, ratio: 1, rawRatio: num(r.ratio),
+    clamped: false, clampHit: null, because: null,
+    confidence: r.confidence, stability: r.stability, n: r.n,
+  };
+  if (!planned) return base;
+  if (ev.intelAttendanceReverted) return base;           // host kept their own number for this event
+  if (!r.applicable || num(r.ratio) == null) return base; // gate: Medium+ confidence AND stability
+
+  const lo = 1 - ATTENDANCE_CLAMP, hi = 1 + ATTENDANCE_CLAMP;
+  const rawRatio = r.ratio;
+  const ratio = Math.max(lo, Math.min(hi, rawRatio));
+  const suggested = Math.max(0, Math.round(planned * ratio));
+  if (suggested === planned) return base;                 // no visible change ⇒ don't dress it up
+
+  const fewer = suggested < planned;
+  return {
+    applied: true, planned, suggested, ratio, rawRatio,
+    clamped: ratio !== rawRatio,
+    clampHit: ratio !== rawRatio ? (rawRatio > hi ? 'high' : 'low') : null,
+    because: `Based on your last events, ${fewer ? 'fewer' : 'more'} people usually came than planned — size for ${suggested}?`,
+    confidence: r.confidence, stability: r.stability, n: r.n,
+  };
+}
+
+// The analytics payload for R1 (kept beside the reader so the applied/reverted events carry the same
+// shape). Delta is the signed % the plan-to count moved.
+export function attendanceAnalyticsPayload(adj) {
+  const a = isObj(adj) ? adj : {};
+  return {
+    delta: a.planned ? Math.round(((a.suggested - a.planned) / a.planned) * 100) : 0,
+    planned: a.planned || 0, suggested: a.suggested || 0,
+    n: a.n || 0, confidence: a.confidence || CONFIDENCE.NONE, stability: a.stability || STABILITY.NONE,
+    clamped: !!a.clamped,
+  };
 }
