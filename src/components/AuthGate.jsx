@@ -225,10 +225,11 @@ function ThemeFallbackSplash({ onContinue }) {
 //     Supabase env is set, the bypass flag wins.
 const BYPASS_ACTIVE = process.env.REACT_APP_AUTH_BYPASS === 'true';
 
-// Dev-only: lets a bypass session carry an admin/support role so the Admin
-// console (?admin=1) can be QA'd locally. Honored ONLY when bypass is active, so
-// it is dead code in any prod build (prod forces REACT_APP_AUTH_BYPASS=false).
-// Set REACT_APP_BYPASS_ROLE=admin|support, or pass ?devrole=admin on the URL.
+// Dev-only: the bypass session carries a role so the Admin console (?admin=1) works locally.
+// The local developer gets ADMIN by default — no ?devrole needed — because dev == full access.
+// Honored ONLY when bypass is active, so it is DEAD CODE in any prod build (prod forces
+// REACT_APP_AUTH_BYPASS=false; the deploy gate verifies this in the bundle). Override with
+// REACT_APP_BYPASS_ROLE=support or ?devrole=support to test the narrower role.
 const _bypassRole = (() => {
   if (!BYPASS_ACTIVE) return undefined;
   let role = process.env.REACT_APP_BYPASS_ROLE;
@@ -236,6 +237,7 @@ const _bypassRole = (() => {
     const p = new URLSearchParams(window.location.search).get('devrole');
     if (p) role = p;
   } catch (e) { /* no window/search — ignore */ }
+  if (!role) role = 'admin'; // dev bypass ⇒ admin by default
   return role === 'admin' || role === 'support' ? role : undefined;
 })();
 
