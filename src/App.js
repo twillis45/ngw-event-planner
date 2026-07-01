@@ -9487,18 +9487,37 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                   </div>
                   {/* Cost-lock panel — Value / Premium / your-own, mirroring the FoodPlan lock. */}
                   {lockOpen && !skipped && (
-                    <div style={{ padding: '0 0 12px 30px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Add what you spent to check it off — it counts toward your budget:' : "Set what this’ll cost — pick one or enter your own:"}</span>
-                      {it.costLow != null && <button type="button" onClick={() => setLock(it.key, it.costLow)} style={lkBtn}>Value {money1(it.costLow)}</button>}
-                      {it.costHigh != null && <button type="button" onClick={() => setLock(it.key, it.costHigh)} style={lkBtn}>Premium {money1(it.costHigh)}</button>}
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 9px' }}>
-                        <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
-                        <input type="number" inputMode="numeric" defaultValue={it.locked != null ? it.locked : ''} placeholder="your price"
-                          onKeyDown={(e) => { if (e.key === 'Enter') setLock(it.key, e.currentTarget.value); }}
-                          onBlur={(e) => { if (e.currentTarget.value) setLock(it.key, e.currentTarget.value); }}
-                          style={{ width: 92, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.secondary, fontWeight: FW.bold, fontFamily: 'inherit' }} />
-                      </span>
-                      {it.locked != null && <button type="button" onClick={() => clearLock(it.key)} style={{ ...lkBtn, color: C.muted }}>Clear</button>}
+                    <div style={{ padding: '0 0 14px 30px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: T.caption, color: checkAfterLock === it.key ? (C.warn || C.accent) : C.muted, fontWeight: checkAfterLock === it.key ? FW.bold : FW.regular }}>{checkAfterLock === it.key ? 'Add what you spent to check it off — it counts toward your budget:' : "Set what this’ll cost — pick one, or enter your own:"}</span>
+                      {/* Cost-lock parity with The spread: 3-segment Value / Premium / Custom (Custom IS the input). */}
+                      {(() => {
+                        const isCustom = it.locked != null && it.locked !== it.costLow && it.locked !== it.costHigh;
+                        const seg = (label, sub, active, onClick) => (
+                          <button type="button" onClick={onClick}
+                            style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit',
+                              background: active ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${active ? 'transparent' : C.border}` }}>
+                            <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: active ? '#eef0f4' : C.text }}>{label}</span>
+                            <span style={{ fontSize: T.caption, color: active ? 'rgba(238,240,244,0.8)' : C.muted }}>{sub}</span>
+                          </button>
+                        );
+                        return (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                            {it.costLow != null && seg('Value', money1(it.costLow), it.locked === it.costLow, () => setLock(it.key, it.costLow))}
+                            {it.costHigh != null && seg('Premium', money1(it.costHigh), it.locked === it.costHigh, () => setLock(it.key, it.costHigh))}
+                            <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, padding: '8px 6px', borderRadius: 9, background: isCustom ? 'linear-gradient(180deg, #4e6877 0%, #3f5b6a 100%)' : C.bg, border: `1px solid ${isCustom ? 'transparent' : C.border}` }}>
+                              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: isCustom ? '#eef0f4' : C.text }}>Custom</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                                <span style={{ fontSize: T.caption, color: isCustom ? 'rgba(238,240,244,0.8)' : C.muted }}>$</span>
+                                <input type="number" inputMode="numeric" defaultValue={isCustom ? it.locked : ''} placeholder="set"
+                                  onKeyDown={(e) => { if (e.key === 'Enter') setLock(it.key, e.currentTarget.value); }}
+                                  onBlur={(e) => { if (e.currentTarget.value) setLock(it.key, e.currentTarget.value); }}
+                                  style={{ width: 50, background: 'transparent', border: 'none', outline: 'none', textAlign: 'center', color: isCustom ? '#eef0f4' : C.text, fontSize: T.caption, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+                              </span>
+                            </span>
+                          </div>
+                        );
+                      })()}
+                      {it.locked != null && <button type="button" onClick={() => clearLock(it.key)} style={{ ...lkBtn, color: C.muted, alignSelf: 'flex-start' }}>Clear</button>}
                     </div>
                   )}
                 </div>
