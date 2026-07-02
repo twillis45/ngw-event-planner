@@ -9497,7 +9497,8 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
           eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
       <CollapsibleCard id={`cap-hero-${event.id}`} isMobile={isMobile} defaultCollapsed done={allDone} autoCollapseWhenDone={allDone} style={{ marginBottom: 4 }}
         title="Seating &amp; supplies"
-        subtitle={cap.hasCost ? `Set for ${capGuestLabel} · seats, tables & supplies` : `Set for ${capGuestLabel}`}>
+        right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>Set for {capGuestLabel}</div> : undefined}
+        subtitle={!isMobile ? (cap.hasCost ? 'seats, tables & supplies' : '') : (cap.hasCost ? `Set for ${capGuestLabel} · seats, tables & supplies` : `Set for ${capGuestLabel}`)}>
         {/* Board (10+ pass 2): the Plan tab keeps ONE money hero — the Food plan's $/guest.
             This SECONDARY supplies card leads with its PURPOSE (what it's set for + what's
             covered) and demotes the $ to a quiet supporting figure, so two big money ranges
@@ -9974,10 +9975,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           cohesive category (the WHAT). Collapsed header carries a real summary (Tufte). */}
       <button type="button" onClick={toggleMenu}
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
-        <span style={{ minWidth: 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.title, fontWeight: FW.bold, color: C.text }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: (fpHasCount && plan.dietaryResolved && hasChoices) ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />Your menu</span>
-          <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{menuOpen ? 'Tap to close' : (fpHasCount ? `${money(plan.foodLow, plan.foodHigh)} · food + drinks for ${plan.guests}` : 'Food + drinks — tap to plan')}</span>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: (fpHasCount && plan.dietaryResolved && hasChoices) ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />Your menu</span>
+          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.45 }}>{menuOpen ? 'Tap to close' : (fpHasCount ? (!isMobile ? `food + drinks for ${plan.guests}` : `${money(plan.foodLow, plan.foodHigh)} · food + drinks for ${plan.guests}`) : 'Food + drinks — tap to plan')}</span>
         </span>
+        {/* Tablet/desktop/wide: the estimate rides on the RIGHT of the panel (parity with the Budget cards). */}
+        {!isMobile && !menuOpen && fpHasCount && <span style={{ flexShrink: 0, fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(plan.foodLow, plan.foodHigh)}</span>}
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: menuOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
       {menuOpen && (<AccordionProvider>
@@ -10332,10 +10335,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* Board #2: "The shopping" home — the spread + where to shop fold inside (the BUY). */}
       <button type="button" onClick={toggleShopping}
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
-        <span style={{ minWidth: 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.title, fontWeight: FW.bold, color: C.text }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: spreadComplete ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />The shopping</span>
-          <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 3 }}>{shoppingOpen ? 'Tap to close' : `${plan.itemCount} item${plan.itemCount === 1 ? '' : 's'} to buy${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)}` : ''}`}</span>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: spreadComplete ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />The shopping</span>
+          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{shoppingOpen ? 'Tap to close' : `${plan.itemCount} item${plan.itemCount === 1 ? '' : 's'} to buy${(isMobile && fpHasCount) ? ` · ${money(plan.foodLow, plan.foodHigh)}` : ''}`}</span>
         </span>
+        {/* Tablet/desktop/wide: the estimate rides on the RIGHT of the panel (parity with the Budget cards). */}
+        {!isMobile && !shoppingOpen && fpHasCount && <span style={{ flexShrink: 0, fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(plan.foodLow, plan.foodHigh)}</span>}
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: shoppingOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
       {shoppingOpen && (<AccordionProvider>
@@ -41390,7 +41395,9 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     : 'Everything’s settled.';
 
   return (
-    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} title="What to settle" subtitle={subtitle}>
+    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} title="What to settle"
+      right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : 'All settled'}</div> : undefined}
+      subtitle={!isMobile ? (settledCount ? `${settledCount} locked` : '') : subtitle}>
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
       {headcount && (
