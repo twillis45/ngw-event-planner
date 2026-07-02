@@ -33314,8 +33314,29 @@ function HostRunOfShowTimeline({ event, profile }) {
   // losing the "happening now" panel to an empty list. The sweep won't re-wake a finished day.
   const allDone = isDayOf && hasCues && sorted.length > 0 && sorted.every((r) => cueDone(r));
 
-  // Eyebrow + footer adapt to proximity.
-  const eyebrow = allDone ? 'THE DAY · COMPLETE' : (isDayOf ? 'THE DAY' : 'THE DAY · STARTS SOON');
+  // Live clock — the day-of hero's operational anchor (board verdict). Ticks only on the day itself.
+  const [clockNow, setClockNow] = useState(() => { try { return new Date(); } catch { return null; } });
+  useEffect(() => {
+    if (!isDayOf) return undefined;
+    let id; try { id = setInterval(() => { try { setClockNow(new Date()); } catch {} }, 30000); } catch {}
+    return () => { try { clearInterval(id); } catch {} };
+  }, [isDayOf]);
+  const timeStr = (isDayOf && clockNow) ? clockNow.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+  const clockDateStr = clockNow ? clockNow.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+
+  // Is the NOW cue actually happening (its start has passed) vs still on deck?
+  const nowCueActive = !!(nowCue && toMins(nowCue.time) !== null && toMins(nowCue.time) <= nowMins);
+  // On-deck (NEXT) cue — first open cue AFTER the NOW cue. Board verdict: a quiet NEXT marker lives on
+  // the spine (in true time order), NOT as a duplicate line in the hero.
+  const nextCueId = (isDayOf && nowCueId) ? (() => {
+    const idx = sorted.findIndex((r) => r.id === nowCueId);
+    for (let j = idx + 1; j < sorted.length; j++) { if (!cueDone(sorted[j])) return sorted[j].id; }
+    return null;
+  })() : null;
+
+  // Eyebrow + footer adapt to proximity — state-named + colored (board verdict).
+  const eyebrow = allDone ? 'ALL CLEAR' : !isDayOf ? 'THE DAY · STARTS SOON' : nowCueActive ? 'NOW' : 'NEXT UP';
+  const eyebrowColor = (allDone || (isDayOf && nowCueActive)) ? live : steelLabel;
   const footer = allDone
     ? 'Every moment handled. That’s a wrap — go enjoy it.'
     : isDayOf
@@ -33400,7 +33421,7 @@ function HostRunOfShowTimeline({ event, profile }) {
   if (!hasCues) {
     // Honest empty state — no cues to show, so we don't fabricate any.
     return (
-      <div style={{ padding: '8px 20px 40px' }}>
+      <div style={{ padding: '0 20px 40px' }}>
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
         {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
         <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 330, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -33412,13 +33433,22 @@ function HostRunOfShowTimeline({ event, profile }) {
   }
 
   return (
-    <div style={{ padding: '8px 20px 32px', position: 'relative' }}>
+    <div style={{ padding: '0 20px 32px', position: 'relative' }}>
       {/* Command hero (parity) — The Day now leads with a proper hero CARD like every other host tab:
           state eyebrow · the date headline · the start + cue-count context (was a bare eyebrow line). */}
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22 }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
-        <div style={{ fontSize: T.section, fontWeight: FW.heavy, color: textPrimary, marginTop: 7, lineHeight: 1.2 }}>{dateLine || 'The day'}</div>
-        <div style={{ fontSize: T.secondary, color: textSub, marginTop: 4 }}>{[startLabel ? `${startLabel} start` : '', `${sorted.length} cue${sorted.length === 1 ? '' : 's'} to run`].filter(Boolean).join(' · ')}</div>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', color: eyebrowColor, textTransform: 'uppercase' }}>{eyebrow}</div>
+          <div style={{ fontSize: T.section, fontWeight: FW.heavy, color: textPrimary, marginTop: 7, lineHeight: 1.2 }}>{dateLine || 'The day'}</div>
+          <div style={{ fontSize: T.secondary, color: textSub, marginTop: 4 }}>{[startLabel ? `${startLabel} start` : '', `${sorted.length} cue${sorted.length === 1 ? '' : 's'} to run`].filter(Boolean).join(' · ')}</div>
+        </div>
+        {/* Live clock (board verdict) — the day-of operational anchor, big + tabular, day-of only. */}
+        {isDayOf && timeStr && (
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: T.statXl, fontWeight: FW.heavy, color: textPrimary, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{timeStr}</div>
+            <div style={{ fontSize: T.caption, color: steelTime, marginTop: 4, letterSpacing: '0.04em' }}>{clockDateStr}</div>
+          </div>
+        )}
       </div>
 
       {/* Day complete — every cue done. The green hero stays (caught-up reward) so the
@@ -33450,6 +33480,7 @@ function HostRunOfShowTimeline({ event, profile }) {
         {sorted.map((r, i) => {
           const done = cueDone(r);
           const isNow = r.id === nowCueId;
+          const isNext = r.id === nextCueId;
           // Detail line = owner + a short note/location if present.
           const detailBits = [
             (r.owner || '').trim(),
@@ -33461,8 +33492,8 @@ function HostRunOfShowTimeline({ event, profile }) {
               {/* Dot — done: faint filled · NOW: bigger green node (M5·C) · upcoming: hollow */}
               <div aria-hidden style={{
                 position: 'absolute', left: isNow ? -30 : -28, top: isNow ? 6 : 4, width: isNow ? 13 : 9, height: isNow ? 13 : 9, borderRadius: 999,
-                background: isNow ? live : 'transparent',
-                border: `1.5px solid ${isNow ? live : (done ? C.tier3 : steelTime)}`,
+                background: isNow ? live : (isNext ? `${steelLabel}22` : 'transparent'),
+                border: `1.5px solid ${isNow ? live : isNext ? steelLabel : (done ? C.tier3 : steelTime)}`,
                 opacity: done ? 0.5 : 1,
                 boxShadow: isNow ? `0 0 0 4px ${live}33, 0 0 12px ${live}` : 'none',
                 // M5 — the NOW node ignites as the sweep reaches it (delay scaled to its
@@ -33480,8 +33511,8 @@ function HostRunOfShowTimeline({ event, profile }) {
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.05em', color: steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
-                    {r.time ? fmtTime12(r.time) : ''}
+                  <div style={{ fontSize: T.eyebrow, fontWeight: isNext ? FW.heavy : FW.semibold, letterSpacing: isNext ? '0.1em' : '0.05em', textTransform: isNext ? 'uppercase' : 'none', color: isNext ? steelLabel : steelTime, opacity: done ? 0.55 : 1, ...ROW_FONT }}>
+                    {isNext ? `Next · ${r.time ? fmtTime12(r.time) : 'on deck'}` : (r.time ? fmtTime12(r.time) : '')}
                   </div>
                   <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: textPrimary, marginTop: 4, lineHeight: 1.35, opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : 'none', ...ROW_FONT }}>{r.segment || 'Untitled'}</div>
                   {detail && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 3, opacity: done ? 0.55 : 0.85, lineHeight: 1.4, ...ROW_FONT }}>{detail}</div>}
@@ -42610,7 +42641,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           column. Capping it forced the chips/buttons to wrap onto 3-4 lines. */}
       {/* Board ruling (Option A): the SAME persistent header on EVERY tab incl. Command,
           so nothing reshapes on tab switch. The Pulse drops its duplicate name below. */}
-      {<div ref={headerRef} style={{ padding: hPad, paddingBottom: isMobile ? 6 : 10, position: 'sticky', top: 0, zIndex: 30, background: C.bg || '#0b0d10' }}>
+      {<div ref={headerRef} style={{ padding: hPad, paddingBottom: isMobile ? 6 : 10, marginBottom: isMobile ? 12 : 16, position: 'sticky', top: 0, zIndex: 30, background: C.bg || '#0b0d10' }}>
         {/* Overall-progress fill along the header's bottom edge — the divider line IS the
             progress bar. STATUS-COLORED: green when on-pace/ready, steel when behind
             (Studio Matte confidence palette — never alarming amber/red).
