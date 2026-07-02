@@ -22,6 +22,7 @@ import { syncIntake, loadKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
 import { kcrCan } from '../lib/knowledge/kcrRoles';
+import { corpusDimensionKCRs } from '../lib/knowledge/dimensions';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1827,7 +1828,7 @@ function KcrStudioPanel() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try { await syncIntake(researchQueueToKCRs(asOf)); const list = await loadKCRs(); if (!cancelled) setKcrs(list); }
+      try { await syncIntake([...researchQueueToKCRs(asOf), ...corpusDimensionKCRs(asOf)]); const list = await loadKCRs(); if (!cancelled) setKcrs(list); }
       catch { if (!cancelled) setKcrs([]); }
       finally { if (!cancelled) setLoading(false); }
     })();

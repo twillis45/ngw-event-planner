@@ -21,6 +21,8 @@ export const KCR_TYPES = [
   'research', 'correction', 'citation', 'pricing-update', 'seasonal-update',
   'regulation-update', 'sme-revision', 'customer-feedback', 'validation-finding',
   'ai-suggestion', 'retirement', 'new-knowledge', 'contradiction', 'missing-evidence',
+  // Quality-layer types (Playbook Intelligence dimensions route here — see PLAYBOOK_INTELLIGENCE_OS):
+  'quality-gap', 'grounding-gap', 'commercial-gap',
 ];
 // TRIGGER — the causal "WHY is our knowledge changing?" dimension for analytics.
 // The single causal taxonomy (replaces the earlier free 'source' field — no duplicate axis).
