@@ -31,7 +31,7 @@ const sweet16 = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], costFactors: { 'Drop-off catering': 1.3, 'Host + family cook': 0.75, 'Food truck / caterer': 1.4 }, affects: ['p_pizza', 'p_sides'], why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
     {
       id: 'venue_type',
       label: 'Where is the party?',
@@ -69,7 +69,7 @@ const sweet16 = {
       why: 'Music IS the party. A DJ runs the floor, MCs the grand entrance and cake, and reads the room; a curated playlist on a rented PA is the budget path but needs an adult assigned to run it. Book a DJ ~3 months out — good ones go early.',
     },
     {
-      id: 'food_style',
+      id: 'food_menu',
       label: 'What food are you serving?',
       options: ['Pizza + sides', 'Slider/burger bar', 'Taco / build-your-own bar', 'Light bites + dessert table only'],
       default: 'Pizza + sides',

@@ -50,6 +50,21 @@ Rules: `costFactors` keys ⊆ `options`; factors are positive numbers; **omit th
 stays 1.0 (baselines + tests don't move); `affects` lists real `purchases[].id`s. This is the ONE
 mechanism — beverage/sourcing tiers are migrating onto it (do not add new one-off factor functions).
 
+### Escape valves & caveats (learned from verification)
+- **`noCostEffect: true`** — a food/beverage decision that legitimately does NOT change cost (a payment
+  split, a guest-count band already scaled by headcount, an event-scope/framing call). Mark it explicitly:
+  silence reads as *missing* costFactors; an explicit flag reads as a *decision*. Empty-option decisions
+  (`options: []`) are exempt automatically.
+- **Unique decision ids** — two decisions sharing an `id` collide on the same `event.foodChoices[id]` key.
+  Enforced as a hard invariant.
+- **⚠ `affects` must name a line that stays a DISTINCT costed item.** Some playbooks route food through a
+  `foodApproach` model that COLLAPSES the itemized purchases into one derived line (e.g. `fa-catering`) when
+  the host picks a catering option. A `costFactors` on a raw purchase id that gets collapsed **silently
+  no-ops** — it's well-formed but never lands. So: item-level menu / size / seasoning choices (crab size →
+  `p_crabs`) are the right fit; food-*APPROACH* decisions (cook vs cater vs order) are re-priced by the
+  foodApproach model itself, NOT by a per-item factor. Verify a costFactor with the *effectiveness* check
+  (does the total actually move?), not just the well-formed check.
+
 ## `purchases[]` — the shopping/cost model
 Every purchase:
 | field | rule |

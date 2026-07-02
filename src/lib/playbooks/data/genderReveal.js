@@ -43,7 +43,7 @@ const genderReveal = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes finger food', 'Catering / platters', 'Potluck', 'Order trays'], default: 'Host makes finger food', when: 'T-14d', blocks: ['food', 'vendors'], why: 'Reveals are short and casual — finger food the host can make, or platters ordered in.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Host makes finger food', 'Catering / platters', 'Potluck', 'Order trays'], default: 'Host makes finger food', when: 'T-14d', blocks: ['food', 'vendors'], costFactors: { 'Catering / platters': 1.3, 'Potluck': 0.55, 'Order trays': 1.1 }, affects: ['p_snacks'], why: 'Reveals are short and casual — finger food the host can make, or platters ordered in.' },
     {
       id: 'reveal_method',
       label: 'Reveal method (the hero moment)',

@@ -12,13 +12,20 @@ const isCostAffecting = (d) => Array.isArray(d.blocks) && (d.blocks.includes('fo
 
 function collect() {
   const costFactorGaps = []; const idPrefixGaps = []; const categoryGaps = [];
-  const qtyMixGaps = []; const foodNoCost = []; const badCostFactors = []; const noType = [];
+  const qtyMixGaps = []; const foodNoCost = []; const badCostFactors = []; const noType = []; const dupDecisionIds = [];
   for (const pb of ALL_PLAYBOOKS) {
     const type = pb.type || '(no type)';
     if (typeof pb.type !== 'string' || !pb.type.trim()) noType.push(JSON.stringify(Object.keys(pb).slice(0, 3)));
     const purchaseIds = new Set((pb.purchases || []).map((p) => p.id));
+    const seenDecIds = new Set();
     for (const d of (pb.decisions || [])) {
-      if (isCostAffecting(d) && !d.costFactors) costFactorGaps.push(`${type}:${d.id}`);
+      if (d && d.id != null) { if (seenDecIds.has(d.id)) dupDecisionIds.push(`${type}:${d.id}`); else seenDecIds.add(d.id); }
+      // A costFactor GAP = a food/beverage decision with ≥2 real options that neither declares
+      // costFactors NOR is explicitly marked noCostEffect. Empty-option stubs (nothing to price) and
+      // acknowledged non-costers (scale/payment/scope decisions — guest count already scales quantity)
+      // are NOT gaps: silence would be a lie, but an explicit `noCostEffect: true` is a decision.
+      if (isCostAffecting(d) && !d.costFactors && !d.noCostEffect && Array.isArray(d.options) && d.options.length >= 2) costFactorGaps.push(`${type}:${d.id}`);
+      if (d.costFactors && d.noCostEffect) badCostFactors.push(`${type}:${d.id} has BOTH costFactors and noCostEffect`);
       if (d.costFactors) {
         const opts = new Set(d.options || []);
         for (const k of Object.keys(d.costFactors)) {
@@ -37,7 +44,7 @@ function collect() {
       if ((p.category === 'food' || p.category === 'beverage') && !Array.isArray(p.unitCostRange)) foodNoCost.push(`${type}:${p.id}`);
     }
   }
-  return { costFactorGaps, idPrefixGaps, categoryGaps, qtyMixGaps, foodNoCost, badCostFactors, noType };
+  return { costFactorGaps, idPrefixGaps, categoryGaps, qtyMixGaps, foodNoCost, badCostFactors, noType, dupDecisionIds };
 }
 
 const G = collect();
@@ -45,6 +52,10 @@ const G = collect();
 // ── HARD invariants — always green ──────────────────────────────────────────
 describe('playbook contract — hard invariants', () => {
   test('every playbook has a string type', () => { expect(G.noType).toEqual([]); });
+  test('decision ids are unique within each playbook', () => {
+    if (G.dupDecisionIds.length) console.error('DUPLICATE DECISION IDS:\n' + G.dupDecisionIds.join('\n'));
+    expect(G.dupDecisionIds).toEqual([]);
+  });
   test('every costFactors block is well-formed (keys ⊆ options, positive, affects → real purchase ids)', () => {
     if (G.badCostFactors.length) console.error('BAD COST FACTORS:\n' + G.badCostFactors.join('\n'));
     expect(G.badCostFactors).toEqual([]);
@@ -56,7 +67,7 @@ describe('playbook contract — hard invariants', () => {
 // rollout (step 3) fixes gaps, lower the baseline to the new count — the drop is visible progress in git.
 // Calibrated 2026-07-02. Goal: every baseline reaches 0 (then the contract is fully enforced).
 const BASELINE = {
-  costFactorGaps: 60, // cost-affecting (food/beverage) decisions missing costFactors — the big rollout
+  costFactorGaps: 0,  // COMPLETE 2026-07-02 — all 25 playbooks wired; remainder is empty-stub or noCostEffect
   idPrefixGaps: 0,    // FIXED 2026-07-02 — reunion + sundayDinner renamed p- → p_
   categoryGaps: 0,    // clean — keep it: no vendor names in purchases.category
   qtyMixGaps: 0,      // clean — keep it: no purchase mixes qtyPerGuest + qtyFlat

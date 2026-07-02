@@ -50,6 +50,8 @@ const theCookout = {
       default: 'Designated grill master (uncle / family pitmaster)',
       when: 'T-14d',
       blocks: ['food', 'fuel'],
+      costFactors: { 'Hire a pitmaster / caterer': 1.4 },
+      affects: ['p_ribs', 'p_chicken', 'p_burgers_dogs'],
       why: 'The grill master is a real, named role — the person trusted with the meat. Naming them early sets who buys fuel, who fires up the pit, and frees the host to host. At scale (40+) one person on the grill all day is a lot; confirm a backup.',
     },
     {
@@ -59,6 +61,8 @@ const theCookout = {
       default: 'Host does meat + key sides, family brings the rest',
       when: 'T-14d',
       blocks: ['food'],
+      costFactors: { 'Host cooks everything': 1.3, 'Potluck — assign dishes': 0.55 },
+      affects: ['p_mac', 'p_potato_salad', 'p_beans', 'p_greens', 'p_cornbread', 'p_slaw', 'p_dessert'],
       why: 'The single biggest effort lever. The cookout runs on a coordinated spread — and on trust: people bring the dish they are KNOWN for, and the potato salad is claimed by the one person everybody trusts to make it. Assign on purpose so you get one great version of each side, not three mediocre potato salads and no greens.',
     },
     {
@@ -68,6 +72,8 @@ const theCookout = {
       default: 'Add a grown-folks section (brown liquor + mixers, beer)',
       when: 'T-10d',
       blocks: ['beverage'],
+      costFactors: { 'Red drink + soda + water (family-friendly)': 0.2, 'Full bar + punch': 1.4 },
+      affects: ['p_grown_folks'],
       why: 'A cookout needs a red drink (Kool-Aid / punch), soda, and plenty of water for everybody — kids and elders included — AND a clearly separate grown-folks section (brown liquor + mixers, beer). Keeping them separate keeps it family-safe and lets the adults have theirs.',
     },
     {
