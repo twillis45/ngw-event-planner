@@ -9772,10 +9772,18 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(true); // The spread is ONE level: expanding the card shows the priced list directly (no "show all" gate)
   const [openGroup, setOpenGroup] = useState(null); // The spread: accordion — categories START collapsed; opening one auto-collapses the rest
-  // Board #2: the 6 food cards fold into TWO cohesive homes — "Your menu" (plan+choices+sourcing+
-  // allergies) and "The shopping" (the spread+where to shop) — so Plan reads as a few calm cards.
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [shoppingOpen, setShoppingOpen] = useState(false);
+  // Board #2: the 6 food cards fold into TWO cohesive homes — "Your menu" and "The shopping". The homes
+  // are TOP-LEVEL accordion members (so opening one collapses What-to-settle/Seating/the other home),
+  // while each home's sub-sections live in a NESTED accordion so opening a sub-card doesn't close its home.
+  const _acc = useContext(AccordionCtx);
+  const MENU_HOME = `menu-home-${event.id}`;
+  const SHOP_HOME = `shop-home-${event.id}`;
+  const [menuLocal, setMenuLocal] = useState(false);
+  const [shopLocal, setShopLocal] = useState(false);
+  const menuOpen = _acc ? _acc.openId === MENU_HOME : menuLocal;
+  const shoppingOpen = _acc ? _acc.openId === SHOP_HOME : shopLocal;
+  const toggleMenu = () => { if (_acc) _acc.setOpenId(menuOpen ? null : MENU_HOME); else setMenuLocal((o) => !o); };
+  const toggleShopping = () => { if (_acc) _acc.setOpenId(shoppingOpen ? null : SHOP_HOME); else setShopLocal((o) => !o); };
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
@@ -9964,7 +9972,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           frame across the Plan tab. The per-guest hero + detail stay in the body. */}
       {/* Board #2: "Your menu" home — the plan + choices + sourcing + allergies fold inside as ONE
           cohesive category (the WHAT). Collapsed header carries a real summary (Tufte). */}
-      <button type="button" onClick={() => setMenuOpen((o) => !o)}
+      <button type="button" onClick={toggleMenu}
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.title, fontWeight: FW.bold, color: C.text }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: (fpHasCount && plan.dietaryResolved && hasChoices) ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />Your menu</span>
@@ -9972,7 +9980,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </span>
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: menuOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
-      {menuOpen && (<>
+      {menuOpen && (<AccordionProvider>
       <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed done={fpHasCount} style={{ ...subCard, gridColumn: isWide ? '1 / -1' : undefined }}
         title="Food plan"
         subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)} · estimate` : ''}`}>
@@ -10320,9 +10328,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           </div>
         </CollapsibleCard>
       )}
-      </>)}
+      </AccordionProvider>)}
       {/* Board #2: "The shopping" home — the spread + where to shop fold inside (the BUY). */}
-      <button type="button" onClick={() => setShoppingOpen((o) => !o)}
+      <button type="button" onClick={toggleShopping}
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.title, fontWeight: FW.bold, color: C.text }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: spreadComplete ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />The shopping</span>
@@ -10330,7 +10338,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         </span>
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: shoppingOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
-      {shoppingOpen && (<>
+      {shoppingOpen && (<AccordionProvider>
       {/* the grounded shopping list — summary-first; collapsible */}
       {/* M6·A/B card: plain title + a one-line summary (carrying the price — functionality
           kept), the full priced spread in the body. No icon/price/pill in the collapsed header. */}
@@ -10760,7 +10768,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           })()}
         </CollapsibleCard>
       )}
-      </>)}
+      </AccordionProvider>)}
       {shopSheet && <DraftSheet {...shopSheet} onClose={() => setShopSheet(null)} C={C} isMobile={isMobile} />}
     </div>
   );
