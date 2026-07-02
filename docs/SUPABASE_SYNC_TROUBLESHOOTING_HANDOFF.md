@@ -2,6 +2,13 @@
 
 _Last updated: 2026-07-01. Continue the cloud-sync / studio-provisioning work from here._
 
+## 0. RSVP read-back 500 — RESOLVED 2026-07-02
+Separate symptom, same "a migration didn't fully land in prod" family. `GET /api/events/{id}/rsvps` 500'd with **`column "studio_id" does not exist`** (surfaced only because the `f53a6d0` CORS-on-500 fix is now live).
+- **Root cause:** `backend/migrations/0003_studios.sql` tail (`alter table event_owners add column studio_id` + backfill) never landed. The backfill joined `studio_members.user_id` (uuid) to `event_owners.owner_id` (text) **without a cast** → `operator does not exist: uuid = text` → that error rolled back the `alter` in the same transaction, so the column silently never existed.
+- **Fixed in source:** commit `1e1e803` casts `m.user_id::text = eo.owner_id` in 0003.
+- **Applied to prod (SQL editor):** `alter table event_owners add column if not exists studio_id uuid;` + index + the cast-corrected backfill. Verified: column exists, 500 gone.
+- **Migration-drift audit (2026-07-02):** confirmed `0004` (2 delivery indexes), `0005` (admin_support_notes + admin_audit_log), `0006` (admin_error_log) ALL applied. No further backend drift.
+
 ## 1. The symptom that started this
 Host `f8stopped@gmail.com` hit, on cloud sync:
 
