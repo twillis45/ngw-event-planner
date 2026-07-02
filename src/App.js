@@ -933,7 +933,11 @@ function GlobalStyles() {
       // fits and its content wraps/ellipsizes instead of forcing a horizontal scroll.
       '.planv2-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }',
       '.planv2-main > * { margin-bottom: 0; }',
-      '@media (min-width: 1024px) { .planv2-grid { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); } .planv2-main { grid-column: 1; grid-row: 1; } .planv2-rail { grid-column: 2; grid-row: 1; position: sticky; top: 16px; } }',
+      // Board 2026-07: host Plan is ONE centered generous column (not a planner master+rail). The old
+      // two-col ≥1024 rule was removed — "What to settle" (the rail div) leads in flow, then the plan.
+      // The .planv2-wrap parent centers + caps the measure (~1000px) so it reads intentionally from
+      // tablet up to a 4K monitor (centered on the dark surface, never a narrow strip nor edge-to-edge).
+      '@media (min-width: 1024px) { .planv2-wrap { max-width: 760px; margin: 0 auto; } }',
       // Calendar life: cells cascade in on month change; the chosen day pops.
       '@keyframes ceCellIn { from { opacity: 0; transform: translateY(4px) scale(0.96); } to { opacity: 1; transform: none; } }',
       '@keyframes cePop { 0% { transform: scale(0.7); } 55% { transform: scale(1.12); } 100% { transform: scale(1); } }',
@@ -10385,7 +10389,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         // forces the host to confirm a price again (no free re-check).
                         if (got && !i.added) { const nl = { ...(event.foodLocked || {}) }; delete nl[i.id]; patch.foodLocked = nl; }
                         onPatch(patch);
-                        if (!got) { try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} } // last item → exhale; otherwise a commit tick
+                        if (!got) {
+                          // Auto-advance (board): if this check COMPLETES the open category, gently collapse
+                          // it and open the next category that still has unchecked items. Only on genuine
+                          // completion; a finished category stays re-openable (its header toggle still works).
+                          const ng = { ...(event.foodGot || {}), [i.id]: true };
+                          const groupItems = plan.list.filter((x) => x.group === i.group && !x.skipped);
+                          const groupDone = groupItems.length > 0 && groupItems.every((x) => ng[x.id]);
+                          if (groupDone && openGroup === i.group) {
+                            const nextG = (plan.groups || []).find((g) => g !== i.group && plan.list.some((x) => x.group === g && !x.skipped && !ng[x.id]));
+                            setOpenGroup(nextG || null);
+                          }
+                          try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} // whole spread done → exhale; otherwise a commit tick
+                        }
                       }}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', background: 'transparent', border: 'none', cursor: skipped ? 'default' : 'pointer', fontFamily: 'inherit', opacity: got ? 0.5 : 1 }}>
                       <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
@@ -41487,6 +41503,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               supplies" home, no split), decisions sit in a sticky right rail. On mobile it's a
               single column with the rail (decisions/count prerequisite) leading. The planner ops
               console (EventPlanningTab) is SHED (Ruthless Host Lens). */}
+          <div className="planv2-wrap">
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="planv2-grid">
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
@@ -41496,6 +41513,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
             </div>
           </div>
           <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
+          </div>
         </> : <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
