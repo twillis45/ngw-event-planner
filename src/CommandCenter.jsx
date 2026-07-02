@@ -50,7 +50,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
 // sections relocate to the Upcoming Rail (reachable, never hidden). Planner ⇒ never dormant.
@@ -1886,6 +1886,9 @@ function _selectEventNextActionInner(event) {
     primaryCta: 'Review the timeline',
     primaryRoute: { tab: 'Timeline' },
     contextLine: daysSub,
+    // GPS "next turn": the soonest buy that isn't due yet, so the calm host voice can say
+    // "next up: buy the proteins, in 3 days" instead of a bare "nothing needs you."
+    preview: (() => { try { return nextUpcomingTask(event); } catch { return null; } })(),
   };
 }
 

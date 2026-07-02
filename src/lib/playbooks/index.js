@@ -606,6 +606,40 @@ export function topPlaybookTask(event, asOf) {
   return list.length ? list[0] : null;
 }
 
+// The NEXT operational buy that isn't due yet — the "next turn" preview for a calm state, GPS-style:
+// "next up: buy the proteins (18 lb), in 3 days". Looks PAST the actionable window (dueInDays > WINDOW_LEAD)
+// so it complements topPlaybookTask (which owns what's due now). Blocked/bought/swapped/undated skipped;
+// returns the soonest such buy or null (genuinely nothing ahead ⇒ true "all set").
+export function nextUpcomingTask(event, asOf) {
+  if (!event) return null;
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !Array.isArray(playbook.purchases)) return null;
+  const dte = daysToEvent(event.date, asOf);
+  if (dte === null) return null;
+  const guests = guestCountOf(event, playbook);
+  const gc = guestCountResolved(event);
+  const di = dietaryResolved(event);
+  const got  = (event.foodGot  && typeof event.foodGot  === 'object') ? event.foodGot  : {};
+  const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+  let best = null;
+  for (const p of playbook.purchases) {
+    if (got[p.id] || skip[p.id]) continue;
+    const offset = buyOffsetDays(p.buyAt);
+    if (offset === null) continue;
+    const dueInDays = dte + offset;
+    if (dueInDays <= WINDOW_LEAD) continue;          // due now/soon → not a "coming up" preview
+    if (purchaseGate(p, playbook, gc, di)) continue; // blocked on a prerequisite decision
+    if (!best || dueInDays < best.dueInDays) {
+      const name = shortItem(p.item);
+      const qty = resolveQuantity(p, guests);
+      const unit = shortUnit(p.unit, qty);
+      const qtyClause = qty === null ? '' : ` (${qty}${unit ? ' ' + unit : ''})`;
+      best = { label: `buy ${name.toLowerCase()}${qtyClause}`, dueInDays, dueLabel: dueLabel(dueInDays), essential: !!p.essential };
+    }
+  }
+  return best;
+}
+
 // The blocking decision that should surface INSTEAD of a purchase (Pattern 001).
 // Returns a decision candidate only when a prerequisite decision is unresolved
 // AND it actually blocks an in-window purchase — so it never nags about a fuzzy

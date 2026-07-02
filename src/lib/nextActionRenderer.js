@@ -142,10 +142,17 @@ export const VOICE = {
     }),
   },
   neutral: {
-    host: () => ({
-      title: "You're in good shape.",
-      consequence: "Nothing needs you right now — I'm keeping an eye on everything. Go enjoy this.",
-    }),
+    // GPS "next turn": when the engine knows the next buy (cmd.preview), name it + when — like
+    // "in 5 miles, take exit 4" — so "I'm watching" is concrete, not a vague reassurance.
+    host: (cmd) => (cmd && cmd.preview
+      ? {
+          title: "You're ahead of it.",
+          consequence: `Nothing needs you right now. Next up: ${cmd.preview.label}, ${cmd.preview.dueLabel} — I'll flag it the moment it's time.`,
+        }
+      : {
+          title: "You're in good shape.",
+          consequence: "Nothing needs you right now — I'm keeping an eye on everything. Go enjoy this.",
+        }),
     operator: () => ({
       title: "On track.",
       consequence: "Nothing needs you right now.",
