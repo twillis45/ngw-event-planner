@@ -48,19 +48,27 @@ app.add_middleware(CORSMiddleware, **_cors)
 
 @app.middleware("http")
 async def _error_capture(request: Request, call_next):
-    """Record unhandled exceptions to admin_error_log (A3-err), then re-raise so
-    the normal 500 response is unchanged. Deliberate HTTPExceptions (4xx/5xx) do
-    NOT reach here — they're handled by FastAPI and logged at their call site."""
+    """Record unhandled exceptions to admin_error_log (A3-err) and return a 500 that STILL carries
+    the CORS header. Re-raising sends the exception past CORSMiddleware, so the resulting 500 had no
+    Access-Control-Allow-Origin — the browser then masked EVERY backend crash as a 'CORS error',
+    hiding the real status. Now the frontend sees an honest 500 it can read. Deliberate
+    HTTPExceptions (4xx/5xx) don't reach here — FastAPI handles them (with CORS) at the call site."""
     try:
         return await call_next(request)
-    except Exception as e:  # noqa: BLE001 — record then re-raise; never swallow
+    except Exception as e:  # noqa: BLE001 — record then respond; never swallow silently
         try:
             from .error_log import record_error
             await record_error("api", f"{request.method} {request.url.path}: {e}",
                                context={"path": request.url.path, "method": request.method})
         except Exception:  # noqa: BLE001 — capture must never mask the real error
             pass
-        raise
+        from fastapi.responses import JSONResponse
+        origin = request.headers.get("origin")
+        # CORS isn't the security boundary here (JWT + per-event ownership are), and credentials are
+        # off — so echoing the request origin (or "*" when the allowlist is open) is safe + valid.
+        allow = "*" if "*" in ALLOWED_ORIGINS else origin
+        headers = {"Access-Control-Allow-Origin": allow} if allow else {}
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"}, headers=headers)
 
 
 @app.get("/health")
