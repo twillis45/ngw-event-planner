@@ -33328,12 +33328,18 @@ function HostRunOfShowTimeline({ event, profile }) {
   const timeStr = (isDayOf && clockNow) ? clockNow.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
   const clockDateStr = clockNow ? clockNow.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 
-  // On the day, float the "Happening now" cue into the viewport (after the spine mounts + animates),
-  // so the host lands on what's live, not the top of the run-of-show.
+  // On the day, float the "Happening now" cue toward the TOP of the viewport (after the spine mounts +
+  // animates), so the host lands on what's live — clearing the sticky header with a little air above it.
   const nowCardRef = useRef(null);
   useEffect(() => {
     if (!isDayOf || !nowCueId) return undefined;
-    const t = setTimeout(() => { try { if (nowCardRef.current) nowCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }, 650);
+    const t = setTimeout(() => {
+      try {
+        if (!nowCardRef.current) return;
+        const y = nowCardRef.current.getBoundingClientRect().top + window.scrollY - 96; // clear the sticky header + breathing room
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      } catch {}
+    }, 650);
     return () => clearTimeout(t);
   }, [isDayOf, nowCueId]);
 

@@ -1885,6 +1885,9 @@ function _selectEventNextActionInner(event) {
   }
 
   // Tier 8: neutral fallback
+  // GPS "next turn": the soonest buy that isn't due yet, so the calm host voice can say
+  // "next up: buy the proteins, in 3 days" instead of a bare "nothing needs you."
+  const _preview = (() => { try { return nextUpcomingTask(event); } catch { return null; } })();
   return {
     level: 'neutral',
     category: 'neutral',
@@ -1892,12 +1895,12 @@ function _selectEventNextActionInner(event) {
     consequence: days !== null && days >= 0 && days <= 30
       ? 'A readiness sweep this close to event day usually surfaces what was about to slip.'
       : 'Use the quiet window to push timeline + vendor commitments forward of schedule.',
-    primaryCta: 'Review the timeline',
-    primaryRoute: { tab: 'Timeline' },
+    // When there IS a named next-up, make it the actionable CTA — deep-link straight to that item
+    // (the host voice names it: "Next up: buy the proteins…"). Otherwise the generic timeline sweep.
+    primaryCta: (_preview && _preview.route) ? 'See what’s next' : 'Review the timeline',
+    primaryRoute: (_preview && _preview.route) ? _preview.route : { tab: 'Timeline' },
     contextLine: daysSub,
-    // GPS "next turn": the soonest buy that isn't due yet, so the calm host voice can say
-    // "next up: buy the proteins, in 3 days" instead of a bare "nothing needs you."
-    preview: (() => { try { return nextUpcomingTask(event); } catch { return null; } })(),
+    preview: _preview,
   };
 }
 

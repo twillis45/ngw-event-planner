@@ -641,7 +641,7 @@ export function nextUpcomingTask(event, asOf) {
       const qty = resolveQuantity(p, guests);
       const unit = shortUnit(p.unit, qty);
       const qtyClause = qty === null ? '' : ` (${qty}${unit ? ' ' + unit : ''})`;
-      best = { label: `buy ${name.toLowerCase()}${qtyClause}`, dueInDays, dueLabel: dueLabel(dueInDays), essential: !!p.essential };
+      best = { label: `buy ${name.toLowerCase()}${qtyClause}`, dueInDays, dueLabel: dueLabel(dueInDays), essential: !!p.essential, id: p.id, route: { tab: 'Planning', foodFocus: p.id } };
     }
   }
   return best;
