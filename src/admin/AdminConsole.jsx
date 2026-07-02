@@ -5,7 +5,7 @@
 //
 // A1 scope = the gate + a whoami probe + a read-only audit view that prove the
 // end-to-end path works. Users / Workspaces / Providers tabs are wired in A3–A5.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
 import {
@@ -16,6 +16,7 @@ import { hostShellOn, planV2On } from '../lib/presentationNav';
 import { getEventSyncStatus, makeEventSyncRow, SYNC_STATUS_LABEL } from '../lib/syncStatus';
 import { getLastSyncTime } from '../lib/api';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
+import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -63,7 +64,175 @@ function Centered({ title, body }) {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Metrics', 'Errors', 'Providers', 'Audit', 'Settings'];
+// ─── Playbook Command Center (Playbook OS) ────────────────────────────────────
+// Admin-only observability over the playbook corpus. READ-ONLY — derives everything
+// from buildPlaybookRegistry() (the single source). See docs/architecture/PLAYBOOK_OPERATING_SYSTEM.md.
+const PB_STATUS_COLOR = { production: D.good, 'review-needed': D.warn, 'research-needed': D.accent, draft: D.bad, archived: D.faint, deprecated: D.faint };
+const HEALTH_COLOR = { [HEALTH.OK]: D.good, [HEALTH.WARN]: D.warn, [HEALTH.GAP]: D.bad, [HEALTH.NA]: D.faint };
+
+function PBKpi({ label, value, tone }) {
+  return (
+    <div style={{ flex: '1 1 120px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+      <div style={{ fontSize: type.size['2xl'], fontWeight: 700, color: tone || D.text, fontFamily: D.mono, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: D.muted, marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  );
+}
+
+function PBHealthDots({ components }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 3 }}>
+      {components.map((c, i) => (
+        <span key={i} title={`${c.component}: ${c.status} — ${c.reason}`}
+          style={{ width: 8, height: 8, borderRadius: 2, background: HEALTH_COLOR[c.status] || D.faint, display: 'inline-block' }} />
+      ))}
+    </span>
+  );
+}
+
+function PBDetail({ entry }) {
+  const row = { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: `1px solid ${D.border}55`, fontSize: type.size.caption };
+  return (
+    <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 16, marginTop: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Health</div>
+          {entry.health.components.map((c, i) => (
+            <div key={i} style={row}>
+              <span style={{ color: D.muted }}>{c.component}</span>
+              <span style={{ color: HEALTH_COLOR[c.status], fontFamily: D.mono, textAlign: 'right' }}>{c.status} · <span style={{ color: D.faint }}>{c.reason}</span></span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Grounding</div>
+          <div style={row}><span style={{ color: D.muted }}>Priced items</span><span style={{ fontFamily: D.mono }}>{entry.grounding.pricedItems}</span></div>
+          <div style={row}><span style={{ color: D.muted }}>Cited / synth / consensus</span><span style={{ fontFamily: D.mono }}>{entry.grounding.cited} / {entry.grounding.synthesized} / {entry.grounding.consensus}</span></div>
+          <div style={row}><span style={{ color: D.muted }}>Grounded %</span><span style={{ fontFamily: D.mono, color: entry.grounding.groundedPct > 0 ? D.good : D.warn }}>{entry.grounding.groundedPct}%</span></div>
+          <div style={row}><span style={{ color: D.muted }}>knowledge.sources</span><span style={{ fontFamily: D.mono, color: entry.grounding.hasSources ? D.good : D.bad }}>{entry.grounding.hasSources ? 'present' : 'empty'}</span></div>
+
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '12px 0 6px' }}>Engine coverage ({entry.coverage.supportedCount}/{entry.coverage.total})</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {entry.coverage.engines.map((e) => (
+              <span key={e.id} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontFamily: D.mono, background: e.supported ? `${D.good}22` : `${D.faint}18`, color: e.supported ? D.good : D.faint }}>{e.label}</span>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '12px 0 6px' }}>Governance</div>
+          <div style={{ fontSize: type.size.caption, color: entry.governance.set ? D.muted : D.warn, fontFamily: D.mono }}>
+            {entry.governance.set ? `owner ${entry.governance.owner || '—'} · reviewed ${entry.governance.lastReviewed || '—'} · every ${entry.governance.reviewIntervalDays || '—'}d` : 'No governance block — cadence unset'}
+          </div>
+        </div>
+      </div>
+
+      {!!entry.weaknesses.length && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Known weaknesses</div>
+          {entry.weaknesses.map((w, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.muted, padding: '2px 0' }}>• {w}</div>)}
+        </div>
+      )}
+      {!!entry.research.length && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Research queue</div>
+          {entry.research.map((r, i) => (
+            <div key={i} style={{ fontSize: type.size.caption, padding: '2px 0' }}>
+              <span style={{ fontFamily: D.mono, color: r.priority === 'high' ? D.bad : r.priority === 'med' ? D.warn : D.faint }}>[{r.priority}] {r.kind}</span>
+              <span style={{ color: D.muted }}> — {r.reason}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 14, fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>
+        Field validation & change history: {entry.validation.note}
+      </div>
+    </div>
+  );
+}
+
+function PlaybooksPanel() {
+  const asOf = new Date().toISOString().slice(0, 10);
+  const [reg] = useState(() => buildPlaybookRegistry(asOf));
+  const [open, setOpen] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const order = ['draft', 'research-needed', 'review-needed', 'production', 'archived', 'deprecated'];
+  const shown = reg.entries
+    .filter((e) => statusFilter === 'all' || e.status === statusFilter)
+    .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || a.type.localeCompare(b.type));
+
+  const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
+  const td = { padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, verticalAlign: 'middle' };
+
+  return (
+    <div>
+      <Banner>Playbook Command Center — read-only observability over the {reg.count}-playbook corpus. Everything is derived from the data objects (Playbook OS). No playbook output is affected.</Banner>
+
+      {/* KPI strip — health of the whole corpus in one glance */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+        <PBKpi label="Playbooks" value={reg.count} />
+        <PBKpi label="Production" value={reg.byStatus.production || 0} tone={D.good} />
+        <PBKpi label="Research needed" value={reg.byStatus['research-needed'] || 0} tone={D.accent} />
+        <PBKpi label="Review needed" value={reg.byStatus['review-needed'] || 0} tone={D.warn} />
+        <PBKpi label="Draft / gaps" value={reg.criticalGaps} tone={reg.criticalGaps ? D.bad : D.faint} />
+        <PBKpi label="Grounded %" value={`${reg.groundingCoveragePct}%`} tone={reg.groundingCoveragePct > 0 ? D.good : D.warn} />
+        <PBKpi label="Reviews overdue" value={reg.reviewsOverdue} tone={reg.reviewsOverdue ? D.warn : D.faint} />
+        <PBKpi label="Research open" value={reg.researchOpen} tone={reg.researchOpen ? D.warn : D.faint} />
+        <PBKpi label="With governance" value={`${reg.withGovernance}/${reg.count}`} tone={reg.withGovernance === reg.count ? D.good : D.warn} />
+      </div>
+
+      {/* Engine coverage across the corpus */}
+      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Engine coverage (playbooks feeding each)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {reg.engineCoverage.map((e) => (
+            <span key={e.id} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: e.playbooks === reg.count ? D.good : e.playbooks === 0 ? D.faint : D.muted, border: `1px solid ${D.border}` }}>
+              {e.label} <span style={{ color: D.text }}>{e.playbooks}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Status filter */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        {['all', ...order].map((s) => (
+          <button key={s} onClick={() => setStatusFilter(s)} style={{
+            background: statusFilter === s ? D.surface2 : 'transparent', color: statusFilter === s ? D.text : D.muted,
+            border: `1px solid ${statusFilter === s ? D.border : 'transparent'}`, borderRadius: 6, padding: '4px 10px',
+            fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff,
+          }}>{s}{s !== 'all' ? ` (${reg.byStatus[s] || 0})` : ''}</button>
+        ))}
+      </div>
+
+      {/* Playbook table */}
+      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <th style={th}>Playbook</th><th style={th}>Status</th><th style={th}>Category</th>
+            <th style={th}>Ver</th><th style={th}>Grounded</th><th style={th}>Coverage</th><th style={th}>Health</th>
+          </tr></thead>
+          <tbody>
+            {shown.map((e) => (
+              <Fragment key={e.id}>
+                <tr onClick={() => setOpen(open === e.id ? null : e.id)} style={{ cursor: 'pointer', background: open === e.id ? D.surface2 : 'transparent' }}>
+                  <td style={{ ...td, color: D.text, fontWeight: 600 }}>{e.type}</td>
+                  <td style={td}><span style={{ color: PB_STATUS_COLOR[e.status] || D.muted, fontFamily: D.mono, fontSize: 11 }}>● {e.status}</span></td>
+                  <td style={{ ...td, color: D.muted, fontFamily: D.mono, fontSize: 11 }}>{e.category}</td>
+                  <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11 }}>{e.version}</td>
+                  <td style={{ ...td, fontFamily: D.mono, color: e.grounding.groundedPct > 0 ? D.good : D.warn }}>{e.grounding.pricedItems ? `${e.grounding.groundedPct}%` : '—'}</td>
+                  <td style={{ ...td, fontFamily: D.mono, color: D.muted }}>{e.coverage.supportedCount}/{e.coverage.total}</td>
+                  <td style={td}><PBHealthDots components={e.health.components} /></td>
+                </tr>
+                {open === e.id && <tr><td colSpan={7} style={{ padding: '0 10px 12px' }}><PBDetail entry={e} /></td></tr>}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Playbooks', 'Metrics', 'Errors', 'Providers', 'Audit', 'Settings'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -1649,6 +1818,7 @@ export default function AdminConsole() {
 
         {tab === 'Analytics' && <AnalyticsSuite />}
         {tab === 'Intelligence' && <IntelligencePanel book={readLocalBook()} />}
+        {tab === 'Playbooks' && <PlaybooksPanel />}
         {tab === 'Settings' && <AdminSettingsPanel />}
 
         {tab === 'Metrics' && <MetricsPanel />}
