@@ -31333,6 +31333,11 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       </div>
       )}
 
+      {/* INVITES & REPLIES home (board ruling) — the ACTIONS (share the invite, nudge no-replies, send
+          dietary notes) grouped under ONE labeled home; the RSVP status feed folds into the roster header
+          below (status = the answer, lives with the list; actions = the tools, grouped here). */}
+      <div style={{ ...s.card, padding: bp === 'mobile' ? '2px 14px 6px' : '2px 18px 8px', marginBottom: 18, maxWidth: 760 }}>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, padding: '12px 2px 2px' }}>Invites &amp; replies</div>
       {/* "Do it for me" — the RSVP chase. The single highest-leverage nudge: replies grow
           the headcount that sizes everything. The app WROTE the reminder; the host sends
           it in one tap. Host-only, shown only while people still owe a reply. */}
@@ -31340,7 +31345,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         const rsvpUrl = rsvpInviteUrl(event);
         return (
           <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite', trackAs: 'rsvp' }); }}
-            style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.accent}33`, background: `${C.accent}0e`, marginBottom: 16, display: 'block' }}>
+            style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '13px 2px', display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent }}>Ready to send</span>
               <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Open &amp; send →</span>
@@ -31359,7 +31364,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         if (needCount === 0) return null;
         return (
           <button type="button" onClick={() => { const d = draftDietaryNote(event, profile, {}); setGuestDraftSheet({ title: 'Notes for the cook', intro: `Pulled from your guests — the ${needCount} dietary ${needCount === 1 ? 'note' : 'notes'} to pass to whoever’s cooking or catering. Make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
-            style={{ ...s.card, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, marginBottom: 16, display: 'block' }}>
+            style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '13px 2px', display: 'block' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted }}>Ready to send</span>
               <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Open &amp; send →</span>
@@ -31428,7 +31433,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           alert(parts.length ? parts.join(' · ') + '.' : 'No requests sent.');
         };
         return (
-          <div style={{ ...s.card, padding: '16px 20px', border: guestsIsHost ? `1px solid ${C.accent}33` : s.card.border, background: guestsIsHost ? `${C.accent}0a` : s.card.background }}>
+          <div style={{ padding: '13px 2px 4px', background: 'none', border: 'none', borderTop: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* UX-SAAS — a host sees "Preview & share invite," not an "RSVP Collection
@@ -31479,6 +31484,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           </div>
         );
       })()}
+      </div>
+      {/* end INVITES & REPLIES home */}
 
       {needsFlag.length > 0 && (
         <div style={{ ...s.card, borderColor: C.muted + '55' }}>
