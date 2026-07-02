@@ -9495,7 +9495,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       {/* Hero — the $ figure leads (Attention System), mirroring the Food plan hero:
           eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
-      <CollapsibleCard id={`cap-hero-${event.id}`} isMobile={isMobile} defaultCollapsed done={allDone} style={{ marginBottom: 4 }}
+      <CollapsibleCard id={`cap-hero-${event.id}`} isMobile={isMobile} defaultCollapsed done={allDone} autoCollapseWhenDone={allDone} style={{ marginBottom: 4 }}
         title="Seating &amp; supplies"
         subtitle={cap.hasCost ? `Set for ${capGuestLabel} · seats, tables & supplies` : `Set for ${capGuestLabel}`}>
         {/* Board (10+ pass 2): the Plan tab keeps ONE money hero — the Food plan's $/guest.
@@ -9981,7 +9981,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: menuOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
       {menuOpen && (<AccordionProvider>
-      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed done={fpHasCount} style={{ ...subCard, gridColumn: isWide ? '1 / -1' : undefined }}
+      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed done={fpHasCount} autoCollapseWhenDone={fpHasCount} style={{ ...subCard, gridColumn: isWide ? '1 / -1' : undefined }}
         title="Food plan"
         subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)} · estimate` : ''}`}>
         {/* Hero stat — the number leads (Attention System): the $ range stands as the
@@ -10107,7 +10107,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         // Attention hierarchy: a quiet collapsed GATE, not a second loud card competing
         // with the Food-plan lead. Warn accent keeps it noticeable; the subtitle states
         // the ask so the host can act without expanding.
-        <CollapsibleCard id={`fp-diet-${event.id}`} isMobile={isMobile} defaultCollapsed done={plan.dietaryResolved} style={subCard}
+        <CollapsibleCard id={`fp-diet-${event.id}`} isMobile={isMobile} defaultCollapsed done={plan.dietaryResolved} autoCollapseWhenDone={plan.dietaryResolved} style={subCard}
           title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="needs" size={16} stroke={1.9} /> Allergies &amp; diets</span>}
           subtitle="Note who needs what before you lock the menu — tap to set counts">
           {/* The ask + why drop to secondary. */}
@@ -10248,7 +10248,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           return v.length > 28 ? v.slice(0, 27).replace(/\s\S*$/, '') + '…' : v;
         }).filter(Boolean).join(' · ');
         return (
-        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} defaultCollapsed done={hasChoices} style={subCard} forceOpen={forceChoicesOpen} title="Your choices" subtitle={choiceSummary || 'Each one reshapes the spread + budget'}>
+        <CollapsibleCard id={`fp-choices-${event.id}`} isMobile={isMobile} defaultCollapsed done={hasChoices} autoCollapseWhenDone={hasChoices} style={subCard} forceOpen={forceChoicesOpen} title="Your choices" subtitle={choiceSummary || 'Each one reshapes the spread + budget'}>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 8 }}>Each one reshapes the spread + budget below. Tap to change.</div>
           {/* Compact rows — show the CHOSEN value; expand one to swap it (calmness:
               no wall of every option for every decision). */}
@@ -10297,7 +10297,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* Sourcing (1597-2) — how the host gets the proteins reshapes the spread's cost.
           Only shown when there's a protein to source; collapses to its current tier. */}
       {plan.sourcingKey && plan.sourcingTiers && (
-        <CollapsibleCard id={`fp-sourcing-${event.id}`} isMobile={isMobile} defaultCollapsed done={hasChoices} style={subCard}
+        <CollapsibleCard id={`fp-sourcing-${event.id}`} isMobile={isMobile} defaultCollapsed done={hasChoices} autoCollapseWhenDone={hasChoices} style={subCard}
           title="Sourcing"
           subtitle={`How you’re getting the proteins · ${(plan.sourcingTiers.find((t) => t.id === plan.sourcing) || {}).label || ''}`}>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: -2, marginBottom: 10 }}>How you’re getting the proteins — this reshapes the spread.</div>
@@ -10705,7 +10705,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* Where to shop — the spread's sourcing types, as LIVE local searches. Honest:
           real Google Maps results near the event city, no invented store names. */}
       {shopSources.length > 0 && (
-        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed done={spreadComplete} style={subCard} title={`Where to shop${shopCity ? ` · ${shopCity}` : ''}`} subtitle="Tap a place — live local search">
+        <CollapsibleCard id={`shop-${event.id}`} isMobile={isMobile} defaultCollapsed done={spreadComplete} autoCollapseWhenDone={spreadComplete} style={subCard} title={`Where to shop${shopCity ? ` · ${shopCity}` : ''}`} subtitle="Tap a place — live local search">
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: -4, marginBottom: 6 }}>Organized by trip — each place, and what you’d grab there. Live map searches, never endorsements.</div>
           {/* NEAR YOU — the FEWEST trips that get everything (board call): assign each item to
               its PRIMARY source (first `where`), merge near-dup labels (crab house / local crab
@@ -41389,7 +41389,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     : 'Everything’s settled.';
 
   return (
-    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} title="What to settle" subtitle={subtitle}>
+    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} title="What to settle" subtitle={subtitle}>
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
       {headcount && (
