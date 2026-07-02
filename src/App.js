@@ -9903,9 +9903,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   })() : null;
 
   return (
-    <div style={isWide
-      ? { maxWidth: 1120, margin: '0 auto 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, gridAutoFlow: 'row dense', alignItems: 'start' }
-      : { marginBottom: 20, maxWidth: 760 }}>
+    <div style={{ maxWidth: 760, margin: '0 auto 20px' }}>
       {/* The heart, mid-planning — the one moment this whole plan serves, anchored
           on the planning surface (not only on The Day) so the food/budget choices
           stay pointed at the why. */}
