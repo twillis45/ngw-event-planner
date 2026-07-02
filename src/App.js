@@ -26927,9 +26927,10 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
 
       {/* Attention System: the honest total above is the hero; the breakdown
           recedes until you reach for it. */}
+      <AccordionProvider>
       <div className="hp-recede-group" style={{ display: 'grid', gap: 16 }}>
       {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
-      <CollapsibleCard id="bud-food" isMobile={isMobile} done={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} title="Food & drink" style={{ marginBottom: 0 }}
+      <CollapsibleCard id="bud-food" isMobile={isMobile} defaultCollapsed done={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} autoCollapseWhenDone={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} title="Food & drink" style={{ marginBottom: 0 }}
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(foodLow, foodHigh)}</div>}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
           {foodPlan
@@ -26962,7 +26963,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
       {/* SUPPLIES — non-food essentials from the playbook (table cover, fuel,
           safety, serveware). A real cost line in the plan, tracking shopping checkoffs. */}
       {supHigh > 0 && foodPlan && (
-        <CollapsibleCard id="bud-supplies" isMobile={isMobile} done={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} title="Supplies" style={{ marginBottom: 0 }}
+        <CollapsibleCard id="bud-supplies" isMobile={isMobile} defaultCollapsed done={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} autoCollapseWhenDone={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} title="Supplies" style={{ marginBottom: 0 }}
           right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(supLow, supHigh)}</div>}>
           <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
             The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
@@ -26977,7 +26978,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
       )}
 
       {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
-      <CollapsibleCard id="bud-other" isMobile={isMobile} title="Other costs" style={{ marginBottom: 0 }}
+      <CollapsibleCard id="bud-other" isMobile={isMobile} defaultCollapsed title="Other costs" style={{ marginBottom: 0 }}
         right={otherBudgeted > 0 ? <div style={{ fontSize: T.body, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}>
         <div style={{ display: 'grid', gap: 8, marginTop: 0 }}>
           {otherRows.length === 0
@@ -27009,7 +27010,8 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
         </div>
         <button type="button" onClick={addRow} style={{ ...ghostBtn, marginTop: 12 }}>+ Add a cost</button>
       </CollapsibleCard>
-      </div>{/* /hp-recede-group */}
+      </div>
+      </AccordionProvider>{/* /hp-recede-group */}
     </div>
   );
 }
@@ -41599,7 +41601,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
                 <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>}</div>
         )}
-        {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
+        {tab === 'Event Details' && <div className="planv2-wrap">{/* Parity: 'Where & when' was missed in P1 — cap the settings form to the 760 measure like every other tab. */}<EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} /></div>}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
         </div>
