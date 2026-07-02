@@ -31,7 +31,7 @@ const sweet16 = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], costFactors: { 'Drop-off catering': 1.3, 'Host + family cook': 0.75, 'Food truck / caterer': 1.4 }, affects: ['p_pizza', 'p_sides'], why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
     {
       id: 'venue_type',
       label: 'Where is the party?',

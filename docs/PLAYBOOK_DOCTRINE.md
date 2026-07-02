@@ -62,8 +62,11 @@ mechanism — beverage/sourcing tiers are migrating onto it (do not add new one-
   the host picks a catering option. A `costFactors` on a raw purchase id that gets collapsed **silently
   no-ops** — it's well-formed but never lands. So: item-level menu / size / seasoning choices (crab size →
   `p_crabs`) are the right fit; food-*APPROACH* decisions (cook vs cater vs order) are re-priced by the
-  foodApproach model itself, NOT by a per-item factor. Verify a costFactor with the *effectiveness* check
-  (does the total actually move?), not just the well-formed check.
+  foodApproach model itself, NOT by a per-item factor. Mark those **`costViaApproach: true`** (instead of
+  costFactors) so the linter records them as model-handled, not missing. Verify a real costFactor with the
+  *effectiveness* audit (`_costAudit.test.js` — does the total actually move, in the right direction?), not
+  just the well-formed check. Empirically ~87% of factors were correct; the ~13% that weren't were all
+  food-approach decisions now marked costViaApproach.
 
 ## `purchases[]` — the shopping/cost model
 Every purchase:

@@ -24,8 +24,11 @@ function collect() {
       // costFactors NOR is explicitly marked noCostEffect. Empty-option stubs (nothing to price) and
       // acknowledged non-costers (scale/payment/scope decisions — guest count already scales quantity)
       // are NOT gaps: silence would be a lie, but an explicit `noCostEffect: true` is a decision.
-      if (isCostAffecting(d) && !d.costFactors && !d.noCostEffect && Array.isArray(d.options) && d.options.length >= 2) costFactorGaps.push(`${type}:${d.id}`);
+      // ...OR marked costViaApproach (the foodApproach model re-prices it, so a per-item factor would
+      // silently no-op or fight the model — verified by the effectiveness audit).
+      if (isCostAffecting(d) && !d.costFactors && !d.noCostEffect && !d.costViaApproach && Array.isArray(d.options) && d.options.length >= 2) costFactorGaps.push(`${type}:${d.id}`);
       if (d.costFactors && d.noCostEffect) badCostFactors.push(`${type}:${d.id} has BOTH costFactors and noCostEffect`);
+      if (d.costFactors && d.costViaApproach) badCostFactors.push(`${type}:${d.id} has BOTH costFactors and costViaApproach`);
       if (d.costFactors) {
         const opts = new Set(d.options || []);
         for (const k of Object.keys(d.costFactors)) {
