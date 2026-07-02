@@ -26844,14 +26844,17 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
         </div>
       )}
-      {/* HERO — the honest total. ONE hero per screen (SM-2). */}
-      <div style={{ ...card, padding: isMobile ? 18 : 24 }}>
-        <div style={label}>Your spending plan</div>
-        <div style={{ fontSize: T.display, fontWeight: FW.heavy, color: C.text, marginTop: 6, lineHeight: 1.1 }}>
-          About {money(totalLow, totalHigh)}
-        </div>
-        <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>
-          for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
+      {/* One accordion across all four budget homes (Your budget · Food · Supplies · Other) — one open. */}
+      <AccordionProvider>
+      {/* "Your budget" home (board verdict) — the spine PlanNowHero is the ONE hero; this is a collapsible
+          PEER of Food/Supplies/Other. The ESTIMATE rides in the collapsed header (right) so the answer is
+          never hidden. Open until a budget is set, then it collapses with a green done-dot. */}
+      <CollapsibleCard id="bud-plan" isMobile={isMobile} defaultCollapsed forceOpen={!(budgetSet && Number(budgetDraft) > 0)} done={!!(budgetSet && Number(budgetDraft) > 0)}
+        title="Your budget"
+        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(totalLow, totalHigh)}</div>}
+        style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: T.body, color: C.muted, marginTop: 0 }}>
+          Estimated for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
           {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{money(spentSoFar)}</span> spent so far</> : null}
         </div>
         {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
@@ -26923,11 +26926,10 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
             </div>
           );
         })()}
-      </div>
+      </CollapsibleCard>
 
-      {/* Attention System: the honest total above is the hero; the breakdown
-          recedes until you reach for it. */}
-      <AccordionProvider>
+      {/* The breakdown — Food / Supplies / Other, collapsible peers of the "Your budget" home above,
+          all under one accordion (one open at a time). */}
       <div className="hp-recede-group" style={{ display: 'grid', gap: 16 }}>
       {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
       <CollapsibleCard id="bud-food" isMobile={isMobile} defaultCollapsed done={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} autoCollapseWhenDone={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} title="Food & drink" style={{ marginBottom: 0 }}
@@ -26982,7 +26984,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
         right={otherBudgeted > 0 ? <div style={{ fontSize: T.body, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}>
         <div style={{ display: 'grid', gap: 8, marginTop: 0 }}>
           {otherRows.length === 0
-            ? <div style={{ fontSize: T.secondary, color: C.muted }}>Decor, rentals, cake, extras — add anything you'll spend on beyond food.</div>
+            ? <div style={{ fontSize: T.secondary, color: C.muted }}>Decor, rentals, cake, extras — anything beyond food. Nothing added yet.</div>
             : otherRows.map((r) => (
               // Board #10 — mobile must NOT lose the "Spent $" actuals column (a host
               // standing in a store needs to log what they paid). Two-line on mobile so
