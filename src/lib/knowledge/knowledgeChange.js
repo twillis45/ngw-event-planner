@@ -60,13 +60,13 @@ export function insightToKCR(insight, asOf) {
   });
 }
 
-let _seq = 0; // deterministic within a session; real ids stamped by the store
-export function createKCR({ type, trigger, assetId, assetKind = 'playbook', fieldPath = null, currentValue = null, currentProvenance = null, reason = '', createdBy = 'admin', asOf = null }) {
+let _seq = 0; // fallback id counter; intake passes a DETERMINISTIC id (dedupe key)
+export function createKCR({ id = null, type, trigger, assetId, assetKind = 'playbook', fieldPath = null, currentValue = null, currentProvenance = null, reason = '', createdBy = 'admin', asOf = null }) {
   if (!KCR_TYPES.includes(type)) throw new Error(`KCR: unknown type '${type}'`);
   if (!TRIGGERS.includes(trigger)) throw new Error(`KCR: unknown trigger '${trigger}' (why is this knowledge changing?)`);
-  const id = `kcr-${assetId ? playbookId(assetId) + '-' : ''}${type}-${(_seq += 1)}`;
+  const kid = id || `kcr-${assetId ? playbookId(assetId) + '-' : ''}${type}-${(_seq += 1)}`;
   return {
-    id, type, trigger, createdBy, createdAt: asOf,
+    id: kid, type, trigger, createdBy, createdAt: asOf,
     assetId, assetKind, fieldPath, currentValue, currentProvenance,
     reason,
     status: 'draft',
@@ -160,10 +160,15 @@ export function deriveImpact(pb, fieldPath) {
   const engines = m ? m.engines : ['shopping', 'budget'];
   const downstream = m ? m.downstream : ['shopping', 'budget'];
   const allAffects = (pb.decisions || []).flatMap((d) => d.affects || []);
-  const affectedPurchases = fieldPath ? [...new Set(allAffects.filter((a) => fieldPath.includes(a)))] : [...new Set(allAffects)];
-  const viaDecisions = fieldPath
+  // A field path may target a SPECIFIC purchase ('purchases.p_crabs.unitCostRange')
+  // or be BROAD/asset-level ('purchases[].unitCostRange', or null). Specific → that id;
+  // broad-but-purchase-related → all wired purchases; non-purchase field → none.
+  const specific = fieldPath ? allAffects.filter((a) => fieldPath.includes(a)) : [];
+  const broadPurchase = !fieldPath || /purchase|unitcost|price|qty|quantity/i.test(fieldPath);
+  const affectedPurchases = specific.length ? [...new Set(specific)] : (broadPurchase ? [...new Set(allAffects)] : []);
+  const viaDecisions = specific.length
     ? (pb.decisions || []).filter((d) => (d.affects || []).some((a) => fieldPath.includes(a))).map((d) => d.id)
-    : (pb.decisions || []).map((d) => d.id);
+    : (broadPurchase ? (pb.decisions || []).map((d) => d.id) : []);
   return { engines, downstream, affectedPurchases, viaDecisions, vendorCategories: deps.vendorCategories, note: 'Derived from field kind + decision→purchase affects wiring — no manual list.' };
 }
 
