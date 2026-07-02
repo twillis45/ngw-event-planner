@@ -1704,8 +1704,19 @@ const KCR_STATUS_COLOR = {
 
 function KcrStudioPanel() {
   const asOf = new Date().toISOString().slice(0, 10);
-  // Reconcile the live research queue into the persisted backlog (progress preserved), then read it.
-  const [kcrs] = useState(() => { try { syncIntake(researchQueueToKCRs(asOf)); return loadKCRs(); } catch { return []; } });
+  // Reconcile the live research queue into the (server-backed) backlog — progress
+  // preserved — then read it. Async: server-first with localStorage fallback (KCR-4).
+  const [kcrs, setKcrs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try { await syncIntake(researchQueueToKCRs(asOf)); const list = await loadKCRs(); if (!cancelled) setKcrs(list); }
+      catch { if (!cancelled) setKcrs([]); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [open, setOpen] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -1746,7 +1757,9 @@ function KcrStudioPanel() {
         ))}
       </div>
 
-      {kcrs.length === 0 ? (
+      {loading ? (
+        <Banner tone="muted">Loading the KCR backlog…</Banner>
+      ) : kcrs.length === 0 ? (
         <Banner tone="muted">No KCRs — the research queue is empty (every asset grounded + reviewed). Honest-empty, not a bug.</Banner>
       ) : (
         <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>

@@ -11,10 +11,10 @@ const ASOF = '2026-07-02';
 beforeEach(() => clearKCRs());
 
 describe('first real KCR — research queue → published → survives refresh', () => {
-  test('a real generated pricing KCR traces end-to-end and persists', () => {
+  test('a real generated pricing KCR traces end-to-end and persists', async () => {
     // 1. Real intake from the live research queue (deterministic id, command-center source).
     const generated = researchQueueToKCRs(ASOF);
-    syncIntake(generated);
+    await syncIntake(generated);
     const crabPricing = generated.find((k) => k.assetId === 'Crab Feast' && k.fieldPath === 'purchases[].unitCostRange');
     expect(crabPricing).toBeTruthy();
     expect(crabPricing.createdBy).toBe('command-center');
@@ -27,14 +27,14 @@ describe('first real KCR — research queue → published → survives refresh',
     let k = getKCR(id);                                             // read from the persisted store
     k = advanceKCR(k, 'researching', { asOf: ASOF });
     k = addEvidence(k, { source: 'MD DNR blue-crab market report 2026', sourceType: 'primary', supports: [3, 8] }, ASOF);
-    upsertKCR(k);                                                   // persist progress
+    await upsertKCR(k);                                             // persist progress
     k = advanceKCR(k, 'grounded', { asOf: ASOF });
     k = setProposal(k, { newValue: [3, 8], newProvenance: { verificationStatus: 'cited', sources: ['ev-1'] }, verificationStatus: 'cited', rationale: 'DNR report' }, ASOF);
     k = advanceKCR(k, 'review', { asOf: ASOF });
     ['sme', 'editorial', 'governance'].forEach((g) => { k = recordReview(k, g, { by: g, decision: 'approve' }, ASOF); });
     k = advanceKCR(k, 'approved', { by: 'publisher', asOf: ASOF });
     const { kcr: published, version } = publishKCR(k, { prevVersion: 'crab-feast-v-0', versionId: 'crab-feast-v-1', by: 'publisher', asOf: ASOF });
-    upsertKCR(published);                                          // persist the published state
+    await upsertKCR(published);                                    // persist the published state
 
     // 3. "Refresh" — a fresh read of the persisted store (what the reloaded Studio sees).
     const reread = getKCR(id);
@@ -51,19 +51,19 @@ describe('first real KCR — research queue → published → survives refresh',
     expect(version.supersedes).toBe('crab-feast-v-0');
   });
 
-  test('re-running intake after the advance does NOT regress the published KCR', () => {
+  test('re-running intake after the advance does NOT regress the published KCR', async () => {
     const gen = researchQueueToKCRs(ASOF);
-    syncIntake(gen);
+    await syncIntake(gen);
     const id = gen.find((k) => k.assetId === 'Crab Feast' && k.fieldPath === 'purchases[].unitCostRange').id;
     let k = getKCR(id);
     k = advanceKCR(k, 'researching', { asOf: ASOF });
-    upsertKCR(k);
+    await upsertKCR(k);
     // A fresh intake regenerates the SAME gap as a draft — must not clobber progress.
-    syncIntake(researchQueueToKCRs(ASOF));
+    await syncIntake(researchQueueToKCRs(ASOF));
     expect(getKCR(id).status).toBe('researching');
     // And the backlog didn't grow (dedupe by deterministic id).
-    const before = loadKCRs().length;
-    syncIntake(researchQueueToKCRs(ASOF));
-    expect(loadKCRs().length).toBe(before);
+    const before = (await loadKCRs()).length;
+    await syncIntake(researchQueueToKCRs(ASOF));
+    expect((await loadKCRs()).length).toBe(before);
   });
 });

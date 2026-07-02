@@ -44,18 +44,18 @@ describe('reconcileKCRs', () => {
 });
 
 describe('persistence — re-intake does not regress in-progress work', () => {
-  test('a KCR advanced past draft survives a fresh intake sync', () => {
-    // First intake persists the backlog.
+  test('a KCR advanced past draft survives a fresh intake sync', async () => {
+    // First intake persists the backlog (async seam; localStorage fallback in test env).
     const first = researchQueueToKCRs(ASOF);
-    syncIntake(first);
+    await syncIntake(first);
     // Advance one KCR (attach evidence + move to researching).
     const target = getKCR(first[0].id);
     let progressed = addEvidence(target, { source: 'x', sourceType: 'citation' }, ASOF);
     progressed = advanceKCR(progressed, 'researching', { asOf: ASOF });
-    upsertKCR(progressed);
+    await upsertKCR(progressed);
     expect(getKCR(target.id).status).toBe('researching');
     // Re-run intake — the SAME gaps regenerate as drafts; the store must keep progress.
-    const res = syncIntake(researchQueueToKCRs(ASOF));
+    const res = await syncIntake(researchQueueToKCRs(ASOF));
     expect(res.added).toBe(0);                          // nothing new
     expect(getKCR(target.id).status).toBe('researching'); // progress preserved
     expect(getKCR(target.id).evidence).toHaveLength(1);
