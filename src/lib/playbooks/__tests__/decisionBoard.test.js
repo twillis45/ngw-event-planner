@@ -105,16 +105,20 @@ describe('decision status derivation', () => {
     expect(menu.because).not.toMatch(/the format/);
   });
 
-  test('only menu/sourcing decisions carry a route; non-menu ones are calm (no dead arrow)', () => {
+  test('every open decision is actionable — it carries a route to where it settles', () => {
     const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-02-01', guests: roster(22, 6, 12) }, '2026-01-01');
     const find = (id) => b.open.find((r) => r.id === id);
-    // A food/menu choice (format blocks the menu) routes to the Plan tab's "Your choices".
+    // A food/menu choice (format blocks the menu) settles inline on the Plan tab's "Your choices".
     expect(find('format').route).toMatchObject({ tab: 'Planning', foodFocus: 'format' });
-    // Non-menu decisions (seating layout, hiring help) have NO Plan-tab anchor → route null,
-    // so the panel renders them without a chevron instead of an arrow that leads nowhere.
+    // Non-menu decisions (seating layout, hiring help) are ALSO actionable now — they route to where the
+    // host settles them (no dead, chevron-less prompt). The board re-derives from the plan on every change,
+    // so updating that field/row moves the row OPEN → LOCKED on its own.
     expect(find('seating')).toBeTruthy();
-    expect(find('seating').route).toBeNull();
-    expect(find('help').route).toBeNull();
+    expect(find('seating').route).toBeTruthy();
+    expect(find('help')).toBeTruthy();
+    expect(find('help').route).toBeTruthy();
+    // Invariant: no open row is ever routeless (would render as a dead prompt).
+    expect(b.open.every((r) => r.route)).toBe(true);
   });
 
   test('open rows are ordered overdue → ready → waiting', () => {

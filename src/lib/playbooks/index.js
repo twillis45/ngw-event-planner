@@ -1438,12 +1438,16 @@ export function playbookDecisionBoard(event, asOf) {
     // choices" card focuses it). A non-menu decision (venue, theme, music, seating…) has
     // no anchor, so it gets NO route — the board renders it as a calm "still open" prompt
     // instead of a tappable row whose arrow would lead nowhere.
-    // A menu/sourcing pick settles inline (foodFocus). A dietary/allergy decision is settled in
-    // Guests (per-guest needs). Anything else has no in-app anchor → no route (and is dropped from
-    // `open` below so it never shows as a dead, non-actionable prompt).
+    // Every open decision is ACTIONABLE — tapping takes the host to where they settle it, and because the
+    // board re-derives from the plan on every change, updating that field/row moves the row OPEN → LOCKED
+    // on its own (single source: foodChoices / dietary / headcount / …). A menu pick settles inline
+    // (foodFocus, the "Your choices" card); dietary lives in Guests; vendor/team calls in Vendors;
+    // everything else lands on the Plan tab where the host handles it — never a dead, chevron-less prompt.
+    const _blocks = (Array.isArray(d.blocks) ? d.blocks : []).join(' ').toLowerCase();
     const route = isMenuDecision(d) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
       : isDietaryDecision(d) ? { eventId: event.id, tab: 'Guests' }
-      : null;
+      : /vendor|team|hire|staff/.test(_blocks) ? { eventId: event.id, tab: 'Vendors' }
+      : { eventId: event.id, tab: 'Planning' };
 
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
