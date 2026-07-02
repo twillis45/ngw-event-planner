@@ -137,6 +137,45 @@ export function rollbackKCR(kcr, { by = 'publisher', asOf = null } = {}) {
   return reverted;
 }
 
+// ── Gate status — what the KCR needs to advance + the capability it requires ──
+// Pure. Drives the Studio: which action is offered, what blocks it, and (for the
+// UI) which role capability the action needs. The pipeline gates (advanceKCR/
+// publishKCR) still enforce independently — this only SURFACES the gate.
+export function kcrGateStatus(kcr) {
+  const s = kcr.status;
+  const reviews = kcr.review || {};
+  const approved = (g) => reviews[g] && reviews[g].decision === 'approve';
+  switch (s) {
+    case 'draft':
+      return { stage: s, next: 'researching', action: 'Start research', cap: 'request-review', blocked: null };
+    case 'researching':
+      return { stage: s, next: 'grounded', action: 'Mark grounded', cap: 'evidence',
+        blocked: kcr.evidence.length ? null : 'Add evidence first' };
+    case 'grounded':
+      return { stage: s, next: 'review', action: 'Request review', cap: 'request-review',
+        blocked: kcr.proposal ? null : 'Set a proposal first' };
+    case 'review': {
+      const needed = ['sme', 'editorial', 'governance'].filter((g) => !approved(g));
+      return { stage: s, next: needed.length ? null : 'approved', action: needed.length ? null : 'Mark approved',
+        cap: 'request-review', reviewsNeeded: needed,
+        blocked: needed.length ? `Awaiting review: ${needed.join(', ')}` : null };
+    }
+    case 'approved': {
+      const citedOk = !(kcr.proposal && kcr.proposal.verificationStatus === 'cited') || canReachCited(kcr);
+      return { stage: s, next: 'published', action: 'Publish', cap: 'publish',
+        blocked: citedOk ? null : 'A cited value needs supporting evidence' };
+    }
+    case 'published':
+      return { stage: s, next: 'monitoring', action: 'Move to monitoring', cap: 'view', blocked: null };
+    case 'monitoring':
+      return { stage: s, next: 'revision', action: 'Open a revision', cap: 'request-review', blocked: null };
+    case 'revision':
+      return { stage: s, next: 'researching', action: 'Re-research', cap: 'request-review', blocked: null };
+    default:
+      return { stage: s, next: null, action: null, cap: 'view', blocked: null };
+  }
+}
+
 // ── The hard gate: a value may only be `cited` with real linked evidence ──────
 export function canReachCited(kcr) {
   return kcr.evidence.some((e) => !e.contradicts && (e.source || e.url) && ['citation', 'primary', 'secondary', 'dataset'].includes(e.sourceType));

@@ -18,8 +18,10 @@ import { getLastSyncTime } from '../lib/api';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
 import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
-import { syncIntake, loadKCRs } from '../lib/knowledge/kcrStore';
+import { syncIntake, loadKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
+import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
+import { kcrCan } from '../lib/knowledge/kcrRoles';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1703,12 +1705,125 @@ const KCR_STATUS_COLOR = {
   approved: D.good, published: D.good, monitoring: D.muted, revision: D.warn, archived: D.faint,
 };
 
+// KCR-6 — the governed publishing action bar. Renders the actions for the KCR's current
+// stage, gated by BOTH the pipeline gate (kcrGateStatus) AND the caller's role capability
+// (kcrCan). Every action applies a PURE transition then upsertKCR (optimistic concurrency
+// + server audit). The pipeline fns throw if a gate is unmet, surfaced as a "Blocked:" note
+// — so the UI can never weaken governance (hard rule). Nothing publishes without an
+// approved KCR; no auto-mutation.
+function KcrActions({ kcr, role, asOf, onChanged }) {
+  const [ev, setEv] = useState('');
+  const [prop, setProp] = useState('');
+  const [note, setNote] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const gate = kcrGateStatus(kcr);
+
+  const run = async (mutator, label) => {
+    setBusy(true); setNote(null);
+    try {
+      const next = mutator(kcr);
+      const res = await upsertKCR(next);
+      setNote(res && res.conflict ? '⚠ Another admin changed this — refreshed to their version.' : `${label} ✓`);
+      await onChanged();
+    } catch (e) { setNote(`Blocked: ${e.message}`); }
+    finally { setBusy(false); }
+  };
+
+  const B = ({ label, on, cap, enabled = true, primary = false }) => {
+    const allowed = kcrCan(role, cap) && enabled && !busy;
+    return (
+      <button type="button" disabled={!allowed} onClick={on}
+        title={kcrCan(role, cap) ? '' : `Requires ${cap} (your role: ${role || 'none'})`}
+        style={{ padding: '5px 11px', borderRadius: 6, fontSize: type.size.caption, fontFamily: D.ff,
+          border: `1px solid ${primary ? D.accent : D.border}`, background: primary && allowed ? D.accent : 'transparent',
+          color: primary && allowed ? '#fff' : allowed ? D.text : D.faint, cursor: allowed ? 'pointer' : 'not-allowed', opacity: allowed ? 1 : 0.5 }}>
+        {label}
+      </button>
+    );
+  };
+  const input = (val, setVal, ph) => (
+    <input value={val} onChange={(e) => setVal(e.target.value)} placeholder={ph}
+      style={{ flex: 1, minWidth: 120, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 8px', fontFamily: D.ff }} />
+  );
+  const s = kcr.status;
+  const revRow = (g, label) => {
+    const dec = kcr.review && kcr.review[g];
+    return (
+      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+        <span style={{ fontSize: type.size.caption, color: D.muted, width: 90 }}>{label}</span>
+        {dec ? <span style={{ fontFamily: D.mono, fontSize: 11, color: dec.decision === 'approve' ? D.good : D.bad }}>{dec.decision} · {dec.by}</span>
+          : <>
+            <B label="Approve" cap={`review:${g}`} on={() => run((k) => recordReview(k, g, { by: role || 'admin', decision: 'approve' }, asOf), `${label} approved`)} />
+            <B label="Reject" cap={`review:${g}`} on={() => run((k) => recordReview(k, g, { by: role || 'admin', decision: 'reject' }, asOf), `${label} rejected`)} />
+          </>}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, background: D.surface }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pipeline</span>
+        <span style={{ fontFamily: D.mono, fontSize: 11, color: D.text }}>{gate.stage}{gate.next ? ` → ${gate.next}` : ''}</span>
+        {gate.blocked && <span style={{ fontSize: type.size.caption, color: D.warn }}>· {gate.blocked}</span>}
+      </div>
+
+      {s === 'draft' && <B label="Start research" primary cap="request-review" on={() => run((k) => advanceKCR(k, 'researching', { by: role, asOf }), 'Started research')} />}
+
+      {s === 'researching' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          {input(ev, setEv, 'Evidence source / citation')}
+          <B label="Add evidence" cap="evidence" enabled={!!ev.trim()} on={() => run((k) => addEvidence(k, { source: ev.trim(), sourceType: 'citation', by: role }, asOf), 'Evidence added').then(() => setEv(''))} />
+          <B label="Mark grounded" primary cap="request-review" enabled={!gate.blocked} on={() => run((k) => advanceKCR(k, 'grounded', { by: role, asOf }), 'Grounded')} />
+        </div>
+      )}
+
+      {s === 'grounded' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          {input(prop, setProp, 'Proposed value / rationale')}
+          <B label="Set proposal" cap="proposal" enabled={!!prop.trim()} on={() => run((k) => setProposal(k, { newValue: prop.trim(), verificationStatus: 'cited', sources: (k.evidence || []).map((e) => e.id), rationale: prop.trim(), by: role }, asOf), 'Proposal set')} />
+          <B label="Request review" primary cap="request-review" enabled={!gate.blocked} on={() => run((k) => advanceKCR(k, 'review', { by: role, asOf }), 'Sent to review')} />
+        </div>
+      )}
+
+      {s === 'review' && (
+        <div>
+          {revRow('sme', 'SME')}
+          {revRow('editorial', 'Editorial')}
+          {revRow('governance', 'Governance')}
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <B label="Mark approved" primary cap="request-review" enabled={!(gate.reviewsNeeded || []).length} on={() => run((k) => advanceKCR(k, 'approved', { by: role, asOf }), 'Approved')} />
+            <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'researching', { by: role, note: 'sent back', asOf }), 'Sent back')} />
+          </div>
+        </div>
+      )}
+
+      {s === 'approved' && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <B label="Publish" primary cap="publish" enabled={!gate.blocked}
+            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.rollbackTo || null, by: role, asOf }).kcr, 'Published')} />
+          <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'archived', { by: role, note: 'withdrawn', asOf }), 'Withdrawn')} />
+        </div>
+      )}
+
+      {s === 'published' && <B label="Move to monitoring" cap="view" on={() => run((k) => advanceKCR(k, 'monitoring', { by: role, asOf }), 'Monitoring')} />}
+      {(s === 'monitoring' || s === 'revision') && <B label={s === 'monitoring' ? 'Open a revision' : 'Re-research'} cap="request-review" on={() => run((k) => advanceKCR(k, s === 'monitoring' ? 'revision' : 'researching', { by: role, asOf }), 'Advanced')} />}
+
+      {note && <div style={{ marginTop: 8, fontSize: type.size.caption, color: note.startsWith('Blocked') || note.startsWith('⚠') ? D.warn : D.good }}>{note}</div>}
+      {!kcrCan(role, 'publish') && s === 'approved' && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Only a governance/publisher role can publish.</div>}
+    </div>
+  );
+}
+
 function KcrStudioPanel() {
   const asOf = new Date().toISOString().slice(0, 10);
+  const { user } = useAuth();
+  const role = user?.app_metadata?.role; // KCR-6: gates publishing actions (admin ⇒ publisher)
   // Reconcile the live research queue into the (server-backed) backlog — progress
   // preserved — then read it. Async: server-first with localStorage fallback (KCR-4).
   const [kcrs, setKcrs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const refresh = useCallback(async () => { try { setKcrs(await loadKCRs()); } catch { /* keep current */ } }, []);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1812,6 +1927,7 @@ function KcrStudioPanel() {
                     <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
                       <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14 }}>
                         <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 10 }}>{k.reason}</div>
+                        <KcrActions kcr={k} role={role} asOf={asOf} onChanged={refresh} />
                         {k.impact && (
                           <>
                             <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Impact preview (derived)</div>
