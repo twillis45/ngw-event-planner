@@ -17,6 +17,7 @@ from .routers import weather
 from .routers import webhooks
 from .routers import stripe_payments
 from .routers import admin
+from .routers import kcr
 from .routers import food_prices
 from .routers import instacart
 from .routers import kroger
@@ -213,6 +214,7 @@ app.include_router(weather.router)
 app.include_router(webhooks.router)
 app.include_router(stripe_payments.router)
 app.include_router(admin.router)
+app.include_router(kcr.router)
 app.include_router(food_prices.router)
 app.include_router(instacart.router)
 app.include_router(kroger.router)
