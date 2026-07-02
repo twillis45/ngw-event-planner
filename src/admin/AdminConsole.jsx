@@ -24,6 +24,8 @@ import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publ
 import { kcrCan } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
+import { buildProviders } from '../lib/knowledge/providers';
+import { loadCampaigns } from '../lib/knowledge/campaign';
 import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
 import { type } from '../design/tokens';
 
@@ -1843,6 +1845,8 @@ function KcrStudioPanel() {
   const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
   const metrics = kcrBacklogMetrics(kcrs, asOf); // KCR-5 observability (aging honest-empty when no timestamps)
   const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs }); // KF-1 manufacturing view (derived, dimensional)
+  const kepProviders = buildProviders();              // KEP-2 Bundle A — acquisition providers
+  const kepCampaigns = loadCampaigns();               // KEP-2 Bundle B — research campaigns
   const shown = kcrs.filter((k) => statusFilter === 'all' || k.status === statusFilter)
     .sort((a, b) => (a.priority === 'high' ? -1 : a.priority === 'med' ? 0 : 1) - (b.priority === 'high' ? -1 : b.priority === 'med' ? 0 : 1) || a.assetId.localeCompare(b.assetId));
 
@@ -1919,6 +1923,9 @@ function KcrStudioPanel() {
         </div>
         <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
           {factory.growth.assets} assets · {factory.growth.graphNodes} graph nodes · {factory.growth.graphEdges} edges · research velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
+        </div>
+        <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono, marginTop: 4 }}>
+          acquisition · {kepProviders.length} providers ({new Set(kepProviders.map((p) => p.family)).size} families) · {kepCampaigns.length} campaign{kepCampaigns.length === 1 ? '' : 's'} · external acquisition ON
         </div>
       </div>
 
