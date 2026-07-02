@@ -30779,8 +30779,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
   // so guestMode stays untouched and nothing claims "locked"), so it's still there when
   // they return to the Guests tab. Only writes when it actually changed.
   const persistDraft = (v) => { const n = Math.max(0, Math.round(Number(v) || 0)); if (n > 0 && n !== (Number(event.guestCount) || Number(event.guestEstimate) || 0)) setGuestCount(n); };
-  const [needsOpen,  setNeedsOpen]   = useState(bp !== 'mobile'); // mobile: collapse special-needs panel
-  const [nonRespOpen, setNonRespOpen] = useState(bp !== 'mobile'); // mobile: collapse non-responder panel
+  const [needsOpen,  setNeedsOpen]   = useState(false); // board: collapse special-needs by default on ALL viewports (header count carries the cue)
+  const [nonRespOpen, setNonRespOpen] = useState(false); // board: collapse non-responder by default on ALL viewports (the Send-reminder action stays; list tucks behind a tap)
   const [showRsvp,   setShowRsvp] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [gFilter,    setGFilter]  = useState('all');
@@ -31562,24 +31562,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             </div>
           )}
         </div>
-        {/* Headcount option — prominent + WORKING for hosts: set a number instead of a
-            roster (writes guestCount + count mode directly; the prior link was a no-op
-            because the count VIEW is planner-only). Always available on the host Guests tab. */}
-        {guestsIsHost && (() => {
-          const lockHc = () => commit(hcDraft); // single source — the same lock used everywhere
-          return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 14, borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface2 || C.surface || C.bg, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, flexShrink: 0 }}>Just need a headcount?</span>
-              <input type="number" inputMode="numeric" min="0" value={hcDraft} onChange={e => setHcDraft(e.target.value)}
-                onBlur={() => persistDraft(hcDraft)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); lockHc(); e.currentTarget.blur(); } }}
-                placeholder={String(yes || guests.length || 0)}
-                style={{ width: 72, background: C.bg, border: `1px solid ${Number(hcDraft) > 0 ? C.accent : C.border}`, borderRadius: 10, color: C.text, fontSize: T.body, fontWeight: FW.heavy, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
-              <button type="button" className="ce-press" onClick={lockHc}
-                style={{ minHeight: 40, padding: '0 16px', borderRadius: 10, border: 'none', background: C.accent, color: '#fff', fontSize: T.secondary, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Lock it</button>
-            </div>
-          );
-        })()}
+        {/* Board (cut the dupe): host headcount lives in the PlanNowHero above (stepper + Lock,
+            scope="guests") — this in-list panel was a SECOND count control on the same screen. */}
         {importMsg && (
           <div style={{ fontSize: T.caption, padding: '6px 12px', borderRadius: 8, marginBottom: 10, background: importMsg.text?.startsWith('Import failed') ? C.danger + '22' : C.success + '22', color: importMsg.text?.startsWith('Import failed') ? C.danger : C.success, border: `1px solid ${importMsg.text?.startsWith('Import failed') ? C.danger : C.success}44` }}>
             {importMsg.text}
@@ -31697,17 +31681,36 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             </tbody>
           </table>
         ))}
-        {!guestsIsHost && confirmed.length > 0 && (
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: T.secondary, color: C.muted }}>Meal breakdown ({confirmed.length} confirmed):</span>
-            {Object.entries(mealCounts).map(([meal, count]) => <span key={meal} style={s.pill(C.accent2)}>{meal}: {count}</span>)}
-            {kids > 0 && <span style={s.pill(C.muted)}>Kids meals: {kids}</span>}
-          </div>
-        )}
+        {/* Meal-breakdown footer removed (board de-dupe): the same counts live in the Vendor Impact
+            F&B card below — one canonical place for the caterer packet, not two. */}
       </div>
 
-      {/* ── Thank-You Tracker ── (planner CRM table; a host uses the one-tap "write the
-           thank-yous" do-it-for-me on the recap instead, never a gift/thank-you grid). */}
+      {/* Host thank-yous (board pivot — hosts DO thank guests): a warm CHECKLIST + one-tap "write it",
+          NOT the planner gift/CRM grid. Collapsed by default so it never walls the tab. Reuses the same
+          thankYouSent field + the draftThankYou do-it-for-me. */}
+      {guestsIsHost && confirmed.length > 0 && (() => {
+        const thanked = confirmed.filter(g => g.thankYouSent).length;
+        const toggleThanked = (gId) => setGuests(gs => gs.map(g => g.id === gId ? { ...g, thankYouSent: !g.thankYouSent } : g));
+        return (
+          <CollapsibleCard id={`host-thankyous-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed
+            title="Thank-yous"
+            subtitle={thanked >= confirmed.length ? 'All thanked — beautifully done 💛' : `${thanked} of ${confirmed.length} thanked · we’ll write the note`}>
+            <button type="button" onClick={() => setGuestDraftSheet({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(event, profile), shareTitle: `Thank you — ${event.name || 'our celebration'}`, kind: 'thankyou' })}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: '#fff', background: C.accent, border: 'none', borderRadius: 10, padding: '10px 16px', cursor: 'pointer' }}>Write the thank-you note →</button>
+            <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 8 }}>Check each off as you send it.</div>
+            {confirmed.map((g) => (
+              <button key={g.id} type="button" onClick={() => toggleThanked(g.id)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: `1px solid ${C.border}`, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: `1.5px solid ${g.thankYouSent ? C.success : C.border}`, background: g.thankYouSent ? C.success : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{g.thankYouSent ? '✓' : ''}</span>
+                <span style={{ flex: 1, fontSize: T.body, color: C.text, textDecoration: g.thankYouSent ? 'line-through' : 'none', opacity: g.thankYouSent ? 0.55 : 1 }}>{g.name}</span>
+              </button>
+            ))}
+          </CollapsibleCard>
+        );
+      })()}
+
+      {/* ── Thank-You Tracker ── (planner CRM table with gift-received tracking; the HOST version
+           above is a lighter warm checklist. Planner-only.) */}
       {!guestsIsHost && confirmed.length > 0 && (() => {
         const thanked   = confirmed.filter(g => g.thankYouSent).length;
         const gifted    = confirmed.filter(g => g.giftReceived).length;
