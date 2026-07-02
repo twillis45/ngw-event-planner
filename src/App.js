@@ -26986,7 +26986,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
 
       {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
       <CollapsibleCard id="bud-other" isMobile={isMobile} defaultCollapsed title="Other costs" style={{ marginBottom: 0 }}
-        right={otherBudgeted > 0 ? <div style={{ fontSize: T.body, color: C.muted }}>planned {money(otherBudgeted)}{otherActual > 0 ? ` · spent ${money(otherActual)}` : ''}</div> : null}>
+        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: otherBudgeted > 0 ? C.text : C.muted, whiteSpace: 'nowrap' }}>{money(otherBudgeted)}</div>}>
         <div style={{ display: 'grid', gap: 8, marginTop: 0 }}>
           {otherRows.length === 0
             ? <div style={{ fontSize: T.secondary, color: C.muted }}>Decor, rentals, cake, extras — anything beyond food. Nothing added yet.</div>
@@ -31238,9 +31238,10 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         const kids = Math.max(0, Math.min(total, Math.round(Number(event.kidsCount) || 0)));
         const setK = (v) => setKidsCount(Math.max(0, Math.min(total, Math.round(Number(v) || 0))));
         const isCrab = /crab/i.test(event.type || '');
-        const green = C.success || C.accent;
         return (
-          <div style={{ background: C.surface, border: `1px solid ${green}55`, borderLeft: `3px solid ${green}`, borderRadius: 12, padding: '0 16px', marginBottom: 18, maxWidth: 760 }}>
+          <CollapsibleCard id={`headcount-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed done title="Headcount"
+            right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{total} guest{total === 1 ? '' : 's'}</div>}
+            style={{ marginBottom: 18 }}>
             {/* Locked count row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 0' }}>
               <span aria-hidden style={{ fontSize: T.body }}>📌</span>
@@ -31270,7 +31271,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
                 <button type="button" aria-label="more kids / light eaters" onClick={() => { setK(kids + 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
               </span>
             </div>
-          </div>
+          </CollapsibleCard>
         );
       })()}
 
