@@ -1704,7 +1704,16 @@ const countdownTone = (days, C) => {
 };
 const parseMin  = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 const fmtDur    = (m) => { if (!m || m <= 0) return ''; const h = Math.floor(m / 60); const r = m % 60; return h > 0 ? (r > 0 ? `${h}h ${r}m` : `${h}h`) : `${r}m`; };
-const fmtTime12 = (t) => { if (!t) return '—'; const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
+const fmtTime12 = (t) => {
+  if (!t) return '—';
+  // startTime is stored inconsistently — 12-hour display strings ("3:00 PM") in some paths,
+  // 24-hour clock ("15:00") in others. If it's ALREADY 12-hour, pass it through: parsing it as
+  // 24h reads "3:00 PM" as h=3, drops the "PM", and re-labels it "3:00 AM" (the cookout-at-3am bug).
+  if (/[ap]\.?m\.?/i.test(t)) return t.trim();
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h)) return t; // not a clock value — don't mangle it
+  return `${h % 12 || 12}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+};
 const fmtDate   = (d) => { if (!d) return '—'; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 const fmtMon    = (ym) => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
 const today8601 = () => new Date().toISOString().slice(0, 10);
