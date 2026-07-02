@@ -76,6 +76,14 @@ describe('window gating', () => {
     // event yesterday: every buyAt offset is in the past → empty
     expect(playbookTasks(DP({ date: '2026-06-13' }), '2026-06-14')).toEqual([]);
   });
+
+  test('overdue buys surface while the event is UPCOMING (no silent drop), ranked after in-window', () => {
+    // Day before the event, the T-3d/T-5d buys are days overdue. They must SURFACE (dropping them is
+    // the "nothing needs you / I'm watching" lie) — but the TOP stays an in-window (due-today) item.
+    const list = playbookTasks(DP({ date: '2026-06-20' }), '2026-06-19');
+    expect(list.some((t) => t.dueInDays < 0)).toBe(true);      // overdue present, not dropped
+    expect(list[0].dueInDays).toBeGreaterThanOrEqual(0);        // ...but in-window leads
+  });
 });
 
 describe('non-applicability (existing behavior must be unaffected)', () => {

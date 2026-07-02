@@ -551,8 +551,13 @@ export function playbookTasks(event, asOf) {
     const offset = buyOffsetDays(p.buyAt);
     if (offset === null) continue;
     const dueInDays = dte + offset;
-    // Window gate — eligible only today..WINDOW_LEAD ahead; never past-due.
-    if (dueInDays < 0 || dueInDays > WINDOW_LEAD) continue;
+    // Window gate — eligible today..WINDOW_LEAD ahead. An OVERDUE buy (past its window) still surfaces
+    // while the event is upcoming (dte > 0) — it's recoverable, and silently dropping it is the "nothing
+    // needs you / I'm watching" lie. On event day+ (dte <= 0) the day-of run-of-show owns the timeline,
+    // so we don't nag past-due there. dueLabel renders overdue calmly as "today" (action-first, no
+    // "behind" verdict — the host lens forbids a verdict).
+    if (dueInDays > WINDOW_LEAD) continue;
+    if (dueInDays < 0 && dte <= 0) continue;
     // Decision-first gate — suppress a purchase whose prerequisite decision
     // (final count / dietary) is unresolved. The decision surfaces instead
     // via topPlaybookDecision().
@@ -591,12 +596,14 @@ export function playbookTasks(event, asOf) {
     });
   }
 
-  // Rank: soonest-due first, then essential. The cascade takes [0]; this is the
-  // reader's only ordering — it never competes with the runtime's priority math.
-  tasks.sort(
-    (a, b) =>
-      a.dueInDays - b.dueInDays || Number(b.essential) - Number(a.essential),
-  );
+  // Rank: IN-WINDOW items (due today/soon, dueInDays >= 0) lead — a due-today essential must not be
+  // buried under stale overdue catch-up. OVERDUE items (< 0) rank AFTER, so they still surface (fixing
+  // the silent drop) but only top the list when nothing is due in the current window. Within each group:
+  // soonest/most-overdue first, then essential. The cascade takes [0].
+  tasks.sort((a, b) => {
+    const ao = a.dueInDays < 0 ? 1 : 0, bo = b.dueInDays < 0 ? 1 : 0;
+    return ao - bo || a.dueInDays - b.dueInDays || Number(b.essential) - Number(a.essential);
+  });
   return tasks;
 }
 
