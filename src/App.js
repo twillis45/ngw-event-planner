@@ -28622,17 +28622,21 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
     || (_honoree ? `In honor of ${_honoree}` : 'You’re hosting');
   const descriptor = (event.tagline || '').trim() || event.type || '';
   // On-track whisper — ONLY real facts (confirmed count + first handled milestone).
-  const whisper = (() => {
+  const whisperInfo = (() => {
     try {
-      const parts = [];
       const band = attendanceBand(event);
       const gcr = guestCountResolved(event);
       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
-      if (yes > 0 && band && band.applicable && band.invited) parts.push(`${yes} of ${band.invited} confirmed`);
-      else if (gcr && gcr.resolved && Number(event.guestCount) > 0) parts.push(`${event.guestCount} expected`);
-      return parts.join(' · ');
-    } catch { return ''; }
+      // `done` drives the whisper dot (was hardcoded green): true only when the RSVP picture is fully
+      // in — everyone invited has confirmed. "Expected" (a set count, no replies yet) is not done.
+      if (yes > 0 && band && band.applicable && band.invited)
+        return { text: `${yes} of ${band.invited} confirmed`, done: yes >= band.invited };
+      if (gcr && gcr.resolved && Number(event.guestCount) > 0)
+        return { text: `${event.guestCount} expected`, done: false };
+      return { text: '', done: false };
+    } catch { return { text: '', done: false }; }
   })();
+  const whisper = whisperInfo.text;
 
   // Numeral count-up (M2 spec: mark → title (+120ms) → numeral LAST (~+340ms), ~700ms).
   // The count waits for the mark to resolve and the title to land, so focus pulls
@@ -28724,7 +28728,7 @@ function EditorialCover({ event, profile, onOpen, onShare, reveal = true, eventN
         {dateLine && <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text }}>{dateLine}</div>}
         {whisper && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 9, fontSize: T.secondary, color: C.muted }}>
-            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: C.success || C.accent, flexShrink: 0 }} />
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: whisperInfo.done ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />
             <span>{whisper}</span>
           </div>
         )}
