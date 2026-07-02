@@ -1825,7 +1825,7 @@ export function playbookFoodPlan(event, opts = {}) {
     .map((a) => {
       const cost = Math.max(0, Math.round(Number(a.cost) || 0));
       return {
-        id: a.id, group: 'Food', item: a.name, short: a.name,
+        id: a.id, group: a.group || 'Food', cat: a.cat, item: a.name, short: a.name,
         owner: String(a.owner || '').trim(), qty: null, unit: '', essential: false,
         where: [], qtyOverridden: false, baseQty: null,
         low: cost, high: cost, units: 1, unitBase: '',

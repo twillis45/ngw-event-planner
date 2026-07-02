@@ -140,6 +140,24 @@ export function glassSvg(iconName, hue, size = 56) {
 
 export function hasGlassShape(iconName) { return !!GLASS_SHAPES[iconName]; }
 
+// Flat rendering of the SAME identity shape — for small/badge contexts (headers, chips, nav)
+// where the full glass volume is too heavy but the identity must still READ as itself, never
+// degrade to a generic flat-icon fallback. Same paths + authored colors as the glass shape,
+// minus the dome/gradients/sheen. This is what keeps a Juneteenth header a freedom-star, not a spark.
+export function monoSvg(iconName, hue, size = 22) {
+  const sp = GLASS_SHAPES[iconName];
+  if (!sp) return null;
+  const H = hue || sp.hue;
+  const parts = sp.parts(H);
+  // CLEAN silhouette only — the main filled volumes, in their authored colors. Deliberately DROPS
+  // the decorative detail strokes (flames / crab legs / candle wicks): those are fixed-width and
+  // read as crowded/muddy at 18-22px. The filled body carries the identity; the hero glass keeps
+  // the full detail. This is what makes the small header/nav mark light, not busy.
+  const g = parts.map((pt) => `<path d="${pt.d}" ${pt.er ? 'fill-rule="evenodd"' : ''} fill="${pt.color}"/>`).join('');
+  const inner = sp.gscale ? `<g transform="translate(${sp.gcx ?? 66},${sp.gcy ?? 54}) scale(${sp.gscale}) translate(${-(sp.gcx ?? 66)},${-(sp.gcy ?? 54)})">${g}</g>` : g;
+  return `<svg width="${size}" height="${Math.round(size * 0.78)}" viewBox="0 0 132 98" aria-hidden="true">${inner}</svg>`;
+}
+
 // React wrapper. Returns null when there's no glass shape (caller falls back to glyph).
 export function GlassIcon({ icon, hue, size = 56 }) {
   const html = glassSvg(icon, hue, size);

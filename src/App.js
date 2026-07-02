@@ -17,7 +17,7 @@ import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbo
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
-import { GlassIcon, hasGlassShape } from './glassIcons';
+import { GlassIcon, hasGlassShape, monoSvg } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
 import { AuthCtx }        from './contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
@@ -74,7 +74,7 @@ import {
   brandPresets, defaultBrandColor,
   carbonNeutral,       // de-blued carbon ramp (deep/mid/soft/softer) — the lighter dark canvas (tokenized)
 } from './theme/palette';
-import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, currentStudio, listStudioMembers, loadVendors, saveVendor, deleteVendor, resolveBankId, loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from './lib/api';
+import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEvent, deleteEvent as cloudDeleteEvent, saveClient, deleteClient as cloudDeleteClient, flushPendingEvents, migrateEventsToCloud, migrateClientsToCloud, getPendingCount, claimPendingInvitations, clearStudioCache, revalidateStudio, currentStudio, listStudioMembers, loadVendors, saveVendor, deleteVendor, resolveBankId, loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from './lib/api';
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
@@ -3140,6 +3140,40 @@ const evtIdentity = (type, C) => {
     sacred: !!e.sacred,
   };
 };
+
+// ── Glyph — single source of truth ────────────────────────────────────────────
+// eventGlyph(event, C): THE resolver for an event's identity mark. Reads a persisted override
+// (event.glyph) FIRST, else derives from type via evtIdentity. Every surface that shows an event
+// glyph goes through this + <EventGlyph> — no surface re-decides the icon or hardcodes one, so the
+// mark on the invite is the same mark carried through the app (the single-point-of-truth standard).
+const eventGlyph = (event, C) => {
+  const ident = evtIdentity(event && event.type, C);
+  const ov = (event && event.glyph && typeof event.glyph === 'object') ? event.glyph : null;
+  return {
+    icon: (ov && ov.icon) || ident.icon,
+    hue: (ov && ov.hue) || ident.color,
+    sacred: (ov && ov.sacred != null) ? !!ov.sacred : ident.sacred,
+    flag: ident.flag,
+    mark: ident.mark,
+  };
+};
+
+// <EventGlyph> — THE single event-glyph renderer. ONE identity; fidelity chosen by size/variant:
+//   'hero' (large, colored) → SacredMark for sacred marks, else the glass volume (GlassIcon).
+//   'mono' (small/badge)    → the SAME shape, flat + authored colors — never a generic spark fallback.
+//   'auto'                  → hero at >=44px, mono below.
+// Preserves the locked rule (full glass/color = hero-only); small spots still wear the real mark.
+function EventGlyph({ icon, hue, size = 56, variant = 'auto', sacred = false, quiet = false }) {
+  if (!icon) return null;
+  // Somber/quiet events (Repast) stay a muted flat mark — never a colored volume (the sacred rule).
+  if (quiet) return <span aria-hidden="true" style={{ color: hue, display: 'inline-flex' }}><Icon name={icon} size={Math.round(size * 0.7)} stroke={1.7} /></span>;
+  const v = variant === 'auto' ? (size >= 44 ? 'hero' : 'mono') : variant;
+  if (v === 'hero' && sacred) return <SacredMark icon={icon} hue={hue} size={size} />;
+  if (v === 'hero' && hasGlassShape(icon)) return <GlassIcon icon={icon} hue={hue} size={size} />;
+  const html = monoSvg(icon, hue, size); // small/badge: the SAME shape, flat + authored colors
+  if (html) return <span aria-hidden="true" style={{ display: 'inline-flex', lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <span aria-hidden="true" style={{ color: hue, display: 'inline-flex' }}><Icon name={icon} size={Math.round(size * 0.64)} stroke={1.6} /></span>;
+}
 
 // Invite TONE — the guest invite speaks the EVENT'S mood, not the host's app theme (board
 // verdict): daytime/family/casual → light & warm (the category norm); formal/evening →
@@ -9781,12 +9815,29 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const [addName, setAddName] = useState('');
   const [addOwner, setAddOwner] = useState('');
   const [addCost, setAddCost] = useState('');
+  const [addGroup, setAddGroup] = useState(null); // Food/Drinks/Supplies override; null = auto-guess from the name
+  // No search list (board ruling): guess the shopping GROUP + aisle from the typed name so an added line
+  // sorts into the right spread section instead of the tail. The 3-way toggle below overrides the group.
+  const guessFoodCategory = (nm) => {
+    const n = String(nm || '').toLowerCase();
+    const has = (...ws) => ws.some((w) => n.includes(w));
+    if (has('beer', 'wine', 'soda', ' pop', 'cola', 'water', 'tea', 'coffee', 'juice', 'lemonade', 'cocktail', 'liquor', 'vodka', 'whiskey', 'rum', 'champagne', 'punch', 'cider', 'seltzer', 'kombucha', 'drink')) return { group: 'Drinks', cat: 'beverages' };
+    if (has('plate', 'cup', 'napkin', 'fork', 'knife', 'spoon', 'utensil', 'cutlery', 'foil', 'wrap', 'ziploc', 'baggie', 'ice', 'cooler', 'chest', 'tablecloth', 'tent', 'chair', 'table', 'light', 'candle', 'decor', 'balloon', 'trash', 'paper towel', 'charcoal', 'propane', 'lighter', 'sunscreen', 'bug spray', 'tongs', 'skewer', 'platter')) return { group: 'Supplies', cat: 'supplies' };
+    if (has('salad', 'slaw', 'corn', 'potato', 'tomato', 'lettuce', 'fruit', 'watermelon', 'berr', 'greens', 'veg', 'onion', 'pepper', 'cucumber')) return { group: 'Food', cat: 'produce' };
+    if (has('crab', 'shrimp', 'fish', 'chicken', 'beef', 'pork', 'sausage', 'burger', 'hot dog', 'meat', 'rib', 'steak', 'turkey', 'ham', 'lobster', 'clam', 'oyster', 'bacon', 'wing')) return { group: 'Food', cat: 'proteins' };
+    if (has('cheese', 'milk', 'cream', 'yogurt', 'egg', 'dairy', 'butter')) return { group: 'Food', cat: 'dairy' };
+    if (has('bread', 'roll', 'bun', 'chip', 'cracker', 'cookie', 'cake', 'pie', 'dessert', 'snack', 'pretzel', 'pasta', 'rice', 'bean', 'sauce', 'condiment', 'oil', 'seasoning', 'spice', 'old bay', 'dip', 'dressing')) return { group: 'Food', cat: 'pantry' };
+    return { group: 'Food', cat: 'other' };
+  };
   const commitAdd = () => {
     const name = addName.trim();
     if (!name) return;
     const id = 'add-' + Date.now().toString(36);
-    onPatch({ foodAdd: [...(event.foodAdd || []), { id, name, owner: addOwner.trim(), cost: Math.max(0, Number(addCost) || 0) }] });
-    setAddName(''); setAddOwner(''); setAddCost(''); setAddOpen(false);
+    // Auto-categorize from the name (no search list); the Food/Drinks/Supplies toggle overrides the
+    // GROUP when the host set it, so the line sorts into the right spread section instead of the tail.
+    const guess = guessFoodCategory(name);
+    onPatch({ foodAdd: [...(event.foodAdd || []), { id, name, owner: addOwner.trim(), cost: Math.max(0, Number(addCost) || 0), group: addGroup || guess.group, cat: guess.cat }] });
+    setAddName(''); setAddOwner(''); setAddCost(''); setAddGroup(null); setAddOpen(false);
     try { feedbackCommit(); } catch {} // a dish joined the plan (MEDIUM)
   };
   if (!plan) return null;
@@ -10379,8 +10430,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: T.body, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
                     )}
                     {i.added ? (
-                      <button type="button" onClick={removeAdded} title="Remove this dish" aria-label="Remove this dish"
-                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.title, lineHeight: 1, padding: '4px 4px' }}>×</button>
+                      <>
+                        {/* Parity: an added dish is a first-class line — EDIT it (✎) or remove it (×),
+                            same control column as playbook rows (not remove-only). */}
+                        <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Edit this dish" aria-label="Edit this dish"
+                          style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: lockOpen ? steel : C.muted, cursor: 'pointer', fontSize: T.body, lineHeight: 1, padding: '4px 5px' }}>✎</button>
+                        <button type="button" onClick={removeAdded} title="Remove this dish" aria-label="Remove this dish"
+                          style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 6, background: 'transparent', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.title, lineHeight: 1, padding: '4px 4px' }}>×</button>
+                      </>
                     ) : (lockOpen || skipped) ? (
                       // Clean rows (frame 1583-3): the swap-out × lives in the expanded detail,
                       // not on every row. A SKIPPED row keeps its "+ add" so it's always restorable.
@@ -10391,6 +10448,25 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     ) : null}
                   </div>
                   {lockOpen && !skipped && (() => {
+                    // Added dishes get a first-class EDIT panel (name · who's bringing · cost) instead of
+                    // the playbook lock/qty/swap detail — parity via the same expand affordance.
+                    if (i.added) {
+                      const inS = { background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '9px 11px', color: C.text, fontSize: T.body, fontFamily: 'inherit', outline: 'none' };
+                      const patchAdded = (fields) => onPatch({ foodAdd: (event.foodAdd || []).map((a) => a.id === i.id ? { ...a, ...fields } : a) });
+                      return (
+                        <div style={{ padding: '4px 0 14px 28px', display: 'flex', flexDirection: 'column', gap: 10 }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.5px', textTransform: 'uppercase', color: steel }}>Edit this dish</div>
+                          <input defaultValue={i.item} placeholder="Dish" onBlur={(e) => { const v = e.target.value.trim(); if (v) patchAdded({ name: v }); }} style={inS} />
+                          <input defaultValue={i.owner || ''} placeholder="Who's bringing it (optional)" onBlur={(e) => patchAdded({ owner: e.target.value.trim() })} style={inS} />
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: `1px solid ${C.border}`, borderRadius: 8, padding: '0 11px', alignSelf: 'flex-start' }}>
+                            <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
+                            <input type="number" inputMode="numeric" defaultValue={i.low || ''} placeholder="cost" onBlur={(e) => patchAdded({ cost: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+                              style={{ width: 80, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.bold, fontFamily: 'inherit' }} />
+                          </span>
+                          <button type="button" onClick={() => setOpenLockId(null)} style={{ alignSelf: 'flex-start', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: steel, color: '#fff' }}>Done</button>
+                        </div>
+                      );
+                    }
                     // Item detail (Figma 1593-505): basis → LOCK A COST 3-segment (shared
                     // <CostLockSegments>) → quantity stepper → swap → where-to-shop → Mark bought.
                     const stepQty = (d) => { const cur = Number(i.qty) || 0; setQty(Math.max(0, Math.round((cur + d) * 100) / 100)); };
@@ -10521,10 +10597,22 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     style={{ width: 70, background: 'transparent', border: 'none', outline: 'none', color: C.text, fontSize: T.body, fontWeight: FW.bold, fontFamily: 'inherit' }} />
                 </span>
               </div>
+              {/* Where it belongs — auto-guessed from the name; tap to override. Sorts the line into
+                  the right spread section (no search list — board ruling). */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: T.caption, color: C.muted }}>Goes in:</span>
+                {['Food', 'Drinks', 'Supplies'].map((g) => {
+                  const active = (addGroup || guessFoodCategory(addName).group) === g;
+                  return (
+                    <button key={g} type="button" onClick={() => setAddGroup(g)}
+                      style={{ fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, padding: '5px 11px', borderRadius: 99, cursor: 'pointer', border: `1px solid ${active ? steel : C.border}`, background: active ? `${steel}18` : 'transparent', color: active ? C.text : C.muted }}>{g}</button>
+                  );
+                })}
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" onClick={commitAdd} disabled={!addName.trim()}
                   style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: addName.trim() ? 'pointer' : 'default', background: addName.trim() ? C.accent : C.border, color: '#fff', opacity: addName.trim() ? 1 : 0.6 }}>Add to plan</button>
-                <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddOwner(''); setAddCost(''); }}
+                <button type="button" onClick={() => { setAddOpen(false); setAddName(''); setAddOwner(''); setAddCost(''); setAddGroup(null); }}
                   style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: C.muted }}>Cancel</button>
               </div>
             </div>
@@ -22313,9 +22401,9 @@ function AssembleReveal({ ev, profile, onDone }) {
           {/* The event meets its host as itself — its identity as a glass portrait
               (board ruling: AssembleReveal is a ≥44px ceremonial hero → glass). */}
           <div aria-hidden style={{ marginBottom: 14, display: 'flex', animation: 'ceSettle 700ms cubic-bezier(.2,.7,.2,1) both' }}>
-            {festive && hasGlassShape(ident.icon)
-              ? <GlassIcon icon={ident.icon} hue={idColor} size={78} />
-              : <span style={{ color: idColor, display: 'flex', filter: festive ? `drop-shadow(0 0 14px ${idColor}66)` : 'none' }}><Icon name={ident.icon} size={36} stroke={1.6} /></span>}
+            {festive
+              ? <EventGlyph icon={ident.icon} hue={idColor} size={78} variant="hero" sacred={ident.sacred} quiet={ident.mark === 'quiet'} />
+              : <EventGlyph icon={ident.icon} hue={idColor} size={40} variant="mono" quiet={ident.mark === 'quiet'} />}
           </div>
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Setting up {ev.name || 'your event'}</div>
           <div key={done ? 'done' : 'building'} style={{ fontSize: T.display, fontWeight: FW.heavy, letterSpacing: '-0.02em', color: C.text, lineHeight: 1.18, marginBottom: 22, animation: done ? 'ceSettle 640ms cubic-bezier(.2,.7,.2,1) both' : 'none', textShadow: done ? `0 0 26px ${idColor}55` : 'none' }}>
@@ -22633,9 +22721,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           <button type="button" onClick={() => setFocusDismissed(true)} aria-label="Back to all events"
             style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0', cursor: 'pointer', color: sub, fontSize: 14, fontWeight: FW.semibold, lineHeight: 1, display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ fontSize: 20 }}>‹</span> All events</button>
           <span aria-hidden style={{ display: 'flex', alignItems: 'center' }}>
-            {ident.mark !== 'quiet' && hasGlassShape(ident.icon)
-              ? <GlassIcon icon={ident.icon} hue={idColor} size={22} />
-              : <span style={{ color: ident.mark === 'quiet' ? sub : idColor, display: 'flex' }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>}
+            <EventGlyph icon={ident.icon} hue={ident.mark === 'quiet' ? sub : idColor} size={24} variant="mono" sacred={ident.sacred} quiet={ident.mark === 'quiet'} />
           </span>
           <span style={{ fontSize: 16, fontWeight: FW.medium, color: fg, letterSpacing: '-0.01em' }}>{ev.name || 'Your event'}</span>
           {/* FOCUS — top-right of the header chrome (M4·C parity), not floating in the body */}
@@ -22782,9 +22868,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
               card, so the cultural color is allowed). Falls back to the flat glyph for
               types without a glass shape yet, and stays mono for somber (quiet) events. */}
           <div aria-hidden style={{ marginBottom: 11, display: 'flex' }}>
-            {ident.mark !== 'quiet' && hasGlassShape(ident.icon)
-              ? <GlassIcon icon={ident.icon} hue={idColor} size={66} />
-              : <span style={{ color: ident.mark === 'quiet' ? C.muted : idColor, display: 'flex' }}><Icon name={ident.icon} size={32} stroke={1.7} /></span>}
+            <EventGlyph icon={ident.icon} hue={ident.mark === 'quiet' ? C.muted : idColor} size={66} variant="hero" sacred={ident.sacred} quiet={ident.mark === 'quiet'} />
           </div>
           {/* The event NAME is the switch target — the switcher hides INSIDE the hero's
               own name (board: never a second loud thing beside it). Chevron appears only
@@ -23172,7 +23256,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             celebratory. (Attention System: the empty screen IS the reward.) */}
         {!isDayOf && allProgDone && (
           <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
-            <div aria-hidden style={{ color: idColor, display: 'flex', justifyContent: 'flex-start', marginBottom: 10, filter: ident.mark === 'quiet' ? 'none' : `drop-shadow(0 0 12px ${idColor}44)` }}><Icon name={ident.icon} size={34} stroke={1.6} /></div>
+            <div aria-hidden style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 10 }}><EventGlyph icon={ident.icon} hue={idColor} size={38} variant="mono" sacred={ident.sacred} quiet={ident.mark === 'quiet'} /></div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
             <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 6, lineHeight: 1.55 }}>
               Everything that needs you is done — the rest is in motion.{daysLeft > 0 ? ` ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to go — go enjoy the lead-up. 💛` : ' 💛'}
@@ -41333,7 +41417,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
         <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted }}>←</button>
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape
             travels for recognition; hue stays home on the calm overview). */}
-        <span aria-hidden style={{ color: idColor, display: 'flex', flexShrink: 0 }}><Icon name={ident.icon} size={18} stroke={1.8} /></span>
+        <span aria-hidden style={{ display: 'flex', flexShrink: 0 }}><EventGlyph icon={ident.icon} hue={idColor} size={20} variant="mono" sacred={ident.sacred} quiet={ident.mark === 'quiet'} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name || 'Your event'}</div>
           {/* Event date (+ start time) in the header — single source: event.date / event.startTime. */}
