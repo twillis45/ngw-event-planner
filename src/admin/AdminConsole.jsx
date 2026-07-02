@@ -17,6 +17,8 @@ import { getEventSyncStatus, makeEventSyncRow, SYNC_STATUS_LABEL } from '../lib/
 import { getLastSyncTime } from '../lib/api';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
+import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
+import { syncIntake, loadKCRs } from '../lib/knowledge/kcrStore';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -232,7 +234,7 @@ function PlaybooksPanel() {
   );
 }
 
-const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Playbooks', 'Metrics', 'Errors', 'Providers', 'Audit', 'Settings'];
+const TABS = ['Overview', 'Users', 'Workspaces', 'Invitations', 'Activation', 'Analytics', 'Intelligence', 'Playbooks', 'Studio', 'Metrics', 'Errors', 'Providers', 'Audit', 'Settings'];
 
 const inputStyle = {
   background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6,
@@ -1691,6 +1693,110 @@ function AnalyticsSuite() {
   );
 }
 
+// ─── KCR Studio — the governed knowledge production backlog (KCR-2 gap 5) ─────
+// A READ view of the KCR pipeline: the Command Center research queue (+ future sources)
+// reconciled into the persisted backlog, shown by lifecycle stage. No publish action UI
+// yet (parked) — this proves the intake→backlog→pipeline surface. Reuses the admin palette.
+const KCR_STATUS_COLOR = {
+  draft: D.faint, researching: D.accent, grounded: '#7aa2c8', review: D.warn,
+  approved: D.good, published: D.good, monitoring: D.muted, revision: D.warn, archived: D.faint,
+};
+
+function KcrStudioPanel() {
+  const asOf = new Date().toISOString().slice(0, 10);
+  // Reconcile the live research queue into the persisted backlog (progress preserved), then read it.
+  const [kcrs] = useState(() => { try { syncIntake(researchQueueToKCRs(asOf)); return loadKCRs(); } catch { return []; } });
+  const [open, setOpen] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
+  const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
+  const shown = kcrs.filter((k) => statusFilter === 'all' || k.status === statusFilter)
+    .sort((a, b) => (a.priority === 'high' ? -1 : a.priority === 'med' ? 0 : 1) - (b.priority === 'high' ? -1 : b.priority === 'med' ? 0 : 1) || a.assetId.localeCompare(b.assetId));
+
+  const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
+  const td = { padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, verticalAlign: 'middle' };
+  const chip = (txt, color) => <span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${color}1e`, color }}>{txt}</span>;
+
+  return (
+    <div>
+      <Banner>Knowledge Studio — the governed KCR backlog. The Command Center research queue (and future sources) reconciled into the pipeline; progress persists across sessions by deterministic id. Read-only; publishing actions parked. No knowledge output is affected.</Banner>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        <PBKpi label="KCRs" value={kcrs.length} />
+        <PBKpi label="Draft" value={byStatus.draft || 0} tone={D.faint} />
+        <PBKpi label="Researching" value={byStatus.researching || 0} tone={D.accent} />
+        <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
+        <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
+        <PBKpi label="High priority" value={kcrs.filter((k) => k.priority === 'high').length} tone={D.bad} />
+      </div>
+
+      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Why knowledge is changing (trigger)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+            <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        {['all', 'draft', 'researching', 'grounded', 'review', 'approved', 'published'].map((s) => (
+          <button key={s} onClick={() => setStatusFilter(s)} style={{ background: statusFilter === s ? D.surface2 : 'transparent', color: statusFilter === s ? D.text : D.muted, border: `1px solid ${statusFilter === s ? D.border : 'transparent'}`, borderRadius: 6, padding: '4px 10px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff }}>{s}{s !== 'all' ? ` (${byStatus[s] || 0})` : ''}</button>
+        ))}
+      </div>
+
+      {kcrs.length === 0 ? (
+        <Banner tone="muted">No KCRs — the research queue is empty (every asset grounded + reviewed). Honest-empty, not a bug.</Banner>
+      ) : (
+        <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>
+              <th style={th}>Asset</th><th style={th}>Type</th><th style={th}>Trigger</th><th style={th}>Status</th><th style={th}>Priority</th><th style={th}>Field</th>
+            </tr></thead>
+            <tbody>
+              {shown.map((k) => (
+                <Fragment key={k.id}>
+                  <tr onClick={() => setOpen(open === k.id ? null : k.id)} style={{ cursor: 'pointer', background: open === k.id ? D.surface2 : 'transparent' }}>
+                    <td style={{ ...td, color: D.text, fontWeight: 600 }}>{k.assetId}</td>
+                    <td style={td}>{chip(k.type, D.muted)}</td>
+                    <td style={td}>{chip(k.trigger, D.accent)}</td>
+                    <td style={td}><span style={{ color: KCR_STATUS_COLOR[k.status] || D.muted, fontFamily: D.mono, fontSize: 11 }}>● {k.status}</span></td>
+                    <td style={td}>{chip(k.priority || 'low', k.priority === 'high' ? D.bad : k.priority === 'med' ? D.warn : D.faint)}</td>
+                    <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11, wordBreak: 'break-word' }}>{k.fieldPath}</td>
+                  </tr>
+                  {open === k.id && (
+                    <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
+                      <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14 }}>
+                        <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 10 }}>{k.reason}</div>
+                        {k.impact && (
+                          <>
+                            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Impact preview (derived)</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+                              {(k.impact.recommendationEngines || []).map((e) => <span key={e} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: `${D.good}1e`, color: D.good }}>{e}</span>)}
+                              {(k.impact.downstream || []).map((e) => <span key={`d-${e}`} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>↓ {e}</span>)}
+                              {(k.impact.affectedPurchases || []).map((p) => <span key={`p-${p}`} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.faint }}>{p}</span>)}
+                            </div>
+                            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic', marginBottom: 10 }}>prompts / tests / templates: {k.impact.tests && k.impact.tests.known === false ? 'no runtime index (CI: npm run knowledge:impact)' : '—'}</div>
+                          </>
+                        )}
+                        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Audit trail</div>
+                        {(k.audit || []).map((a, i) => (
+                          <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono, padding: '1px 0' }}>{a.action}{a.by ? ` · ${a.by}` : ''}{a.note ? ` — ${a.note}` : ''}</div>
+                        ))}
+                      </div>
+                    </td></tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminConsole() {
   const { ready, user, configured, bypass, signOut } = useAuth();
   const role = user?.app_metadata?.role;
@@ -1819,6 +1925,7 @@ export default function AdminConsole() {
         {tab === 'Analytics' && <AnalyticsSuite />}
         {tab === 'Intelligence' && <IntelligencePanel book={readLocalBook()} />}
         {tab === 'Playbooks' && <PlaybooksPanel />}
+        {tab === 'Studio' && <KcrStudioPanel />}
         {tab === 'Settings' && <AdminSettingsPanel />}
 
         {tab === 'Metrics' && <MetricsPanel />}
