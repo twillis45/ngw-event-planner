@@ -10233,7 +10233,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         subtitle={fpHasCount ? `${plan.itemCount} items to buy` : `${plan.itemCount} items · add a count to price`}>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginTop: -2, marginBottom: 6 }}>{fpHasCount ? money(plan.foodLow, plan.foodHigh) : 'Add a count to price'}</div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
-          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} to buy, scaled to {plan.guests} guests
+          {plan.itemCount} item{plan.itemCount === 1 ? '' : 's'} to buy, sized for {plan.guests} guest{plan.guests === 1 ? '' : 's'}
           {plan.boughtCount > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{plan.boughtCount} bought{plan.lockedTotal > 0 ? ` ($${plan.lockedTotal.toLocaleString()})` : ''}</span></> : null}
         </div>
         {/* Flattened to ONE level — the priced grouped list renders directly below (dropped the
@@ -10251,7 +10251,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
             const undo = () => { const next = { ...(event.foodLocked || {}) }; bulkPriced.forEach((id) => delete next[id]); onPatch({ foodLocked: next }); setBulkPriced(null); try { feedbackSelect(); } catch {} };
             return (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 14, fontSize: T.secondary }}>
-                <span style={{ color: C.success, fontWeight: FW.bold }}>✓ Priced {bulkPriced.length} at typical</span>
+                <span style={{ color: C.success, fontWeight: FW.bold }}>✓ Used typical prices for {bulkPriced.length}</span>
                 <button type="button" onClick={undo} style={{ fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>undo</button>
               </div>
             );
@@ -10267,7 +10267,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           return (
             <button type="button" onClick={priceAll}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: steel, background: `${steel}14`, border: `1px solid ${steel}`, borderRadius: 9, padding: '8px 13px', cursor: 'pointer' }}>
-              Price the rest at typical · {unpriced.length} item{unpriced.length === 1 ? '' : 's'} →
+              Use typical prices for the other {unpriced.length} item{unpriced.length === 1 ? '' : 's'} →
             </button>
           );
         })()}
