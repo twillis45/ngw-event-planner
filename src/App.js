@@ -41543,12 +41543,12 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           </nav>
         )}
         <div style={isSidebarNav ? { flex: 1, minWidth: 0 } : undefined}>
-        {tab === 'Command' && <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} />}
-        {tab === 'Guests' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. */}
+        {tab === 'Command' && <div className="planv2-wrap">{/* Parity (P1): cap the host command view to Plan's reading measure on desktop. */}<CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} /></div>}
+        {tab === 'Guests' && <div className="planv2-wrap">{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. Parity (P1): cap to Plan's reading measure on desktop. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></div>}
         {tab === 'Budget' && <>{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -41584,14 +41584,15 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
           // INSTEAD of the editable planner schedule. The planner's editable
           // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
-          ((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
+          // Parity (P1): cap to Plan's reading measure so run-of-show text doesn't run ~1200px lines on desktop.
+          <div className="planv2-wrap">{((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
             ? <HostRunOfShowTimeline event={event} profile={profile} />
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
                 <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
                 <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
-              </>
+              </>}</div>
         )}
         {tab === 'Event Details' && <EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} />}
         {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
