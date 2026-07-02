@@ -1694,6 +1694,15 @@ function _selectEventNextActionInner(event) {
       if (!atomic) _skipCompression = true;
       else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; }
     }
+    // A food/menu lead task should DEEP-LINK to the menu the host actually makes (the "Your choices"
+    // card focuses + scrolls to the open choice), not dump them on the generic tasks tab. When a
+    // pickable menu decision is open, use its foodFocus route; otherwise land on the Plan tab.
+    if (firstText && /\bmenu\b/i.test(firstText)) {
+      const _foodDec = topPlaybookDecision(event);
+      firstRoute = (_foodDec && _foodDec.primaryRoute && _foodDec.primaryRoute.foodFocus)
+        ? _foodDec.primaryRoute
+        : { tab: 'Planning' };
+    }
     if (!_skipCompression) {
       const more = Math.max(0, doNow - 1);
       return {
