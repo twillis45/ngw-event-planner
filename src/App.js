@@ -31577,7 +31577,9 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
 
       {guestsIsHost && <GuestBriefDetails event={event} onPatchEvent={onPatchEvent} />}
 
-      <div style={s.card}>
+      <CollapsibleCard id="guest-roster" isMobile={bp === 'mobile'} title="Your guests"
+        right={<div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, whiteSpace: 'nowrap' }}>{guests.length} guest{guests.length === 1 ? '' : 's'}</div>}
+        style={{ maxWidth: 760 }}>
         {/* RSVP STATUS (board ruling #2) — who's coming is the ANSWER, so it leads the roster it
             summarizes (folded up from a floating card above the Invites home). */}
         {guestsIsHost ? (
@@ -31619,8 +31621,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
             {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={s.cardTitle}>{guestsIsHost ? 'Your guests' : `Guest List (${visibleGuests.length}${visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})`}</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>{/* title now lives in the CollapsibleCard header; this row is the toolbar */}
           {bp === 'mobile' ? (
             /* Mobile: primary CTA + overflow */
             <div style={{ display: 'flex', gap: 8 }}>
@@ -31776,7 +31777,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         ))}
         {/* Meal-breakdown footer removed (board de-dupe): the same counts live in the Vendor Impact
             F&B card below — one canonical place for the caterer packet, not two. */}
-      </div>
+      </CollapsibleCard>
 
       {/* Host thank-yous (board pivot — hosts DO thank guests): a warm CHECKLIST + one-tap "write it",
           NOT the planner gift/CRM grid. Collapsed by default so it never walls the tab. Reuses the same
