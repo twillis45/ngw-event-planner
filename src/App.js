@@ -33278,7 +33278,11 @@ function HostRunOfShowTimeline({ event, profile }) {
   const isDayOf = daysUntil === 0;
 
   // Sorted by time; rows with no time fall to the end (kept, never dropped).
-  const sorted = [...cues].sort((a, b) => (toMins(a.time) ?? 1e9) - (toMins(b.time) ?? 1e9));
+  // Sort by ABSOLUTE minutes (_min) when present. A generated late-night ROS wraps past midnight —
+  // an 11:30 PM start yields a 3:30 AM cleanup cue whose DISPLAY time is "03:30". Sorting by that
+  // wrapped clock time floats the 3:30 AM cue to the TOP; _min keeps true chronological order.
+  const rosSortKey = (r) => (r && r._min != null) ? r._min : (toMins(r.time) ?? 1e9);
+  const sorted = [...cues].sort((a, b) => rosSortKey(a) - rosSortKey(b));
 
   // NOW cue — same logic as the focus home's nextCue: the first OPEN cue at/after
   // the current minute, else the first open cue. Live only on the event day.
@@ -33323,6 +33327,15 @@ function HostRunOfShowTimeline({ event, profile }) {
   }, [isDayOf]);
   const timeStr = (isDayOf && clockNow) ? clockNow.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
   const clockDateStr = clockNow ? clockNow.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+
+  // On the day, float the "Happening now" cue into the viewport (after the spine mounts + animates),
+  // so the host lands on what's live, not the top of the run-of-show.
+  const nowCardRef = useRef(null);
+  useEffect(() => {
+    if (!isDayOf || !nowCueId) return undefined;
+    const t = setTimeout(() => { try { if (nowCardRef.current) nowCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {} }, 650);
+    return () => clearTimeout(t);
+  }, [isDayOf, nowCueId]);
 
   // Is the NOW cue actually happening (its start has passed) vs still on deck?
   const nowCueActive = !!(nowCue && toMins(nowCue.time) !== null && toMins(nowCue.time) <= nowMins);
@@ -33488,7 +33501,7 @@ function HostRunOfShowTimeline({ event, profile }) {
           ].filter(Boolean);
           const detail = detailBits.join(' · ');
           return (
-            <div key={r.id || i} style={{ position: 'relative', paddingBottom: i === sorted.length - 1 ? 0 : 30 }}>
+            <div key={r.id || i} style={{ position: 'relative', paddingBottom: i === sorted.length - 1 ? 0 : 30, opacity: (!isDayOf || isNow) ? 1 : (done ? 0.3 : 0.44), transition: 'opacity 320ms ease' }}>
               {/* Dot — done: faint filled · NOW: bigger green node (M5·C) · upcoming: hollow */}
               <div aria-hidden style={{
                 position: 'absolute', left: isNow ? -30 : -28, top: isNow ? 6 : 4, width: isNow ? 13 : 9, height: isNow ? 13 : 9, borderRadius: 999,
@@ -33502,7 +33515,7 @@ function HostRunOfShowTimeline({ event, profile }) {
               }} />
               {isNow ? (
                 /* M5·C — the live task in a green-bordered card with its eyebrow + time. */
-                <div style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
+                <div ref={nowCardRef} style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
                     <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />HAPPENING NOW{r.time ? ` · ${fmtTime12(r.time)}` : ''}
                   </div>
