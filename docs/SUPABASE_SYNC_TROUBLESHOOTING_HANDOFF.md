@@ -87,8 +87,9 @@ _Fixes #1–#4 IMPLEMENTED 2026-07-01 (code, uncommitted). #1 needs its migratio
    - **Race fixed by 011:** 010's `ensure_studio` could provision a solo studio for an INVITED planner before the concurrent `claimPendingInvitations()` landed (App.js effects ~43518 + ~43533) → wrong studio + stray one. **`011_ensure_studio_claim_first.sql`** redefines `ensure_studio` to claim invites FIRST, then provision only if still empty — deterministic regardless of client ordering. **Apply 011 in the SQL editor (create-or-replace, safe to re-run).**
 
 ### ⚠️ Remaining steps to activate #1–#4
-- [ ] **Apply `supabase/migrations/010_ensure_studio.sql`** in the Supabase SQL editor (project `ewoggzxarpcwesqxsdoz`).
-- [ ] **Commit + deploy the frontend** (env-strip build → gh-pages). Safe to deploy before the migration (graceful degrade), but the Re-link self-heal only works once the RPC exists.
+- [x] **`010_ensure_studio.sql` + `011_ensure_studio_claim_first.sql` APPLIED** in the Supabase SQL editor (2026-07-02, user-confirmed).
+- [ ] **Commit + deploy the frontend** self-heal (`studio.js` `ensure_studio`/`revalidateStudio`, `events.js`/`clients.js` `firstError`, MigrationModal Re-link) — env-strip build → gh-pages. The RPC now exists, so the Re-link path is live once the frontend ships.
+- [ ] **Live test (user-side — needs auth):** sign in as f8stopped → confirm 1 membership → **Retry** expects "55 uploaded". The assistant can't auth as a user; run this after the frontend deploy.
 
 ## 7. Key files & locations
 | Concern | File · symbol |
