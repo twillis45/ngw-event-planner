@@ -31286,52 +31286,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         );
       })()}
 
-      {guestsIsHost ? (
-        /* UX-SAAS — speak the numbers, don't tile them. One warm sentence the host
-           reads at a glance, not a 7-tile KPI dashboard. Tap to filter the list below. */
-        (() => {
-          const tail = [];
-          if (awaiting > 0) tail.push({ t: `${awaiting} yet to reply`, f: 'Awaiting' });
-          if (no > 0)       tail.push({ t: `${no} can’t make it`,       f: 'No' });
-          return (
-            <div style={{ marginBottom: 22, maxWidth: 760 }}>
-              <button type="button" onClick={() => setGFilter('Yes')} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>
-                  {yes > 0
-                    ? <>{yes} {yes === 1 ? 'person’s' : 'people are'} coming so far</>
-                    : 'No yeses yet — they’ll appear here as people reply'}
-                </div>
-              </button>
-              {tail.length > 0 && (
-                <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>
-                  {tail.map((x, i) => (
-                    <span key={x.f}>
-                      {i > 0 && ' · '}
-                      <button type="button" onClick={() => setGFilter(x.f)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontFamily: 'inherit', fontSize: T.body, textDecoration: 'underline', textDecorationColor: `${C.muted}66`, textUnderlineOffset: 3 }}>{x.t}</button>
-                    </span>
-                  ))}
-                  {thankYouPending > 0 && <span> · {thankYouPending} thank-you{thankYouPending === 1 ? '' : 's'} to send</span>}
-                </div>
-              )}
-            </div>
-          );
-        })()
-      ) : (
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        {/* HERO — Confirmed (the screen's answer: who's coming). Everything else
-            is evidence (steel). Declined is settled fact, not an alarm → no red.
-            The one accent is amber on the open follow-ups (Awaiting, Thank-Yous). */}
-        {/* #10 — KPIs ordered by importance (the answer first), each click-through
-            filters the list below. */}
-        <StatCard label="Confirmed"      value={yes}   color={C.success} onClick={() => setGFilter('Yes')} />
-        <StatCard tier="evidence" label="Awaiting"       value={awaiting} color={awaiting > 0 ? C.muted : undefined} onClick={() => setGFilter('Awaiting')} />
-        <StatCard tier="evidence" label="Total Invited"  value={guests.length} sub={Number(event?.guestEstimate) > 0 ? `of ${Number(event.guestEstimate)} expected` : undefined} onClick={() => setGFilter('all')} />
-        <StatCard tier="evidence" label="Declined"       value={no} onClick={() => setGFilter('No')} />
-        {Number(event?.guestEstimate) > 0 && <StatCard tier="evidence" label="Expected" value={Number(event.guestEstimate)} sub="from intake" />}
-        {kids > 0 && <StatCard tier="evidence" label="Kids Meals" value={kids} />}
-        {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
-      </div>
-      )}
+      {/* RSVP status feed relocated (board ruling #2) → folded into the "Your guests" roster header below,
+          where the status belongs with the list it summarizes. */}
 
       {/* INVITES & REPLIES home (board ruling) — the ACTIONS (share the invite, nudge no-replies, send
           dietary notes) grouped under ONE labeled home; the RSVP status feed folds into the roster header
@@ -31600,6 +31556,47 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {guestsIsHost && <GuestBriefDetails event={event} onPatchEvent={onPatchEvent} />}
 
       <div style={s.card}>
+        {/* RSVP STATUS (board ruling #2) — who's coming is the ANSWER, so it leads the roster it
+            summarizes (folded up from a floating card above the Invites home). */}
+        {guestsIsHost ? (
+          (() => {
+            const tail = [];
+            if (awaiting > 0) tail.push({ t: `${awaiting} yet to reply`, f: 'Awaiting' });
+            if (no > 0)       tail.push({ t: `${no} can’t make it`,       f: 'No' });
+            return (
+              <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+                <button type="button" onClick={() => setGFilter('Yes')} style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>
+                    {yes > 0
+                      ? <>{yes} {yes === 1 ? 'person’s' : 'people are'} coming so far</>
+                      : 'No yeses yet — they’ll appear here as people reply'}
+                  </div>
+                </button>
+                {tail.length > 0 && (
+                  <div style={{ fontSize: T.body, color: C.muted, marginTop: 6 }}>
+                    {tail.map((x, i) => (
+                      <span key={x.f}>
+                        {i > 0 && ' · '}
+                        <button type="button" onClick={() => setGFilter(x.f)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontFamily: 'inherit', fontSize: T.body, textDecoration: 'underline', textDecorationColor: `${C.muted}66`, textUnderlineOffset: 3 }}>{x.t}</button>
+                      </span>
+                    ))}
+                    {thankYouPending > 0 && <span> · {thankYouPending} thank-you{thankYouPending === 1 ? '' : 's'} to send</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        ) : (
+          <div style={{ display: 'flex', gap: 16, marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+            <StatCard label="Confirmed"      value={yes}   color={C.success} onClick={() => setGFilter('Yes')} />
+            <StatCard tier="evidence" label="Awaiting"       value={awaiting} color={awaiting > 0 ? C.muted : undefined} onClick={() => setGFilter('Awaiting')} />
+            <StatCard tier="evidence" label="Total Invited"  value={guests.length} sub={Number(event?.guestEstimate) > 0 ? `of ${Number(event.guestEstimate)} expected` : undefined} onClick={() => setGFilter('all')} />
+            <StatCard tier="evidence" label="Declined"       value={no} onClick={() => setGFilter('No')} />
+            {Number(event?.guestEstimate) > 0 && <StatCard tier="evidence" label="Expected" value={Number(event.guestEstimate)} sub="from intake" />}
+            {kids > 0 && <StatCard tier="evidence" label="Kids Meals" value={kids} />}
+            {thankYouPending > 0 && <StatCard tier="evidence" label="Thank-Yous Due" value={thankYouPending} color={C.muted} sub="gifts received, note unsent" />}
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={s.cardTitle}>{guestsIsHost ? 'Your guests' : `Guest List (${visibleGuests.length}${visibleGuests.length !== guests.length ? ` of ${guests.length}` : ''})`}</div>
           {bp === 'mobile' ? (
