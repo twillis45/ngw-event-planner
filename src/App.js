@@ -31222,48 +31222,45 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {/* The confirm-final-count control lives in the single attention panel that
           precedes the roster. Once the host LOCKED on a number, the roster shows this
           indicator + the option to go back to tracking RSVPs. */}
-      {event.guestMode === 'count' && Number(event.guestCount) > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${(C.success || C.accent)}55`, borderLeft: `3px solid ${C.success || C.accent}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
-          <span aria-hidden style={{ fontSize: T.body }}>📌</span>
-          <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.6 }}>
-            {/* Edit-in-place — change the locked number without leaving the lock. */}
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: FW.bold, verticalAlign: 'middle' }}>
-              Locked at
-              <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
-                <button type="button" aria-label="fewer guests" onClick={() => { setGuestCount(Math.max(1, Number(event.guestCount) - 1)); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
-                <span style={{ minWidth: 34, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{Number(event.guestCount)}</span>
-                <button type="button" aria-label="more guests" onClick={() => { setGuestCount(Number(event.guestCount) + 1); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
-              </span>
-              guests
-            </span> — your final count for food, budget &amp; seating. RSVPs below are just for tracking.
-          </div>
-          {/* Unlock the headcount — revert to RSVP tracking so the count is editable
-              again and the safe-band estimate returns. */}
-          <button type="button" onClick={() => { setGuestMode('list'); try { feedbackSelect(); } catch {} }}
-            style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
-        </div>
-      )}
-
-      {/* Crowd mix — kids / light eaters refine the PROTEIN count. Writes event.kidsCount; the
-          food engine trims the protein lines + budget to match, leaving sides/drinks at the
-          full count. Crab feast wears the playbook's "serious pickers vs kids" framing. Mobile-
-          first: the stepper wraps below the label on a narrow screen. Only after a count locks. */}
+      {/* Headcount home (parity P2) — the locked count + the kids/light-eaters refinement are both
+          count controls, so they live in ONE card (two divider rows) instead of two loose cards. */}
       {event.guestMode === 'count' && Number(event.guestCount) > 0 && (() => {
         const total = Number(event.guestCount) || 0;
         const kids = Math.max(0, Math.min(total, Math.round(Number(event.kidsCount) || 0)));
         const setK = (v) => setKidsCount(Math.max(0, Math.min(total, Math.round(Number(v) || 0))));
         const isCrab = /crab/i.test(event.type || '');
+        const green = C.success || C.accent;
         return (
-          <div id="headcount-mix" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', marginBottom: 18, maxWidth: 760 }}>
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <div style={{ fontSize: T.body, color: C.text, fontWeight: FW.semibold, lineHeight: 1.4 }}>Of your {total}, how many are kids / light eaters?</div>
-              <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{isCrab ? 'Serious crab pickers eat far more — this trims the crab count + budget for the kids.' : 'Trims the protein count + budget to match — sides and drinks stay the same.'}</div>
+          <div style={{ background: C.surface, border: `1px solid ${green}55`, borderLeft: `3px solid ${green}`, borderRadius: 12, padding: '0 16px', marginBottom: 18, maxWidth: 760 }}>
+            {/* Locked count row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 0' }}>
+              <span aria-hidden style={{ fontSize: T.body }}>📌</span>
+              <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: FW.bold, verticalAlign: 'middle' }}>
+                  Locked at
+                  <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
+                    <button type="button" aria-label="fewer guests" onClick={() => { setGuestCount(Math.max(1, Number(event.guestCount) - 1)); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                    <span style={{ minWidth: 34, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{Number(event.guestCount)}</span>
+                    <button type="button" aria-label="more guests" onClick={() => { setGuestCount(Number(event.guestCount) + 1); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
+                  </span>
+                  guests
+                </span> — your final count for food, budget &amp; seating. RSVPs below are just for tracking.
+              </div>
+              <button type="button" onClick={() => { setGuestMode('list'); try { feedbackSelect(); } catch {} }}
+                style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
             </div>
-            <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
-              <button type="button" aria-label="fewer kids / light eaters" onClick={() => { setK(kids - 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
-              <span style={{ minWidth: 36, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{kids}</span>
-              <button type="button" aria-label="more kids / light eaters" onClick={() => { setK(kids + 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
-            </span>
+            {/* Kids / light eaters row — refines the protein count; divider ties it to the count above */}
+            <div id="headcount-mix" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 0', borderTop: `1px solid ${C.border}` }}>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ fontSize: T.body, color: C.text, fontWeight: FW.semibold, lineHeight: 1.4 }}>Of your {total}, how many are kids / light eaters?</div>
+                <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{isCrab ? 'Serious crab pickers eat far more — this trims the crab count + budget for the kids.' : 'Trims the protein count + budget to match — sides and drinks stay the same.'}</div>
+              </div>
+              <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden', flexShrink: 0 }}>
+                <button type="button" aria-label="fewer kids / light eaters" onClick={() => { setK(kids - 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                <span style={{ minWidth: 36, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{kids}</span>
+                <button type="button" aria-label="more kids / light eaters" onClick={() => { setK(kids + 1); try { feedbackSelect(); } catch {} }} style={{ width: 34, height: 34, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>+</button>
+              </span>
+            </div>
           </div>
         );
       })()}
