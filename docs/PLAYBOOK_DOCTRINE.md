@@ -47,8 +47,16 @@ A choice that changes what's on the table MUST re-cost it. Declare the effect **
   affects: ['p_crabs'] }                                                // purchase ids this re-prices
 ```
 Rules: `costFactors` keys ⊆ `options`; factors are positive numbers; **omit the default option** so it
-stays 1.0 (baselines + tests don't move); `affects` lists real `purchases[].id`s. This is the ONE
-mechanism — beverage/sourcing tiers are migrating onto it (do not add new one-off factor functions).
+stays 1.0 (baselines + tests don't move); `affects` lists real `purchases[].id`s.
+
+**Three cost paths, by design (single source of truth ≠ one function).** `costFactors` is the path for
+menu / size / quality / sourcing-scope choices. Two specialized paths stay SEPARATE because they are
+*richer* than a flat factor — collapsing them would be a downgrade:
+- **Drinks tier** — `bevFactorFor`: a beverage-wide factor derived from the drinks choice.
+- **Protein sourcing tier** — `srcTierRange`: real per-channel researched $/lb (`purchases[].sourcingPrices`
+  or the canonical protein-price table), not a multiplier.
+Do NOT migrate those onto flat `costFactors`, and do NOT add NEW one-off factor functions: a new cost lever
+is either a `costFactor` (data) or, if it needs real per-tier prices, follows the sourcing pattern.
 
 ### Escape valves & caveats (learned from verification)
 - **`noCostEffect: true`** — a food/beverage decision that legitimately does NOT change cost (a payment
