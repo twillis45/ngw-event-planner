@@ -9118,7 +9118,7 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 99, background: C.success || C.accent, flexShrink: 0 }} />
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 99, background: allDone ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />
             <span style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text }}>Before the big day</span>
           </div>
           <div style={{ fontSize: T.caption, color: allDone ? C.success : C.muted, marginTop: 3, marginLeft: 16 }}>{allDone ? 'All confirmed ✓' : `${done} of ${rc.items.length} confirmed`}</div>
@@ -33521,7 +33521,6 @@ function HostRunOfShowTimeline({ event, profile }) {
                 {/* Initial avatar — calm, no photos, no status hue */}
                 <div aria-hidden style={{ width: 38, height: 38, borderRadius: 999, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: T.caption, fontWeight: FW.bold, color: steelLabel, position: 'relative' }}>
                   {initialOf(p.name)}
-                  <span aria-hidden style={{ position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: 999, background: C.success || steelLabel, border: `2px solid ${C.bg}` }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: textPrimary, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
