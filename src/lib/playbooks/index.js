@@ -1438,7 +1438,12 @@ export function playbookDecisionBoard(event, asOf) {
     // choices" card focuses it). A non-menu decision (venue, theme, music, seating…) has
     // no anchor, so it gets NO route — the board renders it as a calm "still open" prompt
     // instead of a tappable row whose arrow would lead nowhere.
-    const route = isMenuDecision(d) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id } : null;
+    // A menu/sourcing pick settles inline (foodFocus). A dietary/allergy decision is settled in
+    // Guests (per-guest needs). Anything else has no in-app anchor → no route (and is dropped from
+    // `open` below so it never shows as a dead, non-actionable prompt).
+    const route = isMenuDecision(d) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
+      : isDietaryDecision(d) ? { eventId: event.id, tab: 'Guests' }
+      : null;
 
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
@@ -1459,9 +1464,12 @@ export function playbookDecisionBoard(event, asOf) {
       because = nouns.length ? `Waiting on ${joinNouns(nouns)}.` : 'Waiting on an earlier choice.';
     } else {
       status = 'ready';
+      // Don't print an absurd far-out count ("about 338 days out" on a year-away event). A day-count
+      // only reads as sensible inside a real planning window; beyond it, say there's plenty of time.
       because = daysOut === null ? 'Ready when you are.'
         : daysOut <= 0 ? 'Good to lock today.'
-          : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
+          : daysOut > 45 ? 'Ready when you are — plenty of time.'
+            : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
     open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, route });
   }
