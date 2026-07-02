@@ -19,6 +19,7 @@ import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
 import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
 import { syncIntake, loadKCRs } from '../lib/knowledge/kcrStore';
+import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1722,6 +1723,7 @@ function KcrStudioPanel() {
 
   const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
   const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
+  const metrics = kcrBacklogMetrics(kcrs, asOf); // KCR-5 observability (aging honest-empty when no timestamps)
   const shown = kcrs.filter((k) => statusFilter === 'all' || k.status === statusFilter)
     .sort((a, b) => (a.priority === 'high' ? -1 : a.priority === 'med' ? 0 : 1) - (b.priority === 'high' ? -1 : b.priority === 'med' ? 0 : 1) || a.assetId.localeCompare(b.assetId));
 
@@ -1747,6 +1749,34 @@ function KcrStudioPanel() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
             <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
+          ))}
+        </div>
+      </div>
+
+      {/* Backlog observability (KCR-5) — aging metrics are honest-empty until KCRs carry
+          stage timestamps (agedKnown === 0 ⇒ "no aging data yet", never fabricated). */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+        <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Aging & SLA</div>
+          {metrics.agedKnown === 0 ? (
+            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No aging data yet — awaiting stage timestamps.</div>
+          ) : (
+            <>
+              <div style={{ fontSize: type.size.caption, color: metrics.staleCount ? D.warn : D.muted, marginBottom: 6 }}>{metrics.staleCount} past SLA · oldest {metrics.oldest[0] ? `${metrics.oldest[0].days}d (${metrics.oldest[0].assetId})` : '—'}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {Object.entries(metrics.avgTimeInStage).filter(([, v]) => v != null).map(([s, v]) => (
+                  <span key={s} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>{s} ~{v}d</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Highest impact</div>
+          {metrics.highestImpact.length === 0 ? (
+            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No impact data.</div>
+          ) : metrics.highestImpact.slice(0, 5).map((h) => (
+            <div key={h.id} style={{ fontSize: type.size.caption, color: D.muted, padding: '1px 0' }}>{h.assetId} <span style={{ color: D.faint, fontFamily: D.mono }}>· {h.engines} engines · score {h.score}</span></div>
           ))}
         </div>
       </div>

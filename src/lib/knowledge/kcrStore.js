@@ -66,23 +66,40 @@ export async function loadKCRs() {
   return loadLocalKCRs();
 }
 
-// Authoritative write of a single KCR (advanced — evidence/review/publish). Incoming
-// wins: replace by id in the cache AND push to the server. Cache is written first so
-// the local view is correct even if the API is down (dev/offline fallback).
+// Authoritative write of a single advanced KCR. Optimistic concurrency (KCR-5): the KCR
+// carries the `_serverUpdatedAt` it was loaded with; the server rejects the write if the
+// stored row is newer. On CONFLICT the local cache is refreshed from server truth so a
+// stale session's write is discarded, not kept. Returns { list, conflict }.
 export async function upsertKCR(kcr) {
   const list = loadLocalKCRs().filter((k) => k.id !== kcr.id);
   list.push(kcr);
   saveLocalKCRs(list);
-  if (isKcrApiConfigured()) await upsertKCRsRemote([kcr]);
-  return list;
+  if (isKcrApiConfigured()) {
+    const res = await upsertKCRsRemote([kcr]);
+    if (res && Array.isArray(res.conflicts) && res.conflicts.some((c) => c.id === kcr.id)) {
+      const fresh = await fetchKCRs();          // stale write rejected — pull the newer truth
+      if (Array.isArray(fresh)) saveLocalKCRs(fresh);
+      return { list: loadLocalKCRs(), conflict: true };
+    }
+  }
+  return { list: loadLocalKCRs(), conflict: false };
 }
 
 // Reconcile a freshly-generated intake set into the backlog (progress-preserving), then
-// persist. Loads current (server-first) → reconcile (pure) → cache + push. Returns the summary.
+// persist. Loads current (server-first, carrying each row's `_serverUpdatedAt`) →
+// reconcile (pure) → cache + push. Any per-row conflict (a row advanced by another admin
+// between our load and write) is skipped server-side; we then re-pull to stay consistent.
 export async function syncIntake(generatedList) {
   const current = await loadKCRs();
   const res = reconcileKCRs(current, generatedList);
   saveLocalKCRs(res.kcrs);
-  if (isKcrApiConfigured() && res.kcrs.length) await upsertKCRsRemote(res.kcrs);
+  if (isKcrApiConfigured() && res.kcrs.length) {
+    const r = await upsertKCRsRemote(res.kcrs);
+    if (r && Array.isArray(r.conflicts) && r.conflicts.length) {
+      const fresh = await fetchKCRs();
+      if (Array.isArray(fresh)) saveLocalKCRs(fresh);
+      return { ...res, conflicts: r.conflicts };
+    }
+  }
   return res;
 }

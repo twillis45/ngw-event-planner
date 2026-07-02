@@ -4,15 +4,29 @@ jest.mock('../api/kcr');
 import { isKcrApiConfigured, fetchKCRs, upsertKCRsRemote } from '../api/kcr';
 import { loadKCRs, upsertKCR, syncIntake, getKCR, clearKCRs, loadLocalKCRs, saveLocalKCRs } from './kcrStore';
 
-let server;
+let server; let clk;
 beforeEach(() => {
   clearKCRs();
   server = [];
+  clk = 0;
   isKcrApiConfigured.mockReturnValue(true);
-  fetchKCRs.mockImplementation(async () => server.slice());
+  // fetch returns each row WITH its version stamp (_serverUpdatedAt), like the real GET.
+  fetchKCRs.mockImplementation(async () => server.map((s) => ({ ...s })));
+  // upsert mirrors the server: optimistic concurrency — reject a write whose base
+  // (_serverUpdatedAt) is older than the stored row's version. Otherwise write + bump.
   upsertKCRsRemote.mockImplementation(async (kcrs) => {
-    for (const k of kcrs) { server = server.filter((s) => s.id !== k.id); server.push(k); }
-    return true;
+    const conflicts = []; let upserted = 0;
+    for (const k of kcrs) {
+      const existing = server.find((s) => s.id === k.id);
+      const base = k._serverUpdatedAt;
+      if (existing && base != null && existing._serverUpdatedAt > base) {
+        conflicts.push({ id: k.id, serverUpdatedAt: existing._serverUpdatedAt });
+        continue;
+      }
+      const clean = { ...k, _serverUpdatedAt: (clk += 1) };
+      server = server.filter((s) => s.id !== k.id); server.push(clean); upserted += 1;
+    }
+    return { upserted, conflicts };
   });
 });
 
@@ -62,6 +76,27 @@ describe('second device / session simulation', () => {
     const shared = list.find((k) => k.id === 'shared');
     expect(shared.status).toBe('researching');  // device B sees A's advance
     expect(shared.evidence).toHaveLength(1);
+  });
+});
+
+describe('optimistic concurrency — stale admin session cannot overwrite newer progress (KCR-5)', () => {
+  test('a stale write is rejected as a conflict and the local cache refreshes to server truth', async () => {
+    // Another admin already advanced x to `review` (version 5) on the server.
+    server = [{ id: 'x', status: 'review', assetId: 'Crab Feast', _serverUpdatedAt: 5 }];
+    clk = 5;
+    // Our session is STALE — it advances x from an OLD base (version 2).
+    const staleAdvance = { id: 'x', status: 'researching', assetId: 'Crab Feast', _serverUpdatedAt: 2 };
+    const res = await upsertKCR(staleAdvance);
+    expect(res.conflict).toBe(true);                 // server rejected the stale write
+    expect(getKCR('x').status).toBe('review');        // cache refreshed to server truth
+    expect(server.find((k) => k.id === 'x').status).toBe('review'); // server never clobbered
+  });
+  test('an up-to-date write (base matches) succeeds', async () => {
+    server = [{ id: 'y', status: 'draft', assetId: 'Wedding', _serverUpdatedAt: 3 }];
+    clk = 3;
+    const res = await upsertKCR({ id: 'y', status: 'researching', assetId: 'Wedding', _serverUpdatedAt: 3 });
+    expect(res.conflict).toBe(false);
+    expect(server.find((k) => k.id === 'y').status).toBe('researching');
   });
 });
 

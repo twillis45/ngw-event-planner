@@ -38,18 +38,20 @@ export async function fetchKCRs() {
   }
 }
 
-// Authoritative batch upsert (keyed by id, incoming wins). Returns true on success,
-// false on any failure (the store keeps the local cache either way). NEVER throws.
+// Batch upsert (keyed by id). Returns the server response `{upserted, conflicts:[{id,
+// serverUpdatedAt}]}` on success (KCR-5 optimistic concurrency — a stale write lands in
+// `conflicts`, not silently applied), or null on any failure. NEVER throws.
 export async function upsertKCRsRemote(kcrs) {
-  if (!BASE || !Array.isArray(kcrs) || !kcrs.length) return false;
+  if (!BASE || !Array.isArray(kcrs) || !kcrs.length) return null;
   try {
     const res = await fetch(`${BASE}/api/admin/kcrs`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ kcrs }),
     });
-    return res.ok;
+    if (!res.ok) return null;
+    return await res.json();          // { upserted, conflicts }
   } catch {
-    return false;
+    return null;
   }
 }
