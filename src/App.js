@@ -26849,7 +26849,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
       {/* "Your budget" home (board verdict) — the spine PlanNowHero is the ONE hero; this is a collapsible
           PEER of Food/Supplies/Other. The ESTIMATE rides in the collapsed header (right) so the answer is
           never hidden. Open until a budget is set, then it collapses with a green done-dot. */}
-      <CollapsibleCard id="bud-plan" isMobile={isMobile} defaultCollapsed forceOpen={!(budgetSet && Number(budgetDraft) > 0)} done={!!(budgetSet && Number(budgetDraft) > 0)}
+      <CollapsibleCard id="bud-plan" isMobile={isMobile} defaultCollapsed forceOpen={!(budgetSet && Number(budgetDraft) > 0)} done={!!(budgetSet && Number(budgetDraft) > 0)} autoCollapseWhenDone={!!(budgetSet && Number(budgetDraft) > 0)}
         title="Your budget"
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(totalLow, totalHigh)}</div>}
         style={{ marginBottom: 16 }}>
@@ -31296,8 +31296,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {/* INVITES & REPLIES home (board ruling) — the ACTIONS (share the invite, nudge no-replies, send
           dietary notes) grouped under ONE labeled home; the RSVP status feed folds into the roster header
           below (status = the answer, lives with the list; actions = the tools, grouped here). */}
-      <div style={{ ...s.card, padding: bp === 'mobile' ? '2px 14px 6px' : '2px 18px 8px', marginBottom: 18, maxWidth: 760 }}>
-      <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, padding: '12px 2px 2px' }}>Invites &amp; replies</div>
+      <CollapsibleCard id={`guests-invites-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed title="Invites &amp; replies" style={{ marginBottom: 18 }}>
       {/* "Do it for me" — the RSVP chase. The single highest-leverage nudge: replies grow
           the headcount that sizes everything. The app WROTE the reminder; the host sends
           it in one tap. Host-only, shown only while people still owe a reply. */}
@@ -31444,7 +31443,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           </div>
         );
       })()}
-      </div>
+      </CollapsibleCard>
       {/* end INVITES & REPLIES home */}
 
       {needsFlag.length > 0 && (
