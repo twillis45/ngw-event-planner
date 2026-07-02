@@ -9356,13 +9356,20 @@ function PlanBudgetRollup({ event = {}, isMobile = false, onNav = () => {} }) {
   if (!(range.hi > 0)) return null;
   const total = Number(event.totalBudget) || 0;
   const est = range.lo === range.hi ? money(range.hi) : `${money(range.lo)}–${money(range.hi)}`;
+  // Verdict vs the set budget — answer the host's real question ("can I afford this?") inline, not via a tap.
+  const verdict = total > 0
+    ? (range.hi <= total * 0.85 ? { t: 'comfortably under', c: C.success || C.accent }
+      : range.hi <= total ? { t: 'within', c: C.success || C.accent }
+      : range.lo > total ? { t: 'over', c: C.warn || C.danger }
+      : { t: 'right around', c: C.muted })
+    : null;
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
       <button type="button" onClick={() => onNav('Budget')}
         style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '18px 2px 4px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>Everything so far{total > 0 ? ` · of your ${money(total)} budget` : ''}</span>
-          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>~{est} <span style={{ fontSize: T.caption, fontWeight: FW.regular, color: C.muted }}>estimate — food + supplies</span></span>
+          <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>Everything so far · food + supplies</span>
+          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>~{est} {verdict ? <span style={{ fontSize: T.caption, fontWeight: FW.semibold, color: verdict.c }}>· {verdict.t} your {money(total)} budget</span> : <span style={{ fontSize: T.caption, fontWeight: FW.regular, color: C.muted }}>estimate</span>}</span>
         </span>
         <span style={{ flexShrink: 0, fontSize: T.secondary, color: steel, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>{total > 0 ? 'See over/under →' : 'Budget →'}</span>
       </button>
@@ -9587,7 +9594,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                         style={qtyInp} />
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, textDecoration: (checked[it.key] || skipped) ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                      <span role="button" tabIndex={skipped ? -1 : 0} onClick={skipped ? undefined : onCheck} onKeyDown={(e) => { if (!skipped && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCheck(); } }} style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, cursor: skipped ? 'default' : 'pointer', textDecoration: (checked[it.key] || skipped) ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
                       {it.note && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
                       {/* Swaps — engine-derived honest options (disposables / borrow / rent↔buy),
                           the same inline affordance the food rows use for `alternatives`. */}
