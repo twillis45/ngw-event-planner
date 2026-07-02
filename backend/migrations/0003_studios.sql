@@ -102,7 +102,11 @@ end $$;
 alter table event_owners add column if not exists studio_id uuid;
 create index if not exists idx_event_owners_studio on event_owners (studio_id);
 -- Backfill: map each owned event's owner to that owner's studio.
+-- event_owners.owner_id is TEXT (uuid-as-text); studio_members.user_id is UUID —
+-- so the join must cast, or Postgres errors "operator does not exist: uuid = text"
+-- (that failure previously rolled back the ALTER above in the same transaction,
+-- which is why studio_id silently never landed in prod).
 update event_owners eo
    set studio_id = m.studio_id
   from studio_members m
- where eo.studio_id is null and m.user_id = eo.owner_id and m.role = 'owner';
+ where eo.studio_id is null and m.user_id::text = eo.owner_id and m.role = 'owner';
