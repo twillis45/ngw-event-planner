@@ -292,6 +292,37 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
 
+# ── Planner read authz — canonical studio ownership via public.events ──────────
+async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> None:
+    """Authorize a planner to read an event's RSVPs by the CANONICAL studio scope on
+    public.events (events.studio_id) — the same tenancy the whole frontend uses.
+
+    Deliberately NOT the comms event_owners table: event_owners rows are created
+    lazily, only when an event is claimed through a messages action
+    (communication.py). Gating the RSVP read-back on that 404'd every event the host
+    never opened in comms — so a host who just shared an invite could never see their
+    cloud RSVPs. events.studio_id is the real owner and always present (NOT NULL), so
+    any event the caller's studio owns is readable — no lazy claim required.
+
+    Still safe: require_planner gates upstream; a planner can only read RSVPs for
+    events their OWN studio owns. The dev_token path (local dev only) skips the check.
+    """
+    if not principal or principal.get("via") == "dev_token":
+        return
+    uid = principal.get("id")
+    if not uid:
+        raise HTTPException(status_code=403, detail="Planner identity required")
+    row = await conn.fetchrow("select studio_id from public.events where id=$1", event_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    member = await conn.fetchval(
+        "select 1 from studio_members where studio_id=$1 and user_id=$2",
+        row["studio_id"], uid,
+    )
+    if not member:
+        raise HTTPException(status_code=403, detail="You don't have access to this event.")
+
+
 # ── 3. GET /api/events/{event_id}/rsvps — planner-only host read-back ──────────
 @router.get("/api/events/{event_id}/rsvps")
 async def list_rsvps(
@@ -300,19 +331,14 @@ async def list_rsvps(
     x_planner_token: Optional[str] = Header(default=None),
 ):
     """Return all guest submissions for an event. Authenticated planner only, and
-    only for an event the caller's studio owns (reuses the communication ledger's
-    studio-scoped access check)."""
+    only for an event the caller's studio owns (canonical events.studio_id scope)."""
     principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Reuse the studio-scoped event-access guard from the communication router,
-        # but the READ-ONLY, NON-CLAIMING variant. This path is reachable by anyone
-        # holding a public invite link (the resolver returns the real event_id), so
-        # the claiming variant would let a planner-account holder silently claim
-        # someone else's event and read all guest PII. The read variant raises
-        # 403/404 unless the caller's studio ALREADY owns the event.
-        from .communication import _assert_event_read_access
-        await _assert_event_read_access(conn, event_id, principal)
+        # Authorize by the canonical studio ownership on public.events — NOT the comms
+        # event_owners table (which is populated lazily and 404'd host read-backs for
+        # events never touched in comms). See _assert_event_studio_read above.
+        await _assert_event_studio_read(conn, event_id, principal)
         rows = await conn.fetch(
             """select id, event_id, rsvp_code, guest_name, rsvp, meal, needs,
                       plus_one, plus_one_meal, plus_one_needs, kids, note,
