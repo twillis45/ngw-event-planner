@@ -80,7 +80,11 @@ _Fixes #1–#4 IMPLEMENTED 2026-07-01 (code, uncommitted). #1 needs its migratio
 2. **[BUILT] Sync studio-mismatch UX** — the "Partial import" modal (`App.js` MigrationModal) now detects the RLS `USING`-clause signature and shows *"These belong to a different studio"* + a **Re-link & retry** button (calls `revalidateStudio()` → clears cache, re-resolves/ensures studio, retries).
 3. **[BUILT] Surface the real error in migration** — `events.js` + `clients.js` `migrateLocalToCloud` now return `firstError`; the modal shows it verbatim ("Details: …").
 4. **[BUILT] Re-validate the studio cache on write failure** — `revalidateStudio()` (`studio.js`, exported via `lib/api`) clears the cache + re-resolves; wired into the modal's Re-link path so an outage resolves to null (offline) instead of masking as "N failed."
-5. **[OPEN] Provisioning root-cause audit** — why studios get orphaned/re-provisioned. Possibly related to the known **`claim_pending_invitations 400 on session resume`** issue (see memory).
+5. **[AUDITED 2026-07-02] Provisioning root-cause audit** — findings:
+   - **Orphaning is not a product path.** There is NO user-facing delete-studio in the app; the only way to 0 memberships is a manual studio DELETE (cascade drops `studio_members`) — i.e. the f8stopped "Option B nuke" during troubleshooting, not normal use.
+   - **True root cause (fixed):** `handle_new_user` provisions once at signup and never re-heals, so any orphaning was *permanent* → stranded account. `ensure_studio` (010) closes this.
+   - **`claim_pending_invitations` 400: RESOLVED.** Migration 008 (the `studio_id` ambiguity fix) IS applied in prod (verified `pg_get_functiondef … like '%variable_conflict%'` = true). The stale "400 on every session resume" is no longer live.
+   - **Race fixed by 011:** 010's `ensure_studio` could provision a solo studio for an INVITED planner before the concurrent `claimPendingInvitations()` landed (App.js effects ~43518 + ~43533) → wrong studio + stray one. **`011_ensure_studio_claim_first.sql`** redefines `ensure_studio` to claim invites FIRST, then provision only if still empty — deterministic regardless of client ordering. **Apply 011 in the SQL editor (create-or-replace, safe to re-run).**
 
 ### ⚠️ Remaining steps to activate #1–#4
 - [ ] **Apply `supabase/migrations/010_ensure_studio.sql`** in the Supabase SQL editor (project `ewoggzxarpcwesqxsdoz`).
