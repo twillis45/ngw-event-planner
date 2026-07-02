@@ -9714,7 +9714,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // glanceable summary while the host is still planning.
   const _dte = event && event.date ? Math.ceil((new Date(event.date + 'T00:00:00') - getToday()) / 86400000) : null;
   const [showFullSpread, setShowFullSpread] = useState(true); // The spread is ONE level: expanding the card shows the priced list directly (no "show all" gate)
-  const [collapsedGroups, setCollapsedGroups] = useState({}); // per-section collapse in The spread (FOOD/DRINKS/SUPPLIES)
+  const [openGroup, setOpenGroup] = useState(null); // The spread: accordion — categories START collapsed; opening one auto-collapses the rest
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
@@ -10279,9 +10279,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const gl = gi.reduce((s, i) => s + i.low, 0), gh = gi.reduce((s, i) => s + i.high, 0);
               const gAll = plan.list.filter((i) => i.group === g);
               const gGot = gAll.filter((i) => (event.foodGot || {})[i.id] && !i.skipped).length;
-              const gc = !!collapsedGroups[g];
+              const gc = openGroup !== g;
               return (
-                <button type="button" onClick={() => setCollapsedGroups((m) => ({ ...m, [g]: !m[g] }))}
+                <button type="button" onClick={() => setOpenGroup((cur) => (cur === g ? null : g))}
                   style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                     <span aria-hidden style={{ fontSize: T.caption, color: C.muted, display: 'inline-block', transform: gc ? 'rotate(-90deg)' : 'none', transition: 'transform 140ms ease' }}>▾</span>
@@ -10292,7 +10292,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                 </button>
               );
             })()}
-            {!collapsedGroups[g] && plan.list.filter((i) => i.group === g).map((i) => {
+            {openGroup === g && plan.list.filter((i) => i.group === g).map((i) => {
               const got = (event.foodGot || {})[i.id] && !i.skipped;
               const skipped = i.skipped;
               // 60I — the per-unit math behind the line total ("$4–$8/lb"), regional-adjusted.
