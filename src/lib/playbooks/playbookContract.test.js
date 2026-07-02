@@ -57,7 +57,7 @@ describe('playbook contract — hard invariants', () => {
 // Calibrated 2026-07-02. Goal: every baseline reaches 0 (then the contract is fully enforced).
 const BASELINE = {
   costFactorGaps: 60, // cost-affecting (food/beverage) decisions missing costFactors — the big rollout
-  idPrefixGaps: 27,   // purchases whose id isn't p_-prefixed (reunion p- + others)
+  idPrefixGaps: 0,    // FIXED 2026-07-02 — reunion + sundayDinner renamed p- → p_
   categoryGaps: 0,    // clean — keep it: no vendor names in purchases.category
   qtyMixGaps: 0,      // clean — keep it: no purchase mixes qtyPerGuest + qtyFlat
   foodNoCost: 0,      // clean — keep it: every food/beverage item is costable

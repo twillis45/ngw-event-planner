@@ -176,7 +176,7 @@ const sundayDinner = {
 
   purchases: [
     {
-      id: 'p-chicken',
+      id: 'p_chicken',
       item: 'Whole chicken or cut-up fryer pieces (the main)',
       category: 'food',
       qtyPerGuest: 0.5,
@@ -190,7 +190,7 @@ const sundayDinner = {
       provenance: { tier: 'community', confidence: 'medium', verificationStatus: 'synthesized', note: 'Half-pound-per-person figure reflects common US soul-food portioning when multiple sides are served.' },
     },
     {
-      id: 'p-greens',
+      id: 'p_greens',
       item: 'Collard or mustard greens',
       category: 'food',
       qtyPerGuest: 0.5,
@@ -203,7 +203,7 @@ const sundayDinner = {
       alternatives: ['Mustard or turnip greens — milder flavor, same cook method, often cheaper', 'Frozen collard greens — if fresh unavailable, same slow-cook result'],
     },
     {
-      id: 'p-smoked-meat',
+      id: 'p_smoked-meat',
       item: 'Smoked turkey, ham hocks, or neck bones (to cook the greens)',
       category: 'food',
       qtyFlat: 1.5,
@@ -216,7 +216,7 @@ const sundayDinner = {
       alternatives: ['Smoked turkey wings — widely available, cheaper than ham hocks', 'Skip entirely for a vegan pot — add extra onion, garlic, and red pepper'],
     },
     {
-      id: 'p-mac',
+      id: 'p_mac',
       item: 'Elbow macaroni and block cheeses (sharp cheddar, plus a melting cheese)',
       category: 'food',
       qtyFlat: 1,
@@ -230,7 +230,7 @@ const sundayDinner = {
       alternatives: ['Store-bought baked mac pan (Walmart/Costco) — if time is short', 'Stovetop mac with good cheese — faster, not the baked version; last resort'],
     },
     {
-      id: 'p-yams',
+      id: 'p_yams',
       item: 'Sweet potatoes for candied yams',
       category: 'food',
       qtyPerGuest: 0.4,
@@ -243,7 +243,7 @@ const sundayDinner = {
       alternatives: ['Canned yams + butter + brown sugar — faster, similar result', 'Butternut squash — budget substitute, similar sweetness and color'],
     },
     {
-      id: 'p-peas-rice',
+      id: 'p_peas-rice',
       item: 'Black-eyed peas (or rice for a side)',
       category: 'food',
       qtyFlat: 1,
@@ -255,7 +255,7 @@ const sundayDinner = {
       note: 'Peas simmered with onion and a little smoked meat, or a pot of rice — one starch beyond the mac.',
     },
     {
-      id: 'p-cornbread',
+      id: 'p_cornbread',
       item: 'Cornmeal and buttermilk for cornbread (or biscuit mix)',
       category: 'food',
       qtyFlat: 1,
@@ -268,7 +268,7 @@ const sundayDinner = {
       alternatives: ['Jiffy cornbread mix — quick bake, same crowd appeal', 'Canned biscuits (Pillsbury) — fastest option if oven time is taken'],
     },
     {
-      id: 'p-dessert',
+      id: 'p_dessert',
       item: 'Peach cobbler, sweet potato pie & pound cake (or banana pudding)',
       category: 'food',
       qtyFlat: 1,
@@ -281,7 +281,7 @@ const sundayDinner = {
       alternatives: ['Grocery bakery sweet potato pie — if baking time is short', 'Store-bought banana pudding cups — if no oven capacity available'],
     },
     {
-      id: 'p-sweet-tea',
+      id: 'p_sweet-tea',
       item: 'Sweet tea and lemonade (and water on the table)',
       category: 'beverage',
       qtyPerGuest: 2,
@@ -293,7 +293,7 @@ const sundayDinner = {
       note: 'Sweet tea, lemonade, and water carry a family meal. It often follows church and includes kids — keep alcohol minimal.',
     },
     {
-      id: 'p-wine',
+      id: 'p_wine',
       item: 'Wine for the grown folks (optional)',
       category: 'beverage',
       qtyFlat: 2,
@@ -305,7 +305,7 @@ const sundayDinner = {
       note: 'A bottle or two for the adults if your family takes a glass — never the centerpiece.',
     },
     {
-      id: 'p-foil-oil',
+      id: 'p_foil-oil',
       item: 'Frying oil, foil, parchment, and paper towels',
       category: 'logistics',
       qtyFlat: 1,
@@ -317,7 +317,7 @@ const sundayDinner = {
       note: 'A fresh jug of oil if you are frying, plus the foil and towels every soul-food kitchen runs through.',
     },
     {
-      id: 'p-togo',
+      id: 'p_togo',
       item: 'To-go containers and foil plates (love language)',
       category: 'cleanup',
       qtyPerGuest: 1,
@@ -329,7 +329,7 @@ const sundayDinner = {
       note: 'Fixing a plate to send home is part of the meal, not an afterthought. Buy one per guest plus a few extra.',
     },
     {
-      id: 'p-napkins',
+      id: 'p_napkins',
       item: 'Napkins and serving spoons',
       category: 'decor',
       qtyFlat: 1,
