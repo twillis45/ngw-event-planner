@@ -31252,7 +31252,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         const setK = (v) => setKidsCount(Math.max(0, Math.min(total, Math.round(Number(v) || 0))));
         const isCrab = /crab/i.test(event.type || '');
         return (
-          <CollapsibleCard id={`headcount-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed done title="Headcount"
+          <CollapsibleCard id={`headcount-${event.id}`} isMobile={bp === 'mobile'} done title="Headcount"
             right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{total} guest{total === 1 ? '' : 's'}</div>}
             style={{ marginBottom: 18 }}>
             {/* Locked count row */}
