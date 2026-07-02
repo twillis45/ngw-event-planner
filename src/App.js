@@ -26929,7 +26929,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
           recedes until you reach for it. */}
       <div className="hp-recede-group" style={{ display: 'grid', gap: 16 }}>
       {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
-      <CollapsibleCard id="bud-food" isMobile={isMobile} title="Food & drink" style={{ marginBottom: 0 }}
+      <CollapsibleCard id="bud-food" isMobile={isMobile} done={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} title="Food & drink" style={{ marginBottom: 0 }}
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(foodLow, foodHigh)}</div>}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
           {foodPlan
@@ -26962,7 +26962,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
       {/* SUPPLIES — non-food essentials from the playbook (table cover, fuel,
           safety, serveware). A real cost line in the plan, tracking shopping checkoffs. */}
       {supHigh > 0 && foodPlan && (
-        <CollapsibleCard id="bud-supplies" isMobile={isMobile} title="Supplies" style={{ marginBottom: 0 }}
+        <CollapsibleCard id="bud-supplies" isMobile={isMobile} done={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} title="Supplies" style={{ marginBottom: 0 }}
           right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(supLow, supHigh)}</div>}>
           <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
             The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
