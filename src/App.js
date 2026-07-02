@@ -3152,6 +3152,7 @@ const eventGlyph = (event, C) => {
   return {
     icon: (ov && ov.icon) || ident.icon,
     hue: (ov && ov.hue) || ident.color,
+    color: (ov && ov.hue) || ident.color, // alias of hue → drop-in compat with evtIdentity callers
     sacred: (ov && ov.sacred != null) ? !!ov.sacred : ident.sacred,
     flag: ident.flag,
     mark: ident.mark,
@@ -22358,7 +22359,7 @@ function AssembleReveal({ ev, profile, onDone }) {
   const T = useType();
   // Board ruling (2026-06-23): this is where the event is BORN — it should meet the host
   // as ITSELF (its icon, its hue), not a generic accent. Somber events stay quiet.
-  const ident = evtIdentity(ev.type, C);
+  const ident = eventGlyph(ev, C);
   const festive = ident.mark !== 'quiet';
   const idColor = festive ? ident.color : C.muted;
   const foodPP = useFoodPriceFactor(ev, profile);
@@ -22536,7 +22537,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
   }
 
   const ev = focus;
-  const ident = evtIdentity(ev.type, C); // { color, icon, flag, mark } — the event's identity mark
+  const ident = eventGlyph(ev, C); // single-source identity (color/icon/hue/flag/mark/sacred; honors event.glyph override)
   const idColor = ident.color;           // single safe identity hue (used where one color is needed)
   const daysLeft = daysUntil(ev.date);
   // B2 — once the date has passed, the home becomes a recap, not a planning surface.
@@ -29135,7 +29136,7 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
   // Resolve identity with a tone-aware palette so flag/cream pick the right light/dark
   // variant for THIS invite (not the app theme).
   const identC = { surface: pal.dark ? '#0d0f12' : '#ffffff', accent: C.accent };
-  const inviteIdent = evtIdentity(event.type, identC);
+  const inviteIdent = eventGlyph(event, identC);
   const festive = inviteIdent.mark !== 'quiet';
   const heroHue = festive ? inviteIdent.color : pal.muted;
   const heroFlag = festive ? inviteIdent.flag : null;
@@ -41340,7 +41341,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   // Identity follows the host into the shell — its header & active tab wear the event's
   // hue (board re-audit: "hue avoids status FIGURES," not "hue stays home"; this header
   // and the nav carry NO status color, so the hue is safe here). Somber events stay neutral.
-  const ident = evtIdentity(event.type, C);
+  const ident = eventGlyph(event, C);
   const idColor = ident.mark === 'quiet' ? C.accent : ident.color;
   const bp = useContext(BpCtx);
   const isMobile = bp === 'mobile';
@@ -43184,6 +43185,22 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
     }
   };
 
+  // Did the failures come from a studio-ownership RLS block? An upsert becomes an
+  // UPDATE for rows that already exist in the cloud, and the events/clients UPDATE
+  // policy checks the EXISTING row's studio_id — so events belonging to a studio the
+  // account is no longer a member of fail with "row-level security policy (USING
+  // expression)". See docs/SUPABASE_SYNC_TROUBLESHOOTING_HANDOFF.md.
+  const firstError = result?.evR?.firstError || result?.clR?.firstError || '';
+  const isStudioMismatch = /row-level security|using expression|violates row-level/i.test(firstError);
+
+  // Re-link: clear the studio cache + re-resolve (ensure_studio() self-heals a missing
+  // membership), then retry the import under the correct/fresh studio.
+  const relinkAndRetry = async () => {
+    setPhase('migrating');
+    try { await revalidateStudio(); } catch { /* fall through — retry surfaces the real state */ }
+    await run();
+  };
+
   const overlay = { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 };
   const box = { ...metalEdge(C), borderRadius: 14, padding: '28px 24px', maxWidth: 420, width: '100%' };
 
@@ -43231,15 +43248,35 @@ function MigrationModal({ events: localEvents, clients: localClients, onDone, on
 
         {phase === 'error' && (
           <>
-            <div style={{ fontSize: T.title, fontWeight: FW.bold, marginBottom: 8, color: C.text }}>Partial import</div>
-            <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
-              {(result?.evR.migrated || 0) + (result?.clR.migrated || 0)} items uploaded,
-              {' '}{(result?.evR.failed || 0) + (result?.clR.failed || 0)} failed. Your local data is intact — try again later.
+            <div style={{ fontSize: T.title, fontWeight: FW.bold, marginBottom: 8, color: C.text }}>{isStudioMismatch ? 'These belong to a different studio' : 'Partial import'}</div>
+            <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: isStudioMismatch ? 14 : 20, lineHeight: 1.6 }}>
+              {isStudioMismatch ? (
+                <>
+                  {(result?.evR.migrated || 0) + (result?.clR.migrated || 0)} uploaded, {(result?.evR.failed || 0) + (result?.clR.failed || 0)} blocked. These items are already in the cloud under a studio this account isn’t on anymore, so they can’t be overwritten. <strong style={{ color: C.text }}>Re-link your studio</strong> and try again — your local data is safe.
+                </>
+              ) : (
+                <>
+                  {(result?.evR.migrated || 0) + (result?.clR.migrated || 0)} items uploaded,
+                  {' '}{(result?.evR.failed || 0) + (result?.clR.failed || 0)} failed. Your local data is intact — try again later.
+                </>
+              )}
             </div>
+            {/* The real reason, verbatim — so the cause (RLS / auth / network) is visible without DevTools. */}
+            {firstError && (
+              <div style={{ fontSize: T.caption, color: C.muted, opacity: 0.7, marginBottom: 18, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                Details: {firstError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={run} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Retry
-              </button>
+              {isStudioMismatch ? (
+                <button onClick={relinkAndRetry} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Re-link &amp; retry
+                </button>
+              ) : (
+                <button onClick={run} style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: C.accent, color: '#fff', fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Retry
+                </button>
+              )}
               <button onClick={onDone} style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, fontSize: T.secondary, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Dismiss
               </button>

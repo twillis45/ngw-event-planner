@@ -52,10 +52,22 @@ export async function currentStudioId() {
       .from('studio_members')
       .select('studio_id, role')
       .eq('user_id', uid);
-    if (error || !data?.length) return null;
-    const chosen = data.find((m) => m.role === 'owner') || data[0];
-    _cache = { uid, studioId: chosen.studio_id };
-    return chosen.studio_id;
+    if (error) return null;
+    let studioId = data?.length ? (data.find((m) => m.role === 'owner') || data[0]).studio_id : null;
+    // Self-heal (migration 010): a signed-in user with NO membership is stranded —
+    // the signup trigger fires once and never re-provisions, so a studio switch /
+    // orphan / partial-migration leaves them unable to sync. Provision (or re-find)
+    // via the SECURITY DEFINER ensure_studio() RPC instead of returning null forever.
+    // If the RPC is absent (pre-migration) or errors, fall back to today's behavior.
+    if (!studioId) {
+      try {
+        const { data: sid, error: rpcErr } = await supabase.rpc('ensure_studio');
+        if (rpcErr || !sid) return null;
+        studioId = sid;
+      } catch { return null; }
+    }
+    _cache = { uid, studioId };
+    return studioId;
   } catch {
     return null;
   }
@@ -63,6 +75,16 @@ export async function currentStudioId() {
 
 // Call on sign-out / user switch so a stale studio isn't reused.
 export function clearStudioCache() { _cache = { uid: null, studioId: null }; }
+
+// Force a fresh studio resolution, bypassing the cache. Use after a cloud write
+// fails: the cache can return a studio id with no network round-trip and thus mask
+// an outage (writes fail while currentStudioId() still "succeeds"). Re-validating
+// makes an outage resolve to null (→ report offline) and lets a re-provisioned or
+// switched studio be picked up. Returns the fresh studio id (or null).
+export async function revalidateStudio() {
+  clearStudioCache();
+  return currentStudioId();
+}
 
 // ── Studio identity + role of the current user ──────────────────────────────
 export async function currentStudio() {

@@ -154,7 +154,7 @@ export async function migrateLocalToCloud(localEvents) {
   if (!isSupabaseConfigured() || !supabase) return { migrated: 0, failed: 0 };
   const sid = await currentStudioId();
   if (!sid || !isCloudStudioId(sid)) return { migrated: 0, failed: 0 }; // Sprint 58E-B: non-uuid (dev) ⇒ skip
-  let migrated = 0, failed = 0;
+  let migrated = 0, failed = 0, firstError = null;
   for (const event of localEvents) {
     try {
       const { error } = await supabase
@@ -162,12 +162,15 @@ export async function migrateLocalToCloud(localEvents) {
         .upsert({ id: event.id, studio_id: sid, data: event }, { onConflict: 'id' });
       if (error) throw error;
       migrated++;
-    } catch {
+    } catch (e) {
       failed++;
+      // Capture the FIRST real Supabase error so the "Partial import" modal can show
+      // the reason (RLS studio-mismatch / auth / network) instead of a blind "N failed."
+      if (!firstError) firstError = e?.message || String(e);
     }
   }
   if (migrated > 0) localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
-  return { migrated, failed };
+  return { migrated, failed, firstError };
 }
 
 export function getLastSyncTime() { return localStorage.getItem(LAST_SYNC_KEY) || null; }

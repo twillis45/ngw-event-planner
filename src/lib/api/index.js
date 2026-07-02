@@ -33,6 +33,7 @@ export {
   currentStudio,
   currentStudioId,
   clearStudioCache,
+  revalidateStudio,
   listStudioMembers,
   removeStudioMember,
   updateStudioMemberRole,

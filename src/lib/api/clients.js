@@ -72,7 +72,7 @@ export async function migrateLocalToCloud(localClients) {
   if (!isSupabaseConfigured() || !supabase) return { migrated: 0, failed: 0 };
   const sid = await currentStudioId();
   if (!sid || !isCloudStudioId(sid)) return { migrated: 0, failed: 0 }; // 58E-B
-  let migrated = 0, failed = 0;
+  let migrated = 0, failed = 0, firstError = null;
   for (const client of localClients) {
     try {
       const { error } = await supabase
@@ -80,9 +80,12 @@ export async function migrateLocalToCloud(localClients) {
         .upsert({ id: client.id, studio_id: sid, data: client }, { onConflict: 'id' });
       if (error) throw error;
       migrated++;
-    } catch {
+    } catch (e) {
       failed++;
+      // Capture the FIRST real error (see events.migrateLocalToCloud) so the modal
+      // can surface the reason instead of a blind "N failed."
+      if (!firstError) firstError = e?.message || String(e);
     }
   }
-  return { migrated, failed };
+  return { migrated, failed, firstError };
 }
