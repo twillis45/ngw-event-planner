@@ -9266,7 +9266,7 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0, paddingRight: 4 }}>
           {eyebrow && <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: acc, textTransform: 'uppercase' }}>{eyebrow}</span>}
-          {title && <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: eyebrow ? 6 : 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden title={done === true ? 'Done' : done === false ? 'Still to do' : undefined} style={{ width: 7, height: 7, borderRadius: 99, background: done === true ? (C.success || C.accent) : done === false ? C.muted : (C.success || C.accent), flexShrink: 0 }} />{title}</span>}
+          {title && <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: eyebrow ? 6 : 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden title={done === true ? 'Done' : done === false ? 'Still to do' : undefined} style={{ width: 7, height: 7, borderRadius: 99, background: done === true ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />{title}</span>}
           {subtitle && !open && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{subtitle}</span>}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 1 }}>
@@ -9517,6 +9517,9 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
       {/* Board 2→1: "To arrange" + the share hand-off now live INSIDE this "Seating & supplies" card
           (its children, flat sections) — opening Seating reveals the detail + the reserve/borrow list
           as ONE supplies home, not two separate cards. */}
+      {/* Isolate the nested accordion (bugfix): opening "To arrange" (a CHILD) must not tell the OUTER
+          Plan accordion to collapse its parent "Seating & supplies" card. value={null} = inert here. */}
+      <AccordionCtx.Provider value={null}>
       {/* The supplies — grouped (SEATING / SERVICEWARE / RENTALS & EXTRAS), each with a
           right-aligned subtotal; per-item rows with a verb that varies by item. The long
           checklist folds into a CollapsibleCard (mirrors the Food plan's "The spread") so
@@ -9527,6 +9530,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         isMobile={isMobile}
         defaultCollapsed
         autoCollapseWhenDone={allDone}
+        done={allDone}
         accent={steel}
         style={subCard}
         title="To arrange — supplies & rentals"
@@ -9687,6 +9691,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
         </div>
         <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 8 }}>Live map search — never endorsements.</span>
       </div>
+      </AccordionCtx.Provider>
       </CollapsibleCard>
       {supplySheet && <DraftSheet {...supplySheet} onClose={() => setSupplySheet(null)} C={C} isMobile={isMobile} />}
     </div>
