@@ -23,6 +23,8 @@
 //   • Missing data never hides an item: the resolver projects whatever the engine surfaced;
 //     it does not re-run the visibility predicate (the `list` is already post-predicate).
 
+import { resolveField } from './knowledge/runtimeKnowledge';
+
 const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
 
 // Map a display group ('Food'/'Drinks'/'Supplies'/'Dessert') to a raw category, used only
@@ -52,11 +54,26 @@ function costKind(item) {
 // `ctx`   — reserved for later stages (price factor, category defaults). UNUSED today; accepting
 //           it now keeps the signature stable so adopting stages don't change every call site.
 export function resolveEffectiveItem(item, event, ctx) {
-  void ctx;
   const it = item || {};
   const where = Array.isArray(it.where) ? it.where : [];
   const got = !!(event && event.foodGot && typeof event.foodGot === 'object' && event.foodGot[it.id]);
   const kind = costKind(it);
+
+  // KEP-3 Bundle A — runtime knowledge consumption. OPT-IN via ctx.asset; DEFAULT = authored
+  // (rule 5: existing behavior is the default). When a governed KCR has PUBLISHED a new cost
+  // for this item's field, resolve it through the runtime resolver and expose full provenance
+  // (version/reason/rollback — rule 4). Host locks + swaps always win over published knowledge.
+  let low = num(it.locked != null ? it.locked : it.low);
+  let high = num(it.locked != null ? it.locked : it.high);
+  let costFrom = it.locked != null ? 'host' : (it.swappedFrom ? 'swap' : 'engine');
+  let knowledge = null;
+  if (ctx && ctx.asset && it.id && it.locked == null && !it.swappedFrom) {
+    const r = resolveField(ctx.asset, `${it.id}.unitCostRange`, ctx.knowledgeCtx || {});
+    if (r.source === 'override' && Array.isArray(r.value) && r.value.length === 2) {
+      low = num(r.value[0]); high = num(r.value[1]); costFrom = 'published';
+      knowledge = { version: r.version, reason: r.reason, confidence: r.confidence, validationState: r.validationState, rollbackAvailable: r.rollbackAvailable, authoredValue: r.authoredValue };
+    }
+  }
 
   return {
     id: it.id,
@@ -87,8 +104,8 @@ export function resolveEffectiveItem(item, event, ctx) {
       global: (event && event.sourcing) || null, // today's single global sourcing string
     },
     cost: {
-      low: num(it.locked != null ? it.locked : it.low),
-      high: num(it.locked != null ? it.locked : it.high),
+      low,                                             // authored, host-locked, or PUBLISHED (KEP-3)
+      high,
       kind,                                            // 'fixed' | 'free' | 'range' — never a fake quote
       perUnit: [num(it.perUnitLow), num(it.perUnitHigh)],
     },
@@ -102,9 +119,12 @@ export function resolveEffectiveItem(item, event, ctx) {
       got,                             // checked off as bought (event.foodGot)
     },
     provenance: {
-      // Where the cost came from — engine estimate, a host swap, or the host's own number.
-      costFrom: it.locked != null ? 'host' : (it.swappedFrom ? 'swap' : 'engine'),
+      // Where the cost came from — engine estimate, a host swap, the host's own number, or
+      // PUBLISHED governed knowledge (KEP-3). `knowledge` carries version/reason/rollback
+      // when a KCR published this field; null otherwise (explainable + reversible).
+      costFrom,
       kind,
+      knowledge,
     },
   };
 }
