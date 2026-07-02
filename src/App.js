@@ -9817,6 +9817,8 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   const [addOwner, setAddOwner] = useState('');
   const [addCost, setAddCost] = useState('');
   const [addGroup, setAddGroup] = useState(null); // Food/Drinks/Supplies override; null = auto-guess from the name
+  const bp = useContext(BpCtx);
+  const isWide = bp === 'desktop' || bp === 'tablet-land'; // wide screens → Plan uses a 2-col card grid (board Option 1)
   // No search list (board ruling): guess the shopping GROUP + aisle from the typed name so an added line
   // sorts into the right spread section instead of the tail. The 3-way toggle below overrides the group.
   const guessFoodCategory = (nm) => {
@@ -9901,12 +9903,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   })() : null;
 
   return (
-    <div style={{ marginBottom: 20, maxWidth: 760 }}>
+    <div style={isWide
+      ? { maxWidth: 1120, margin: '0 auto 20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, gridAutoFlow: 'row dense', alignItems: 'start' }
+      : { marginBottom: 20, maxWidth: 760 }}>
       {/* The heart, mid-planning — the one moment this whole plan serves, anchored
           on the planning surface (not only on The Day) so the food/budget choices
           stay pointed at the why. */}
       {isMeaningfulMustHave(event.must_have_moment) && (
-        <div style={{ ...card, borderLeft: `3px solid ${C.accent}`, marginBottom: 16 }}>
+        <div style={{ ...card, borderLeft: `3px solid ${C.accent}`, marginBottom: 16, gridColumn: isWide ? '1 / -1' : undefined }}>
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.accent }}>The one moment that must happen</div>
           <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{String(event.must_have_moment).trim()}</div>
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Everything in this plan serves it.</div>
@@ -9917,7 +9921,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           own number for this event and restores default sizing. Provenance + a revert, never a
           silent override. */}
       {attAdj.applied && (
-        <div style={{ ...card, borderLeft: `3px solid ${steel}`, marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ ...card, borderLeft: `3px solid ${steel}`, marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', gridColumn: isWide ? '1 / -1' : undefined }}>
           <div style={{ flex: 1, minWidth: 190 }}>
             <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: steel }}>From what Event Boss remembers</div>
             <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, marginTop: 4, lineHeight: 1.4 }}>{attAdj.because}</div>
@@ -9930,7 +9934,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* header + budget — collapsible (every planning card can fold to its header) */}
       {/* M6 consistency: plain title, no colored left-border/shadow/icon — one uniform card
           frame across the Plan tab. The per-guest hero + detail stay in the body. */}
-      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed
+      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed style={{ gridColumn: isWide ? '1 / -1' : undefined }}
         title="Food plan"
         subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)} · estimate` : ''}`}>
         {/* Hero stat — the number leads (Attention System): the $ range stands as the
@@ -10281,7 +10285,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       {/* the grounded shopping list — summary-first; collapsible */}
       {/* M6·A/B card: plain title + a one-line summary (carrying the price — functionality
           kept), the full priced spread in the body. No icon/price/pill in the collapsed header. */}
-      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} defaultCollapsed autoCollapseWhenDone={spreadComplete} forceOpen={forceSpreadOpen} title="The spread"
+      <CollapsibleCard id={`fp-spread-${event.id}`} isMobile={isMobile} defaultCollapsed autoCollapseWhenDone={spreadComplete} forceOpen={forceSpreadOpen} style={{ gridColumn: isWide ? '1 / -1' : undefined }} title="The spread"
         subtitle={fpHasCount ? `${plan.itemCount} items to buy` : `${plan.itemCount} items · add a count to price`}>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, marginTop: -2, marginBottom: 6 }}>{fpHasCount ? money(plan.foodLow, plan.foodHigh) : 'Add a count to price'}</div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 0 }}>
