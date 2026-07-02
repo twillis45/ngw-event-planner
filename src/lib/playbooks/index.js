@@ -1648,6 +1648,24 @@ export function playbookFoodPlan(event, opts = {}) {
   })();
   const bevFactorFor = (p) => (p.category === 'beverage' && !/\bice\b/i.test(p.item || '')) ? beverageFactor : 1;
 
+  // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
+  // DATA, how a chosen option re-prices specific purchase lines — `costFactors: { '<option>': <mult> }`
+  // + `affects: ['<purchaseId>', …]`. The engine reads that here and returns a per-line factor; nothing
+  // is hardcoded per-playbook. Omitted/default options ⇒ factor 1.0, so baselines + tests don't move.
+  // This replaces the beverage/sourcing one-offs conceptually and works for every playbook that opts in.
+  const _choices = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const _decisions = Array.isArray(playbook && playbook.decisions) ? playbook.decisions : [];
+  const choiceFactorFor = (p) => {
+    let f = 1;
+    for (const d of _decisions) {
+      if (!d || !d.costFactors || !Array.isArray(d.affects) || !d.affects.includes(p.id)) continue;
+      const picked = _choices[d.id] != null ? _choices[d.id] : d.default;
+      const mult = Number(d.costFactors[picked]);
+      if (Number.isFinite(mult) && mult > 0) f *= mult;
+    }
+    return f;
+  };
+
   // Protein SOURCING tier (1597-2) — reshapes the PROTEIN lines' cost (butcher baseline,
   // Costco cheaper, pre-marinated grocery a convenience premium). One factor, same single
   // source the UI's Sourcing card reads. Untagged/non-protein lines are untouched.
@@ -1755,6 +1773,10 @@ export function playbookFoodPlan(event, opts = {}) {
       // Sourcing tier factor — protein lines re-price with how the host is getting them.
       const _src = srcFactorFor(p);
       if (_src !== 1) { uLow *= _src; uHigh *= _src; }
+      // General data-driven choice→cost factor — any playbook decision with costFactors/affects re-prices
+      // its line here (single source of truth; no per-playbook hardcoding). Default option ⇒ 1.0.
+      const _choiceF = choiceFactorFor(p);
+      if (_choiceF !== 1) { uLow *= _choiceF; uHigh *= _choiceF; }
       // Global buyable-unit guardrail — if an author left this in a non-buyable
       // serving unit (e.g. "40 slices" of cake), convert to whole purchasable units
       // (cakes/pizzas/loaves/pies) and scale the per-unit cost so the TOTAL is
