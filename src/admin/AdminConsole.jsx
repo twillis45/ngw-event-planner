@@ -23,6 +23,8 @@ import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
 import { kcrCan } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs } from '../lib/knowledge/dimensions';
+import { buildFactory } from '../lib/knowledge/factory';
+import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1840,6 +1842,7 @@ function KcrStudioPanel() {
   const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
   const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
   const metrics = kcrBacklogMetrics(kcrs, asOf); // KCR-5 observability (aging honest-empty when no timestamps)
+  const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs }); // KF-1 manufacturing view (derived, dimensional)
   const shown = kcrs.filter((k) => statusFilter === 'all' || k.status === statusFilter)
     .sort((a, b) => (a.priority === 'high' ? -1 : a.priority === 'med' ? 0 : 1) - (b.priority === 'high' ? -1 : b.priority === 'med' ? 0 : 1) || a.assetId.localeCompare(b.assetId));
 
@@ -1894,6 +1897,28 @@ function KcrStudioPanel() {
           ) : metrics.highestImpact.slice(0, 5).map((h) => (
             <div key={h.id} style={{ fontSize: type.size.caption, color: D.muted, padding: '1px 0' }}>{h.assetId} <span style={{ color: D.faint, fontFamily: D.mono }}>· {h.engines} engines · score {h.score}</span></div>
           ))}
+        </div>
+      </div>
+
+      {/* KF-1 — Knowledge Factory: the manufacturing floor (queues + dimensional debt), derived. */}
+      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Knowledge Factory · manufacturing floor</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 12 }}>
+          {[['Observation', factory.queues.observation.count], ['Evidence', factory.queues.evidence.count], ['Finding', factory.queues.finding.count], ['Review', factory.queues.review.count], ['Publishing', factory.queues.publishing.count], ['Validation', factory.queues.validation.count]].map(([label, n]) => (
+            <div key={label} style={{ minWidth: 80 }}>
+              <div style={{ fontSize: type.size.body, fontWeight: 700, color: n ? D.text : D.faint, fontFamily: D.mono }}>{n}</div>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Knowledge debt (dimensional — never one score)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {Object.entries(factory.debt).map(([dim, v]) => (
+            <span key={dim} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: v.count ? `${D.warn}1e` : D.surface2, color: v.count ? D.warn : D.faint }}>{dim} {v.count}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
+          {factory.growth.assets} assets · {factory.growth.graphNodes} graph nodes · {factory.growth.graphEdges} edges · research velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
         </div>
       </div>
 
