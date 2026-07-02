@@ -33391,9 +33391,13 @@ function HostRunOfShowTimeline({ event, profile }) {
 
   return (
     <div style={{ padding: '8px 20px 32px', position: 'relative' }}>
-      {/* Eyebrow + subline */}
-      <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
-      {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
+      {/* Command hero (parity) — The Day now leads with a proper hero CARD like every other host tab:
+          state eyebrow · the date headline · the start + cue-count context (was a bare eyebrow line). */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22 }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+        <div style={{ fontSize: T.section, fontWeight: FW.heavy, color: textPrimary, marginTop: 7, lineHeight: 1.2 }}>{dateLine || 'The day'}</div>
+        <div style={{ fontSize: T.secondary, color: textSub, marginTop: 4 }}>{[startLabel ? `${startLabel} start` : '', `${sorted.length} cue${sorted.length === 1 ? '' : 's'} to run`].filter(Boolean).join(' · ')}</div>
+      </div>
 
       {/* Day complete — every cue done. The green hero stays (caught-up reward) so the
           "happening now" panel is never lost to an all-done, empty list. */}
