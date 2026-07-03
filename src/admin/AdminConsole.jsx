@@ -37,6 +37,10 @@ import { simulatePublish } from '../lib/knowledge/simulation';
 import { resolveField, explainField } from '../lib/knowledge/runtimeKnowledge';
 import { detectContradictions, analyzeEvidence } from '../lib/knowledge/evidenceIntelligence';
 import { runCopilot, acceptProposal } from '../lib/knowledge/copilot';
+import { CAMPAIGN_TEMPLATES, suggestTemplates, applyTemplate } from '../lib/knowledge/campaignTemplates';
+import { loadSchedules, recordSchedule, removeSchedule, createSchedule, evaluateSchedule, buildScheduleCoverage, SCHEDULE_FREQUENCIES } from '../lib/knowledge/schedule';
+import { loadProviderEvents, recordProviderEvent, createProviderEvent, buildProviderHealth, PROVIDER_OUTCOME_TYPES } from '../lib/knowledge/providerHealth';
+import { generateRoadmap, roadmapSummary } from '../lib/knowledge/roadmap';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1795,6 +1799,45 @@ function AcquisitionConsole() {
       <div style={{ marginTop: 12, fontSize: type.size.caption, color: D.faint }}>
         Observations across all providers: {empty(observations.length, 'collected')} · Evidence: {empty(evidence.length, 'records')}. External providers are <strong style={{ color: D.muted }}>Available</strong> (interface configured, run via a campaign); <strong style={{ color: D.muted }}>internal-validation</strong> derives from our own event outcomes. Fetch executes via agent/backend — the app never crawls.
       </div>
+
+      {/* Provider Health (Bundle C) */}
+      <ProviderHealthPanel providers={providers} />
+    </div>
+  );
+}
+
+function ProviderHealthPanel({ providers }) {
+  const events = loadProviderEvents();
+  const health = buildProviderHealth(events, providers);
+  const STATUS_COLOR = { healthy: D.good, 'low-yield': D.warn, degraded: D.bad, 'no-data': D.faint };
+  const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
+  const td = { padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55` };
+  const hasData = events.length > 0;
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Provider health (Bundle C)</div>
+      {!hasData && <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic', marginBottom: 10 }}>No acquisition events recorded yet. Health metrics populate as campaigns run through providers.</div>}
+      <div style={{ overflowX: 'auto', border: `1px solid ${D.border}`, borderRadius: 10 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            {['Provider', 'Status', 'Runs', 'Success %', 'Avg evidence', 'Empty', 'Errors', 'Last run'].map((h) => <th key={h} style={th}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {health.map((h) => (
+              <tr key={h.id}>
+                <td style={{ ...td, color: D.text, fontWeight: 600 }}>{h.id}</td>
+                <td style={td}><span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: `${STATUS_COLOR[h.status]}1e`, color: STATUS_COLOR[h.status] }}>{h.status}</span></td>
+                <td style={{ ...td, color: h.totalRuns ? D.text : D.faint, fontFamily: D.mono }}>{h.totalRuns || '—'}</td>
+                <td style={{ ...td, color: h.successRate != null ? (h.successRate >= 70 ? D.good : h.successRate >= 40 ? D.warn : D.bad) : D.faint, fontFamily: D.mono }}>{h.successRate != null ? `${h.successRate}%` : '—'}</td>
+                <td style={{ ...td, color: h.avgEvidence != null ? D.muted : D.faint, fontFamily: D.mono }}>{h.avgEvidence ?? '—'}</td>
+                <td style={{ ...td, color: h.emptyCount ? D.warn : D.faint, fontFamily: D.mono }}>{h.emptyCount || '—'}</td>
+                <td style={{ ...td, color: h.errorCount ? D.bad : D.faint, fontFamily: D.mono }}>{h.errorCount || '—'}</td>
+                <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 10 }}>{h.lastRunAt || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1915,6 +1958,7 @@ const STUDIO_WS = [
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
   'Copilot', 'Analytics', 'Retirement', 'Campaigns',
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
+  'Schedules', 'Roadmap',
 ];
 
 function KcrStudioPanel() {
@@ -1993,6 +2037,18 @@ function KcrStudioPanel() {
   const [campRunning, setCampRunning] = useState(false);
   const [campRunResult, setCampRunResult] = useState(null);
   const [campList, setCampList] = useState(() => loadCampaigns());
+  const [campTemplate, setCampTemplate] = useState('');
+
+  // Schedules state
+  const [schedules, setSchedules] = useState(() => loadSchedules());
+  const [schedAsset, setSchedAsset] = useState(ALL_PLAYBOOKS[0]?.type || '');
+  const [schedField, setSchedField] = useState('');
+  const [schedFreq, setSchedFreq] = useState('quarterly');
+  const [schedNote, setSchedNote] = useState('');
+
+  // Roadmap state
+  const [roadmapItems, setRoadmapItems] = useState(null);
+  const [roadmapFilter, setRoadmapFilter] = useState('all');
 
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
@@ -2497,6 +2553,7 @@ function KcrStudioPanel() {
       const chip = (label, on, onClick, title) => (
         <button key={label} onClick={onClick} title={title} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${on ? D.accent : D.border}`, background: on ? D.accent + '22' : D.bg, color: on ? D.accent : D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
       );
+      const templateSuggestions = suggestTemplates(campField).slice(0, 6);
       return (
         <div>
           <Banner>Research campaigns — each run executes: providers → observations → evidence → finding → KCR. Internal provider runs in-browser; external providers (⚡) require backend acquisition before evidence populates.</Banner>
@@ -2504,6 +2561,31 @@ function KcrStudioPanel() {
             <PBKpi label="Campaigns" value={campList.length} tone={campList.length ? D.accent : D.faint} />
             <PBKpi label="With finding" value={campList.filter((c) => c.finding).length} tone={D.good} />
             <PBKpi label="With KCR" value={campList.filter((c) => c.result?.kcr).length} tone={D.good} />
+            <PBKpi label="Templates" value={CAMPAIGN_TEMPLATES.length} tone={D.faint} />
+          </div>
+
+          {/* ── Templates (Bundle D) ───────────────────────────── */}
+          <div style={{ ...sec, marginBottom: 12 }}>
+            <div style={secLabel}>Start from template</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {templateSuggestions.map((t) => {
+                const active = campTemplate === t.id;
+                return (
+                  <button key={t.id} title={t.description} onClick={() => {
+                    const applied = applyTemplate(t.id, { goal: `${t.label} — ${campAsset}` });
+                    setCampTemplate(t.id);
+                    if (applied.goal) setCampGoal(applied.goal);
+                    if (applied.gapTypes) setCampGapType(applied.gapTypes);
+                    if (applied.providers) setCampProviders(applied.providers);
+                    if (applied.priority) setCampPriority(applied.priority);
+                    if (applied.trigger) setCampTrigger(applied.trigger);
+                  }} style={{ padding: '5px 11px', borderRadius: 20, fontSize: 10, border: `1px solid ${active ? D.accent : D.border}`, background: active ? D.accent + '22' : D.bg, color: active ? D.accent : D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {t.label}
+                  </button>
+                );
+              })}
+              {campTemplate && <button onClick={() => setCampTemplate('')} style={{ padding: '4px 8px', borderRadius: 20, fontSize: 10, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer' }}>× clear</button>}
+            </div>
           </div>
 
           {/* ── A. Target ─────────────────────────────────────── */}
@@ -3026,6 +3108,164 @@ function KcrStudioPanel() {
           <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
             manufacturing floor · queues: obs {factory.queues.observation.count} · ev {factory.queues.evidence.count} · find {factory.queues.finding.count} · review {factory.queues.review.count} · pub {factory.queues.publishing.count} · val {factory.queues.validation.count} · velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
           </div>
+        </div>
+      );
+    }
+
+    if (ws === 'Schedules') {
+      const schedCoverage = buildScheduleCoverage(ALL_PLAYBOOKS, schedules, asOf);
+      const dueItems = schedules.filter((s) => evaluateSchedule(s, asOf).due);
+      const addSched = () => {
+        if (!schedAsset || !schedField) return;
+        const s = createSchedule({ assetId: schedAsset, fieldPath: schedField, frequency: schedFreq, startAt: asOf, note: schedNote });
+        const list = recordSchedule(s);
+        setSchedules(list);
+        setSchedField(''); setSchedNote('');
+      };
+      const schedPb = ALL_PLAYBOOKS.find((p) => p.type === schedAsset);
+      const schedPaths = getFieldPaths(schedPb || ALL_PLAYBOOKS[0]);
+      const sec = { background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 12 };
+      const inp = { width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' };
+      const fl = { fontSize: 10, color: D.muted, marginBottom: 3 };
+      return (
+        <div>
+          <Banner>Research Schedules — declared cadences for recurring knowledge acquisition. Schedules are tracked here; they do NOT auto-run (a human creates and launches a campaign when due). Derived from playbookResearch(); coverage shows which fields need scheduling.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Schedules" value={schedules.length} tone={schedules.length ? D.accent : D.faint} />
+            <PBKpi label="Due / overdue" value={dueItems.length} tone={dueItems.length ? D.warn : D.faint} />
+            <PBKpi label="Coverage" value={`${schedCoverage.coverage}%`} tone={schedCoverage.coverage >= 80 ? D.good : D.warn} />
+            <PBKpi label="Fields needing sched." value={schedCoverage.totalNeeded} tone={D.faint} />
+          </div>
+
+          <div style={sec}>
+            <div style={{ fontSize: 9, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Add schedule</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              <div style={{ flex: '2 1 180px' }}>
+                <div style={fl}>Asset</div>
+                <select value={schedAsset} onChange={(e) => setSchedAsset(e.target.value)} style={inp}>
+                  {ALL_PLAYBOOKS.map((p) => <option key={p.type} value={p.type}>{p.type}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: '3 1 220px' }}>
+                <div style={fl}>Field path</div>
+                <input list="sched-field-paths" value={schedField} onChange={(e) => setSchedField(e.target.value)} placeholder="e.g. p_crabs.unitCostRange" style={inp} />
+                <datalist id="sched-field-paths">{schedPaths.map((f) => <option key={f.path} value={f.path}>{f.label}</option>)}</datalist>
+              </div>
+              <div style={{ flex: '1 1 130px' }}>
+                <div style={fl}>Frequency</div>
+                <select value={schedFreq} onChange={(e) => setSchedFreq(e.target.value)} style={inp}>
+                  {SCHEDULE_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: '2 1 180px' }}>
+                <div style={fl}>Note (optional)</div>
+                <input value={schedNote} onChange={(e) => setSchedNote(e.target.value)} placeholder="Seasonal pricing check" style={inp} />
+              </div>
+            </div>
+            <button onClick={addSched} disabled={!schedField} style={{ ...btnStyle(!!schedField) }}>Add schedule</button>
+          </div>
+
+          {/* Schedule list */}
+          {schedules.length === 0 ? <Empty msg="No schedules yet. Add one above to track recurring research cadences." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  {['Asset', 'Field', 'Freq', 'Last run', 'Next due', 'Status', ''].map((h) => (
+                    <th key={h} style={{ textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {schedules.map((s) => {
+                    const ev = evaluateSchedule(s, asOf);
+                    const statusColor = ev.overdue ? D.bad : ev.due ? D.warn : D.faint;
+                    const statusLabel = ev.overdue ? `${ev.daysOverdue}d overdue` : ev.due ? 'due soon' : ev.daysUntilDue != null ? `in ${ev.daysUntilDue}d` : 'on-demand';
+                    return (
+                      <tr key={s.id}>
+                        <td style={{ padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, color: D.text, fontWeight: 600 }}>{s.assetId}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.muted, fontFamily: D.mono }}>{s.fieldPath}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.faint, fontFamily: D.mono }}>{s.frequency}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.faint, fontFamily: D.mono }}>{s.lastRunAt || '—'}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.faint, fontFamily: D.mono }}>{ev.nextAt || '—'}</td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55` }}>
+                          <span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: `${statusColor}1e`, color: statusColor }}>{statusLabel}</span>
+                        </td>
+                        <td style={{ padding: '8px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55` }}>
+                          <button onClick={() => { const list = removeSchedule(s.id); setSchedules(list); }} style={{ fontSize: 10, padding: '2px 7px', background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 4, color: D.faint, cursor: 'pointer' }}>remove</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Coverage gaps */}
+          {schedCoverage.assets.some((a) => a.gaps.length > 0) && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Unscheduled research needs</div>
+              {schedCoverage.assets.filter((a) => a.gaps.length > 0).slice(0, 10).map((a) => (
+                <div key={a.assetId} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '8px 12px', marginBottom: 6 }}>
+                  <span style={{ fontWeight: 600, fontSize: type.size.caption, color: D.text, marginRight: 8 }}>{a.assetId}</span>
+                  <span style={{ fontSize: 10, color: D.faint }}>{a.gaps.map((g) => g.kind).join(', ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Roadmap') {
+      const rm = roadmapItems ?? generateRoadmap(ALL_PLAYBOOKS, asOf);
+      if (!roadmapItems) setRoadmapItems(rm);
+      const summary = roadmapSummary(rm);
+      const PRIORITY_COLOR = { high: D.bad, med: D.warn, low: D.faint };
+      const KIND_LABEL = { pricing: 'Price', 'cost-factor-grounding': 'CostFactor', review: 'Review', cadence: 'Cadence', 'food-safety': 'Safety', sources: 'Sources' };
+      const filtered = roadmapFilter === 'all' ? rm : rm.filter((r) => r.priority === roadmapFilter);
+      return (
+        <div>
+          <Banner>Research Roadmap — auto-generated priority list of what to research next. Derived from playbookWeaknesses × playbookResearch × blastRadius. Score = weaknesses × (engines + 1). Nothing is fabricated: honest-empty when corpus needs no research.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Roadmap items" value={summary.total} tone={summary.total ? D.accent : D.faint} />
+            <PBKpi label="High priority" value={summary.byPriority.high || 0} tone={D.bad} />
+            <PBKpi label="High blast" value={summary.highImpactCount} tone={summary.highImpactCount ? D.warn : D.faint} />
+            <PBKpi label="Assets in roadmap" value={summary.topAssets.length} tone={D.muted} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: D.faint, marginRight: 4 }}>Filter:</span>
+            {['all', 'high', 'med', 'low'].map((f) => (
+              <button key={f} onClick={() => setRoadmapFilter(f)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${roadmapFilter === f ? (PRIORITY_COLOR[f] || D.accent) : D.border}`, background: roadmapFilter === f ? `${PRIORITY_COLOR[f] || D.accent}22` : D.bg, color: roadmapFilter === f ? (PRIORITY_COLOR[f] || D.accent) : D.muted, cursor: 'pointer' }}>{f}</button>
+            ))}
+            <button onClick={() => setRoadmapItems(null)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer', marginLeft: 'auto' }}>Refresh</button>
+          </div>
+          {filtered.length === 0 ? <Empty msg="No research needed — all corpus items are fully grounded and governed. Honest-empty." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  {['Priority', 'Asset', 'Field / Kind', 'Blast', 'Weaknesses', 'Score', 'Suggested campaign', 'Engines hit'].map((h) => (
+                    <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {filtered.map((r, i) => (
+                    <tr key={`${r.assetId}-${r.fieldPath}-${i}`} style={{ background: r.priority === 'high' ? `${D.bad}08` : 'transparent' }}>
+                      <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55` }}>
+                        <span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: `${PRIORITY_COLOR[r.priority] || D.faint}1e`, color: PRIORITY_COLOR[r.priority] || D.faint }}>{r.priority}</span>
+                      </td>
+                      <td style={{ padding: '7px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, color: D.text, fontWeight: 600 }}>{r.assetId}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted, fontFamily: D.mono }}>{KIND_LABEL[r.kind] || r.kind} · {r.fieldPath.slice(0, 32)}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: r.blastScore >= 3 ? D.warn : D.faint, fontFamily: D.mono, textAlign: 'center' }}>{r.blastScore}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: r.weaknessCount ? D.bad : D.faint, fontFamily: D.mono, textAlign: 'center' }}>{r.weaknessCount}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.accent, fontFamily: D.mono, fontWeight: 600, textAlign: 'center' }}>{r.score}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted }}>{r.suggestedType}</td>
+                      <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.faint, fontFamily: D.mono }}>{r.affectedEngines.slice(0, 3).join(', ') || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       );
     }
