@@ -2521,7 +2521,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Review') {
-      const reviewKcrs = kcrs.filter((k) => k.status === 'review')
+      const reviewKcrs = kcrs.filter((k) => k.status === 'review' || k.status === 'grounded')
         .sort((a, b) => (a.priority === 'high' ? -1 : 0) - (b.priority === 'high' ? -1 : 0));
       return (
         <div>
@@ -2977,7 +2977,14 @@ function KcrStudioPanel() {
                   const patchedCampaign = { ...campaignBase, providerIds: Array.from(new Set([...(campaignBase.providerIds || []), campRawProvider])) };
                   const result = runCampaign(patchedCampaign, { providers: allProviders, fetched: fetchedMap, pb, asOf });
                   recordCampaign(result);
-                  if (result.kcr) { await upsertKCR(result.kcr); refresh(); }
+                  if (result.kcr) {
+                    // Auto-advance draft → researching → grounded so the KCR appears in Review
+                    let kcrToSave = result.kcr;
+                    try { kcrToSave = advanceKCR(kcrToSave, 'researching', { by: 'kas-campaign', asOf }); } catch { /* already past draft */ }
+                    try { kcrToSave = advanceKCR(kcrToSave, 'grounded',    { by: 'kas-campaign', asOf }); } catch { /* already grounded */ }
+                    await upsertKCR(kcrToSave);
+                    refresh();
+                  }
                   setCampRunResult(result); setCampList(loadCampaigns()); setCampRawJson('');
                 };
                 return (
