@@ -1986,7 +1986,7 @@ function KcrStudioPanel() {
   const [campGoal, setCampGoal] = useState('');
   const [campAsset, setCampAsset] = useState(ALL_PLAYBOOKS[0]?.type || '');
   const [campField, setCampField] = useState('');
-  const [campGapType, setCampGapType] = useState('pricing');
+  const [campGapType, setCampGapType] = useState(['pricing']);
   const [campProviders, setCampProviders] = useState(['bls-api', 'usda-api']);
   const [campRunning, setCampRunning] = useState(false);
   const [campRunResult, setCampRunResult] = useState(null);
@@ -2460,7 +2460,7 @@ function KcrStudioPanel() {
         try {
           const pb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
           const allProviders = buildProviders();
-          const campaign = createCampaign({ goal: campGoal.trim(), assetId: campAsset, fieldPath: campField || null, gapType: campGapType, providers: campProviders, at: asOf });
+          const campaign = createCampaign({ goal: campGoal.trim(), assetId: campAsset, fieldPath: campField || null, gapTypes: campGapType, providers: campProviders, at: asOf });
           const result = runCampaign(campaign, { providers: allProviders, fetched: {}, pb, asOf });
           recordCampaign(result);
           // async server sync — fire-and-forget
@@ -2504,11 +2504,18 @@ function KcrStudioPanel() {
                 <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Field path (optional)</div>
                 <input value={campField} onChange={(e) => setCampField(e.target.value)} placeholder="e.g. p_crabs.unitCostRange" style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
-              <div>
-                <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Gap type</div>
-                <select value={campGapType} onChange={(e) => setCampGapType(e.target.value)} style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }}>
-                  {GAP_TYPES.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 10, color: D.muted, marginBottom: 5 }}>Gap types <span style={{ color: D.faint }}>(select one or more)</span></div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {GAP_TYPES.map((g) => {
+                    const on = campGapType.includes(g);
+                    return (
+                      <button key={g} onClick={() => setCampGapType((p) => p.includes(g) ? p.filter((x) => x !== g) : [...p, g])} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${on ? D.accent : D.border}`, background: on ? D.accent + '22' : D.bg, color: on ? D.accent : D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div style={{ marginBottom: 12 }}>
@@ -2568,7 +2575,7 @@ function KcrStudioPanel() {
                     <span style={{ fontSize: type.size.caption, color: D.text, fontWeight: 600 }}>{c.goal}</span>
                     <span style={{ fontFamily: D.mono, fontSize: 10, color: c.state === 'kcr' ? D.good : D.faint }}>{c.state}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>{c.assetId}{c.fieldPath ? ` · ${c.fieldPath}` : ''} · providers: {(c.providerIds || []).join(', ') || 'none'}</div>
+                  <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>{c.assetId}{c.fieldPath ? ` · ${c.fieldPath}` : ''} · {(c.gapTypes || [c.gapType]).join(', ')} · providers: {(c.providerIds || []).join(', ') || 'none'}</div>
                   {open === c.id && c.result && (
                     <div style={{ marginTop: 10, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>
                       <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, whiteSpace: 'pre-wrap' }}>{JSON.stringify(c.result, null, 2)}</div>

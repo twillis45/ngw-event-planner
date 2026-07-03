@@ -13,10 +13,13 @@ import { createObservation } from './observation';
 export const CAMPAIGN_STATES = ['draft', 'scheduled', 'running', 'observations', 'evidence', 'findings', 'kcr', 'published', 'validated'];
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-export function createCampaign({ goal, assetId, fieldPath, gapType = 'pricing', providers = [], at = null }) {
+export function createCampaign({ goal, assetId, fieldPath, gapType = 'pricing', gapTypes = null, providers = [], at = null }) {
+  const types = gapTypes && gapTypes.length ? gapTypes : [gapType];
   return {
     id: `camp-${slug(goal)}`,
-    goal, assetId, fieldPath, gapType,
+    goal, assetId, fieldPath,
+    gapType: types[0],   // primary — drives the seed observation kind
+    gapTypes: types,     // full set for multi-axis campaigns
     providerIds: providers.map((p) => (typeof p === 'string' ? p : p.id)),
     state: 'draft', createdAt: at,
     audit: [{ at, action: 'created', state: 'draft' }],
