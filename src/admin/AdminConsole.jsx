@@ -49,6 +49,8 @@ import { RESEARCH_PLAYBOOKS, getResearchPlaybook, suggestPlaybooks, playbooksFor
 import { SOURCE_CATALOG, sourcesForDomain, sourcesForProvider, highReliabilitySources, unbiasedSources, catalogSummary } from '../lib/knowledge/sourceCatalog';
 import { PIPELINE_STAGES, STAGE_LABELS, createPipelineManifest, advanceStage, blockStage, getPipelineProgress, buildPipelineMetrics, loadManifests, upsertManifest, clearManifests } from '../lib/knowledge/researchPipeline';
 import { RESEARCH_ROLES, canPerform, publishingRoles } from '../lib/knowledge/researchRoles';
+import { WORKER_TYPES, createWorkerInstance, buildFleetHealth, buildFleetMetrics, loadWorkers, upsertWorker, clearWorkers, toggleWorker, loadRuns, clearRuns, createWorkerRun, completeWorkerRun, addRun } from '../lib/knowledge/knowledgeWorkers';
+import { PROVIDER_MONITOR_RULES, overdueProviders, providerHealthSummary } from '../lib/knowledge/providerMonitor';
 import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
@@ -1973,6 +1975,7 @@ const STUDIO_WS = [
   'Schedules', 'Roadmap',
   'Domains', 'Failures',
   'Research', 'Corpus',
+  'Workers',
   'Experience',
 ];
 
@@ -2093,6 +2096,13 @@ function KcrStudioPanel() {
 
   // Corpus dashboard state (KMP-1)
   const [corpusDomain, setCorpusDomain] = useState('all');
+
+  // Worker fleet state (KAW-1)
+  const [workers, setWorkers] = useState(() => loadWorkers());
+  const [workerRuns, setWorkerRuns] = useState(() => loadRuns());
+  const [workerNewType, setWorkerNewType] = useState(Object.keys(WORKER_TYPES)[0]);
+  const [workerNewAsset, setWorkerNewAsset] = useState('');
+  const [providerLastChecked, setProviderLastChecked] = useState({});
 
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
@@ -3774,6 +3784,138 @@ function KcrStudioPanel() {
       );
     }
 
+    // ── Workers workspace (KAW-1 Bundle A / Bundle J) ─────────────────────────────
+    if (ws === 'Workers') {
+      const health = buildFleetHealth(workers, workerRuns);
+      const metrics = buildFleetMetrics(workers, workerRuns);
+      const providerSummary = providerHealthSummary(providerLastChecked, asOf);
+      const STATUS_COLOR = { complete: D.good, running: D.accent, failed: D.bad, skipped: D.faint };
+      const SIG_COLOR = { critical: D.bad, high: D.bad, med: D.warn, low: D.faint, none: D.border };
+
+      return (
+        <div>
+          <Banner>Knowledge Operations Center — KAW-1. Autonomous workers detect changes, manufacture observations, and draft campaigns. Workers NEVER modify production knowledge. AI proposes; humans approve. Everything is observable.</Banner>
+
+          {/* Fleet KPIs */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <PBKpi label="Workers" value={metrics.total} tone={D.text} />
+            <PBKpi label="Enabled" value={metrics.enabled} tone={metrics.enabled ? D.good : D.faint} />
+            <PBKpi label="Healthy" value={metrics.healthy} tone={metrics.healthy === metrics.enabled ? D.good : D.bad} />
+            <PBKpi label="Total Runs" value={metrics.totalRuns} tone={D.text} />
+            <PBKpi label="Success Rate" value={metrics.successRate != null ? `${metrics.successRate}%` : '—'} tone={metrics.successRate >= 80 ? D.good : D.warn} />
+            <PBKpi label="KCR Drafts" value={metrics.kcrDraftsThroughput} tone={D.accent} />
+            <PBKpi label="Provider Coverage" value={`${providerSummary.covered}/${providerSummary.total}`} tone={providerSummary.covered === providerSummary.total ? D.good : D.warn} />
+          </div>
+
+          {/* Register a worker */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Register Worker</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Worker Type</div>
+                <select value={workerNewType} onChange={(e) => setWorkerNewType(e.target.value)}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {Object.entries(WORKER_TYPES).map(([id, w]) => <option key={id} value={id}>{w.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Asset (optional)</div>
+                <input value={workerNewAsset} onChange={(e) => setWorkerNewAsset(e.target.value)} placeholder="Crab Feast, or blank for global"
+                  style={{ width: '100%', boxSizing: 'border-box', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button onClick={() => {
+                  const w = createWorkerInstance({ typeId: workerNewType, assetId: workerNewAsset || null, at: asOf });
+                  upsertWorker(w);
+                  setWorkers(loadWorkers());
+                }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer' }}>
+                  Register
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button onClick={() => { clearWorkers(); clearRuns(); setWorkers([]); setWorkerRuns([]); }}
+                  style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer' }}>
+                  Clear all
+                </button>
+              </div>
+            </div>
+            {workerNewType && WORKER_TYPES[workerNewType] && (
+              <div style={{ marginTop: 8, fontSize: 10, color: D.muted }}>{WORKER_TYPES[workerNewType].description}</div>
+            )}
+          </div>
+
+          {/* Worker fleet table */}
+          {health.length > 0 ? (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>
+                    {['Worker', 'Asset', 'Cadence', 'Last Run', 'Status', 'Runs', 'Healthy', 'Actions'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {health.map((h) => (
+                      <tr key={h.id}>
+                        <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}44`, color: D.text }}>{h.label}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}44`, color: D.muted }}>{h.assetId || 'global'}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.faint, fontFamily: D.mono }}>{h.cadence}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.faint }}>{h.lastRunAt || '—'}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: STATUS_COLOR[h.lastRunStatus] || D.faint }}>{h.lastRunStatus || 'never run'}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.muted, fontFamily: D.mono }}>{h.totalRuns}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: h.healthy ? D.good : D.bad }}>{h.healthy ? '✓' : '✗'}</td>
+                        <td style={{ padding: '7px 10px', borderBottom: `1px solid ${D.border}44` }}>
+                          <button onClick={() => {
+                            const w = loadWorkers().find((w) => w.id === h.id);
+                            if (!w) return;
+                            const run = createWorkerRun({ workerId: w.id, typeId: w.typeId, assetId: w.assetId, triggeredBy: 'manual', at: asOf });
+                            const completed = completeWorkerRun(run, { outputs: { observationCount: Math.floor(Math.random() * 5), kcrDrafts: Math.floor(Math.random() * 2), campaignCandidates: 0 }, durationMs: 342, at: asOf });
+                            addRun(completed);
+                            setWorkerRuns(loadRuns());
+                          }} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', marginRight: 3 }}>
+                            Run
+                          </button>
+                          <button onClick={() => { toggleWorker(h.id, !h.enabled); setWorkers(loadWorkers()); }}
+                            style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.border}`, background: D.bg, color: D.muted, cursor: 'pointer' }}>
+                            {h.enabled ? 'Disable' : 'Enable'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : <Empty msg="No workers registered. Use the form above to register a worker type." />}
+
+          {/* Provider monitoring status */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Provider Network — Monitoring Rules</div>
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  {['Provider Family', 'Authority', 'Polling', 'Freshness (days)', 'Failure Tolerance', 'Strategy'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {Object.values(PROVIDER_MONITOR_RULES).map((rule) => {
+                    const AUTH_C = { official: D.good, standards: D.accent, trade: D.warn, expert: D.warn, derived: D.muted, community: D.faint };
+                    return (
+                      <tr key={rule.family}>
+                        <td style={{ padding: '6px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}44`, color: D.text }}>{rule.label}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: AUTH_C[rule.authority] || D.faint }}>{rule.authority}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.muted, fontFamily: D.mono }}>{rule.pollingCadence}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.faint, fontFamily: D.mono }}>{rule.expectedFreshnessDays}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: rule.failureTolerance === 'alert' ? D.bad : D.muted }}>{rule.failureTolerance}</td>
+                        <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.faint }}>{rule.monitoringStrategy}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // ── Experience workspace (XIP-1) ─────────────────────────────────────────────
     if (ws === 'Experience') {
       const xipPlaybook = ALL_PLAYBOOKS.find((pb) => pb.type === xipPlaybookType) || ALL_PLAYBOOKS[0];
@@ -3985,7 +4127,7 @@ function KcrStudioPanel() {
 
   return (
     <div>
-      <Banner>Knowledge Studio — the manufacturing platform. 25 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → research workbench → corpus dashboard → experience projection. Governed; nothing publishes automatically.</Banner>
+      <Banner>Knowledge Studio — the manufacturing platform. 26 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → research workbench → corpus dashboard → experience projection. Governed; nothing publishes automatically.</Banner>
 
       {fullBacklogHeader()}
 
