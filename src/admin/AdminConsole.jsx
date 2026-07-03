@@ -44,6 +44,8 @@ import { generateRoadmap, roadmapSummary } from '../lib/knowledge/roadmap';
 import { KNOWLEDGE_DOMAINS, getDomain, domainCoverage, generateDomainReport } from '../lib/knowledge/domain';
 import { FAILURE_CATEGORIES, createFailureRecord, failureToKCR, analyzeFailures, loadFailures, recordFailure, clearFailures as clearFailureStore } from '../lib/knowledge/failureIntelligence';
 import { corpusScopeCoverage } from '../lib/knowledge/knowledgeScope';
+import { ROLES, PHASES, SITUATION_TYPES, createContext } from '../lib/experience/experienceContext';
+import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1966,6 +1968,7 @@ const STUDIO_WS = [
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
   'Schedules', 'Roadmap',
   'Domains', 'Failures',
+  'Experience',
 ];
 
 function KcrStudioPanel() {
@@ -2065,6 +2068,16 @@ function KcrStudioPanel() {
   const [failures, setFailures] = useState(() => loadFailures());
   const [failForm, setFailForm] = useState({ eventType: ALL_PLAYBOOKS[0]?.type || '', category: 'food', what: '', severity: 'minor', impact: '', source: 'operator', at: asOf, proposedFix: '' });
   const [failAnalysis, setFailAnalysis] = useState(null);
+
+  // Experience Intelligence state (XIP-1)
+  const [xipRole, setXipRole] = useState('host');
+  const [xipPlaybookType, setXipPlaybookType] = useState(ALL_PLAYBOOKS[0]?.type || 'Crab Feast');
+  const [xipPhase, setXipPhase] = useState('purchasing');
+  const [xipSituations, setXipSituations] = useState([]);
+  const [xipDaysToEvent, setXipDaysToEvent] = useState('10');
+  const [xipResult, setXipResult] = useState(null);
+  const [xipSimRole, setXipSimRole] = useState('coordinator');
+  const [xipDiff, setXipDiff] = useState(null);
 
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
@@ -3500,6 +3513,199 @@ function KcrStudioPanel() {
       );
     }
 
+    // ── Experience workspace (XIP-1) ─────────────────────────────────────────────
+    if (ws === 'Experience') {
+      const xipPlaybook = ALL_PLAYBOOKS.find((pb) => pb.type === xipPlaybookType) || ALL_PLAYBOOKS[0];
+      const SEVERITY_COLOR = { critical: D.bad, high: D.bad, med: D.warn, low: D.faint };
+      const FEED_TYPE_COLOR = { warning: D.bad, decision: D.accent, action: D.good, risk: D.warn, milestone: D.muted, recommendation: D.faint };
+      return (
+        <div>
+          <Banner>Experience Intelligence — XIP-1. One canonical corpus, many role-specific experiences. experienceView() is a pure projection function: same knowledge → Host sees food+shopping first, Coordinator sees timeline+contingencies first, Caterer sees quantities. Role + Phase + Situation determines the experience. Knowledge is never duplicated.</Banner>
+
+          {/* Control panel */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Projection inputs</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Playbook</div>
+                <select value={xipPlaybookType} onChange={(e) => { setXipPlaybookType(e.target.value); setXipResult(null); setXipDiff(null); }}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Role</div>
+                <select value={xipRole} onChange={(e) => { setXipRole(e.target.value); setXipResult(null); setXipDiff(null); }}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {Object.entries(ROLES).map(([id, r]) => <option key={id} value={id}>{r.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Phase (auto if blank)</div>
+                <select value={xipPhase} onChange={(e) => { setXipPhase(e.target.value); setXipResult(null); setXipDiff(null); }}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {Object.entries(PHASES).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Days to event</div>
+                <input value={xipDaysToEvent} onChange={(e) => setXipDaysToEvent(e.target.value)} type="number"
+                  style={{ width: '100%', boxSizing: 'border-box', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Situations</div>
+                <select multiple value={xipSituations} onChange={(e) => { const v = [...e.target.selectedOptions].map((o) => o.value); setXipSituations(v); setXipResult(null); setXipDiff(null); }}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: 9, padding: '2px 4px', outline: 'none', height: 60 }}>
+                  {SITUATION_TYPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => {
+                const ctx = createContext({ role: xipRole, phase: xipPhase, situations: xipSituations, eventState: { daysToEvent: xipDaysToEvent !== '' ? Number(xipDaysToEvent) : null }, asOf });
+                setXipResult(experienceView(xipPlaybook, ctx));
+                setXipDiff(null);
+              }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer' }}>
+                Generate experience
+              </button>
+              {xipResult && (
+                <>
+                  <span style={{ fontSize: 10, color: D.faint }}>Compare as:</span>
+                  <select value={xipSimRole} onChange={(e) => setXipSimRole(e.target.value)}
+                    style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '4px 8px', outline: 'none' }}>
+                    {Object.entries(ROLES).map(([id, r]) => <option key={id} value={id}>{r.label}</option>)}
+                  </select>
+                  <button onClick={() => {
+                    const ctx = createContext({ role: xipRole, phase: xipPhase, situations: xipSituations, eventState: { daysToEvent: xipDaysToEvent !== '' ? Number(xipDaysToEvent) : null }, asOf });
+                    const d = diffExperience(xipPlaybook, ctx, createContext({ role: xipSimRole, phase: xipPhase, situations: xipSituations, eventState: { daysToEvent: xipDaysToEvent !== '' ? Number(xipDaysToEvent) : null }, asOf }));
+                    setXipDiff(d);
+                  }} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.muted, cursor: 'pointer' }}>
+                    Diff roles
+                  </button>
+                </>
+              )}
+              {xipResult && <button onClick={() => { setXipResult(null); setXipDiff(null); }} style={{ padding: '6px 10px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer', marginLeft: 'auto' }}>Clear</button>}
+            </div>
+          </div>
+
+          {/* Experience output */}
+          {xipResult && !xipDiff && (
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Role" value={ROLES[xipResult.role]?.label || xipResult.role} tone={D.accent} />
+                <PBKpi label="Phase" value={PHASES[xipResult.phase]?.label || xipResult.phase} tone={D.muted} />
+                <PBKpi label="Feed items" value={xipResult.feed.length} tone={D.text} />
+                <PBKpi label="Decisions" value={xipResult.decisions.length} tone={xipResult.decisions.length ? D.accent : D.faint} />
+                <PBKpi label="Warnings" value={xipResult.warnings.length} tone={xipResult.warnings.length ? D.bad : D.faint} />
+                <PBKpi label="Shopping" value={xipResult.shopping.length} tone={xipResult.shopping.length ? D.good : D.faint} />
+                <PBKpi label="Purity" value={xipResult.meta.purity ? '✓' : '✗'} tone={xipResult.meta.purity ? D.good : D.bad} />
+              </div>
+              <div style={{ background: `${D.accent}0a`, border: `1px solid ${D.accent}33`, borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Headline</div>
+                <div style={{ fontSize: type.size.body, color: D.text, fontWeight: 600 }}>{xipResult.headline}</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                {/* Adaptive feed */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Adaptive Feed</div>
+                  {xipResult.feed.length === 0 ? <div style={{ padding: 12, fontSize: type.size.caption, color: D.faint }}>Nothing in the feed.</div> : (
+                    <div>
+                      {xipResult.feed.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 12px', borderBottom: `1px solid ${D.border}44` }}>
+                          <span style={{ fontFamily: D.mono, fontSize: 9, padding: '2px 5px', borderRadius: 3, background: `${FEED_TYPE_COLOR[item.type] || D.faint}22`, color: FEED_TYPE_COLOR[item.type] || D.faint, flexShrink: 0, marginTop: 2 }}>{item.type}</span>
+                          <span style={{ fontSize: type.size.caption, color: D.text }}>{item.title || item.label || item.id || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Section order */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Section order (adaptive UI rules)</div>
+                  <div style={{ padding: 8 }}>
+                    {xipResult.sectionOrder.map((s, i) => (
+                      <div key={s} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 6px' }}>
+                        <span style={{ fontFamily: D.mono, fontSize: 10, color: D.faint, width: 16 }}>{i + 1}</span>
+                        <span style={{ fontSize: type.size.caption, color: i < 3 ? D.text : D.muted }}>{s}</span>
+                        {i < 3 && <span style={{ fontSize: 9, color: D.accent, marginLeft: 'auto' }}>primary</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Shopping projection */}
+              {xipResult.shopping.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Shopping projection ({xipResult.shopping.length} items)</div>
+                  <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr>
+                        {['Item', 'Category', 'Qty', 'Unit cost range', 'Essential'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {xipResult.shopping.map((s) => (
+                          <tr key={s.id}>
+                            <td style={{ padding: '7px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, color: D.text }}>{s.item}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted }}>{s.category}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.accent, fontFamily: D.mono }}>{s.qty ? `${s.qty} ${s.unit}` : '—'}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.faint, fontFamily: D.mono }}>{s.unitCostRange ? `$${s.unitCostRange[0]}–$${s.unitCostRange[1]}` : '—'}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: s.essential ? D.good : D.faint }}>{s.essential ? '✓' : ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Role diff output */}
+          {xipDiff && (
+            <div>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Role comparison: {ROLES[xipDiff.a?.role]?.label} vs {ROLES[xipDiff.b?.role]?.label}</div>
+              {xipDiff.delta && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                  <PBKpi label="Role changed" value={xipDiff.delta.roleChanged ? 'Yes' : 'No'} tone={xipDiff.delta.roleChanged ? D.accent : D.faint} />
+                  <PBKpi label="Section order diff" value={`${xipDiff.delta.sectionOrderDiff.length} unique`} tone={xipDiff.delta.sectionOrderDiff.length ? D.warn : D.faint} />
+                  <PBKpi label="Feed items diff" value={`${xipDiff.delta.feedLengthDiff > 0 ? '+' : ''}${xipDiff.delta.feedLengthDiff}`} tone={D.muted} />
+                  <PBKpi label="Decision diff" value={`${xipDiff.delta.decisionsDiff > 0 ? '+' : ''}${xipDiff.delta.decisionsDiff}`} tone={D.muted} />
+                  <PBKpi label="Warning diff" value={`${xipDiff.delta.warningsDiff > 0 ? '+' : ''}${xipDiff.delta.warningsDiff}`} tone={D.muted} />
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[xipDiff.a, xipDiff.b].filter(Boolean).map((exp) => (
+                  <div key={exp.role} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 11, color: D.accent, fontWeight: 600 }}>{ROLES[exp.role]?.label} · {PHASES[exp.phase]?.label}</div>
+                    <div style={{ padding: 8 }}>
+                      <div style={{ fontSize: 10, color: D.faint, marginBottom: 4 }}>Section order</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {exp.sectionOrder.slice(0, 6).map((s, i) => (
+                          <span key={s} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, background: i < 3 ? `${D.accent}18` : `${D.faint}18`, color: i < 3 ? D.accent : D.faint }}>{s}</span>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 10, color: D.faint, marginTop: 8, marginBottom: 4 }}>Feed ({exp.feed.length} items)</div>
+                      {exp.feed.slice(0, 4).map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '3px 0', borderBottom: `1px solid ${D.border}33` }}>
+                          <span style={{ fontFamily: D.mono, fontSize: 9, color: FEED_TYPE_COLOR[item.type] || D.faint }}>{item.type}</span>
+                          <span style={{ fontSize: 10, color: D.text }}>{item.title || item.label || item.id || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <button onClick={() => setXipDiff(null)} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer' }}>Back to single view</button>
+              </div>
+            </div>
+          )}
+
+          {!xipResult && !xipDiff && <Empty msg="Select role, phase, and situations, then click 'Generate experience' to see the projection." />}
+        </div>
+      );
+    }
+
     // Fallback (all workspaces covered above)
     return <Empty msg={`Workspace "${ws}" — not yet rendered.`} />;
   };
@@ -3518,7 +3724,7 @@ function KcrStudioPanel() {
 
   return (
     <div>
-      <Banner>Knowledge Studio — the manufacturing platform. 22 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning. Governed; nothing publishes automatically.</Banner>
+      <Banner>Knowledge Studio — the manufacturing platform. 23 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → experience projection. Governed; nothing publishes automatically.</Banner>
 
       {fullBacklogHeader()}
 
