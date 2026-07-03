@@ -9,7 +9,7 @@ import { ALL_PLAYBOOKS } from '../playbooks/index';
 import { qualityManufacturing } from './dimensions';
 import { loadEvidence } from './evidence';
 import { loadCampaigns } from './campaign';
-import { loadKCRs } from './kcrStore';
+import { loadLocalKCRs } from './kcrStore';
 import { createKCR } from './knowledgeChange';
 
 // ── Proposal types (drives KCR type when accepted) ────────────────────────────
@@ -116,7 +116,7 @@ export function runCopilot({ playbooks, asOf } = {}) {
   const pbs = playbooks || ALL_PLAYBOOKS;
   const evidence = loadEvidence();
   const campaigns = loadCampaigns();
-  const kcrs = loadKCRs();
+  const kcrs = loadLocalKCRs();
   const qualityMatrix = qualityManufacturing(pbs, asOf || new Date().toISOString().slice(0, 10));
 
   const qualityGaps = analyzeQualityGaps(qualityMatrix);

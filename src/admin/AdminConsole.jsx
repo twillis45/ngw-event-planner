@@ -2080,7 +2080,7 @@ function KcrStudioPanel() {
   const [schedNote, setSchedNote] = useState('');
 
   // Roadmap state
-  const [roadmapItems, setRoadmapItems] = useState(null);
+  const [roadmapItems, setRoadmapItems] = useState(() => generateRoadmap(ALL_PLAYBOOKS, new Date().toISOString().slice(0, 10)));
   const [roadmapFilter, setRoadmapFilter] = useState('all');
 
   // Domains state
@@ -2208,15 +2208,27 @@ function KcrStudioPanel() {
                 <thead><tr>{['ID', 'Kind', 'Asset', 'Field', 'Gap type', 'Source', 'Noticed'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
                 <tbody>
                   {inbox.map((o) => (
-                    <tr key={o.id} onClick={() => setOpen(open === o.id ? null : o.id)} style={{ cursor: 'pointer', background: open === o.id ? D.surface2 : 'transparent' }}>
-                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{o.id}</td>
-                      <td style={td}>{chip(o.kind, D.accent)}</td>
-                      <td style={{ ...td, color: D.text, fontWeight: 600 }}>{o.assetId}</td>
-                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{o.fieldPath || '—'}</td>
-                      <td style={td}>{chip(o.gapType || '—', D.warn)}</td>
-                      <td style={{ ...td, color: D.muted }}>{o.source}</td>
-                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{(o.noticedAt || '').slice(0, 10)}</td>
-                    </tr>
+                    <Fragment key={o.id}>
+                      <tr onClick={() => setOpen(open === o.id ? null : o.id)} style={{ cursor: 'pointer', background: open === o.id ? D.surface2 : 'transparent' }}>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{o.id}</td>
+                        <td style={td}>{chip(o.kind, D.accent)}</td>
+                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{o.assetId}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{o.fieldPath || '—'}</td>
+                        <td style={td}>{chip(o.gapType || '—', D.warn)}</td>
+                        <td style={{ ...td, color: D.muted }}>{o.source}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{(o.noticedAt || '').slice(0, 10)}</td>
+                      </tr>
+                      {open === o.id && (
+                        <tr><td colSpan={7} style={{ padding: '0 10px 12px' }}>
+                          <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6, fontFamily: D.mono }}>id: {o.id}</div>
+                            <div style={{ fontSize: type.size.caption, color: D.muted }}>{o.statement}</div>
+                            <div style={{ marginTop: 8, fontSize: type.size.caption, color: D.faint }}>source: {o.source} · gapType: {o.gapType || 'n/a'} · region: {o.region || 'n/a'}</div>
+                            {(o.linkedEvidence || []).length > 0 && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Linked evidence: {o.linkedEvidence.join(', ')}</div>}
+                          </div>
+                        </td></tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2227,7 +2239,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Observations') {
-      const [sf] = [statusFilter];
+      const sf = statusFilter;
       const shown = observations.filter((o) => sf === 'all' || o.status === sf);
       return (
         <div>
@@ -2324,7 +2336,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Findings') {
-      const campaignFindings = campaigns.filter((c) => c.finding);
+      const campaignFindings = campaigns.filter((c) => c.finding && c.finding.status !== 'insufficient');
       return (
         <div>
           <Banner>Findings derived from Evidence + Observations via deriveFinding(). Findings are ephemeral (computed on demand by campaigns); the store here shows campaign-attached findings.</Banner>
@@ -2341,7 +2353,7 @@ function KcrStudioPanel() {
                         <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.fieldPath || '—'}</td>
                         <td style={td}>{chip(f.status || '—', f.status === 'proposed' ? D.good : f.status === 'contested' ? D.bad : D.warn)}</td>
                         <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.text }}>{monoPre(f.proposedValue)}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{(f.corroboration || []).length}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.corroboration ?? 0}</td>
                         <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: (f.contradictions || []).length ? D.bad : D.faint }}>{(f.contradictions || []).length}</td>
                       </tr>
                     );
@@ -2360,8 +2372,8 @@ function KcrStudioPanel() {
           <Banner>Contradictions detected by detectContradictions() across the evidence store. Conflict KCR candidates — never auto-resolved; requires human judgment before advancing.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="Evidence records" value={evidenceIntel.total} />
-            <PBKpi label="Clusters" value={evidenceIntel.clusters.length} />
-            <PBKpi label="Deduped" value={evidenceIntel.deduped.length} />
+            <PBKpi label="Clusters" value={evidenceIntel.clusters ?? 0} />
+            <PBKpi label="Deduped" value={evidenceIntel.deduped ?? 0} />
             <PBKpi label="Conflicts" value={conflicts.length} tone={conflicts.length ? D.bad : D.faint} />
           </div>
           {conflicts.length === 0 ? <Empty msg="No contradictions detected across the evidence store. Honest-empty." /> : (
@@ -2375,7 +2387,7 @@ function KcrStudioPanel() {
                       <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{c.fieldPath}</td>
                       <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.bad }}>{monoPre(c.distinctValues)}</td>
                       <td style={td}>{chip(c.explicit ? 'yes' : 'no', c.explicit ? D.bad : D.warn)}</td>
-                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{c.conflictKCR?.id || '—'}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{c.conflictKCR ? (c.conflictKCR.id || `conflict::${c.assetId}::${c.fieldPath}`) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2402,7 +2414,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Publishing') {
-      const pubKcrs = kcrs.filter((k) => ['approved', 'publishing'].includes(k.status))
+      const pubKcrs = kcrs.filter((k) => k.status === 'approved')
         .sort((a, b) => a.assetId.localeCompare(b.assetId));
       return (
         <div>
@@ -2424,17 +2436,17 @@ function KcrStudioPanel() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="Validation queue" value={valQ.count} tone={valQ.count ? D.accent : D.faint} />
             <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
+            <PBKpi label="Monitoring" value={byStatus.monitoring || 0} tone={byStatus.monitoring ? D.accent : D.faint} />
           </div>
           {valQ.count === 0 ? <Empty msg="No items pending validation. Items enter this queue after publish, when runtime checks are enabled." /> : (
-            valQ.items.map((item, i) => (
-              <div key={i} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, marginBottom: 8, fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(item)}</div>
-            ))
+            <KcrTable items={valQ.items} />
           )}
         </div>
       );
     }
 
     if (ws === 'Monitoring') {
+      if (loading) return <Banner tone="muted">Loading KCR backlog…</Banner>;
       const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
       return (
         <div>
@@ -2481,11 +2493,14 @@ function KcrStudioPanel() {
           </div>
           <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
             <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Change triggers</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
-                <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
-              ))}
-            </div>
+            {Object.entries(byTrigger).length === 0
+              ? <span style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No triggers recorded yet.</span>
+              : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+                    <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
+                  ))}
+                </div>
+            }
           </div>
         </div>
       );
@@ -2555,14 +2570,17 @@ function KcrStudioPanel() {
                     {open === a.type && (
                       <tr><td colSpan={13} style={{ padding: '0 10px 12px' }}>
                         <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
-                          {a.dimensions.filter((d) => d.status !== 'ok').map((d) => (
-                            <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0', fontSize: type.size.caption }}>
-                              <span style={{ color: statusColor(d.status), fontFamily: D.mono, minWidth: 20 }}>{statusTick(d.status)}</span>
-                              <span style={{ color: D.muted, minWidth: 160 }}>{d.id}</span>
-                              <span style={{ color: D.faint }}>{d.reason}</span>
-                              {d.deferred && <span style={{ fontSize: 10, color: D.faint, fontStyle: 'italic' }}>(deferred to research queue)</span>}
-                            </div>
-                          ))}
+                          {a.dimensions.filter((d) => d.status !== 'ok').length === 0
+                            ? <div style={{ fontSize: type.size.caption, color: D.good, fontStyle: 'italic' }}>All dimensions healthy.</div>
+                            : a.dimensions.filter((d) => d.status !== 'ok').map((d) => (
+                              <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0', fontSize: type.size.caption }}>
+                                <span style={{ color: statusColor(d.status), fontFamily: D.mono, minWidth: 20 }}>{statusTick(d.status)}</span>
+                                <span style={{ color: D.muted, minWidth: 160 }}>{d.id}</span>
+                                <span style={{ color: D.faint }}>{d.reason}</span>
+                                {d.deferred && <span style={{ fontSize: 10, color: D.faint, fontStyle: 'italic' }}>(deferred to research queue)</span>}
+                              </div>
+                            ))
+                          }
                         </div>
                       </td></tr>
                     )}
@@ -2940,16 +2958,20 @@ function KcrStudioPanel() {
                 <PBKpi label="Engines" value={(depResult.affectedEngines || []).length} tone={D.warn} />
                 <PBKpi label="Readers" value={(depResult.affectedReaders || []).length} tone={D.warn} />
                 <PBKpi label="Runtime" value={(depResult.affectedRuntime || []).length} tone={D.warn} />
-                <PBKpi label="Tests" value={(depResult.affectedTests || []).length} tone={D.faint} />
+                <PBKpi label="Tests" value={Array.isArray(depResult.affectedTests) ? depResult.affectedTests.length : (depResult.affectedTests?.known === false ? 'CI only' : 0)} tone={D.faint} />
               </div>
-              {['affectedEngines', 'affectedReaders', 'affectedRuntime', 'affectedPrompts', 'affectedTests'].map((key) => (depResult[key] || []).length > 0 && (
-                <div key={key} style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{key}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {depResult[key].map((v, i) => <span key={i} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: D.surface2, color: D.muted }}>{v}</span>)}
+              {['affectedEngines', 'affectedReaders', 'affectedRuntime', 'affectedPrompts', 'affectedTests'].map((key) => {
+                const arr = Array.isArray(depResult[key]) ? depResult[key] : [];
+                if (!arr.length) return null;
+                return (
+                  <div key={key} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{key}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {arr.map((v, i) => <span key={i} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: D.surface2, color: D.muted }}>{v}</span>)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono, marginTop: 6 }}>magnitude: {JSON.stringify(depResult.magnitude)}</div>
             </div>
           ))}
@@ -3051,7 +3073,7 @@ function KcrStudioPanel() {
               {(rtResult.trace || []).length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', marginBottom: 4 }}>Resolution trace</div>
-                  {rtResult.trace.map((t, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>{t}</div>)}
+                  {rtResult.trace.map((t, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>{t && typeof t === 'object' ? `[${t.stage}] ${JSON.stringify(t.value)}` : String(t)}</div>)}
                 </div>
               )}
             </div>
@@ -3139,7 +3161,7 @@ function KcrStudioPanel() {
         }, 50);
       };
       const handleAccept = (proposal) => {
-        if (!canPublish(role) && role !== 'steward' && role !== 'admin') return;
+        if (!canPublish(role) && role !== 'steward') return;
         const kcr = acceptProposal(proposal, { role, asOf });
         if (kcr) {
           upsertKCR(kcr).then(refresh);
@@ -3383,8 +3405,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Roadmap') {
-      const rm = roadmapItems ?? generateRoadmap(ALL_PLAYBOOKS, asOf);
-      if (!roadmapItems) setRoadmapItems(rm);
+      const rm = roadmapItems || [];
       const summary = roadmapSummary(rm);
       const PRIORITY_COLOR = { high: D.bad, med: D.warn, low: D.faint };
       const KIND_LABEL = { pricing: 'Price', 'cost-factor-grounding': 'CostFactor', review: 'Review', cadence: 'Cadence', 'food-safety': 'Safety', sources: 'Sources' };
@@ -3906,7 +3927,7 @@ function KcrStudioPanel() {
 
       const overnight   = buildOvernightActivity({ runs: allRuns, observations: allObservations, evidence: allEvidence, findings: [], kcrs: allKcrs, campaigns: allCampaigns }, { asOf });
       const queue       = buildManufacturingQueue(ALL_PLAYBOOKS, allEvidence, allCampaigns, asOf);
-      const { health, dimensions: dims } = buildKnowledgeHealth(ALL_PLAYBOOKS, allEvidence, allKcrs, asOf);
+      const { health } = buildKnowledgeHealth(ALL_PLAYBOOKS, allEvidence, allKcrs, asOf);
       const pubQ        = buildPublishingQueue(allKcrs);
       const aging       = buildKnowledgeAging(allEvidence, asOf);
       const report      = buildExecutiveReport({ overnight, queue, health: { health }, publishingQueue: pubQ, aging }, { playbooks: ALL_PLAYBOOKS, asOf });
@@ -4070,9 +4091,6 @@ function KcrStudioPanel() {
               {ALL_PLAYBOOKS.slice(0, 8).map((pb) => {
                 const h = health[pb.type];
                 if (!h) return null;
-                const dims = Object.values(h.dimensions);
-                const high = dims.filter((d) => d.label === 'high').length;
-                const med  = dims.filter((d) => d.label === 'med').length;
                 return (
                   <div key={pb.type} style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
@@ -4134,7 +4152,7 @@ function KcrStudioPanel() {
     // ── Research Session workspace (KML-1 Bundle G) ───────────────────────────
     if (ws === 'Research Session') {
       const allEvidence  = loadEvidence();
-      const allKcrs      = loadLocalKCRs();
+      const allKcrs      = kcrs.length ? kcrs : loadLocalKCRs();
       const allCampaigns = loadCampaigns();
       const pb = ALL_PLAYBOOKS.find((p) => p.type === mcSessionPlaybook) || ALL_PLAYBOOKS[0];
       const session = pb ? buildResearchSession(pb, allEvidence, allKcrs, allCampaigns, asOf) : null;
