@@ -296,17 +296,20 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
 async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> None:
     """Authorize a planner to read an event's RSVPs.
 
-    Two-tier check:
-    1. event_owners.studio_id → studio_members membership (full tenancy).
-    2. event_owners.owner_id direct match (fallback for events where studio_id was
-       not backfilled yet, e.g. before migration 0003 landed on this tenant).
+    Order of checks (first grant wins):
+    1. CANONICAL: public.events.studio_id → studio_members membership. This column
+       DOES exist and is stamped on every synced event (saveEvent writes studio_id),
+       so a studio owner/member can read RSVPs immediately — no comms open required.
+    2. FALLBACK: event_owners.studio_id → studio_members membership (legacy events
+       whose public.events.studio_id wasn't backfilled).
+    3. FALLBACK: event_owners.owner_id direct match.
 
-    Note: events.studio_id was the original design but that column does not exist on
-    public.events — the studio_id lives on event_owners (migration 0003). Events
-    only get an event_owners row when the planner first opens comms (lazy claim).
-    If no row exists yet, we return 404 rather than auto-claiming on a GET path —
-    the planner needs to open the event in comms first, or the RSVP backend will
-    need a separate event-registration step in a future sprint.
+    History: this used to authorize ONLY via event_owners, which is populated lazily
+    the first time a planner opens the event in comms. A freshly-created event that
+    was never messaged had no event_owners row and 403'd even for its own studio
+    owner (the reported bug). The earlier docstring claimed events.studio_id "does
+    not exist on public.events" — that was stale; the column is present and correct,
+    so it's now the primary scope and event_owners is only a fallback.
 
     Still safe: require_planner gates upstream.
     """
@@ -316,27 +319,39 @@ async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> Non
     if not uid:
         raise HTTPException(status_code=403, detail="Planner identity required")
 
-    eo = await conn.fetchrow(
-        "select owner_id, studio_id from event_owners where event_id=$1", event_id
+    # PRIMARY: authorize off the CANONICAL public.events.studio_id. This column exists and
+    # is stamped on every synced event (saveEvent writes { id, studio_id, data }), so a
+    # planner can read RSVPs for any event their studio owns WITHOUT first opening it in
+    # comms. (The old path used only event_owners, which is populated lazily on first comms
+    # open — so a freshly-created, never-messaged event 403'd even for its own studio owner.)
+    ev = await conn.fetchrow(
+        "select studio_id from public.events where id=$1", event_id
     )
-    if eo is None:
-        # No ownership record yet — event not registered in comms.
-        # Can't verify server-side ownership; 403 is safer than 404 (avoids leaking existence).
-        raise HTTPException(status_code=403, detail="Event not registered. Open the event in Messages first to establish ownership.")
-
-    studio_id = eo["studio_id"]
-    if studio_id:
+    if ev and ev["studio_id"]:
         member = await conn.fetchval(
             "select 1 from studio_members where studio_id=$1 and user_id=$2",
-            studio_id, uid,
+            ev["studio_id"], uid,
         )
         if member:
             return
 
-    # Fallback: direct owner_id match (covers events before studio_id backfill)
-    if eo["owner_id"] == uid:
-        return
+    # FALLBACK: event_owners (lazy comms claim) — covers legacy events whose
+    # public.events.studio_id was never backfilled, plus the direct owner_id match.
+    eo = await conn.fetchrow(
+        "select owner_id, studio_id from event_owners where event_id=$1", event_id
+    )
+    if eo is not None:
+        if eo["studio_id"]:
+            member = await conn.fetchval(
+                "select 1 from studio_members where studio_id=$1 and user_id=$2",
+                eo["studio_id"], uid,
+            )
+            if member:
+                return
+        if eo["owner_id"] == uid:
+            return
 
+    # Neither the canonical studio scope nor a legacy owner record grants access.
     raise HTTPException(status_code=403, detail="You don't have access to this event.")
 
 
