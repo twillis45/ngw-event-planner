@@ -228,7 +228,7 @@ async def triage(
                 where u.email_confirmed_at is not null
                   and u.created_at < now() - interval '24 hours'
                   and not exists (
-                        select 1 from event_owners eo where eo.owner_id = u.id::text)
+                        select 1 from public.events e join studio_members sm on sm.studio_id = e.studio_id where sm.user_id = u.id)
                 order by u.created_at desc
                 limit $1""",
             _TRIAGE_ITEM_LIMIT,
@@ -238,7 +238,7 @@ async def triage(
                 where u.email_confirmed_at is not null
                   and u.created_at < now() - interval '24 hours'
                   and not exists (
-                        select 1 from event_owners eo where eo.owner_id = u.id::text)"""
+                        select 1 from public.events e join studio_members sm on sm.studio_id = e.studio_id where sm.user_id = u.id)"""
         )
 
         going_quiet = await conn.fetch(
@@ -248,7 +248,7 @@ async def triage(
                 where u.email_confirmed_at is not null
                   and u.last_sign_in_at < now() - interval '14 days'
                   and exists (
-                        select 1 from event_owners eo where eo.owner_id = u.id::text)
+                        select 1 from public.events e join studio_members sm on sm.studio_id = e.studio_id where sm.user_id = u.id)
                 order by u.last_sign_in_at asc
                 limit $1""",
             _TRIAGE_ITEM_LIMIT,
@@ -258,7 +258,7 @@ async def triage(
                 where u.email_confirmed_at is not null
                   and u.last_sign_in_at < now() - interval '14 days'
                   and exists (
-                        select 1 from event_owners eo where eo.owner_id = u.id::text)"""
+                        select 1 from public.events e join studio_members sm on sm.studio_id = e.studio_id where sm.user_id = u.id)"""
         )
 
         # Stuck invitations: invitee already signed up, invite still unclaimed —
@@ -346,9 +346,9 @@ async def triage(
 
 
 # ─── A3: User Lookup ──────────────────────────────────────────────────────────
-# Honesty: counts come from server-synced state only. event_owners records an
-# event the first time its owner touches it while authenticated; events that live
-# solely in a user's browser (localStorage, never synced) are not counted here.
+# Honesty: counts come from server-synced state only — events in public.events
+# scoped to the studios the user is a member of (canonical studio_id link). Events
+# that live solely in a user's browser (localStorage, never synced) are not counted.
 
 _COVERAGE = (
     "Server-synced data only. Events/clients that exist only in a user's browser "
@@ -377,8 +377,9 @@ async def search_users(
                           u.raw_user_meta_data->>'name' as name,
                           u.raw_app_meta_data->>'role'  as role,
                           u.created_at, u.last_sign_in_at,
-                          (select count(*) from event_owners eo
-                             where eo.owner_id = u.id::text) as event_count
+                          (select count(distinct e.id) from public.events e
+                             join studio_members sm on sm.studio_id = e.studio_id
+                            where sm.user_id = u.id) as event_count
                      from auth.users u
                     where u.email ilike '%'||$1||'%'
                        or (u.raw_user_meta_data->>'name') ilike '%'||$1||'%'
@@ -393,8 +394,9 @@ async def search_users(
                           u.raw_user_meta_data->>'name' as name,
                           u.raw_app_meta_data->>'role'  as role,
                           u.created_at, u.last_sign_in_at,
-                          (select count(*) from event_owners eo
-                             where eo.owner_id = u.id::text) as event_count
+                          (select count(distinct e.id) from public.events e
+                             join studio_members sm on sm.studio_id = e.studio_id
+                            where sm.user_id = u.id) as event_count
                      from auth.users u
                     order by u.created_at desc
                     limit $1""",
@@ -438,7 +440,11 @@ async def get_user(
             user_id,
         )
         event_count = await conn.fetchval(
-            "select count(*) from event_owners where owner_id = $1", user_id,
+            """select count(distinct e.id)
+                 from public.events e
+                 join studio_members sm on sm.studio_id = e.studio_id
+                where sm.user_id = $1::uuid""",
+            user_id,
         )
 
     return {
@@ -499,12 +505,12 @@ async def create_note(
 
 
 # ─── S2: Workspace / Event diagnostics ────────────────────────────────────────
-# Honesty: a studio is server-synced (name/plan/members), but its EVENTS are
-# localStorage-first. `event_owners` only records an ownership pointer + first-sync
-# timestamp the first time an owner touches an event while authenticated — never
-# the event's name, type, readiness, or contents. So this surface can answer
-# "who is in this workspace and which event ids have they synced," never "is this
-# event ready." Every event row must say so.
+# Honesty: a studio's events ARE server-synced — public.events holds each event's
+# blob under a canonical studio_id (stamped by saveEvent). This surface lists a
+# studio's events by that studio_id link and shows basic identifiers (id, name).
+# Full contents (budgets, guests, readiness) still live in the planner's app and are
+# not surfaced here, so this answers "which events has this studio synced," never
+# "is this event ready." event_owners is now only a secondary owner-email enrichment.
 
 @router.get("/workspaces")
 async def search_workspaces(
@@ -578,16 +584,21 @@ async def get_workspace(
                          u.email nulls last""",
             workspace_id,
         )
-        # Synced-event pointers owned by this studio's members. NB: an owner can
-        # belong to >1 studio, so these are "events this studio's people synced,"
-        # not "events that belong to this studio" — the app has no studio↔event link.
+        # Events that BELONG to this studio, via the canonical public.events.studio_id
+        # link (stamped by saveEvent on every sync). event_owners is LEFT-joined only to
+        # enrich each row with the first-syncing owner's email where that pointer exists.
+        # An event with no event_owners row yet (created but never opened in comms) STILL
+        # appears here — studio_id is the source of truth, not the lazily-written pointer.
         events = await conn.fetch(
-            """select eo.event_id, eo.owner_id, eo.owner_email, eo.created_at
-                 from event_owners eo
-                where eo.owner_id in (
-                        select sm.user_id::text from studio_members sm
-                         where sm.studio_id = $1::uuid)
-                order by eo.created_at desc
+            """select e.id as event_id,
+                      eo.owner_id,
+                      eo.owner_email,
+                      e.data->>'name' as name,
+                      e.updated_at as created_at
+                 from public.events e
+                 left join event_owners eo on eo.event_id = e.id
+                where e.studio_id = $1::uuid
+                order by e.updated_at desc
                 limit 50""",
             workspace_id,
         )
@@ -598,9 +609,9 @@ async def get_workspace(
         "members": [dict(r) for r in members],
         "events": [dict(r) for r in events],
         "events_note": (
-            "Synced ownership pointers only — first-sync time, not event contents. "
-            "Names, types, budgets, and readiness live in the planner's browser and "
-            "are not visible here."
+            "Events synced to this studio (canonical studio ownership). Basic "
+            "identifiers only — full contents (budgets, guests, readiness) live in the "
+            "planner's app and are not surfaced here."
         ),
     }
 
@@ -773,7 +784,10 @@ async def metrics_activation(
         confirmed = await conn.fetchval(
             "select count(*) from auth.users where email_confirmed_at is not null")
         synced_event = await conn.fetchval(
-            "select count(distinct owner_id) from event_owners")
+            """select count(distinct sm.user_id)
+                 from public.events e
+                 join studio_members sm on sm.studio_id = e.studio_id
+                where sm.role = 'owner'""")
         active_14d = await conn.fetchval(
             "select count(*) from auth.users where last_sign_in_at > now() - interval '14 days'")
         new_7d = await conn.fetchval(
