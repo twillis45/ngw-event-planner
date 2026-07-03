@@ -2076,6 +2076,77 @@ function KcrStudioPanel() {
   const [batchRunning, setBatchRunning] = useState(false);
   const [copiedKcrId, setCopiedKcrId] = useState(null);         // tracks last-copied packet
 
+  // ── Batch auto-run schedule ────────────────────────────────────────────────
+  const BATCH_SCHED_KEY = 'ngw-kas-batch-schedule';
+  const loadBatchSchedule = () => { try { return JSON.parse(localStorage.getItem(BATCH_SCHED_KEY) || 'null'); } catch { return null; } };
+  const [batchSchedule, setBatchSchedule] = useState(loadBatchSchedule);
+
+  const refreshEvidence = useCallback(() => {
+    setEvidence(loadEvidence());
+    setCampList(loadCampaigns());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runHighPriorityBatch = useCallback(() => {
+    const asOfNow = new Date().toISOString().slice(0, 10);
+    // Step 1: auto-generate campaign drafts for HIGH gaps that don't yet have one
+    const allEv = loadEvidence();
+    const allKcrsNow = loadLocalKCRs();
+    const q = buildManufacturingQueue(ALL_PLAYBOOKS, { evidence: allEv, kcrs: allKcrsNow, campaigns: loadCampaigns(), asOf: asOfNow });
+    const ungapped = q.filter((x) => x.priority === 'HIGH' && !x.hasCampaign);
+    if (ungapped.length) {
+      const generated = generateCampaignsFromQueue(ungapped, { priorities: ['HIGH'], limit: 10, at: asOfNow });
+      generated.forEach((c) => recordCampaign(c));
+    }
+    // Step 2: run all HIGH campaigns (including just-generated ones)
+    const allCamps = loadCampaigns();
+    const toRun = batchByFilter(allCamps, { priority: 'high' });
+    if (!toRun.length) { setBatchRunResult({ label: 'Auto: HIGH priority', summary: { total: 0, ran: 0, evidenceTotal: 0, findingsTotal: 0, kcrTotal: 0, errors: 0 }, auto: true }); return; }
+    setBatchRunning(true);
+    const allProviders = buildProviders();
+    const { results, summary } = runCampaigns(toRun, { providers: allProviders, asOf: asOfNow });
+    const corrCamps = [];
+    for (const { success, result } of results) {
+      if (!success || !result) continue;
+      recordCampaign(result);
+      const corr = autoCorroborate(result, result, { asOf: asOfNow });
+      if (corr) corrCamps.push(corr);
+    }
+    corrCamps.forEach((c) => recordCampaign(c));
+    const intel = loadProviderIntel();
+    const stats = extractProviderRunStats(results, asOfNow);
+    let updatedIntel = intel;
+    for (const s of stats) updatedIntel = recordProviderRun(updatedIntel, s.providerId, s);
+    saveProviderIntel(updatedIntel);
+    setBatchRunResult({ label: 'Auto: HIGH priority', summary, corroborationsCreated: corrCamps.length, auto: true, ranAt: asOfNow });
+    setBatchRunning(false);
+    refresh();
+    refreshEvidence();
+    // Update schedule: record lastRun, advance nextRun
+    const cfg = loadBatchSchedule();
+    if (cfg) {
+      const interval = cfg.interval || 'once';
+      const next = new Date();
+      if (interval === 'hourly')    next.setHours(next.getHours() + 1);
+      else if (interval === 'daily')next.setDate(next.getDate() + 1);
+      const updated = { ...cfg, lastRun: asOfNow, nextRun: interval === 'once' ? null : next.toISOString() };
+      localStorage.setItem(BATCH_SCHED_KEY, JSON.stringify(updated));
+      setBatchSchedule(updated);
+    }
+  }, [refresh, refreshEvidence]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll every 30 s; fire runHighPriorityBatch when nextRun is due
+  useEffect(() => {
+    const check = () => {
+      const cfg = loadBatchSchedule();
+      if (cfg && cfg.nextRun && new Date(cfg.nextRun) <= new Date()) {
+        runHighPriorityBatch();
+      }
+    };
+    check(); // check on mount
+    const timer = setInterval(check, 30000);
+    return () => clearInterval(timer);
+  }, [runHighPriorityBatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Schedules state
   const [schedules, setSchedules] = useState(() => loadSchedules());
   const [schedAsset, setSchedAsset] = useState(ALL_PLAYBOOKS[0]?.type || '');
@@ -4145,11 +4216,55 @@ function KcrStudioPanel() {
             </div>
             {batchRunResult && (
               <div style={{ marginBottom: 8, fontSize: 9, color: D.muted, background: D.bg, borderRadius: 5, padding: '5px 10px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <span style={{ color: D.faint }}>{batchRunResult.label}</span>
+                <span style={{ color: D.faint }}>{batchRunResult.label}{batchRunResult.auto ? ' (scheduled)' : ''}</span>
                 <span>{runSummaryLabel(batchRunResult.summary)}</span>
                 {batchRunResult.corroborationsCreated > 0 && <span style={{ color: D.accent }}>+{batchRunResult.corroborationsCreated} corroboration{batchRunResult.corroborationsCreated > 1 ? 's' : ''} queued</span>}
+                {batchRunResult.auto && batchRunResult.ranAt && <span style={{ color: D.faint }}>ran {batchRunResult.ranAt}</span>}
               </div>
             )}
+
+            {/* ── Auto-Run Schedule ─────────────────────────────────────────── */}
+            <div style={{ marginBottom: 10, background: D.surface, border: `1px solid ${batchSchedule?.nextRun ? D.accent + '55' : D.border}`, borderRadius: 8, padding: '10px 14px' }}>
+              <div style={{ fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
+                Auto-Run Schedule
+                {batchSchedule?.nextRun && <span style={{ marginLeft: 8, color: D.accent, fontWeight: 700 }}>● ACTIVE</span>}
+              </div>
+              {batchSchedule?.nextRun ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, color: D.text }}>Next run: <strong>{new Date(batchSchedule.nextRun).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                  {batchSchedule.interval && batchSchedule.interval !== 'once' && <span style={{ fontSize: 9, color: D.faint }}>then {batchSchedule.interval}</span>}
+                  {batchSchedule.lastRun && <span style={{ fontSize: 9, color: D.faint }}>last ran {batchSchedule.lastRun}</span>}
+                  <button onClick={() => { localStorage.removeItem(BATCH_SCHED_KEY); setBatchSchedule(null); }}
+                    style={{ fontSize: 9, padding: '3px 8px', borderRadius: 4, border: `1px solid ${D.bad}`, background: 'transparent', color: D.bad, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Cancel schedule
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'In 5 min', minutes: 5, interval: 'once' },
+                    { label: 'In 30 min', minutes: 30, interval: 'once' },
+                    { label: 'Hourly', minutes: 60, interval: 'hourly' },
+                    { label: 'Daily', minutes: 1440, interval: 'daily' },
+                  ].map(({ label, minutes, interval }) => {
+                    const schedule = () => {
+                      const next = new Date(Date.now() + minutes * 60000);
+                      const cfg = { nextRun: next.toISOString(), interval, createdAt: new Date().toISOString() };
+                      localStorage.setItem(BATCH_SCHED_KEY, JSON.stringify(cfg));
+                      setBatchSchedule(cfg);
+                    };
+                    return (
+                      <button key={label} onClick={schedule}
+                        style={{ fontSize: 9, padding: '3px 8px', borderRadius: 4, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                  <span style={{ fontSize: 9, color: D.faint }}>Runs: auto-generate HIGH gaps + batch run</span>
+                </div>
+              )}
+            </div>
+
             {queue.length === 0
               ? <div style={{ fontSize: 11, color: D.good }}>All fields covered with fresh, official evidence. No gaps detected.</div>
               : queue.slice(0, 15).map((item) => (
