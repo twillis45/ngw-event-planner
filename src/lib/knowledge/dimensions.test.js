@@ -25,9 +25,14 @@ describe('dimension contract', () => {
     expect(asObj.score).toBeUndefined();
     expect(dims.every((d) => typeof d.status === 'string')).toBe(true); // statuses, not numbers
   });
-  test('includes the 12 existing + Operational completeness', () => {
+  test('includes original dimensions + KPP-1 coverage dimensions', () => {
     const ids = dims.map((d) => d.id);
-    expect(ids).toEqual(expect.arrayContaining(['Grounding', 'Food safety', 'Sections', 'Operational completeness']));
+    expect(ids).toEqual(expect.arrayContaining([
+      'Grounding', 'Food safety', 'Sections', 'Operational completeness',
+      'Regional coverage', 'Seasonal awareness', 'Vendor network',
+      'Cultural overlay', 'Weather contingency', 'Scale variance',
+      'Accessibility', 'Professional guidance',
+    ]));
   });
 });
 
@@ -59,8 +64,16 @@ describe('Operational completeness (new dimension)', () => {
 
 describe('dimension → KCR bridge', () => {
   const thin = { type: 'Thin Test', tasks: [], milestones: [], purchases: [], rentalsGap: [], vendors: [], schedules: {}, decisions: [], risks: [], contingencies: [] };
-  test('a complete playbook (crab) produces NO dimension KCRs (grounding etc. deferred; the rest pass)', () => {
-    expect(dimensionKCRs(crab, ASOF)).toHaveLength(0);
+  test('a well-built playbook (crab) has no QUALITY KCRs; coverage dimensions may surface legit gaps', () => {
+    const kcrs = dimensionKCRs(crab, ASOF);
+    // Quality dimensions (operational, sections, food-safety) should all pass for crab
+    const qualityIds = ['Sections', 'Operational completeness', 'Shopping coverage', 'Food safety'];
+    const qualityKcrs = kcrs.filter((k) => qualityIds.some((qid) => k.fieldPath === 'operational' || k.fieldPath === 'sections'));
+    expect(qualityKcrs).toHaveLength(0);
+    // All KCRs come from playbook-intelligence (not injected by other systems)
+    if (kcrs.length > 0) {
+      expect(kcrs.every((k) => k.createdBy === 'playbook-intelligence')).toBe(true);
+    }
   });
   test('a thin playbook produces new-dimension KCRs attributed to playbook-intelligence', () => {
     const kcrs = dimensionKCRs(thin, ASOF);

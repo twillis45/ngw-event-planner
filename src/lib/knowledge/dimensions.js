@@ -27,8 +27,13 @@ const KCR_TYPE_BY_DIM = {
   Contingencies: 'quality-gap', 'Food safety': 'quality-gap', Freshness: 'correction',
   Governance: 'correction', Validation: 'validation-finding',
   'Operational completeness': 'quality-gap',
+  // KPP-1 new coverage dimensions
+  'Regional coverage': 'quality-gap', 'Seasonal awareness': 'quality-gap',
+  'Vendor network': 'quality-gap', 'Cultural overlay': 'quality-gap',
+  'Weather contingency': 'quality-gap', 'Scale variance': 'quality-gap',
+  'Accessibility': 'quality-gap', 'Professional guidance': 'quality-gap',
 };
-const REVIEW_DAYS = { 'Food safety': 90, Grounding: 180, Validation: 90 };
+const REVIEW_DAYS = { 'Food safety': 90, Grounding: 180, Validation: 90, 'Regional coverage': 365, 'Seasonal awareness': 90 };
 const TRIGGER_BY_TYPE = { 'grounding-gap': 'research', 'quality-gap': 'sme', correction: 'freshness', 'validation-finding': 'validation' };
 const reviewDays = (dim) => REVIEW_DAYS[dim] || 180;
 
@@ -38,6 +43,15 @@ export const DIMENSION_REGISTRY = [
     'Contingencies', 'Food safety', 'Freshness', 'Governance', 'Validation']
     .map((id) => ({ id, appliesTo: ['playbook'], source: 'playbookHealth' })),
   { id: 'Operational completeness', appliesTo: ['playbook', 'runbook', 'venue-kit'], source: 'dimensions' },
+  // KPP-1 Bundle B — extended coverage dimensions
+  { id: 'Regional coverage',   appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Seasonal awareness',  appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Vendor network',      appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Cultural overlay',    appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Weather contingency', appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Scale variance',      appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Accessibility',       appliesTo: ['playbook'], source: 'dimensions' },
+  { id: 'Professional guidance', appliesTo: ['playbook'], source: 'dimensions' },
 ];
 
 // A gap/warn dimension recommends a KCR (never an edit). Pure.
@@ -54,6 +68,10 @@ const dimFieldPath = (dim) => ({
   Grounding: 'purchases[].unitCostRange', 'Food safety': 'risks', Sections: 'sections',
   Shopping: 'purchases', Timeline: 'tasks', Decisions: 'decisions', Governance: 'governance',
   Freshness: 'governance.lastReviewed', 'Operational completeness': 'operational',
+  'Regional coverage': 'regionalPricing', 'Seasonal awareness': 'seasonalAdjustments',
+  'Vendor network': 'vendors', 'Cultural overlay': 'cultural',
+  'Weather contingency': 'risks', 'Scale variance': 'purchases[].qtyPerGuest',
+  'Accessibility': 'accessibility', 'Professional guidance': 'professional',
 }[dim] || dim.toLowerCase());
 
 // Axes the Command Center RESEARCH QUEUE already sources KCRs for (pricing/sources/
@@ -103,6 +121,156 @@ function operationalCompleteness(pb, engines) {
   };
 }
 
+// ── KPP-1 Bundle B: Extended coverage dimension evaluators ────────────────────
+
+// Regional coverage: does the playbook have ANY region-specific data?
+function regionalCoverage(pb, engines) {
+  const hasRegional = pb.regionalPricing && Object.keys(pb.regionalPricing).length > 0;
+  const hasScopedOverrides = pb.scopedOverrides && Object.keys(pb.scopedOverrides).length > 0;
+  const hasNotes = pb.regionalNotes && pb.regionalNotes.length > 0;
+  const ok = hasRegional || hasScopedOverrides || hasNotes;
+  return {
+    id: 'Regional coverage',
+    status: ok ? 'ok' : 'warn',
+    reason: ok ? 'Has regional pricing or notes' : 'National-only — no regional pricing, overrides, or notes. Knowledge may not project accurately across US regions.',
+    evidence: ok ? 'regionalPricing / scopedOverrides present' : null,
+    missingEvidence: ok ? null : 'Add regionalPricing or regionalNotes to ground regional variants',
+    recommendedKCRs: ok ? [] : recommend('Regional coverage', pb, 'missing regional pricing data'),
+    affectedEngines: engines,
+    reviewInterval: reviewDays('Regional coverage'),
+  };
+}
+
+// Seasonal awareness: does the playbook address seasonal variation?
+function seasonalAwareness(pb, engines) {
+  const hasSeasonal = pb.seasonalAdjustments && Object.keys(pb.seasonalAdjustments).length > 0;
+  const knowledgeNote = pb.knowledge?.note || pb.knowledge?.notes || '';
+  const hasSeasonalNote = knowledgeNote.toLowerCase().includes('season');
+  const ok = hasSeasonal || hasSeasonalNote;
+  return {
+    id: 'Seasonal awareness',
+    status: ok ? 'ok' : 'warn',
+    reason: ok ? 'Seasonal adjustments or notes present' : 'No seasonal awareness — pricing and availability may vary significantly by season.',
+    evidence: ok ? 'seasonalAdjustments or seasonal note present' : null,
+    missingEvidence: ok ? null : 'Add seasonalAdjustments for summer/winter pricing or availability windows',
+    recommendedKCRs: ok ? [] : recommend('Seasonal awareness', pb, 'missing seasonal adjustment data'),
+    affectedEngines: engines,
+    reviewInterval: reviewDays('Seasonal awareness'),
+  };
+}
+
+// Vendor network: does the playbook document at least one vendor category?
+function vendorNetwork(pb, engines) {
+  const vendors = pb.vendors || [];
+  const hasVendors = vendors.length >= 1;
+  const categorized = vendors.filter((v) => v.category || v.role).length;
+  const status = hasVendors && categorized >= 1 ? 'ok' : hasVendors ? 'warn' : 'gap';
+  const reason = status === 'ok' ? `${vendors.length} vendors with categories documented`
+    : status === 'warn' ? `${vendors.length} vendors but categories not specified`
+    : 'No vendors documented — host cannot identify who to hire for this event';
+  return {
+    id: 'Vendor network',
+    status, reason, evidence: reason,
+    missingEvidence: status !== 'ok' ? 'Add at least one vendor with category (catering, venue, photography, etc.)' : null,
+    recommendedKCRs: status === 'gap' ? recommend('Vendor network', pb, 'no vendors documented') : [],
+    affectedEngines: engines,
+    reviewInterval: reviewDays('Vendor network'),
+  };
+}
+
+// Cultural overlay: does the playbook acknowledge cultural specifics?
+function culturalOverlay(pb, engines) {
+  // Cultural playbooks (those with cultural identity in their type or explicit cultural field)
+  // Cultural events: named tradition celebrations (not generic regional foods)
+  const culturalKeywords = ['cultural', 'ethiopian', 'pupusa', 'kwanzaa', 'juneteenth', 'quinceañera', 'repast', 'sunday dinner'];
+  const isCultural = culturalKeywords.some((k) => pb.type.toLowerCase().includes(k));
+  const hasCulturalField = !!(pb.cultural || pb.culturalNotes || pb.culturalContext);
+  if (!isCultural) return { id: 'Cultural overlay', status: 'n/a', reason: 'Not a cultural-specific event type', evidence: null, missingEvidence: null, recommendedKCRs: [], affectedEngines: engines, reviewInterval: 365 };
+  const ok = hasCulturalField;
+  return {
+    id: 'Cultural overlay',
+    status: ok ? 'ok' : 'warn',
+    reason: ok ? 'Cultural context documented' : 'Cultural event type but no cultural-specific notes documented',
+    evidence: ok ? 'cultural field present' : null,
+    missingEvidence: ok ? null : 'Add cultural or culturalNotes field for cultural authenticity guidance',
+    recommendedKCRs: ok ? [] : recommend('Cultural overlay', pb, 'missing cultural context for cultural event type'),
+    affectedEngines: engines,
+    reviewInterval: reviewDays('Cultural overlay'),
+  };
+}
+
+// Weather contingency: is there weather-specific risk planning?
+function weatherContingency(pb, engines) {
+  const risks = pb.risks || [];
+  const weatherRisk = risks.some((r) => (r.risk || r.trigger || r.description || r.label || '').toLowerCase().match(/weather|rain|wind|heat|cold|storm|outdoor/));
+  const hasOutdoor = (pb.type || '').toLowerCase().match(/cookout|barbecue|bbq|crab feast|crawfish|boil|fish fry|outdoor|backyard|pool|day party/);
+  if (!hasOutdoor) return { id: 'Weather contingency', status: 'n/a', reason: 'Not an outdoor event type', evidence: null, missingEvidence: null, recommendedKCRs: [], affectedEngines: engines, reviewInterval: 365 };
+  const ok = weatherRisk;
+  return {
+    id: 'Weather contingency',
+    status: ok ? 'ok' : 'gap',
+    reason: ok ? 'Weather contingency in risks' : 'Outdoor event with no weather contingency in risks',
+    evidence: ok ? 'weather risk item found' : null,
+    missingEvidence: ok ? null : 'Add weather contingency risk item (rain, heat, wind) to risks',
+    recommendedKCRs: ok ? [] : recommend('Weather contingency', pb, 'outdoor event missing weather contingency'),
+    affectedEngines: engines,
+    reviewInterval: reviewDays('Weather contingency'),
+  };
+}
+
+// Scale variance: does quantity data address different group sizes?
+function scaleVariance(pb, engines) {
+  const purchases = pb.purchases || [];
+  const hasQtyPerGuest = purchases.some((p) => p.qtyPerGuest !== undefined);
+  const hasScaleFactor = purchases.some((p) => p.scalingFactor || p.bulkDiscount || p.scaleNote);
+  const status = hasQtyPerGuest && hasScaleFactor ? 'ok' : hasQtyPerGuest ? 'warn' : 'gap';
+  const reason = status === 'ok' ? 'qty-per-guest + scale factors present'
+    : status === 'warn' ? 'qty-per-guest present but no bulk/scale factors (quantities may not extrapolate correctly at large scale)'
+    : 'No qty-per-guest data — quantities cannot scale with headcount';
+  return {
+    id: 'Scale variance',
+    status, reason, evidence: reason,
+    missingEvidence: status !== 'ok' ? 'Add qtyPerGuest to purchases; add bulkDiscount or scaleNote for large-group accuracy' : null,
+    recommendedKCRs: status === 'gap' ? recommend('Scale variance', pb, 'missing qtyPerGuest data') : [],
+    affectedEngines: engines,
+    reviewInterval: 180,
+  };
+}
+
+// Accessibility: any accessibility guidance?
+function accessibilityDimension(pb, engines) {
+  const hasAccessibility = !!(pb.accessibility || pb.accessibilityNotes);
+  const hasAccessRisk = (pb.risks || []).some((r) => (r.risk || r.description || '').toLowerCase().includes('access'));
+  const ok = hasAccessibility || hasAccessRisk;
+  return {
+    id: 'Accessibility',
+    status: ok ? 'ok' : 'warn',
+    reason: ok ? 'Accessibility notes present' : 'No accessibility guidance — guests with mobility, dietary, or sensory needs are not addressed',
+    evidence: ok ? 'accessibility field or risk present' : null,
+    missingEvidence: ok ? null : 'Add accessibility field with mobility/dietary/sensory considerations',
+    recommendedKCRs: ok ? [] : [],   // accessibility is a warn, not a gap requiring immediate KCR
+    affectedEngines: engines,
+    reviewInterval: 365,
+  };
+}
+
+// Professional guidance: is there guidance specifically for professional planners?
+function professionalGuidance(pb, engines) {
+  const hasPro = !!(pb.professional || pb.plannerGuidance || pb.coordinatorNotes);
+  const hasProDecision = (pb.decisions || []).some((d) => (d.label || '').toLowerCase().includes('planner') || (d.label || '').toLowerCase().includes('professional'));
+  const ok = hasPro || hasProDecision;
+  return {
+    id: 'Professional guidance',
+    status: ok ? 'ok' : 'warn',
+    reason: ok ? 'Professional / planner guidance documented' : 'No professional guidance — planners and coordinators must infer from host-level knowledge',
+    evidence: ok ? 'professional field or planner decision present' : null,
+    missingEvidence: ok ? null : 'Add professional or plannerGuidance field for coordinator/planner-specific notes',
+    recommendedKCRs: [],  // warn only, no auto-KCR
+    affectedEngines: engines,
+    reviewInterval: 365,
+  };
+}
+
 // ── Evaluate one asset across all applicable dimensions (no rollup number) ────
 export function evaluateAsset(asset, kind, asOf) {
   if (kind !== 'playbook') {
@@ -116,6 +284,15 @@ export function evaluateAsset(asset, kind, asOf) {
   const engines = playbookCoverage(asset).engines.filter((e) => e.supported).map((e) => e.id);
   const dims = h.components.map((c) => toDimension(c, asset, engines));
   dims.push(operationalCompleteness(asset, engines));
+  // KPP-1 Bundle B: extended coverage dimensions
+  dims.push(regionalCoverage(asset, engines));
+  dims.push(seasonalAwareness(asset, engines));
+  dims.push(vendorNetwork(asset, engines));
+  dims.push(culturalOverlay(asset, engines));
+  dims.push(weatherContingency(asset, engines));
+  dims.push(scaleVariance(asset, engines));
+  dims.push(accessibilityDimension(asset, engines));
+  dims.push(professionalGuidance(asset, engines));
   return dims;
 }
 

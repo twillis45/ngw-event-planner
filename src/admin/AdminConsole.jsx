@@ -41,6 +41,9 @@ import { CAMPAIGN_TEMPLATES, suggestTemplates, applyTemplate } from '../lib/know
 import { loadSchedules, recordSchedule, removeSchedule, createSchedule, evaluateSchedule, buildScheduleCoverage, SCHEDULE_FREQUENCIES } from '../lib/knowledge/schedule';
 import { loadProviderEvents, recordProviderEvent, createProviderEvent, buildProviderHealth, PROVIDER_OUTCOME_TYPES } from '../lib/knowledge/providerHealth';
 import { generateRoadmap, roadmapSummary } from '../lib/knowledge/roadmap';
+import { KNOWLEDGE_DOMAINS, getDomain, domainCoverage, generateDomainReport } from '../lib/knowledge/domain';
+import { FAILURE_CATEGORIES, createFailureRecord, failureToKCR, analyzeFailures, loadFailures, recordFailure, clearFailures as clearFailureStore } from '../lib/knowledge/failureIntelligence';
+import { corpusScopeCoverage } from '../lib/knowledge/knowledgeScope';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1962,6 +1965,7 @@ const STUDIO_WS = [
   'Copilot', 'Analytics', 'Retirement', 'Campaigns',
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
   'Schedules', 'Roadmap',
+  'Domains', 'Failures',
 ];
 
 function KcrStudioPanel() {
@@ -2052,6 +2056,15 @@ function KcrStudioPanel() {
   // Roadmap state
   const [roadmapItems, setRoadmapItems] = useState(null);
   const [roadmapFilter, setRoadmapFilter] = useState('all');
+
+  // Domains state
+  const [domainSelected, setDomainSelected] = useState(KNOWLEDGE_DOMAINS[0]?.id || '');
+  const [domainReport, setDomainReport] = useState(null);
+
+  // Failure Intelligence state
+  const [failures, setFailures] = useState(() => loadFailures());
+  const [failForm, setFailForm] = useState({ eventType: ALL_PLAYBOOKS[0]?.type || '', category: 'food', what: '', severity: 'minor', impact: '', source: 'operator', at: asOf, proposedFix: '' });
+  const [failAnalysis, setFailAnalysis] = useState(null);
 
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
@@ -3273,6 +3286,220 @@ function KcrStudioPanel() {
       );
     }
 
+    // ── Domains workspace (KPP-1 Bundle A) ─────────────────────────────────────
+    if (ws === 'Domains') {
+      const scopeCov = corpusScopeCoverage(ALL_PLAYBOOKS);
+      const activeDomain = KNOWLEDGE_DOMAINS.find((d) => d.id === domainSelected) || KNOWLEDGE_DOMAINS[0];
+      const report = domainReport && domainReport.domain === activeDomain?.id ? domainReport : null;
+      return (
+        <div>
+          <Banner>Knowledge Domains — 7 named clusters of related playbooks. Each domain shares knowledge fields; domain campaigns discover cross-playbook gaps and aggregate research needs. Scope coverage shows how many playbooks have regional or seasonal projections.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Total domains" value={KNOWLEDGE_DOMAINS.length} tone={D.accent} />
+            <PBKpi label="Total playbooks" value={ALL_PLAYBOOKS.length} tone={D.muted} />
+            <PBKpi label="National-only scope" value={scopeCov.nationalOnly} tone={scopeCov.nationalOnly === ALL_PLAYBOOKS.length ? D.bad : D.warn} />
+            <PBKpi label="With regional data" value={scopeCov.withRegional} tone={scopeCov.withRegional ? D.good : D.faint} />
+            <PBKpi label="With seasonal data" value={scopeCov.withSeasonal} tone={scopeCov.withSeasonal ? D.good : D.faint} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+            {KNOWLEDGE_DOMAINS.map((d) => (
+              <button key={d.id} onClick={() => { setDomainSelected(d.id); setDomainReport(null); }}
+                style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, border: `1px solid ${domainSelected === d.id ? D.accent : D.border}`, background: domainSelected === d.id ? `${D.accent}22` : D.bg, color: domainSelected === d.id ? D.accent : D.muted, cursor: 'pointer' }}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {activeDomain && (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: type.size.body, color: D.text, fontWeight: 600, marginBottom: 4 }}>{activeDomain.label}</div>
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 8 }}>{activeDomain.description}</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {activeDomain.playbookTypes.map((t) => <span key={t} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: `${D.accent}18`, color: D.accent }}>{t}</span>)}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button onClick={() => { const r = generateDomainReport(activeDomain, ALL_PLAYBOOKS, asOf); setDomainReport(r); }}
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer' }}>
+                  Generate domain report
+                </button>
+                {report && <span style={{ fontSize: 10, color: D.faint }}>Generated {asOf}</span>}
+              </div>
+            </div>
+          )}
+          {report && (
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                <PBKpi label="Playbooks found" value={report.playbooksFound} tone={D.muted} />
+                <PBKpi label="Fully OK" value={report.playbooksOk} tone={D.good} />
+                <PBKpi label="Coverage" value={`${report.coverageScore}%`} tone={report.coverageScore >= 80 ? D.good : report.coverageScore >= 50 ? D.warn : D.bad} />
+                <PBKpi label="Total gaps" value={report.totalGaps} tone={report.totalGaps ? D.bad : D.faint} />
+                <PBKpi label="Research items" value={report.researchItems} tone={report.researchItems ? D.warn : D.faint} />
+              </div>
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: 10, marginBottom: 12, fontSize: type.size.caption, color: D.muted }}>{report.summary}</div>
+              {report.sharedGaps.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Shared gaps (affect ≥2 playbooks)</div>
+                  <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr>
+                        {['Dimension', 'Affected playbooks', 'Count'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {report.sharedGaps.map((g) => (
+                          <tr key={g.id}>
+                            <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.text, fontWeight: 500 }}>{g.id}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted, fontFamily: D.mono }}>{g.assets.slice(0, 4).join(', ')}{g.assets.length > 4 ? ` +${g.assets.length - 4}` : ''}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.warn, fontFamily: D.mono }}>{g.assets.length}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {report.topFields.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Top fields by blast radius</div>
+                  <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead><tr>
+                        {['Playbook', 'Field', 'Kind', 'Engines'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {report.topFields.map((f, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.text }}>{f.assetId}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted, fontFamily: D.mono }}>{f.fieldPath}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.faint }}>{f.kind}</td>
+                            <td style={{ padding: '7px 10px', fontSize: 11, borderBottom: `1px solid ${D.border}55`, color: D.accent, fontFamily: D.mono }}>{f.engines}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Failures workspace (KPP-1 Bundle D) ─────────────────────────────────────
+    if (ws === 'Failures') {
+      const analysis = failAnalysis || analyzeFailures(failures);
+      const STATUS_COLOR = { critical: D.bad, major: D.warn, minor: D.faint, 'near-miss': D.accent, exceeded: D.good };
+      return (
+        <div>
+          <Banner>Failure Intelligence — operational learning from completed events. Every record routes to a KCR (never auto-published). Records capture what went wrong, nearly went wrong, or exceeded expectations — the platform's long-term learning moat.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Total records" value={failures.length} tone={failures.length ? D.text : D.faint} />
+            <PBKpi label="Critical" value={analysis.bySeverity?.critical || 0} tone={D.bad} />
+            <PBKpi label="Major" value={analysis.bySeverity?.major || 0} tone={D.warn} />
+            <PBKpi label="Estimation gaps" value={analysis.estimationGaps?.length || 0} tone={D.accent} />
+          </div>
+          {/* Record failure form */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Record a failure / learning</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Event type</div>
+                <select value={failForm.eventType} onChange={(e) => setFailForm((f) => ({ ...f, eventType: e.target.value }))}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Category</div>
+                <select value={failForm.category} onChange={(e) => setFailForm((f) => ({ ...f, category: e.target.value }))}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {FAILURE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Severity</div>
+                <select value={failForm.severity} onChange={(e) => setFailForm((f) => ({ ...f, severity: e.target.value }))}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {['critical', 'major', 'minor', 'near-miss', 'exceeded'].map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>What happened (required)</div>
+              <input value={failForm.what} onChange={(e) => setFailForm((f) => ({ ...f, what: e.target.value }))}
+                placeholder="Describe what went wrong or was learned..."
+                style={{ width: '100%', boxSizing: 'border-box', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }} />
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Impact (optional)</div>
+              <input value={failForm.impact} onChange={(e) => setFailForm((f) => ({ ...f, impact: e.target.value }))}
+                placeholder="What was the impact on the event?"
+                style={{ width: '100%', boxSizing: 'border-box', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => {
+                if (!failForm.what.trim()) return;
+                const rec = createFailureRecord({ ...failForm });
+                const updated = recordFailure(rec);
+                setFailures(updated);
+                setFailAnalysis(analyzeFailures(updated));
+                setFailForm((f) => ({ ...f, what: '', impact: '' }));
+              }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer' }}>
+                Record
+              </button>
+              <button onClick={() => {
+                if (!failures.length) return;
+                const last = failures[failures.length - 1];
+                const kcr = failureToKCR(last, asOf);
+                alert(`KCR created (not published): ${kcr.id}\nType: ${kcr.type} | Field: ${kcr.fieldPath}\nReason: ${kcr.reason.slice(0, 120)}`);
+              }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.muted, cursor: 'pointer' }}>
+                Route last → KCR (preview)
+              </button>
+              <button onClick={() => { clearFailureStore(); setFailures([]); setFailAnalysis(null); }}
+                style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer', marginLeft: 'auto' }}>
+                Clear all
+              </button>
+            </div>
+          </div>
+          {/* Analysis */}
+          {failures.length > 0 && (
+            <div>
+              {analysis.patterns.length > 0 && (
+                <div style={{ background: `${D.warn}12`, border: `1px solid ${D.warn}44`, borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: D.warn, marginBottom: 4 }}>Patterns (categories &gt;20% of records)</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {analysis.patterns.map((p) => (
+                      <span key={p.category} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: `${D.warn}22`, color: D.warn }}>{p.category} — {p.pct}%</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>
+                    {['Severity', 'Event type', 'Category', 'What', 'Impact'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {failures.slice().reverse().map((r) => (
+                      <tr key={r.id}>
+                        <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55` }}>
+                          <span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${STATUS_COLOR[r.severity] || D.faint}1e`, color: STATUS_COLOR[r.severity] || D.faint }}>{r.severity}</span>
+                        </td>
+                        <td style={{ padding: '7px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, color: D.text, fontWeight: 500 }}>{r.eventType}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted }}>{r.category}</td>
+                        <td style={{ padding: '7px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, color: D.text }}>{r.what}</td>
+                        <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.faint }}>{r.impact || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {failures.length === 0 && <Empty msg="No failure records yet — this is where operational learning accumulates after events complete." />}
+        </div>
+      );
+    }
+
     // Fallback (all workspaces covered above)
     return <Empty msg={`Workspace "${ws}" — not yet rendered.`} />;
   };
@@ -3291,7 +3518,7 @@ function KcrStudioPanel() {
 
   return (
     <div>
-      <Banner>Knowledge Studio — the manufacturing platform. 15 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate. Governed; nothing publishes automatically.</Banner>
+      <Banner>Knowledge Studio — the manufacturing platform. 22 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning. Governed; nothing publishes automatically.</Banner>
 
       {fullBacklogHeader()}
 
