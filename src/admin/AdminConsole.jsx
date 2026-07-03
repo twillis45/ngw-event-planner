@@ -2074,6 +2074,7 @@ function KcrStudioPanel() {
   // Batch run state (KRA-1 Bundle A/I)
   const [batchRunResult, setBatchRunResult] = useState(null);   // last batch run summary
   const [batchRunning, setBatchRunning] = useState(false);
+  const [copiedKcrId, setCopiedKcrId] = useState(null);         // tracks last-copied packet
 
   // Schedules state
   const [schedules, setSchedules] = useState(() => loadSchedules());
@@ -2170,9 +2171,14 @@ function KcrStudioPanel() {
                         {packet.impactEstimate && <div style={{ fontSize: 9, color: D.muted, marginTop: 4 }}>Impact: {packet.impactEstimate}</div>}
                         {packet.hasContradictions && <div style={{ fontSize: 9, color: D.warn, marginTop: 4 }}>⚠ {packet.contradictions.length} contradiction(s) — resolve before publishing</div>}
                         {packet.suggestedReviewers?.length > 0 && <div style={{ fontSize: 9, color: D.faint, marginTop: 4 }}>Suggested: {packet.suggestedReviewers.join(' · ')}</div>}
-                        <button onClick={() => { const text = formatReviewPacketText(packet); navigator.clipboard?.writeText(text); }}
-                          style={{ marginTop: 8, fontSize: 8, padding: '2px 8px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', fontFamily: 'inherit' }}>
-                          Copy packet text
+                        <button onClick={() => {
+                            const text = formatReviewPacketText(packet);
+                            navigator.clipboard?.writeText(text);
+                            setCopiedKcrId(k.id);
+                            setTimeout(() => setCopiedKcrId(null), 2000);
+                          }}
+                          style={{ marginTop: 8, fontSize: 8, padding: '2px 8px', borderRadius: 3, border: `1px solid ${copiedKcrId === k.id ? D.good : D.border}`, background: copiedKcrId === k.id ? D.good + '22' : 'transparent', color: copiedKcrId === k.id ? D.good : D.faint, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                          {copiedKcrId === k.id ? 'Copied ✓' : 'Copy packet text'}
                         </button>
                       </div>
                     )}
@@ -2310,7 +2316,12 @@ function KcrStudioPanel() {
                     <Fragment key={e.id}>
                       <tr onClick={() => setOpen(open === e.id ? null : e.id)} style={{ cursor: 'pointer', background: open === e.id ? D.surface2 : 'transparent' }}>
                         <td style={{ ...td, color: D.text, fontWeight: 600 }}>{e.source}</td>
-                        <td style={{ ...td, color: D.muted }}>{e.assetId || '—'}</td>
+                        <td style={{ ...td }}>
+                          {e.assetId
+                            ? <button onClick={(ev) => { ev.stopPropagation(); setMcSessionPlaybook(e.assetId); setWs('Research Session'); }} style={{ fontSize: type.size.caption, color: D.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: D.ff, textDecoration: 'underline', textDecorationStyle: 'dotted' }}>{e.assetId}</button>
+                            : <span style={{ color: D.faint }}>—</span>
+                          }
+                        </td>
                         <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{e.fieldPath || '—'}</td>
                         <td style={td}>{chip(e.authorityLevel || '—', D.accent)}</td>
                         <td style={td}>{chip(e.status, e.status === 'corroborated' ? D.good : e.status === 'contested' ? D.bad : D.warn)}</td>
@@ -2319,7 +2330,10 @@ function KcrStudioPanel() {
                       {open === e.id && (
                         <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
                           <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
-                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6 }}>id: {e.id}</div>
+                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span>id: {e.id}</span>
+                              <button onClick={() => navigator.clipboard?.writeText(e.id)} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', fontFamily: 'inherit' }}>copy id</button>
+                            </div>
                             {e.url && <div style={{ fontSize: type.size.caption, marginBottom: 4 }}><a href={e.url} target="_blank" rel="noreferrer" style={{ color: D.accent, textDecoration: 'none' }}>{e.url}</a></div>}
                             {e.excerpt && <div style={{ fontSize: type.size.caption, color: D.muted, fontStyle: 'italic', marginBottom: 6 }}>"{e.excerpt}"</div>}
                             <div style={{ fontSize: type.size.caption, color: D.faint }}>sourceType: {e.sourceType} · confidence: {e.confidence} · region: {e.region || 'n/a'}</div>
@@ -2349,7 +2363,7 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Findings') {
-      const campaignFindings = campaigns.filter((c) => c.finding && c.finding.status !== 'insufficient');
+      const campaignFindings = campaigns.filter((c) => c.finding && typeof c.finding === 'object' && ['proposed', 'contested'].includes(c.finding.status));
       return (
         <div>
           <Banner>Findings derived from Evidence + Observations via deriveFinding(). Findings are ephemeral (computed on demand by campaigns); the store here shows campaign-attached findings.</Banner>
@@ -2444,9 +2458,12 @@ function KcrStudioPanel() {
           <Banner>KCRs in review — SME, editorial, and governance sign-off required (role-gated). KCR-6 governs which roles can advance each stage. No auto-advancement.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
-            <PBKpi label="Aging >30d" value={metrics.staleCount} tone={metrics.staleCount ? D.bad : D.faint} />
+            <PBKpi label="Aging >30d" value={metrics.staleCount} tone={metrics.staleCount ? D.bad : D.faint} onClick={metrics.staleCount ? () => setStatusFilter('stale') : undefined} />
           </div>
-          {loading ? <Banner tone="muted">Loading…</Banner> : reviewKcrs.length === 0 ? <Empty msg="No KCRs in review. Honest-empty." /> : <KcrTable items={reviewKcrs} />}
+          {loading ? <Banner tone="muted">Loading…</Banner> : reviewKcrs.length === 0
+            ? <Empty msg="KCRs reach review when a campaign produces a grounded finding. Run one via Campaigns." />
+            : <KcrTable items={reviewKcrs} />
+          }
         </div>
       );
     }
@@ -2954,7 +2971,16 @@ function KcrStudioPanel() {
                   </div>
                   {open === c.id && c.result && (
                     <div style={{ marginTop: 10, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>
-                      <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, whiteSpace: 'pre-wrap' }}>{JSON.stringify(c.result, null, 2)}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted }}>evidence: <strong style={{ color: D.text }}>{Array.isArray(c.result.evidence) ? c.result.evidence.length : (c.result.evidence || 0)}</strong></span>
+                        {c.result.finding && <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted }}>finding: <strong style={{ color: c.result.finding.status === 'proposed' ? D.good : D.warn }}>{c.result.finding.status || 'found'}</strong></span>}
+                        {c.result.kcr && <span style={{ fontSize: 9, fontFamily: D.mono, color: D.good }}>KCR: {c.result.kcr.id}</span>}
+                        {c.result.finding?.proposedValue != null && <span style={{ fontSize: 9, fontFamily: D.mono, color: D.text }}>value: {monoPre(c.result.finding.proposedValue)}</span>}
+                      </div>
+                      <button onClick={() => { navigator.clipboard?.writeText(JSON.stringify(c.result, null, 2)); }}
+                        style={{ fontSize: 8, padding: '2px 8px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        Copy raw JSON
+                      </button>
                     </div>
                   )}
                 </div>
@@ -4081,8 +4107,10 @@ function KcrStudioPanel() {
                 ].filter((s) => s.items.length > 0).map(({ label, items }) => (
                   <div key={label} style={{ marginBottom: 6 }}>
                     <div style={{ fontSize: 9, color: D.accent, marginBottom: 2 }}>{label} — {items.length}</div>
-                    {items.slice(0, 3).map((k) => <div key={k.id} style={{ fontSize: 9, color: D.muted, fontFamily: D.mono, paddingLeft: 8 }}>{k.id}</div>)}
-                    {items.length > 3 && <div style={{ fontSize: 9, color: D.faint, paddingLeft: 8 }}>+{items.length - 3} more</div>}
+                    {items.slice(0, 3).map((k) => (
+                      <button key={k.id} onClick={() => setWs('Review')} style={{ display: 'block', fontSize: 9, color: D.accent, fontFamily: D.mono, paddingLeft: 8, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1 }}>{k.id} →</button>
+                    ))}
+                    {items.length > 3 && <button onClick={() => setWs('Review')} style={{ fontSize: 9, color: D.faint, paddingLeft: 8, background: 'none', border: 'none', cursor: 'pointer' }}>+{items.length - 3} more →</button>}
                   </div>
                 ))
               )}
@@ -4234,8 +4262,8 @@ function KcrStudioPanel() {
                 <PBKpi label="Covered" value={session.coveredFields} tone={session.coveredFields > 0 ? D.good : D.faint} />
                 <PBKpi label="Evidence" value={session.totalEvidence} tone={session.totalEvidence > 0 ? D.accent : D.faint} />
                 <PBKpi label="Research Debt" value={session.researchDebt} tone={session.researchDebt > 5 ? D.bad : session.researchDebt > 0 ? D.warn : D.good} />
-                <PBKpi label="Active Campaigns" value={session.activeCampaigns.length} tone={D.muted} />
-                <PBKpi label="Active KCRs" value={session.activeKcrs.length} tone={D.muted} />
+                <PBKpi label="Active Campaigns" value={session.activeCampaigns.length} tone={D.muted} onClick={session.activeCampaigns.length ? () => setWs('Campaigns') : undefined} />
+                <PBKpi label="Active KCRs" value={session.activeKcrs.length} tone={D.muted} onClick={session.activeKcrs.length ? () => setWs('Review') : undefined} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -4302,7 +4330,9 @@ function KcrStudioPanel() {
                   {session.activeCampaigns.length > 0 && (
                     <div>
                       <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.04em' }}>Active campaigns</div>
-                      {session.activeCampaigns.map((c) => <div key={c.id} style={{ fontSize: 9, color: D.muted, fontFamily: D.mono, marginBottom: 2 }}>{c.goal?.slice(0, 60)}</div>)}
+                      {session.activeCampaigns.map((c) => (
+                        <button key={c.id} onClick={() => setWs('Campaigns')} style={{ display: 'block', fontSize: 9, color: D.accent, fontFamily: D.mono, marginBottom: 2, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>{c.goal?.slice(0, 60)} →</button>
+                      ))}
                     </div>
                   )}
                 </div>

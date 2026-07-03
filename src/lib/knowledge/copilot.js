@@ -39,6 +39,7 @@ function makeProposal({ type, assetId, fieldPath, reason, rationale, confidence,
 
 // Pass 1: quality gaps — assets with multiple failing dimensions, prioritized by gap count
 function analyzeQualityGaps(qualityMatrix) {
+  if (!qualityMatrix || !Array.isArray(qualityMatrix.assets)) return [];
   return qualityMatrix.assets
     .filter((a) => a.gapCount > 0 && a.status !== 'archived' && a.status !== 'deprecated')
     .sort((a, b) => b.gapCount - a.gapCount)
@@ -80,6 +81,7 @@ function analyzePricingGaps(playbooks) {
 
 // Pass 3: governance gaps — no governance block (can't schedule review cadence)
 function analyzeGovernanceGaps(playbooks) {
+  if (!Array.isArray(playbooks)) return [];
   return playbooks
     .filter((pb) => !['archived', 'deprecated'].includes(pb.status) && !(pb.governance && pb.governance.reviewIntervalDays))
     .map((pb) => makeProposal({
@@ -95,6 +97,7 @@ function analyzeGovernanceGaps(playbooks) {
 
 // Pass 4: campaign suggestions — active evidence gaps without a running campaign
 function analyzeCampaignGaps(kcrs, campaigns) {
+  if (!Array.isArray(kcrs) || !Array.isArray(campaigns)) return [];
   const alreadyCampaigning = new Set(campaigns.map((c) => `${c.assetId}::${c.fieldPath}`));
   return kcrs
     .filter((k) => k.status === 'draft' && k.type === 'grounding-gap' && !alreadyCampaigning.has(`${k.assetId}::${k.fieldPath}`))
@@ -113,10 +116,10 @@ function analyzeCampaignGaps(kcrs, campaigns) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function runCopilot({ playbooks, asOf } = {}) {
-  const pbs = playbooks || ALL_PLAYBOOKS;
-  const evidence = loadEvidence();
-  const campaigns = loadCampaigns();
-  const kcrs = loadLocalKCRs();
+  const pbs = Array.isArray(playbooks) ? playbooks : ALL_PLAYBOOKS;
+  const evidence  = (() => { try { const r = loadEvidence();  return Array.isArray(r) ? r : []; } catch { return []; } })();
+  const campaigns = (() => { try { const r = loadCampaigns(); return Array.isArray(r) ? r : []; } catch { return []; } })();
+  const kcrs      = (() => { try { const r = loadLocalKCRs(); return Array.isArray(r) ? r : []; } catch { return []; } })();
   const qualityMatrix = qualityManufacturing(pbs, asOf || new Date().toISOString().slice(0, 10));
 
   const qualityGaps = analyzeQualityGaps(qualityMatrix);
