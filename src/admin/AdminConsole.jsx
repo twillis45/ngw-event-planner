@@ -22,7 +22,7 @@ import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
 import { syncIntake, loadKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
-import { kcrCan } from '../lib/knowledge/kcrRoles';
+import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
@@ -36,6 +36,7 @@ import { blastRadius } from '../lib/knowledge/dependencyEngine';
 import { simulatePublish } from '../lib/knowledge/simulation';
 import { resolveField, explainField } from '../lib/knowledge/runtimeKnowledge';
 import { detectContradictions, analyzeEvidence } from '../lib/knowledge/evidenceIntelligence';
+import { runCopilot, acceptProposal } from '../lib/knowledge/copilot';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1912,7 +1913,8 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 const STUDIO_WS = [
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
-  'Retirement', 'Campaigns', 'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
+  'Copilot', 'Analytics', 'Retirement', 'Campaigns',
+  'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
 ];
 
 function KcrStudioPanel() {
@@ -1942,6 +1944,9 @@ function KcrStudioPanel() {
   const conflicts = detectContradictions(evidence);
   const evidenceIntel = analyzeEvidence(evidence, asOf);
   const quality = qualityManufacturing(ALL_PLAYBOOKS, asOf);
+  const [copilotResult, setCopilotResult] = useState(null);
+  const [copilotBusy, setCopilotBusy] = useState(false);
+  const [acceptedProposals, setAcceptedProposals] = useState([]);
 
   const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
   const metrics = kcrBacklogMetrics(kcrs, asOf);
@@ -2675,6 +2680,157 @@ function KcrStudioPanel() {
               )}
             </div>
           )}
+        </div>
+      );
+    }
+
+    if (ws === 'Copilot') {
+      const CONF_COLOR = { high: D.good, medium: D.warn, low: D.faint };
+      const TYPE_COLOR = { 'fill-quality-gap': D.bad, 'ground-pricing': D.warn, 'add-governance': D.accent, 'run-campaign': D.good, 'resolve-conflict': D.bad, 'retire-asset': D.faint };
+      const runAnalysis = () => {
+        setCopilotBusy(true);
+        setTimeout(() => { // micro-delay so button press registers visually
+          try { setCopilotResult(runCopilot({ playbooks: ALL_PLAYBOOKS, asOf })); }
+          catch (e) { setCopilotResult({ error: e.message }); }
+          setCopilotBusy(false);
+        }, 50);
+      };
+      const handleAccept = (proposal) => {
+        if (!canPublish(role) && role !== 'steward' && role !== 'admin') return;
+        const kcr = acceptProposal(proposal, { role, asOf });
+        if (kcr) {
+          upsertKCR(kcr).then(refresh);
+          setAcceptedProposals((prev) => [...prev, proposal.id]);
+        }
+      };
+      return (
+        <div>
+          <Banner>Knowledge Intelligence Copilot — propose-only, governed. Analyzes corpus quality, evidence gaps, and pipeline state. Proposals are NEVER auto-applied; an admin must accept each one, which creates a governed draft KCR that still goes through the full review pipeline.</Banner>
+          <div style={{ marginBottom: 14 }}>
+            <button onClick={runAnalysis} disabled={copilotBusy} style={{ ...btnStyle(true), opacity: copilotBusy ? 0.5 : 1 }}>
+              {copilotBusy ? 'Analyzing…' : 'Run corpus analysis'}
+            </button>
+          </div>
+          {copilotResult && (copilotResult.error ? (
+            <Banner tone="bad">{copilotResult.error}</Banner>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Proposals" value={copilotResult.summary.total} tone={copilotResult.summary.total ? D.accent : D.faint} />
+                <PBKpi label="High confidence" value={copilotResult.summary.highConfidence} tone={D.good} />
+                {Object.entries(copilotResult.summary.byType).filter(([, n]) => n > 0).map(([t, n]) => (
+                  <PBKpi key={t} label={t.replace(/-/g, ' ')} value={n} tone={TYPE_COLOR[t] || D.muted} />
+                ))}
+              </div>
+              {copilotResult.proposals.length === 0 ? (
+                <Empty msg="No proposals — corpus is clean (all dimensions OK, all pricing grounded, governance set). Honest-empty." />
+              ) : (
+                <div>
+                  {copilotResult.proposals.map((p) => {
+                    const already = acceptedProposals.includes(p.id);
+                    return (
+                      <div key={p.id} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                              {chip(p.type, TYPE_COLOR[p.type] || D.muted)}
+                              {chip(p.confidence, CONF_COLOR[p.confidence] || D.faint)}
+                              <span style={{ fontSize: 11, color: D.text, fontWeight: 600 }}>{p.assetId}</span>
+                              <span style={{ fontSize: 11, color: D.faint, fontFamily: D.mono }}>{p.fieldPath}</span>
+                            </div>
+                            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 4 }}>{p.reason}</div>
+                            <div style={{ fontSize: 11, color: D.faint, fontStyle: 'italic' }}>{p.rationale}</div>
+                          </div>
+                          <button
+                            disabled={already}
+                            onClick={() => handleAccept(p)}
+                            style={{ ...btnStyle(!already), opacity: already ? 0.5 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}
+                          >{already ? 'Accepted ✓' : 'Accept → draft KCR'}</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (ws === 'Analytics') {
+      const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
+      const byType = kcrs.reduce((m, k) => { m[k.type] = (m[k.type] || 0) + 1; return m; }, {});
+      const byPriority = kcrs.reduce((m, k) => { m[k.priority || 'low'] = (m[k.priority || 'low'] || 0) + 1; return m; }, {});
+      const kcrsByStatus = Object.entries(kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {}))
+        .sort((a, b) => b[1] - a[1]);
+      const evidenceBySource = evidence.reduce((m, e) => { m[e.sourceType || 'unknown'] = (m[e.sourceType || 'unknown'] || 0) + 1; return m; }, {});
+      const evidenceByAuth = evidence.reduce((m, e) => { m[e.authorityLevel || 'unknown'] = (m[e.authorityLevel || 'unknown'] || 0) + 1; return m; }, {});
+      const conversionRate = kcrs.length > 0 ? Math.round((byStatus.published || 0) / kcrs.length * 100) : 0;
+
+      const BarRow = ({ label, value, max, color }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div style={{ fontSize: type.size.caption, color: D.muted, minWidth: 160 }}>{label}</div>
+          <div style={{ flex: 1, background: D.surface2, borderRadius: 3, height: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${max > 0 ? Math.round(value / max * 100) : 0}%`, height: '100%', background: color || D.accent, borderRadius: 3 }} />
+          </div>
+          <div style={{ fontFamily: D.mono, fontSize: 11, color: D.muted, minWidth: 30, textAlign: 'right' }}>{value}</div>
+        </div>
+      );
+
+      return (
+        <div>
+          <Banner>Knowledge Analytics — dimensional snapshot of the knowledge platform. Pipeline throughput, corpus quality distribution, and evidence authority analysis. Time-series metrics are honest-empty until KCRs carry timestamps.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Total KCRs" value={kcrs.length} />
+            <PBKpi label="Pipeline conversion" value={`${conversionRate}%`} tone={conversionRate > 50 ? D.good : D.warn} />
+            <PBKpi label="Evidence records" value={evidence.length} />
+            <PBKpi label="Corpus assets" value={ALL_PLAYBOOKS.length} />
+            <PBKpi label="Quality OK" value={`${quality.totalAssets > 0 ? Math.round(quality.fullyOk / quality.totalAssets * 100) : 0}%`} tone={D.good} />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>KCR pipeline status</div>
+              {kcrsByStatus.length === 0 ? <Empty msg="No KCRs yet." /> : kcrsByStatus.map(([s, n]) => (
+                <BarRow key={s} label={s} value={n} max={kcrs.length} color={KCR_STATUS_COLOR[s]} />
+              ))}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>By trigger</div>
+              {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+                <BarRow key={t} label={t} value={n} max={kcrs.length} color={D.accent} />
+              ))}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>By type</div>
+              {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+                <BarRow key={t} label={t} value={n} max={kcrs.length} color={D.warn} />
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Evidence by source type</div>
+              {evidence.length === 0 ? <Empty msg="No evidence." /> : Object.entries(evidenceBySource).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+                <BarRow key={s} label={s} value={n} max={evidence.length} color={D.good} />
+              ))}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Evidence by authority</div>
+              {evidence.length === 0 ? <Empty msg="No evidence." /> : Object.entries(evidenceByAuth).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+                <BarRow key={s} label={s} value={n} max={evidence.length} color={D.accent} />
+              ))}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Corpus quality distribution</div>
+              {[['Fully OK', quality.fullyOk, D.good], ['With gaps', quality.assets.filter((a) => a.gapCount > 0).length, D.bad], ['With warns only', quality.assets.filter((a) => a.gapCount === 0 && a.warnCount > 0).length, D.warn]].map(([label, n, color]) => (
+                <BarRow key={label} label={label} value={n} max={quality.totalAssets} color={color} />
+              ))}
+            </div>
+          </div>
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
+            manufacturing floor · queues: obs {factory.queues.observation.count} · ev {factory.queues.evidence.count} · find {factory.queues.finding.count} · review {factory.queues.review.count} · pub {factory.queues.publishing.count} · val {factory.queues.validation.count} · velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
+          </div>
         </div>
       );
     }
