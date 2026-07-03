@@ -2056,6 +2056,10 @@ function KcrStudioPanel() {
   const [campRunResult, setCampRunResult] = useState(null);
   const [campList, setCampList] = useState(() => loadCampaigns());
   const [campTemplate, setCampTemplate] = useState('');
+  // Manual evidence submission (for external providers that need backend data)
+  const [campRawProvider, setCampRawProvider] = useState('');
+  const [campRawJson, setCampRawJson] = useState('');
+  const [campRawError, setCampRawError] = useState('');
 
   // Schedules state
   const [schedules, setSchedules] = useState(() => loadSchedules());
@@ -2759,9 +2763,55 @@ function KcrStudioPanel() {
               {campRunResult.kcr && (
                 <div style={{ fontSize: 10, color: D.good }}>KCR: <span style={{ fontFamily: D.mono }}>{campRunResult.kcr.id}</span> — now in Review queue (switch to Inbox)</div>
               )}
-              {campRunResult.result?.evidence === 0 && (
-                <div style={{ fontSize: 10, color: D.faint, marginTop: 6 }}>⚡ External providers need backend acquisition. Evidence = 0 until a backend agent submits fetched records. Campaign saved — re-run once records arrive.</div>
-              )}
+              {campRunResult.result?.evidence === 0 && (() => {
+                const externalProviders = (campRunResult.providerIds || []).filter((id) => id !== 'internal-validation');
+                const templateRecord = JSON.stringify({ source: campRawProvider || externalProviders[0] || 'bls-cpi', assetId: campRunResult.assetId || '', fieldPath: campRunResult.fieldPath || '', url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ fact: 'unit cost range', value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
+                const submitRaw = async () => {
+                  setCampRawError('');
+                  let records;
+                  try { records = JSON.parse(campRawJson); if (!Array.isArray(records)) records = [records]; } catch (e) { setCampRawError(`Invalid JSON: ${e.message}`); return; }
+                  if (!campRawProvider) { setCampRawError('Select a provider first.'); return; }
+                  const pb = ALL_PLAYBOOKS.find((p) => p.type === campRunResult.assetId);
+                  const allProviders = buildProviders();
+                  const fetchedMap = { [campRawProvider]: records };
+                  const campaign = loadCampaigns().find((c) => c.id === campRunResult.id) || campRunResult;
+                  const result = runCampaign(campaign, { providers: allProviders, fetched: fetchedMap, pb, asOf });
+                  recordCampaign(result);
+                  if (result.kcr) { await upsertKCR(result.kcr); refresh(); }
+                  setCampRunResult(result); setCampList(loadCampaigns()); setCampRawJson('');
+                };
+                return (
+                  <div style={{ marginTop: 10, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 7, padding: 12 }}>
+                    <div style={{ fontSize: 9, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Submit External Evidence</div>
+                    <div style={{ fontSize: 10, color: D.muted, marginBottom: 8 }}>Paste records fetched from an external provider. Each record becomes evidence that re-runs this campaign through the full pipeline.</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>Provider</div>
+                        <select value={campRawProvider} onChange={(e) => { setCampRawProvider(e.target.value); setCampRawError(''); }}
+                          style={{ width: '100%', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 5, color: D.text, fontSize: type.size.caption, padding: '5px 8px', outline: 'none', fontFamily: 'inherit' }}>
+                          <option value="">— select —</option>
+                          {externalProviders.map((id) => <option key={id} value={id}>{id}</option>)}
+                          {PROVIDER_FAMILIES.filter((f) => f !== 'internal-validation' && !externalProviders.includes(f)).map((f) => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+                        <button onClick={() => { setCampRawJson(templateRecord); setCampRawError(''); if (!campRawProvider && externalProviders[0]) setCampRawProvider(externalProviders[0]); }}
+                          style={{ padding: '5px 10px', borderRadius: 5, fontSize: 9, border: `1px solid ${D.border}`, background: D.bg, color: D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Insert template
+                        </button>
+                        <button onClick={submitRaw} disabled={!campRawJson.trim() || !campRawProvider}
+                          style={{ padding: '5px 14px', borderRadius: 5, fontSize: 9, fontWeight: 700, border: 'none', background: (campRawJson.trim() && campRawProvider) ? D.accent : D.faint, color: '#000', cursor: (campRawJson.trim() && campRawProvider) ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+                          Submit + Re-run
+                        </button>
+                      </div>
+                    </div>
+                    <textarea value={campRawJson} onChange={(e) => { setCampRawJson(e.target.value); setCampRawError(''); }} rows={7} placeholder={`[\n  ${templateRecord.split('\n').join('\n  ')}\n]`}
+                      style={{ width: '100%', boxSizing: 'border-box', background: D.surface, border: `1px solid ${campRawError ? D.bad : D.border}`, borderRadius: 5, color: D.text, fontSize: 10, fontFamily: D.mono, padding: '7px 10px', outline: 'none', resize: 'vertical' }} />
+                    {campRawError && <div style={{ fontSize: 10, color: D.bad, marginTop: 4 }}>{campRawError}</div>}
+                    <div style={{ fontSize: 9, color: D.faint, marginTop: 6 }}>Required fields per record: <span style={{ fontFamily: D.mono }}>source, assetId, fieldPath, excerpt, extractedFacts[]</span>. Optional: <span style={{ fontFamily: D.mono }}>url, region</span>. Paste one record or an array.</div>
+                  </div>
+                );
+              })()}
             </div>
           )}
           {campRunResult?.error && (
