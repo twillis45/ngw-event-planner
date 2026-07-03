@@ -2090,9 +2090,8 @@ function KcrStudioPanel() {
     const asOfNow = new Date().toISOString().slice(0, 10);
     // Step 1: auto-generate campaign drafts for HIGH gaps that don't yet have one
     const allEv = loadEvidence();
-    const allKcrsNow = loadLocalKCRs();
-    const q = buildManufacturingQueue(ALL_PLAYBOOKS, { evidence: allEv, kcrs: allKcrsNow, campaigns: loadCampaigns(), asOf: asOfNow });
-    const ungapped = q.filter((x) => x.priority === 'HIGH' && !x.hasCampaign);
+    const q = buildManufacturingQueue(ALL_PLAYBOOKS, allEv, loadCampaigns(), asOfNow);
+    const ungapped = Array.isArray(q) ? q.filter((x) => x.priority === 'HIGH' && !x.hasCampaign) : [];
     if (ungapped.length) {
       const generated = generateCampaignsFromQueue(ungapped, { priorities: ['HIGH'], limit: 10, at: asOfNow });
       generated.forEach((c) => recordCampaign(c));
