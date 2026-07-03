@@ -531,8 +531,11 @@ function WorkspacesPanel({ onOpenUser }) {
                     display: 'flex', gap: 12, alignItems: 'baseline',
                     padding: '6px 0', borderBottom: `1px solid ${D.border}`, fontSize: type.size.caption,
                   }}>
-                    <span style={{ color: D.muted, fontFamily: D.mono, flex: 1, minWidth: 0,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.event_id}</span>
+                    <span style={{ flex: 1, minWidth: 0,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: D.muted }}>{ev.name || ev.event_id}</span>
+                      {ev.name && <span style={{ color: D.faint, fontFamily: D.mono }}> · {ev.event_id}</span>}
+                    </span>
                     <span style={{ color: D.faint }}>{ev.owner_email || ev.owner_id}</span>
                     <span style={{ color: D.faint, fontFamily: D.mono, whiteSpace: 'nowrap' }}>{fmtTs(ev.created_at)}</span>
                   </div>
