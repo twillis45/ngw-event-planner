@@ -142,4 +142,39 @@ export function corpusDimensionKCRs(asOf, playbooks) {
 
 // Convenience: the KCR type map + a helper to know a dimension's config (for the admin view).
 export function dimensionConfig(id) { return { kcrType: KCR_TYPE_BY_DIM[id] || 'quality-gap', reviewInterval: reviewDays(id) }; }
+
+// ── Bundle F: Quality Manufacturing ─────────────────────────────────────────────
+// Per-asset dimensional health matrix: which dimensions pass/fail per playbook +
+// corpus-wide coverage totals. Drives the Quality workspace in the Studio.
+export function qualityManufacturing(playbooks, asOf) {
+  const list = playbooks || ALL_PLAYBOOKS;
+  const dimIds = DIMENSION_REGISTRY.map((d) => d.id);
+
+  const byDimension = {};
+  dimIds.forEach((id) => { byDimension[id] = { ok: 0, warn: 0, gap: 0, na: 0 }; });
+
+  const assets = list.map((pb) => {
+    const dims = evaluateAsset(pb, 'playbook', asOf);
+    const kcrs = dimensionKCRs(pb, asOf);
+    dims.forEach((d) => {
+      const bucket = byDimension[d.id] || (byDimension[d.id] = { ok: 0, warn: 0, gap: 0, na: 0 });
+      bucket[d.status] = (bucket[d.status] || 0) + 1;
+    });
+    return {
+      type: pb.type,
+      status: pb.status,
+      dimensions: dims.map((d) => ({ id: d.id, status: d.status, reason: d.reason, deferred: !!d.deferredTo })),
+      kcrCount: kcrs.length,
+      gapCount: dims.filter((d) => d.status === 'gap').length,
+      warnCount: dims.filter((d) => d.status === 'warn').length,
+    };
+  });
+
+  const totalAssets = list.length;
+  const fullyOk = assets.filter((a) => a.gapCount === 0 && a.warnCount === 0).length;
+  const totalKCRs = assets.reduce((s, a) => s + a.kcrCount, 0);
+
+  return { asOf, totalAssets, fullyOk, totalKCRs, dimIds, byDimension, assets };
+}
+
 export { playbookId };

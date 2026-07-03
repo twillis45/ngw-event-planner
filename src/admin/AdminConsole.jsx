@@ -23,7 +23,7 @@ import { syncIntake, loadKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
 import { kcrCan } from '../lib/knowledge/kcrRoles';
-import { corpusDimensionKCRs } from '../lib/knowledge/dimensions';
+import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
 import { loadCampaigns } from '../lib/knowledge/campaign';
@@ -1911,8 +1911,8 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 // ─── Bundle C: Manufacturing Studio — 15 operational workspaces ───────────────
 const STUDIO_WS = [
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
-  'Review', 'Publishing', 'Validation', 'Monitoring', 'Retirement',
-  'Campaigns', 'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
+  'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
+  'Retirement', 'Campaigns', 'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
 ];
 
 function KcrStudioPanel() {
@@ -1941,6 +1941,7 @@ function KcrStudioPanel() {
   const graph = buildKnowledgeGraph({ assets: ALL_PLAYBOOKS, evidence, kcrs });
   const conflicts = detectContradictions(evidence);
   const evidenceIntel = analyzeEvidence(evidence, asOf);
+  const quality = qualityManufacturing(ALL_PLAYBOOKS, asOf);
 
   const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
   const metrics = kcrBacklogMetrics(kcrs, asOf);
@@ -2315,6 +2316,90 @@ function KcrStudioPanel() {
       );
     }
 
+    if (ws === 'Quality') {
+      const STATUS_ORDER = ['gap', 'warn', 'ok', 'n/a'];
+      const statusColor = (s) => s === 'ok' ? D.good : s === 'warn' ? D.warn : s === 'gap' ? D.bad : D.faint;
+      const statusTick = (s) => s === 'ok' ? '●' : s === 'warn' ? '◑' : s === 'gap' ? '○' : '—';
+      return (
+        <div>
+          <Banner>Quality Manufacturing — per-asset dimensional health matrix. Auto-generated improvement KCRs flow into the Review pipeline. Dimensional debt is the leading indicator of knowledge risk.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Assets evaluated" value={quality.totalAssets} />
+            <PBKpi label="Fully OK" value={quality.fullyOk} tone={quality.fullyOk === quality.totalAssets ? D.good : D.warn} />
+            <PBKpi label="With gaps" value={quality.assets.filter((a) => a.gapCount > 0).length} tone={D.bad} />
+            <PBKpi label="Auto-KCRs" value={quality.totalKCRs} tone={quality.totalKCRs ? D.accent : D.faint} />
+            <PBKpi label="Dimensions" value={quality.dimIds.length} />
+          </div>
+
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Dimension coverage (corpus-wide)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {quality.dimIds.map((dim) => {
+                const c = quality.byDimension[dim] || {};
+                const worst = STATUS_ORDER.find((s) => (c[s] || 0) > 0) || 'ok';
+                return (
+                  <div key={dim} style={{ background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, padding: '8px 10px', minWidth: 130 }}>
+                    <div style={{ fontSize: 11, color: D.muted, marginBottom: 6, fontWeight: 600 }}>{dim}</div>
+                    <div style={{ display: 'flex', gap: 6, fontSize: 10, fontFamily: D.mono }}>
+                      {['gap', 'warn', 'ok'].map((s) => (c[s] || 0) > 0 && (
+                        <span key={s} style={{ color: statusColor(s) }}>{statusTick(s)} {c[s]}</span>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 9, color: statusColor(worst), marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{worst}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={th}>Asset</th>
+                <th style={th}>Status</th>
+                {quality.dimIds.slice(0, 8).map((d) => <th key={d} style={{ ...th, fontSize: 9 }}>{d.slice(0, 8)}</th>)}
+                <th style={th}>Gaps</th>
+                <th style={th}>Warns</th>
+                <th style={th}>KCRs</th>
+              </tr></thead>
+              <tbody>
+                {quality.assets.sort((a, b) => b.gapCount - a.gapCount || b.warnCount - a.warnCount).map((a) => (
+                  <Fragment key={a.type}>
+                    <tr onClick={() => setOpen(open === a.type ? null : a.type)} style={{ cursor: 'pointer', background: open === a.type ? D.surface2 : 'transparent' }}>
+                      <td style={{ ...td, color: D.text, fontWeight: 600, fontSize: 11 }}>{a.type}</td>
+                      <td style={td}>{chip(a.status || 'draft', a.status === 'production' ? D.good : a.status === 'review-needed' ? D.warn : D.faint)}</td>
+                      {quality.dimIds.slice(0, 8).map((dimId) => {
+                        const d = a.dimensions.find((x) => x.id === dimId);
+                        const s = d ? d.status : 'n/a';
+                        return <td key={dimId} style={{ ...td, textAlign: 'center' }}><span title={d?.reason || ''} style={{ color: statusColor(s) }}>{statusTick(s)}</span></td>;
+                      })}
+                      <td style={{ ...td, fontFamily: D.mono, color: a.gapCount ? D.bad : D.faint }}>{a.gapCount || '—'}</td>
+                      <td style={{ ...td, fontFamily: D.mono, color: a.warnCount ? D.warn : D.faint }}>{a.warnCount || '—'}</td>
+                      <td style={{ ...td, fontFamily: D.mono, color: a.kcrCount ? D.accent : D.faint }}>{a.kcrCount || '—'}</td>
+                    </tr>
+                    {open === a.type && (
+                      <tr><td colSpan={13} style={{ padding: '0 10px 12px' }}>
+                        <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                          {a.dimensions.filter((d) => d.status !== 'ok').map((d) => (
+                            <div key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0', fontSize: type.size.caption }}>
+                              <span style={{ color: statusColor(d.status), fontFamily: D.mono, minWidth: 20 }}>{statusTick(d.status)}</span>
+                              <span style={{ color: D.muted, minWidth: 160 }}>{d.id}</span>
+                              <span style={{ color: D.faint }}>{d.reason}</span>
+                              {d.deferred && <span style={{ fontSize: 10, color: D.faint, fontStyle: 'italic' }}>(deferred to research queue)</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
     if (ws === 'Retirement') {
       const archivedKcrs = kcrs.filter((k) => ['archived', 'deprecated'].includes(k.status));
       const archivedPbs = ALL_PLAYBOOKS.filter((pb) => ['archived', 'deprecated'].includes(pb.status));
@@ -2627,7 +2712,7 @@ function KcrStudioPanel() {
         ))}
       </div>
 
-      {loading && ['Review', 'Publishing', 'Retirement', 'Monitoring'].includes(ws) && (
+      {loading && ['Review', 'Publishing', 'Retirement', 'Monitoring', 'Quality'].includes(ws) && (
         <Banner tone="muted">Loading KCR backlog…</Banner>
       )}
 
