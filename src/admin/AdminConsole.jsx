@@ -52,6 +52,10 @@ import { RESEARCH_ROLES, canPerform, publishingRoles } from '../lib/knowledge/re
 import { WORKER_TYPES, createWorkerInstance, buildFleetHealth, buildFleetMetrics, loadWorkers, upsertWorker, clearWorkers, toggleWorker, loadRuns, clearRuns, createWorkerRun, completeWorkerRun, addRun } from '../lib/knowledge/knowledgeWorkers';
 import { PROVIDER_MONITOR_RULES, overdueProviders, providerHealthSummary } from '../lib/knowledge/providerMonitor';
 import { buildOvernightActivity, buildManufacturingQueue, buildKnowledgeHealth, buildPublishingQueue, buildKnowledgeAging, generateCampaignsFromQueue, buildResearchSession, buildExecutiveReport } from '../lib/knowledge/missionControl';
+import { batchByFilter, runCampaigns, autoCorroborate, runSummaryLabel } from '../lib/knowledge/researchRunner';
+import { autoNormalize, pasteHintFor } from '../lib/knowledge/providerNormalizers';
+import { loadProviderIntel, saveProviderIntel, recordProviderRun, extractProviderRunStats, providerIntelligenceSummary, getProviderStats } from '../lib/knowledge/providerIntelligence';
+import { prepareReviewPacket, formatReviewPacketText } from '../lib/knowledge/reviewPacket';
 import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
@@ -2062,6 +2066,11 @@ function KcrStudioPanel() {
   const [campRawProvider, setCampRawProvider] = useState('');
   const [campRawJson, setCampRawJson] = useState('');
   const [campRawError, setCampRawError] = useState('');
+  const [campRawPreview, setCampRawPreview] = useState(null);  // { records, error } from autoNormalize
+
+  // Batch run state (KRA-1 Bundle A/I)
+  const [batchRunResult, setBatchRunResult] = useState(null);   // last batch run summary
+  const [batchRunning, setBatchRunning] = useState(false);
 
   // Schedules state
   const [schedules, setSchedules] = useState(() => loadSchedules());
@@ -2138,11 +2147,32 @@ function KcrStudioPanel() {
                 <td style={td}>{chip(k.priority || 'low', k.priority === 'high' ? D.bad : k.priority === 'med' ? D.warn : D.faint)}</td>
                 <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11, wordBreak: 'break-word' }}>{k.fieldPath}</td>
               </tr>
-              {open === k.id && (
+              {open === k.id && (() => {
+                const packet = prepareReviewPacket(k, evidence, ALL_PLAYBOOKS, { asOf });
+                return (
                 <tr><td colSpan={cols} style={{ padding: '0 10px 12px' }}>
                   <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14 }}>
                     <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 10 }}>{k.reason}</div>
                     <KcrActions kcr={k} role={role} asOf={asOf} onChanged={refresh} />
+                    {packet && (
+                      <div style={{ marginTop: 10, padding: '10px 12px', background: D.surface, border: `1px solid ${packet.hasContradictions ? D.warn : packet.readyToPublish ? D.good : D.border}33`, borderRadius: 7 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                          <span style={{ fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em' }}>Review Packet</span>
+                          <span style={{ fontSize: 9, color: D.faint }}>{packet.evidenceCount} evidence · {packet.strength}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: packet.readyToPublish ? D.good : packet.hasContradictions ? D.warn : D.muted, fontWeight: 600, marginBottom: 6 }}>{packet.reviewerAction}</div>
+                        {packet.excerpts?.slice(0, 2).map((ex, i) => (
+                          <div key={i} style={{ fontSize: 9, color: D.faint, fontFamily: D.mono, marginBottom: 3, paddingLeft: 8 }}>[{ex.authority}] {ex.source}: {ex.excerpt?.slice(0, 120)}</div>
+                        ))}
+                        {packet.impactEstimate && <div style={{ fontSize: 9, color: D.muted, marginTop: 4 }}>Impact: {packet.impactEstimate}</div>}
+                        {packet.hasContradictions && <div style={{ fontSize: 9, color: D.warn, marginTop: 4 }}>⚠ {packet.contradictions.length} contradiction(s) — resolve before publishing</div>}
+                        {packet.suggestedReviewers?.length > 0 && <div style={{ fontSize: 9, color: D.faint, marginTop: 4 }}>Suggested: {packet.suggestedReviewers.join(' · ')}</div>}
+                        <button onClick={() => { const text = formatReviewPacketText(packet); navigator.clipboard?.writeText(text); }}
+                          style={{ marginTop: 8, fontSize: 8, padding: '2px 8px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', fontFamily: 'inherit' }}>
+                          Copy packet text
+                        </button>
+                      </div>
+                    )}
                     {k.impact && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '10px 0' }}>
                         {(k.impact.recommendationEngines || []).map((e) => <span key={e} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: `${D.good}1e`, color: D.good }}>{e}</span>)}
@@ -2155,7 +2185,7 @@ function KcrStudioPanel() {
                     ))}
                   </div>
                 </td></tr>
-              )}
+              ); })()}
             </Fragment>
           ))}
         </tbody>
@@ -2774,10 +2804,24 @@ function KcrStudioPanel() {
                 const defaultProvider = campRawProvider || allExternalProviderIds[0] || 'data.gov';
                 const fp = campRunResult.fieldPath || '';
                 const templateRecord = JSON.stringify({ source: defaultProvider, assetId: campRunResult.assetId || '', fieldPath: fp, url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ field: fp, value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
+                const handlePasteChange = (text) => {
+                  setCampRawJson(text);
+                  setCampRawError('');
+                  if (!text.trim() || !campRawProvider) { setCampRawPreview(null); return; }
+                  const parsed = autoNormalize(campRawProvider, text, { assetId: campRunResult.assetId || '', fieldPath: fp });
+                  setCampRawPreview(parsed);
+                };
                 const submitRaw = async () => {
                   setCampRawError('');
                   let records;
-                  try { records = JSON.parse(campRawJson); if (!Array.isArray(records)) records = [records]; } catch (e) { setCampRawError(`Invalid JSON: ${e.message}`); return; }
+                  if (campRawPreview?.records?.length) {
+                    records = campRawPreview.records;
+                  } else {
+                    const parsed = autoNormalize(campRawProvider || 'market-pricing', campRawJson, { assetId: campRunResult.assetId || '', fieldPath: fp });
+                    if (parsed.error) { setCampRawError(parsed.error); return; }
+                    records = parsed.records;
+                  }
+                  if (!records?.length) { setCampRawError('No records parsed — check format and try again.'); return; }
                   if (!campRawProvider) { setCampRawError('Select a provider first.'); return; }
                   const pb = ALL_PLAYBOOKS.find((p) => p.type === campRunResult.assetId);
                   const allProviders = buildProviders();
@@ -2797,7 +2841,7 @@ function KcrStudioPanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                       <div>
                         <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>Provider</div>
-                        <select value={campRawProvider} onChange={(e) => { setCampRawProvider(e.target.value); setCampRawError(''); }}
+                        <select value={campRawProvider} onChange={(e) => { setCampRawProvider(e.target.value); setCampRawError(''); setCampRawPreview(null); if (campRawJson.trim()) { const p2 = autoNormalize(e.target.value, campRawJson, { assetId: campRunResult.assetId || '', fieldPath: fp }); setCampRawPreview(p2); } }}
                           style={{ width: '100%', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 5, color: D.text, fontSize: type.size.caption, padding: '5px 8px', outline: 'none', fontFamily: 'inherit' }}>
                           <option value="">— select —</option>
                           {allExternalProviderIds.map((id) => <option key={id} value={id}>{id}</option>)}
@@ -2814,10 +2858,13 @@ function KcrStudioPanel() {
                         </button>
                       </div>
                     </div>
-                    <textarea value={campRawJson} onChange={(e) => { setCampRawJson(e.target.value); setCampRawError(''); }} rows={7} placeholder={`[\n  ${templateRecord.split('\n').join('\n  ')}\n]`}
-                      style={{ width: '100%', boxSizing: 'border-box', background: D.surface, border: `1px solid ${campRawError ? D.bad : D.border}`, borderRadius: 5, color: D.text, fontSize: 10, fontFamily: D.mono, padding: '7px 10px', outline: 'none', resize: 'vertical' }} />
+                    {campRawProvider && <div style={{ fontSize: 9, color: D.faint, marginBottom: 6, fontStyle: 'italic' }}>{pasteHintFor(campRawProvider)}</div>}
+                    <textarea value={campRawJson} onChange={(e) => handlePasteChange(e.target.value)} rows={7} placeholder={`[\n  ${templateRecord.split('\n').join('\n  ')}\n]`}
+                      style={{ width: '100%', boxSizing: 'border-box', background: D.surface, border: `1px solid ${campRawError ? D.bad : campRawPreview?.records?.length ? D.good : D.border}`, borderRadius: 5, color: D.text, fontSize: 10, fontFamily: D.mono, padding: '7px 10px', outline: 'none', resize: 'vertical' }} />
+                    {campRawPreview?.records?.length > 0 && <div style={{ fontSize: 9, color: D.good, marginTop: 4 }}>✓ Parsed {campRawPreview.records.length} record{campRawPreview.records.length !== 1 ? 's' : ''} — ready to submit</div>}
+                    {campRawPreview?.error && <div style={{ fontSize: 9, color: D.warn, marginTop: 4 }}>Auto-parse: {campRawPreview.error} — you can still submit raw JSON if the format is correct</div>}
                     {campRawError && <div style={{ fontSize: 10, color: D.bad, marginTop: 4 }}>{campRawError}</div>}
-                    <div style={{ fontSize: 9, color: D.faint, marginTop: 6 }}>Required fields per record: <span style={{ fontFamily: D.mono }}>source, assetId, fieldPath, excerpt, extractedFacts[]</span>. Optional: <span style={{ fontFamily: D.mono }}>url, region</span>. Paste one record or an array.</div>
+                    <div style={{ fontSize: 9, color: D.faint, marginTop: 6 }}>Provider-aware auto-parse: BLS, USDA, FDA, market pricing auto-detected. Or paste canonical records: <span style={{ fontFamily: D.mono }}>source, assetId, fieldPath, excerpt, extractedFacts[]</span>.</div>
                   </div>
                 );
               })()}
@@ -3874,6 +3921,34 @@ function KcrStudioPanel() {
         setCampList(loadCampaigns());
       };
 
+      const runBatch = (filterOpts, label) => {
+        const allCamps = loadCampaigns();
+        const toRun = batchByFilter(allCamps, filterOpts);
+        if (!toRun.length) { setBatchRunResult({ label, summary: { total: 0, ran: 0, evidenceTotal: 0, findingsTotal: 0, kcrTotal: 0, errors: 0 } }); return; }
+        setBatchRunning(true);
+        const allProviders = buildProviders();
+        const { results, summary } = runCampaigns(toRun, { providers: allProviders, asOf });
+        // Save results + auto-create corroboration campaigns
+        const corrCamps = [];
+        for (const { success, result } of results) {
+          if (!success || !result) continue;
+          recordCampaign(result);
+          const corr = autoCorroborate(result, result, { asOf });
+          if (corr) corrCamps.push(corr);
+        }
+        corrCamps.forEach((c) => recordCampaign(c));
+        // Update provider intel
+        const intel = loadProviderIntel();
+        const stats = extractProviderRunStats(results, asOf);
+        let updatedIntel = intel;
+        for (const s of stats) updatedIntel = recordProviderRun(updatedIntel, s.providerId, s);
+        saveProviderIntel(updatedIntel);
+        setCampList(loadCampaigns());
+        setBatchRunResult({ label, summary, corroborationsCreated: corrCamps.length });
+        setBatchRunning(false);
+        refresh();
+      };
+
       return (
         <div>
           <Banner>Mission Control — answers the 5 daily questions. Reads live store state; refreshes on every workspace switch. No synthetic data.</Banner>
@@ -3943,14 +4018,37 @@ function KcrStudioPanel() {
 
           {/* ── Manufacturing Queue ───────────── */}
           <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
               <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em' }}>Today's Manufacturing Queue ({queue.length} items)</div>
-              {highQueue.length > 0 && (
-                <button onClick={autoGenerate} style={{ fontSize: 9, padding: '4px 12px', borderRadius: 5, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
-                  Auto-generate {Math.min(5, highQueue.length)} HIGH campaigns
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {highQueue.length > 0 && (
+                  <button onClick={autoGenerate} style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    Auto-generate {Math.min(5, highQueue.length)} HIGH
+                  </button>
+                )}
+                {loadCampaigns().length > 0 && (<>
+                  <button disabled={batchRunning} onClick={() => runBatch({ priority: 'high' }, 'Run all HIGH')}
+                    style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.bad}`, background: `${D.bad}18`, color: D.bad, cursor: batchRunning ? 'default' : 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    {batchRunning ? '…running' : 'Run all HIGH'}
+                  </button>
+                  <button disabled={batchRunning} onClick={() => runBatch({ priority: 'med' }, 'Run all MED')}
+                    style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.warn}`, background: `${D.warn}18`, color: D.warn, cursor: batchRunning ? 'default' : 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    Run all MED
+                  </button>
+                  <button disabled={batchRunning} onClick={() => runBatch({}, 'Run all drafts')}
+                    style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.border}`, background: 'transparent', color: D.muted, cursor: batchRunning ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                    Run all
+                  </button>
+                </>)}
+              </div>
             </div>
+            {batchRunResult && (
+              <div style={{ marginBottom: 8, fontSize: 9, color: D.muted, background: D.bg, borderRadius: 5, padding: '5px 10px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ color: D.faint }}>{batchRunResult.label}</span>
+                <span>{runSummaryLabel(batchRunResult.summary)}</span>
+                {batchRunResult.corroborationsCreated > 0 && <span style={{ color: D.accent }}>+{batchRunResult.corroborationsCreated} corroboration{batchRunResult.corroborationsCreated > 1 ? 's' : ''} queued</span>}
+              </div>
+            )}
             {queue.length === 0
               ? <div style={{ fontSize: 11, color: D.good }}>All fields covered with fresh, official evidence. No gaps detected.</div>
               : queue.slice(0, 15).map((item) => (
