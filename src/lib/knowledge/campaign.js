@@ -13,13 +13,15 @@ import { createObservation } from './observation';
 export const CAMPAIGN_STATES = ['draft', 'scheduled', 'running', 'observations', 'evidence', 'findings', 'kcr', 'published', 'validated'];
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-export function createCampaign({ goal, assetId, fieldPath, gapType = 'pricing', gapTypes = null, providers = [], at = null }) {
+export function createCampaign({ goal, assetId, fieldPath, gapType = 'pricing', gapTypes = null, priority = 'med', trigger = 'research', providers = [], at = null }) {
   const types = gapTypes && gapTypes.length ? gapTypes : [gapType];
   return {
     id: `camp-${slug(goal)}`,
     goal, assetId, fieldPath,
     gapType: types[0],   // primary — drives the seed observation kind
     gapTypes: types,     // full set for multi-axis campaigns
+    priority,            // high | med | low
+    trigger,             // research | sme | freshness | validation
     providerIds: providers.map((p) => (typeof p === 'string' ? p : p.id)),
     state: 'draft', createdAt: at,
     audit: [{ at, action: 'created', state: 'draft' }],
@@ -65,3 +67,37 @@ export function loadCampaigns() { try { return JSON.parse(localStorage.getItem(K
 export function saveCampaigns(list) { try { localStorage.setItem(KEY, JSON.stringify(list || [])); return true; } catch { return false; } }
 export function recordCampaign(c) { const list = loadCampaigns().filter((x) => x.id !== c.id); list.push(c); saveCampaigns(list); return list; }
 export function clearCampaigns() { try { localStorage.removeItem(KEY); } catch { /* noop */ } }
+
+// ── UI helpers (pure, exported for testing) ────────────────────────────────────
+
+// Derive structured field-path options from a playbook for the Campaign Launch picker.
+// Returns [{path, label, kind}] ordered: pricing → quantity → cost-factor → knowledge.
+export function getFieldPaths(pb) {
+  if (!pb) return [];
+  const paths = [];
+  for (const p of pb.purchases || []) {
+    paths.push({ path: `${p.id}.unitCostRange`, label: `${p.item} — unit cost range`, kind: 'pricing' });
+    if (p.qtyPerGuest !== undefined) paths.push({ path: `${p.id}.qtyPerGuest`, label: `${p.item} — qty per guest`, kind: 'quantity' });
+  }
+  for (const d of (pb.decisions || []).filter((d) => d.costFactors && Object.keys(d.costFactors).length)) {
+    paths.push({ path: `decisions[${d.id}].costFactors`, label: `${d.label.slice(0, 48)} — cost multipliers`, kind: 'cost-factor' });
+  }
+  paths.push({ path: 'knowledge.sources', label: 'Knowledge sources (citations)', kind: 'grounding' });
+  paths.push({ path: 'governance', label: 'Governance (review cadence)', kind: 'governance' });
+  return paths;
+}
+
+// Provider families — each family button selects/deselects all providers within it.
+// Internal runs in-browser; all others require backend acquisition (⚡).
+export const PROVIDER_FAMILIES = [
+  { id: 'internal',    label: 'Internal',    note: 'runs now',   providers: ['internal-validation'] },
+  { id: 'government',  label: 'Government',  note: 'backend ⚡', providers: ['data.gov', 'noaa', 'astm-iso'] },
+  { id: 'food-safety', label: 'Food Safety', note: 'backend ⚡', providers: ['fda-foodsafety'] },
+  { id: 'commercial',  label: 'Commercial',  note: 'backend ⚡', providers: ['market-pricing', 'retail', 'restaurant-depot'] },
+  { id: 'industry',    label: 'Industry',    note: 'backend ⚡', providers: ['hospitality-assoc', 'event-industry', 'tourism-board', 'venue-network', 'catering-network', 'sme-network'] },
+  { id: 'academic',    label: 'Academic',    note: 'backend ⚡', providers: ['scholar'] },
+  { id: 'community',   label: 'Community',   note: 'backend ⚡', providers: ['community-forums'] },
+];
+
+export const CAMPAIGN_PRIORITIES = ['high', 'med', 'low'];
+export const CAMPAIGN_TRIGGERS   = ['research', 'sme', 'freshness', 'validation'];

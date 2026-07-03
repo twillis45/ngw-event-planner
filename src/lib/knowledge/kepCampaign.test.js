@@ -1,7 +1,7 @@
 // KEP-2 golden tests: provider→observation, campaign execution (with REAL fetched DMV crab
 // pricing), observation/evidence dedup, clustering, conflict detection, finding + KCR.
 import { buildProviders, PROVIDER_FAMILIES, normalizeToObservations } from './providers';
-import { createCampaign, runCampaign, CAMPAIGN_STATES } from './campaign';
+import { createCampaign, runCampaign, recordCampaign, loadCampaigns, clearCampaigns, CAMPAIGN_STATES, getFieldPaths, PROVIDER_FAMILIES as UI_PROVIDER_FAMILIES, CAMPAIGN_PRIORITIES, CAMPAIGN_TRIGGERS } from './campaign';
 import { analyzeEvidence, detectContradictions, dedupeEvidence, clusterEvidence } from './evidenceIntelligence';
 import { createEvidence } from './evidence';
 import { getPlaybook } from '../playbooks/index';
@@ -86,5 +86,64 @@ describe('Bundle B — the real "Improve Crab Feast Pricing" campaign, end to en
       'https://donscrabsandseafood.com/crab-prices/',
     ]));
     expect(done.evidence.every((e) => e.expirationDate)).toBe(true); // freshness inherited from provider
+  });
+});
+
+describe('KEP-4 — Campaign Launch helpers', () => {
+  test('getFieldPaths returns pricing + cost-factor + knowledge paths for Crab Feast', () => {
+    const paths = getFieldPaths(crab);
+    const pathStrings = paths.map((p) => p.path);
+    expect(pathStrings).toContain('p_crabs.unitCostRange');
+    expect(pathStrings).toContain('decisions[crab_size].costFactors');
+    expect(pathStrings).toContain('knowledge.sources');
+    expect(pathStrings).toContain('governance');
+    // All entries have path, label, kind
+    expect(paths.every((p) => p.path && p.label && p.kind)).toBe(true);
+  });
+
+  test('getFieldPaths returns empty array for null/undefined', () => {
+    expect(getFieldPaths(null)).toEqual([]);
+    expect(getFieldPaths(undefined)).toEqual([]);
+  });
+
+  test('UI_PROVIDER_FAMILIES covers exactly the 16 real provider IDs (no orphans)', () => {
+    const allIds = UI_PROVIDER_FAMILIES.flatMap((f) => f.providers);
+    const unique = new Set(allIds);
+    // All 16 provider IDs from buildProviders() must appear exactly once.
+    expect(unique.size).toBe(16);
+    expect(allIds.length).toBe(16);
+    expect(unique.has('internal-validation')).toBe(true);
+    expect(unique.has('community-forums')).toBe(true);
+    expect(unique.has('fda-foodsafety')).toBe(true);
+    expect(unique.has('sme-network')).toBe(true);
+  });
+
+  test('CAMPAIGN_PRIORITIES and CAMPAIGN_TRIGGERS contain expected values', () => {
+    expect(CAMPAIGN_PRIORITIES).toEqual(expect.arrayContaining(['high', 'med', 'low']));
+    expect(CAMPAIGN_TRIGGERS).toEqual(expect.arrayContaining(['research', 'sme', 'freshness', 'validation']));
+  });
+
+  test('createCampaign includes priority and trigger fields', () => {
+    const c = createCampaign({ goal: 'test', assetId: 'Crab Feast', priority: 'high', trigger: 'sme', at: ASOF });
+    expect(c.priority).toBe('high');
+    expect(c.trigger).toBe('sme');
+  });
+
+  test('createCampaign defaults priority=med and trigger=research', () => {
+    const c = createCampaign({ goal: 'test-defaults', assetId: 'Crab Feast', at: ASOF });
+    expect(c.priority).toBe('med');
+    expect(c.trigger).toBe('research');
+  });
+
+  test('recordCampaign dedupes by goal slug — same goal overwrites', () => {
+    clearCampaigns();
+    const a = createCampaign({ goal: 'price-check', assetId: 'Crab Feast', at: ASOF });
+    const b = { ...a, state: 'kcr', result: { evidence: 3 } };
+    recordCampaign(a);
+    recordCampaign(b);
+    const list = loadCampaigns();
+    expect(list.filter((c) => c.id === 'camp-price-check')).toHaveLength(1);
+    expect(list.find((c) => c.id === 'camp-price-check').state).toBe('kcr');
+    clearCampaigns();
   });
 });
