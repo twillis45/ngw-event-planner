@@ -110,11 +110,14 @@ function Centered({ title, body }) {
 const PB_STATUS_COLOR = { production: D.good, 'review-needed': D.warn, 'research-needed': D.accent, draft: D.bad, archived: D.faint, deprecated: D.faint };
 const HEALTH_COLOR = { [HEALTH.OK]: D.good, [HEALTH.WARN]: D.warn, [HEALTH.GAP]: D.bad, [HEALTH.NA]: D.faint };
 
-function PBKpi({ label, value, tone }) {
+function PBKpi({ label, value, tone, onClick }) {
   return (
-    <div style={{ flex: '1 1 120px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+    <div
+      onClick={onClick}
+      style={{ flex: '1 1 120px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', cursor: onClick ? 'pointer' : 'default' }}
+    >
       <div style={{ fontSize: type.size['2xl'], fontWeight: 700, color: tone || D.text, fontFamily: D.mono, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 11, color: D.muted, marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 11, color: D.muted, marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}{onClick && value > 0 ? ' →' : ''}</div>
     </div>
   );
 }
@@ -2023,7 +2026,7 @@ function KcrStudioPanel() {
   const quality = qualityManufacturing(ALL_PLAYBOOKS, asOf);
   const [copilotResult, setCopilotResult] = useState(null);
   const [copilotBusy, setCopilotBusy] = useState(false);
-  const [acceptedProposals, setAcceptedProposals] = useState([]);
+  const [acceptedProposals, setAcceptedProposals] = useState({}); // { [proposalId]: kcrId }
 
   const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
   const metrics = kcrBacklogMetrics(kcrs, asOf);
@@ -2225,6 +2228,10 @@ function KcrStudioPanel() {
                             <div style={{ fontSize: type.size.caption, color: D.muted }}>{o.statement}</div>
                             <div style={{ marginTop: 8, fontSize: type.size.caption, color: D.faint }}>source: {o.source} · gapType: {o.gapType || 'n/a'} · region: {o.region || 'n/a'}</div>
                             {(o.linkedEvidence || []).length > 0 && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Linked evidence: {o.linkedEvidence.join(', ')}</div>}
+                            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                              <button onClick={(e) => { e.stopPropagation(); setCampAsset(o.assetId); setWs('Campaigns'); }} style={{ fontSize: 11, background: D.accent, border: 'none', borderRadius: 6, padding: '5px 12px', color: '#fff', cursor: 'pointer', fontFamily: D.ff, fontWeight: 600 }}>Create campaign →</button>
+                              <button onClick={(e) => { e.stopPropagation(); setWs('Evidence'); }} style={{ fontSize: 11, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, padding: '5px 10px', color: D.muted, cursor: 'pointer', fontFamily: D.ff }}>Evidence →</button>
+                            </div>
                           </div>
                         </td></tr>
                       )}
@@ -2313,13 +2320,19 @@ function KcrStudioPanel() {
                         <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
                           <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
                             <div style={{ fontSize: 11, color: D.faint, marginBottom: 6 }}>id: {e.id}</div>
-                            {e.url && <div style={{ fontSize: type.size.caption, color: D.accent, marginBottom: 4 }}>source URL: {e.url}</div>}
+                            {e.url && <div style={{ fontSize: type.size.caption, marginBottom: 4 }}><a href={e.url} target="_blank" rel="noreferrer" style={{ color: D.accent, textDecoration: 'none' }}>{e.url}</a></div>}
                             {e.excerpt && <div style={{ fontSize: type.size.caption, color: D.muted, fontStyle: 'italic', marginBottom: 6 }}>"{e.excerpt}"</div>}
                             <div style={{ fontSize: type.size.caption, color: D.faint }}>sourceType: {e.sourceType} · confidence: {e.confidence} · region: {e.region || 'n/a'}</div>
                             {(e.extractedFacts || []).length > 0 && (
                               <div style={{ marginTop: 8 }}>
                                 <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', marginBottom: 4 }}>Extracted facts</div>
-                                {e.extractedFacts.map((f, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(f)}</div>)}
+                                {e.extractedFacts.map((f, i) => (
+                                  <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono, padding: '1px 0' }}>
+                                    <span style={{ color: D.text }}>{f.field || f.fact || '?'}</span>
+                                    {' '}<span style={{ color: D.faint }}>→</span>{' '}
+                                    <span style={{ color: D.accent }}>{f.value != null ? String(f.value) : '—'}{f.unit ? ` ${f.unit}` : ''}</span>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -2347,15 +2360,40 @@ function KcrStudioPanel() {
                 <tbody>
                   {campaignFindings.map((c) => {
                     const f = c.finding;
+                    const isOpen = open === c.id;
                     return (
-                      <tr key={c.id}>
-                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{c.goal}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.fieldPath || '—'}</td>
-                        <td style={td}>{chip(f.status || '—', f.status === 'proposed' ? D.good : f.status === 'contested' ? D.bad : D.warn)}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.text }}>{monoPre(f.proposedValue)}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.corroboration ?? 0}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: (f.contradictions || []).length ? D.bad : D.faint }}>{(f.contradictions || []).length}</td>
-                      </tr>
+                      <Fragment key={c.id}>
+                        <tr onClick={() => setOpen(isOpen ? null : c.id)} style={{ cursor: 'pointer', background: isOpen ? D.surface2 : 'transparent' }}>
+                          <td style={{ ...td, color: D.text, fontWeight: 600 }}>{c.goal}</td>
+                          <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.fieldPath || '—'}</td>
+                          <td style={td}>{chip(f.status || '—', f.status === 'proposed' ? D.good : f.status === 'contested' ? D.bad : D.warn)}</td>
+                          <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.text }}>{monoPre(f.proposedValue)}</td>
+                          <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.corroboration ?? 0}</td>
+                          <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: (f.contradictions || []).length ? D.bad : D.faint }}>{(f.contradictions || []).length}</td>
+                        </tr>
+                        {isOpen && (
+                          <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
+                            <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
+                                <strong>Rationale: </strong>{f.rationale || '—'}
+                              </div>
+                              {(f.contradictions || []).length > 0 && (
+                                <div style={{ marginTop: 6 }}>
+                                  <div style={{ fontSize: 10, color: D.bad, textTransform: 'uppercase', marginBottom: 4 }}>Contradictions</div>
+                                  {f.contradictions.map((ct, i) => (
+                                    <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>
+                                      {ct.sourceA} ({ct.valueA}) vs {ct.sourceB} ({ct.valueB}) — {ct.description || ct.field}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div style={{ marginTop: 8 }}>
+                                <button onClick={(e) => { e.stopPropagation(); setWs('Campaigns'); }} style={{ fontSize: 11, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, padding: '4px 10px', color: D.muted, cursor: 'pointer', fontFamily: D.ff }}>View campaign →</button>
+                              </div>
+                            </div>
+                          </td></tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -2453,11 +2491,11 @@ function KcrStudioPanel() {
           <Banner>Corpus monitoring — dimensional debt, knowledge velocity, and backlog health. Manufacturing floor metrics from KF-1. Debt is dimensional (never a single score).</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="KCRs total" value={kcrs.length} />
-            <PBKpi label="Draft" value={byStatus.draft || 0} tone={D.faint} />
-            <PBKpi label="Researching" value={byStatus.researching || 0} tone={D.accent} />
-            <PBKpi label="Review" value={byStatus.review || 0} tone={D.warn} />
-            <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
-            <PBKpi label="High priority" value={kcrs.filter((k) => k.priority === 'high').length} tone={D.bad} />
+            <PBKpi label="Draft" value={byStatus.draft || 0} tone={D.faint} onClick={() => setWs('Campaigns')} />
+            <PBKpi label="Researching" value={byStatus.researching || 0} tone={D.accent} onClick={() => setWs('Campaigns')} />
+            <PBKpi label="Review" value={byStatus.review || 0} tone={D.warn} onClick={() => setWs('Review')} />
+            <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} onClick={() => setWs('Publishing')} />
+            <PBKpi label="High priority" value={kcrs.filter((k) => k.priority === 'high').length} tone={D.bad} onClick={() => setWs('Campaigns')} />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
             <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
@@ -2814,7 +2852,10 @@ function KcrStudioPanel() {
               </div>
               <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, marginBottom: 4 }}>{campRunResult.id}</div>
               {campRunResult.kcr && (
-                <div style={{ fontSize: 10, color: D.good }}>KCR: <span style={{ fontFamily: D.mono }}>{campRunResult.kcr.id}</span> — now in Review queue (switch to Inbox)</div>
+                <div style={{ fontSize: 10, color: D.good, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>KCR: <span style={{ fontFamily: D.mono }}>{campRunResult.kcr.id}</span> — in Review queue</span>
+                  <button onClick={() => setWs('Review')} style={{ fontSize: 10, background: D.good + '22', border: `1px solid ${D.good}`, borderRadius: 5, padding: '2px 8px', color: D.good, cursor: 'pointer', fontFamily: D.ff }}>Go to Review →</button>
+                </div>
               )}
               {campRunResult.result?.evidence === 0 && (() => {
                 // All provider IDs known to buildProviders(), minus internal-validation
@@ -3165,7 +3206,7 @@ function KcrStudioPanel() {
         const kcr = acceptProposal(proposal, { role, asOf });
         if (kcr) {
           upsertKCR(kcr).then(refresh);
-          setAcceptedProposals((prev) => [...prev, proposal.id]);
+          setAcceptedProposals((prev) => ({ ...prev, [proposal.id]: kcr.id }));
         }
       };
       return (
@@ -3192,7 +3233,8 @@ function KcrStudioPanel() {
               ) : (
                 <div>
                   {copilotResult.proposals.map((p) => {
-                    const already = acceptedProposals.includes(p.id);
+                    const acceptedKcrId = acceptedProposals[p.id];
+                    const already = !!acceptedKcrId;
                     return (
                       <div key={p.id} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '12px 14px', marginBottom: 8 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
@@ -3205,6 +3247,10 @@ function KcrStudioPanel() {
                             </div>
                             <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 4 }}>{p.reason}</div>
                             <div style={{ fontSize: 11, color: D.faint, fontStyle: 'italic' }}>{p.rationale}</div>
+                            {already && <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, color: D.good, fontFamily: D.mono }}>KCR: {acceptedKcrId}</span>
+                              <button onClick={() => setWs('Review')} style={{ fontSize: 10, background: D.good + '22', border: `1px solid ${D.good}`, borderRadius: 5, padding: '2px 8px', color: D.good, cursor: 'pointer', fontFamily: D.ff }}>View in Review →</button>
+                            </div>}
                           </div>
                           <button
                             disabled={already}
@@ -3262,15 +3308,21 @@ function KcrStudioPanel() {
             </div>
             <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>By trigger</div>
-              {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+              {Object.keys(byTrigger).length === 0 ? <Empty msg="No trigger data yet." /> : Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
                 <BarRow key={t} label={t} value={n} max={kcrs.length} color={D.accent} />
               ))}
             </div>
             <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>By type</div>
-              {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+              {Object.keys(byType).length === 0 ? <Empty msg="No type data yet." /> : Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
                 <BarRow key={t} label={t} value={n} max={kcrs.length} color={D.warn} />
               ))}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>By priority</div>
+              {Object.keys(byPriority).length === 0 ? <Empty msg="No priority data yet." /> : [['high', D.bad], ['med', D.warn], ['low', D.faint]].map(([p, color]) => byPriority[p] ? (
+                <BarRow key={p} label={p} value={byPriority[p]} max={kcrs.length} color={color} />
+              ) : null)}
             </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
@@ -4081,7 +4133,7 @@ function KcrStudioPanel() {
                 </div>
               ))
             }
-            {queue.length > 15 && <div style={{ fontSize: 9, color: D.faint, marginTop: 6 }}>+{queue.length - 15} more — switch to Research Session for the full gap analysis.</div>}
+            {queue.length > 15 && <button onClick={() => setWs('Research Session')} style={{ fontSize: 9, background: 'transparent', border: 'none', color: D.accent, cursor: 'pointer', marginTop: 6, padding: 0, fontFamily: D.ff }}>+{queue.length - 15} more — Research Session →</button>}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -4230,7 +4282,14 @@ function KcrStudioPanel() {
                   <div style={{ fontSize: 9, color: D.bad, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Contradictions ({session.contradictions.length})</div>
                   {session.contradictions.length === 0
                     ? <div style={{ fontSize: 10, color: D.faint }}>No contradictions detected.</div>
-                    : session.contradictions.map((k) => <div key={k.id} style={{ fontSize: 10, color: D.bad, fontFamily: D.mono, marginBottom: 3 }}>{k.id}</div>)
+                    : <>
+                        {session.contradictions.map((k) => (
+                          <div key={k.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}>
+                            <span style={{ fontSize: 10, color: D.bad, fontFamily: D.mono, flex: 1 }}>{k.id}</span>
+                            <button onClick={() => setWs('Conflicts')} style={{ fontSize: 9, background: D.bad + '22', border: `1px solid ${D.bad}`, borderRadius: 4, padding: '2px 7px', color: D.bad, cursor: 'pointer', fontFamily: D.ff, flexShrink: 0 }}>Resolve →</button>
+                          </div>
+                        ))}
+                      </>
                   }
                 </div>
 
