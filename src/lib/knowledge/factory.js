@@ -16,8 +16,15 @@ const REVIEW = ['review'];
 const PUBLISHING = ['approved'];
 const VALIDATION = ['published', 'monitoring'];
 
+// Enterprise Scale (Bundle I) — cap playbook evaluation at 2k to prevent
+// O(n*dims) from blocking the main thread on very large corpora.
+const MAX_FACTORY_PLAYBOOKS = 2_000;
+
 // ── The factory view — derived, dimensional, honest-empty ─────────────────────
 export function buildFactory(asOf, { playbooks = [], kcrs = [] } = {}) {
+  if (playbooks.length > MAX_FACTORY_PLAYBOOKS) {
+    playbooks = playbooks.slice(0, MAX_FACTORY_PLAYBOOKS);
+  }
   const observations = corpusConnector.observe({ asOf });               // gap → observation
   const byStatus = (set) => kcrs.filter((k) => set.includes(k.status));
 

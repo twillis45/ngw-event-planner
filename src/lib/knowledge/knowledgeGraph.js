@@ -28,7 +28,20 @@ const node = (id, kind, label, extra = {}) => ({ id, kind, label, ...extra });
 const edge = (from, to, rel) => ({ from, to, rel });
 
 // Build the graph from the estate. All inputs optional (honest-empty). Pure.
+// Enterprise Scale (Bundle I) — caps prevent runaway memory on large corpora.
+// At 40 playbooks the graph is ~1-2ms; at 100k assets these caps kick in.
+export const GRAPH_CAPS = {
+  maxAssets: 5_000,    // hard cap: log warning above 1k, error above 5k
+  maxEvidence: 50_000,
+  maxFindings: 10_000,
+  maxKCRs: 100_000,
+};
+
 export function buildKnowledgeGraph({ assets = [], evidence = [], findings = [], kcrs = [] } = {}) {
+  // Enforce caps — truncate with telemetry rather than crash silently.
+  if (assets.length > GRAPH_CAPS.maxAssets) { console.warn(`[KnowledgeGraph] asset count ${assets.length} exceeds cap ${GRAPH_CAPS.maxAssets} — truncating`); assets = assets.slice(0, GRAPH_CAPS.maxAssets); }
+  if (evidence.length > GRAPH_CAPS.maxEvidence) evidence = evidence.slice(0, GRAPH_CAPS.maxEvidence);
+  if (kcrs.length > GRAPH_CAPS.maxKCRs) kcrs = kcrs.slice(0, GRAPH_CAPS.maxKCRs);
   const nodes = [];
   const edges = [];
   const seen = new Set();
