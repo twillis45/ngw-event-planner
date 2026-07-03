@@ -19,7 +19,7 @@ import { getLastSyncTime } from '../lib/api';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { buildPlaybookRegistry, HEALTH } from '../lib/playbooks/playbookRegistry';
 import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
-import { syncIntake, loadKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
+import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
@@ -51,6 +51,7 @@ import { PIPELINE_STAGES, STAGE_LABELS, createPipelineManifest, advanceStage, bl
 import { RESEARCH_ROLES, canPerform, publishingRoles } from '../lib/knowledge/researchRoles';
 import { WORKER_TYPES, createWorkerInstance, buildFleetHealth, buildFleetMetrics, loadWorkers, upsertWorker, clearWorkers, toggleWorker, loadRuns, clearRuns, createWorkerRun, completeWorkerRun, addRun } from '../lib/knowledge/knowledgeWorkers';
 import { PROVIDER_MONITOR_RULES, overdueProviders, providerHealthSummary } from '../lib/knowledge/providerMonitor';
+import { buildOvernightActivity, buildManufacturingQueue, buildKnowledgeHealth, buildPublishingQueue, buildKnowledgeAging, generateCampaignsFromQueue, buildResearchSession, buildExecutiveReport } from '../lib/knowledge/missionControl';
 import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
@@ -1968,6 +1969,7 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 
 // ─── Bundle C: Manufacturing Studio — 15 operational workspaces ───────────────
 const STUDIO_WS = [
+  'Mission Control', 'Research Session',
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
   'Copilot', 'Analytics', 'Retirement', 'Campaigns',
@@ -2100,6 +2102,9 @@ function KcrStudioPanel() {
 
   // Corpus dashboard state (KMP-1)
   const [corpusDomain, setCorpusDomain] = useState('all');
+
+  // Mission Control + Research Session (KML-1)
+  const [mcSessionPlaybook, setMcSessionPlaybook] = useState(ALL_PLAYBOOKS[0]?.type || '');
 
   // Worker fleet state (KAW-1)
   const [workers, setWorkers] = useState(() => loadWorkers());
@@ -3844,6 +3849,295 @@ function KcrStudioPanel() {
       );
     }
 
+    // ── Mission Control workspace (KML-1 Bundle A / C / E / F / H) ───────────────
+    if (ws === 'Mission Control') {
+      const allEvidence = loadEvidence();
+      const allKcrs     = loadLocalKCRs();
+      const allCampaigns = loadCampaigns();
+      const allObservations = loadObservations();
+      const allRuns     = loadRuns();
+
+      const overnight   = buildOvernightActivity({ runs: allRuns, observations: allObservations, evidence: allEvidence, findings: [], kcrs: allKcrs, campaigns: allCampaigns }, { asOf });
+      const queue       = buildManufacturingQueue(ALL_PLAYBOOKS, allEvidence, allCampaigns, asOf);
+      const { health, dimensions: dims } = buildKnowledgeHealth(ALL_PLAYBOOKS, allEvidence, allKcrs, asOf);
+      const pubQ        = buildPublishingQueue(allKcrs);
+      const aging       = buildKnowledgeAging(allEvidence, asOf);
+      const report      = buildExecutiveReport({ overnight, queue, health: { health }, publishingQueue: pubQ, aging }, { playbooks: ALL_PLAYBOOKS, asOf });
+
+      const LABEL_COLOR = { HIGH: D.bad, MED: D.warn, LOW: D.faint };
+      const HEALTH_COLOR = { high: D.good, med: D.warn, low: D.bad, none: D.border };
+      const highQueue = queue.filter((q) => q.priority === 'HIGH' && !q.hasCampaign);
+
+      const autoGenerate = () => {
+        const campaigns = generateCampaignsFromQueue(queue, { priorities: ['HIGH'], limit: 5, at: asOf });
+        campaigns.forEach((c) => recordCampaign(c));
+        setCampList(loadCampaigns());
+      };
+
+      return (
+        <div>
+          <Banner>Mission Control — answers the 5 daily questions. Reads live store state; refreshes on every workspace switch. No synthetic data.</Banner>
+
+          {/* ── Five Questions KPI Row ────────── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 16 }}>
+            {[
+              { q: '1. Changed overnight?', v: overnight.empty ? 'Quiet' : `${overnight.workerRuns} runs · ${overnight.newEvidence} ev`, t: overnight.empty ? D.faint : D.accent },
+              { q: '2. Degrading?',         v: `${aging.overdue.length} overdue · ${aging.expiresThisWeek.length} this week`, t: aging.overdue.length ? D.bad : aging.expiresThisWeek.length ? D.warn : D.good },
+              { q: '3. Research today?',    v: `${queue.filter(q => q.priority==='HIGH').length} HIGH · ${queue.filter(q=>q.priority==='MED').length} MED`, t: queue.length ? D.warn : D.good },
+              { q: '4. Ready for review?',  v: `${pubQ.total} queued`, t: pubQ.total ? D.accent : D.faint },
+              { q: '5. Safe to publish?',   v: `${pubQ.awaitingGovernance.length} at governance gate`, t: pubQ.awaitingGovernance.length ? D.good : D.faint },
+            ].map(({ q, v, t }) => (
+              <div key={q} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>{q}</div>
+                <div style={{ fontSize: type.size.caption, color: t, fontWeight: 700 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            {/* ── Overnight Activity ─────────── */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Overnight Activity <span style={{ color: D.border }}>since {overnight.since}</span></div>
+              {overnight.empty ? <div style={{ fontSize: 11, color: D.faint, paddingTop: 4 }}>No activity — workers have not run yet.</div> : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {[
+                    { label: 'Worker runs',   val: overnight.workerRuns,    tone: D.text },
+                    { label: 'Failures',      val: overnight.providerFailures, tone: overnight.providerFailures ? D.bad : D.muted },
+                    { label: 'Observations',  val: overnight.newObservations, tone: D.accent },
+                    { label: 'Evidence',      val: overnight.newEvidence,   tone: D.accent },
+                    { label: 'Findings',      val: overnight.newFindings,   tone: D.accent },
+                    { label: 'KCRs',          val: overnight.newKcrs,       tone: D.accent },
+                    { label: 'Published',     val: overnight.published,     tone: overnight.published ? D.good : D.muted },
+                    { label: 'Validated',     val: overnight.validationUpdates, tone: D.muted },
+                  ].map(({ label, val, tone }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, padding: '2px 0', borderBottom: `1px solid ${D.border}22` }}>
+                      <span style={{ color: D.muted }}>{label}</span>
+                      <span style={{ color: tone, fontFamily: D.mono, fontWeight: 600 }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {overnight.providerFailures > 0 && <div style={{ marginTop: 8, fontSize: 9, color: D.bad }}>Failed: {overnight.failedProviders.join(', ')}</div>}
+            </div>
+
+            {/* ── Publishing Queue ──────────── */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Publishing Queue ({pubQ.total} total)</div>
+              {pubQ.total === 0 ? <div style={{ fontSize: 11, color: D.faint }}>Nothing in the pipeline yet.</div> : (
+                [
+                  { label: 'Awaiting review',     items: pubQ.awaitingReview },
+                  { label: 'SME review',          items: pubQ.awaitingSme },
+                  { label: 'Editorial review',    items: pubQ.awaitingEditorial },
+                  { label: 'Governance',          items: pubQ.awaitingGovernance },
+                  { label: 'Validated (ready)',   items: pubQ.awaitingValidation },
+                ].filter((s) => s.items.length > 0).map(({ label, items }) => (
+                  <div key={label} style={{ marginBottom: 6 }}>
+                    <div style={{ fontSize: 9, color: D.accent, marginBottom: 2 }}>{label} — {items.length}</div>
+                    {items.slice(0, 3).map((k) => <div key={k.id} style={{ fontSize: 9, color: D.muted, fontFamily: D.mono, paddingLeft: 8 }}>{k.id}</div>)}
+                    {items.length > 3 && <div style={{ fontSize: 9, color: D.faint, paddingLeft: 8 }}>+{items.length - 3} more</div>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ── Manufacturing Queue ───────────── */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em' }}>Today's Manufacturing Queue ({queue.length} items)</div>
+              {highQueue.length > 0 && (
+                <button onClick={autoGenerate} style={{ fontSize: 9, padding: '4px 12px', borderRadius: 5, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                  Auto-generate {Math.min(5, highQueue.length)} HIGH campaigns
+                </button>
+              )}
+            </div>
+            {queue.length === 0
+              ? <div style={{ fontSize: 11, color: D.good }}>All fields covered with fresh, official evidence. No gaps detected.</div>
+              : queue.slice(0, 15).map((item) => (
+                <div key={`${item.playbookType}::${item.fieldPath}`} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '5px 0', borderBottom: `1px solid ${D.border}22` }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: LABEL_COLOR[item.priority], minWidth: 28 }}>{item.priority}</span>
+                  <span style={{ fontSize: 10, color: D.text, flex: 1 }}>{item.playbookLabel} — {item.fieldLabel}</span>
+                  <span style={{ fontSize: 9, color: D.faint, maxWidth: 240, textAlign: 'right' }}>{item.reason}</span>
+                  {item.hasCampaign && <span style={{ fontSize: 8, color: D.accent, fontFamily: D.mono }}>campaign ✓</span>}
+                </div>
+              ))
+            }
+            {queue.length > 15 && <div style={{ fontSize: 9, color: D.faint, marginTop: 6 }}>+{queue.length - 15} more — switch to Research Session for the full gap analysis.</div>}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            {/* ── Knowledge Health ──────────────── */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Knowledge Health — by Flagship</div>
+              {ALL_PLAYBOOKS.slice(0, 8).map((pb) => {
+                const h = health[pb.type];
+                if (!h) return null;
+                const dims = Object.values(h.dimensions);
+                const high = dims.filter((d) => d.label === 'high').length;
+                const med  = dims.filter((d) => d.label === 'med').length;
+                return (
+                  <div key={pb.type} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+                      <span style={{ fontSize: 10, color: D.text }}>{h.playbookLabel}</span>
+                      <span style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{h.coveredFields}/{h.totalFields} fields · {h.totalEvidence} ev</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      {Object.entries(h.dimensions).map(([dim, d]) => (
+                        <span key={dim} title={dim} style={{ width: 8, height: 8, borderRadius: 2, background: HEALTH_COLOR[d.label] || D.border, display: 'inline-block' }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 9, color: D.faint, marginTop: 4 }}>Each dot = one dimension. Green=high · Amber=med · Red=low · Grey=none</div>
+            </div>
+
+            {/* ── Knowledge Aging ───────────────── */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Knowledge Aging</div>
+              {[
+                { label: 'Overdue',           items: aging.overdue,          tone: D.bad },
+                { label: 'Expires this week', items: aging.expiresThisWeek,  tone: D.warn },
+                { label: 'Expires this month',items: aging.expiresThisMonth, tone: D.accent },
+                { label: 'Healthy',           items: aging.healthy,          tone: D.good },
+                { label: 'No expiry set',     items: aging.noExpiry,         tone: D.faint },
+              ].map(({ label, items, tone }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, padding: '3px 0', borderBottom: `1px solid ${D.border}22` }}>
+                  <span style={{ color: D.muted }}>{label}</span>
+                  <span style={{ color: tone, fontFamily: D.mono, fontWeight: 600 }}>{items.length}</span>
+                </div>
+              ))}
+              {aging.overdue.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {aging.overdue.slice(0, 3).map((e) => <div key={e.id} style={{ fontSize: 9, color: D.bad, fontFamily: D.mono }}>✗ {e.assetId} · {e.fieldPath} (expired {e.expirationDate})</div>)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Executive Report ──────────────── */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Daily Executive Report — {asOf}</div>
+            {Object.entries(report.sections).map(([key, val]) => {
+              const labels = { whatImproved: 'What improved', whatDegraded: 'What degraded', whatChanged: 'What changed', whatPublished: 'Published', whatFailed: 'Failures', topResearch: 'Top research', roiWork: 'Highest ROI work', knowledgeVelocity: 'Knowledge velocity', agingSummary: 'Aging', readyToPublish: 'Ready to publish' };
+              const display = Array.isArray(val) ? val.join(' · ') : String(val);
+              return (
+                <div key={key} style={{ display: 'flex', gap: 12, padding: '4px 0', borderBottom: `1px solid ${D.border}22` }}>
+                  <span style={{ fontSize: 9, color: D.faint, minWidth: 120 }}>{labels[key] || key}</span>
+                  <span style={{ fontSize: 10, color: D.muted }}>{display}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Research Session workspace (KML-1 Bundle G) ───────────────────────────
+    if (ws === 'Research Session') {
+      const allEvidence  = loadEvidence();
+      const allKcrs      = loadLocalKCRs();
+      const allCampaigns = loadCampaigns();
+      const pb = ALL_PLAYBOOKS.find((p) => p.type === mcSessionPlaybook) || ALL_PLAYBOOKS[0];
+      const session = pb ? buildResearchSession(pb, allEvidence, allKcrs, allCampaigns, asOf) : null;
+
+      const autoLaunch = (item) => {
+        const [campaign] = generateCampaignsFromQueue([{ ...item, hasCampaign: false }], { priorities: ['HIGH', 'MED', 'LOW'], limit: 1, at: asOf });
+        if (campaign) { recordCampaign(campaign); setCampList(loadCampaigns()); }
+      };
+
+      return (
+        <div>
+          <Banner>Research Session — open a flagship playbook and immediately see every gap. No searching. One click to generate a campaign for any gap.</Banner>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select value={mcSessionPlaybook} onChange={(e) => setMcSessionPlaybook(e.target.value)}
+              style={{ background: D.surface, border: `1px solid ${D.accent}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '6px 12px', outline: 'none', fontFamily: 'inherit', fontWeight: 600 }}>
+              {ALL_PLAYBOOKS.map((p) => <option key={p.type} value={p.type}>{p.label || p.type}</option>)}
+            </select>
+            <div style={{ fontSize: 10, color: D.muted }}>Select a flagship to begin a research session</div>
+          </div>
+
+          {session ? (
+            <div>
+              {/* Session KPIs */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Total Fields" value={session.totalFields} tone={D.text} />
+                <PBKpi label="Covered" value={session.coveredFields} tone={session.coveredFields > 0 ? D.good : D.faint} />
+                <PBKpi label="Evidence" value={session.totalEvidence} tone={session.totalEvidence > 0 ? D.accent : D.faint} />
+                <PBKpi label="Research Debt" value={session.researchDebt} tone={session.researchDebt > 5 ? D.bad : session.researchDebt > 0 ? D.warn : D.good} />
+                <PBKpi label="Active Campaigns" value={session.activeCampaigns.length} tone={D.muted} />
+                <PBKpi label="Active KCRs" value={session.activeKcrs.length} tone={D.muted} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Missing fields */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 9, color: D.bad, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Missing Citations / Evidence ({session.missingFields.length})</div>
+                  {session.missingFields.length === 0
+                    ? <div style={{ fontSize: 10, color: D.good }}>All fields have evidence.</div>
+                    : session.missingFields.map(({ path, label, kind }) => (
+                      <div key={path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${D.border}22` }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: D.text }}>{label}</div>
+                          <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                        </div>
+                        <button onClick={() => autoLaunch({ priority: 'HIGH', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: 'No evidence', suggestedProviders: kind === 'pricing' ? ['market-pricing', 'retail'] : ['data.gov'] })}
+                          style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
+                          + Campaign
+                        </button>
+                      </div>
+                    ))
+                  }
+                </div>
+
+                {/* Stale + commercial */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 9, color: D.warn, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Stale / Commercial-only ({session.staleFields.length + session.commercialOnly.length})</div>
+                  {[...session.staleFields.map((f) => ({ ...f, tag: 'stale' })), ...session.commercialOnly.map((f) => ({ ...f, tag: 'commercial-only' }))].map(({ path, label, kind, tag }) => (
+                    <div key={path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${D.border}22` }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: D.text }}>{label} <span style={{ fontSize: 8, color: tag === 'stale' ? D.warn : D.accent }}>[{tag}]</span></div>
+                        <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                      </div>
+                      <button onClick={() => autoLaunch({ priority: 'MED', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: tag, suggestedProviders: kind === 'pricing' ? ['market-pricing', 'retail', 'data.gov'] : ['data.gov', 'scholar'] })}
+                        style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.warn}`, background: `${D.warn}18`, color: D.warn, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
+                        + Campaign
+                      </button>
+                    </div>
+                  ))}
+                  {session.staleFields.length + session.commercialOnly.length === 0 && <div style={{ fontSize: 10, color: D.good }}>No stale or commercial-only fields.</div>}
+                </div>
+
+                {/* Contradictions */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 9, color: D.bad, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Contradictions ({session.contradictions.length})</div>
+                  {session.contradictions.length === 0
+                    ? <div style={{ fontSize: 10, color: D.faint }}>No contradictions detected.</div>
+                    : session.contradictions.map((k) => <div key={k.id} style={{ fontSize: 10, color: D.bad, fontFamily: D.mono, marginBottom: 3 }}>{k.id}</div>)
+                  }
+                </div>
+
+                {/* Suggested providers + active campaigns */}
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 9, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Suggested Providers</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+                    {session.suggestedProviders.map((p) => <span key={p} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, border: `1px solid ${D.accent}`, color: D.accent }}>{p}</span>)}
+                  </div>
+                  {session.activeCampaigns.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.04em' }}>Active campaigns</div>
+                      {session.activeCampaigns.map((c) => <div key={c.id} style={{ fontSize: 9, color: D.muted, fontFamily: D.mono, marginBottom: 2 }}>{c.goal?.slice(0, 60)}</div>)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : <Empty msg="Select a playbook to begin." />}
+        </div>
+      );
+    }
+
     // ── Workers workspace (KAW-1 Bundle A / Bundle J) ─────────────────────────────
     if (ws === 'Workers') {
       const health = buildFleetHealth(workers, workerRuns);
@@ -4187,7 +4481,7 @@ function KcrStudioPanel() {
 
   return (
     <div>
-      <Banner>Knowledge Studio — the manufacturing platform. 26 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → research workbench → corpus dashboard → experience projection. Governed; nothing publishes automatically.</Banner>
+      <Banner>Knowledge Studio — the manufacturing platform. 28 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → research workbench → corpus dashboard → experience projection. Governed; nothing publishes automatically.</Banner>
 
       {fullBacklogHeader()}
 
