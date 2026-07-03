@@ -2764,8 +2764,10 @@ function KcrStudioPanel() {
                 <div style={{ fontSize: 10, color: D.good }}>KCR: <span style={{ fontFamily: D.mono }}>{campRunResult.kcr.id}</span> — now in Review queue (switch to Inbox)</div>
               )}
               {campRunResult.result?.evidence === 0 && (() => {
-                const externalProviders = (campRunResult.providerIds || []).filter((id) => id !== 'internal-validation');
-                const templateRecord = JSON.stringify({ source: campRawProvider || externalProviders[0] || 'bls-cpi', assetId: campRunResult.assetId || '', fieldPath: campRunResult.fieldPath || '', url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ fact: 'unit cost range', value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
+                // All provider IDs known to buildProviders(), minus internal-validation
+                const allExternalProviderIds = buildProviders().map((p) => p.id).filter((id) => id !== 'internal-validation');
+                const defaultProvider = campRawProvider || allExternalProviderIds[0] || 'data.gov';
+                const templateRecord = JSON.stringify({ source: defaultProvider, assetId: campRunResult.assetId || '', fieldPath: campRunResult.fieldPath || '', url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ fact: 'unit cost range', value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
                 const submitRaw = async () => {
                   setCampRawError('');
                   let records;
@@ -2774,8 +2776,10 @@ function KcrStudioPanel() {
                   const pb = ALL_PLAYBOOKS.find((p) => p.type === campRunResult.assetId);
                   const allProviders = buildProviders();
                   const fetchedMap = { [campRawProvider]: records };
-                  const campaign = loadCampaigns().find((c) => c.id === campRunResult.id) || campRunResult;
-                  const result = runCampaign(campaign, { providers: allProviders, fetched: fetchedMap, pb, asOf });
+                  // Patch providerIds to include the selected provider — original campaign may not have had it
+                  const campaignBase = loadCampaigns().find((c) => c.id === campRunResult.id) || campRunResult;
+                  const patchedCampaign = { ...campaignBase, providerIds: Array.from(new Set([...(campaignBase.providerIds || []), campRawProvider])) };
+                  const result = runCampaign(patchedCampaign, { providers: allProviders, fetched: fetchedMap, pb, asOf });
                   recordCampaign(result);
                   if (result.kcr) { await upsertKCR(result.kcr); refresh(); }
                   setCampRunResult(result); setCampList(loadCampaigns()); setCampRawJson('');
@@ -2790,12 +2794,11 @@ function KcrStudioPanel() {
                         <select value={campRawProvider} onChange={(e) => { setCampRawProvider(e.target.value); setCampRawError(''); }}
                           style={{ width: '100%', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 5, color: D.text, fontSize: type.size.caption, padding: '5px 8px', outline: 'none', fontFamily: 'inherit' }}>
                           <option value="">— select —</option>
-                          {externalProviders.map((id) => <option key={id} value={id}>{id}</option>)}
-                          {PROVIDER_FAMILIES.filter((f) => f !== 'internal-validation' && !externalProviders.includes(f)).map((f) => <option key={f} value={f}>{f}</option>)}
+                          {allExternalProviderIds.map((id) => <option key={id} value={id}>{id}</option>)}
                         </select>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-                        <button onClick={() => { setCampRawJson(templateRecord); setCampRawError(''); if (!campRawProvider && externalProviders[0]) setCampRawProvider(externalProviders[0]); }}
+                        <button onClick={() => { setCampRawJson(templateRecord); setCampRawError(''); if (!campRawProvider) setCampRawProvider(allExternalProviderIds[0] || ''); }}
                           style={{ padding: '5px 10px', borderRadius: 5, fontSize: 9, border: `1px solid ${D.border}`, background: D.bg, color: D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
                           Insert template
                         </button>
