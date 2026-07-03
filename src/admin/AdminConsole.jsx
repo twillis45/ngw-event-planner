@@ -4,7 +4,8 @@
 // support; everyone else gets an honest "not authorized" screen.
 //
 // A1 scope = the gate + a whoami probe + a read-only audit view that prove the
-// end-to-end path works. Users / Workspaces / Providers tabs are wired in A3–A5.
+// end-to-end path works. The Providers tab is the Knowledge Acquisition operational console
+// (KEP-3); Studio is the Knowledge Factory manufacturing floor.
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
@@ -26,6 +27,9 @@ import { corpusDimensionKCRs } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
 import { loadCampaigns } from '../lib/knowledge/campaign';
+import { loadObservations } from '../lib/knowledge/observation';
+import { loadEvidence } from '../lib/knowledge/evidence';
+import { isKasApiConfigured } from '../lib/api/kas';
 import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
 import { type } from '../design/tokens';
 
@@ -1710,6 +1714,85 @@ const KCR_STATUS_COLOR = {
   approved: D.good, published: D.good, monitoring: D.muted, revision: D.warn, archived: D.faint,
 };
 
+// KEP-3 — Knowledge Acquisition operational console. The production admin surface for the
+// acquisition layer: provider families + status, acquisition health, campaign participation,
+// and observation/evidence/finding/KCR counts. HONEST-EMPTY — no fabricated metrics; where
+// nothing has been collected it says "No data collected yet" / "Awaiting acquisition", and
+// architecture-only capabilities read "Available" / "Configured", never "running". Read-only,
+// admin. Reuses buildProviders / campaigns / observation+evidence stores — no parallel model.
+function AcquisitionConsole() {
+  const providers = buildProviders();
+  const campaigns = loadCampaigns();
+  const observations = loadObservations();
+  const evidence = loadEvidence();
+  const findings = campaigns.filter((c) => c.finding).length;
+  const generatedKCRs = campaigns.filter((c) => c.result && c.result.kcr).length;
+  const serverOn = isKasApiConfigured();
+
+  const bySource = (list, id) => list.filter((x) => x.source === id).length;
+  const campaignsFor = (id) => campaigns.filter((c) => (c.providerIds || []).includes(id)).length;
+  const statusOf = (p) => {
+    if (bySource(observations, p.id) || bySource(evidence, p.id)) return { label: 'Active', tone: D.good };
+    if (p.family === 'internal-validation') return { label: 'Configured', tone: D.accent };
+    return { label: 'Available', tone: D.muted }; // interface ready, awaiting acquisition (not running)
+  };
+  const families = [...new Set(providers.map((p) => p.family))];
+
+  const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
+  const td = { padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55` };
+  const empty = (n, unit) => (n ? `${n} ${unit}` : <span style={{ color: D.faint, fontStyle: 'italic' }}>No data collected yet</span>);
+
+  return (
+    <div>
+      <Banner>Knowledge Acquisition — the operational console for how knowledge enters the platform. Providers produce Observations only; everything flows through the KCR pipeline (nothing auto-publishes). No fabricated metrics: empty means no acquisition has run yet.</Banner>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+        <PBKpi label="Providers" value={providers.length} />
+        <PBKpi label="Families" value={families.length} />
+        <PBKpi label="Campaigns" value={campaigns.length} tone={campaigns.length ? D.accent : D.faint} />
+        <PBKpi label="Observations" value={observations.length} tone={observations.length ? D.text : D.faint} />
+        <PBKpi label="Evidence" value={evidence.length} tone={evidence.length ? D.text : D.faint} />
+        <PBKpi label="Findings" value={findings} tone={findings ? D.text : D.faint} />
+        <PBKpi label="KCRs generated" value={generatedKCRs} tone={generatedKCRs ? D.good : D.faint} />
+      </div>
+
+      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>
+        acquisition health · external acquisition <span style={{ color: D.good }}>ON</span> · server sync {serverOn ? <span style={{ color: D.good }}>configured</span> : <span style={{ color: D.faint }}>local-only (awaiting backend)</span>} · providers route to KCR (no auto-publish)
+      </div>
+
+      <div style={{ overflowX: 'auto', border: `1px solid ${D.border}`, borderRadius: 10 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            {['Provider', 'Family', 'Authority', 'Freshness', 'Status', 'Observations', 'Evidence', 'Campaigns'].map((h) => <th key={h} style={th}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {providers.map((p) => {
+              const s = statusOf(p);
+              const o = bySource(observations, p.id); const e = bySource(evidence, p.id); const c = campaignsFor(p.id);
+              return (
+                <tr key={p.id}>
+                  <td style={{ ...td, color: D.text, fontWeight: 600 }}>{p.id}</td>
+                  <td style={{ ...td, color: D.muted, fontFamily: D.mono, fontSize: 11 }}>{p.family}</td>
+                  <td style={{ ...td, color: D.muted, fontFamily: D.mono, fontSize: 11 }}>{p.authorityLevel}</td>
+                  <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11 }}>{p.freshnessDays}d</td>
+                  <td style={td}><span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: `${s.tone}1e`, color: s.tone }}>{s.label}</span></td>
+                  <td style={{ ...td, color: o ? D.text : D.faint, fontFamily: D.mono }}>{o || '—'}</td>
+                  <td style={{ ...td, color: e ? D.text : D.faint, fontFamily: D.mono }}>{e || '—'}</td>
+                  <td style={{ ...td, color: c ? D.accent : D.faint, fontFamily: D.mono }}>{c || '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 12, fontSize: type.size.caption, color: D.faint }}>
+        Observations across all providers: {empty(observations.length, 'collected')} · Evidence: {empty(evidence.length, 'records')}. External providers are <strong style={{ color: D.muted }}>Available</strong> (interface configured, run via a campaign); <strong style={{ color: D.muted }}>internal-validation</strong> derives from our own event outcomes. Fetch executes via agent/backend — the app never crawls.
+      </div>
+    </div>
+  );
+}
+
 // KCR-6 — the governed publishing action bar. Renders the actions for the KCR's current
 // stage, gated by BOTH the pipeline gate (kcrGateStatus) AND the caller's role capability
 // (kcrCan). Every action applies a PURE transition then upsertKCR (optimistic concurrency
@@ -2124,13 +2207,7 @@ export default function AdminConsole() {
 
         {tab === 'Errors' && <ErrorsPanel />}
 
-        {tab === 'Providers' && (
-          <div style={{ fontSize: type.size.base, color: D.muted }}>
-            <strong style={{ color: D.text }}>Providers</strong> — ships in A5
-            (Provider / Message Status). See
-            docs/ecosystem/ADMIN_SUPPORT_V1_BUILD_PLAN.md.
-          </div>
-        )}
+        {tab === 'Providers' && <AcquisitionConsole />}
       </div>
     </div>
   );
