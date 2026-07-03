@@ -2032,7 +2032,7 @@ function KcrStudioPanel() {
   const metrics = kcrBacklogMetrics(kcrs, asOf);
 
   // ── workspace state ──────────────────────────────────────────────────────────
-  const [ws, setWs] = useState('Inbox');
+  const [ws, setWs] = useState('Mission Control');
   const [open, setOpen] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
