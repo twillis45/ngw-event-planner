@@ -26,7 +26,7 @@ import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
-import { loadCampaigns } from '../lib/knowledge/campaign';
+import { loadCampaigns, createCampaign, runCampaign, recordCampaign } from '../lib/knowledge/campaign';
 import { loadObservations, loadObservationsAsync } from '../lib/knowledge/observation';
 import { loadEvidence, loadEvidenceAsync } from '../lib/knowledge/evidence';
 import { isKasApiConfigured } from '../lib/api/kas';
@@ -1982,6 +1982,16 @@ function KcrStudioPanel() {
   const [simResult, setSimResult] = useState(null);
   const [simErr, setSimErr] = useState(null);
 
+  // Campaign form state
+  const [campGoal, setCampGoal] = useState('');
+  const [campAsset, setCampAsset] = useState(ALL_PLAYBOOKS[0]?.type || '');
+  const [campField, setCampField] = useState('');
+  const [campGapType, setCampGapType] = useState('pricing');
+  const [campProviders, setCampProviders] = useState(['bls-api', 'usda-api']);
+  const [campRunning, setCampRunning] = useState(false);
+  const [campRunResult, setCampRunResult] = useState(null);
+  const [campList, setCampList] = useState(() => loadCampaigns());
+
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
   const td = { padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, verticalAlign: 'middle' };
@@ -2442,26 +2452,126 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Campaigns') {
+      const PROV_OPTIONS = ['bls-api', 'usda-api', 'fda-api', 'community-corpus', 'event-reports', 'vendor-intel', 'costhacker', 'reddit-scraper'];
+      const GAP_TYPES = ['pricing', 'coverage', 'freshness', 'safety', 'sourcing', 'contradiction'];
+      const runCamp = () => {
+        if (!campGoal.trim()) return;
+        setCampRunning(true); setCampRunResult(null);
+        try {
+          const pb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
+          const allProviders = buildProviders();
+          const campaign = createCampaign({ goal: campGoal.trim(), assetId: campAsset, fieldPath: campField || null, gapType: campGapType, providers: campProviders, at: asOf });
+          const result = runCampaign(campaign, { providers: allProviders, fetched: {}, pb, asOf });
+          recordCampaign(result);
+          // async server sync — fire-and-forget
+          import('../lib/api/kas').then(({ upsertKasRecords, isKasApiConfigured: isConf }) => {
+            if (isConf()) upsertKasRecords('campaign', [result]).catch(() => {});
+          });
+          setCampRunResult(result);
+          setCampList(loadCampaigns());
+          setCampGoal(''); setCampField('');
+        } catch (e) {
+          setCampRunResult({ error: e.message });
+        } finally {
+          setCampRunning(false);
+        }
+      };
+      const toggleProvider = (id) => setCampProviders((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
       return (
         <div>
-          <Banner>Research campaigns — the orchestration layer. Each campaign runs providers → observations → evidence → finding → KCR. Campaigns stop at KCR; review/publish stays in the KCR pipeline.</Banner>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
-            <PBKpi label="Campaigns" value={campaigns.length} tone={campaigns.length ? D.accent : D.faint} />
-            <PBKpi label="With finding" value={campaigns.filter((c) => c.finding).length} tone={D.good} />
-            <PBKpi label="With KCR" value={campaigns.filter((c) => c.result?.kcr).length} tone={D.good} />
+          <Banner>Research campaigns — each run executes: providers → observations → evidence → finding → KCR. Corpus providers run in-browser; external providers (BLS/USDA/FDA/Yelp) require backend acquisition (evidence returned empty until a backend agent submits fetched records).</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <PBKpi label="Campaigns" value={campList.length} tone={campList.length ? D.accent : D.faint} />
+            <PBKpi label="With finding" value={campList.filter((c) => c.finding).length} tone={D.good} />
+            <PBKpi label="With KCR" value={campList.filter((c) => c.result?.kcr).length} tone={D.good} />
           </div>
-          {campaigns.length === 0 ? <Empty msg="No campaigns. Create via createCampaign() + runCampaign() from the knowledge module." /> : (
+
+          {/* ── New campaign form ─────────────────────────────── */}
+          <div style={{ background: D.surface, border: `1px solid ${D.accent}44`, borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+            <div style={{ fontSize: type.size.caption, color: D.accent, fontWeight: 700, marginBottom: 12, letterSpacing: '.04em', textTransform: 'uppercase' }}>New Campaign</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Goal *</div>
+                <input value={campGoal} onChange={(e) => setCampGoal(e.target.value)} placeholder="e.g. Ground crab pricing for mid-Atlantic" style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Asset</div>
+                <select value={campAsset} onChange={(e) => setCampAsset(e.target.value)} style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Field path (optional)</div>
+                <input value={campField} onChange={(e) => setCampField(e.target.value)} placeholder="e.g. p_crabs.unitCostRange" style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.muted, marginBottom: 3 }}>Gap type</div>
+                <select value={campGapType} onChange={(e) => setCampGapType(e.target.value)} style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: '6px 10px', color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                  {GAP_TYPES.map((g) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: D.muted, marginBottom: 5 }}>Providers <span style={{ color: D.faint }}>(external = backend-only; corpus/community run in-browser)</span></div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {PROV_OPTIONS.map((id) => {
+                  const on = campProviders.includes(id);
+                  const external = ['bls-api', 'usda-api', 'fda-api', 'costhacker', 'reddit-scraper'].includes(id);
+                  return (
+                    <button key={id} onClick={() => toggleProvider(id)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${on ? D.accent : D.border}`, background: on ? D.accent + '22' : D.bg, color: on ? D.accent : D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {id}{external ? ' ⚡' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <button onClick={runCamp} disabled={campRunning || !campGoal.trim()} style={{ padding: '8px 18px', borderRadius: 7, background: campGoal.trim() ? D.accent : D.faint, color: '#000', fontWeight: 700, fontSize: type.size.caption, border: 'none', cursor: campGoal.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: campRunning ? 0.6 : 1 }}>
+              {campRunning ? 'Running…' : 'Create + Run Campaign'}
+            </button>
+
+            {/* ── Inline result ───────────────────────────────── */}
+            {campRunResult && !campRunResult.error && (
+              <div style={{ marginTop: 14, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {[
+                    { label: 'State', val: campRunResult.state, tone: campRunResult.state === 'kcr' ? D.good : D.accent },
+                    { label: 'Observations', val: campRunResult.result?.observations ?? 0, tone: D.text },
+                    { label: 'Evidence', val: campRunResult.result?.evidence ?? 0, tone: D.text },
+                    { label: 'Finding', val: campRunResult.result?.finding || 'n/a', tone: campRunResult.result?.finding === 'grounded' ? D.good : D.warn },
+                    { label: 'KCR', val: campRunResult.result?.kcr ? '✓' : '—', tone: campRunResult.result?.kcr ? D.good : D.muted },
+                    { label: 'Conflicts', val: campRunResult.result?.conflicts ?? 0, tone: campRunResult.result?.conflicts > 0 ? D.warn : D.muted },
+                  ].map(({ label, val, tone }) => (
+                    <div key={label} style={{ textAlign: 'center', minWidth: 72 }}>
+                      <div style={{ fontSize: 11, color: tone, fontWeight: 700, fontFamily: D.mono }}>{String(val)}</div>
+                      <div style={{ fontSize: 9, color: D.faint, marginTop: 2, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono }}>{campRunResult.id}</div>
+                {campRunResult.result?.evidence === 0 && (
+                  <div style={{ fontSize: 10, color: D.faint, marginTop: 6 }}>⚡ External providers require a backend agent to submit fetched records. Evidence = 0 until then. The campaign is saved — re-run once records are available.</div>
+                )}
+              </div>
+            )}
+            {campRunResult?.error && (
+              <div style={{ marginTop: 10, fontSize: type.size.caption, color: D.warn }}>{campRunResult.error}</div>
+            )}
+          </div>
+
+          {/* ── Campaign history ──────────────────────────────── */}
+          {campList.length === 0 ? <Empty msg="No campaigns yet — run one above." /> : (
             <div>
-              {campaigns.map((c) => (
+              <div style={{ fontSize: 10, color: D.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}>History ({campList.length})</div>
+              {campList.map((c) => (
                 <div key={c.id} onClick={() => setOpen(open === c.id ? null : c.id)} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 8, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ fontSize: type.size.caption, color: D.text, fontWeight: 600 }}>{c.goal}</span>
-                    <span style={{ fontFamily: D.mono, fontSize: 10, color: D.faint }}>{c.state}</span>
+                    <span style={{ fontFamily: D.mono, fontSize: 10, color: c.state === 'kcr' ? D.good : D.faint }}>{c.state}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>asset: {c.assetId} · field: {c.fieldPath || 'n/a'} · providers: {(c.providerIds || []).join(', ') || 'none'}</div>
+                  <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>{c.assetId}{c.fieldPath ? ` · ${c.fieldPath}` : ''} · providers: {(c.providerIds || []).join(', ') || 'none'}</div>
                   {open === c.id && c.result && (
                     <div style={{ marginTop: 10, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>
-                      <div style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(c.result, null, 2)}</div>
+                      <div style={{ fontSize: 10, color: D.muted, fontFamily: D.mono, whiteSpace: 'pre-wrap' }}>{JSON.stringify(c.result, null, 2)}</div>
                     </div>
                   )}
                 </div>
