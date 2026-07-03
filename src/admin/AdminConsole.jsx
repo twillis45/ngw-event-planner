@@ -45,6 +45,10 @@ import { KNOWLEDGE_DOMAINS, getDomain, domainCoverage, generateDomainReport } fr
 import { FAILURE_CATEGORIES, createFailureRecord, failureToKCR, analyzeFailures, loadFailures, recordFailure, clearFailures as clearFailureStore } from '../lib/knowledge/failureIntelligence';
 import { corpusScopeCoverage } from '../lib/knowledge/knowledgeScope';
 import { ROLES, PHASES, SITUATION_TYPES, createContext } from '../lib/experience/experienceContext';
+import { RESEARCH_PLAYBOOKS, getResearchPlaybook, suggestPlaybooks, playbooksForDomain, validatePlaybook } from '../lib/knowledge/researchPlaybooks';
+import { SOURCE_CATALOG, sourcesForDomain, sourcesForProvider, highReliabilitySources, unbiasedSources, catalogSummary } from '../lib/knowledge/sourceCatalog';
+import { PIPELINE_STAGES, STAGE_LABELS, createPipelineManifest, advanceStage, blockStage, getPipelineProgress, buildPipelineMetrics, loadManifests, upsertManifest, clearManifests } from '../lib/knowledge/researchPipeline';
+import { RESEARCH_ROLES, canPerform, publishingRoles } from '../lib/knowledge/researchRoles';
 import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
@@ -1968,6 +1972,7 @@ const STUDIO_WS = [
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
   'Schedules', 'Roadmap',
   'Domains', 'Failures',
+  'Research', 'Corpus',
   'Experience',
 ];
 
@@ -2078,6 +2083,16 @@ function KcrStudioPanel() {
   const [xipResult, setXipResult] = useState(null);
   const [xipSimRole, setXipSimRole] = useState('coordinator');
   const [xipDiff, setXipDiff] = useState(null);
+
+  // Research workbench state (KMP-1)
+  const [researchPlaybookId, setResearchPlaybookId] = useState(RESEARCH_PLAYBOOKS[0]?.id || '');
+  const [researchAssetId, setResearchAssetId] = useState(ALL_PLAYBOOKS[0]?.type || '');
+  const [researchFieldPath, setResearchFieldPath] = useState('');
+  const [pipelineManifests, setPipelineManifests] = useState(() => loadManifests());
+  const [selectedManifestId, setSelectedManifestId] = useState(null);
+
+  // Corpus dashboard state (KMP-1)
+  const [corpusDomain, setCorpusDomain] = useState('all');
 
   // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
@@ -3513,6 +3528,252 @@ function KcrStudioPanel() {
       );
     }
 
+    // ── Research workbench (KMP-1 Bundle E) ──────────────────────────────────────
+    if (ws === 'Research') {
+      const selectedManifest = pipelineManifests.find((m) => m.id === selectedManifestId);
+      const catalogSum = catalogSummary();
+      return (
+        <div>
+          <Banner>Research Workbench — KMP-1 Bundle E. Launch research playbooks against knowledge assets, track the 12-stage production pipeline, manage source catalog. No production editing. Everything flows through governance.</Banner>
+
+          {/* Source catalog overview */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <PBKpi label="Research Playbooks" value={RESEARCH_PLAYBOOKS.length} tone={D.accent} />
+            <PBKpi label="Source Catalog" value={catalogSum.total} tone={D.text} />
+            <PBKpi label="Government Sources" value={catalogSum.governmentSources} tone={D.good} />
+            <PBKpi label="Unverified Families" value={catalogSum.unverifiedFamilies.length} tone={catalogSum.unverifiedFamilies.length ? D.warn : D.faint} />
+            <PBKpi label="Active Pipelines" value={pipelineManifests.filter((m) => m.status === 'active').length} tone={D.accent} />
+            <PBKpi label="Blocked" value={pipelineManifests.filter((m) => m.status === 'blocked').length} tone={pipelineManifests.some((m) => m.status === 'blocked') ? D.bad : D.faint} />
+          </div>
+
+          {/* Launch a research pipeline */}
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Launch Research Pipeline</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Research Playbook</div>
+                <select value={researchPlaybookId} onChange={(e) => setResearchPlaybookId(e.target.value)}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {RESEARCH_PLAYBOOKS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Asset (Playbook)</div>
+                <select value={researchAssetId} onChange={(e) => setResearchAssetId(e.target.value)}
+                  style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
+                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Field Path (optional)</div>
+                <input value={researchFieldPath} onChange={(e) => setResearchFieldPath(e.target.value)} placeholder="e.g. p_crabs.unitCostRange"
+                  style={{ width: '100%', boxSizing: 'border-box', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button onClick={() => {
+                  const m = createPipelineManifest({ playbookId: researchPlaybookId, assetId: researchAssetId, fieldPath: researchFieldPath || null, at: asOf });
+                  upsertManifest(m);
+                  setPipelineManifests(loadManifests());
+                  setSelectedManifestId(m.id);
+                }} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 11, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Launch
+                </button>
+              </div>
+            </div>
+            {researchPlaybookId && (() => {
+              const pb = getResearchPlaybook(researchPlaybookId);
+              if (!pb) return null;
+              return (
+                <div style={{ marginTop: 10, padding: 10, background: D.bg, borderRadius: 8, fontSize: type.size.caption, color: D.muted, display: 'flex', gap: 16 }}>
+                  <span>🎯 {pb.objective.slice(0, 80)}…</span>
+                  <span>Providers: {pb.providerFamilies.join(', ')}</span>
+                  <span>Corroboration: {pb.corroborationRequired}+</span>
+                  <span>Freshness: {pb.freshnessPolicy}</span>
+                  <span>Review: {pb.reviewPath}</span>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Pipeline manifests table */}
+          {pipelineManifests.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active Pipelines ({pipelineManifests.length})</div>
+                <button onClick={() => { clearManifests(); setPipelineManifests([]); setSelectedManifestId(null); }}
+                  style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: `1px solid ${D.border}`, background: D.bg, color: D.faint, cursor: 'pointer' }}>
+                  Clear all
+                </button>
+              </div>
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr>
+                    {['Playbook', 'Asset', 'Stage', 'Progress', 'Status', 'KCRs', 'Actions'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {pipelineManifests.map((m) => {
+                      const prog = getPipelineProgress(m);
+                      const statusColor = { active: D.good, blocked: D.bad, complete: D.accent, abandoned: D.faint }[m.status] || D.faint;
+                      const isSelected = m.id === selectedManifestId;
+                      return (
+                        <tr key={m.id} onClick={() => setSelectedManifestId(isSelected ? null : m.id)}
+                          style={{ cursor: 'pointer', background: isSelected ? `${D.accent}0a` : 'transparent' }}>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.text }}>{m.playbookId}</td>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted }}>{m.assetId}</td>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.accent, fontFamily: D.mono }}>{STAGE_LABELS[m.currentStage] || m.currentStage}</td>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.text, minWidth: 80 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ flex: 1, height: 4, background: D.border, borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{ width: `${prog.pct}%`, height: '100%', background: statusColor, borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontFamily: D.mono, fontSize: 9, color: D.faint }}>{prog.pct}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55` }}>
+                            <span style={{ color: statusColor }}>{m.status}</span>
+                          </td>
+                          <td style={{ padding: '7px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}55`, color: D.muted, fontFamily: D.mono }}>{(m.kcrIds || []).length}</td>
+                          <td style={{ padding: '7px 10px', borderBottom: `1px solid ${D.border}55` }}>
+                            {m.status === 'active' && (
+                              <button onClick={(e) => { e.stopPropagation(); const m2 = advanceStage(m, m.currentStage, { outcome: 'Completed by operator', at: asOf }); upsertManifest(m2); setPipelineManifests(loadManifests()); }}
+                                style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', marginRight: 4 }}>
+                                Advance
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Selected pipeline detail */}
+          {selectedManifest && (
+            <div style={{ background: D.surface, border: `1px solid ${D.accent}33`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 11, color: D.accent, fontWeight: 600, marginBottom: 10 }}>Pipeline: {selectedManifest.id}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {PIPELINE_STAGES.map((stage, i) => {
+                  const s = selectedManifest.stages[stage];
+                  const color = s.status === 'complete' ? D.good : s.status === 'in-progress' ? D.accent : s.status === 'blocked' ? D.bad : s.status === 'skipped' ? D.faint : D.border;
+                  return (
+                    <div key={stage} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}20`, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color, fontFamily: D.mono }}>{i + 1}</div>
+                      <div style={{ fontSize: 9, color: s.status === 'in-progress' ? D.text : D.faint, textAlign: 'center', maxWidth: 56, lineHeight: 1.2 }}>{STAGE_LABELS[stage]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {pipelineManifests.length === 0 && <Empty msg="No active pipelines. Select a research playbook and asset above to launch one." />}
+        </div>
+      );
+    }
+
+    // ── Corpus Growth Dashboard (KMP-1 Bundle F) ──────────────────────────────────
+    if (ws === 'Corpus') {
+      const catalogSum = catalogSummary();
+      const DIMENSIONS_DISPLAY = ['Grounding', 'Freshness', 'Coverage', 'Commercial', 'Regional', 'Seasonal', 'Professional', 'Operational', 'Accessibility'];
+      const AUTHORITY_COLOR = { official: D.good, primary: D.good, standards: D.accent, trade: D.warn, expert: D.warn, derived: D.muted, community: D.faint };
+      const sourcesByFamily = Object.entries(
+        SOURCE_CATALOG.reduce((m, s) => { m[s.family] = (m[s.family] || 0) + 1; return m; }, {})
+      ).sort(([, a], [, b]) => b - a);
+
+      return (
+        <div>
+          <Banner>Corpus Growth Dashboard — KMP-1 Bundle F. Dimensional corpus measurement only. No overall score. Tracks: source catalog health, research playbook coverage, pipeline velocity, knowledge debt, source bias distribution.</Banner>
+
+          {/* Corpus KPIs */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <PBKpi label="Source Catalog" value={catalogSum.total} tone={D.text} />
+            <PBKpi label="Govt Sources" value={catalogSum.governmentSources} tone={D.good} />
+            <PBKpi label="Public Domain" value={catalogSum.publicDomain} tone={D.accent} />
+            <PBKpi label="With Commercial Bias" value={catalogSum.withCommercialBias} tone={D.warn} />
+            <PBKpi label="Research Playbooks" value={RESEARCH_PLAYBOOKS.length} tone={D.text} />
+            <PBKpi label="Research Roles" value={Object.keys(RESEARCH_ROLES).length} tone={D.muted} />
+            <PBKpi label="Unverified Families" value={catalogSum.unverifiedFamilies.length} tone={catalogSum.unverifiedFamilies.length ? D.bad : D.good} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            {/* Sources by family */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sources by Family</div>
+              {sourcesByFamily.map(([family, count]) => (
+                <div key={family} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 12px', borderBottom: `1px solid ${D.border}33` }}>
+                  <span style={{ fontSize: type.size.caption, color: D.text, flex: 1 }}>{family}</span>
+                  <div style={{ width: 80, height: 4, background: D.border, borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round((count / catalogSum.total) * 100)}%`, height: '100%', background: D.accent, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontFamily: D.mono, fontSize: 9, color: D.faint, width: 16, textAlign: 'right' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Research playbooks by domain coverage */}
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Research Playbooks by Knowledge Dimension</div>
+              {DIMENSIONS_DISPLAY.map((dim) => {
+                const count = RESEARCH_PLAYBOOKS.filter((p) => (p.knowledgeDimensions || []).includes(dim)).length;
+                return (
+                  <div key={dim} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 12px', borderBottom: `1px solid ${D.border}33` }}>
+                    <span style={{ fontSize: type.size.caption, color: D.text, flex: 1 }}>{dim}</span>
+                    <div style={{ width: 80, height: 4, background: D.border, borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.round((count / RESEARCH_PLAYBOOKS.length) * 100)}%`, height: '100%', background: D.good, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontFamily: D.mono, fontSize: 9, color: D.faint, width: 16, textAlign: 'right' }}>{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Source authority distribution */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Source Catalog — Authority × Bias</div>
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>
+                  {['Source', 'Family', 'Authority', 'Coverage', 'Freshness', 'Bias', 'Licensing'].map((h) => <th key={h} style={{ textAlign: 'left', fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` }}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {SOURCE_CATALOG.slice(0, 15).map((s) => (
+                    <tr key={s.id}>
+                      <td style={{ padding: '6px 10px', fontSize: 10, borderBottom: `1px solid ${D.border}44`, color: D.text }}>{s.name}</td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.muted, fontFamily: D.mono }}>{s.family}</td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44` }}>
+                        <span style={{ color: AUTHORITY_COLOR[s.authority] || D.faint }}>{s.authority}</span>
+                      </td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.muted }}>{s.coverage}</td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.muted, fontFamily: D.mono }}>{s.freshnessPolicy}</td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: s.commercialBias === 'none' ? D.good : s.commercialBias === 'low' ? D.accent : D.warn }}>{s.commercialBias}</td>
+                      <td style={{ padding: '6px 10px', fontSize: 9, borderBottom: `1px solid ${D.border}44`, color: D.faint }}>{s.licensing}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {SOURCE_CATALOG.length > 15 && <div style={{ padding: '6px 12px', fontSize: 10, color: D.faint }}>+{SOURCE_CATALOG.length - 15} more sources</div>}
+            </div>
+          </div>
+
+          {/* Unverified provider families */}
+          {catalogSum.unverifiedFamilies.length > 0 && (
+            <div style={{ background: `${D.warn}0a`, border: `1px solid ${D.warn}33`, borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 10, color: D.warn, fontWeight: 600, marginBottom: 6 }}>Provider families with no named sources ({catalogSum.unverifiedFamilies.length})</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {catalogSum.unverifiedFamilies.map((f) => (
+                  <span key={f} style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, background: `${D.warn}18`, color: D.warn, fontFamily: D.mono }}>{f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ── Experience workspace (XIP-1) ─────────────────────────────────────────────
     if (ws === 'Experience') {
       const xipPlaybook = ALL_PLAYBOOKS.find((pb) => pb.type === xipPlaybookType) || ALL_PLAYBOOKS[0];
@@ -3724,7 +3985,7 @@ function KcrStudioPanel() {
 
   return (
     <div>
-      <Banner>Knowledge Studio — the manufacturing platform. 23 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → experience projection. Governed; nothing publishes automatically.</Banner>
+      <Banner>Knowledge Studio — the manufacturing platform. 25 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate → domain → failure-learning → research workbench → corpus dashboard → experience projection. Governed; nothing publishes automatically.</Banner>
 
       {fullBacklogHeader()}
 
