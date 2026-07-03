@@ -33,3 +33,22 @@ export function recordEvidence(ev) {
   list.push(ev); saveEvidence(list); return list;
 }
 export function clearEvidence() { try { localStorage.removeItem(KEY); } catch { /* noop */ } }
+
+// Server-first async load — mirrors kcrStore.loadKCRs().
+export async function loadEvidenceAsync() {
+  try {
+    const { fetchKasRecords, isKasApiConfigured } = await import('../api/kas');
+    if (!isKasApiConfigured()) return loadEvidence();
+    const remote = await fetchKasRecords('evidence');
+    if (Array.isArray(remote)) { saveEvidence(remote); return remote; }
+  } catch { /* fall through */ }
+  return loadEvidence();
+}
+
+export async function upsertEvidenceAsync(ev) {
+  recordEvidence(ev);
+  try {
+    const { upsertKasRecords, isKasApiConfigured } = await import('../api/kas');
+    if (isKasApiConfigured()) await upsertKasRecords('evidence', [ev]);
+  } catch { /* local is authoritative */ }
+}

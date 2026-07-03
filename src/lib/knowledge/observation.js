@@ -37,3 +37,23 @@ export function recordObservation(obs) {
   list.push(obs); saveObservations(list); return list;
 }
 export function clearObservations() { try { localStorage.removeItem(KEY); } catch { /* noop */ } }
+
+// Server-first async load — mirrors kcrStore.loadKCRs(). Returns cached list on any failure.
+export async function loadObservationsAsync() {
+  try {
+    const { fetchKasRecords, isKasApiConfigured } = await import('../api/kas');
+    if (!isKasApiConfigured()) return loadObservations();
+    const remote = await fetchKasRecords('observation');
+    if (Array.isArray(remote)) { saveObservations(remote); return remote; }
+  } catch { /* fall through */ }
+  return loadObservations();
+}
+
+// Write a new observation to the server (best-effort; always saves locally).
+export async function upsertObservationAsync(obs) {
+  recordObservation(obs);
+  try {
+    const { upsertKasRecords, isKasApiConfigured } = await import('../api/kas');
+    if (isKasApiConfigured()) await upsertKasRecords('observation', [obs]);
+  } catch { /* local store is always authoritative */ }
+}

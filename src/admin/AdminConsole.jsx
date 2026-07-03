@@ -27,8 +27,8 @@ import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dime
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
 import { loadCampaigns } from '../lib/knowledge/campaign';
-import { loadObservations } from '../lib/knowledge/observation';
-import { loadEvidence } from '../lib/knowledge/evidence';
+import { loadObservations, loadObservationsAsync } from '../lib/knowledge/observation';
+import { loadEvidence, loadEvidenceAsync } from '../lib/knowledge/evidence';
 import { isKasApiConfigured } from '../lib/api/kas';
 import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
 import { buildKnowledgeGraph } from '../lib/knowledge/knowledgeGraph';
@@ -1936,9 +1936,18 @@ function KcrStudioPanel() {
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const observations = loadObservations();
-  const evidence = loadEvidence();
-  const campaigns = loadCampaigns();
+  // Server-first KAS stores — async, refresh alongside KCRs; fall back to localStorage on failure.
+  const [observations, setObservations] = useState(() => loadObservations());
+  const [evidence, setEvidence] = useState(() => loadEvidence());
+  const campaigns = loadCampaigns(); // campaigns stay local-only for now (no server path yet)
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([loadObservationsAsync(), loadEvidenceAsync()]).then(([obs, ev]) => {
+      if (!cancelled) { setObservations(obs); setEvidence(ev); }
+    }).catch(() => { /* keep localStorage values */ });
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs });
   const graph = buildKnowledgeGraph({ assets: ALL_PLAYBOOKS, evidence, kcrs });
   const conflicts = detectContradictions(evidence);
