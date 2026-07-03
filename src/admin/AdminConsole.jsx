@@ -31,6 +31,11 @@ import { loadObservations } from '../lib/knowledge/observation';
 import { loadEvidence } from '../lib/knowledge/evidence';
 import { isKasApiConfigured } from '../lib/api/kas';
 import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
+import { buildKnowledgeGraph } from '../lib/knowledge/knowledgeGraph';
+import { blastRadius } from '../lib/knowledge/dependencyEngine';
+import { simulatePublish } from '../lib/knowledge/simulation';
+import { resolveField, explainField } from '../lib/knowledge/runtimeKnowledge';
+import { detectContradictions, analyzeEvidence } from '../lib/knowledge/evidenceIntelligence';
 import { type } from '../design/tokens';
 
 // hasSupabaseSession: synchronous localStorage check — matches the App.js impl.
@@ -1903,12 +1908,19 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
   );
 }
 
+// ─── Bundle C: Manufacturing Studio — 15 operational workspaces ───────────────
+const STUDIO_WS = [
+  'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
+  'Review', 'Publishing', 'Validation', 'Monitoring', 'Retirement',
+  'Campaigns', 'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
+];
+
 function KcrStudioPanel() {
   const asOf = new Date().toISOString().slice(0, 10);
   const { user } = useAuth();
-  const role = user?.app_metadata?.role; // KCR-6: gates publishing actions (admin ⇒ publisher)
-  // Reconcile the live research queue into the (server-backed) backlog — progress
-  // preserved — then read it. Async: server-first with localStorage fallback (KCR-4).
+  const role = user?.app_metadata?.role;
+
+  // ── shared data ─────────────────────────────────────────────────────────────
   const [kcrs, setKcrs] = useState([]);
   const [loading, setLoading] = useState(true);
   const refresh = useCallback(async () => { try { setKcrs(await loadKCRs()); } catch { /* keep current */ } }, []);
@@ -1921,153 +1933,705 @@ function KcrStudioPanel() {
     })();
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const observations = loadObservations();
+  const evidence = loadEvidence();
+  const campaigns = loadCampaigns();
+  const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs });
+  const graph = buildKnowledgeGraph({ assets: ALL_PLAYBOOKS, evidence, kcrs });
+  const conflicts = detectContradictions(evidence);
+  const evidenceIntel = analyzeEvidence(evidence, asOf);
+
+  const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
+  const metrics = kcrBacklogMetrics(kcrs, asOf);
+
+  // ── workspace state ──────────────────────────────────────────────────────────
+  const [ws, setWs] = useState('Inbox');
   const [open, setOpen] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const byStatus = kcrs.reduce((m, k) => { m[k.status] = (m[k.status] || 0) + 1; return m; }, {});
-  const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
-  const metrics = kcrBacklogMetrics(kcrs, asOf); // KCR-5 observability (aging honest-empty when no timestamps)
-  const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs }); // KF-1 manufacturing view (derived, dimensional)
-  const kepProviders = buildProviders();              // KEP-2 Bundle A — acquisition providers
-  const kepCampaigns = loadCampaigns();               // KEP-2 Bundle B — research campaigns
-  const shown = kcrs.filter((k) => statusFilter === 'all' || k.status === statusFilter)
-    .sort((a, b) => (a.priority === 'high' ? -1 : a.priority === 'med' ? 0 : 1) - (b.priority === 'high' ? -1 : b.priority === 'med' ? 0 : 1) || a.assetId.localeCompare(b.assetId));
+  // Dep. Explorer state
+  const [depType, setDepType] = useState('Crab Feast');
+  const [depField, setDepField] = useState('p_crabs.unitCostRange');
+  const [depResult, setDepResult] = useState(null);
 
+  // Runtime Preview state
+  const [rtType, setRtType] = useState('Crab Feast');
+  const [rtField, setRtField] = useState('p_crabs.unitCostRange');
+  const [rtResult, setRtResult] = useState(null);
+
+  // Impact Simulator state
+  const [simType, setSimType] = useState('Crab Feast');
+  const [simField, setSimField] = useState('p_crabs.unitCostRange');
+  const [simVal, setSimVal] = useState('[3, 8]');
+  const [simResult, setSimResult] = useState(null);
+  const [simErr, setSimErr] = useState(null);
+
+  // ── shared styles ────────────────────────────────────────────────────────────
   const th = { textAlign: 'left', fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '6px 10px', borderBottom: `1px solid ${D.border}` };
   const td = { padding: '8px 10px', fontSize: type.size.caption, borderBottom: `1px solid ${D.border}55`, verticalAlign: 'middle' };
   const chip = (txt, color) => <span style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${color}1e`, color }}>{txt}</span>;
+  const monoPre = (v) => <span style={{ fontFamily: D.mono, fontSize: 11, color: D.muted }}>{v == null ? 'null' : JSON.stringify(v)}</span>;
+  const inputSm = { background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none', fontFamily: D.mono, flex: 1 };
 
-  return (
-    <div>
-      <Banner>Knowledge Studio — the governed KCR backlog. The Command Center research queue (and future sources) reconciled into the pipeline; progress persists across sessions by deterministic id. Read-only; publishing actions parked. No knowledge output is affected.</Banner>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
-        <PBKpi label="KCRs" value={kcrs.length} />
-        <PBKpi label="Draft" value={byStatus.draft || 0} tone={D.faint} />
-        <PBKpi label="Researching" value={byStatus.researching || 0} tone={D.accent} />
-        <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
-        <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
-        <PBKpi label="High priority" value={kcrs.filter((k) => k.priority === 'high').length} tone={D.bad} />
-      </div>
-
-      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
-        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Why knowledge is changing (trigger)</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
-            <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
+  // Shared KCR table render (Review / Publishing / Backlog)
+  const KcrTable = ({ items, cols = 6 }) => (
+    <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead><tr>
+          <th style={th}>Asset</th><th style={th}>Type</th><th style={th}>Trigger</th><th style={th}>Status</th><th style={th}>Priority</th><th style={th}>Field</th>
+        </tr></thead>
+        <tbody>
+          {items.map((k) => (
+            <Fragment key={k.id}>
+              <tr onClick={() => setOpen(open === k.id ? null : k.id)} style={{ cursor: 'pointer', background: open === k.id ? D.surface2 : 'transparent' }}>
+                <td style={{ ...td, color: D.text, fontWeight: 600 }}>{k.assetId}</td>
+                <td style={td}>{chip(k.type, D.muted)}</td>
+                <td style={td}>{chip(k.trigger, D.accent)}</td>
+                <td style={td}><span style={{ color: KCR_STATUS_COLOR[k.status] || D.muted, fontFamily: D.mono, fontSize: 11 }}>● {k.status}</span></td>
+                <td style={td}>{chip(k.priority || 'low', k.priority === 'high' ? D.bad : k.priority === 'med' ? D.warn : D.faint)}</td>
+                <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11, wordBreak: 'break-word' }}>{k.fieldPath}</td>
+              </tr>
+              {open === k.id && (
+                <tr><td colSpan={cols} style={{ padding: '0 10px 12px' }}>
+                  <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14 }}>
+                    <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 10 }}>{k.reason}</div>
+                    <KcrActions kcr={k} role={role} asOf={asOf} onChanged={refresh} />
+                    {k.impact && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '10px 0' }}>
+                        {(k.impact.recommendationEngines || []).map((e) => <span key={e} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: `${D.good}1e`, color: D.good }}>{e}</span>)}
+                        {(k.impact.downstream || []).map((e) => <span key={`d-${e}`} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>↓ {e}</span>)}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4, marginTop: 8 }}>Audit</div>
+                    {(k.audit || []).map((a, i) => (
+                      <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{a.action}{a.by ? ` · ${a.by}` : ''}{a.note ? ` — ${a.note}` : ''}</div>
+                    ))}
+                  </div>
+                </td></tr>
+              )}
+            </Fragment>
           ))}
-        </div>
-      </div>
+        </tbody>
+      </table>
+    </div>
+  );
 
-      {/* Backlog observability (KCR-5) — aging metrics are honest-empty until KCRs carry
-          stage timestamps (agedKnown === 0 ⇒ "no aging data yet", never fabricated). */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-        <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Aging & SLA</div>
-          {metrics.agedKnown === 0 ? (
-            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No aging data yet — awaiting stage timestamps.</div>
-          ) : (
+  const Empty = ({ msg }) => <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic', padding: '16px 0' }}>{msg}</div>;
+
+  // ── workspace renderers ──────────────────────────────────────────────────────
+  const renderWs = () => {
+    if (ws === 'Inbox') {
+      const inbox = observations.filter((o) => o.status === 'open' && !(o.linkedEvidence || []).length);
+      return (
+        <div>
+          <Banner>Inbox — open observations not yet linked to any evidence. These need research or a campaign to advance.</Banner>
+          {inbox.length === 0 ? <Empty msg="No unlinked observations. Either none have been collected, or all are linked to evidence. Honest-empty." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['ID', 'Kind', 'Asset', 'Field', 'Gap type', 'Source', 'Noticed'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {inbox.map((o) => (
+                    <tr key={o.id} onClick={() => setOpen(open === o.id ? null : o.id)} style={{ cursor: 'pointer', background: open === o.id ? D.surface2 : 'transparent' }}>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{o.id}</td>
+                      <td style={td}>{chip(o.kind, D.accent)}</td>
+                      <td style={{ ...td, color: D.text, fontWeight: 600 }}>{o.assetId}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{o.fieldPath || '—'}</td>
+                      <td style={td}>{chip(o.gapType || '—', D.warn)}</td>
+                      <td style={{ ...td, color: D.muted }}>{o.source}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{(o.noticedAt || '').slice(0, 10)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Observations') {
+      const [sf] = [statusFilter];
+      const shown = observations.filter((o) => sf === 'all' || o.status === sf);
+      return (
+        <div>
+          <Banner>All observations in the local store. Status: open = unresolved, closed = resolved or superseded.</Banner>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            {['all', 'open', 'closed'].map((s) => (
+              <button key={s} onClick={() => setStatusFilter(s)} style={{ background: statusFilter === s ? D.surface2 : 'transparent', color: statusFilter === s ? D.text : D.muted, border: `1px solid ${statusFilter === s ? D.border : 'transparent'}`, borderRadius: 6, padding: '4px 10px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff }}>{s} ({s === 'all' ? observations.length : observations.filter((o) => o.status === s).length})</button>
+            ))}
+          </div>
+          {shown.length === 0 ? <Empty msg="No observations match the filter. Run a campaign to generate observations." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['Kind', 'Asset', 'Field', 'Statement', 'Status', 'Noticed'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {shown.map((o) => (
+                    <Fragment key={o.id}>
+                      <tr onClick={() => setOpen(open === o.id ? null : o.id)} style={{ cursor: 'pointer', background: open === o.id ? D.surface2 : 'transparent' }}>
+                        <td style={td}>{chip(o.kind, D.accent)}</td>
+                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{o.assetId}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{o.fieldPath || '—'}</td>
+                        <td style={{ ...td, color: D.muted, maxWidth: 240 }}>{o.statement}</td>
+                        <td style={td}>{chip(o.status, o.status === 'open' ? D.warn : D.faint)}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{(o.noticedAt || '').slice(0, 10)}</td>
+                      </tr>
+                      {open === o.id && (
+                        <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
+                          <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6 }}>id: {o.id}</div>
+                            <div style={{ fontSize: type.size.caption, color: D.muted }}>{o.statement}</div>
+                            <div style={{ marginTop: 8, fontSize: type.size.caption, color: D.faint }}>source: {o.source} · gapType: {o.gapType || 'n/a'} · region: {o.region || 'n/a'}</div>
+                            {(o.linkedEvidence || []).length > 0 && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Linked evidence: {o.linkedEvidence.join(', ')}</div>}
+                          </div>
+                        </td></tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Evidence') {
+      const shown = evidence.filter((e) => statusFilter === 'all' || e.status === statusFilter);
+      return (
+        <div>
+          <Banner>Evidence records — corroborated or candidate. Authority rank and freshness inform finding confidence. No evidence → no finding → no KCR. Honest-empty.</Banner>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            {['all', 'candidate', 'corroborated', 'contested', 'superseded'].map((s) => (
+              <button key={s} onClick={() => setStatusFilter(s)} style={{ background: statusFilter === s ? D.surface2 : 'transparent', color: statusFilter === s ? D.text : D.muted, border: `1px solid ${statusFilter === s ? D.border : 'transparent'}`, borderRadius: 6, padding: '4px 10px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff }}>{s} ({s === 'all' ? evidence.length : evidence.filter((e) => e.status === s).length})</button>
+            ))}
+          </div>
+          {shown.length === 0 ? <Empty msg="No evidence in store. Run a campaign or record evidence manually via the API." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['Source', 'Asset', 'Field', 'Authority', 'Status', 'Effective date'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {shown.map((e) => (
+                    <Fragment key={e.id}>
+                      <tr onClick={() => setOpen(open === e.id ? null : e.id)} style={{ cursor: 'pointer', background: open === e.id ? D.surface2 : 'transparent' }}>
+                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{e.source}</td>
+                        <td style={{ ...td, color: D.muted }}>{e.assetId || '—'}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{e.fieldPath || '—'}</td>
+                        <td style={td}>{chip(e.authorityLevel || '—', D.accent)}</td>
+                        <td style={td}>{chip(e.status, e.status === 'corroborated' ? D.good : e.status === 'contested' ? D.bad : D.warn)}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{e.effectiveDate || '—'}</td>
+                      </tr>
+                      {open === e.id && (
+                        <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
+                          <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
+                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6 }}>id: {e.id}</div>
+                            {e.url && <div style={{ fontSize: type.size.caption, color: D.accent, marginBottom: 4 }}>source URL: {e.url}</div>}
+                            {e.excerpt && <div style={{ fontSize: type.size.caption, color: D.muted, fontStyle: 'italic', marginBottom: 6 }}>"{e.excerpt}"</div>}
+                            <div style={{ fontSize: type.size.caption, color: D.faint }}>sourceType: {e.sourceType} · confidence: {e.confidence} · region: {e.region || 'n/a'}</div>
+                            {(e.extractedFacts || []).length > 0 && (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', marginBottom: 4 }}>Extracted facts</div>
+                                {e.extractedFacts.map((f, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(f)}</div>)}
+                              </div>
+                            )}
+                          </div>
+                        </td></tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Findings') {
+      const campaignFindings = campaigns.filter((c) => c.finding);
+      return (
+        <div>
+          <Banner>Findings derived from Evidence + Observations via deriveFinding(). Findings are ephemeral (computed on demand by campaigns); the store here shows campaign-attached findings.</Banner>
+          {campaignFindings.length === 0 ? <Empty msg="No findings yet. Findings are generated when a campaign runs through deriveFinding(). Run a campaign via the Campaigns workspace." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['Campaign', 'Field', 'Status', 'Proposed value', 'Corroboration', 'Contradictions'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {campaignFindings.map((c) => {
+                    const f = c.finding;
+                    return (
+                      <tr key={c.id}>
+                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{c.goal}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{f.fieldPath || '—'}</td>
+                        <td style={td}>{chip(f.status || '—', f.status === 'proposed' ? D.good : f.status === 'contested' ? D.bad : D.warn)}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.text }}>{monoPre(f.proposedValue)}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{(f.corroboration || []).length}</td>
+                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: (f.contradictions || []).length ? D.bad : D.faint }}>{(f.contradictions || []).length}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Conflicts') {
+      return (
+        <div>
+          <Banner>Contradictions detected by detectContradictions() across the evidence store. Conflict KCR candidates — never auto-resolved; requires human judgment before advancing.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Evidence records" value={evidenceIntel.total} />
+            <PBKpi label="Clusters" value={evidenceIntel.clusters.length} />
+            <PBKpi label="Deduped" value={evidenceIntel.deduped.length} />
+            <PBKpi label="Conflicts" value={conflicts.length} tone={conflicts.length ? D.bad : D.faint} />
+          </div>
+          {conflicts.length === 0 ? <Empty msg="No contradictions detected across the evidence store. Honest-empty." /> : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['Asset', 'Field', 'Distinct values', 'Explicit', 'Conflict KCR'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {conflicts.map((c, i) => (
+                    <tr key={i}>
+                      <td style={{ ...td, color: D.text, fontWeight: 600 }}>{c.assetId}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{c.fieldPath}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.bad }}>{monoPre(c.distinctValues)}</td>
+                      <td style={td}>{chip(c.explicit ? 'yes' : 'no', c.explicit ? D.bad : D.warn)}</td>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{c.conflictKCR?.id || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Review') {
+      const reviewKcrs = kcrs.filter((k) => k.status === 'review')
+        .sort((a, b) => (a.priority === 'high' ? -1 : 0) - (b.priority === 'high' ? -1 : 0));
+      return (
+        <div>
+          <Banner>KCRs in review — SME, editorial, and governance sign-off required (role-gated). KCR-6 governs which roles can advance each stage. No auto-advancement.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
+            <PBKpi label="Aging >30d" value={metrics.staleCount} tone={metrics.staleCount ? D.bad : D.faint} />
+          </div>
+          {loading ? <Banner tone="muted">Loading…</Banner> : reviewKcrs.length === 0 ? <Empty msg="No KCRs in review. Honest-empty." /> : <KcrTable items={reviewKcrs} />}
+        </div>
+      );
+    }
+
+    if (ws === 'Publishing') {
+      const pubKcrs = kcrs.filter((k) => ['approved', 'publishing'].includes(k.status))
+        .sort((a, b) => a.assetId.localeCompare(b.assetId));
+      return (
+        <div>
+          <Banner>KCRs approved and ready to publish — the final human gate. Publishing writes an override record that the runtime resolver applies. Nothing publishes automatically.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Approved" value={byStatus.approved || 0} tone={D.good} />
+            <PBKpi label="Published all time" value={byStatus.published || 0} tone={D.good} />
+          </div>
+          {loading ? <Banner tone="muted">Loading…</Banner> : pubKcrs.length === 0 ? <Empty msg="No KCRs pending publish. Honest-empty." /> : <KcrTable items={pubKcrs} />}
+        </div>
+      );
+    }
+
+    if (ws === 'Validation') {
+      const valQ = factory.queues.validation;
+      return (
+        <div>
+          <Banner>Validation queue — post-publish checks confirming a published override performs as expected in the runtime. Validation closes the loop: published → validated → stable.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Validation queue" value={valQ.count} tone={valQ.count ? D.accent : D.faint} />
+            <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
+          </div>
+          {valQ.count === 0 ? <Empty msg="No items pending validation. Items enter this queue after publish, when runtime checks are enabled." /> : (
+            valQ.items.map((item, i) => (
+              <div key={i} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, marginBottom: 8, fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(item)}</div>
+            ))
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Monitoring') {
+      const byTrigger = kcrs.reduce((m, k) => { m[k.trigger] = (m[k.trigger] || 0) + 1; return m; }, {});
+      return (
+        <div>
+          <Banner>Corpus monitoring — dimensional debt, knowledge velocity, and backlog health. Manufacturing floor metrics from KF-1. Debt is dimensional (never a single score).</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="KCRs total" value={kcrs.length} />
+            <PBKpi label="Draft" value={byStatus.draft || 0} tone={D.faint} />
+            <PBKpi label="Researching" value={byStatus.researching || 0} tone={D.accent} />
+            <PBKpi label="Review" value={byStatus.review || 0} tone={D.warn} />
+            <PBKpi label="Published" value={byStatus.published || 0} tone={D.good} />
+            <PBKpi label="High priority" value={kcrs.filter((k) => k.priority === 'high').length} tone={D.bad} />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Aging & SLA</div>
+              {metrics.agedKnown === 0 ? <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No aging data yet.</div> : (
+                <>
+                  <div style={{ fontSize: type.size.caption, color: metrics.staleCount ? D.warn : D.muted, marginBottom: 6 }}>{metrics.staleCount} past SLA · oldest {metrics.oldest[0] ? `${metrics.oldest[0].days}d (${metrics.oldest[0].assetId})` : '—'}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {Object.entries(metrics.avgTimeInStage).filter(([, v]) => v != null).map(([s, v]) => (
+                      <span key={s} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>{s} ~{v}d</span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Highest impact</div>
+              {metrics.highestImpact.length === 0 ? <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No impact data.</div> : metrics.highestImpact.slice(0, 5).map((h) => (
+                <div key={h.id} style={{ fontSize: type.size.caption, color: D.muted, padding: '1px 0' }}>{h.assetId} <span style={{ color: D.faint, fontFamily: D.mono }}>· {h.engines} engines · score {h.score}</span></div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Knowledge debt (dimensional)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {Object.entries(factory.debt).map(([dim, v]) => (
+                <span key={dim} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: v.count ? `${D.warn}1e` : D.surface2, color: v.count ? D.warn : D.faint }}>{dim} {v.count}</span>
+              ))}
+            </div>
+            <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
+              {factory.growth.assets} assets · {factory.growth.graphNodes} graph nodes · velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
+            </div>
+          </div>
+          <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Change triggers</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Object.entries(byTrigger).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+                <span key={t} style={{ fontSize: 11, fontFamily: D.mono, padding: '3px 8px', borderRadius: 5, background: D.surface2, color: D.muted, border: `1px solid ${D.border}` }}>{t} <span style={{ color: D.text }}>{n}</span></span>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (ws === 'Retirement') {
+      const archivedKcrs = kcrs.filter((k) => ['archived', 'deprecated'].includes(k.status));
+      const archivedPbs = ALL_PLAYBOOKS.filter((pb) => ['archived', 'deprecated'].includes(pb.status));
+      return (
+        <div>
+          <Banner>Retired knowledge — archived KCRs and deprecated playbooks. Read-only history. Retirement is final; do not re-activate without governance sign-off.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Archived KCRs" value={archivedKcrs.length} tone={D.faint} />
+            <PBKpi label="Archived playbooks" value={archivedPbs.length} tone={D.faint} />
+          </div>
+          {archivedKcrs.length === 0 && archivedPbs.length === 0 ? <Empty msg="No retired assets. Honest-empty." /> : (
             <>
-              <div style={{ fontSize: type.size.caption, color: metrics.staleCount ? D.warn : D.muted, marginBottom: 6 }}>{metrics.staleCount} past SLA · oldest {metrics.oldest[0] ? `${metrics.oldest[0].days}d (${metrics.oldest[0].assetId})` : '—'}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {Object.entries(metrics.avgTimeInStage).filter(([, v]) => v != null).map(([s, v]) => (
-                  <span key={s} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>{s} ~{v}d</span>
-                ))}
-              </div>
+              {archivedKcrs.length > 0 && <KcrTable items={archivedKcrs} />}
+              {archivedPbs.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Archived playbooks</div>
+                  {archivedPbs.map((pb) => (
+                    <div key={pb.type} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '8px 12px', marginBottom: 6, fontSize: type.size.caption, color: D.muted }}>{pb.type} — {pb.status}</div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
-        <div style={{ flex: '1 1 220px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
-          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Highest impact</div>
-          {metrics.highestImpact.length === 0 ? (
-            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No impact data.</div>
-          ) : metrics.highestImpact.slice(0, 5).map((h) => (
-            <div key={h.id} style={{ fontSize: type.size.caption, color: D.muted, padding: '1px 0' }}>{h.assetId} <span style={{ color: D.faint, fontFamily: D.mono }}>· {h.engines} engines · score {h.score}</span></div>
-          ))}
-        </div>
-      </div>
+      );
+    }
 
-      {/* KF-1 — Knowledge Factory: the manufacturing floor (queues + dimensional debt), derived. */}
-      <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
-        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Knowledge Factory · manufacturing floor</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 12 }}>
-          {[['Observation', factory.queues.observation.count], ['Evidence', factory.queues.evidence.count], ['Finding', factory.queues.finding.count], ['Review', factory.queues.review.count], ['Publishing', factory.queues.publishing.count], ['Validation', factory.queues.validation.count]].map(([label, n]) => (
-            <div key={label} style={{ minWidth: 80 }}>
-              <div style={{ fontSize: type.size.body, fontWeight: 700, color: n ? D.text : D.faint, fontFamily: D.mono }}>{n}</div>
-              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+    if (ws === 'Campaigns') {
+      return (
+        <div>
+          <Banner>Research campaigns — the orchestration layer. Each campaign runs providers → observations → evidence → finding → KCR. Campaigns stop at KCR; review/publish stays in the KCR pipeline.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Campaigns" value={campaigns.length} tone={campaigns.length ? D.accent : D.faint} />
+            <PBKpi label="With finding" value={campaigns.filter((c) => c.finding).length} tone={D.good} />
+            <PBKpi label="With KCR" value={campaigns.filter((c) => c.result?.kcr).length} tone={D.good} />
+          </div>
+          {campaigns.length === 0 ? <Empty msg="No campaigns. Create via createCampaign() + runCampaign() from the knowledge module." /> : (
+            <div>
+              {campaigns.map((c) => (
+                <div key={c.id} onClick={() => setOpen(open === c.id ? null : c.id)} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 8, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontSize: type.size.caption, color: D.text, fontWeight: 600 }}>{c.goal}</span>
+                    <span style={{ fontFamily: D.mono, fontSize: 10, color: D.faint }}>{c.state}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>asset: {c.assetId} · field: {c.fieldPath || 'n/a'} · providers: {(c.providerIds || []).join(', ') || 'none'}</div>
+                  {open === c.id && c.result && (
+                    <div style={{ marginTop: 10, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>
+                      <div style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono }}>{JSON.stringify(c.result, null, 2)}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Dep. Explorer') {
+      const pbNames = ALL_PLAYBOOKS.map((pb) => pb.type);
+      const runBlast = () => {
+        try {
+          const pb = ALL_PLAYBOOKS.find((p) => p.type === depType);
+          if (!pb) { setDepResult({ error: `Playbook "${depType}" not found` }); return; }
+          setDepResult(blastRadius(pb, depField, graph));
+        } catch (e) { setDepResult({ error: e.message }); }
+      };
+      return (
+        <div>
+          <Banner>Dependency Explorer — compute blast radius for any asset + fieldPath before publishing. Shows which engines, readers, runtime experiences, and prompts a change would affect. PURE: nothing publishes.</Banner>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Asset</div>
+              <select value={depType} onChange={(e) => { setDepType(e.target.value); setDepResult(null); }} style={{ ...inputSm, minWidth: 200 }}>
+                {pbNames.map((n) => <option key={n}>{n}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Field path</div>
+              <input value={depField} onChange={(e) => { setDepField(e.target.value); setDepResult(null); }} style={inputSm} placeholder="e.g. p_crabs.unitCostRange" />
+            </div>
+            <button onClick={runBlast} style={{ ...btnStyle(true), alignSelf: 'flex-end' }}>Compute blast radius</button>
+          </div>
+          {depResult && (depResult.error ? (
+            <Banner tone="bad">{depResult.error}</Banner>
+          ) : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Affected assets" value={(depResult.affectedAssets || []).length} tone={D.warn} />
+                <PBKpi label="Engines" value={(depResult.affectedEngines || []).length} tone={D.warn} />
+                <PBKpi label="Readers" value={(depResult.affectedReaders || []).length} tone={D.warn} />
+                <PBKpi label="Runtime" value={(depResult.affectedRuntime || []).length} tone={D.warn} />
+                <PBKpi label="Tests" value={(depResult.affectedTests || []).length} tone={D.faint} />
+              </div>
+              {['affectedEngines', 'affectedReaders', 'affectedRuntime', 'affectedPrompts', 'affectedTests'].map((key) => (depResult[key] || []).length > 0 && (
+                <div key={key} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{key}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {depResult[key].map((v, i) => <span key={i} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: D.surface2, color: D.muted }}>{v}</span>)}
+                  </div>
+                </div>
+              ))}
+              <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono, marginTop: 6 }}>magnitude: {JSON.stringify(depResult.magnitude)}</div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Knowledge debt (dimensional — never one score)</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-          {Object.entries(factory.debt).map(([dim, v]) => (
-            <span key={dim} style={{ fontFamily: D.mono, fontSize: 10, padding: '2px 7px', borderRadius: 4, background: v.count ? `${D.warn}1e` : D.surface2, color: v.count ? D.warn : D.faint }}>{dim} {v.count}</span>
+      );
+    }
+
+    if (ws === 'Graph') {
+      const { stats } = graph;
+      return (
+        <div>
+          <Banner>Knowledge Graph — the derived relationship map over all assets, evidence, findings, and KCRs. O(n), no DB. Relationship types and domains encode the knowledge structure.</Banner>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <PBKpi label="Nodes" value={stats.nodeCount} />
+            <PBKpi label="Edges" value={stats.edgeCount} />
+            <PBKpi label="Asset kinds" value={Object.keys(stats.assetKinds || {}).length} />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: '1 1 200px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Nodes by kind</div>
+              {Object.entries(stats.byKind || {}).map(([k, n]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: type.size.caption, color: D.muted, padding: '2px 0' }}>
+                  <span>{k}</span><span style={{ fontFamily: D.mono }}>{n}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: '1 1 200px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px' }}>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Edges by relation</div>
+              {Object.keys(stats.byRelation || {}).length === 0 ? <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic' }}>No edges yet — graph connects as KCRs link to assets.</div> : Object.entries(stats.byRelation).map(([r, n]) => (
+                <div key={r} style={{ display: 'flex', justifyContent: 'space-between', fontSize: type.size.caption, color: D.muted, padding: '2px 0' }}>
+                  <span>{r}</span><span style={{ fontFamily: D.mono }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {stats.nodeCount > 0 && (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden', maxHeight: 320, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr>{['ID', 'Kind', 'Domain'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {graph.nodes.slice(0, 100).map((n) => (
+                    <tr key={n.id}>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{n.id}</td>
+                      <td style={td}>{chip(n.kind, D.accent)}</td>
+                      <td style={{ ...td, color: D.muted, fontSize: 11 }}>{n.domain || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Runtime Preview') {
+      const pbNames = ALL_PLAYBOOKS.map((pb) => pb.type);
+      const runResolve = () => {
+        try {
+          const pb = ALL_PLAYBOOKS.find((p) => p.type === rtType);
+          if (!pb) { setRtResult({ error: `Playbook "${rtType}" not found` }); return; }
+          setRtResult(resolveField(pb, rtField));
+        } catch (e) { setRtResult({ error: e.message }); }
+      };
+      return (
+        <div>
+          <Banner>Runtime Preview — shows what the runtime reader sees for any asset + fieldPath. Source tells you whether the value is authored or published (from an override). PURE: nothing mutates.</Banner>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Asset</div>
+              <select value={rtType} onChange={(e) => { setRtType(e.target.value); setRtResult(null); }} style={{ ...inputSm, minWidth: 200 }}>
+                {pbNames.map((n) => <option key={n}>{n}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Field path</div>
+              <input value={rtField} onChange={(e) => { setRtField(e.target.value); setRtResult(null); }} style={inputSm} placeholder="e.g. p_crabs.unitCostRange" />
+            </div>
+            <button onClick={runResolve} style={{ ...btnStyle(true), alignSelf: 'flex-end' }}>Resolve</button>
+          </div>
+          {rtResult && (rtResult.error ? (
+            <Banner tone="bad">{rtResult.error}</Banner>
+          ) : (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 16 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Source" value={rtResult.source} tone={rtResult.source === 'override' ? D.good : D.muted} />
+                <PBKpi label="Rollback" value={rtResult.rollbackAvailable ? 'yes' : 'no'} tone={rtResult.rollbackAvailable ? D.accent : D.faint} />
+                <PBKpi label="Confidence" value={rtResult.confidence || 'n/a'} tone={D.muted} />
+              </div>
+              <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Resolved value</div>
+              <div style={{ fontFamily: D.mono, fontSize: type.size.caption, color: D.text, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, marginBottom: 10 }}>{JSON.stringify(rtResult.value, null, 2)}</div>
+              {rtResult.authoredValue !== undefined && rtResult.source === 'override' && (
+                <>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Authored (pre-override)</div>
+                  <div style={{ fontFamily: D.mono, fontSize: type.size.caption, color: D.faint, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, marginBottom: 10 }}>{JSON.stringify(rtResult.authoredValue, null, 2)}</div>
+                </>
+              )}
+              <div style={{ fontSize: type.size.caption, color: D.muted }}>{explainField(rtResult)}</div>
+              {(rtResult.trace || []).length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', marginBottom: 4 }}>Resolution trace</div>
+                  {rtResult.trace.map((t, i) => <div key={i} style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>{t}</div>)}
+                </div>
+              )}
+            </div>
           ))}
         </div>
-        <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono }}>
-          {factory.growth.assets} assets · {factory.growth.graphNodes} graph nodes · {factory.growth.graphEdges} edges · research velocity {factory.flow.researchVelocity} · review backlog {factory.flow.reviewBacklog}
-        </div>
-        <div style={{ fontSize: type.size.caption, color: D.faint, fontFamily: D.mono, marginTop: 4 }}>
-          acquisition · {kepProviders.length} providers ({new Set(kepProviders.map((p) => p.family)).size} families) · {kepCampaigns.length} campaign{kepCampaigns.length === 1 ? '' : 's'} · external acquisition ON
-        </div>
-      </div>
+      );
+    }
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        {['all', 'draft', 'researching', 'grounded', 'review', 'approved', 'published'].map((s) => (
-          <button key={s} onClick={() => setStatusFilter(s)} style={{ background: statusFilter === s ? D.surface2 : 'transparent', color: statusFilter === s ? D.text : D.muted, border: `1px solid ${statusFilter === s ? D.border : 'transparent'}`, borderRadius: 6, padding: '4px 10px', fontSize: type.size.caption, cursor: 'pointer', fontFamily: D.ff }}>{s}{s !== 'all' ? ` (${byStatus[s] || 0})` : ''}</button>
+    if (ws === 'Simulator') {
+      const pbNames = ALL_PLAYBOOKS.map((pb) => pb.type);
+      const runSim = () => {
+        setSimErr(null); setSimResult(null);
+        try {
+          const pb = ALL_PLAYBOOKS.find((p) => p.type === simType);
+          if (!pb) { setSimErr(`Playbook "${simType}" not found`); return; }
+          let parsed;
+          try { parsed = JSON.parse(simVal); } catch { setSimErr(`Proposed value is not valid JSON: ${simVal}`); return; }
+          setSimResult(simulatePublish({ asset: pb, fieldPath: simField, proposedValue: parsed }));
+        } catch (e) { setSimErr(e.message); }
+      };
+      return (
+        <div>
+          <Banner>Impact Simulator — preview what would change if a proposed value were published. Shows before→after diff, blast radius, and host-level cost impact. PURE: nothing publishes, nothing mutates.</Banner>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Asset</div>
+              <select value={simType} onChange={(e) => { setSimType(e.target.value); setSimResult(null); setSimErr(null); }} style={{ ...inputSm, minWidth: 200 }}>
+                {pbNames.map((n) => <option key={n}>{n}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Field path</div>
+              <input value={simField} onChange={(e) => { setSimField(e.target.value); setSimResult(null); setSimErr(null); }} style={inputSm} placeholder="e.g. p_crabs.unitCostRange" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+              <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Proposed value (JSON)</div>
+              <input value={simVal} onChange={(e) => { setSimVal(e.target.value); setSimResult(null); setSimErr(null); }} style={inputSm} placeholder='e.g. [3, 8] or "new value"' />
+            </div>
+            <button onClick={runSim} style={{ ...btnStyle(true), alignSelf: 'flex-end' }}>Simulate publish</button>
+          </div>
+          {simErr && <Banner tone="bad">{simErr}</Banner>}
+          {simResult && (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 16 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <PBKpi label="Changes" value={simResult.changes ? 'yes' : 'no-op'} tone={simResult.changes ? D.warn : D.faint} />
+                <PBKpi label="Affected engines" value={(simResult.affectedEngines || []).length} tone={D.warn} />
+                <PBKpi label="Readers" value={(simResult.affectedReaders || []).length} tone={D.warn} />
+                <PBKpi label="Runtime" value={(simResult.affectedRuntime || []).length} tone={D.warn} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', marginBottom: 4 }}>Before ({simResult.beforeSource})</div>
+                  <div style={{ fontFamily: D.mono, fontSize: type.size.caption, color: D.muted, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>{JSON.stringify(simResult.before, null, 2)}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: simResult.changes ? D.warn : D.faint, textTransform: 'uppercase', marginBottom: 4 }}>After (proposed)</div>
+                  <div style={{ fontFamily: D.mono, fontSize: type.size.caption, color: simResult.changes ? D.text : D.muted, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10 }}>{JSON.stringify(simResult.after, null, 2)}</div>
+                </div>
+              </div>
+              {simResult.hostDiff && (
+                <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', marginBottom: 6 }}>Host experience impact</div>
+                  <div style={{ fontSize: type.size.caption, color: D.muted }}>
+                    item: <strong>{simResult.hostDiff.item}</strong> · before cost: {monoPre(simResult.hostDiff.beforeCost)} → after: {monoPre(simResult.hostDiff.afterCost)} · {simResult.hostDiff.changes ? <span style={{ color: D.warn }}>changes visible to host</span> : <span style={{ color: D.faint }}>no host-visible diff</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Fallback (all workspaces covered above)
+    return <Empty msg={`Workspace "${ws}" — not yet rendered.`} />;
+  };
+
+  // ── KCR count for the full backlog (all workspaces see this header) ──────────
+  const fullBacklogHeader = () => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+      <PBKpi label="KCRs" value={kcrs.length} />
+      <PBKpi label="Observations" value={observations.length} tone={observations.length ? D.text : D.faint} />
+      <PBKpi label="Evidence" value={evidence.length} tone={evidence.length ? D.text : D.faint} />
+      <PBKpi label="Campaigns" value={campaigns.length} tone={campaigns.length ? D.accent : D.faint} />
+      <PBKpi label="Conflicts" value={conflicts.length} tone={conflicts.length ? D.bad : D.faint} />
+      <PBKpi label="Graph nodes" value={graph.stats.nodeCount} tone={D.faint} />
+    </div>
+  );
+
+  return (
+    <div>
+      <Banner>Knowledge Studio — the manufacturing platform. 15 workspaces cover the full pipeline: acquisition → observation → evidence → finding → KCR → review → publish → validate. Governed; nothing publishes automatically.</Banner>
+
+      {fullBacklogHeader()}
+
+      {/* Workspace sub-nav */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 16, paddingBottom: 8, borderBottom: `1px solid ${D.border}` }}>
+        {STUDIO_WS.map((w) => (
+          <button key={w} onClick={() => { setWs(w); setOpen(null); setStatusFilter('all'); }} style={{
+            background: ws === w ? D.accent : 'transparent', color: ws === w ? '#fff' : D.muted,
+            border: `1px solid ${ws === w ? D.accent : 'transparent'}`, borderRadius: 6,
+            padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: D.ff, whiteSpace: 'nowrap',
+          }}>{w}</button>
         ))}
       </div>
 
-      {loading ? (
-        <Banner tone="muted">Loading the KCR backlog…</Banner>
-      ) : kcrs.length === 0 ? (
-        <Banner tone="muted">No KCRs — the research queue is empty (every asset grounded + reviewed). Honest-empty, not a bug.</Banner>
-      ) : (
-        <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>
-              <th style={th}>Asset</th><th style={th}>Type</th><th style={th}>Trigger</th><th style={th}>Status</th><th style={th}>Priority</th><th style={th}>Field</th>
-            </tr></thead>
-            <tbody>
-              {shown.map((k) => (
-                <Fragment key={k.id}>
-                  <tr onClick={() => setOpen(open === k.id ? null : k.id)} style={{ cursor: 'pointer', background: open === k.id ? D.surface2 : 'transparent' }}>
-                    <td style={{ ...td, color: D.text, fontWeight: 600 }}>{k.assetId}</td>
-                    <td style={td}>{chip(k.type, D.muted)}</td>
-                    <td style={td}>{chip(k.trigger, D.accent)}</td>
-                    <td style={td}><span style={{ color: KCR_STATUS_COLOR[k.status] || D.muted, fontFamily: D.mono, fontSize: 11 }}>● {k.status}</span></td>
-                    <td style={td}>{chip(k.priority || 'low', k.priority === 'high' ? D.bad : k.priority === 'med' ? D.warn : D.faint)}</td>
-                    <td style={{ ...td, color: D.faint, fontFamily: D.mono, fontSize: 11, wordBreak: 'break-word' }}>{k.fieldPath}</td>
-                  </tr>
-                  {open === k.id && (
-                    <tr><td colSpan={6} style={{ padding: '0 10px 12px' }}>
-                      <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14 }}>
-                        <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 10 }}>{k.reason}</div>
-                        <KcrActions kcr={k} role={role} asOf={asOf} onChanged={refresh} />
-                        {k.impact && (
-                          <>
-                            <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Impact preview (derived)</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-                              {(k.impact.recommendationEngines || []).map((e) => <span key={e} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: `${D.good}1e`, color: D.good }}>{e}</span>)}
-                              {(k.impact.downstream || []).map((e) => <span key={`d-${e}`} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.muted }}>↓ {e}</span>)}
-                              {(k.impact.affectedPurchases || []).map((p) => <span key={`p-${p}`} style={{ fontSize: 10, fontFamily: D.mono, padding: '2px 6px', borderRadius: 4, background: D.surface2, color: D.faint }}>{p}</span>)}
-                            </div>
-                            <div style={{ fontSize: type.size.caption, color: D.faint, fontStyle: 'italic', marginBottom: 10 }}>prompts / tests / templates: {k.impact.tests && k.impact.tests.known === false ? 'no runtime index (CI: npm run knowledge:impact)' : '—'}</div>
-                          </>
-                        )}
-                        <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Audit trail</div>
-                        {(k.audit || []).map((a, i) => (
-                          <div key={i} style={{ fontSize: type.size.caption, color: D.muted, fontFamily: D.mono, padding: '1px 0' }}>{a.action}{a.by ? ` · ${a.by}` : ''}{a.note ? ` — ${a.note}` : ''}</div>
-                        ))}
-                      </div>
-                    </td></tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {loading && ['Review', 'Publishing', 'Retirement', 'Monitoring'].includes(ws) && (
+        <Banner tone="muted">Loading KCR backlog…</Banner>
       )}
+
+      {renderWs()}
     </div>
   );
 }

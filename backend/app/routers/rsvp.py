@@ -292,35 +292,52 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
 
-# ── Planner read authz — canonical studio ownership via public.events ──────────
+# ── Planner read authz — event_owners + studio_members ───────────────────────
 async def _assert_event_studio_read(conn, event_id: str, principal: dict) -> None:
-    """Authorize a planner to read an event's RSVPs by the CANONICAL studio scope on
-    public.events (events.studio_id) — the same tenancy the whole frontend uses.
+    """Authorize a planner to read an event's RSVPs.
 
-    Deliberately NOT the comms event_owners table: event_owners rows are created
-    lazily, only when an event is claimed through a messages action
-    (communication.py). Gating the RSVP read-back on that 404'd every event the host
-    never opened in comms — so a host who just shared an invite could never see their
-    cloud RSVPs. events.studio_id is the real owner and always present (NOT NULL), so
-    any event the caller's studio owns is readable — no lazy claim required.
+    Two-tier check:
+    1. event_owners.studio_id → studio_members membership (full tenancy).
+    2. event_owners.owner_id direct match (fallback for events where studio_id was
+       not backfilled yet, e.g. before migration 0003 landed on this tenant).
 
-    Still safe: require_planner gates upstream; a planner can only read RSVPs for
-    events their OWN studio owns. The dev_token path (local dev only) skips the check.
+    Note: events.studio_id was the original design but that column does not exist on
+    public.events — the studio_id lives on event_owners (migration 0003). Events
+    only get an event_owners row when the planner first opens comms (lazy claim).
+    If no row exists yet, we return 404 rather than auto-claiming on a GET path —
+    the planner needs to open the event in comms first, or the RSVP backend will
+    need a separate event-registration step in a future sprint.
+
+    Still safe: require_planner gates upstream.
     """
     if not principal or principal.get("via") == "dev_token":
         return
     uid = principal.get("id")
     if not uid:
         raise HTTPException(status_code=403, detail="Planner identity required")
-    row = await conn.fetchrow("select studio_id from public.events where id=$1", event_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-    member = await conn.fetchval(
-        "select 1 from studio_members where studio_id=$1 and user_id=$2",
-        row["studio_id"], uid,
+
+    eo = await conn.fetchrow(
+        "select owner_id, studio_id from event_owners where event_id=$1", event_id
     )
-    if not member:
-        raise HTTPException(status_code=403, detail="You don't have access to this event.")
+    if eo is None:
+        # No ownership record yet — event not registered in comms.
+        # Can't verify server-side ownership; 403 is safer than 404 (avoids leaking existence).
+        raise HTTPException(status_code=403, detail="Event not registered. Open the event in Messages first to establish ownership.")
+
+    studio_id = eo["studio_id"]
+    if studio_id:
+        member = await conn.fetchval(
+            "select 1 from studio_members where studio_id=$1 and user_id=$2",
+            studio_id, uid,
+        )
+        if member:
+            return
+
+    # Fallback: direct owner_id match (covers events before studio_id backfill)
+    if eo["owner_id"] == uid:
+        return
+
+    raise HTTPException(status_code=403, detail="You don't have access to this event.")
 
 
 # ── 3. GET /api/events/{event_id}/rsvps — planner-only host read-back ──────────
