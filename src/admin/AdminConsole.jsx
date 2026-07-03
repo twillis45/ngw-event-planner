@@ -26,7 +26,7 @@ import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
-import { loadCampaigns, createCampaign, runCampaign, recordCampaign, getFieldPaths, PROVIDER_FAMILIES, CAMPAIGN_PRIORITIES, CAMPAIGN_TRIGGERS } from '../lib/knowledge/campaign';
+import { loadCampaigns, saveCampaigns, createCampaign, runCampaign, recordCampaign, getFieldPaths, PROVIDER_FAMILIES, CAMPAIGN_PRIORITIES, CAMPAIGN_TRIGGERS } from '../lib/knowledge/campaign';
 import { loadObservations, loadObservationsAsync } from '../lib/knowledge/observation';
 import { loadEvidence, loadEvidenceAsync } from '../lib/knowledge/evidence';
 import { isKasApiConfigured } from '../lib/api/kas';
@@ -2767,7 +2767,8 @@ function KcrStudioPanel() {
                 // All provider IDs known to buildProviders(), minus internal-validation
                 const allExternalProviderIds = buildProviders().map((p) => p.id).filter((id) => id !== 'internal-validation');
                 const defaultProvider = campRawProvider || allExternalProviderIds[0] || 'data.gov';
-                const templateRecord = JSON.stringify({ source: defaultProvider, assetId: campRunResult.assetId || '', fieldPath: campRunResult.fieldPath || '', url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ fact: 'unit cost range', value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
+                const fp = campRunResult.fieldPath || '';
+                const templateRecord = JSON.stringify({ source: defaultProvider, assetId: campRunResult.assetId || '', fieldPath: fp, url: 'https://...', excerpt: 'Paste the relevant quote or data here.', extractedFacts: [{ field: fp, value: [8, 15], unit: 'USD/lb' }], region: 'US' }, null, 2);
                 const submitRaw = async () => {
                   setCampRawError('');
                   let records;
@@ -2829,7 +2830,13 @@ function KcrStudioPanel() {
                 <div key={c.id} onClick={() => setOpen(open === c.id ? null : c.id)} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 8, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ fontSize: type.size.caption, color: D.text, fontWeight: 600 }}>{c.goal}</span>
-                    <span style={{ fontFamily: D.mono, fontSize: 10, color: c.state === 'kcr' ? D.good : D.faint }}>{c.state}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: D.mono, fontSize: 10, color: c.state === 'kcr' ? D.good : D.faint }}>{c.state}</span>
+                      <button onClick={(e) => { e.stopPropagation(); saveCampaigns(loadCampaigns().filter((x) => x.id !== c.id)); setCampList(loadCampaigns()); if (campRunResult?.id === c.id) setCampRunResult(null); }}
+                        style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.faint, cursor: 'pointer', lineHeight: 1.4 }}>
+                        ✕
+                      </button>
+                    </div>
                   </div>
                   <div style={{ fontSize: 11, color: D.muted, marginTop: 4 }}>
                     {c.assetId}{c.fieldPath ? ` · ${c.fieldPath}` : ''} · {(c.gapTypes || [c.gapType]).join(', ')} · {c.priority || 'med'} · {c.trigger || 'research'} · {(c.providerIds || []).length} providers
