@@ -41,6 +41,14 @@ export const ENGINES = [
 const nonEmpty = (a) => Array.isArray(a) && a.length > 0;
 const foodPurchases = (pb) => (pb.purchases || []).filter((p) => p.category === 'food' || p.category === 'beverage');
 
+// Decisions that carry costFactors but no costFactorProvenance — ungrounded multipliers.
+// Returns an array of { id, optionCount } for each ungrounded decision.
+export function ungroundedCostFactors(pb) {
+  return (pb.decisions || [])
+    .filter((d) => d.costFactors && Object.keys(d.costFactors).length > 0 && !d.costFactorProvenance)
+    .map((d) => ({ id: d.id, optionCount: Object.keys(d.costFactors).length }));
+}
+
 // ── Grounding (mirrors scripts/groundingAudit.mjs, over the OBJECT not regex) ──
 export function playbookGrounding(pb) {
   const purchases = pb.purchases || [];
@@ -139,6 +147,8 @@ export function playbookWeaknesses(pb) {
   if (!g.hasSources) w.push('knowledge.sources is empty (no source list)');
   const missingProv = (pb.purchases || []).filter((p) => Array.isArray(p.unitCostRange) && !p.provenance).length;
   if (missingProv > 0) w.push(`${missingProv} priced item(s) without a provenance block`);
+  const ugcf = ungroundedCostFactors(pb);
+  if (ugcf.length > 0) w.push(`${ugcf.length} decision(s) with ungrounded costFactors (${ugcf.map((d) => d.id).join(', ')})`);
   if (!nonEmpty(pb.risks)) w.push('No risks declared');
   if (!nonEmpty(pb.contingencies)) w.push('No contingencies declared');
   if (!(pb.schedules && Object.values(pb.schedules).some(nonEmpty))) w.push('No run-of-show schedules');
@@ -152,6 +162,8 @@ export function playbookResearch(pb, asOf) {
   const g = playbookGrounding(pb);
   const fresh = playbookFreshness(pb, asOf);
   if (g.pricedItems > 0 && g.cited === 0) q.push({ kind: 'pricing', priority: 'high', reason: `${g.pricedItems} priced items synthesized — attach citations` });
+  const ugcf = ungroundedCostFactors(pb);
+  if (ugcf.length > 0) q.push({ kind: 'cost-factor-grounding', priority: 'med', reason: `${ugcf.length} decision(s) have ungrounded costFactor multipliers — verify against market data (${ugcf.map((d) => d.id).join(', ')})` });
   if (fresh.known && fresh.overdue) q.push({ kind: 'review', priority: 'high', reason: fresh.reason });
   if (!fresh.known) q.push({ kind: 'cadence', priority: 'med', reason: 'Set a review cadence (governance block)' });
   // Food-safety review for any cook-with-heat / raw-protein foodway.
@@ -179,8 +191,14 @@ export function playbookHealth(pb, asOf) {
     c('Freshness',
       !fresh.known ? HEALTH.GAP : fresh.overdue ? HEALTH.WARN : HEALTH.OK, fresh.reason),
     c('Cost integrity',
-      uncostedFood === 0 ? HEALTH.OK : HEALTH.GAP,
-      uncostedFood === 0 ? 'Every food/beverage item priced' : `${uncostedFood} food/beverage item(s) missing unitCostRange`),
+      uncostedFood > 0 ? HEALTH.GAP
+        : ungroundedCostFactors(pb).length > 0 ? HEALTH.WARN
+        : HEALTH.OK,
+      uncostedFood > 0
+        ? `${uncostedFood} food/beverage item(s) missing unitCostRange`
+        : ungroundedCostFactors(pb).length > 0
+          ? `All items priced but ${ungroundedCostFactors(pb).length} decision(s) have ungrounded costFactor multipliers`
+          : 'Every food/beverage item priced + all costFactors have provenance'),
     c('Sections',
       (nonEmpty(pb.decisions) && nonEmpty(pb.milestones) && nonEmpty(pb.tasks) && nonEmpty(pb.purchases)) ? HEALTH.OK : HEALTH.GAP,
       'decisions · milestones · tasks · purchases'),
