@@ -1987,7 +1987,7 @@ function KcrStudioPanel() {
   const [campAsset, setCampAsset] = useState(ALL_PLAYBOOKS[0]?.type || '');
   const [campField, setCampField] = useState('');
   const [campGapType, setCampGapType] = useState(['pricing']);
-  const [campProviders, setCampProviders] = useState(['bls-api', 'usda-api']);
+  const [campProviders, setCampProviders] = useState(['internal-validation']);
   const [campRunning, setCampRunning] = useState(false);
   const [campRunResult, setCampRunResult] = useState(null);
   const [campList, setCampList] = useState(() => loadCampaigns());
@@ -2452,7 +2452,9 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Campaigns') {
-      const PROV_OPTIONS = ['bls-api', 'usda-api', 'fda-api', 'community-corpus', 'event-reports', 'vendor-intel', 'costhacker', 'reddit-scraper'];
+      // Real provider IDs from buildProviders() — internal-validation runs in-browser; all others need backend fetched records (⚡).
+      const PROV_OPTIONS = ['internal-validation', 'data.gov', 'scholar', 'astm-iso', 'fda-foodsafety', 'noaa', 'hospitality-assoc', 'event-industry', 'market-pricing', 'retail', 'restaurant-depot', 'tourism-board', 'venue-network', 'catering-network', 'sme-network', 'community-forums'];
+      const EXTERNAL_PROVS = new Set(PROV_OPTIONS.filter((id) => id !== 'internal-validation'));
       const GAP_TYPES = ['pricing', 'coverage', 'freshness', 'safety', 'sourcing', 'contradiction'];
       const runCamp = () => {
         if (!campGoal.trim()) return;
@@ -2523,7 +2525,7 @@ function KcrStudioPanel() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {PROV_OPTIONS.map((id) => {
                   const on = campProviders.includes(id);
-                  const external = ['bls-api', 'usda-api', 'fda-api', 'costhacker', 'reddit-scraper'].includes(id);
+                  const external = EXTERNAL_PROVS.has(id);
                   return (
                     <button key={id} onClick={() => toggleProvider(id)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, border: `1px solid ${on ? D.accent : D.border}`, background: on ? D.accent + '22' : D.bg, color: on ? D.accent : D.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {id}{external ? ' ⚡' : ''}
