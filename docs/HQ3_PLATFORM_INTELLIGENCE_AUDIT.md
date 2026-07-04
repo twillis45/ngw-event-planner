@@ -455,3 +455,78 @@ Not the intelligence — the scale behavior. A planner with real client volume n
 3. **Verify and, if needed, fix the professional experience at real client scale (10–30 clients)** before any further professional-tier investment — an unverified risk of this size should not remain unverified while new features are added on top of it.
 
 **Honest verdict, without protecting prior decisions:** every prior sprint in this codebase's history (Sprint A, F4, IS-1, IS-2, HQ-1, HQ-2) made the correct call for its scope, and each one's own audit of itself was honest about what it didn't finish. That discipline is real and should continue. But the platform does not yet need more sprints that add capability — it needs one sprint, or two, that do nothing but consolidate the two or three seams named repeatedly throughout this document. **The goal is not more features. It is making the intelligence that already exists tell the truth about itself, everywhere, all the time — the way it already, provably, can.**
+
+---
+
+# ADDENDUM — PC-1 / PC-2 Continuity Delta
+
+**Date:** 2026-07-04
+**Scope:** This addendum updates HQ-3's findings against what PC-1 and PC-2 actually shipped and live-verified. It does not rewrite the sections above — those stand as the pre-PC-1 baseline. Evidence below is runtime-verified only; where a scenario was not re-tested live, that is stated explicitly rather than assumed.
+
+## 1. HQ-3 Findings Now Fixed
+
+- **Dual Event Identity derivation (Reveal vs. Host Home) — FIXED.** `lib/experienceContext.js`'s `buildExperienceContext()` is now the single call both surfaces use. 🟢 Runtime-verified: the flagship compound event ("50th Birthday and Military Retirement from the Navy") shows the identical reasoning string — "Birthday + retirement + military-retirement (compound event, requires merging)" — in both Assemble Reveal and, for the first time, Host Home, via direct DOM query.
+- **Reveal computes understanding and discards it — FIXED, for classification/compound/reasoning specifically.** `ctx.reasoning`/`ctx.compound` now persist past the reveal modal closing.
+- **Risks tab and Assemble Reveal using two uncoordinated risk engines — FIXED.** `WhatCouldGoWrongPanel` now merges `ctx.activeRisks` (Reveal's compound/weather-aware `deriveTopRisks()`) into its displayed list, deduped against the static `playbookRisks()` items. 🟢 Runtime-verified: the Risks tab went from 2 static items to 3, including "Guest expectations for ceremony vs. celebration formality will diverge if not clarified early" — previously visible only in Reveal.
+
+## 2. HQ-3 Findings Partially Fixed
+
+- **Explainability loss (confidence/why absent outside Reveal + Risk)** — partially addressed. A compound-event `why`/`reasoning` note now also appears in Budget, Timeline, and Food (🟢 runtime-verified for the flagship event). Confidence, evidence, status, and next-decision are still not extended to these surfaces' own recommendations (Budget's AI suggestion, Food's menu defaults, Timeline's heads-up nudges) — only the one shared compound-recognition note was added.
+- **Human Intelligence loss** — partially addressed at the data layer only. `ctx.humanContext`/`ctx.currentPriorities`/`ctx.relationshipContext` now exist and are computed identically everywhere `ctx` is built, but PC-1/PC-2 did not render them on any new surface — only `ctx.reasoning`/`ctx.compound` were surfaced. The underlying "why this event matters," relationship context, and priorities are more *available* than before, not yet more *visible*.
+- **Contradictory recommendations across surfaces** — narrowed, not eliminated. The specific contradiction pattern HQ-3 named (Reveal vs. Host Home disagreeing) is fixed for identity/compound. Whether other prior contradictions (e.g., HQ-1's Reveal-says-"Timeline-done"-but-Host-Home-doesn't-agree finding) still exist was not re-tested in PC-1/PC-2 — flagged as unconfirmed, not claimed fixed.
+
+## 3. HQ-3 Findings Unchanged
+
+- **Three unreconciled persona/routing mechanisms** (`accountTypeOf`, `audiencePersona`/`hostNavActive`, Sprint A's orphaned `resolvePersona`/`resolveShell`) — unchanged. `ctx.persona` is explicitly hardcoded `null` in both PC-1 and PC-2; this was a deliberate non-goal, not an oversight.
+- **Professional/planner scale behavior (142 flat attention items at 3 clients)** — unchanged, not re-tested.
+- **Static vs. live Risk confidence labeling** (weather risk deserves "High confidence," gets "We think so" like everything else) — unchanged.
+- **Decisions panel's `because`-string reasoning not merged into `ctx`** — unchanged, explicitly flagged in PC-2 as a RESEARCH item, not attempted.
+- **Guests, Vendors, Tasks, Decisions, Day Of continuity** — unchanged. PC-2's scope was explicitly limited to Timeline/Budget/Food/Shopping/Risks; these five remain exactly as HQ-3 found them.
+- **`traditions` as a queryable concept** — unchanged; still exists only inside playbook data, not in `ctx`.
+
+## 4. Surfaces That Now Consume ExperienceContext
+
+| Surface | Consumes `ctx`? | Evidence |
+|---|:---:|---|
+| Assemble Reveal | ✅ | 🟢 Runtime-verified (PC-1) |
+| Host Home | ✅ | 🟢 Runtime-verified (PC-1) — "What we recognized" card, DOM-confirmed |
+| Timeline (`HostRunOfShowTimeline`) | ✅ | 🟢 Runtime-verified (PC-2) — flagship event, DOM-confirmed |
+| Budget (`HostSpendingPlan`, the actual host-facing component) | ✅ | 🟢 Runtime-verified (PC-2) — flagship event, DOM-confirmed. Note: the *planner*-facing `Budget()` branch also received the wiring but was not independently click-verified live. |
+| Food (`FoodPlan`) | ✅ | 🟢 Runtime-verified (PC-2) — flagship event, DOM-confirmed |
+| Shopping | ✅ (inherited) | Shopping is a view inside `FoodPlan`, not a separate component — covered by the same verification above, not independently tested as its own surface |
+| Risks (`WhatCouldGoWrongPanel`) | ✅ | 🟢 Runtime-verified (PC-2) — flagship event, panel item count and merged content DOM-confirmed |
+
+## 5. Surfaces That Still Do Not Consume ExperienceContext
+
+Guests, Vendors, Tasks, Decisions, Day Of — all explicitly PARKED per PC-2's scope, unchanged since HQ-3. `HostEventShell` (the dormant shell behind `hostShellOn()`, default OFF) received the same `ctx` wiring as `EventPlanner` for code-parity but was **not** live-verified, since it isn't reachable without flipping a flag no sprint has asked to enable.
+
+## 6. Where Human Intelligence Still Disappears
+
+Unchanged from HQ-3's Section 6 finding, with one clarification: the *data* (`ctx.humanContext`, `ctx.relationshipContext`, `ctx.currentPriorities`) is now centrally available, but nothing new renders it. Human Intelligence still disappears:
+- The instant a host leaves Host Home's own "heart" card (must-have moment) — no other surface reads it, including the 5 surfaces PC-2 touched.
+- Relationship/participant context (`ctx.relationshipContext`) is computed everywhere but displayed nowhere new.
+- Traditions remain playbook-local, never reaching `ctx` at all.
+
+## 7. Where Explainability Still Disappears
+
+- Budget's AI suggestion: still no visible why/evidence/confidence beyond the HQ-2 gate (Review/Accept/Dismiss) — unchanged by PC-1/PC-2.
+- Food's menu defaults: `why` exists in playbook data (per HQ-1) but is not part of `ctx` and was not touched this round.
+- Timeline's heads-up nudges: no confidence field exists in their data model at all — unchanged.
+- Vendor and Decision recommendations: entirely untouched by PC-1/PC-2 (out of scope both times).
+- The one new explainability element (the compound-event `reasoning` note) carries `what`/`why` but not `confidence`, `status`, or `next-decision` on the 5 surfaces it was added to — it reuses Reveal's *reasoning text*, not Reveal's *full card contract*.
+
+## 8. What PC-3 Should Target Next
+
+In priority order, based on runtime-verified gaps above:
+
+1. **Verify the planner-facing `Budget()` branch live** — wired but not click-tested; the cheapest possible confirmation before calling Budget fully closed.
+2. **Extend the full explainability contract (confidence/status/next-decision, not just what/why) to at least one of Budget/Food/Timeline's own recommendations** — the compound-note is a continuity win but doesn't yet raise these surfaces to Risk's post-HQ-2 standard.
+3. **Surface `ctx.humanContext`/`ctx.relationshipContext` on at least one new surface** — the data exists; PC-3 would be the first sprint to render it anywhere beyond Host Home's pre-existing card.
+4. **Live-verify Birthday, Retirement, and Family Reunion specifically** — PC-1 and PC-2 both verified only the flagship compound scenario plus one simple scenario (Birthday in PC-1's early testing, Crab Feast in PC-2). These three named scenarios have not been independently walked through live since HQ-3 was written and should not be assumed to behave identically without doing so.
+5. **Test professional/planner scale (10–30 clients)** — still HQ-3's largest unverified risk, untouched by two consecutive continuity sprints.
+
+## Risks
+
+- **Scope creep risk:** PC-1/PC-2's success pattern (small shared helper + `ctx` prop threading) is easy to over-apply. Each additional surface should get its own live verification pass, per PC-2's own methodology — batching multiple surfaces in one sprint without individual verification is exactly how the Budget-branch bug (wrong component wired) would have shipped silently.
+- **False confidence risk:** it would be easy to read "5 surfaces now consume ctx" as "the platform is now continuous" — it is continuous for *compound-event recognition* specifically, on 5 of 13 surfaces, verified against 2 of 5 named test scenarios. The gap between that and "one coherent intelligence" (HQ-3's stated goal) remains substantial.
+- **Persona/shell risk unchanged:** `ctx.persona` staying `null` is correct per IS-2, but every sprint that adds more to `ctx` without addressing the shell-vocabulary mismatch makes that eventual reconciliation (if ever attempted) a larger, riskier change.
