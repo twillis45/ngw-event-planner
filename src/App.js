@@ -9175,6 +9175,22 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
   );
 }
 
+// Sprint PC-2: one small, shared explainability note reused by Budget, Timeline,
+// and Food — NOT a new component system, just the existing card/eyebrow grammar
+// those three already use, filled with the SAME ctx.reasoning/ctx.confidence
+// Assemble Reveal and Host Home already show. Renders nothing when the event
+// isn't compound (a simple Birthday doesn't need a reminder) or when `ctx`
+// wasn't passed (keeps every call site backward-compatible without ctx).
+function ExperienceContinuityNote({ ctx, card, eyebrow, C, T, label = 'What we recognized' }) {
+  if (!ctx || !ctx.compound || !ctx.reasoning) return null;
+  return (
+    <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
+      <div style={{ ...eyebrow, color: C.accent }}>{label}</div>
+      <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{ctx.reasoning}</div>
+    </div>
+  );
+}
+
 // ── WhatCouldGoWrongPanel — surfaces the playbook's AUTHORED risk→fix wisdom
 // (playbookRisks), the differentiated operational intelligence that was computed
 // but dark. Collapsed by default — it whispers (Attention System), reassurance on
@@ -9184,20 +9200,39 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
 // per event, so they never earn 'High confidence') and a real risk loop: each row
 // persists its status (`event.riskStatus[riskId]`) via onPatchEvent, so a host
 // never sees the same unresolved warning forever with no way to close it out.
-function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, domain = null, title = 'What could go wrong' }) {
+// Sprint PC-2: also merges `ctx.activeRisks` (Reveal's compound/weather-aware
+// risk deriver, deriveTopRisks()) into the displayed list, deduped against the
+// static playbookRisks() items by trigger/type. Before PC-2 these were two
+// disconnected risk engines — a compound event's "guests will be confused by
+// ceremony vs. celebration formality" risk lived ONLY in Reveal/ctx and never
+// reached this tab at all.
+function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, domain = null, title = 'What could go wrong', ctx = null }) {
   const C = useT();
   const T = useType();
   const [expanded, setExpanded] = useState(false);
   const [learnMoreId, setLearnMoreId] = useState(null);
   const rk = (() => { try { return playbookRisks(event, domain); } catch { return null; } })();
-  if (!rk || !rk.items || !rk.items.length) return null;
+  const staticItems = (rk && rk.items) || [];
+  // Sprint PC-2: fold ctx.activeRisks (Reveal's compound/weather-aware deriver)
+  // into the same list, normalized to the static items' shape, deduped by
+  // type/trigger so a risk isn't shown twice if both engines happen to name it.
+  const ctxItems = (ctx && ctx.activeRisks ? ctx.activeRisks : []).map(r => ({
+    id: r.type,
+    trigger: r.description,
+    mitigation: r.mitigation,
+    severity: r.severity,
+    rank: r.severity === 'high' ? 1 : 2,
+  }));
+  const seenKeys = new Set(staticItems.map(r => (r.id || r.trigger)));
+  const mergedItems = [...staticItems, ...ctxItems.filter(r => !seenKeys.has(r.id || r.trigger))];
+  if (!mergedItems.length) return null;
   const riskStatus = event.riskStatus || {};
   const setRiskStatus = (id, status) => {
     if (!onPatchEvent) return;
     onPatchEvent({ riskStatus: { ...riskStatus, [id]: status } });
   };
-  const openItems = rk.items.filter(r => !riskStatus[r.id || r.trigger]);
-  const closedCount = rk.items.length - openItems.length;
+  const openItems = mergedItems.filter(r => !riskStatus[r.id || r.trigger]);
+  const closedCount = mergedItems.length - openItems.length;
   const sevColor = (rank) => (rank <= 1 ? (C.danger || C.accent) : rank === 2 ? (C.accentTopGrad || C.accent) : C.muted);
   const sevWord = { critical: 'Critical', high: 'High', med: 'Watch', medium: 'Watch', low: 'Minor' };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
@@ -9765,7 +9800,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
 // commonly-forgotten flags), the food budget, and the dietary gate. The host's
 // picks persist on event.foodChoices; checked-off items on event.foodGot.
 // Renders nothing when the event type has no playbook (planner CRM unaffected).
-function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile, focusId = null, onFocusConsumed = () => {} }) {
+function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {}, profile, focusId = null, onFocusConsumed = () => {}, ctx = null }) {
   const C = useT();
   const T = useType();
   const foodPP = useFoodPriceFactor(event, profile);
@@ -9996,6 +10031,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto 20px' }}>
+      {/* Sprint PC-2: same compound-event note Reveal/Host Home already show —
+          consumed via ctx, not re-derived. Only renders for compound events. */}
+      <ExperienceContinuityNote ctx={ctx} C={C} T={T}
+        card={{ ...card, marginBottom: 16 }}
+        eyebrow={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+      />
       {/* The heart, mid-planning — the one moment this whole plan serves, anchored
           on the planning surface (not only on The Day) so the food/budget choices
           stay pointed at the why. */}
@@ -26894,7 +26935,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '' }) {
+function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '', ctx = null }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -26950,6 +26991,15 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
 
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760, margin: '0 auto' }}>
+      {/* Sprint PC-2: same compound-event note Reveal/Host Home already show —
+          consumed via ctx, not re-derived. Only renders for compound events.
+          This is the actual host-facing Budget UI (HostSpendingPlan) — the
+          planner-facing Budget() render (elsewhere in this file) got its own
+          copy of this note too, but hosts never see that branch. */}
+      <ExperienceContinuityNote ctx={ctx} C={C} T={T}
+        card={{ ...card, borderLeft: `3px solid ${C.accent}` }}
+        eyebrow={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+      />
       {/* The heart, mid-planning — keep the money pointed at the why. */}
       {isMeaningfulMustHave(mustHave) && (
         <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
@@ -27134,7 +27184,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
 
 // ─── Budget ───────────────────────────────────────────────────────────────────
 
-function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision, event, onNav }) {
+function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClient, eventType, confirmedCount, plannedGuests = 0, profile, eventDate, eventTimeOfDay, onTimeOfDayChange, eventId, onOpenVendor, onOpenConnections, promptDecision, event, onNav, ctx = null }) {
   // Defensive normalization (2026-06-24): the host "Budget" lane now routes STRAIGHT here
   // (was the money sheet), so this can render for an event that has no budget/vendors array
   // yet. Several sites (e.g. `budget.find` at the modalRow lookup) assumed an array and
@@ -27490,6 +27540,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         totalBudget={event ? Number(event.totalBudget) || 0 : 0}
         onSetTotalBudget={onSetTotalBudget}
         mustHave={event ? event.must_have_moment : ''}
+        ctx={ctx}
       />
     );
   }
@@ -27919,6 +27970,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         )}
       </div>
 
+      {/* Sprint PC-2: same compound-event note Reveal/Host Home already show —
+          consumed via ctx, not re-derived. Only renders for compound events. */}
+      <ExperienceContinuityNote ctx={ctx} C={C} T={T}
+        card={{ ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: 22, maxWidth: 760, margin: '0 auto 16px' }}
+        eyebrow={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.12em', textTransform: 'uppercase' }}
+      />
       <div style={s.card}>
         {/* ── Budget health header ── */}
         <div style={{ marginBottom: 16 }}>
@@ -33384,7 +33441,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 // day it reads "STARTS SOON" and "wakes up when the day begins"; on the day the
 // NOW marker goes live. Studio Matte: dark, steel, no amber — escalation = reduction.
 // Planners keep the editable RunOfShow below; this never renders for them.
-function HostRunOfShowTimeline({ event, profile }) {
+function HostRunOfShowTimeline({ event, profile, ctx = null }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -33614,6 +33671,13 @@ function HostRunOfShowTimeline({ event, profile }) {
           </div>
         )}
       </div>
+
+      {/* Sprint PC-2: same compound-event note Reveal/Host Home already show —
+          consumed via ctx, not re-derived. Only renders for compound events. */}
+      <ExperienceContinuityNote ctx={ctx} C={C} T={T}
+        card={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22 }}
+        eyebrow={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', textTransform: 'uppercase' }}
+      />
 
       {/* Day complete — every cue done. The green hero stays (caught-up reward) so the
           "happening now" panel is never lost to an all-done, empty list. */}
@@ -41638,6 +41702,11 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
 // until pi.shell flips on. v1 covers the host journey; iterate behind the flag.
 function HostEventShell({ event, setEvent, client, setClient, allEvents = [], onBack, backLabel, initialNav, profile, onSaveVendorToBank, onOpenConnections }) {
   const C  = useT();
+  // Sprint PC-2: same canonical Experience Context as EventPlanner — see that
+  // component's identical comment. HostEventShell sits behind hostShellOn()
+  // (default OFF, per IS-2) but gets the same continuity treatment so it isn't
+  // left inconsistent if the flag is ever turned on.
+  const ctx = (() => { try { return buildExperienceContext(event, profile, null); } catch { return null; } })();
   // Identity follows the host into the shell — its header & active tab wear the event's
   // hue (board re-audit: "hue avoids status FIGURES," not "hue stays home"; this header
   // and the nav carry NO status color, so the hue is safe here). Somber events stay neutral.
@@ -41771,11 +41840,11 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></div>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} /></div></div>}
         {tab === 'Budget' && <div className="planv2-wrap">{/* Parity fix: wrap the WHOLE tab so the PlanNowHero aligns to 760 with the content — HostSpendingPlan's inner 760 only capped the cards, leaving the hero full-bleed. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
-          <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} /></div></div>}
+          <div className="hp-recede"><Budget budget={event.budget} setBudget={wrap('budget')} onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests || []).filter(g => g.rsvp === 'Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={go} ctx={ctx} /></div></div>}
         {tab === 'Planning' && (<AccordionProvider>{planV2On() ? <>
           {/* pi.planv2 — recomposed: ONE command lead (PlanNowHero) full-width on top. Below,
               a two-column grid at desktop: Food + supplies share ONE main column (one "food &
@@ -41787,7 +41856,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="planv2-grid">
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
-              <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
+              <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
           </div>
@@ -41797,7 +41866,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
-          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} /></div>
+          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
@@ -41809,11 +41878,11 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
           // Parity (P1): cap to Plan's reading measure so run-of-show text doesn't run ~1200px lines on desktop.
           <div className="planv2-wrap">{((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
-            ? <HostRunOfShowTimeline event={event} profile={profile} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} />
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
-                <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
+                <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} />
                 <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>}</div>
         )}
@@ -41871,6 +41940,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // RA-4 / DL-009 — a self-host has no client: gate the planner-only chrome
   // (Share-with-client, Consult Script) and relabel the money tab off this axis.
   const isHostEvt = (intakeFamilyConfig(event.type) || {}).recordKind === 'event';
+  // Sprint PC-2: the SAME canonical Experience Context Reveal/HostHome already
+  // build (PC-1) — computed once here and passed to the 5 in-scope planning
+  // surfaces (Timeline/Budget/Food/Shopping/Risks) so none of them has to
+  // (re)derive Event Identity/compound/complexity/confidence on its own.
+  // foodPP is intentionally null here — these surfaces only read
+  // ctx.compound/complexity/reasoning/decisionBlockers/activeRisks, never
+  // ctx.assembledState's dollar figures, which stay owned by each surface's
+  // own already-correct (post-HQ-2) playbookFoodPlan(event, foodPP) call.
+  const ctx = (() => { try { return buildExperienceContext(event, profile, null); } catch { return null; } })();
   // Sprint 51 Path B + Sprint 59B: any legacy tab name from initialNav (stale
   // URL, persisted state, third-party trigger, Home/CommandCenter Sprint-57f
   // compressed routes) is normalized at mount so we land in the right
@@ -42506,7 +42584,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {/* NOW-view hero, host only — scoped to THIS tab's real budget (over/under from
           spent vs total). The spending plan below recedes (one hero, Attention System). */}
       {isHostEvt && <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />}
-      <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} /></div></>}
+      <div className={isHostEvt ? 'hp-recede' : undefined}><Budget   budget={event.budget}     setBudget={wrap('budget')}     onSetTotalBudget={(v) => setEvent(e => ({ ...e, totalBudget: v }))} vendors={event.vendors} client={client} setClient={setClient} eventType={event.type} confirmedCount={(event.guests||[]).filter(g=>g.rsvp==='Yes').length} plannedGuests={Number(event.guestCount) || Number(event.guestEstimate) || 0} profile={profile} eventDate={event.date} eventTimeOfDay={event.timeOfDay} onTimeOfDayChange={(v) => setEvent(e => ({ ...e, timeOfDay: v }))} eventId={event.id} onOpenVendor={(vendorId, section) => handleTabChange('Vendors', vendorId, section ? { vendorSection: section } : undefined)} onOpenConnections={onOpenConnections} promptDecision={promptDecision} event={event} onNav={handleTabChange} ctx={ctx} /></div></>}
       {/* KPI-led screen — the hint restated the TOTAL/CONFIRMED/AWAITING counts. */}
       {tab === 'Guests'      && <>{/* UNIFIED FRAME: host NOW tabs drop the LegacyTabHeader; planner keeps it. */}{!isHostEvt && <LegacyTabHeader label="Guests" hint="Your guest list, RSVPs, meals, and seating." onBack={() => handleTabChange('Command')} />}
       {/* NOW-view hero, host only — scoped to THIS tab's real RSVP/count state
@@ -42519,7 +42597,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
@@ -42613,11 +42691,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       )}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
         </div>
       )}
       {tab === 'Planning' && !isHostEvt && (
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} />
+        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
       )}
       {/* Attention pass (host): the food plan is the one bright thing on Plan;
           Seating & supplies and the planning views recede until reached. */}
@@ -42704,7 +42782,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
-          <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
+          <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} />
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"
@@ -42721,7 +42799,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </div>
           )}
           {hostNavActive(event)
-            ? <HostRunOfShowTimeline event={event} profile={profile} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} />
             : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
