@@ -42841,7 +42841,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </div>
           )}
           {hostNavActive(event)
-            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={go} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={handleTabChange} />
             : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
