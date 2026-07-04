@@ -237,6 +237,14 @@ export function playbookStatus(pb, asOf) {
 
 // ── The full registry entry for one playbook ──────────────────────────────────
 export function playbookRegistryEntry(pb, asOf) {
+  if (!pb || typeof pb !== 'object') {
+    console.warn('playbookRegistryEntry received invalid playbook:', pb);
+    return null;
+  }
+  if (!pb.type) {
+    console.warn('playbookRegistryEntry received playbook without type:', pb);
+    return null;
+  }
   return {
     id: playbookId(pb.type),
     type: pb.type,
@@ -265,8 +273,9 @@ export function playbookRegistryEntry(pb, asOf) {
 }
 
 // ── The whole corpus registry + rollup summary (the Command Center's data) ─────
-export function buildPlaybookRegistry(asOf) {
-  const entries = ALL_PLAYBOOKS.map((pb) => playbookRegistryEntry(pb, asOf)).sort((a, b) => a.type.localeCompare(b.type));
+export function buildPlaybookRegistry(asOf, playbooksOverride = null) {
+  const pbs = playbooksOverride || ALL_PLAYBOOKS;
+  const entries = pbs.map((pb) => playbookRegistryEntry(pb, asOf)).filter(Boolean).sort((a, b) => a.type.localeCompare(b.type));
   const byStatus = entries.reduce((m, e) => { m[e.status] = (m[e.status] || 0) + 1; return m; }, {});
   const totalPriced = entries.reduce((s, e) => s + e.grounding.pricedItems, 0);
   const totalCited = entries.reduce((s, e) => s + e.grounding.cited, 0);

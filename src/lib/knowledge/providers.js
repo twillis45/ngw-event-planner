@@ -16,7 +16,7 @@ export const PROVIDER_FAMILIES = [
 export const TRIGGER_MODES = ['manual', 'scheduled', 'event-driven', 'administrator', 'campaign'];
 
 // Default authority + freshness per family (evidence expiry inherits from these).
-const FAMILY_DEFAULTS = {
+export const FAMILY_DEFAULTS = {
   government: { authorityLevel: 'primary', freshnessDays: 365 },
   academic: { authorityLevel: 'standards', freshnessDays: 730 },
   standards: { authorityLevel: 'standards', freshnessDays: 365 },

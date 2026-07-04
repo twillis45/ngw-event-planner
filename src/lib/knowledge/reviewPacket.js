@@ -93,6 +93,24 @@ export function prepareReviewPacket(kcr, evidence = [], playbooks = [], { asOf }
   const conflicts    = kcr.conflicts || [];
   const gapType      = kcr.gapType || kcr.fieldPath?.includes('unitCost') ? 'pricing' : 'default';
 
+  // Extract claim + sufficientWhen from playbook provenance so reviewers know what they're verifying
+  const pb = playbooks.find((p) => p.type === kcr.assetId);
+  let fieldProvenance = null;
+  if (pb) {
+    const fp = kcr.fieldPath || '';
+    const dm = fp.match(/^decisions\[([^\]]+)\]/);
+    if (dm) {
+      const d = (pb.decisions || []).find((x) => x.id === dm[1]);
+      fieldProvenance = d?.costFactorProvenance || null;
+    } else {
+      const pm = fp.match(/^([^.[]+)\./);
+      if (pm) {
+        const p = (pb.purchases || []).find((x) => x.id === pm[1]);
+        fieldProvenance = p?.provenance || null;
+      }
+    }
+  }
+
   const sources = [...new Set(allEvidence.map((e) => e.source || 'unknown'))];
   const regions = [...new Set(allEvidence.map((e) => e.region).filter(Boolean))];
   const oldest  = allEvidence.reduce((m, e) => (!m || (e.capturedAt || '') < (m.capturedAt || '')) ? e : m, null);
@@ -124,6 +142,11 @@ export function prepareReviewPacket(kcr, evidence = [], playbooks = [], { asOf }
       region:    e.region || 'US',
       capturedAt:e.capturedAt,
     })),
+
+    // What this field claims and when it's considered closed
+    claim:            fieldProvenance?.claim || null,
+    sufficientWhen:   fieldProvenance?.sufficientWhen || null,
+    sourceHint:       fieldProvenance?.sourceHint || null,
 
     // The proposal
     proposedValue:    describeProposedValue(kcr),
@@ -165,6 +188,10 @@ export function formatReviewPacketText(packet) {
     '',
     'EXCERPTS:',
     ...(packet.excerpts || []).map((e, i) => `  ${i + 1}. [${e.authority}] ${e.source}: ${e.excerpt}`),
+    '',
+    packet.claim          ? `CLAIM: ${packet.claim}` : null,
+    packet.sufficientWhen ? `SUFFICIENT WHEN: ${packet.sufficientWhen}` : null,
+    packet.sourceHint     ? `SOURCE HINT: ${packet.sourceHint}` : null,
     '',
     `PROPOSED VALUE: ${packet.proposedValue}`,
     packet.impactEstimate ? `IMPACT: ${packet.impactEstimate}` : null,

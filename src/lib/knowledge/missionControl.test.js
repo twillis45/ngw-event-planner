@@ -312,9 +312,10 @@ describe('buildResearchSession', () => {
     expect(session.commercialOnly.some((f) => f.path === 'p_crabs.unitCostRange')).toBe(true);
   });
 
-  test('includes suggested providers', () => {
+  test('suggestedProviders is empty (providers come from RBE-1 blueprint, not session)', () => {
     const session = buildResearchSession(crabPb, [], [], [], ASOF);
-    expect(session.suggestedProviders.length).toBeGreaterThan(0);
+    expect(Array.isArray(session.suggestedProviders)).toBe(true);
+    expect(session.suggestedProviders.length).toBe(0);
   });
 
   test('includes active campaigns and KCRs', () => {

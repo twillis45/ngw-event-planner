@@ -508,3 +508,51 @@ export function validateSource(source) {
   const unknownFamily = !PROVIDER_FAMILIES.includes(source.family);
   return { valid: missing.length === 0 && !unknownFamily, missing, unknownFamily };
 }
+
+// ─── Source Name to Provider Family Mapping ─────────────────────────────────────
+// Single source of truth: derives from SOURCE_CATALOG, not hardcoded.
+// When evidence arrives with a source name like "USDA Market News",
+// this mapping tells us which provider family it came from.
+export function buildSourceToFamilyMap() {
+  const map = {};
+
+  // Build mapping from catalog
+  SOURCE_CATALOG.forEach(source => {
+    map[source.id] = source.family;
+    map[source.name] = source.family;
+    // Also map keywords from the name for loose matching
+    const keywords = source.name.split(/\s+/).filter(w => w.length > 3);
+    keywords.forEach(kw => {
+      if (!map[kw]) map[kw] = source.family;
+    });
+  });
+
+  return map;
+}
+
+// Get provider family for any evidence source name
+export function getProviderFamilyForSource(sourceName) {
+  if (!sourceName) return 'unknown';
+
+  const map = buildSourceToFamilyMap();
+
+  // Exact match first
+  if (map[sourceName]) return map[sourceName];
+
+  // Keyword match (case-insensitive, substring)
+  const lowerSource = sourceName.toLowerCase();
+  for (const [key, family] of Object.entries(map)) {
+    if (key.length > 2 && lowerSource.includes(key.toLowerCase())) {
+      return family;
+    }
+  }
+
+  // Fallback: infer from common patterns
+  if (lowerSource.includes('usda') || lowerSource.includes('fda') || lowerSource.includes('bls')) return 'government';
+  if (lowerSource.includes('costco') || lowerSource.includes('walmart') || lowerSource.includes('restaurant')) return 'commercial';
+  if (lowerSource.includes('forum') || lowerSource.includes('reddit') || lowerSource.includes('facebook')) return 'community';
+  if (lowerSource.includes('industry') || lowerSource.includes('trade')) return 'industry';
+  if (lowerSource.includes('academic') || lowerSource.includes('scholar') || lowerSource.includes('research')) return 'academic';
+
+  return 'community'; // Safe default
+}

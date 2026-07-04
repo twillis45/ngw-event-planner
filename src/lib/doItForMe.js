@@ -551,6 +551,13 @@ export function draftShoppingList(event, profile, opts = {}) {
   const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
   const count = headCount(event);
   const qtyOf = (i) => {
+    // When the engine computed a bulk recommendation (e.g. "1 bushel" instead of "9 dozen
+    // for crabs"), prefer that unit for the shopping list so the host sees what to actually
+    // order — not a raw serving-unit quantity they'd have to convert themselves.
+    if (i.bulkRecommendation) {
+      const r = i.bulkRecommendation;
+      return r.unitLabel || `${r.qty} ${r.unit}`;
+    }
     const q = i.qty; const u = (i.unit ? String(i.unit) : '').trim();
     return (q != null && q !== '' && Number(q) > 0) ? `${q}${u ? ' ' + u : ''}` : '';
   };

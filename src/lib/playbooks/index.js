@@ -112,6 +112,56 @@ function resolveQuantity(p, guests) {
   return null;
 }
 
+// For purchases that carry priceLadder + servingGuide (e.g. crabs sold by the bushel),
+// compute the right purchase unit (dozen / half bushel / bushel) from the chosen size
+// decision and guest count. Returns null for purchases without this data or when the
+// linking decision can't be resolved. adultGuests should be proteinGuests (kids already
+// factored), or fall back to raw guest count.
+function resolveBulkPurchase(p, decisions, choices, adultGuests) {
+  if (!p.priceLadder || !p.servingGuide) return null;
+  const affectingDecision = (Array.isArray(decisions) ? decisions : []).find(
+    (d) => d && d.ladderKeys && Array.isArray(d.affects) && d.affects.includes(p.id)
+  );
+  if (!affectingDecision) return null;
+  const chosenOption = (choices[affectingDecision.id] != null)
+    ? choices[affectingDecision.id]
+    : affectingDecision.default;
+  const ladderKey = affectingDecision.ladderKeys[chosenOption];
+  if (!ladderKey) return null;
+  const ladder = p.priceLadder[ladderKey];
+  if (!ladder) return null;
+  const servingKey = ladder.servingKey || ladderKey;
+  const guide = (p.servingGuide.bySize && p.servingGuide.bySize[servingKey])
+    || (p.servingGuide.bySize && p.servingGuide.bySize.large)
+    || { withSides: 6, mainOnly: 8 };
+  const crabsPerPerson = guide.withSides;
+  const guests = Math.max(1, Math.round(adultGuests));
+  const totalUnits = Math.ceil(guests * crabsPerPerson);
+  const perBushel = ladder.approxPerBushel || 72;
+  const perHalfBushel = ladder.approxPerHalfBushel || 36;
+  if (totalUnits <= 12 && ladder.perDz) {
+    return { qty: 1, unit: 'dozen', totalUnits, unitLabel: '1 dozen', price: ladder.perDz };
+  }
+  if (totalUnits <= 24 && ladder.per2Dz) {
+    return { qty: 2, unit: 'dozen', totalUnits, unitLabel: '2 dozen', price: ladder.per2Dz };
+  }
+  if (totalUnits <= perHalfBushel && ladder.perHalfBushel) {
+    return { qty: 1, unit: 'half bushel', totalUnits, unitLabel: '1 half bushel', price: ladder.perHalfBushel };
+  }
+  const bushels = Math.ceil(totalUnits / perBushel);
+  if (!ladder.perBushel) {
+    const dz = Math.ceil(totalUnits / 12);
+    return { qty: dz, unit: 'dozen', totalUnits, unitLabel: `${dz} dozen`, price: dz * (ladder.perDz || 0) };
+  }
+  return {
+    qty: bushels,
+    unit: bushels === 1 ? 'bushel' : 'bushels',
+    totalUnits,
+    unitLabel: `${bushels} full ${bushels === 1 ? 'bushel' : 'bushels'}`,
+    price: bushels * ladder.perBushel,
+  };
+}
+
 // "Main protein (e.g. ...)" → "Main protein"; "Ice" → "Ice".
 function shortItem(item) {
   return String(item || '').split(/[(—–]| - /)[0].trim();
@@ -1887,6 +1937,14 @@ export function playbookFoodPlan(event, opts = {}) {
         ...((Array.isArray(p.alternatives) && p.alternatives.length > 0)
           ? { alternatives: p.alternatives }
           : (canonicalSubstitutes(p.item).length ? { alternatives: canonicalSubstitutes(p.item) } : {})),
+        // Bulk-purchase recommendation: when the playbook authors priceLadder + servingGuide
+        // on a purchase (e.g. crabs sold by the bushel), the engine computes the right
+        // purchase unit (dozen / half bushel / bushel) from the chosen size decision and
+        // adult guest count. The shopping list prefers this over the raw dozen-based qty.
+        // null for any purchase without this data — no-op for the rest of the plan.
+        ...((resolveBulkPurchase(p, _decisions, _choices, proteinGuests) != null)
+          ? { bulkRecommendation: resolveBulkPurchase(p, _decisions, _choices, proteinGuests) }
+          : {}),
       };
     });
 

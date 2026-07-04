@@ -96,6 +96,17 @@ export const CAMPAIGN_TEMPLATES = [
     tags: ['vendor', 'sourcing'],
   },
   {
+    id: 'vendor-capability-sourcing',
+    label: 'Vendor Capability Sourcing',
+    description: 'Research available vendors and their specific capabilities (e.g., can a pitmaster handle this event size? What cuisines do they offer?).',
+    gapTypes: ['vendor-capability'],
+    fieldPathPattern: null,
+    defaultProviders: ['catering-network', 'event-industry', 'community-forums', 'venue-network'],
+    defaultPriority: 'high',
+    defaultTrigger: 'research',
+    tags: ['vendor', 'capability', 'sourcing'],
+  },
+  {
     id: 'regulation-compliance',
     label: 'Regulation & Compliance',
     description: 'Identify permits, health codes, or regulations affecting this event type.',

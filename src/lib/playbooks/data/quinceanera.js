@@ -225,7 +225,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'A quince is a full seated meal, not a buffet of snacks. The menu reflects the family\'s tradition — Mexican, Central American, Caribbean or South American. Give the caterer the final count at T-30d; the per-plate price is set by contract well before.',
-      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US catered-event norm: ~$18-45/plate for a seated meal.' },
+      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US catered-event norm: ~$18-45/plate for a seated meal.', claim: 'A seated Latino dinner at a quinceañera typically costs $18-45 per plate under US catering norms', sufficientWhen: '≥2 quinceañera caterer quotes in the US confirm the $18-45/plate range' },
       alternatives: ['Chicken mole instead of beef — cheaper, traditional and impressive', 'Buffet-style rice + beans + chicken — lower cost per head than plated'],
     },
     {
@@ -265,7 +265,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Plan ~1 drink/guest/hr over a 6-hour event. Aguas frescas and soda for everyone; if the family serves alcohol for adults, confirm whether the venue requires a licensed bar and that minors are not served.',
-      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr over the event.' },
+      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr over the event.', claim: '~1 drink per guest per hour is the US standard beverage planning norm for a 6-hour event', sufficientWhen: 'US beverage industry planning guides from ≥2 sources confirm the ~1 drink/guest/hr norm for events of comparable duration' },
     },
     {
       id: 'p_ice',
@@ -278,7 +278,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T0',
       note: 'Buy day-of so it does not melt. ~1-1.5 lb/guest for a long event with a bar; the venue or caterer may supply it — confirm in the contract.',
-      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1-1.5 lb ice/guest for a full bar event.' },
+      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1-1.5 lb ice/guest for a full bar event.', claim: '~1-1.5 lb of ice per guest is the US standard for a full bar event', sufficientWhen: 'US event-planning and catering guides from ≥2 sources confirm the ~1-1.5 lb ice/guest norm for a full bar event' },
     },
     {
       id: 'p_florals',

@@ -15,13 +15,14 @@ describe('first real KCR — research queue → published → survives refresh',
     // 1. Real intake from the live research queue (deterministic id, command-center source).
     const generated = researchQueueToKCRs(ASOF);
     await syncIntake(generated);
-    const crabPricing = generated.find((k) => k.assetId === 'Crab Feast' && k.fieldPath === 'purchases[].unitCostRange');
-    expect(crabPricing).toBeTruthy();
-    expect(crabPricing.createdBy).toBe('command-center');
-    expect(crabPricing.type).toBe('citation');
-    expect(crabPricing.trigger).toBe('research');
-    expect(crabPricing.impact.recommendationEngines).toEqual(expect.arrayContaining(['budget', 'shopping']));
-    const id = crabPricing.id;
+    // Find any pricing KCR from the queue — crab feast pricing is now cited so may not appear.
+    const pricingKcr = generated.find((k) => k.fieldPath === 'purchases[].unitCostRange' && k.type === 'citation');
+    expect(pricingKcr).toBeTruthy();
+    expect(pricingKcr.createdBy).toBe('command-center');
+    expect(pricingKcr.type).toBe('citation');
+    expect(pricingKcr.trigger).toBe('research');
+    expect(pricingKcr.impact.recommendationEngines).toEqual(expect.arrayContaining(['budget', 'shopping']));
+    const id = pricingKcr.id;
 
     // 2. Advance through the governed pipeline (code — publishing UI is parked).
     let k = getKCR(id);                                             // read from the persisted store
@@ -54,7 +55,7 @@ describe('first real KCR — research queue → published → survives refresh',
   test('re-running intake after the advance does NOT regress the published KCR', async () => {
     const gen = researchQueueToKCRs(ASOF);
     await syncIntake(gen);
-    const id = gen.find((k) => k.assetId === 'Crab Feast' && k.fieldPath === 'purchases[].unitCostRange').id;
+    const id = gen.find((k) => k.fieldPath === 'purchases[].unitCostRange' && k.type === 'citation').id;
     let k = getKCR(id);
     k = advanceKCR(k, 'researching', { asOf: ASOF });
     await upsertKCR(k);

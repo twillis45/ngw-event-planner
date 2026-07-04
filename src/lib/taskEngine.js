@@ -64,3 +64,15 @@ export function taskSatisfied(event, task) {
 export function effectiveDone(event, task) {
   return !!(task && task.done) || taskSatisfied(event, task);
 }
+
+// HQ-2 P2: taskSatisfied() is a heuristic (regex-matched) inference, not a host
+// confirmation — a host should be able to tell the difference. effectiveDoneDetail
+// returns the same boolean effectiveDone() does, PLUS whether that boolean came
+// from an explicit checkoff (task.done) or an inference (taskSatisfied). Render
+// layers show "Inferred" only in the second case; effectiveDone() itself is
+// unchanged so every existing caller keeps its current behavior.
+export function effectiveDoneDetail(event, task) {
+  const explicit = !!(task && task.done);
+  const inferred = !explicit && taskSatisfied(event, task);
+  return { done: explicit || inferred, inferred };
+}

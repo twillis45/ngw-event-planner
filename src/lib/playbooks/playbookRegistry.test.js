@@ -44,13 +44,13 @@ describe('buildPlaybookRegistry', () => {
 });
 
 describe('grounding (mirrors groundingAudit over the object)', () => {
-  test('crab feast is synthesized, priced, no citations', () => {
+  test('crab feast has Captain White\'s citation, partial knowledge status', () => {
     const g = playbookGrounding(crab);
     expect(g.pricedItems).toBeGreaterThan(0);
-    expect(g.cited).toBe(0);
-    expect(g.groundedPct).toBe(0); // all synthesized/consensus
-    expect(g.knowledgeStatus).toBe('synthesized');
-    expect(g.hasSources).toBe(false); // knowledge.sources: []
+    expect(g.cited).toBeGreaterThanOrEqual(1); // p_crabs cited via Captain White's July 2025
+    expect(g.groundedPct).toBeGreaterThan(0);
+    expect(g.knowledgeStatus).toBe('partial');
+    expect(g.hasSources).toBe(true); // Captain White's Seafood added to knowledge.sources
   });
 });
 
@@ -73,8 +73,8 @@ describe('coverage — derived from populated sections', () => {
 
 describe('health — component-level, no single score, validation honest-empty', () => {
   const h = playbookHealth(crab, ASOF);
-  test('grounding is a GAP (priced but uncited)', () => {
-    expect(h.components.find((c) => c.component === 'Grounding').status).toBe(HEALTH.GAP);
+  test('grounding is ok (pricing cited via Captain White\'s)', () => {
+    expect(h.components.find((c) => c.component === 'Grounding').status).toBe(HEALTH.OK);
   });
   test('validation is n/a (awaiting events), never fabricated', () => {
     const v = h.components.find((c) => c.component === 'Validation');
@@ -90,8 +90,8 @@ describe('health — component-level, no single score, validation honest-empty',
 });
 
 describe('status — gated, not summed', () => {
-  test('crab feast is research-needed (synthesized pricing caps it)', () => {
-    expect(playbookStatus(crab, ASOF)).toBe('research-needed');
+  test('crab feast is review-needed (pricing cited, remaining items synthesized)', () => {
+    expect(playbookStatus(crab, ASOF)).toBe('review-needed');
   });
 });
 
@@ -118,9 +118,9 @@ describe('governance when a co-located block IS present', () => {
 });
 
 describe('research queue is derived (no manual list)', () => {
-  test('crab feast surfaces pricing + food-safety + cadence tasks', () => {
+  test('crab feast surfaces food-safety + cadence tasks (pricing now cited)', () => {
     const kinds = playbookResearch(crab, ASOF).map((r) => r.kind);
-    expect(kinds).toContain('pricing');
+    expect(kinds).not.toContain('pricing'); // Captain White's citation satisfies pricing
     expect(kinds).toContain('food-safety');
     expect(kinds).toContain('cadence');
   });

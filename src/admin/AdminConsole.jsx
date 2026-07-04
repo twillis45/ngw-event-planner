@@ -6,7 +6,7 @@
 // A1 scope = the gate + a whoami probe + a read-only audit view that prove the
 // end-to-end path works. The Providers tab is the Knowledge Acquisition operational console
 // (KEP-3); Studio is the Knowledge Factory manufacturing floor.
-import { useState, useEffect, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { adminApi, isAdminApiConfigured } from '../lib/adminApi';
 import {
@@ -28,6 +28,12 @@ import { buildFactory } from '../lib/knowledge/factory';
 import { buildProviders } from '../lib/knowledge/providers';
 import { loadCampaigns, saveCampaigns, createCampaign, runCampaign, recordCampaign, getFieldPaths, PROVIDER_FAMILIES, CAMPAIGN_PRIORITIES, CAMPAIGN_TRIGGERS } from '../lib/knowledge/campaign';
 import { loadObservations, loadObservationsAsync } from '../lib/knowledge/observation';
+import { resolveConflict, buildConsensusPacket } from '../lib/knowledge/consensusResolver';
+import { getMergedPlaybooks } from '../lib/knowledge/playbookMerge';
+import { detectGapsInPlaybook, parseFieldPath, getPlaybookField, setPlaybookField, isHighConfidenceProvenance, playbookReadinessForResearch, getResearchIntent, getTemplatesForIntent, getRelevantProvidersForGap } from '../lib/knowledge/playbookSchema';
+import { calculateEvidenceQualityScore, describeEvidenceQuality, STATUS_COLOR, FRESHNESS_COLOR, whyEvidenceUntrustworthy, CONNECTION_STATUS, DATA_FRESHNESS, COMPLETENESS } from '../lib/knowledge/dataQuality';
+import { analyzeFinding, explainFinding, whyInsufficientForGap, suggestBetterProviders } from '../lib/knowledge/findingAnalysis';
+import { generateResearchQuestion, scoreRelevance, categorizeEvidenceRelevance, whyQuestionUnansswered, campaignExplainerText } from '../lib/knowledge/researchQuestion';
 import { loadEvidence, loadEvidenceAsync } from '../lib/knowledge/evidence';
 import { isKasApiConfigured } from '../lib/api/kas';
 import { ALL_PLAYBOOKS } from '../lib/playbooks/index';
@@ -46,16 +52,22 @@ import { FAILURE_CATEGORIES, createFailureRecord, failureToKCR, analyzeFailures,
 import { corpusScopeCoverage } from '../lib/knowledge/knowledgeScope';
 import { ROLES, PHASES, SITUATION_TYPES, createContext } from '../lib/experience/experienceContext';
 import { RESEARCH_PLAYBOOKS, getResearchPlaybook, suggestPlaybooks, playbooksForDomain, validatePlaybook } from '../lib/knowledge/researchPlaybooks';
-import { SOURCE_CATALOG, sourcesForDomain, sourcesForProvider, highReliabilitySources, unbiasedSources, catalogSummary } from '../lib/knowledge/sourceCatalog';
+import { SOURCE_CATALOG, sourcesForDomain, sourcesForProvider, highReliabilitySources, unbiasedSources, catalogSummary, getProviderFamilyForSource } from '../lib/knowledge/sourceCatalog';
 import { PIPELINE_STAGES, STAGE_LABELS, createPipelineManifest, advanceStage, blockStage, getPipelineProgress, buildPipelineMetrics, loadManifests, upsertManifest, clearManifests } from '../lib/knowledge/researchPipeline';
 import { RESEARCH_ROLES, canPerform, publishingRoles } from '../lib/knowledge/researchRoles';
 import { WORKER_TYPES, createWorkerInstance, buildFleetHealth, buildFleetMetrics, loadWorkers, upsertWorker, clearWorkers, toggleWorker, loadRuns, clearRuns, createWorkerRun, completeWorkerRun, addRun } from '../lib/knowledge/knowledgeWorkers';
 import { PROVIDER_MONITOR_RULES, overdueProviders, providerHealthSummary } from '../lib/knowledge/providerMonitor';
 import { buildOvernightActivity, buildManufacturingQueue, buildKnowledgeHealth, buildPublishingQueue, buildKnowledgeAging, generateCampaignsFromQueue, buildResearchSession, buildExecutiveReport } from '../lib/knowledge/missionControl';
+import { createBatch, startBatch, completeBatch, getBatchProgress, upsertBatch, getActiveBatch } from '../lib/knowledge/batchTracking';
 import { batchByFilter, runCampaigns, autoCorroborate, runSummaryLabel } from '../lib/knowledge/researchRunner';
+import { generateResearchBlueprint, blueprintToGoal, blueprintStatusLabel } from '../lib/knowledge/researchBlueprint';
+import { runAutonomousCampaign, computeQueueItemState, QUEUE_STATES, QUEUE_STATE_COLORS, buildPerformanceReport, batchRunAutonomous } from '../lib/knowledge/campaignRunner';
+import { isResearchApiConfigured, createResearchRun, startResearchRun, getResearchRun, retryProvider as retryResearchProvider, fetchServerObservations, updateObservationStatus as serverUpdateObsStatus } from '../lib/api/research';
 import { autoNormalize, pasteHintFor } from '../lib/knowledge/providerNormalizers';
 import { loadProviderIntel, saveProviderIntel, recordProviderRun, extractProviderRunStats, providerIntelligenceSummary, getProviderStats } from '../lib/knowledge/providerIntelligence';
 import { prepareReviewPacket, formatReviewPacketText } from '../lib/knowledge/reviewPacket';
+import { fetchProviderData, prepareEvidenceForReview } from '../lib/knowledge/providerIntegration';
+import { loadPlaybookWithUpdates } from '../lib/knowledge/playbookMerge';
 import { experienceView, simulateExperience, diffExperience } from '../lib/experience/experienceView';
 import { type } from '../design/tokens';
 
@@ -192,9 +204,216 @@ function PBDetail({ entry }) {
   );
 }
 
+function BatchReceiptModal({ batch, onClose, onShowProgress }) {
+  if (!batch) return null;
+  const isActive = batch.state === 'running';
+  const isComplete = batch.state === 'completed';
+  const isFailed = batch.state === 'failed';
+  const estimatedTime = Math.ceil((batch.totalItems / 10) * 6);
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, fontFamily: D.ff,
+    }}>
+      <div style={{
+        background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12,
+        padding: '24px', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: D.text }}>
+            {isActive ? '🚀 Batch Running' : isComplete ? '✓ Batch Complete' : isFailed ? '✗ Batch Failed' : '⏳ Batch Queued'}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: D.muted, fontSize: 16, cursor: 'pointer' }}>×</button>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Batch ID</div>
+          <div style={{ fontSize: 12, fontFamily: D.mono, color: D.text, wordBreak: 'break-all' }}>{batch.id}</div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 10, color: D.faint, marginBottom: 4 }}>Type</div>
+            <div style={{ fontSize: 12, color: D.accent, fontWeight: 600 }}>{batch.intentType}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: D.faint, marginBottom: 4 }}>Items</div>
+            <div style={{ fontSize: 12, color: D.text, fontWeight: 600 }}>{batch.totalItems}</div>
+          </div>
+        </div>
+
+        {isActive && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: D.faint, marginBottom: 6 }}>Progress</div>
+              <div style={{ background: D.surface2, borderRadius: 4, height: 8, overflow: 'hidden', marginBottom: 4 }}>
+                <div style={{ background: D.accent, height: '100%', width: '15%', transition: 'width 0.3s' }} />
+              </div>
+              <div style={{ fontSize: 10, color: D.muted, textAlign: 'center' }}>~{estimatedTime}m remaining</div>
+            </div>
+          </>
+        )}
+
+        {isComplete && (
+          <div style={{ fontSize: 11, color: D.good, marginBottom: 12 }}>
+            All {batch.totalItems} campaigns completed. Results are being processed.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: '8px 12px', borderRadius: 6,
+            background: D.surface2, color: D.text, border: `1px solid ${D.border}`,
+            fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: D.ff,
+          }}>
+            {isComplete ? 'View Results' : 'Dismiss'}
+          </button>
+          {isActive && (
+            <button onClick={() => { onShowProgress?.(); onClose(); }} style={{
+              flex: 1, padding: '8px 12px', borderRadius: 6,
+              background: `${D.accent}22`, color: D.accent, border: `1px solid ${D.accent}`,
+              fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: D.ff,
+            }}>
+              Tracker
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BatchProgressPanel({ batch, onClose }) {
+  const [liveProgress, setLiveProgress] = useState(null);
+
+  useEffect(() => {
+    if (!batch?.id) return;
+
+    // Always fetch fresh progress from storage (recalculates stats)
+    const fresh = getBatchProgress(batch.id);
+    if (fresh) {
+      setLiveProgress(fresh);
+    }
+
+    // Only poll while running; once complete, stop polling
+    if (batch.state !== 'running') {
+      return;
+    }
+
+    // Poll for fresh batch progress every 100ms while running
+    const interval = setInterval(() => {
+      const freshProgress = getBatchProgress(batch.id);
+      if (freshProgress) {
+        setLiveProgress(freshProgress);
+        // Stop polling when batch completes
+        if (freshProgress.state !== 'running') {
+          clearInterval(interval);
+        }
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [batch?.id, batch?.state]);
+
+  if (!batch) return null;
+  const display = liveProgress || batch;
+  const isActive = display.state === 'running';
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 20, right: 20, width: 350, maxHeight: 500,
+      background: D.surface, border: `1px solid ${D.accent}66`, borderRadius: 10,
+      boxShadow: '0 10px 40px rgba(0,0,0,0.3)', fontFamily: D.ff, zIndex: 9998,
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div style={{ padding: 14, borderBottom: `1px solid ${D.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 12, color: D.accent, fontWeight: 700 }}>● {isActive ? 'RUNNING' : 'COMPLETE'}</div>
+          <div style={{ fontSize: 10, color: D.faint, fontFamily: D.mono }}>{display.id.slice(0, 12)}...</div>
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: D.muted, cursor: 'pointer', fontSize: 14 }}>×</button>
+      </div>
+
+      {/* Stats Grid */}
+      <div style={{ padding: 12, borderBottom: `1px solid ${D.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {[
+          { label: 'Queued', value: display.stats?.queued || 0, color: D.muted },
+          { label: 'Running', value: display.stats?.running || 0, color: D.accent },
+          { label: 'Done', value: display.stats?.completed || 0, color: D.good },
+          { label: 'Failed', value: display.stats?.failed || 0, color: D.bad },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: D.faint, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress Bar */}
+      <div style={{ padding: 12, borderBottom: `1px solid ${D.border}` }}>
+        <div style={{ fontSize: 9, color: D.faint, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+          <span>Progress</span>
+          <span>{display.pctComplete || 0}%</span>
+        </div>
+        <div style={{ background: D.surface2, borderRadius: 3, height: 6, overflow: 'hidden' }}>
+          <div style={{ background: D.accent, height: '100%', width: `${display.pctComplete || 0}%`, transition: 'width 0.2s' }} />
+        </div>
+      </div>
+
+      {/* Recent Runs */}
+      <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+        <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', marginBottom: 6, paddingLeft: 4 }}>Recent</div>
+        {(display.recentRuns || []).slice(0, 5).map((run, i) => (
+          <div key={i} style={{ fontSize: 9, padding: '4px 8px', marginBottom: 2, background: D.bg, borderRadius: 4, borderLeft: `3px solid ${run.state === 'completed' ? D.good : run.state === 'failed' ? D.bad : D.accent}` }}>
+            <div style={{ color: D.text, fontFamily: D.mono, wordBreak: 'break-word' }}>{run.id?.slice(-8)}</div>
+          </div>
+        ))}
+        {(!display.recentRuns || display.recentRuns.length === 0) && (
+          <div style={{ fontSize: 9, color: D.faint, padding: '8px 4px' }}>No runs yet</div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div style={{ padding: 10, borderTop: `1px solid ${D.border}`, display: 'flex', gap: 6 }}>
+        {isActive && (
+          <>
+            <button style={{
+              flex: 1, padding: '6px 10px', borderRadius: 5,
+              background: `${D.warn}22`, color: D.warn, border: `1px solid ${D.warn}`,
+              fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: D.ff,
+            }}>
+              Pause
+            </button>
+            <button style={{
+              flex: 1, padding: '6px 10px', borderRadius: 5,
+              background: `${D.bad}22`, color: D.bad, border: `1px solid ${D.bad}`,
+              fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: D.ff,
+            }}>
+              Cancel
+            </button>
+          </>
+        )}
+        <button onClick={onClose} style={{
+          flex: 1, padding: '6px 10px', borderRadius: 5,
+          background: D.surface2, color: D.text, border: `1px solid ${D.border}`,
+          fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: D.ff,
+        }}>
+          {isActive ? 'Minimize' : 'Close'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PlaybooksPanel() {
   const asOf = new Date().toISOString().slice(0, 10);
-  const [reg] = useState(() => buildPlaybookRegistry(asOf));
+  const [reg] = useState(() => {
+    const pbsWithUpdates = ALL_PLAYBOOKS.map(pb => loadPlaybookWithUpdates(pb.type)).filter(Boolean);
+    return buildPlaybookRegistry(asOf, pbsWithUpdates);
+  });
   const [open, setOpen] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -209,6 +428,8 @@ function PlaybooksPanel() {
   return (
     <div>
       <Banner>Playbook Command Center — read-only observability over the {reg.count}-playbook corpus. Everything is derived from the data objects (Playbook OS). No playbook output is affected.</Banner>
+
+      <div>
 
       {/* KPI strip — health of the whole corpus in one glance */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
@@ -270,6 +491,7 @@ function PlaybooksPanel() {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
@@ -1976,10 +2198,10 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 
 // ─── Bundle C: Manufacturing Studio — 15 operational workspaces ───────────────
 const STUDIO_WS = [
-  'Mission Control', 'Research Session',
+  'Mission Control', 'Research Session', 'Research Ops',
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
-  'Copilot', 'Analytics', 'Retirement', 'Campaigns',
+  'Copilot', 'Analytics', 'Retirement', 'Campaigns', 'Campaign Research',
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
   'Schedules', 'Roadmap',
   'Domains', 'Failures',
@@ -2019,11 +2241,48 @@ function KcrStudioPanel() {
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs });
-  const graph = buildKnowledgeGraph({ assets: ALL_PLAYBOOKS, evidence, kcrs });
-  const conflicts = detectContradictions(evidence);
-  const evidenceIntel = analyzeEvidence(evidence, asOf);
-  const quality = qualityManufacturing(ALL_PLAYBOOKS, asOf);
+  console.log('DEBUG: Before buildFactory, ALL_PLAYBOOKS=', ALL_PLAYBOOKS);
+  let factory, graph, conflicts, evidenceIntel, quality;
+  try {
+    console.log('DEBUG: buildFactory starting, playbooks=', ALL_PLAYBOOKS?.length);
+    factory = buildFactory(asOf, { playbooks: ALL_PLAYBOOKS, kcrs });
+    console.log('DEBUG: buildFactory complete');
+  } catch (e) {
+    console.error('ERROR in buildFactory:', e);
+    factory = null;
+  }
+
+  try {
+    console.log('DEBUG: buildKnowledgeGraph starting');
+    graph = buildKnowledgeGraph({ assets: ALL_PLAYBOOKS, evidence, kcrs });
+    console.log('DEBUG: buildKnowledgeGraph complete');
+  } catch (e) {
+    console.error('ERROR in buildKnowledgeGraph:', e);
+    graph = null;
+  }
+
+  try {
+    conflicts = detectContradictions(evidence);
+  } catch (e) {
+    console.error('ERROR in detectContradictions:', e);
+    conflicts = null;
+  }
+
+  try {
+    evidenceIntel = analyzeEvidence(evidence, asOf);
+  } catch (e) {
+    console.error('ERROR in analyzeEvidence:', e);
+    evidenceIntel = null;
+  }
+
+  try {
+    console.log('DEBUG: qualityManufacturing starting, playbooks=', ALL_PLAYBOOKS?.length);
+    quality = qualityManufacturing(ALL_PLAYBOOKS, asOf);
+    console.log('DEBUG: qualityManufacturing complete');
+  } catch (e) {
+    console.error('ERROR in qualityManufacturing:', e);
+    quality = null;
+  }
   const [copilotResult, setCopilotResult] = useState(null);
   const [copilotBusy, setCopilotBusy] = useState(false);
   const [acceptedProposals, setAcceptedProposals] = useState({}); // { [proposalId]: kcrId }
@@ -2060,7 +2319,8 @@ function KcrStudioPanel() {
   const [campGapType, setCampGapType] = useState(['pricing']);
   const [campPriority, setCampPriority] = useState('med');
   const [campTrigger, setCampTrigger] = useState('research');
-  const [campProviders, setCampProviders] = useState(['internal-validation']);
+  const [campProviders, setCampProviders] = useState(['internal', 'government', 'food-safety', 'commercial', 'industry', 'academic', 'community']);
+  const [campBatchProviderSelection, setCampBatchProviderSelection] = useState(false);
   const [campRunning, setCampRunning] = useState(false);
   const [campRunResult, setCampRunResult] = useState(null);
   const [campList, setCampList] = useState(() => loadCampaigns());
@@ -2070,11 +2330,54 @@ function KcrStudioPanel() {
   const [campRawJson, setCampRawJson] = useState('');
   const [campRawError, setCampRawError] = useState('');
   const [campRawPreview, setCampRawPreview] = useState(null);  // { records, error } from autoNormalize
+  const [campWorkflow, setCampWorkflow] = useState('manual'); // 'manual' or 'gap-detect'
+  const [campDetectedGaps, setCampDetectedGaps] = useState([]);
+  const [campSelectedGap, setCampSelectedGap] = useState(null);
+  const [campCampaignEvidence, setCampCampaignEvidence] = useState([]);
+  const [campReviewStep, setCampReviewStep] = useState(false);
+
+  // Campaign run progress tracking (KRE-3 UX)
+  // campRunStageIdx: -1=error, 0=Queued, 1=Starting, 2=Running providers,
+  //   3=Collecting observations, 4=Creating evidence, 5=Deriving finding, 6=Drafting KCR, 7=Done
+  const [campRunStageIdx, setCampRunStageIdx] = useState(-2); // -2 = idle (no run in progress)
+  const [campRunMode, setCampRunMode] = useState(null);       // 'server' | 'local'
+  const [campRunInfo, setCampRunInfo] = useState(null);       // { goal, asset, fieldPath, providers }
+  const [campServerRunId, setCampServerRunId] = useState(null);
+  const [campToast, setCampToast] = useState(null);           // { type, msg }
+  const campToastTimerRef = useRef(null);
+  const campPollRef = useRef(null);
+
+  // Multi-gap batch processing
+  const [campSelectedGaps, setCampSelectedGaps] = useState([]);
+  const [campBatchRunning, setCampBatchRunning] = useState(false);
+  const [campBatchProgress, setCampBatchProgress] = useState({ current: 0, total: 0 });
+  const [campBatchResults, setCampBatchResults] = useState([]);
+  const [campFormattedResults, setCampFormattedResults] = useState(null);
+  const [campShowJsonResults, setCampShowJsonResults] = useState(false);
+  const [campExpandedEvidenceDetails, setCampExpandedEvidenceDetails] = useState(new Set());
+  const [campConflictResolutions, setCampConflictResolutions] = useState({});
+  const [campExpandedConflicts, setCampExpandedConflicts] = useState(new Set());
+  const [mergedPlaybooks, setMergedPlaybooks] = useState(() => getMergedPlaybooks());
 
   // Batch run state (KRA-1 Bundle A/I)
   const [batchRunResult, setBatchRunResult] = useState(null);   // last batch run summary
   const [batchRunning, setBatchRunning] = useState(false);
   const [copiedKcrId, setCopiedKcrId] = useState(null);         // tracks last-copied packet
+  const [selectedGapPath, setSelectedGapPath] = useState(null); // Research Session selected gap
+  const [inboxActions, setInboxActions] = useState({});         // Evidence Inbox: { [obsId]: 'accept'|'reject'|'merge'|'flag' }
+  const [opsRunResult, setOpsRunResult] = useState(null);       // Research Ops last batch run
+  const [opsRunning, setOpsRunning] = useState(false);
+  const [serverObs, setServerObs] = useState([]);              // Evidence Inbox: server-fetched observations (KRE-2)
+
+  // Mission Control batch selection
+  const [mcSelectedGaps, setMcSelectedGaps] = useState([]);      // selected gap keys for batch launch
+
+  // Batch tracking (receipt modal + progress)
+  const [activeBatch, setActiveBatch] = useState(() => getActiveBatch());
+  const [batchReceipt, setBatchReceipt] = useState(null);        // receipt modal state
+  const [batchProgress, setBatchProgress] = useState(null);      // live progress data
+  const [showProgressPanel, setShowProgressPanel] = useState(false); // show/hide progress sidebar
+  const [kpiRefreshKey, setKpiRefreshKey] = useState(0);        // force KPI recalculation
 
   // ── Batch auto-run schedule ────────────────────────────────────────────────
   const BATCH_SCHED_KEY = 'ngw-kas-batch-schedule';
@@ -2085,6 +2388,77 @@ function KcrStudioPanel() {
     setEvidence(loadEvidence());
     setCampList(loadCampaigns());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshPlaybooks = useCallback(() => {
+    setMergedPlaybooks(getMergedPlaybooks());
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    refreshEvidence();
+    refreshPlaybooks();
+  }, [refreshEvidence, refreshPlaybooks]);
+
+  // Refresh merged playbooks whenever workspace changes (so Mission Control stays in sync)
+  useEffect(() => {
+    refreshPlaybooks();
+  }, [ws, refreshPlaybooks]);
+
+  // Poll server run status every 2.5s while a server-side campaign run is active (KRE-3).
+  // Clears itself on terminal states: complete / partial / failed / cancelled.
+  useEffect(() => {
+    if (!campServerRunId) return;
+    const STAGE_MAP = { queued: 0, starting: 1, running: 2, collecting: 3, evidencing: 4, finding: 5, drafting: 6, complete: 7, partial: 7, failed: -1, cancelled: -1 };
+    const poll = async () => {
+      const run = await getResearchRun(campServerRunId);
+      if (!run) return;
+      const idx = STAGE_MAP[run.state] ?? 2;
+      if (['complete', 'partial', 'failed', 'cancelled'].includes(run.state)) {
+        clearInterval(campPollRef.current);
+        campPollRef.current = null;
+        setCampRunStageIdx(run.state === 'failed' || run.state === 'cancelled' ? -1 : 7);
+        setCampRunResult(run.result || run);
+        setCampList(loadCampaigns());
+        setCampRunning(false);
+        const toastType = run.state === 'complete' ? 'complete' : run.state === 'partial' ? 'partial' : 'failed';
+        const toastMsg = { complete: 'Campaign complete', partial: 'Campaign partial — some providers ran', failed: 'Campaign failed', cancelled: 'Campaign cancelled' }[run.state] || run.state;
+        if (campToastTimerRef.current) clearTimeout(campToastTimerRef.current);
+        setCampToast({ type: toastType, msg: toastMsg });
+        campToastTimerRef.current = setTimeout(() => setCampToast(null), 4500);
+      } else {
+        setCampRunStageIdx(idx);
+      }
+    };
+    poll(); // immediate check
+    campPollRef.current = setInterval(poll, 2500);
+    return () => { if (campPollRef.current) { clearInterval(campPollRef.current); campPollRef.current = null; } };
+  }, [campServerRunId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select relevant providers when gaps are selected
+  // This implements: "default to or provide only the providers that will directly associate with the playbook gap"
+  useEffect(() => {
+    if (campSelectedGaps.length > 0 && campAsset) {
+      const basePb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
+      if (!basePb) return;
+
+      const selectedPb = loadPlaybookWithUpdates(basePb);
+      const allGaps = detectGapsInPlaybook(selectedPb);
+      const selectedGapObjects = allGaps.filter(g => campSelectedGaps.includes(g.id));
+
+      if (selectedGapObjects.length > 0) {
+        // Collect all relevant providers across selected gaps
+        const relevantProvidersSet = new Set();
+        selectedGapObjects.forEach(gap => {
+          const providers = getRelevantProvidersForGap(gap);
+          providers.forEach(p => relevantProvidersSet.add(p));
+        });
+
+        // Update campProviders to only include relevant ones
+        if (relevantProvidersSet.size > 0) {
+          setCampProviders(Array.from(relevantProvidersSet));
+        }
+      }
+    }
+  }, [campSelectedGaps, campAsset]);
 
   const runHighPriorityBatch = useCallback(() => {
     const asOfNow = new Date().toISOString().slice(0, 10);
@@ -2145,6 +2519,16 @@ function KcrStudioPanel() {
     const timer = setInterval(check, 30000);
     return () => clearInterval(timer);
   }, [runHighPriorityBatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // KRE-2: fetch server observations when Evidence Inbox is active
+  useEffect(() => {
+    if (ws !== 'Inbox' || !isResearchApiConfigured()) return;
+    let cancelled = false;
+    fetchServerObservations({ status: 'open', limit: 200 }).then((rows) => {
+      if (!cancelled && Array.isArray(rows)) setServerObs(rows);
+    });
+    return () => { cancelled = true; };
+  }, [ws]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Schedules state
   const [schedules, setSchedules] = useState(() => loadSchedules());
@@ -2277,41 +2661,279 @@ function KcrStudioPanel() {
   // ── workspace renderers ──────────────────────────────────────────────────────
   const renderWs = () => {
     if (ws === 'Inbox') {
-      const inbox = observations.filter((o) => o.status === 'open' && !(o.linkedEvidence || []).length);
+      // Merge server observations (KRE-2) with localStorage observations; server wins on id collision
+      const localObs  = observations.filter((o) => o.status === 'open' && !(o.linkedEvidence || []).length);
+      const serverIds = new Set(serverObs.map((o) => o.id));
+      const mergedObs = [
+        // Normalize server obs to local shape
+        ...serverObs.map((o) => ({
+          id:           o.id,
+          assetId:      o.playbook_type,
+          fieldPath:    o.field_path,
+          gapType:      o.gap_type,
+          statement:    o.statement,
+          source:       o.provider_id,
+          region:       o.region,
+          status:       o.status,
+          noticedAt:    o.captured_at,
+          _fromServer:  true,
+        })),
+        ...localObs.filter((o) => !serverIds.has(o.id)),
+      ];
+      const inbox = mergedObs;
+      // Evidence Inbox (KRE-1 Bundle E) — every observation with attribution + actions
+      const ACTION_COLOR = { accept: D.good, reject: '#e74c3c', merge: D.accent, flag: D.warn };
+      const ACTION_LABEL = { accept: 'Accept', reject: 'Reject', merge: 'Merge', flag: 'Flag' };
+      const pending  = inbox.filter((o) => !inboxActions[o.id]);
+      const reviewed = inbox.filter((o) => inboxActions[o.id]);
+
+      const setAction = (obsId, action, fromServer) => {
+        setInboxActions((prev) => ({ ...prev, [obsId]: action }));
+        if (fromServer && action) {
+          // Async — fire and forget; server persists the status
+          serverUpdateObsStatus(obsId, action).catch(() => null);
+        }
+      };
+
       return (
         <div>
-          <Banner>Inbox — open observations not yet linked to any evidence. These need research or a campaign to advance.</Banner>
-          {inbox.length === 0 ? <Empty msg="No unlinked observations. Either none have been collected, or all are linked to evidence. Honest-empty." /> : (
-            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, overflow: 'hidden' }}>
+          <Banner>Evidence Inbox — every observation awaiting triage. Accept advances to evidence. Reject dismisses. Merge deduplicates. Flag raises a contradiction.</Banner>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: D.faint }}>{pending.length} pending · {reviewed.length} reviewed · {inbox.length} total</span>
+            {reviewed.length > 0 && <button onClick={() => setInboxActions({})} style={{ fontSize: 10, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 8px', color: D.faint, cursor: 'pointer', fontFamily: D.ff }}>Clear actions</button>}
+          </div>
+          {inbox.length === 0 ? <Empty msg="No observations in inbox. Run a campaign or autonomous batch to generate observations." /> : (
+            <div>
+              {inbox.map((o) => {
+                const action = inboxActions[o.id];
+                const isOpen = open === o.id;
+                const linkedEv = evidence.filter((e) => e.fieldPath === o.fieldPath && e.assetId === o.assetId);
+                const evCount = linkedEv.length;
+                const freshDays = o.noticedAt ? Math.round((new Date(asOf) - new Date(o.noticedAt)) / 86_400_000) : null;
+                const authorityColor = { primary: D.good, official: D.good, standards: D.accent, trade: D.muted, community: D.warn, expert: D.accent };
+                return (
+                  <div key={o.id} style={{ marginBottom: 6, background: action ? `${ACTION_COLOR[action]}0e` : D.surface, border: `1px solid ${action ? ACTION_COLOR[action] + '44' : D.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                    {/* Header row */}
+                    <div onClick={() => setOpen(isOpen ? null : o.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer' }}>
+                      <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, minWidth: 80, flexShrink: 0 }}>{o.id?.slice(-14) || '—'}</span>
+                      <span style={{ fontSize: 10, color: D.text, flex: 1, fontWeight: 600 }}>{o.assetId} · {o.fieldPath || o.gapType}</span>
+                      {/* Provider + authority */}
+                      <span style={{ fontSize: 9, color: D.muted, fontFamily: D.mono }}>{o.source}</span>
+                      {/* Freshness */}
+                      {freshDays != null && <span style={{ fontSize: 9, color: freshDays > 45 ? D.warn : D.faint }}>{freshDays}d ago</span>}
+                      {/* Evidence count */}
+                      <span style={{ fontSize: 9, color: evCount > 0 ? D.good : D.faint }}>{evCount} ev</span>
+                      {/* Action chips */}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {['accept', 'reject', 'merge', 'flag'].map((act) => (
+                          <button key={act} onClick={(e) => { e.stopPropagation(); setAction(o.id, action === act ? null : act, o._fromServer); }}
+                            style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${action === act ? ACTION_COLOR[act] : D.border}`, background: action === act ? `${ACTION_COLOR[act]}22` : 'transparent', color: action === act ? ACTION_COLOR[act] : D.faint, cursor: 'pointer', fontFamily: 'inherit', fontWeight: action === act ? 700 : 400 }}>
+                            {ACTION_LABEL[act]}
+                          </button>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 10, color: D.faint }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    {/* Expanded detail */}
+                    {isOpen && (
+                      <div style={{ padding: '0 12px 12px', borderTop: `1px solid ${D.border}22` }}>
+                        <div style={{ fontSize: type.size.caption, color: D.text, lineHeight: 1.5, marginBottom: 8, marginTop: 8 }}>{o.statement}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 9, color: D.faint, marginBottom: 8 }}>
+                          <span>Kind: <strong style={{ color: D.muted }}>{o.kind}</strong></span>
+                          <span>Gap type: <strong style={{ color: D.muted }}>{o.gapType || '—'}</strong></span>
+                          <span>Source: <strong style={{ color: D.muted }}>{o.source}</strong></span>
+                          <span>Region: <strong style={{ color: D.muted }}>{o.region || 'n/a'}</strong></span>
+                          <span>Noticed: <strong style={{ color: D.muted }}>{(o.noticedAt || '').slice(0, 10)}</strong></span>
+                          <span>Status: <strong style={{ color: D.accent }}>{o.status}</strong></span>
+                        </div>
+                        {/* Confidence dimensions */}
+                        <div style={{ fontSize: 8, color: D.faint, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>Attributable to</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>provider: {o.source}</span>
+                          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>asset: {o.assetId || 'n/a'}</span>
+                          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>field: {o.fieldPath || 'n/a'}</span>
+                          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>claimed: {o.gapType || 'n/a'}</span>
+                          {freshDays != null && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, border: `1px solid ${freshDays > 45 ? D.warn + '66' : D.border}`, color: freshDays > 45 ? D.warn : D.muted }}>freshness: {freshDays}d</span>}
+                        </div>
+                        {/* Linked evidence */}
+                        {evCount > 0 && <div style={{ fontSize: 9, color: D.good, marginBottom: 6 }}>{evCount} evidence record(s) linked to same field</div>}
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <button onClick={() => { setCampAsset(o.assetId); setWs('Campaigns'); }} style={{ fontSize: 10, background: D.accent, border: 'none', borderRadius: 6, padding: '5px 12px', color: '#fff', cursor: 'pointer', fontFamily: D.ff, fontWeight: 600 }}>Create campaign →</button>
+                          <button onClick={() => setWs('Evidence')} style={{ fontSize: 10, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, padding: '5px 10px', color: D.muted, cursor: 'pointer', fontFamily: D.ff }}>Evidence →</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Research Ops') {
+      // Research Ops (KRE-1 Bundle J) — Operator Dashboard
+      // Shows: queue state summary, provider performance, batch run controls
+      const queue = buildManufacturingQueue(ALL_PLAYBOOKS, evidence, campaigns, asOf);
+      const stateGroups = {};
+      for (const item of (queue?.items || [])) {
+        const s = computeQueueItemState(item, { campaigns, evidence, kcrs });
+        if (!stateGroups[s]) stateGroups[s] = [];
+        stateGroups[s].push(item);
+      }
+      const allStates = Object.values(QUEUE_STATES);
+      const totalItems = (queue?.items || []).length;
+      const ready = (stateGroups[QUEUE_STATES.READY] || []).length;
+      const complete = (stateGroups[QUEUE_STATES.COMPLETE] || []).length;
+      const review = (stateGroups[QUEUE_STATES.REVIEW] || []).length;
+      const blocked = (stateGroups[QUEUE_STATES.BLOCKED] || []).length;
+      const failed = (stateGroups[QUEUE_STATES.FAILED] || []).length;
+      const pct = totalItems > 0 ? Math.round((complete / totalItems) * 100) : 0;
+
+      const runBatch = async () => {
+        if (opsRunning) return;
+        const readyItems = stateGroups[QUEUE_STATES.READY] || [];
+        if (readyItems.length === 0) return;
+        setOpsRunning(true);
+        const toRun = readyItems.slice(0, 5).map((item) => {
+          const campaign = campaigns.find((c) => c.assetId === item.playbookType && c.fieldPath === item.fieldPath);
+          if (!campaign) return null;
+          const bp = generateResearchBlueprint(item, { providerIntel: loadProviderIntel(), asOf });
+          return { item, campaign, blueprint: bp };
+        }).filter(Boolean);
+        try {
+          if (isResearchApiConfigured()) {
+            // Server-side execution: create + start each run
+            const results = await Promise.all(toRun.map(async ({ item, campaign, blueprint }) => {
+              const created = await createResearchRun({
+                campaignId:    campaign.id || campaign.assetId,
+                playbookType:  item.playbookType,
+                fieldPath:     item.fieldPath,
+                gapKind:       item.gapKind,
+                blueprint,
+                executionPlan: blueprint.executionPlan || {},
+                mode:          'simulate',
+              });
+              if (!created?.id) return { state: 'failed', fieldPath: item.fieldPath, error: 'create failed' };
+              const result = await startResearchRun(created.id);
+              return result || { state: 'failed', runId: created.id, fieldPath: item.fieldPath };
+            }));
+            const summary = {
+              total:         results.length,
+              complete:      results.filter((r) => r?.state === 'complete').length,
+              partial:       results.filter((r) => r?.state === 'partial').length,
+              failed:        results.filter((r) => r?.state === 'failed').length,
+              evidenceTotal: results.reduce((n, r) => n + (r?.evidenceCount || 0), 0),
+              kcrTotal:      results.filter((r) => r?.findingState === 'corroborated').length,
+            };
+            setOpsRunResult({ results, summary, mode: 'server' });
+          } else {
+            // Client-side simulate fallback
+            const cs  = toRun.map((x) => x.campaign);
+            const bps = toRun.map((x) => x.blueprint);
+            const result = batchRunAutonomous(cs, bps, { mode: 'simulate', asOf });
+            setOpsRunResult({ ...result, mode: 'local' });
+          }
+        } catch (err) {
+          setOpsRunResult({ error: err.message });
+        } finally {
+          setOpsRunning(false);
+        }
+      };
+
+      const perfReport = opsRunResult?.results ? buildPerformanceReport(opsRunResult.results) : [];
+
+      return (
+        <div>
+          <Banner>Research Ops — autonomous campaign orchestration. Run READY campaigns in simulate mode. Review results before publishing.</Banner>
+
+          {/* Queue Health KPIs */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Total', value: totalItems, color: D.text },
+              { label: 'Ready', value: ready, color: QUEUE_STATE_COLORS.READY },
+              { label: 'Review', value: review, color: QUEUE_STATE_COLORS.REVIEW },
+              { label: 'Complete', value: complete, color: QUEUE_STATE_COLORS.COMPLETE },
+              { label: 'Blocked', value: blocked, color: QUEUE_STATE_COLORS.BLOCKED },
+              { label: 'Failed', value: failed, color: QUEUE_STATE_COLORS.FAILED },
+              { label: 'Coverage', value: `${pct}%`, color: pct >= 80 ? D.good : pct >= 50 ? D.warn : D.muted },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '10px 16px', minWidth: 80, textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color, fontFamily: D.mono }}>{value}</div>
+                <div style={{ fontSize: 9, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 2 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* State Breakdown */}
+          <div style={{ marginBottom: 14 }}>
+            {allStates.map((s) => {
+              const items = stateGroups[s] || [];
+              if (items.length === 0) return null;
+              return (
+                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ width: 80, fontSize: 9, fontWeight: 700, color: QUEUE_STATE_COLORS[s], textTransform: 'uppercase', letterSpacing: '.06em' }}>{s}</span>
+                  <div style={{ flex: 1, height: 6, background: D.surface, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round((items.length / totalItems) * 100)}%`, height: '100%', background: QUEUE_STATE_COLORS[s], borderRadius: 3 }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: D.muted, minWidth: 24, textAlign: 'right' }}>{items.length}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Batch Run Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: D.text, fontWeight: 600, marginBottom: 2 }}>Run {Math.min(ready, 5)} READY campaigns</div>
+              <div style={{ fontSize: 10, color: D.faint }}>Simulate mode only · No knowledge edited · Produces KCR drafts for human review</div>
+            </div>
+            <button onClick={runBatch} disabled={opsRunning || ready === 0}
+              style={{ padding: '8px 18px', background: ready > 0 && !opsRunning ? D.accent : D.surface2, border: 'none', borderRadius: 7, color: ready > 0 && !opsRunning ? '#fff' : D.faint, fontFamily: D.ff, fontWeight: 600, fontSize: 12, cursor: ready > 0 && !opsRunning ? 'pointer' : 'not-allowed' }}>
+              {opsRunning ? 'Running…' : ready === 0 ? 'None ready' : 'Run batch →'}
+            </button>
+          </div>
+
+          {/* Last Batch Result */}
+          {opsRunResult && !opsRunResult.error && (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: D.text, marginBottom: 6 }}>Last batch result</div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 10, color: D.muted, flexWrap: 'wrap', marginBottom: 8 }}>
+                <span>Total: {opsRunResult.summary?.total}</span>
+                <span style={{ color: D.good }}>Complete: {opsRunResult.summary?.complete}</span>
+                <span>Partial: {opsRunResult.summary?.partial}</span>
+                <span style={{ color: D.warn }}>Failed: {opsRunResult.summary?.failed}</span>
+                <span>Evidence: {opsRunResult.summary?.evidenceTotal}</span>
+                <span style={{ color: D.good }}>KCR drafts: {opsRunResult.summary?.kcrTotal}</span>
+              </div>
+              {opsRunResult.results?.map((r, i) => (
+                <div key={r.campaignId || i} style={{ fontSize: 9, color: D.faint, fontFamily: D.mono, lineHeight: 1.6 }}>
+                  <span style={{ color: r.status === 'complete' ? D.good : r.status === 'partial' ? D.warn : '#e74c3c', fontWeight: 700 }}>{r.status?.toUpperCase()}</span>
+                  {' '}{r.campaignId?.slice(-12) || '?'} · {r.summary}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {opsRunResult?.error && <div style={{ padding: 12, background: '#e74c3c11', border: '1px solid #e74c3c44', borderRadius: 7, fontSize: 11, color: '#e74c3c' }}>Error: {opsRunResult.error}</div>}
+
+          {/* Provider Performance */}
+          {perfReport.length > 0 && (
+            <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${D.border}`, fontSize: 10, fontWeight: 700, color: D.text }}>Provider performance</div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr>{['ID', 'Kind', 'Asset', 'Field', 'Gap type', 'Source', 'Noticed'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Provider', 'Runs', 'Success %', 'Avg records', 'Avg latency'].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
                 <tbody>
-                  {inbox.map((o) => (
-                    <Fragment key={o.id}>
-                      <tr onClick={() => setOpen(open === o.id ? null : o.id)} style={{ cursor: 'pointer', background: open === o.id ? D.surface2 : 'transparent' }}>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 10, color: D.faint }}>{o.id}</td>
-                        <td style={td}>{chip(o.kind, D.accent)}</td>
-                        <td style={{ ...td, color: D.text, fontWeight: 600 }}>{o.assetId}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.muted }}>{o.fieldPath || '—'}</td>
-                        <td style={td}>{chip(o.gapType || '—', D.warn)}</td>
-                        <td style={{ ...td, color: D.muted }}>{o.source}</td>
-                        <td style={{ ...td, fontFamily: D.mono, fontSize: 11, color: D.faint }}>{(o.noticedAt || '').slice(0, 10)}</td>
-                      </tr>
-                      {open === o.id && (
-                        <tr><td colSpan={7} style={{ padding: '0 10px 12px' }}>
-                          <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 8, padding: 12 }}>
-                            <div style={{ fontSize: 11, color: D.faint, marginBottom: 6, fontFamily: D.mono }}>id: {o.id}</div>
-                            <div style={{ fontSize: type.size.caption, color: D.muted }}>{o.statement}</div>
-                            <div style={{ marginTop: 8, fontSize: type.size.caption, color: D.faint }}>source: {o.source} · gapType: {o.gapType || 'n/a'} · region: {o.region || 'n/a'}</div>
-                            {(o.linkedEvidence || []).length > 0 && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Linked evidence: {o.linkedEvidence.join(', ')}</div>}
-                            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                              <button onClick={(e) => { e.stopPropagation(); setCampAsset(o.assetId); setWs('Campaigns'); }} style={{ fontSize: 11, background: D.accent, border: 'none', borderRadius: 6, padding: '5px 12px', color: '#fff', cursor: 'pointer', fontFamily: D.ff, fontWeight: 600 }}>Create campaign →</button>
-                              <button onClick={(e) => { e.stopPropagation(); setWs('Evidence'); }} style={{ fontSize: 11, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 6, padding: '5px 10px', color: D.muted, cursor: 'pointer', fontFamily: D.ff }}>Evidence →</button>
-                            </div>
-                          </div>
-                        </td></tr>
-                      )}
-                    </Fragment>
+                  {perfReport.map((p) => (
+                    <tr key={p.providerId} style={{ borderBottom: `1px solid ${D.border}11` }}>
+                      <td style={{ ...td, fontFamily: D.mono, fontSize: 10 }}>{p.providerId}</td>
+                      <td style={{ ...td, textAlign: 'center' }}>{p.runs}</td>
+                      <td style={{ ...td, textAlign: 'center', color: p.successRate >= 80 ? D.good : p.successRate >= 50 ? D.warn : '#e74c3c' }}>{p.successRate}%</td>
+                      <td style={{ ...td, textAlign: 'center', color: D.muted }}>{p.avgRecords}</td>
+                      <td style={{ ...td, textAlign: 'center', color: D.muted, fontFamily: D.mono, fontSize: 10 }}>{p.avgLatencyMs}ms</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -2747,7 +3369,8 @@ function KcrStudioPanel() {
 
     if (ws === 'Campaigns') {
       const GAP_TYPES = ['pricing', 'coverage', 'freshness', 'safety', 'sourcing', 'contradiction'];
-      const selectedPb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
+      const basePb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
+      const selectedPb = basePb ? loadPlaybookWithUpdates(basePb) : null;
       const fieldPaths = getFieldPaths(selectedPb || ALL_PLAYBOOKS[0]);
       const campPreview = campField && selectedPb
         ? (() => { try { return { blast: blastRadius(selectedPb, campField), current: resolveField(selectedPb, campField) }; } catch { return null; } })()
@@ -2760,25 +3383,69 @@ function KcrStudioPanel() {
         else setCampProviders((p) => Array.from(new Set([...p, ...fam.providers])));
       };
       const toggleProvider = (id) => setCampProviders((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+      const CAMPAIGN_RUN_STAGES = ['Queued', 'Starting', 'Running providers', 'Collecting observations', 'Creating evidence', 'Deriving finding', 'Drafting KCR'];
+      const showToast = (type, msg, ms = 4500) => {
+        if (campToastTimerRef.current) clearTimeout(campToastTimerRef.current);
+        setCampToast({ type, msg });
+        campToastTimerRef.current = setTimeout(() => setCampToast(null), ms);
+      };
       const runCamp = async () => {
-        if (!campGoal.trim()) return;
-        setCampRunning(true); setCampRunResult(null);
+        if (!campGoal.trim() || campRunning) return;
+        setCampRunning(true);
+        setCampRunResult(null);
+        setCampServerRunId(null);
+        if (campPollRef.current) { clearInterval(campPollRef.current); campPollRef.current = null; }
+        const runInfo = { goal: campGoal.trim(), asset: campAsset, fieldPath: campField, providers: [...campProviders] };
+        setCampRunInfo(runInfo);
+        setCampRunStageIdx(0); // Queued
+        showToast('started', `Starting: ${campGoal.trim().slice(0, 60)}…`);
         try {
           const pb = ALL_PLAYBOOKS.find((p) => p.type === campAsset);
           const allProviders = buildProviders();
           const campaign = createCampaign({ goal: campGoal.trim(), assetId: campAsset, fieldPath: campField || null, gapTypes: campGapType, priority: campPriority, trigger: campTrigger, providers: campProviders, at: asOf });
-          const result = runCampaign(campaign, { providers: allProviders, fetched: {}, pb, asOf });
-          recordCampaign(result);
-          if (result.kcr) { await upsertKCR(result.kcr); refresh(); }
-          import('../lib/api/kas').then(({ upsertKasRecords, isKasApiConfigured: isConf }) => {
-            if (isConf()) upsertKasRecords('campaign', [result]).catch(() => {});
-          });
-          setCampRunResult(result);
-          setCampList(loadCampaigns());
-          setCampGoal(''); setCampField('');
+          if (isResearchApiConfigured()) {
+            // Server path — polling useEffect takes over after setCampServerRunId
+            setCampRunMode('server');
+            setCampRunStageIdx(1); // Starting
+            const created = await createResearchRun({
+              campaignId:    campaign.id,
+              playbookType:  campAsset,
+              fieldPath:     campField || null,
+              gapKind:       (campGapType && campGapType[0]) || 'pricing',
+              blueprint:     {},
+              executionPlan: {},
+              mode:          'simulate',
+              priority:      campPriority || 'MED',
+            });
+            if (!created?.id) throw new Error('Server did not return a run ID — check server connection');
+            setCampRunStageIdx(2); // Running providers (poll takes it from here)
+            await startResearchRun(created.id);
+            setCampServerRunId(created.id); // triggers useEffect poll
+            // runCamp returns here; polling completes the flow
+          } else {
+            // Local fallback
+            setCampRunMode('local');
+            setCampRunStageIdx(1);
+            const result = runCampaign(campaign, { providers: allProviders, fetched: {}, pb, asOf });
+            setCampRunStageIdx(3);
+            recordCampaign(result);
+            setCampRunStageIdx(5);
+            if (result.kcr) { setCampRunStageIdx(6); await upsertKCR(result.kcr); refresh(); }
+            import('../lib/api/kas').then(({ upsertKasRecords, isKasApiConfigured: isConf }) => {
+              if (isConf()) upsertKasRecords('campaign', [result]).catch(() => {});
+            });
+            setCampRunStageIdx(7);
+            setCampRunResult(result);
+            setCampList(loadCampaigns());
+            setCampGoal(''); setCampField('');
+            const toastType = result.kcr ? 'complete' : (result.result?.evidence > 0 ? 'partial' : 'failed');
+            showToast(toastType, result.kcr ? 'Campaign complete — KCR drafted' : result.result?.evidence > 0 ? 'Partial — evidence collected, no KCR' : 'No output — see why below');
+            setCampRunning(false);
+          }
         } catch (e) {
+          setCampRunStageIdx(-1);
           setCampRunResult({ error: e.message });
-        } finally {
+          showToast('failed', `Failed: ${e.message}`, 6000);
           setCampRunning(false);
         }
       };
@@ -2791,7 +3458,16 @@ function KcrStudioPanel() {
       );
       const templateSuggestions = suggestTemplates(campField).slice(0, 6);
       return (
-        <div>
+        <div style={{ position: 'relative' }}>
+          {/* ── Campaign Run Toast ────────────────────────────────── */}
+          {campToast && (
+            <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 12, fontFamily: D.ff, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', maxWidth: 340,
+              background: campToast.type === 'complete' ? D.good + 'e6' : campToast.type === 'partial' ? D.warn + 'e6' : campToast.type === 'failed' ? D.bad + 'e6' : D.accent + 'e6',
+              color: campToast.type === 'started' ? '#000' : '#fff',
+            }}>
+              {campToast.msg}
+            </div>
+          )}
           <Banner>Research campaigns — each run executes: providers → observations → evidence → finding → KCR. Internal provider runs in-browser; external providers (⚡) require backend acquisition before evidence populates.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
             <PBKpi label="Campaigns" value={campList.length} tone={campList.length ? D.accent : D.faint} />
@@ -2915,9 +3591,61 @@ function KcrStudioPanel() {
           </div>
 
           {/* ── Run ───────────────────────────────────────────── */}
-          <button onClick={runCamp} disabled={campRunning || !campGoal.trim()} style={{ padding: '8px 18px', borderRadius: 7, background: campGoal.trim() ? D.accent : D.faint, color: '#000', fontWeight: 700, fontSize: type.size.caption, border: 'none', cursor: campGoal.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: campRunning ? 0.6 : 1, marginBottom: 14 }}>
+          <button onClick={runCamp} disabled={campRunning || !campGoal.trim()} style={{ padding: '8px 18px', borderRadius: 7, background: (campGoal.trim() && !campRunning) ? D.accent : D.faint, color: '#000', fontWeight: 700, fontSize: type.size.caption, border: 'none', cursor: (campGoal.trim() && !campRunning) ? 'pointer' : 'default', fontFamily: 'inherit', marginBottom: 14 }}>
             {campRunning ? 'Running…' : 'Create + Run Campaign'}
           </button>
+
+          {/* ── Progress Panel — visible while running or immediately after ── */}
+          {campRunStageIdx >= -1 && campRunStageIdx < 8 && campRunInfo && (
+            <div style={{ background: D.bg, border: `1px solid ${campRunStageIdx === -1 ? D.bad : campRunStageIdx === 7 ? D.good : D.accent}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+              {/* Local-mode notice */}
+              {campRunMode === 'local' && (
+                <div style={{ fontSize: 10, color: D.warn, marginBottom: 8, fontWeight: 600 }}>
+                  Running locally — server execution unavailable (REACT_APP_API_BASE_URL not set)
+                </div>
+              )}
+              {/* Campaign identity */}
+              <div style={{ fontSize: 11, color: D.text, fontWeight: 700, marginBottom: 6 }}>{campRunInfo.goal}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, fontSize: 9, color: D.muted }}>
+                <span>Asset: <span style={{ color: D.accent }}>{campRunInfo.asset}</span></span>
+                {campRunInfo.fieldPath && <span>Field: <span style={{ fontFamily: D.mono, color: D.text }}>{campRunInfo.fieldPath}</span></span>}
+                {campRunInfo.providers.length > 0 && <span>Providers: {campRunInfo.providers.join(', ')}</span>}
+              </div>
+              {/* Stage progress */}
+              <div style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                {CAMPAIGN_RUN_STAGES.map((stage, i) => {
+                  const isError = campRunStageIdx === -1;
+                  const isDone = campRunStageIdx > i;
+                  const isActive = campRunStageIdx === i;
+                  const dotColor = isError ? D.bad : isDone ? D.good : isActive ? D.accent : D.border;
+                  const labelColor = isError && i === 0 ? D.bad : isDone ? D.good : isActive ? D.text : D.faint;
+                  return (
+                    <React.Fragment key={stage}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: 9, color: labelColor, fontWeight: isActive ? 700 : 400 }}>{stage}</span>
+                      </div>
+                      {i < CAMPAIGN_RUN_STAGES.length - 1 && (
+                        <span style={{ fontSize: 9, color: D.border, margin: '0 4px' }}>›</span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+              {/* Status line */}
+              {campRunStageIdx === -1 && <div style={{ fontSize: 10, color: D.bad, marginTop: 4 }}>Error — see result below</div>}
+              {campRunStageIdx === 7 && <div style={{ fontSize: 10, color: D.good, marginTop: 4 }}>Complete — see result below</div>}
+              {campRunStageIdx >= 0 && campRunStageIdx < 7 && (
+                <div style={{ fontSize: 10, color: D.muted, marginTop: 4, fontStyle: 'italic' }}>
+                  {campRunMode === 'server' ? 'Polling server every 2.5s…' : 'Running in-browser…'}
+                </div>
+              )}
+              {/* Server run ID link */}
+              {campServerRunId && (
+                <div style={{ fontSize: 9, color: D.faint, marginTop: 6, fontFamily: D.mono }}>Run: {campServerRunId}</div>
+              )}
+            </div>
+          )}
 
           {/* ── Result ────────────────────────────────────────── */}
           {campRunResult && !campRunResult.error && (
@@ -2942,6 +3670,16 @@ function KcrStudioPanel() {
                 <div style={{ fontSize: 10, color: D.good, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span>KCR: <span style={{ fontFamily: D.mono }}>{campRunResult.kcr.id}</span> — in Review queue</span>
                   <button onClick={() => setWs('Review')} style={{ fontSize: 10, background: D.good + '22', border: `1px solid ${D.good}`, borderRadius: 5, padding: '2px 8px', color: D.good, cursor: 'pointer', fontFamily: D.ff }}>Go to Review →</button>
+                </div>
+              )}
+              {/* Why-no-output: explain what blocked the pipeline when nothing was produced */}
+              {!campRunResult.kcr && campRunResult.result != null && (
+                <div style={{ marginTop: 8, fontSize: 10, color: D.muted, borderTop: `1px solid ${D.border}`, paddingTop: 8 }}>
+                  {!campRunResult.result?.finding && campRunResult.result?.evidence === 0 && <span style={{ color: D.warn }}>No provider records fetched — external providers require backend data injection below.</span>}
+                  {campRunResult.result?.finding === 'insufficient' && <span>Finding: insufficient corroboration across providers.</span>}
+                  {campRunResult.result?.finding === 'contradiction' && <span style={{ color: D.warn }}>Finding: contradiction detected — providers conflict; resolve before a KCR can draft.</span>}
+                  {campRunResult.result?.evidence > 0 && !campRunResult.result?.finding && <span>Evidence collected but no finding derived — check provider quality or add more sources.</span>}
+                  {campRunResult.error && <span style={{ color: D.bad }}>Backend error: {campRunResult.error}</span>}
                 </div>
               )}
               {campRunResult.result?.evidence === 0 && (() => {
@@ -3062,6 +3800,925 @@ function KcrStudioPanel() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (ws === 'Campaign Research') {
+      // Streamlined, frictionless end-to-end campaign workflow
+      const pbName = campAsset || (ALL_PLAYBOOKS[0]?.type || 'Crab Feast');
+      const basePb = ALL_PLAYBOOKS.find((p) => p.type === pbName);
+      const selectedPb = basePb ? loadPlaybookWithUpdates(pbName) : null;
+
+      // Step 1: Auto-detect gaps from playbook
+      // Use schema registry for gap detection (single source of truth)
+      const schemaGaps = detectGapsInPlaybook(selectedPb);
+      const gaps = schemaGaps.map((g) => ({
+        id: `decision-${g.id}`,
+        type: g.type,
+        label: g.label,
+        fieldPath: g.fieldPath,
+        priority: g.decision?.costFactorProvenance?.confidence === 'low' ? 'high' : 'med',
+        note: g.decision?.costFactorProvenance?.note,
+      }));
+      const gap = campSelectedGap ? gaps.find((g) => g.id === campSelectedGap) : null;
+      const suggestedTemplates = gap ? getTemplatesForIntent(getResearchIntent(gap), CAMPAIGN_TEMPLATES) : [];
+
+      const handleLaunch = async () => {
+        if (!selectedPb || !gap || !campTemplate || campProviders.length === 0) return;
+        setCampRunning(true);
+        try {
+          // Expand provider family IDs to individual provider IDs
+          const expandedProviders = [];
+          PROVIDER_FAMILIES.forEach((fam) => {
+            if (campProviders.includes(fam.id)) {
+              expandedProviders.push(...fam.providers);
+            }
+          });
+
+          const campaign = createCampaign({
+            goal: `${CAMPAIGN_TEMPLATES.find(t => t.id === campTemplate)?.label} for ${campAsset}`,
+            assetId: campAsset,
+            fieldPath: gap.fieldPath,
+            gapType: gap.type,
+            priority: CAMPAIGN_TEMPLATES.find(t => t.id === campTemplate)?.defaultPriority || 'med',
+            trigger: CAMPAIGN_TEMPLATES.find(t => t.id === campTemplate)?.defaultTrigger || 'research',
+            providers: expandedProviders,
+            at: asOf,
+          });
+
+          const allProviders = buildProviders();
+          // Fetch actual data from selected providers
+          const providedData = await fetchProviderData(expandedProviders, { campaign, at: asOf });
+          const fetched = Object.fromEntries(
+            Object.entries(providedData).map(([providerId, data]) => [
+              providerId,
+              (data.records || []).map(r => ({ ...r, id: `${providerId}-${Math.random().toString(36).slice(2, 9)}` }))
+            ])
+          );
+
+          const result = runCampaign(campaign, { providers: allProviders, fetched, pb: selectedPb, asOf });
+          recordCampaign(result);
+          setCampCampaignEvidence(result.evidence || []);
+          setCampReviewStep(true);
+          setCampRunResult(result);
+        } catch (e) {
+          setCampRunResult({ error: e.message });
+        } finally {
+          setCampRunning(false);
+        }
+      };
+
+      const handleMerge = () => {
+        if (!campRunResult || !gap) return;
+        // Auto-merge: mark as researched and update provenance
+        setCampRunResult({
+          ...campRunResult,
+          merged: true,
+          mergedAt: asOf,
+          message: `✓ Evidence merged into playbook. ${gap.label} cost factors now marked as researched.`
+        });
+      };
+
+      const handleBatchGapClosure = async () => {
+        if (!selectedPb || campSelectedGaps.length === 0 || campProviders.length === 0) return;
+        setCampBatchRunning(true);
+        setCampBatchResults([]);
+        setCampFormattedResults(null);
+
+        // Expand provider family IDs to individual provider IDs
+        const expandedProviders = [];
+        const usedFamilies = [];
+        PROVIDER_FAMILIES.forEach((fam) => {
+          if (campProviders.includes(fam.id)) {
+            expandedProviders.push(...fam.providers);
+            usedFamilies.push(fam.label);
+          }
+        });
+
+        // Also include any individual provider IDs that were directly selected
+        campProviders.forEach((prov) => {
+          if (!PROVIDER_FAMILIES.find(f => f.id === prov) && !expandedProviders.includes(prov)) {
+            expandedProviders.push(prov);
+          }
+        });
+
+        const allProviders = buildProviders();
+        const results = [];
+        const selectedGapsData = gaps.filter(g => campSelectedGaps.includes(g.id));
+
+        for (let i = 0; i < selectedGapsData.length; i++) {
+          const currentGap = selectedGapsData[i];
+          setCampBatchProgress({ current: i + 1, total: selectedGapsData.length });
+
+          try {
+            const templates = getTemplatesForIntent(getResearchIntent(currentGap), CAMPAIGN_TEMPLATES);
+            const template = templates[0];
+            if (!template) {
+              results.push({ gap: currentGap, status: 'error', message: 'No template found for research intent' });
+              continue;
+            }
+
+            const campaign = createCampaign({
+              goal: `${template.label} for ${campAsset}`,
+              assetId: campAsset,
+              fieldPath: currentGap.fieldPath,
+              gapType: currentGap.type,
+              priority: template.defaultPriority || 'med',
+              trigger: template.defaultTrigger || 'research',
+              providers: expandedProviders,
+              at: asOf,
+            });
+
+            const providedData = await fetchProviderData(expandedProviders, { campaign, at: asOf });
+            const fetched = Object.fromEntries(
+              Object.entries(providedData).map(([providerId, data]) => [
+                providerId,
+                (data.records || []).map(r => ({ ...r, id: `${providerId}-${Math.random().toString(36).slice(2, 9)}` }))
+              ])
+            );
+
+            const result = runCampaign(campaign, { providers: allProviders, fetched, pb: selectedPb, asOf });
+            recordCampaign(result);
+
+            const evidenceCount = result.evidence?.length || 0;
+            const conflictCount = result.result?.conflicts || 0;
+            let reason = '';
+
+            if (evidenceCount === 0) {
+              reason = `No evidence from ${usedFamilies.join(', ') || 'selected providers'}`;
+            } else if (conflictCount > 0) {
+              reason = `Low confidence (${evidenceCount} items, ${conflictCount} conflict${conflictCount > 1 ? 's' : ''})`;
+            } else if (evidenceCount < 2) {
+              reason = `Insufficient sources (only ${evidenceCount} evidence item${evidenceCount === 1 ? '' : 's'})`;
+            } else {
+              reason = `Research complete: ${evidenceCount} evidence items from ${usedFamilies.join(', ')}`;
+            }
+
+            results.push({
+              gap: currentGap,
+              status: 'success',
+              evidence: evidenceCount,
+              conflicts: conflictCount,
+              finding: result.result?.finding || 'insufficient',
+              reason,
+              providersUsed: usedFamilies,
+              evidence_list: result.evidence || [],
+              result
+            });
+          } catch (e) {
+            results.push({ gap: currentGap, status: 'error', message: e.message });
+          }
+        }
+
+        // Update playbooks with researched data
+        let updatedPlaybook = JSON.parse(JSON.stringify(selectedPb));
+        let playbookChanged = false;
+
+        for (const result of results) {
+          if (result.status === 'success' && result.result?.evidence?.length > 0) {
+            const gapData = result.gap;
+            const [resourceType, resourceId] = gapData.fieldPath.split('[');
+            const cleanId = resourceId?.replace(']', '');
+
+            if (resourceType === 'decisions' && updatedPlaybook.decisions) {
+              const decisionIdx = updatedPlaybook.decisions.findIndex(d => d.id === cleanId);
+              if (decisionIdx >= 0 && updatedPlaybook.decisions[decisionIdx].costFactorProvenance) {
+                updatedPlaybook.decisions[decisionIdx].costFactorProvenance = {
+                  ...updatedPlaybook.decisions[decisionIdx].costFactorProvenance,
+                  verificationStatus: 'researched',
+                  tier: 'researched',
+                  sources: result.providersUsed || [],
+                  researchedAt: asOf,
+                };
+                playbookChanged = true;
+              }
+            } else if (resourceType === 'purchases' && updatedPlaybook.purchases) {
+              const purchaseIdx = updatedPlaybook.purchases.findIndex(p => p.id === cleanId);
+              if (purchaseIdx >= 0) {
+                if (gapData.fieldPath.includes('.costFactors') && updatedPlaybook.purchases[purchaseIdx].costFactorProvenance) {
+                  updatedPlaybook.purchases[purchaseIdx].costFactorProvenance = {
+                    ...updatedPlaybook.purchases[purchaseIdx].costFactorProvenance,
+                    verificationStatus: 'researched',
+                    tier: 'researched',
+                    sources: result.providersUsed || [],
+                    researchedAt: asOf,
+                  };
+                  playbookChanged = true;
+                } else if (gapData.fieldPath.includes('.unitCostRange') && updatedPlaybook.purchases[purchaseIdx].costProvenance) {
+                  updatedPlaybook.purchases[purchaseIdx].costProvenance = {
+                    ...updatedPlaybook.purchases[purchaseIdx].costProvenance,
+                    verificationStatus: 'researched',
+                    tier: 'researched',
+                    sources: result.providersUsed || [],
+                    researchedAt: asOf,
+                  };
+                  playbookChanged = true;
+                }
+              }
+            }
+          }
+        }
+
+        // Save updated playbook
+        if (playbookChanged) {
+          try {
+            const KEY = `ngw-playbook-${updatedPlaybook.type || updatedPlaybook.id}`;
+            localStorage.setItem(KEY, JSON.stringify(updatedPlaybook));
+            refreshPlaybooks(); // Update Mission Control and other sections
+          } catch (e) {
+            console.error('Failed to save playbook updates:', e);
+          }
+        }
+
+        setCampBatchResults(results);
+        setCampFormattedResults(formatBatchResults(results));
+        setCampBatchRunning(false);
+        setCampReviewStep(true);
+      };
+
+      const formatBatchResults = (results) => {
+        const summary = {
+          total: results.length,
+          succeeded: results.filter(r => r.status === 'success').length,
+          failed: results.filter(r => r.status === 'error').length,
+          totalEvidence: results.filter(r => r.status === 'success').reduce((sum, r) => sum + r.evidence, 0),
+          totalConflicts: results.filter(r => r.status === 'success').reduce((sum, r) => sum + r.conflicts, 0),
+        };
+
+        return {
+          summary,
+          details: results.map(r => {
+            // Generate research question
+            const researchQuestion = generateResearchQuestion(r.gap, selectedPb);
+
+            // Score evidence relevance to the research question
+            const allEvidence = r.evidence_list || [];
+            const categorized = categorizeEvidenceRelevance(allEvidence, researchQuestion);
+            const directEvidence = categorized.direct.length;
+
+            // Analyze finding in detail
+            let findingAnalysis = null;
+            if (r.status === 'success' && r.result) {
+              findingAnalysis = explainFinding(
+                analyzeFinding(r.result, allEvidence, r.result),
+                r.gap
+              );
+            }
+
+            return {
+              gap: r.gap.label,
+              status: r.status,
+              evidence: r.evidence || 0,
+              conflicts: r.conflicts || 0,
+              finding: r.finding,
+              message: r.message,
+              reason: r.reason,
+              providersUsed: r.providersUsed,
+              evidence_list: allEvidence,
+              findingAnalysis,
+              // NEW: Research question context
+              researchQuestion,
+              relevanceCategorized: {
+                direct: directEvidence,
+                related: categorized.related.length,
+                tangential: categorized.tangential.length,
+                unrelated: categorized.unrelated.length,
+              },
+            };
+          })
+        };
+      };
+
+      return (
+        <div>
+          <Banner>Campaign Research — streamlined end-to-end workflow: select playbook → detect gaps → launch campaign → review evidence → merge findings</Banner>
+
+          {!campReviewStep ? (
+            <div>
+              {/* STEP 1: Select Playbook */}
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Step 1: Select Playbook</div>
+                <select value={campAsset} onChange={(e) => { setCampAsset(e.target.value); setCampSelectedGap(null); setCampTemplate(''); }} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${D.border}`, background: D.bg, color: D.text, fontSize: type.size.caption, fontFamily: 'inherit', marginBottom: 10 }}>
+                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                </select>
+                {selectedPb && gaps.length > 0 && <div style={{ fontSize: 11, color: D.good }}>✓ {gaps.length} gaps detected</div>}
+              </div>
+
+              {/* STEP 2: Select Gap */}
+              {gaps.length > 0 && (
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '14px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Step 2: Select Gap ({gaps.length} found)</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setCampSelectedGaps(gaps.map(g => g.id))} style={{ fontSize: 9, padding: '4px 8px', borderRadius: 4, border: `1px solid ${D.accent}`, background: 'transparent', color: D.accent, cursor: 'pointer' }}>Select All</button>
+                      <button onClick={() => setCampSelectedGaps([])} style={{ fontSize: 9, padding: '4px 8px', borderRadius: 4, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer' }}>Clear All</button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {gaps.map((g) => (
+                      <label key={g.id} style={{ display: 'flex', alignItems: 'flex-start', padding: '10px 12px', borderRadius: 6, border: `1px solid ${campSelectedGaps.includes(g.id) ? D.accent : D.border}`, background: campSelectedGaps.includes(g.id) ? `${D.accent}22` : 'transparent', cursor: 'pointer', fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                        <input type="checkbox" checked={campSelectedGaps.includes(g.id)} onChange={(e) => { if (e.target.checked) setCampSelectedGaps([...campSelectedGaps, g.id]); else setCampSelectedGaps(campSelectedGaps.filter((x) => x !== g.id)); }} style={{ marginRight: 10, marginTop: 2, cursor: 'pointer' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, marginBottom: 2 }}>{g.label}</div>
+                          <div style={{ fontSize: '11px', color: D.muted }}>{g.note?.slice(0, 60)}...</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {campSelectedGaps.length === 1 && !campBatchProviderSelection && (
+                    <button onClick={() => setCampSelectedGap(campSelectedGaps[0])} disabled={campBatchRunning} style={{ width: '100%', padding: '10px', marginTop: 12, borderRadius: 6, border: 'none', background: !campBatchRunning ? D.accent : D.border, color: !campBatchRunning ? '#fff' : D.muted, cursor: !campBatchRunning ? 'pointer' : 'default', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                      {campBatchRunning ? '⏳ Processing...' : `→ Continue to template selection`}
+                    </button>
+                  )}
+
+                  {campSelectedGaps.length > 1 && !campBatchProviderSelection && (
+                    <button onClick={() => setCampBatchProviderSelection(true)} disabled={campBatchRunning} style={{ width: '100%', padding: '10px', marginTop: 12, borderRadius: 6, border: 'none', background: !campBatchRunning ? D.good : D.border, color: !campBatchRunning ? '#fff' : D.muted, cursor: !campBatchRunning ? 'pointer' : 'default', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                      {campBatchRunning ? `⏳ Closing gaps (${campBatchProgress.current}/${campBatchProgress.total})...` : `🎯 Close All ${campSelectedGaps.length} Gaps`}
+                    </button>
+                  )}
+
+                  {/* Provider Selection for Batch */}
+                  {campSelectedGaps.length > 1 && campBatchProviderSelection && (
+                    <div style={{ background: `${D.accent}08`, border: `1px solid ${D.accent}`, borderRadius: 6, padding: 12, marginTop: 12 }}>
+                      <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, marginBottom: 8 }}>Select Providers for Batch Closure</div>
+                      <div style={{ fontSize: 10, color: D.muted, marginBottom: 10 }}>
+                        Will query {campProviders.length} provider families across {campSelectedGaps.length} gaps
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12, maxHeight: '150px', overflow: 'auto' }}>
+                        {PROVIDER_FAMILIES.map((fam) => (
+                          <label key={fam.id} style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 10 }}>
+                            <input type="checkbox" checked={campProviders.includes(fam.id)} onChange={(e) => { if (e.target.checked) setCampProviders([...campProviders, fam.id]); else setCampProviders(campProviders.filter((p) => p !== fam.id)); }} style={{ marginRight: 8, cursor: 'pointer' }} />
+                            <span style={{ flex: 1, color: D.text }}>{fam.label}</span>
+                            <span style={{ color: D.faint, fontSize: 9 }}>{fam.note}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setCampBatchProviderSelection(false)} style={{ flex: 1, padding: '8px', borderRadius: 4, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>
+                          Back
+                        </button>
+                        <button onClick={handleBatchGapClosure} disabled={campBatchRunning || campProviders.length === 0} style={{ flex: 1, padding: '8px', borderRadius: 4, border: 'none', background: campProviders.length > 0 && !campBatchRunning ? D.good : D.border, color: campProviders.length > 0 && !campBatchRunning ? '#fff' : D.muted, cursor: campProviders.length > 0 && !campBatchRunning ? 'pointer' : 'default', fontSize: 10, fontWeight: 600 }}>
+                          {campBatchRunning ? '⏳ Running...' : `Launch with ${campProviders.length} providers`}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 3: Choose Template */}
+              {gap && suggestedTemplates.length > 0 && (
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '14px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Step 3: Choose Campaign Template</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {suggestedTemplates.map((t) => (
+                      <button key={t.id} onClick={() => setCampTemplate(t.id)} style={{ padding: '10px 12px', borderRadius: 6, border: `1px solid ${campTemplate === t.id ? D.accent : D.border}`, background: campTemplate === t.id ? `${D.accent}22` : 'transparent', color: campTemplate === t.id ? D.accent : D.text, cursor: 'pointer', textAlign: 'left', fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 2 }}>{t.label}</div>
+                        <div style={{ fontSize: '11px', color: D.muted }}>{t.description?.slice(0, 60)}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Select Providers */}
+              {campTemplate && (
+                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '14px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Step 4: Select Providers</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setCampProviders(PROVIDER_FAMILIES.map(f => f.id))} style={{ fontSize: 9, padding: '4px 8px', borderRadius: 4, border: `1px solid ${D.accent}`, background: 'transparent', color: D.accent, cursor: 'pointer' }}>Select All</button>
+                      <button onClick={() => setCampProviders([])} style={{ fontSize: 9, padding: '4px 8px', borderRadius: 4, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer' }}>Clear All</button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {PROVIDER_FAMILIES.map((fam) => (
+                      <label key={fam.id} style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', borderRadius: 6, border: `1px solid ${campProviders.includes(fam.id) ? D.accent : 'transparent'}`, background: campProviders.includes(fam.id) ? `${D.accent}08` : 'transparent', cursor: 'pointer', fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                        <input type="checkbox" checked={campProviders.includes(fam.id)} onChange={(e) => { if (e.target.checked) setCampProviders([...campProviders, fam.id]); else setCampProviders(campProviders.filter((p) => p !== fam.id)); }} style={{ marginRight: 10, cursor: 'pointer' }} />
+                        <span style={{ color: D.text, fontWeight: 500, flex: 1 }}>{fam.label}</span>
+                        <span style={{ color: D.faint, fontSize: '11px' }}>{fam.note}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button onClick={handleLaunch} disabled={campRunning || campProviders.length === 0} style={{ width: '100%', padding: '10px', marginTop: 12, borderRadius: 6, border: 'none', background: campProviders.length > 0 && !campRunning ? D.accent : D.border, color: campProviders.length > 0 && !campRunning ? '#fff' : D.muted, cursor: campProviders.length > 0 && !campRunning ? 'pointer' : 'default', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                    {campRunning ? '⏳ Launching...' : '🚀 Launch Campaign'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* STEP 5: Results */}
+              <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 8, padding: '14px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Step 5: Results</div>
+                  {campFormattedResults && (
+                    <button onClick={() => setCampShowJsonResults(!campShowJsonResults)} style={{ fontSize: 9, padding: '4px 8px', borderRadius: 4, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer' }}>
+                      {campShowJsonResults ? 'Hide JSON' : 'Show JSON'}
+                    </button>
+                  )}
+                </div>
+
+                {campBatchRunning && (
+                  <div style={{ background: `${D.accent}22`, border: `1px solid ${D.accent}`, borderRadius: 6, padding: 12, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: D.accent }}>⏳ Processing</div>
+                      <div style={{ fontSize: 12, color: D.accent }}>Gap {campBatchProgress.current} of {campBatchProgress.total}</div>
+                    </div>
+                    <div style={{ background: D.bg, height: 6, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ background: D.accent, height: '100%', width: `${(campBatchProgress.current / campBatchProgress.total) * 100}%`, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                )}
+
+                {campFormattedResults && !campShowJsonResults && (
+                  <div>
+                    {/* Batch Results Summary */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+                      <div style={{ background: D.bg, padding: 10, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: D.accent }}>{campFormattedResults.summary.total}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Total Gaps</div>
+                      </div>
+                      <div style={{ background: D.bg, padding: 10, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: D.good }}>{campFormattedResults.summary.succeeded}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Succeeded</div>
+                      </div>
+                      <div style={{ background: D.bg, padding: 10, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: D.accent }}>{campFormattedResults.summary.totalEvidence}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Evidence Collected</div>
+                      </div>
+                      <div style={{ background: D.bg, padding: 10, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: campFormattedResults.summary.totalConflicts > 0 ? D.warn : D.good }}>{campFormattedResults.summary.totalConflicts}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Conflicts</div>
+                      </div>
+                    </div>
+
+                    {/* Results Legend */}
+                    <div style={{ background: `${D.accent}08`, border: `1px solid ${D.accent}22`, borderRadius: 6, padding: 10, marginBottom: 12, fontSize: 9, color: D.muted }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6, color: D.text }}>Understanding Results:</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 8 }}>
+                        <div><strong>Success:</strong> Campaign ran and collected evidence (doesn't mean sufficient to close gap)</div>
+                        <div><strong>Finding:</strong> "proposed" = enough evidence, "insufficient" = not enough evidence</div>
+                        <div><strong>Conflicts:</strong> Different sources reported different values for same field</div>
+                        <div><strong>Evidence:</strong> Number of evidence items collected (sum across all providers)</div>
+                      </div>
+                    </div>
+
+                    {/* Detailed Results */}
+                    <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, marginBottom: 12 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 11 }}>📊 Campaign Results</div>
+                      {campFormattedResults.details.map((detail, i) => {
+                        const isExpanded = campExpandedEvidenceDetails.has(i);
+                        const toggleExpanded = () => {
+                          const newSet = new Set(campExpandedEvidenceDetails);
+                          if (newSet.has(i)) newSet.delete(i);
+                          else newSet.add(i);
+                          setCampExpandedEvidenceDetails(newSet);
+                        };
+                        return (
+                          <div key={i} style={{ background: D.surface, padding: 8, borderRadius: 4, marginBottom: 6, borderLeft: `3px solid ${detail.status === 'success' ? D.good : D.warn}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <div style={{ fontWeight: 600, fontSize: 11, color: D.text }}>{detail.gap}</div>
+                              <span style={{ fontSize: 9, color: detail.status === 'success' ? D.good : D.warn, fontWeight: 600 }}>
+                                {detail.status === 'success' ? '✓ Success' : '✕ Failed'}
+                              </span>
+                            </div>
+                            {detail.status === 'success' ? (
+                              <div>
+                                <div style={{ display: 'flex', gap: 12, fontSize: 10, color: D.muted, marginBottom: 8 }}>
+                                  <span>Evidence: <strong style={{ color: D.text }}>{detail.evidence}</strong></span>
+                                  <span>Conflicts: <strong style={{ color: detail.conflicts > 0 ? D.warn : D.text }}>{detail.conflicts}</strong></span>
+                                </div>
+
+                                {/* Research Question Context */}
+                                {detail.researchQuestion && (
+                                  <div style={{ background: `${D.accent}08`, border: `1px solid ${D.accent}22`, borderRadius: 3, padding: 6, marginBottom: 8, fontSize: 8 }}>
+                                    <div style={{ fontWeight: 600, color: D.accent, marginBottom: 3 }}>🔍 Research Question</div>
+                                    <div style={{ color: D.text, marginBottom: 3, fontStyle: 'italic' }}>"{detail.researchQuestion.question}"</div>
+                                    <div style={{ color: D.muted, marginBottom: 3 }}>Looking for: {detail.researchQuestion.details.join(' • ')}</div>
+                                    <div style={{ color: D.muted, fontSize: 7 }}>
+                                      Evidence breakdown:
+                                      <span style={{ marginLeft: 4, fontWeight: 600, color: D.accent }}>
+                                        {detail.relevanceCategorized.direct} direct,
+                                      </span>
+                                      <span style={{ marginLeft: 4, fontWeight: 600, color: D.accent }}>
+                                        {detail.relevanceCategorized.related} related,
+                                      </span>
+                                      <span style={{ marginLeft: 4, color: D.muted }}>
+                                        {detail.relevanceCategorized.tangential} tangential,
+                                        {detail.relevanceCategorized.unrelated} unrelated
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Detailed Finding Explanation */}
+                                {(() => {
+                                  const findingAnalysis = detail.findingAnalysis;
+                                  if (!findingAnalysis) return null;
+
+                                  const findingColors = {
+                                    sufficient: D.good,
+                                    proposed: D.accent,
+                                    insufficient: D.warn,
+                                    conflicted: D.warn,
+                                    inconclusive: D.warn,
+                                  };
+
+                                  return (
+                                    <div style={{ background: `${findingColors[findingAnalysis.status]}22`, border: `1px solid ${findingColors[findingAnalysis.status]}44`, borderRadius: 3, padding: 6, marginBottom: 8 }}>
+                                      <div style={{ fontWeight: 600, fontSize: 10, color: findingColors[findingAnalysis.status], marginBottom: 4 }}>
+                                        {findingAnalysis.icon} {findingAnalysis.title} — {findingAnalysis.summary}
+                                      </div>
+
+                                      {/* Why this status */}
+                                      <div style={{ fontSize: 8, color: D.text, marginBottom: 4 }}>
+                                        <div style={{ fontWeight: 600, marginBottom: 2 }}>Why:</div>
+                                        {findingAnalysis.details.why.map((reason, idx) => (
+                                          <div key={idx} style={{ marginLeft: 8, marginBottom: 1 }}>{reason}</div>
+                                        ))}
+                                      </div>
+
+                                      {/* What's missing */}
+                                      {findingAnalysis.details.missing && (
+                                        <div style={{ fontSize: 8, color: D.text, marginBottom: 4 }}>
+                                          <div style={{ fontWeight: 600, marginBottom: 2 }}>Still needed:</div>
+                                          {findingAnalysis.details.missing.map((item, idx) => (
+                                            <div key={idx} style={{ marginLeft: 8, marginBottom: 1 }}>• {item}</div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Next steps */}
+                                      {findingAnalysis.details.nextSteps && (
+                                        <div style={{ fontSize: 8, color: D.text }}>
+                                          <div style={{ fontWeight: 600, marginBottom: 2 }}>Next steps:</div>
+                                          {findingAnalysis.details.nextSteps.map((step, idx) => (
+                                            <div key={idx} style={{ marginLeft: 8, marginBottom: 1 }}>{idx + 1}. {step}</div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Action button */}
+                                      <div style={{ fontSize: 8, color: findingColors[findingAnalysis.status], fontWeight: 600, marginTop: 4, paddingTop: 4, borderTop: `1px solid ${findingColors[findingAnalysis.status]}44` }}>
+                                        → {findingAnalysis.action}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {detail.reason && (
+                                  <div style={{ fontSize: 9, color: D.faint, fontStyle: 'italic' }}>
+                                    💡 {detail.reason}
+                                  </div>
+                                )}
+                                {detail.providersUsed && detail.providersUsed.length > 0 && (
+                                  <div style={{ fontSize: 9, color: D.faint, marginTop: 3 }}>
+                                    Providers used: {detail.providersUsed.join(', ')}
+                                  </div>
+                                )}
+                                {detail.evidence_list && detail.evidence_list.length > 0 && (
+                                  <div style={{ marginTop: 8, background: D.bg, border: `1px solid ${D.border}`, borderRadius: 4, padding: 8 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 9, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <span>📋 Evidence Breakdown ({detail.evidence_list.length} items)</span>
+                                      <button onClick={toggleExpanded} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 2, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer' }}>
+                                        {isExpanded ? 'Hide' : 'Show'} Details
+                                      </button>
+                                    </div>
+
+                                    {/* Provider Summary */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: isExpanded ? 8 : 0, fontSize: 8 }}>
+                                      {(() => {
+                                        // Group evidence by provider family using SOURCE_CATALOG mapping
+                                        const providerCounts = {};
+                                        (detail.evidence_list || []).forEach(ev => {
+                                          const family = getProviderFamilyForSource(ev.source);
+                                          providerCounts[family] = (providerCounts[family] || 0) + 1;
+                                        });
+
+                                        // Show all providers with counts (even if 0)
+                                        return detail.providersUsed?.map((provider, idx) => (
+                                          <div key={idx} style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 4, opacity: (providerCounts[provider] || 0) > 0 ? 1 : 0.5 }}>
+                                            <span style={{ fontWeight: 500, color: D.accent }}>{provider}</span>
+                                            <span style={{ background: (providerCounts[provider] || 0) > 0 ? D.good : D.border, borderRadius: 2, padding: '1px 3px', fontSize: 7, color: (providerCounts[provider] || 0) > 0 ? '#fff' : D.muted }}>{providerCounts[provider] || 0}</span>
+                                          </div>
+                                        ));
+                                      })()}
+                                    </div>
+
+                                    {/* Consensus Recommendations (if conflicts) */}
+                                    {detail.conflicts > 0 && detail.evidence_list && detail.evidence_list.length > 0 && (() => {
+                                      const factsByField = {};
+                                      detail.evidence_list.forEach(ev => {
+                                        (ev.extractedFacts || []).forEach(f => {
+                                          if (!factsByField[f.fact]) factsByField[f.fact] = [];
+                                          factsByField[f.fact].push({ value: f.value, source: ev.source, confidence: f.confidence });
+                                        });
+                                      });
+
+                                      const conflictingFields = Object.entries(factsByField)
+                                        .filter(([_, facts]) => [...new Set(facts.map(f => JSON.stringify(f.value)))].length > 1);
+
+                                      if (conflictingFields.length === 0) return null;
+
+                                      // Auto-accept high confidence findings
+                                      const autoAccepted = [];
+                                      conflictingFields.forEach(([fieldName, facts]) => {
+                                        const valueCounts = {};
+                                        facts.forEach(f => {
+                                          const key = JSON.stringify(f.value);
+                                          if (!valueCounts[key]) valueCounts[key] = { value: f.value, count: 0, confidence: [] };
+                                          valueCounts[key].count++;
+                                          valueCounts[key].confidence.push(f.confidence);
+                                        });
+                                        const sorted = Object.values(valueCounts).sort((a, b) => b.count - a.count);
+                                        const winner = sorted[0];
+                                        const isUnanimous = winner.count === facts.length;
+                                        const allHighConfidence = winner.confidence.every(c => c === 'high');
+
+                                        if (isUnanimous || allHighConfidence) {
+                                          autoAccepted.push({ field: fieldName, value: winner.value });
+                                          // Auto-select in state
+                                          if (!campConflictResolutions[`${i}-${fieldName}`]) {
+                                            setCampConflictResolutions(prev => ({
+                                              ...prev,
+                                              [`${i}-${fieldName}`]: JSON.stringify(winner.value)
+                                            }));
+                                          }
+                                        }
+                                      });
+
+                                      return (
+                                        <div style={{ background: `${D.accent}08`, border: `1px solid ${D.accent}22`, borderRadius: 3, padding: 6, marginBottom: isExpanded ? 8 : 0, fontSize: 7 }}>
+                                          <div style={{ fontWeight: 600, marginBottom: 4, color: D.accent }}>💡 Consensus Recommendations</div>
+                                          {autoAccepted.length > 0 && (
+                                            <div style={{ background: `${D.good}22`, border: `1px solid ${D.good}`, borderRadius: 2, padding: 4, marginBottom: 4 }}>
+                                              <div style={{ fontSize: 6, fontWeight: 600, color: D.good, marginBottom: 2 }}>✓ AUTO-ACCEPTED ({autoAccepted.length})</div>
+                                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                {autoAccepted.map(({ field, value }) => (
+                                                  <div key={field} style={{ fontSize: 6, color: D.text }}>
+                                                    <strong>{field}</strong> → <strong>{String(value)}</strong> <span style={{ color: D.muted }}>(high confidence)</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {conflictingFields.map(([fieldName, facts]) => {
+                                            if (autoAccepted.some(a => a.field === fieldName)) return null;
+
+                                            const valueCounts = {};
+                                            facts.forEach(f => {
+                                              const key = JSON.stringify(f.value);
+                                              if (!valueCounts[key]) valueCounts[key] = { value: f.value, count: 0, sources: [] };
+                                              valueCounts[key].count++;
+                                              valueCounts[key].sources.push(f.source);
+                                            });
+
+                                            const sorted = Object.values(valueCounts).sort((a, b) => b.count - a.count);
+                                            const winner = sorted[0];
+                                            const isUnanimous = winner.count === facts.length;
+
+                                            return (
+                                              <div key={fieldName} style={{ padding: '4px', marginBottom: 3, background: D.surface, borderRadius: 2, borderLeft: `2px solid ${D.warn}` }}>
+                                                <div style={{ fontWeight: 600, color: D.accent }}>⚠️ {fieldName}</div>
+                                                <div style={{ color: D.text, marginTop: 1 }}>Recommended: <strong>{String(winner.value)}</strong> <span style={{ color: D.muted }}>({winner.count}/{facts.length} sources)</span></div>
+                                                <div style={{ fontSize: 6, color: D.faint, marginTop: 1 }}>Select below to resolve</div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {isExpanded && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 8 }}>
+                                        {detail.evidence_list.map((ev, j) => {
+                                          const qualityScore = calculateEvidenceQualityScore(ev);
+                                          const quality = describeEvidenceQuality(qualityScore);
+                                          const connStatus = ev.connectionStatus;
+                                          const issues = connStatus ? whyEvidenceUntrustworthy(ev) : [];
+
+                                          return (
+                                          <div key={j} style={{ background: D.surface, padding: 6, borderRadius: 3, borderLeft: `3px solid ${ev.extractedFacts?.length > 0 ? D.accent : D.warn}`, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                              <div style={{ fontWeight: 600, color: D.accent }}>📌 {ev.source || 'Unknown Source'}</div>
+                                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                                {ev.extractedFacts?.length > 0 ? (
+                                                  <span style={{ fontSize: 7, background: D.good, color: '#fff', padding: '1px 4px', borderRadius: 2 }}>✓ {ev.extractedFacts.length} facts</span>
+                                                ) : (
+                                                  <span style={{ fontSize: 7, background: D.warn, color: '#fff', padding: '1px 4px', borderRadius: 2 }}>⚠ No facts</span>
+                                                )}
+                                                {connStatus && (
+                                                  <span style={{ fontSize: 7, background: STATUS_COLOR[connStatus.status] === 'good' ? D.good : STATUS_COLOR[connStatus.status] === 'warn' ? D.warn : D.bad, color: '#fff', padding: '1px 4px', borderRadius: 2 }}>
+                                                    {connStatus.status === CONNECTION_STATUS.SUCCESS ? '✓' : connStatus.status === CONNECTION_STATUS.EMPTY ? '⊘' : '✕'} {connStatus.status}
+                                                  </span>
+                                                )}
+                                                {connStatus?.freshness && (
+                                                  <span style={{ fontSize: 7, background: FRESHNESS_COLOR[connStatus.freshness], color: '#fff', padding: '1px 4px', borderRadius: 2 }}>
+                                                    {connStatus.freshness === DATA_FRESHNESS.CURRENT ? '⏱ current' : connStatus.freshness === DATA_FRESHNESS.RECENT ? '⏱ recent' : connStatus.freshness === DATA_FRESHNESS.AGED ? '⏱ aged' : '⏱ stale'}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Data Quality Issues */}
+                                            {issues.length > 0 && (
+                                              <div style={{ background: `${D.warn}11`, border: `1px solid ${D.warn}22`, borderRadius: 2, padding: 4, fontSize: 6, color: D.warn }}>
+                                                <div style={{ fontWeight: 600, marginBottom: 2 }}>⚠️ Data Quality Issues:</div>
+                                                <ul style={{ margin: 0, paddingLeft: 12, lineHeight: 1.3 }}>
+                                                  {issues.map((issue, idx) => <li key={idx}>{issue}</li>)}
+                                                </ul>
+                                              </div>
+                                            )}
+
+                                            <div style={{ color: D.text, lineHeight: '1.4' }}>{ev.statement || ev.summary || 'No statement'}</div>
+                                            {ev.extractedFacts && ev.extractedFacts.length > 0 ? (
+                                              <div style={{ background: `${D.accent}08`, padding: 4, borderRadius: 2, display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
+                                                {ev.extractedFacts.map((f, k) => (
+                                                  <div key={k} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, fontSize: 7, paddingBottom: k < ev.extractedFacts.length - 1 ? 2 : 0, borderBottom: k < ev.extractedFacts.length - 1 ? `1px solid ${D.border}` : 'none' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+                                                      <strong style={{ color: D.accent }}>{f.fact}</strong>
+                                                      <div style={{ color: D.muted, fontSize: 6 }}>Value: {typeof f.value === 'object' ? JSON.stringify(f.value) : String(f.value)}</div>
+                                                    </div>
+                                                    <div style={{ background: f.confidence === 'high' ? D.good : f.confidence === 'medium' ? D.accent : D.warn, color: '#fff', padding: '1px 3px', borderRadius: 2, fontWeight: 600, whiteSpace: 'nowrap' }}>{f.confidence || 'unknown'}</div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <div style={{ fontSize: 7, color: D.warn, fontStyle: 'italic' }}>⚠️ No facts could be extracted from this source</div>
+                                            )}
+                                          </div>
+                                        );
+                                        })}
+                                        {detail.conflicts > 0 && (
+                                          <div style={{ background: `${D.warn}22`, border: `1px solid ${D.warn}`, padding: 6, borderRadius: 3 }}>
+                                            <div style={{ fontWeight: 600, color: D.warn, marginBottom: 3 }}>⚠️ Conflicting Evidence Detected</div>
+                                            <div style={{ color: D.text, fontSize: 7, lineHeight: '1.4', marginBottom: 6 }}>
+                                              {detail.conflicts} conflict{detail.conflicts > 1 ? 's' : ''} found: Different providers reported different values for the same field. Choose a consensus value below.
+                                            </div>
+
+                                            {/* Conflict Resolution UI */}
+                                            {detail.evidence_list && detail.evidence_list.length > 0 && (() => {
+                                              const conflictKey = `${i}-conflicts`;
+                                              const isExpanded = campExpandedConflicts.has(conflictKey);
+                                              const toggleConflict = () => {
+                                                const newSet = new Set(campExpandedConflicts);
+                                                if (newSet.has(conflictKey)) newSet.delete(conflictKey);
+                                                else newSet.add(conflictKey);
+                                                setCampExpandedConflicts(newSet);
+                                              };
+
+                                              // Group evidence by extracted facts to show conflicts
+                                              const factsByField = {};
+                                              detail.evidence_list.forEach(ev => {
+                                                (ev.extractedFacts || []).forEach(f => {
+                                                  if (!factsByField[f.fact]) factsByField[f.fact] = [];
+                                                  factsByField[f.fact].push({
+                                                    value: f.value,
+                                                    source: ev.source,
+                                                    confidence: f.confidence
+                                                  });
+                                                });
+                                              });
+
+                                              const conflictingFields = Object.entries(factsByField)
+                                                .filter(([_, facts]) => {
+                                                  const unique = [...new Set(facts.map(f => JSON.stringify(f.value)))];
+                                                  return unique.length > 1;
+                                                });
+
+                                              return (
+                                                <div>
+                                                  <button onClick={toggleConflict} style={{ fontSize: 7, padding: '4px 6px', borderRadius: 3, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer', width: '100%', textAlign: 'left' }}>
+                                                    {isExpanded ? '▼' : '▶'} Resolve {conflictingFields.length} conflicting field{conflictingFields.length !== 1 ? 's' : ''}
+                                                  </button>
+
+                                                  {isExpanded && (
+                                                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                      {conflictingFields.map(([fieldName, facts]) => {
+                                                        const uniqueValues = {};
+                                                        facts.forEach(f => {
+                                                          const key = JSON.stringify(f.value);
+                                                          if (!uniqueValues[key]) {
+                                                            uniqueValues[key] = [];
+                                                          }
+                                                          uniqueValues[key].push(f);
+                                                        });
+
+                                                        const selectedValue = campConflictResolutions[`${i}-${fieldName}`];
+
+                                                        return (
+                                                          <div key={fieldName} style={{ background: D.surface, padding: 4, borderRadius: 2, borderLeft: `2px solid ${D.warn}` }}>
+                                                            <div style={{ fontSize: 7, fontWeight: 600, marginBottom: 3, color: D.accent }}>Field: {fieldName}</div>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                              {Object.entries(uniqueValues).map(([valueStr, valueFacts]) => {
+                                                                const value = JSON.parse(valueStr);
+                                                                const isSelected = selectedValue === valueStr;
+                                                                return (
+                                                                  <label key={valueStr} style={{ display: 'flex', alignItems: 'center', padding: '3px 4px', borderRadius: 2, border: `1px solid ${isSelected ? D.accent : D.border}`, background: isSelected ? `${D.accent}22` : 'transparent', cursor: 'pointer', fontSize: 6 }}>
+                                                                    <input type="radio" name={`conflict-${i}-${fieldName}`} checked={isSelected} onChange={() => setCampConflictResolutions({ ...campConflictResolutions, [`${i}-${fieldName}`]: valueStr })} style={{ marginRight: 4, cursor: 'pointer' }} />
+                                                                    <div style={{ flex: 1 }}>
+                                                                      <strong>{String(value)}</strong>
+                                                                      <div style={{ fontSize: 5, color: D.muted, marginTop: 1 }}>
+                                                                        {valueFacts.length} source{valueFacts.length !== 1 ? 's' : ''}: {valueFacts.map(f => `${f.source} (${f.confidence})`).join(', ')}
+                                                                      </div>
+                                                                    </div>
+                                                                  </label>
+                                                                );
+                                                              })}
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 10, color: D.warn }}>{detail.message}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Single Campaign Result (non-batch) */}
+                {!campFormattedResults && campRunResult && (
+                  <div>
+                    {/* KPI Summary */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+                      <div style={{ background: D.bg, padding: 8, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: D.accent }}>{campRunResult.result?.evidence || 0}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Evidence items</div>
+                      </div>
+                      <div style={{ background: D.bg, padding: 8, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: campRunResult.result?.conflicts > 0 ? D.warn : D.good }}>{campRunResult.result?.conflicts || 0}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Conflicts</div>
+                      </div>
+                      <div style={{ background: D.bg, padding: 8, borderRadius: 6, textAlign: 'center' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: D.accent }}>{campRunResult.state || 'running'}</div>
+                        <div style={{ fontSize: 10, color: D.muted, marginTop: 2 }}>Status</div>
+                      </div>
+                    </div>
+
+                    {campShowJsonResults && (
+                      <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, marginBottom: 12, fontFamily: D.mono, fontSize: 10, maxHeight: '300px', overflow: 'auto' }}>
+                        <div style={{ color: D.muted, marginBottom: 8, fontWeight: 600 }}>Campaign Execution Details:</div>
+                        <div style={{ color: D.text, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {JSON.stringify(campRunResult, null, 2)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campaign Evidence Array */}
+                    {campCampaignEvidence && campCampaignEvidence.length > 0 && (
+                      <div style={{ background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, marginBottom: 12 }}>
+                        <div style={{ color: D.text, fontWeight: 600, marginBottom: 8, fontSize: 11 }}>📋 Collected Evidence ({campCampaignEvidence.length})</div>
+                        {campCampaignEvidence.map((ev, i) => (
+                          <div key={i} style={{ background: D.surface, padding: 8, borderRadius: 4, marginBottom: 6, fontSize: 10, borderLeft: `3px solid ${D.accent}` }}>
+                            <div style={{ color: D.accent, fontWeight: 600, marginBottom: 2 }}>{ev.source || 'Unknown Source'}</div>
+                            <div style={{ color: D.text, marginBottom: 2 }}>{ev.statement || ev.summary || 'No statement'}</div>
+                            {ev.extractedFacts && ev.extractedFacts.length > 0 && (
+                              <div style={{ color: D.muted, fontSize: 9, marginTop: 4 }}>
+                                Facts: {ev.extractedFacts.map(f => `${f.fact}=${f.value}`).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: 11, color: D.good, marginBottom: 12 }}>✓ Campaign completed successfully</div>
+                    {campRunResult.merged ? (
+                      <div style={{ background: `${D.good}22`, border: `1px solid ${D.good}`, borderRadius: 6, padding: 10, fontSize: 11, color: D.good }}>
+                        {campRunResult.message}
+                      </div>
+                    ) : (
+                      <button onClick={handleMerge} style={{ width: '100%', padding: '10px', borderRadius: 6, border: 'none', background: D.good, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                        ✓ Accept & Merge into Playbook
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Back to new campaign */}
+              <button onClick={() => { setCampReviewStep(false); setCampSelectedGap(null); setCampSelectedGaps([]); setCampTemplate(''); setCampRunResult(null); setCampProviders(['internal', 'government', 'food-safety', 'commercial', 'industry', 'academic', 'community']); setCampBatchResults([]); setCampFormattedResults(null); setCampBatchProviderSelection(false); }} style={{ width: '100%', padding: '10px', borderRadius: 6, border: `1px solid ${D.border}`, background: 'transparent', color: D.text, cursor: 'pointer', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
+                ← Start New Campaign
+              </button>
             </div>
           )}
         </div>
@@ -4080,19 +5737,73 @@ function KcrStudioPanel() {
       const allObservations = loadObservations();
       const allRuns     = loadRuns();
 
-      const overnight   = buildOvernightActivity({ runs: allRuns, observations: allObservations, evidence: allEvidence, findings: [], kcrs: allKcrs, campaigns: allCampaigns }, { asOf });
-      const queue       = buildManufacturingQueue(ALL_PLAYBOOKS, allEvidence, allCampaigns, asOf);
-      const { health } = buildKnowledgeHealth(ALL_PLAYBOOKS, allEvidence, allKcrs, asOf);
-      const pubQ        = buildPublishingQueue(allKcrs);
-      const aging       = buildKnowledgeAging(allEvidence, asOf);
-      const report      = buildExecutiveReport({ overnight, queue, health: { health }, publishingQueue: pubQ, aging }, { playbooks: ALL_PLAYBOOKS, asOf });
+      let overnight, queue, health = {}, pubQ, aging, report;
+      try {
+        overnight   = buildOvernightActivity({ runs: allRuns, observations: allObservations, evidence: allEvidence, findings: [], kcrs: allKcrs, campaigns: allCampaigns }, { asOf });
+        queue       = buildManufacturingQueue(mergedPlaybooks, allEvidence, allCampaigns, asOf);
+        const healthResult = buildKnowledgeHealth(mergedPlaybooks, allEvidence, allKcrs, asOf) || {};
+        health = healthResult.health || {};
+        pubQ        = buildPublishingQueue(allKcrs);
+        aging       = buildKnowledgeAging(allEvidence, asOf);
+        report      = buildExecutiveReport({ overnight, queue, health: { health }, publishingQueue: pubQ, aging }, { playbooks: mergedPlaybooks, asOf });
+      } catch (err) {
+        console.error('Mission Control init error:', err);
+        return <div style={{ padding: 20, color: D.bad }}>Error loading Mission Control: {err?.message || 'unknown error'}</div>;
+      }
 
       const LABEL_COLOR = { HIGH: D.bad, MED: D.warn, LOW: D.faint };
       const HEALTH_COLOR = { high: D.good, med: D.warn, low: D.bad, none: D.border };
+      const INTENT_COLOR = { 'cost-verification': '#3B82F6', 'vendor-capability': '#8B5CF6', 'quantity-validation': '#F59E0B', 'safety-compliance': '#EF4444', 'decision-validation': '#10B981' };
       const highQueue = queue.filter((q) => q.priority === 'HIGH' && !q.hasCampaign);
+      const medQueue = queue.filter((q) => q.priority === 'MED' && !q.hasCampaign);
+      const lowQueue = queue.filter((q) => q.priority === 'LOW' && !q.hasCampaign);
 
-      const autoGenerate = () => {
-        const campaigns = generateCampaignsFromQueue(queue, { priorities: ['HIGH'], limit: 5, at: asOf });
+      // Helper: Get evidence breakdown for a gap
+      const getEvidenceBreakdown = (fieldPath) => {
+        const evs = allEvidence.filter(e => e.fieldPath === fieldPath);
+        const breakdown = {};
+        evs.forEach(e => {
+          const family = getProviderFamilyForSource(e.source);
+          breakdown[family] = (breakdown[family] || 0) + 1;
+        });
+        return { count: evs.length, breakdown, isCommercialOnly: evs.length > 0 && evs.every(e => getProviderFamilyForSource(e.source) === 'commercial') };
+      };
+
+      // Helper: Detect conflicts for a gap
+      const getConflictInfo = (fieldPath) => {
+        const evs = allEvidence.filter(e => e.fieldPath === fieldPath);
+        if (evs.length < 2) return null;
+        const facts = {};
+        evs.forEach(e => {
+          (e.extractedFacts || []).forEach(f => {
+            if (!facts[f.fact]) facts[f.fact] = [];
+            facts[f.fact].push(f.value);
+          });
+        });
+        const conflicts = Object.entries(facts).filter(([_, vals]) => new Set(vals.map(JSON.stringify)).size > 1);
+        return conflicts.length > 0 ? { count: conflicts.length, types: conflicts.map(([k]) => k.split('_')[0]) } : null;
+      };
+
+      // Helper: Quick-launch a single gap
+      const quickLaunchGap = (item) => {
+        const campaigns = generateCampaignsFromQueue([{ ...item, hasCampaign: false }], { priorities: ['HIGH', 'MED', 'LOW'], limit: 1, at: asOf });
+        if (campaigns.length > 0) {
+          recordCampaign(campaigns[0]);
+          setCampList(loadCampaigns());
+        }
+      };
+
+      // Batch launch function
+      const mcBatchLaunch = () => {
+        const selected = queue.filter(q => mcSelectedGaps.includes(`${q.playbookType}::${q.fieldPath}`));
+        const campaigns = generateCampaignsFromQueue(selected.map(q => ({ ...q, hasCampaign: false })), { priorities: ['HIGH', 'MED', 'LOW'], limit: selected.length, at: asOf });
+        campaigns.forEach(c => recordCampaign(c));
+        setCampList(loadCampaigns());
+        setMcSelectedGaps([]);
+      };
+
+      const autoGenerate = (priority = 'HIGH') => {
+        const campaigns = generateCampaignsFromQueue(queue, { priorities: [priority], limit: 50, at: asOf });
         campaigns.forEach((c) => recordCampaign(c));
         setCampList(loadCampaigns());
       };
@@ -4101,31 +5812,57 @@ function KcrStudioPanel() {
         const allCamps = loadCampaigns();
         const toRun = batchByFilter(allCamps, filterOpts);
         if (!toRun.length) { setBatchRunResult({ label, summary: { total: 0, ran: 0, evidenceTotal: 0, findingsTotal: 0, kcrTotal: 0, errors: 0 } }); return; }
+
+        // Create batch record
+        const intentType = filterOpts.priority ? filterOpts.priority.toUpperCase() : 'MIXED';
+        const batch = createBatch(intentType, toRun.length);
+        upsertBatch(batch);
+        startBatch(batch.id);
+        setActiveBatch(batch);
+        setBatchReceipt(batch);  // Show receipt modal
+        setShowProgressPanel(true); // Show progress panel
+
         setBatchRunning(true);
         const allProviders = buildProviders();
         const { results, summary } = runCampaigns(toRun, { providers: allProviders, asOf });
+
         // Save results + auto-create corroboration campaigns
         const corrCamps = [];
-        for (const { success, result } of results) {
+        for (let i = 0; i < results.length; i++) {
+          const { success, result, campaignId } = results[i];
           if (!success || !result) continue;
-          recordCampaign(result);
-          const corr = autoCorroborate(result, result, { asOf });
+          const origCampaign = toRun[i];
+          // Save the original campaign (has assetId + fieldPath for KPI matching)
+          recordCampaign(origCampaign);
+          const corr = autoCorroborate(origCampaign, result, { asOf });
           if (corr) corrCamps.push(corr);
         }
         corrCamps.forEach((c) => recordCampaign(c));
+
         // Update provider intel
         const intel = loadProviderIntel();
         const stats = extractProviderRunStats(results, asOf);
         let updatedIntel = intel;
         for (const s of stats) updatedIntel = recordProviderRun(updatedIntel, s.providerId, s);
         saveProviderIntel(updatedIntel);
+
+        // Mark batch as complete and update progress panel
+        const completedBatch = completeBatch(batch.id);
+        setActiveBatch(completedBatch);
+
         setCampList(loadCampaigns());
-        setBatchRunResult({ label, summary, corroborationsCreated: corrCamps.length });
+        setBatchRunResult({ label, summary, corroborationsCreated: corrCamps.length, batchId: batch.id });
         setBatchRunning(false);
         refresh();
+        // Force KPI recalculation with new campaign data
+        setKpiRefreshKey(prev => prev + 1);
       };
 
+      // Recalculate queue with latest campaigns to ensure KPI is accurate
+      const freshQueue = buildManufacturingQueue(mergedPlaybooks, allEvidence, allCampaigns, asOf);
+
       return (
+        <>
         <div>
           <Banner>Mission Control — answers the 5 daily questions. Reads live store state; refreshes on every workspace switch. No synthetic data.</Banner>
 
@@ -4134,7 +5871,7 @@ function KcrStudioPanel() {
             {[
               { q: '1. Changed overnight?', v: overnight.empty ? 'Quiet' : `${overnight.workerRuns} runs · ${overnight.newEvidence} ev`, t: overnight.empty ? D.faint : D.accent },
               { q: '2. Degrading?',         v: `${aging.overdue.length} overdue · ${aging.expiresThisWeek.length} this week`, t: aging.overdue.length ? D.bad : aging.expiresThisWeek.length ? D.warn : D.good },
-              { q: '3. Research today?',    v: `${queue.filter(q => q.priority==='HIGH').length} HIGH · ${queue.filter(q=>q.priority==='MED').length} MED`, t: queue.length ? D.warn : D.good },
+              { q: '3. Research today?',    v: `${freshQueue.filter(q => q.priority==='HIGH' && !q.hasCampaign).length} HIGH · ${freshQueue.filter(q=>q.priority==='MED' && !q.hasCampaign).length} MED`, t: freshQueue.length ? D.warn : D.good },
               { q: '4. Ready for review?',  v: `${pubQ.total} queued`, t: pubQ.total ? D.accent : D.faint },
               { q: '5. Safe to publish?',   v: `${pubQ.awaitingGovernance.length} at governance gate`, t: pubQ.awaitingGovernance.length ? D.good : D.faint },
             ].map(({ q, v, t }) => (
@@ -4199,9 +5936,19 @@ function KcrStudioPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
               <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em' }}>Today's Manufacturing Queue ({queue.length} items)</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {mcSelectedGaps.length > 0 && (
+                  <button onClick={mcBatchLaunch} style={{ fontSize: 9, padding: '6px 12px', borderRadius: 5, border: `1px solid ${D.accent}`, background: D.accent, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    🚀 Launch {mcSelectedGaps.length} Selected
+                  </button>
+                )}
                 {highQueue.length > 0 && (
-                  <button onClick={autoGenerate} style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
-                    Auto-generate {Math.min(5, highQueue.length)} HIGH
+                  <button onClick={() => autoGenerate('HIGH')} style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    Auto-generate {Math.min(50, highQueue.length)} HIGH
+                  </button>
+                )}
+                {medQueue.length > 0 && (
+                  <button onClick={() => autoGenerate('MED')} style={{ fontSize: 9, padding: '4px 10px', borderRadius: 5, border: `1px solid ${D.warn}`, background: `${D.warn}18`, color: D.warn, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                    Auto-generate {Math.min(50, medQueue.length)} MED
                   </button>
                 )}
                 {loadCampaigns().length > 0 && (<>
@@ -4273,14 +6020,76 @@ function KcrStudioPanel() {
 
             {queue.length === 0
               ? <div style={{ fontSize: 11, color: D.good }}>All fields covered with fresh, official evidence. No gaps detected.</div>
-              : queue.slice(0, 15).map((item) => (
-                <div key={`${item.playbookType}::${item.fieldPath}`} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '5px 0', borderBottom: `1px solid ${D.border}22` }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: LABEL_COLOR[item.priority], minWidth: 28 }}>{item.priority}</span>
-                  <span style={{ fontSize: 10, color: D.text, flex: 1 }}>{item.playbookLabel} — {item.fieldLabel}</span>
-                  <span style={{ fontSize: 9, color: D.faint, maxWidth: 240, textAlign: 'right' }}>{item.reason}</span>
-                  {item.hasCampaign && <span style={{ fontSize: 8, color: D.accent, fontFamily: D.mono }}>campaign ✓</span>}
-                </div>
-              ))
+              : (() => {
+                // Group queue by research intent
+                const grouped = {};
+                queue.forEach(item => {
+                  const intent = item.gapKind === 'cost-factor' ? 'cost-verification' : item.gapKind === 'decision' ? 'decision-validation' : 'quantity-validation';
+                  if (!grouped[intent]) grouped[intent] = [];
+                  grouped[intent].push(item);
+                });
+
+                return Object.entries(grouped).flatMap(([intent, items]) => [
+                  <div key={`${intent}-header`} style={{ fontSize: 9, fontWeight: 700, color: INTENT_COLOR[intent] || D.accent, marginTop: 10, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%', background: INTENT_COLOR[intent] || D.accent }}></span>
+                    {intent.toUpperCase()} — {items.length} gap{items.length !== 1 ? 's' : ''}
+                  </div>,
+                  ...items.slice(0, 15).map((item) => {
+                    const key = `${item.playbookType}::${item.fieldPath}`;
+                    const isSelected = mcSelectedGaps.includes(key);
+                    const bp = generateResearchBlueprint(item, { providerIntel: loadProviderIntel(), asOf });
+                    const statusLbl = blueprintStatusLabel(bp, { evidenceCount: item.evidenceCount });
+                    const evBreakdown = getEvidenceBreakdown(item.fieldPath);
+                    const conflicts = getConflictInfo(item.fieldPath);
+                    const queueState = computeQueueItemState(item, { campaigns, evidence, kcrs });
+                    const queueStateColor = QUEUE_STATE_COLORS[queueState] || D.faint;
+
+                    return (
+                      <div key={key} style={{ padding: '8px 0', borderBottom: `1px solid ${D.border}22`, background: isSelected ? `${D.accent}11` : 'transparent', borderRadius: 4, paddingLeft: 8, marginLeft: -8, paddingRight: 8, marginRight: -8 }}>
+                        {/* Row 1: Checkbox + Priority + Playbook + Field + Queue State + Buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <input type="checkbox" checked={isSelected} onChange={(e) => setMcSelectedGaps(e.target.checked ? [...mcSelectedGaps, key] : mcSelectedGaps.filter(x => x !== key))} style={{ cursor: 'pointer' }} />
+                          <span style={{ fontSize: 9, fontWeight: 700, color: LABEL_COLOR[item.priority], minWidth: 28 }}>{item.priority}</span>
+                          <span style={{ fontSize: 10, color: D.text, flex: 1 }}>{item.playbookLabel} — {item.fieldLabel}</span>
+                          {/* BUNDLE D: Queue state badge */}
+                          <span style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, border: `1px solid ${queueStateColor}66`, color: queueStateColor, fontWeight: 700, fontFamily: D.mono, letterSpacing: '.04em', minWidth: 70, textAlign: 'center' }}>{queueState}</span>
+                          <button onClick={() => quickLaunchGap(item)} style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}22`, color: D.accent, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>🚀 Launch</button>
+                          {statusLbl && <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 2, border: `1px solid ${item.evidenceCount >= (bp?.validationRequirements?.minEvidence || 2) ? D.good : D.border}`, color: item.evidenceCount >= (bp?.validationRequirements?.minEvidence || 2) ? D.good : D.faint, fontFamily: D.mono }}>{statusLbl}</span>}
+                        </div>
+
+                        {/* Row 2: Intent Badge + Blueprint providers (RBE-1) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, paddingLeft: 36 }}>
+                          <span style={{ fontSize: 7, padding: '2px 6px', borderRadius: 3, background: INTENT_COLOR[intent] || D.accent, color: '#fff', fontWeight: 600, textTransform: 'uppercase' }}>{intent.replace('-', ' ')}</span>
+                          <span style={{ fontSize: 8, color: D.accent }}>→ {bp?.recommendedProviders?.slice(0, 3).join(', ') || 'blueprint pending'}</span>
+                        </div>
+
+                        {/* Row 3: Evidence + Conflicts */}
+                        {(evBreakdown.count > 0 || conflicts) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4, paddingLeft: 36, fontSize: 8, color: D.muted }}>
+                            {evBreakdown.count > 0 && (
+                              <span style={{ color: evBreakdown.isCommercialOnly ? D.warn : D.text }}>
+                                📊 {evBreakdown.count} ev {evBreakdown.isCommercialOnly ? '(commercial only)' : ''}
+                              </span>
+                            )}
+                            {conflicts && <span style={{ color: D.warn }}>⚠️ {conflicts.count} conflict{conflicts.count !== 1 ? 's' : ''}</span>}
+                          </div>
+                        )}
+
+                        {/* Row 4: Claim + Sufficiency */}
+                        {item.claim && (
+                          <div style={{ paddingLeft: 36, marginBottom: 2 }}>
+                            <div style={{ fontSize: 9, color: D.muted, fontStyle: 'italic', marginBottom: 1 }}>{item.claim}</div>
+                            {item.sufficientWhen && <div style={{ fontSize: 8, color: D.faint }}>✓ When: {item.sufficientWhen}</div>}
+                          </div>
+                        )}
+
+                        {/* Row 5: Reason */}
+                        <div style={{ paddingLeft: 36, fontSize: 9, color: D.faint }}>{item.reason}</div>
+                      </div>
+                    );
+                  })
+                ]);
+              })()
             }
             {queue.length > 15 && <button onClick={() => setWs('Research Session')} style={{ fontSize: 9, background: 'transparent', border: 'none', color: D.accent, cursor: 'pointer', marginTop: 6, padding: 0, fontFamily: D.ff }}>+{queue.length - 15} more — Research Session →</button>}
           </div>
@@ -4289,7 +6098,8 @@ function KcrStudioPanel() {
             {/* ── Knowledge Health ──────────────── */}
             <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
               <div style={{ fontSize: 10, color: D.faint, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Knowledge Health — by Flagship</div>
-              {ALL_PLAYBOOKS.slice(0, 8).map((pb) => {
+              {(ALL_PLAYBOOKS || []).slice(0, 8).map((pb) => {
+                if (!pb || !pb.type) return null;
                 const h = health[pb.type];
                 if (!h) return null;
                 return (
@@ -4347,6 +6157,9 @@ function KcrStudioPanel() {
             })}
           </div>
         </div>
+        <BatchReceiptModal batch={batchReceipt} onClose={() => setBatchReceipt(null)} onShowProgress={() => setShowProgressPanel(true)} />
+        {showProgressPanel && activeBatch && <BatchProgressPanel batch={activeBatch} onClose={() => setShowProgressPanel(false)} />}
+        </>
       );
     }
 
@@ -4355,11 +6168,32 @@ function KcrStudioPanel() {
       const allEvidence  = loadEvidence();
       const allKcrs      = kcrs.length ? kcrs : loadLocalKCRs();
       const allCampaigns = loadCampaigns();
-      const pb = ALL_PLAYBOOKS.find((p) => p.type === mcSessionPlaybook) || ALL_PLAYBOOKS[0];
+      const pb = (ALL_PLAYBOOKS || []).find((p) => p && p.type === mcSessionPlaybook) || (ALL_PLAYBOOKS || [])[0];
       const session = pb ? buildResearchSession(pb, allEvidence, allKcrs, allCampaigns, asOf) : null;
+      const providerIntelNow = loadProviderIntel();
+
+      // Blueprint for the selected gap (null = no gap selected yet)
+      const allSessionGaps = session ? [
+        ...session.missingFields.map((f) => ({ ...f, gapKind: f.kind, tag: 'missing' })),
+        ...session.staleFields.map((f) => ({ ...f, gapKind: f.kind, tag: 'stale' })),
+        ...session.commercialOnly.map((f) => ({ ...f, gapKind: f.kind, tag: 'commercial-only' })),
+      ] : [];
+      const selectedGap = allSessionGaps.find((g) => g.path === selectedGapPath) || allSessionGaps[0] || null;
+      const activeBp = selectedGap ? generateResearchBlueprint(
+        { ...selectedGap, playbookType: session?.playbookType, fieldPath: selectedGap.path, fieldLabel: selectedGap.label, gapKind: selectedGap.kind },
+        { playbook: pb, providerIntel: providerIntelNow, asOf }
+      ) : null;
 
       const autoLaunch = (item) => {
-        const [campaign] = generateCampaignsFromQueue([{ ...item, hasCampaign: false }], { priorities: ['HIGH', 'MED', 'LOW'], limit: 1, at: asOf });
+        const bp = generateResearchBlueprint(
+          { ...item, gapKind: item.gapKind || item.kind },
+          { playbook: pb, providerIntel: providerIntelNow, asOf }
+        );
+        const [campaign] = generateCampaignsFromQueue(
+          [{ ...item, hasCampaign: false, gapKind: item.gapKind || item.kind,
+             claim: bp?.claim || item.claim, sufficientWhen: bp?.successCriteria || item.sufficientWhen }],
+          { priorities: ['HIGH', 'MED', 'LOW'], limit: 1, at: asOf, providerIntel: providerIntelNow }
+        );
         if (campaign) { recordCampaign(campaign); setCampList(loadCampaigns()); }
       };
 
@@ -4370,7 +6204,7 @@ function KcrStudioPanel() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
             <select value={mcSessionPlaybook} onChange={(e) => setMcSessionPlaybook(e.target.value)}
               style={{ background: D.surface, border: `1px solid ${D.accent}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '6px 12px', outline: 'none', fontFamily: 'inherit', fontWeight: 600 }}>
-              {ALL_PLAYBOOKS.map((p) => <option key={p.type} value={p.type}>{p.label || p.type}</option>)}
+              {(ALL_PLAYBOOKS || []).filter(p => p && p.type).map((p) => <option key={p.type} value={p.type}>{p.label || p.type}</option>)}
             </select>
             <div style={{ fontSize: 10, color: D.muted }}>Select a flagship to begin a research session</div>
           </div>
@@ -4393,36 +6227,44 @@ function KcrStudioPanel() {
                   <div style={{ fontSize: 9, color: D.bad, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Missing Citations / Evidence ({session.missingFields.length})</div>
                   {session.missingFields.length === 0
                     ? <div style={{ fontSize: 10, color: D.good }}>All fields have evidence.</div>
-                    : session.missingFields.map(({ path, label, kind }) => (
-                      <div key={path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${D.border}22` }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: D.text }}>{label}</div>
-                          <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                    : session.missingFields.map(({ path, label, kind }) => {
+                      const isSelected = selectedGapPath === path;
+                      return (
+                        <div key={path} onClick={() => setSelectedGapPath(path)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: 4, borderBottom: `1px solid ${D.border}22`, cursor: 'pointer', background: isSelected ? `${D.accent}12` : 'transparent', border: isSelected ? `1px solid ${D.accent}44` : '1px solid transparent', borderBottomColor: D.border + '22' }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: isSelected ? D.accent : D.text }}>{label}</div>
+                            <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); autoLaunch({ priority: 'HIGH', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: 'No evidence', path, label, kind }); }}
+                            style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
+                            + Campaign
+                          </button>
                         </div>
-                        <button onClick={() => autoLaunch({ priority: 'HIGH', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: 'No evidence', suggestedProviders: kind === 'pricing' ? ['market-pricing', 'retail'] : ['data.gov'] })}
-                          style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.accent}`, background: `${D.accent}18`, color: D.accent, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
-                          + Campaign
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   }
                 </div>
 
                 {/* Stale + commercial */}
                 <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
                   <div style={{ fontSize: 9, color: D.warn, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Stale / Commercial-only ({session.staleFields.length + session.commercialOnly.length})</div>
-                  {[...session.staleFields.map((f) => ({ ...f, tag: 'stale' })), ...session.commercialOnly.map((f) => ({ ...f, tag: 'commercial-only' }))].map(({ path, label, kind, tag }) => (
-                    <div key={path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${D.border}22` }}>
-                      <div>
-                        <div style={{ fontSize: 10, color: D.text }}>{label} <span style={{ fontSize: 8, color: tag === 'stale' ? D.warn : D.accent }}>[{tag}]</span></div>
-                        <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                  {[...session.staleFields.map((f) => ({ ...f, tag: 'stale' })), ...session.commercialOnly.map((f) => ({ ...f, tag: 'commercial-only' }))].map(({ path, label, kind, tag }) => {
+                    const isSelected = selectedGapPath === path;
+                    return (
+                      <div key={path} onClick={() => setSelectedGapPath(path)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', borderRadius: 4, borderBottom: `1px solid ${D.border}22`, cursor: 'pointer', background: isSelected ? `${D.accent}12` : 'transparent', border: isSelected ? `1px solid ${D.accent}44` : '1px solid transparent', borderBottomColor: D.border + '22' }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: isSelected ? D.accent : D.text }}>{label} <span style={{ fontSize: 8, color: tag === 'stale' ? D.warn : D.accent }}>[{tag}]</span></div>
+                          <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{path}</div>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); autoLaunch({ priority: 'MED', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: tag, path, label, kind }); }}
+                          style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.warn}`, background: `${D.warn}18`, color: D.warn, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
+                          + Campaign
+                        </button>
                       </div>
-                      <button onClick={() => autoLaunch({ priority: 'MED', playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: path, fieldLabel: label, gapKind: kind, reason: tag, suggestedProviders: kind === 'pricing' ? ['market-pricing', 'retail', 'data.gov'] : ['data.gov', 'scholar'] })}
-                        style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, border: `1px solid ${D.warn}`, background: `${D.warn}18`, color: D.warn, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}>
-                        + Campaign
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {session.staleFields.length + session.commercialOnly.length === 0 && <div style={{ fontSize: 10, color: D.good }}>No stale or commercial-only fields.</div>}
                 </div>
 
@@ -4442,18 +6284,111 @@ function KcrStudioPanel() {
                   }
                 </div>
 
-                {/* Suggested providers + active campaigns */}
-                <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 10, padding: 14 }}>
-                  <div style={{ fontSize: 9, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>Suggested Providers</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
-                    {session.suggestedProviders.map((p) => <span key={p} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, border: `1px solid ${D.accent}`, color: D.accent }}>{p}</span>)}
+                {/* Research Blueprint panel */}
+                <div style={{ background: D.surface, border: `1px solid ${activeBp ? D.accent + '55' : D.border}`, borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 9, color: D.accent, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Research Blueprint
+                    {!activeBp && <span style={{ color: D.faint, fontWeight: 400, marginLeft: 8 }}>← select a gap</span>}
                   </div>
-                  {session.activeCampaigns.length > 0 && (
+                  {activeBp ? (
                     <div>
-                      <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.04em' }}>Active campaigns</div>
-                      {session.activeCampaigns.map((c) => (
-                        <button key={c.id} onClick={() => setWs('Campaigns')} style={{ display: 'block', fontSize: 9, color: D.accent, fontFamily: D.mono, marginBottom: 2, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>{c.goal?.slice(0, 60)} →</button>
-                      ))}
+                      {/* Header row: field + kind */}
+                      <div style={{ fontSize: 9, color: D.muted, fontFamily: D.mono, marginBottom: 8 }}>
+                        {activeBp.fieldPath} · <span style={{ color: D.accent }}>{activeBp.knowledgeType}</span> · intent: {activeBp.researchIntent}
+                      </div>
+
+                      {/* Claim */}
+                      {activeBp.claim && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Claim</div>
+                          <div style={{ fontSize: 10, color: D.text, lineHeight: 1.4 }}>{activeBp.claim}</div>
+                        </div>
+                      )}
+
+                      {/* Sufficient when */}
+                      {activeBp.successCriteria && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Sufficient when</div>
+                          <div style={{ fontSize: 10, color: D.good, lineHeight: 1.4 }}>{activeBp.successCriteria}</div>
+                        </div>
+                      )}
+
+                      {/* Required evidence */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Required evidence</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {activeBp.requiredEvidence.map((e) => (
+                            <span key={e} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>{e}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Recommended providers (ranked) */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
+                          Providers <span style={{ color: D.faint, fontWeight: 400 }}>(ranked · authority: {activeBp.authorityRequirements.minimum}+)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {activeBp.recommendedProviders.slice(0, 6).map((pid, i) => {
+                            const cap = activeBp.providerCapabilities.find((c) => c.provider === pid);
+                            return (
+                              <span key={pid} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, border: `1px solid ${i === 0 ? D.accent : D.border}`, color: i === 0 ? D.accent : D.muted }}
+                                title={cap ? `${cap.authorityLevel} · family: ${cap.family || 'n/a'}` : pid}>
+                                {i + 1}. {pid}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Authority + corroboration */}
+                      <div style={{ marginBottom: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 9, color: D.faint }}>Min auth: <strong style={{ color: D.text }}>{activeBp.authorityRequirements.minimum}</strong></span>
+                        <span style={{ fontSize: 9, color: D.faint }}>Preferred: <strong style={{ color: D.text }}>{activeBp.authorityRequirements.preferred}</strong></span>
+                        {activeBp.corroborationRequirements.required && (
+                          <span style={{ fontSize: 9, color: D.warn }}>⚠ corroboration required</span>
+                        )}
+                      </div>
+
+                      {/* Workers */}
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 8, color: D.faint, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Worker assignment</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {activeBp.workerAssignments.map((w) => (
+                            <span key={w} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, border: `1px solid ${D.border}`, color: D.muted }}>{w}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Template */}
+                      {activeBp.campaignTemplate && (
+                        <div style={{ marginBottom: 10, fontSize: 9, color: D.faint }}>
+                          Template: <span style={{ color: D.accent }}>{activeBp.campaignTemplate.label}</span>
+                          <span style={{ color: D.faint }}> · trigger: {activeBp.campaignTemplate.defaultTrigger} · priority: {activeBp.campaignTemplate.defaultPriority}</span>
+                        </div>
+                      )}
+
+                      {/* One-click generate */}
+                      <button
+                        onClick={() => {
+                          const gapItem = { ...selectedGap, playbookType: session.playbookType, playbookLabel: session.playbookLabel, fieldPath: selectedGap.path, fieldLabel: selectedGap.label, gapKind: selectedGap.kind, priority: 'HIGH', reason: selectedGap.tag || 'gap', hasCampaign: false };
+                          autoLaunch(gapItem);
+                        }}
+                        style={{ width: '100%', padding: '7px 0', borderRadius: 6, border: `1px solid ${D.accent}`, background: `${D.accent}22`, color: D.accent, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: D.ff }}>
+                        Generate Campaign from Blueprint
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 9, color: D.faint, marginBottom: 10 }}>Click any gap row to see its research blueprint — what to find, where to look, and when you're done.</div>
+                      {session.activeCampaigns.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.04em' }}>Active campaigns</div>
+                          {session.activeCampaigns.map((c) => (
+                            <button key={c.id} onClick={() => setWs('Campaigns')} style={{ display: 'block', fontSize: 9, color: D.accent, fontFamily: D.mono, marginBottom: 2, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>{c.goal?.slice(0, 60)} →</button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -4598,7 +6533,7 @@ function KcrStudioPanel() {
 
     // ── Experience workspace (XIP-1) ─────────────────────────────────────────────
     if (ws === 'Experience') {
-      const xipPlaybook = ALL_PLAYBOOKS.find((pb) => pb.type === xipPlaybookType) || ALL_PLAYBOOKS[0];
+      const xipPlaybook = (ALL_PLAYBOOKS || []).find((pb) => pb && pb.type === xipPlaybookType) || (ALL_PLAYBOOKS || [])[0];
       const SEVERITY_COLOR = { critical: D.bad, high: D.bad, med: D.warn, low: D.faint };
       const FEED_TYPE_COLOR = { warning: D.bad, decision: D.accent, action: D.good, risk: D.warn, milestone: D.muted, recommendation: D.faint };
       return (
@@ -4613,7 +6548,7 @@ function KcrStudioPanel() {
                 <div style={{ fontSize: 10, color: D.faint, marginBottom: 3 }}>Playbook</div>
                 <select value={xipPlaybookType} onChange={(e) => { setXipPlaybookType(e.target.value); setXipResult(null); setXipDiff(null); }}
                   style={{ width: '100%', background: D.bg, border: `1px solid ${D.border}`, borderRadius: 6, color: D.text, fontSize: type.size.caption, padding: '5px 9px', outline: 'none' }}>
-                  {ALL_PLAYBOOKS.map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
+                  {(ALL_PLAYBOOKS || []).filter(pb => pb && pb.type).map((pb) => <option key={pb.type} value={pb.type}>{pb.type}</option>)}
                 </select>
               </div>
               <div>

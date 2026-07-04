@@ -23,7 +23,7 @@ const anchor = 'Austin, TX';
 // the real production behavior, not a paraphrase of it.
 const legacyShopItems = (plan, event) => plan.list
   .filter((i) => i && !i.skipped)
-  .map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis }));
+  .map((i) => ({ name: i.short || i.item, qty: i.qty, unit: i.unit, got: !!(event.foodGot || {})[i.id], category: i.cat, where: i.where, buyAt: i.buyAt, forgotten: i.forgotten, costLow: i.low, costHigh: i.high, basis: i.qtyOverridden ? '' : i.basis, ...(i.bulkRecommendation ? { bulkRecommendation: i.bulkRecommendation } : {}) }));
 
 const PLAYBOOKS = ['Get-Together', 'Dinner Party', 'Crab Feast', 'Graduation', 'Baby Shower', 'Birthday'];
 const MODES = ['butcher', 'costco', 'grocery'];

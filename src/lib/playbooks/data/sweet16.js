@@ -193,7 +193,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Teens eat what is fast and handheld. ~0.5 lb of main per guest covers a buffet; order a couple extra pies/trays — teens graze all night.',
-      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US party-food norm: ~$10-20/guest food spend; pizza/sliders favored for teens.' },
+      provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US party-food norm: ~$10-20/guest food spend; pizza/sliders favored for teens.', claim: 'US teen party food spend averages $10–20/guest with pizza and sliders as the favored format', sufficientWhen: '≥3 recent US teen-party catering or food order receipts confirm per-guest food spend in the $10–20 range' },
       alternatives: ['Frozen pizza (Costco) — cheaper, bake onsite', 'Sliders tray (Costco/Sam\'s) — budget handheld alternative'],
     },
     {
@@ -233,7 +233,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Plan ~1 drink/guest/hr, front-loaded (≈2 in the first hour). For a 4-hr party budget ~3-5 servings/guest of soda+mocktails combined. NO alcohol — this is a teen event.',
-      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr, ~2 in first hour.' },
+      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr, ~2 in first hour.', claim: 'Beverage need runs ~1 drink/guest/hour, front-loaded to ~2 in the first hour', sufficientWhen: 'Standard US catering or bartending guide confirms the 1 drink/guest/hour rule with a first-hour front-load of 2' },
     },
     {
       id: 'p_mocktail',
@@ -270,7 +270,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T0',
       note: 'Buy day-of so it does not melt. ~1 lb/guest baseline; bump to 1.5 for a hot room or outdoor party.',
-      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1 lb ice/guest, 1.5 in heat / 4+ hr.' },
+      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1 lb ice/guest, 1.5 in heat / 4+ hr.', claim: 'Ice need is ~1 lb/guest for a party, rising to 1.5 lb in heat or for a 4+ hour event', sufficientWhen: 'Standard US event-planning or catering guide confirms ~1 lb/guest baseline with a 1.5 lb adjustment for heat or long events' },
     },
     {
       id: 'p_decor',

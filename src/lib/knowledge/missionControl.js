@@ -10,8 +10,30 @@
 // All functions are pure (inputs → output, no side effects).
 
 import { getFieldPaths, createCampaign } from './campaign';
+import { detectGapsInPlaybook, getRelevantProvidersForGap } from './playbookSchema';
+import { generateResearchBlueprint, blueprintToGoal } from './researchBlueprint';
+export { QUEUE_STATES, QUEUE_STATE_COLORS, computeQueueItemState } from './campaignRunner';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+// Resolves the provenance object (claim/sufficientWhen/sourceHint) for a field path in a playbook.
+// purchase paths:  'crabLegs.unitCostRange', 'ice.qtyPerGuest'  → purchase.provenance
+// decision paths: 'decisions[diy_vs_order].costFactors'          → decision.costFactorProvenance
+function getFieldProvenance(pb, fieldPath) {
+  if (!pb || !fieldPath) return null;
+  const decisionMatch = fieldPath.match(/^decisions\[([^\]]+)\]/);
+  if (decisionMatch) {
+    const d = (pb.decisions || []).find((x) => x.id === decisionMatch[1]);
+    return d?.costFactorProvenance || null;
+  }
+  const purchaseIdMatch = fieldPath.match(/^([^.[]+)\./);
+  if (purchaseIdMatch) {
+    const p = (pb.purchases || []).find((x) => x.id === purchaseIdMatch[1]);
+    return p?.provenance || null;
+  }
+  return null;
+}
+
 function daysBetween(isoA, isoB) {
   if (!isoA || !isoB) return null;
   return Math.floor((new Date(`${isoB}T00:00:00Z`) - new Date(`${isoA}T00:00:00Z`)) / 86_400_000);
@@ -94,15 +116,36 @@ export function buildManufacturingQueue(playbooks, allEvidence, allCampaigns, as
     evidenceByKey[key].push(ev);
   }
   const campaignsByKey = new Set((allCampaigns || []).map((c) => `${c.assetId}::${c.fieldPath}`));
+  const campaignKeysArray = Array.from(campaignsByKey);
+  console.log('DEBUG: campaignsByKey size:', campaignsByKey.size);
+  if (campaignKeysArray.length > 0) {
+    console.log('DEBUG: Sample campaign keys:', campaignKeysArray.slice(0, 5));
+  }
 
   const items = [];
+  let dinnervineMatches = [];
 
   for (const pb of (playbooks || [])) {
     const fields = getFieldPaths(pb);
+    const gaps = detectGapsInPlaybook(pb);
+    const gapsByFieldPath = {};
+    gaps.forEach(g => { gapsByFieldPath[g.fieldPath] = g; });
+
     for (const { path, label, kind } of fields) {
       const key   = `${pb.type}::${path}`;
       const evs   = evidenceByKey[key] || [];
       const hasCampaign = campaignsByKey.has(key);
+
+      // Debug: Check Dinner Party wine matches
+      if (pb.type === 'Dinner Party' && path.includes('wine')) {
+        dinnervineMatches.push({
+          pbType: pb.type,
+          path,
+          queueKey: key,
+          hasCampaign,
+          campaignsIncludeKey: campaignKeysArray.filter(ck => ck.includes('wine')),
+        });
+      }
 
       // Score this field
       let priority, reason;
@@ -133,6 +176,12 @@ export function buildManufacturingQueue(playbooks, allEvidence, allCampaigns, as
         }
       }
 
+      const prov = getFieldProvenance(pb, path);
+      const gapForThisField = gapsByFieldPath[path];
+
+      // Provider groups come from gap-based routing (RBE-1 expands to individual IDs at blueprint layer)
+      const suggestedProviders = gapForThisField ? getRelevantProvidersForGap(gapForThisField) : [];
+
       items.push({
         priority,
         playbookType: pb.type,
@@ -144,7 +193,10 @@ export function buildManufacturingQueue(playbooks, allEvidence, allCampaigns, as
         reason,
         evidenceCount: evs.length,
         hasCampaign,
-        suggestedProviders: kind === 'pricing' ? ['market-pricing', 'retail', 'restaurant-depot'] : kind === 'grounding' ? ['data.gov', 'scholar'] : ['hospitality-assoc'],
+        suggestedProviders,
+        claim: prov?.claim || null,
+        sufficientWhen: prov?.sufficientWhen || null,
+        sourceHint: prov?.sourceHint || null,
       });
     }
   }
@@ -153,6 +205,16 @@ export function buildManufacturingQueue(playbooks, allEvidence, allCampaigns, as
     const po = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
     return po !== 0 ? po : a.evidenceCount - b.evidenceCount;
   });
+
+  // Log debug info for Dinner Party wine fields
+  if (dinnervineMatches.length > 0) {
+    console.log('DEBUG Dinner Party wine matches:', dinnervineMatches);
+  }
+
+  // Log KPI summary
+  const highCount = items.filter(i => i.priority === 'HIGH' && !i.hasCampaign).length;
+  const highWithCampaign = items.filter(i => i.priority === 'HIGH' && i.hasCampaign).length;
+  console.log('DEBUG KPI summary - HIGH items without campaign:', highCount, 'with campaign:', highWithCampaign, 'total HIGH:', items.filter(i => i.priority === 'HIGH').length);
 
   return items;
 }
@@ -247,20 +309,23 @@ export function buildKnowledgeAging(allEvidence, asOf) {
 // Converts queue items above a threshold into campaign objects.
 // Returns new campaign objects — caller saves them via recordCampaign().
 // Never creates duplicates for items that already have campaigns.
-export function generateCampaignsFromQueue(queueItems, { priorities = ['HIGH'], limit = 10, at } = {}) {
+export function generateCampaignsFromQueue(queueItems, { priorities = ['HIGH'], limit = 10, at, providerIntel = {} } = {}) {
   return queueItems
     .filter((item) => priorities.includes(item.priority) && !item.hasCampaign)
     .slice(0, limit)
-    .map((item) => createCampaign({
-      goal: `Research: ${item.fieldLabel} (${item.playbookLabel}) — ${item.reason}`,
-      assetId: item.playbookType,
-      fieldPath: item.fieldPath,
-      gapTypes: [item.gapKind],
-      priority: item.priority.toLowerCase(),
-      trigger: 'research',
-      providers: item.suggestedProviders,
-      at,
-    }));
+    .map((item) => {
+      const bp = generateResearchBlueprint(item, { providerIntel, asOf: at });
+      return createCampaign({
+        goal:      blueprintToGoal(bp, { fieldLabel: item.fieldLabel, playbookLabel: item.playbookLabel, reason: item.reason }),
+        assetId:   item.playbookType,
+        fieldPath: item.fieldPath,
+        gapTypes:  [item.gapKind],
+        priority:  item.priority.toLowerCase(),
+        trigger:   bp?.campaignTemplate?.defaultTrigger || 'research',
+        providers: bp?.recommendedProviders?.length ? bp.recommendedProviders : item.suggestedProviders,
+        at,
+      });
+    });
 }
 
 // ── BUNDLE G: RESEARCH SESSION ─────────────────────────────────────────────────
@@ -308,7 +373,7 @@ export function buildResearchSession(pb, allEvidence, allKcrs, allCampaigns, asO
     contradictions: hasContradictions,
     activeKcrs: kcrs.filter((k) => !['published', 'rejected'].includes(k.state)),
     activeCampaigns: campaigns.filter((c) => c.state !== 'kcr'),
-    suggestedProviders: [...new Set(missingFields.flatMap((f) => f.kind === 'pricing' ? ['market-pricing', 'retail', 'restaurant-depot'] : ['data.gov', 'scholar']))].slice(0, 5),
+    suggestedProviders: [],
     highImpactFields: [...missingFields, ...staleFields].slice(0, 5),
   };
 }

@@ -168,7 +168,7 @@ export function autoCorroborate(campaign, runResult, { asOf } = {}) {
 // ── Corroboration provider map ─────────────────────────────────────────────────
 // Maps gapType → preferred official/academic providers for corroboration.
 // Always prefer official (government) first, then academic.
-const CORROBORATION_TARGETS = {
+export const CORROBORATION_TARGETS = {
   pricing:      ['data.gov', 'scholar'],
   quantity:     ['data.gov', 'scholar'],
   'cost-factor':['data.gov', 'hospitality-assoc'],

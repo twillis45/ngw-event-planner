@@ -37,12 +37,10 @@ describe('dimension contract', () => {
 });
 
 describe('Grounding dimension (reuses playbookHealth; defers KCR to the research queue)', () => {
-  test('crab grounding is a gap, shown, but DEFERS its KCR to the research queue (EP-1: one gap, one source)', () => {
+  test('crab grounding is ok — pricing cited via Captain White\'s primary source', () => {
     const g = evaluateAsset(crab, 'playbook', ASOF).find((d) => d.id === 'Grounding');
-    expect(g.status).toBe('gap');
-    expect(g.missingEvidence).toBeTruthy();       // still surfaced
-    expect(g.recommendedKCRs).toHaveLength(0);    // but no duplicate KCR
-    expect(g.deferredTo).toBe('research-queue');
+    expect(g.status).toBe('ok'); // Captain White's July 2025 prices are a cited primary source
+    expect(g.recommendedKCRs).toHaveLength(0);
   });
 });
 

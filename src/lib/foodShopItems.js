@@ -49,6 +49,9 @@ export function foodShopItems(plan, event) {
       forgotten: e ? e.forgotten : i.forgotten,             // effectiveItems
       costLow: i.low, costHigh: i.high,                     // list (uncollapsed) — see header
       basis: i.qtyOverridden ? '' : i.basis,                // list (qtyOverridden gate) — see header
+      // Bulk-purchase recommendation from the engine (crabs by the bushel, etc.).
+      // Passed through when present so the shopping list can prefer the bulk unit.
+      ...(i.bulkRecommendation ? { bulkRecommendation: i.bulkRecommendation } : {}),
     };
   });
 }

@@ -187,7 +187,7 @@ const sundayDinner = {
       buyAt: 'T-1d',
       note: 'About a half pound bone-in per person — 2 to 3 pieces an adult, 1 to 2 for a child — when hearty sides round out the plate.',
       alternatives: ['Baked chicken thighs — cheaper than whole bird, no frying required', 'Rotisserie chicken (pickup) — zero effort, dignified option', 'Smothered pork chops — budget swap, same comfort-food role'],
-      provenance: { tier: 'community', confidence: 'medium', verificationStatus: 'synthesized', note: 'Half-pound-per-person figure reflects common US soul-food portioning when multiple sides are served.' },
+      provenance: { tier: 'community', confidence: 'medium', verificationStatus: 'synthesized', note: 'Half-pound-per-person figure reflects common US soul-food portioning when multiple sides are served.', claim: '~0.5 lb of bone-in chicken per person reflects common US soul-food portioning when hearty sides are also served', sufficientWhen: 'soul-food recipe portioning from ≥2 US sources confirms the ~0.5 lb/person bone-in chicken norm alongside a full sides spread' },
     },
     {
       id: 'p_greens',

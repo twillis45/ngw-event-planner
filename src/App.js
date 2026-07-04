@@ -14,6 +14,17 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
+import { buildAssembleRevealStages } from './lib/assembleRevealEngines';
+// Sprint IS-1: AssembleReveal's Identity stage must consume Sprint A's Event Identity
+// Engine (compound/complexity/ceremony detection), not the legacy meaning/honoree
+// reader (./lib/eventIdentity) — that reader has no compound/complexity fields and
+// returns null for most fresh events. HostHome keeps using the legacy reader for its
+// own (different, valid) must-have-moment purpose; this import is Reveal-only.
+import { resolveEventIdentity } from './lib/eventIdentityEngine';
+// Sprint PC-1: the canonical Experience Context — one composition function
+// every Host surface should call instead of independently re-deriving
+// Identity/blockers/risks/assembled stages. See lib/experienceContext.js.
+import { buildExperienceContext } from './lib/experienceContext';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { choreography, transitionFor } from './design/motion';
@@ -9168,15 +9179,29 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
 // (playbookRisks), the differentiated operational intelligence that was computed
 // but dark. Collapsed by default — it whispers (Attention System), reassurance on
 // demand, not an alarm. Each row: what the pros watch for + the fix they use.
-function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title = 'What could go wrong' }) {
+// HQ-2 P0-3 + P1: Risks now carry the same confidence vocabulary Assemble Reveal
+// established ('We think so' — these are authored per event TYPE, not computed
+// per event, so they never earn 'High confidence') and a real risk loop: each row
+// persists its status (`event.riskStatus[riskId]`) via onPatchEvent, so a host
+// never sees the same unresolved warning forever with no way to close it out.
+function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, domain = null, title = 'What could go wrong' }) {
   const C = useT();
   const T = useType();
   const [expanded, setExpanded] = useState(false);
+  const [learnMoreId, setLearnMoreId] = useState(null);
   const rk = (() => { try { return playbookRisks(event, domain); } catch { return null; } })();
   if (!rk || !rk.items || !rk.items.length) return null;
+  const riskStatus = event.riskStatus || {};
+  const setRiskStatus = (id, status) => {
+    if (!onPatchEvent) return;
+    onPatchEvent({ riskStatus: { ...riskStatus, [id]: status } });
+  };
+  const openItems = rk.items.filter(r => !riskStatus[r.id || r.trigger]);
+  const closedCount = rk.items.length - openItems.length;
   const sevColor = (rank) => (rank <= 1 ? (C.danger || C.accent) : rank === 2 ? (C.accentTopGrad || C.accent) : C.muted);
   const sevWord = { critical: 'Critical', high: 'High', med: 'Watch', medium: 'Watch', low: 'Minor' };
   const card = { ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px' };
+  if (!openItems.length) return null; // every risk here has been acknowledged/dismissed/mitigated — nothing left to show
   return (
     <div style={card}>
       {/* M6·A/B — matches the "Before the big day" card: plain-case title, a one-line summary
@@ -9185,25 +9210,40 @@ function WhatCouldGoWrongPanel({ event, isMobile = false, domain = null, title =
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: T.body, fontWeight: FW.heavy, color: C.text }}>{title}</div>
-          {!expanded && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3 }}>{rk.count} thing{rk.count === 1 ? '' : 's'} the pros plan for</div>}
+          {!expanded && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3 }}>{openItems.length} thing{openItems.length === 1 ? '' : 's'} the pros plan for{closedCount > 0 ? ` · ${closedCount} handled` : ''}</div>}
         </div>
         <span aria-hidden style={{ color: C.muted, display: 'flex', flexShrink: 0, marginTop: 2, transform: expanded ? 'none' : 'rotate(-90deg)', transition: transitionFor('press', ['transform']) }}><Icon name="chevronDown" size={18} /></span>
       </button>
       {expanded && (
         <>
-          <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>The handful of things that trip up a {String(event.type || 'event').toLowerCase()} — and how the pros handle each. Nothing for you to do now; just so you know.</div>
+          <div style={{ fontSize: T.body, color: C.muted, marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>The handful of things that trip up a {String(event.type || 'event').toLowerCase()} — and how the pros handle each. We think so, based on events like yours — not a certainty for this specific one.</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {rk.items.map((r, i) => (
-              <div key={r.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0' }}>
-                <span aria-hidden style={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: sevColor(r.rank) }} />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, lineHeight: 1.4 }}>{r.trigger}
-                    <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.08em', color: sevColor(r.rank), textTransform: 'uppercase', marginLeft: 8, verticalAlign: 'middle' }}>{sevWord[r.severity] || 'Watch'}</span>
+            {openItems.map((r, i) => {
+              const rid = r.id || r.trigger;
+              const learnOpen = learnMoreId === rid;
+              return (
+                <div key={rid} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '12px 0' }}>
+                  <span aria-hidden style={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: sevColor(r.rank) }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, lineHeight: 1.4 }}>{r.trigger}
+                      <span style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.08em', color: sevColor(r.rank), textTransform: 'uppercase', marginLeft: 8, verticalAlign: 'middle' }}>{sevWord[r.severity] || 'Watch'}</span>
+                    </span>
+                    {learnOpen && (
+                      <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.45 }}><span style={{ fontWeight: FW.bold, color: C.text }}>The fix:</span> {r.mitigation}</span>
+                    )}
+                    <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 4 }}>We think so</span>
+                    {onPatchEvent && (
+                      <span style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => setLearnMoreId(learnOpen ? null : rid)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.accent }}>{learnOpen ? 'Hide details' : 'Learn more'}</button>
+                        <button type="button" onClick={() => setRiskStatus(rid, 'mitigated')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.accent }}>Mark mitigated</button>
+                        <button type="button" onClick={() => setRiskStatus(rid, 'acknowledged')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>
+                        <button type="button" onClick={() => setRiskStatus(rid, 'dismissed')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>
+                      </span>
+                    )}
                   </span>
-                  <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 3, lineHeight: 1.45 }}><span style={{ fontWeight: FW.bold, color: C.text }}>The fix:</span> {r.mitigation}</span>
-                </span>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -9348,20 +9388,24 @@ function CostLockSegments({ low, high, locked, onLock }) {
 // "Your plan so far: ~$X" (+ "of your $Y budget" only when a total is set), tapping into the
 // Budget tab. NO per-card over/under gauges — the Budget tab is the single source for over/under;
 // this just gives the calm running estimate once. Neutral (no status color) by doctrine.
-function PlanBudgetRollup({ event = {}, isMobile = false, onNav = () => {} }) {
+function PlanBudgetRollup({ event = {}, profile = null, isMobile = false, onNav = () => {} }) {
   const C = useT();
   const T = useType();
   const steel = C.accentTopGrad || C.accent;
   const money = (n) => `$${Math.round(Number(n) || 0).toLocaleString()}`;
+  // HQ-2 P0-1: must resolve the SAME price factor every other food-cost surface uses —
+  // calling playbookFoodPlan without it silently priced this rollup at the national
+  // average while Budget/Food showed the regional figure for the same event.
+  const foodPP = useFoodPriceFactor(event, profile);
   const range = useMemo(() => {
     try {
-      const fp = playbookFoodPlan(event) || {};
+      const fp = playbookFoodPlan(event, foodPP) || {};
       const cap = playbookCapacity(event) || {};
       const lo = (Number(fp.foodLow) || 0) + (Number(cap.costLow) || 0);
       const hi = (Number(fp.foodHigh) || 0) + (Number(cap.costHigh) || 0);
       return { lo, hi };
     } catch { return { lo: 0, hi: 0 }; }
-  }, [event]);
+  }, [event, foodPP]);
   if (!(range.hi > 0)) return null;
   const total = Number(event.totalBudget) || 0;
   const est = range.lo === range.hi ? money(range.hi) : `${money(range.lo)}–${money(range.hi)}`;
@@ -21528,7 +21572,9 @@ function HowdItGoCard({ ev, profile, onPatchProfile = () => {}, C, cardStyle, ey
   // Attendance + spend are NOT asked here — they're captured once, in "the final numbers" card
   // below, and harvested into memory there (single-source, no double-ask). This card owns the
   // things nothing else captures: per-item leftovers, ice/drinks, and one lesson.
-  const fp = useMemo(() => { try { return playbookFoodPlan(ev) || {}; } catch { return {}; } }, [ev]);
+  // HQ-2 P0-1: same resolved price factor as every other food-cost surface.
+  const foodPP = useFoodPriceFactor(ev, profile);
+  const fp = useMemo(() => { try { return playbookFoodPlan(ev, foodPP) || {}; } catch { return {}; } }, [ev, foodPP]);
   const topFood = (Array.isArray(fp.list) ? fp.list : [])
     .filter((i) => i && i.group !== 'Supplies' && i.group !== 'Drinks' && Number(i.qty) > 0)
     .slice(0, 3);
@@ -22450,14 +22496,33 @@ function AssembleReveal({ ev, profile, onDone }) {
   const ident = eventGlyph(ev, C);
   const festive = ident.mark !== 'quiet';
   const idColor = festive ? ident.color : C.muted;
+
+  // Sprint PC-1 (Platform Continuity): AssembleReveal now builds the ONE
+  // canonical Experience Context instead of independently deriving Identity +
+  // stages inline. This is the same free-text-stripping, same foodPP-threading
+  // logic F4/IS-1/HQ-2 already established — moved into experienceContext.js
+  // so Host Home (below) can call the IDENTICAL function and get the IDENTICAL
+  // answer, instead of re-deriving its own version with a different reader
+  // (HQ-3's #1 finding: the two surfaces agreed by coincidence, not design).
   const foodPP = useFoodPriceFactor(ev, profile);
-  const fp  = useMemo(() => { try { return playbookFoodPlan(ev, foodPP); } catch { return null; } }, [ev, foodPP]);
-  const ros = useMemo(() => { try { return effectiveRos(ev) || []; } catch { return []; } }, [ev]);
-  const stages = useMemo(() => [
-    { key: 'day',  icon: 'calendar', label: 'Building your day',        value: ros.length ? `${ros.length} moments, hour by hour` : 'A run of the day, ready to fill' },
-    fp ? { key: 'food', icon: 'cloche', label: 'Sizing the food & drink', value: `${fp.itemCount} item${fp.itemCount === 1 ? '' : 's'} for ${attendanceBandLabel(attendanceBand(ev)) || `~${fp.guests}`} guests` } : null,
-    fp ? { key: 'list', icon: 'store', label: 'Writing your shopping list', value: 'Every item, ready to check off' } : null,
-  ].filter(Boolean), [ros.length, fp]);
+  const ctx = useMemo(() => {
+    try {
+      return buildExperienceContext(ev, profile, foodPP);
+    } catch (e) {
+      console.error('[AssembleReveal] Experience Context error:', e);
+      return null;
+    }
+  }, [ev, profile, foodPP]);
+  const evIdentity = ctx ? ctx.eventIdentity : null;
+  const stages = useMemo(() => {
+    try {
+      return (ctx && ctx.assembledState) || [];
+    } catch (e) {
+      console.error('[AssembleReveal] Stage generation error:', e);
+      // Fallback to empty array; reveal still works, just shows no stages
+      return [];
+    }
+  }, [ev, evIdentity, profile, foodPP]);
   const [revealed, setRevealed] = useState(0);
   const firedRef = useRef(false);
   useEffect(() => {
@@ -22506,8 +22571,22 @@ function AssembleReveal({ ev, profile, onDone }) {
                 <div key={st.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, background: C.surface, border: `1px solid ${shown ? (C.success || C.accent) + '55' : C.border}`, opacity: shown ? 1 : 0.32, transform: shown ? 'none' : 'translateY(6px)', transition: 'opacity 460ms ease, transform 460ms ease, border-color 460ms ease', animation: justShown ? 'ceBreathe 2.4s ease-in-out 2' : 'none' }}>
                   <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: T.body, color: shown ? (C.success || C.accent) : C.muted, background: shown ? (C.success || C.accent) + '22' : C.bg, fontWeight: FW.heavy, animation: justShown ? 'cePop 460ms ease both' : 'none' }}>{shown ? '✓' : <Icon name={st.icon} size={16} stroke={1.9} />}</span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{st.label}</span>
-                    <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{st.value}</span>
+                    <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{st.title || st.label}</span>
+                    <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, marginTop: 1 }}>{st.what || st.value}</span>
+                    {/* Sprint IS-1: why/status/nextDecision/confidenceLabel were already
+                        computed by buildAssembleRevealStages but never rendered — this is
+                        the explainability layer F4 was built to deliver. Same tokens/sizes
+                        already used on this card; no new styling system. */}
+                    {shown && st.why && (
+                      <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.4 }}>{st.why}</span>
+                    )}
+                    {shown && (st.nextDecision || st.confidenceLabel) && (
+                      <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, fontWeight: FW.semibold }}>
+                        {st.nextDecision ? `Next: ${st.nextDecision}` : ''}
+                        {st.nextDecision && st.confidenceLabel ? ' · ' : ''}
+                        {st.confidenceLabel || ''}
+                      </span>
+                    )}
                   </span>
                 </div>
               );
@@ -22657,7 +22736,16 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
   const guestCount = Number(ev.guestCount) || Number(ev.guestEstimate) || guests.length || 0;
   const fmtDate = (() => { try { return new Date(ev.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ev.date; } })();
   const na = (() => { try { return selectEventNextAction(ev); } catch { return null; } })();
+  // `id` stays the legacy meaning reader (must-have moment / feeling / honoree
+  // story) — a genuinely different, still-valid concern from event
+  // CLASSIFICATION. Sprint PC-1 doesn't merge these two; it makes Host Home
+  // call the SAME classification function AssembleReveal already called
+  // (buildExperienceContext), instead of Host Home having no classification
+  // awareness at all. This is the concrete fix for HQ-3's #1 finding: Reveal
+  // recognized a compound event and said so; Host Home previously had no way
+  // to know that once Reveal closed.
   const id = (() => { try { return eventIdentity(ev); } catch { return null; } })();
+  const ctx = (() => { try { return buildExperienceContext(ev, profile, foodPP); } catch { return null; } })();
 
   // Honest, percentage-free progress — presence/state of what already exists.
   const yes = guests.filter(g => g && g.rsvp === 'Yes').length;
@@ -23371,6 +23459,18 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
                 <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginTop: 3, lineHeight: 1.4 }}>{id.mustHaveMoment}</div>
               </div>
             )}
+          </div>
+        )}
+        {/* Sprint PC-1: what Assemble Reveal recognized — the SAME buildExperienceContext()
+            call Reveal made, surfaced here so a compound event's understanding doesn't
+            vanish the moment the reveal modal closes (HQ-3's #1 continuity finding). Only
+            shown for compound events — a simple Birthday doesn't need this reminder, but
+            "we recognized this as two milestones" is exactly the kind of understanding a
+            host would otherwise have to take on faith after Reveal disappears. */}
+        {ctx && ctx.compound && ctx.reasoning && (
+          <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
+            <div style={{ ...eyebrow, color: C.accent }}>What we recognized</div>
+            <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{ctx.reasoning}</div>
           </div>
         )}
 
@@ -27049,8 +27149,12 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const showUndoToast = useUndoToast();
   const [modalId, setModalId] = useState(null);
   const [budgetAILoad, setBudgetAILoad] = useState(false);
+  // HQ-2 P0-2: the AI suggestion must never write to budget state on its own —
+  // it lands here first, reviewed via the same ConfirmTrustDialog every other
+  // Budget write-action already uses, and only reaches `setBudget` on explicit Accept.
+  const [budgetAIError, setBudgetAIError] = useState(null);
   // Sprint Budget/Payments — confirm gate for fee mark-paid + Stripe link.
-  // pendingConfirm: null | { kind: 'mark-fee-paid' | 'unmark-fee-paid' | 'create-stripe-link', fee }
+  // pendingConfirm: null | { kind: 'mark-fee-paid' | 'unmark-fee-paid' | 'create-stripe-link' | 'ai-budget-suggestion', fee, items }
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const [showSotGlossary, setShowSotGlossary] = useState(false);
   // Editable Total Budget KPI. The total is a DERIVED sum of category rows
@@ -27094,22 +27198,35 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     if (onSetTotalBudget) onSetTotalBudget(newTotal);
   };
   const beginEditTotal = (current) => { setTotalDraft(String(current || '')); setEditingTotal(true); };
+  // HQ-2 P0-2: Budget AI confirmation. suggestBudget() must never silently modify
+  // the plan — it now only PARSES the AI response and hands it to pendingConfirm
+  // for Review/Accept/Dismiss via the existing ConfirmTrustDialog. Nothing writes
+  // to `budget` until the host explicitly accepts (doAcceptAiBudget below).
+  // If the AI call fails or returns something unparsable, the failure is surfaced
+  // via budgetAIError instead of the previous silent no-op.
   const suggestBudget = async () => {
     if (!aiInputOn(aiKey)) return;
     setBudgetAILoad(true);
+    setBudgetAIError(null);
     const total = budget.reduce ? (budget || []).reduce((s,r)=>s+(r.budgeted||0),0) : 0;
     const prompt = `Generate a realistic event budget breakdown as a JSON array. Each item: { category (string), planned (number in dollars), notes (string, 1 short sentence) }. Base allocations on industry norms for this event type and guest count. Return ONLY the JSON array.\n\nEvent type: ${eventType}\nGuest count: ${confirmedCount||'unknown'}\nTotal budget: $${total||'unknown'}\n\nJSON:`;
     try {
       const raw = await askNGW('budget', prompt, { maxTokens: 600, aiKey });
       const match = raw.match(/\[[\s\S]*\]/);
-      if (match) {
-        const items = JSON.parse(match[0]);
-        items.forEach(item => {
-          setBudget(b => [...b, { id: uid(), category: item.category, budgeted: item.planned||0, actual: 0, notes: item.notes||'' }]);
-        });
-      }
-    } catch(e) { /* silent */ }
+      if (!match) throw new Error('No budget suggestion came back — try again in a moment.');
+      const items = JSON.parse(match[0]);
+      if (!Array.isArray(items) || items.length === 0) throw new Error('The suggestion came back empty — try again in a moment.');
+      setPendingConfirm({ kind: 'ai-budget-suggestion', items, total });
+    } catch (e) {
+      setBudgetAIError(e && e.message ? e.message : 'Could not generate a budget suggestion right now — try again in a moment.');
+    }
     setBudgetAILoad(false);
+  };
+  const doAcceptAiBudget = (items) => {
+    setPendingConfirm(null);
+    items.forEach(item => {
+      setBudget(b => [...b, { id: uid(), category: item.category, budgeted: item.planned || 0, actual: 0, notes: item.notes || '' }]);
+    });
   };
   // Estimator auto-collapses once line items exist — open on first visit
   // Open the estimator whenever no real money is set — including the common case
@@ -27820,6 +27937,13 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
               <button aria-label="Remove" style={s.btn('primary')} onClick={add}>+ Add Row</button>
             </div>
           </div>
+          {/* HQ-2 P0-2: AI failures are never silent — surfaced right where the host clicked. */}
+          {budgetAIError && (
+            <div style={{ fontSize: T.secondary, color: C.muted, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 13px', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span>{budgetAIError}</span>
+              <button type="button" onClick={() => setBudgetAIError(null)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, flexShrink: 0 }}>Dismiss</button>
+            </div>
+          )}
 
           {totalBudgeted > 0 && (
             <BudgetHealthBar
@@ -28397,6 +28521,26 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
           primaryLabel="Create payment link"
           onCancel={() => setPendingConfirm(null)}
           onConfirm={() => doCreateStripeLink(pendingConfirm.fee)}
+        />
+      )}
+      {pendingConfirm?.kind === 'ai-budget-suggestion' && (
+        // HQ-2 P0-2: Review before Accept — same trust-dialog pattern as every other
+        // Budget write-action. Dismiss (Cancel) discards the suggestion entirely;
+        // nothing has touched `budget` state up to this point. "Modify" happens
+        // naturally after Accept, using the same row editors every category already has.
+        <ConfirmTrustDialog
+          C={C} s={s}
+          testId="bp-confirm-ai-budget-suggestion"
+          title={`Add ${pendingConfirm.items.length} suggested categor${pendingConfirm.items.length === 1 ? 'y' : 'ies'} to your budget?`}
+          summary={`We think so — based on ${eventType || 'this event type'} and ${confirmedCount || 'your'} guest count. Review the list, then Accept, or Cancel to discard.`}
+          trustLines={[
+            ...pendingConfirm.items.map(item => `${item.category}: ${fmtD(item.planned || 0)}${item.notes ? ` — ${item.notes}` : ''}`),
+            'Nothing is added until you accept',
+            'Every amount can be edited or removed after accepting',
+          ]}
+          primaryLabel="Accept"
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => doAcceptAiBudget(pendingConfirm.items)}
         />
       )}
       {pendingConfirm?.kind === 'reconcile' && (
@@ -41627,7 +41771,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></div>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div></div>}
         {tab === 'Budget' && <div className="planv2-wrap">{/* Parity fix: wrap the WHOLE tab so the PlanNowHero aligns to 760 with the content — HostSpendingPlan's inner 760 only capped the cards, leaving the hero full-bleed. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -41647,7 +41791,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
           </div>
-          <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
+          <PlanBudgetRollup event={event} profile={profile} isMobile={isMobile} onNav={go} />
           </div>
         </> : <>
           {/* NOW-view command hero (host shell) — the same state-named + action-named
@@ -41657,7 +41801,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
-          <PlanBudgetRollup event={event} isMobile={isMobile} onNav={go} />
+          <PlanBudgetRollup event={event} profile={profile} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
         {tab === 'Event Day Schedule' && (
           // HOST shell → the calm, read-mostly RUN-OF-SHOW timeline (Figma 1445:2),
@@ -41669,7 +41813,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
-                <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
+                <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
                 <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>}</div>
         )}
@@ -42375,7 +42519,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
@@ -42560,7 +42704,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
-          <WhatCouldGoWrongPanel event={event} isMobile={isMobile} />
+          <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"
@@ -44276,8 +44420,16 @@ export default function App() {
     // to the playbook's typical with a "~", and the breadth line simply omits the
     // food-sized claim (honored by attendanceBand → not-applicable), so nothing
     // asserts a precise number the host never entered.
+    // Sprint IS-1: Reveal eligibility is about the ACCOUNT (is this a host, not a
+    // planner managing a client?), not the event type's taxonomy family. `evIsHost`
+    // (recordKind==='event') wrongly excluded Birthday/Retirement/Reunion/Anniversary/
+    // Graduation — all real personal host events that the taxonomy classifies as
+    // 'host_driven'→'client' for planner-side vocabulary reasons unrelated to Reveal.
+    // A host's own account (accountTypeOf !== 'planner') should see the reveal for
+    // any qualifying event regardless of that unrelated classification.
+    const _revealEligibleAccount = accountTypeOf(profile, clients) !== 'planner';
     const _qualifies = !isSeedEvent(ev) && !!(ev.date && String(ev.date).trim()) && !!(ev.type && String(ev.type).trim());
-    if (evIsHost && _qualifies) {
+    if (_revealEligibleAccount && _qualifies) {
       setAssemble({ ev, openId: navigate ? ev.id : null });
     } else if (navigate) {
       // navigate=false lets the New Event flow show its success state in place

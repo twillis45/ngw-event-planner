@@ -122,11 +122,11 @@ describe('knowledge impact preview — derived, honest-empty where unindexed', (
 });
 
 describe('knowledge confidence — components only, never one score', () => {
-  test('crab: evidence low, sources low, validation unknown; no rolled-up number', () => {
+  test('crab: evidence high (Captain White\'s cited), validation unknown; no rolled-up number', () => {
     const c = deriveKnowledgeConfidence(crab, ASOF, { validationN: 0 });
     expect(c.score).toBeUndefined();
     expect(c.components.find((x) => x.component === 'Validation').level).toBe('unknown');
-    expect(c.components.find((x) => x.component === 'Evidence').level).toBe('low');
+    expect(c.components.find((x) => x.component === 'Evidence').level).toBe('high'); // p_crabs cited
   });
 });
 
