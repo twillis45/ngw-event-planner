@@ -902,6 +902,15 @@ export function effectiveRos(event) {
   return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
 }
 
+// classifyRos — determines which Day tab state to render.
+// 'timed'   → cues with time strings → green spine + HAPPENING NOW
+// 'untimed' → cues exist but none have a time → "Schedule needs times" state
+// 'empty'   → no cues → honest empty state
+export function classifyRos(cues) {
+  if (!Array.isArray(cues) || cues.length === 0) return 'empty';
+  return cues.some(r => r && typeof r.time === 'string' && r.time.trim() !== '') ? 'timed' : 'untimed';
+}
+
 // ── Capacity requirements (Sprint 55H-B3A · NGW Pattern 009) ──────────────────
 // Pure reader: the physical capacity a host LIKELY NEEDS, scaled from the
 // playbook's authored rentalsGap by guest count. REQUIREMENTS ONLY — never a

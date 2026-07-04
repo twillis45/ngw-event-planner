@@ -13,7 +13,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach, classifyRos } from './lib/playbooks';
 import { buildAssembleRevealStages } from './lib/assembleRevealEngines';
 // Sprint IS-1: AssembleReveal's Identity stage must consume Sprint A's Event Identity
 // Engine (compound/complexity/ceremony detection), not the legacy meaning/honoree
@@ -33441,7 +33441,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
 // day it reads "STARTS SOON" and "wakes up when the day begins"; on the day the
 // NOW marker goes live. Studio Matte: dark, steel, no amber — escalation = reduction.
 // Planners keep the editable RunOfShow below; this never renders for them.
-function HostRunOfShowTimeline({ event, profile, ctx = null }) {
+function HostRunOfShowTimeline({ event, profile, ctx = null, onNav = null }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -33453,8 +33453,10 @@ function HostRunOfShowTimeline({ event, profile, ctx = null }) {
   const [rosDraftSheet, setRosDraftSheet] = useState(null);
   const cues = (() => { try { return effectiveRos(event) || []; } catch { return []; } })();
 
-  // No authored/derived cues → the honest empty state (don't invent a schedule).
-  const hasCues = Array.isArray(cues) && cues.length > 0;
+  // Three-state classification: timed → green spine, untimed → needs-time state, empty → no cues.
+  const rosState = classifyRos(cues);
+  const hasCues = rosState !== 'empty';
+  const hasTimedCues = rosState === 'timed';
 
   const steelLabel  = C.steel?.blue400 || C.accent;     // #8BA0AA — eyebrow / NOW
   const live        = C.success || C.accent;            // GREEN — the LIVE / happening-now state (event day)
@@ -33639,15 +33641,55 @@ function HostRunOfShowTimeline({ event, profile, ctx = null }) {
   // Shared card style for the two day-of coordination blocks.
   const coordCard = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18 };
 
-  if (!hasCues) {
-    // Honest empty state — no cues to show, so we don't fabricate any.
+  if (rosState === 'empty') {
     return (
       <div style={{ padding: '0 20px 40px' }}>
-        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: isDayOf ? live : steelLabel, textTransform: 'uppercase' }}>{eyebrow}</div>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{isDayOf ? 'THE DAY · NO SCHEDULE YET' : 'THE DAY · STARTS SOON'}</div>
         {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
         <div style={{ marginTop: 40, textAlign: 'center', maxWidth: 330, marginLeft: 'auto', marginRight: 'auto' }}>
           <div style={{ fontSize: T.body, color: textPrimary, fontWeight: FW.semibold, lineHeight: 1.4 }}>No run-of-show yet</div>
-          <div style={{ fontSize: T.secondary, color: steelTime, marginTop: 8, lineHeight: 1.55 }}>When you sketch the day, the timeline lands here and wakes up when the day begins.</div>
+          <div style={{ fontSize: T.secondary, color: steelTime, marginTop: 8, lineHeight: 1.55 }}>Sketch out your day — when the first cue has a start time, this view wakes up with a live timeline.</div>
+          {onNav && (
+            <button onClick={() => onNav('Planning')} style={{ marginTop: 18, fontSize: T.secondary, fontWeight: FW.bold, color: steelLabel, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer', padding: '8px 16px', display: 'inline-block', letterSpacing: '0.03em' }}>
+              Build run-of-show
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (rosState === 'untimed') {
+    const untimedEyebrow = isDayOf ? 'THE DAY · SCHEDULE NEEDS TIMES' : 'THE DAY · STARTS SOON';
+    return (
+      <div style={{ padding: '0 20px 40px' }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.semibold, letterSpacing: '0.13em', color: steelLabel, textTransform: 'uppercase' }}>{untimedEyebrow}</div>
+        {subline && <div style={{ fontSize: T.secondary, color: textSub, marginTop: 8 }}>{subline}</div>}
+        {/* Cue list — show existing items, each flagged "Needs time" */}
+        <div style={{ marginTop: 24 }}>
+          {sorted.map((r, i) => {
+            const label = String(r.segment || r.task || '').trim() || 'Untimed item';
+            return (
+              <div key={r.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 14, opacity: r.done ? 0.4 : 0.8 }}>
+                <div style={{ flexShrink: 0, width: 52, fontSize: T.caption, color: steelTime, fontWeight: FW.semibold, paddingTop: 2, lineHeight: 1.2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>When?</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: textPrimary, lineHeight: 1.35 }}>{label}</div>
+                  {r.owner && <div style={{ fontSize: T.caption, color: steelTime, marginTop: 2 }}>{r.owner}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Callout card */}
+        <div style={{ marginTop: 20, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: T.secondary, color: textSub, lineHeight: 1.55 }}>
+            Add a start time to each item to activate the live timeline — the green spine and Happening Now cues wake up when the day begins.
+          </div>
+          {onNav && (
+            <button onClick={() => onNav('Planning')} style={{ marginTop: 12, fontSize: T.secondary, fontWeight: FW.bold, color: steelLabel, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block', letterSpacing: '0.02em' }}>
+              Add times to activate live timeline →
+            </button>
+          )}
         </div>
       </div>
     );
@@ -41878,7 +41920,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
           // Parity (P1): cap to Plan's reading measure so run-of-show text doesn't run ~1200px lines on desktop.
           <div className="planv2-wrap">{((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
-            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={go} />
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
@@ -42799,7 +42841,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
             </div>
           )}
           {hostNavActive(event)
-            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} />
+            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={go} />
             : <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={false} authored={Array.isArray(event.ros) && event.ros.length > 0} />}
         </>
       )}
