@@ -646,6 +646,14 @@ export function getUnansweredMessages(events = [], thresholdHours = 48) {
 // ── Lightweight per-event attention summary — used by Home + Events Index ────
 // Returns only the counts each surface needs to know without paying the cost
 // of the full Command Center derivation.
+// POP-1 Phase 1 (audit: docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6): must mirror
+// hostStatusWord()'s "Booked" set in src/plan/VendorPlanningWorkspace.jsx.
+// Before this fix, vendorIssues only recognized 'Confirmed'/'Booked' — a
+// vendor at 'Deposit Paid' or 'Contracted' was double-counted as a portfolio-
+// level attention item even though the host-facing VendorStatusBar already
+// shows them as "Booked" — a real, confirmed cross-surface contradiction.
+const VENDOR_BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Deposit Paid', 'Contracted']);
+
 export function getEventAttention(event) {
   const timeline = event.timeline || [];
   const comms    = event.commClient || [];
@@ -656,7 +664,7 @@ export function getEventAttention(event) {
     // Split: an approval still on the planner to SEND is not "awaiting client".
     approvalsAwaiting: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status) && approvalIsSent(m)).length,
     requests:  comms.filter(m => m.message_type !== 'approval_request' && isInboundMessage(m) && (m.body || m.text) && !m.handled && !m.answered).length,
-    vendorIssues: vendors.filter(v => v.status !== 'Confirmed' && v.status !== 'Booked').length,
+    vendorIssues: vendors.filter(v => !VENDOR_BOOKED_STATUSES.has(v.status)).length,
   };
 }
 
