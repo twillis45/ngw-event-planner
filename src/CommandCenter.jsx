@@ -2195,7 +2195,7 @@ function TimelineRow({ t, isFirst }) {
 }
 
 // ── Vendor row ────────────────────────────────────────────────────────────────
-function VendorRow({ v, onOpen, isFirst }) {
+function VendorRow({ v, onOpen, isFirst, event = null }) {
   return (
     <button onClick={onOpen} style={{
       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
@@ -2216,7 +2216,12 @@ function VendorRow({ v, onOpen, isFirst }) {
       <span style={{
         fontSize: type.size.xs, fontWeight: 600, color: v.statusColor,
         letterSpacing: '0.10em', flexShrink: 0,
-      }}>{v.statusLabel}</span>
+      }}>{/* Host persona audit (POP-1): status chips route through the EXISTING
+            labelFor vocabulary layer — a host-persona event reads "Needs attention"
+            instead of the compliance word "AT RISK" (HOST_LABELS already maps it;
+            this row was the one chip bypassing the layer). Planner persona and
+            unmapped labels (CONFIRMED/PARTIAL/PENDING/NOT STARTED) are identity. */}
+        {labelFor(v.statusLabel, event)}</span>
     </button>
   );
 }
@@ -2862,7 +2867,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           {d.vendorRows.length > 0 ? (
             <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
               {d.vendorRows.map((v, i) => (
-                <VendorRow key={v.id} v={v} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
+                <VendorRow key={v.id} v={v} event={event} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
               ))}
             </div>
           ) : <EmptyState>No vendors yet.</EmptyState>}
@@ -3086,7 +3091,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
               {d.vendorRows.length > 0 ? (
                 <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
                   {d.vendorRows.map((v, i) => (
-                    <VendorRow key={v.id} v={v} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
+                    <VendorRow key={v.id} v={v} event={event} onOpen={() => onTabChange?.('Vendors', v.id)} isFirst={i === 0} />
                   ))}
                 </div>
               ) : <EmptyState>No vendors yet.</EmptyState>}
