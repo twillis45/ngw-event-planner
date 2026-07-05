@@ -55,9 +55,19 @@ export function buildExperienceContext(event, profile, foodPP) {
   let humanContextResult = null;
   try { humanContextResult = legacyMeaningReader(event); } catch { humanContextResult = null; }
 
-  // Owner: lib/assembleRevealEngines.js — deriveDecisionBlockers()
+  // Owner: lib/assembleRevealEngines.js — deriveDecisionBlockers(), filtered
+  // through event.decisionBlockerStatus — the SAME pattern as event.riskStatus
+  // below (POP-1/WOW-1): a blocker the host already acknowledged/dismissed
+  // doesn't keep reappearing in the canonical context. Each blocker type is
+  // pushed at most once per deriveDecisionBlockers() call (verified: 4
+  // independent `if` checks, none in a loop), so `.type` alone is a stable,
+  // deterministic key here — same reasoning already relied on for risks below.
   let decisionBlockers = [];
-  try { decisionBlockers = deriveDecisionBlockers(event, eventIdentityResult) || []; } catch { decisionBlockers = []; }
+  try {
+    const allBlockers = deriveDecisionBlockers(event, eventIdentityResult) || [];
+    const decisionBlockerStatus = event.decisionBlockerStatus || {};
+    decisionBlockers = allBlockers.filter(b => !decisionBlockerStatus[b.type]);
+  } catch { decisionBlockers = []; }
 
   // Owner: lib/assembleRevealEngines.js — deriveTopRisks(), filtered through
   // the same event.riskStatus loop HQ-2 wired into WhatCouldGoWrongPanel, so

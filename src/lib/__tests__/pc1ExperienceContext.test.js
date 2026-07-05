@@ -84,3 +84,55 @@ describe('PC-1: buildExperienceContext canonical composition', () => {
     expect(ctx.persona).toBeNull();
   });
 });
+
+// POP-1/WOW-1: extends the riskStatus dismiss pattern to Decision Blockers.
+// Mirrors the riskStatus test above exactly — same shape, same filtering logic,
+// same event.<x>Status[type] key convention.
+describe('POP-1/WOW-1: event.decisionBlockerStatus filters ctx.decisionBlockers (mirrors event.riskStatus)', () => {
+  // No venue set -> deriveDecisionBlockers() always emits a 'venue-selection' blocker.
+  const noVenueEvent = { ...flagshipEvent, venue: '' };
+
+  test('an unresolved blocker (no status set) appears in ctx.decisionBlockers', () => {
+    const ctx = buildExperienceContext(noVenueEvent, null, null);
+    expect(ctx.decisionBlockers.find(b => b.type === 'venue-selection')).toBeDefined();
+  });
+
+  test('acknowledging a blocker removes it from ctx.decisionBlockers', () => {
+    const eventWithAck = { ...noVenueEvent, decisionBlockerStatus: { 'venue-selection': 'acknowledged' } };
+    const ctx = buildExperienceContext(eventWithAck, null, null);
+    expect(ctx.decisionBlockers.find(b => b.type === 'venue-selection')).toBeUndefined();
+  });
+
+  test('dismissing a blocker removes it from ctx.decisionBlockers', () => {
+    const eventWithDismiss = { ...noVenueEvent, decisionBlockerStatus: { 'venue-selection': 'dismissed' } };
+    const ctx = buildExperienceContext(eventWithDismiss, null, null);
+    expect(ctx.decisionBlockers.find(b => b.type === 'venue-selection')).toBeUndefined();
+  });
+
+  test('an unrelated blocker status does not suppress a different, still-unresolved blocker (no conflict hidden)', () => {
+    // guest-count-confirmation also fires for flagshipEvent (guestCount set, so it
+    // won't) — use an event missing BOTH venue and guest count to get 2 blockers.
+    const twoBlockerEvent = { ...flagshipEvent, venue: '', guestCount: undefined, guests: [] };
+    const ctxBefore = buildExperienceContext(twoBlockerEvent, null, null);
+    expect(ctxBefore.decisionBlockers.length).toBeGreaterThanOrEqual(2);
+
+    const eventWithOneAck = { ...twoBlockerEvent, decisionBlockerStatus: { 'venue-selection': 'acknowledged' } };
+    const ctxAfter = buildExperienceContext(eventWithOneAck, null, null);
+    expect(ctxAfter.decisionBlockers.find(b => b.type === 'venue-selection')).toBeUndefined();
+    expect(ctxAfter.decisionBlockers.find(b => b.type === 'guest-count-confirmation')).toBeDefined();
+  });
+
+  test('planningState.blockedDecisions (eventPlan output) reflects the same filtered list, not a re-derived one', () => {
+    const eventWithAck = { ...noVenueEvent, decisionBlockerStatus: { 'venue-selection': 'acknowledged' } };
+    const ctx = buildExperienceContext(eventWithAck, null, null);
+    expect(ctx.decisionBlockers.find(b => b.type === 'venue-selection')).toBeUndefined();
+    // eventPlan's planningState.blockedDecisions passes ctx.decisionBlockers through
+    // verbatim (CommandCenter.jsx) — covered end-to-end in workstreams.test.js;
+    // this test pins the ctx-layer half of that chain.
+  });
+
+  test('no status set at all — never throws, blockers array is well-formed', () => {
+    const ctx = buildExperienceContext({ ...flagshipEvent, decisionBlockerStatus: undefined }, null, null);
+    expect(Array.isArray(ctx.decisionBlockers)).toBe(true);
+  });
+});

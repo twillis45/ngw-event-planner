@@ -160,6 +160,10 @@ function buildBlockerStage(blocker) {
 
   return {
     key: `blocker-${blocker.type}`,
+    // POP-1/WOW-1: additive field so a consumer (AssembleReveal's Acknowledge/
+    // Dismiss buttons) can identify which stages are blocker stages and which
+    // blocker.type to write a status against, without parsing the `key` string.
+    blockerType: blocker.type,
     icon: 'alert',
     title: copy.title,
     what: copy.what,

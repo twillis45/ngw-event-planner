@@ -22529,7 +22529,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   );
 }
 
-function AssembleReveal({ ev, profile, onDone }) {
+function AssembleReveal({ ev, profile, onDone, onPatchEvent = null }) {
   const C = useT();
   const T = useType();
   // Board ruling (2026-06-23): this is where the event is BORN — it should meet the host
@@ -22626,6 +22626,20 @@ function AssembleReveal({ ev, profile, onDone }) {
                         {st.nextDecision ? `Next: ${st.nextDecision}` : ''}
                         {st.nextDecision && st.confidenceLabel ? ' · ' : ''}
                         {st.confidenceLabel || ''}
+                      </span>
+                    )}
+                    {/* POP-1/WOW-1: reuses the exact WhatCouldGoWrongPanel riskStatus
+                        pattern (event.riskStatus → event.decisionBlockerStatus), same
+                        optional-onPatchEvent-gated conditional render. Acknowledging/
+                        dismissing here doesn't re-render THIS already-shown card (Reveal
+                        is a one-time snapshot, same as risks are never retroactively
+                        edited in a past reveal) — it clears the blocker from
+                        ctx.decisionBlockers / eventPlan().planningState.blockedDecisions
+                        for every ongoing surface that reads them. */}
+                    {shown && st.blockerType && onPatchEvent && (
+                      <span style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'acknowledged' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>
+                        <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'dismissed' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>
                       </span>
                     )}
                   </span>
@@ -44773,6 +44787,7 @@ export default function App() {
                     ev={assemble.ev}
                     profile={profile}
                     onDone={() => { const a = assemble; setAssemble(null); if (a && a.openId) setActiveId(a.openId); }}
+                    onPatchEvent={(patch) => setEvents(evts => evts.map(e => e.id === assemble.ev.id ? { ...e, ...patch } : e))}
                   />
                 )}
                 <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />

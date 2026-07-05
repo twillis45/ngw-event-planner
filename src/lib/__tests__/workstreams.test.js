@@ -5,6 +5,7 @@
 
 import { workstreamsFor, workstreamReadinessRollup } from '../workstreams';
 import { eventPlan, vendorReadinessRollup, getEventAttention } from '../../CommandCenter';
+import { buildExperienceContext } from '../experienceContext';
 
 const future = (days) => {
   const d = new Date();
@@ -227,5 +228,42 @@ describe('POP-1.1 Objective 1: planningState — a read-only mapping over existi
     const withCtx = eventPlan(event, { decisionBlockers: [{ type: 'venue-selection' }], compound: true });
     expect(withCtx.nextActions).toEqual(withoutCtx.nextActions);
     expect(withCtx.progress).toEqual(withoutCtx.progress);
+  });
+});
+
+describe('POP-1/WOW-1: decisionBlockerStatus end-to-end through buildExperienceContext -> eventPlan', () => {
+  test('an acknowledged decision blocker disappears from planningState.blockedDecisions, an unresolved one does not', () => {
+    const event = flagshipEvent();
+    event.venue = ''; // triggers a real 'venue-selection' blocker
+    const ctxOpen = buildExperienceContext(event, null, null);
+    expect(ctxOpen.decisionBlockers.find(b => b.type === 'venue-selection')).toBeDefined();
+    expect(eventPlan(event, ctxOpen).planningState.blockedDecisions.find(b => b.type === 'venue-selection')).toBeDefined();
+
+    event.decisionBlockerStatus = { 'venue-selection': 'acknowledged' };
+    const ctxAcked = buildExperienceContext(event, null, null);
+    expect(ctxAcked.decisionBlockers.find(b => b.type === 'venue-selection')).toBeUndefined();
+    expect(eventPlan(event, ctxAcked).planningState.blockedDecisions.find(b => b.type === 'venue-selection')).toBeUndefined();
+  });
+});
+
+describe('POP-1/WOW-1: flagship category additions map into workstreams, not custom one-off logic', () => {
+  test('Retirement Party\'s seed list (vendorCategoriesByType.js) includes the 3 new categories', () => {
+    const { CURATED_VENDORS } = require('../vendorCategoriesByType');
+    expect(CURATED_VENDORS['Retirement Party']).toEqual(expect.arrayContaining(['Recognition Ceremony', 'Recognition Slideshow', 'Military Display']));
+  });
+
+  test('Recognition Ceremony, Recognition Slideshow, and Military Display each group into their own workstream', () => {
+    const event = flagshipEvent();
+    event.vendors.push(
+      { id: 'v10', category: 'Recognition Ceremony', status: 'Considering' },
+      { id: 'v11', category: 'Recognition Slideshow', status: 'Considering' },
+      { id: 'v12', category: 'Military Display', status: 'Considering' },
+    );
+    const ws = workstreamsFor(event);
+    expect(ws.find(w => w.id === 'recognition_ceremony')?.vendors.map(v => v.id)).toEqual(['v10']);
+    expect(ws.find(w => w.id === 'recognition_slideshow')?.vendors.map(v => v.id)).toEqual(['v11']);
+    expect(ws.find(w => w.id === 'military_display')?.vendors.map(v => v.id)).toEqual(['v12']);
+    // No "other" fallback needed now that these 3 categories are mapped.
+    expect(ws.find(w => w.id === 'other')).toBeUndefined();
   });
 });

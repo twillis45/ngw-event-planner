@@ -43,7 +43,12 @@ export const CURATED_VENDORS = {
   'Sweet 16':         ['Venue', 'Catering', 'DJ', 'Photography', 'Videography', '360 Booth', 'Balloon Décor', 'Cake', 'Hair & Makeup', 'MC / Host', 'Rentals'],
   'Quinceañera':      ['Venue', 'Catering', 'Mobile Bar', 'DJ', 'Photography', 'Videography', 'Florals', 'Cake', 'Hair & Makeup', 'Choreographer', '360 Booth', 'MC / Host', 'Transport', 'Rentals'],
   'Graduation':       ['Venue', 'Catering', 'Cake', 'Balloon Décor', 'Photography', 'DJ', 'Photo Booth', 'Mobile Bar', 'Rentals'],
-  'Retirement Party': ['Venue', 'Catering', 'Photography', 'DJ', 'Florals', 'Cake', 'Mobile Bar', 'AV / Tech', 'Rentals'],
+  // POP-1/WOW-1: added Recognition Ceremony/Slideshow/Military Display — generic
+  // categories available to any Retirement Party (civilian or military), not
+  // Army-specific. Confirmed missing against the flagship validation event
+  // (docs/POP1_WOW1_OVERLAP_AUDIT.md) — no vendor category previously mapped to
+  // these, so no workstream could ever represent them either.
+  'Retirement Party': ['Venue', 'Catering', 'Photography', 'DJ', 'Florals', 'Cake', 'Mobile Bar', 'AV / Tech', 'Rentals', 'Recognition Ceremony', 'Recognition Slideshow', 'Military Display'],
   'Reunion':          ['Venue', 'Catering', 'DJ', 'Photography', 'Photo Booth', 'Mobile Bar', 'AV / Tech', 'Activities', 'Rentals'],
 
   // ── Corporate ────────────────────────────────────────────────────────────

@@ -36,6 +36,14 @@ const CATEGORY_TO_WORKSTREAM = {
   'Activities': 'guest_experience', 'Awards / Engraving': 'guest_experience',
   'Lodging / Concierge': 'guest_experience', 'Brand Activation': 'guest_experience',
   'Sponsor / Exhibitor': 'guest_experience', 'Event App': 'guest_experience',
+  // POP-1/WOW-1 data addition: generic categories (any Retirement Party, not
+  // Army-only) confirmed missing against the flagship validation event — each
+  // gets its own workstream, matching the doctrine's flagship workstream list
+  // (Recognition Ceremony / Recognition Slideshow named as distinct from
+  // Photography and Guest Experience, not folded into either).
+  'Recognition Ceremony': 'recognition_ceremony',
+  'Recognition Slideshow': 'recognition_slideshow',
+  'Military Display': 'military_display',
 };
 
 const WORKSTREAM_LABELS = {
@@ -46,6 +54,9 @@ const WORKSTREAM_LABELS = {
   decor: 'Decor',
   bar: 'Bar',
   guest_experience: 'Guest Experience',
+  recognition_ceremony: 'Recognition Ceremony',
+  recognition_slideshow: 'Recognition Slideshow',
+  military_display: 'Military Display',
   other: 'Other',
 };
 
