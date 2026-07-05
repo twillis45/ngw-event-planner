@@ -37076,7 +37076,7 @@ function WeatherAlert({ event, onNavTo }) {
           {wx.kind === 'rain' && (() => {
             const rp = rainPlanStatus(event);
             if (rp.hasPlan) {
-              return <div style={{ fontSize: T.caption, color: C.text, marginTop: 4 }}>☔ Your rain plan: {rp.plan}</div>;
+              return <div style={{ fontSize: T.caption, color: C.text, marginTop: 4 }}><span style={{ fontWeight: FW.bold }}>Your rain plan:</span> {rp.plan}</div>;
             }
             return onNavTo ? (
               <button
