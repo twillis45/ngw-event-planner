@@ -42264,7 +42264,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     const newlyDone = ['date', 'guests', 'budget'].some((k) => foundationState[k] && !prev[k]);
     if (!newlyDone) return;
     try {
-      const na = (eventPlan(event).nextActions || [])[0];
+      // POP-1.1: pass the already-built ExperienceContext through — additive only,
+      // does not change nextActions ranking (see src/lib/workstreams.js header).
+      const na = (eventPlan(event, ctx).nextActions || [])[0];
       if (na && na.title) {
         const dest = na.route && na.route.tab ? na.route.tab : null;
         setAdvanceCue({ title: na.title, tab: dest });

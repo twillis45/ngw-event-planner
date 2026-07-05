@@ -172,3 +172,60 @@ describe('single runtime call path: eventPlan() composes workstreamsFor(), Vendo
     }));
   });
 });
+
+describe('POP-1.1 Objective 1: planningState — a read-only mapping over existing eventPlan fields', () => {
+  test('currentPriority/deepLink/reasoning mirror nextActions[0], not a new computation', () => {
+    const event = flagshipEvent();
+    const plan = eventPlan(event);
+    const top = plan.nextActions[0];
+    expect(plan.planningState.currentPriority).toBe(top ? top.title : null);
+    expect(plan.planningState.deepLink).toEqual(top ? (top.route || null) : null);
+    expect(plan.planningState.reasoning).toEqual(top ? (top.consequence || null) : null);
+  });
+
+  test('nextMilestone is a foundation domino title when progress is incomplete', () => {
+    const event = flagshipEvent();
+    const plan = eventPlan(event);
+    if (plan.progress.done < plan.progress.total) {
+      expect(typeof plan.planningState.nextMilestone).toBe('string');
+    } else {
+      expect(plan.planningState.nextMilestone).toBeNull();
+    }
+  });
+
+  test('blockedDecisions passes through ctx.decisionBlockers verbatim — never invented', () => {
+    const event = flagshipEvent();
+    const blockers = [{ type: 'venue-selection', urgency: 'critical', reasoning: 'x' }];
+    const plan = eventPlan(event, { decisionBlockers: blockers });
+    expect(plan.planningState.blockedDecisions).toEqual(blockers);
+  });
+
+  test('blockedDecisions is [] when no ctx is passed, never throws', () => {
+    const event = flagshipEvent();
+    const plan = eventPlan(event);
+    expect(plan.planningState.blockedDecisions).toEqual([]);
+  });
+
+  test('confidence and recommendationLifecycle are honestly undefined, not invented', () => {
+    const event = flagshipEvent();
+    const plan = eventPlan(event);
+    expect(plan.planningState.confidence).toBeUndefined();
+    expect(plan.planningState.recommendationLifecycle).toBeUndefined();
+  });
+
+  test('null event → planningState is fully null/empty, never throws', () => {
+    const plan = eventPlan(null);
+    expect(plan.planningState).toEqual({
+      currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null,
+      blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined,
+    });
+  });
+
+  test('passing ctx into eventPlan does not change nextActions ranking (additive only)', () => {
+    const event = flagshipEvent();
+    const withoutCtx = eventPlan(event);
+    const withCtx = eventPlan(event, { decisionBlockers: [{ type: 'venue-selection' }], compound: true });
+    expect(withCtx.nextActions).toEqual(withoutCtx.nextActions);
+    expect(withCtx.progress).toEqual(withoutCtx.progress);
+  });
+});

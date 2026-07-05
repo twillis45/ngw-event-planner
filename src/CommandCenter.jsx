@@ -1370,7 +1370,11 @@ function decomposeSetComposite(cmd, event) {
 
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event, ctx = null) {
-  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [] };
+  if (!event) return {
+    nextActions: [], progress: { done: 0, total: 0 }, handled: [],
+    vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [],
+    planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },
+  };
 
   const foundation = _eventFoundationActions(event);
   const progress = {
@@ -1415,14 +1419,35 @@ export function eventPlan(event, ctx = null) {
     seen.add(a.domain);
     nextActions.push(a);
   }
-  // Read-only rollup, additive — does not affect nextActions ranking/ordering.
   // Read-only, additive — does not affect nextActions ranking/ordering.
   // vendorReadiness is now derived FROM workstreams (single computation), not a
   // parallel flat tally, so eventPlan/HostHome and any workstream-aware surface
   // can never disagree about the vendor count.
   const workstreams = workstreamsFor(event, ctx, event.vendors);
   const vendorReadiness = workstreamReadinessRollup(event, ctx, event.vendors);
-  return { nextActions, progress, handled, vendorReadiness, workstreams };
+
+  // POP-1.1 Objective 1: EXPOSE + COMPOSE only — a read-only mapping over fields
+  // that already exist above. No new computation, no change to nextActions
+  // ranking/ordering, no new engine. `confidence` and `recommendationLifecycle`
+  // are honestly left null/undefined where no existing signal supports them yet
+  // (see docs/POP1_1_CONSOLIDATION_REPORT.md — inventing a value here would
+  // violate "no duplicate logic / no new engines").
+  const leadAction = nextActions[0] || null;
+  const nextMilestone = foundation.find(a => !a.done) || null;
+  const lastCompletedMilestone = [...foundation].reverse().find(a => a.done) || null;
+  const planningState = {
+    currentPriority: leadAction ? leadAction.title : null,
+    currentWorkstream: (leadAction && leadAction.domain && workstreams.some(w => w.id === leadAction.domain)) ? leadAction.domain : null,
+    currentMilestone: lastCompletedMilestone ? lastCompletedMilestone.title : null,
+    nextMilestone: nextMilestone ? nextMilestone.title : null,
+    blockedDecisions: (ctx && Array.isArray(ctx.decisionBlockers)) ? ctx.decisionBlockers : [],
+    recommendationLifecycle: undefined, // not yet unified — see Recommendation Lifecycle Matrix
+    deepLink: leadAction ? (leadAction.route || null) : null,
+    reasoning: leadAction ? (leadAction.consequence || null) : null,
+    confidence: undefined, // no existing per-action confidence signal to compose — not invented here
+  };
+
+  return { nextActions, progress, handled, vendorReadiness, workstreams, planningState };
 }
 
 // L3 — within a single event for the Event Command Center top panel.
