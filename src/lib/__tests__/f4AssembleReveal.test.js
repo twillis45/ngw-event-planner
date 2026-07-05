@@ -466,4 +466,51 @@ describe('F4: Assemble Reveal Enhancement', () => {
       expect(stages[0].route).toBeNull();
     });
   });
+
+  // POP-1: at-home venue blocker resolution. The host "At home · your place"
+  // path stores its location as venueKind='home' + venueCity and never writes
+  // event.venue — the blocker must resolve on the at-home path's OWN fields.
+  // Every other venue model keeps the event.venue requirement unchanged.
+  describe('Venue blocker — at-home resolution rule', () => {
+    const base = { id: 'e-home', type: 'Retirement Party', name: 'My Retirement Party', date: '2026-10-05', guestCount: 40 };
+    const venueTypes = (event) => deriveDecisionBlockers(event, null).map(b => b.type);
+
+    test('non-home event with no event.venue still produces the Venue blocker', () => {
+      expect(venueTypes({ ...base, venue: '' })).toContain('venue-selection');
+      expect(venueTypes({ ...base, venue: '', venueKind: 'venue' })).toContain('venue-selection');
+    });
+
+    test('non-home event with event.venue resolves the Venue blocker', () => {
+      expect(venueTypes({ ...base, venue: 'VFW Post 3150 — Alexandria, VA' })).not.toContain('venue-selection');
+      expect(venueTypes({ ...base, venue: 'VFW Post 3150', venueKind: 'venue' })).not.toContain('venue-selection');
+    });
+
+    test('at-home event with venueCity filled resolves the Venue blocker (no event.venue needed)', () => {
+      expect(venueTypes({ ...base, venue: '', venueKind: 'home', venueCity: 'Alexandria' })).not.toContain('venue-selection');
+    });
+
+    test('at-home event WITHOUT venueCity still produces the Venue blocker', () => {
+      expect(venueTypes({ ...base, venue: '', venueKind: 'home', venueCity: '' })).toContain('venue-selection');
+      expect(venueTypes({ ...base, venue: '', venueKind: 'home', venueCity: '   ' })).toContain('venue-selection');
+    });
+
+    test('venueCity alone does NOT resolve when the venue model is not at-home (readiness not weakened)', () => {
+      expect(venueTypes({ ...base, venue: '', venueCity: 'Alexandria' })).toContain('venue-selection');
+      expect(venueTypes({ ...base, venue: '', venueKind: 'venue', venueCity: 'Alexandria' })).toContain('venue-selection');
+    });
+
+    test('the ongoing Command card drops the Venue row after at-home completion (end-to-end through ctx)', () => {
+      const { buildExperienceContext } = require('../experienceContext');
+      const { unresolvedBlockerStages } = require('../assembleRevealEngines');
+      const before = unresolvedBlockerStages(buildExperienceContext({ ...base, venue: '', venueKind: 'home', venueCity: '' }, null, null));
+      expect(before.find(s => s.blockerType === 'venue-selection')).toBeDefined();
+      const after = unresolvedBlockerStages(buildExperienceContext({ ...base, venue: '', venueKind: 'home', venueCity: 'Alexandria' }, null, null));
+      expect(after.find(s => s.blockerType === 'venue-selection')).toBeUndefined();
+    });
+
+    test('Reveal blocker CTA route is unchanged (b75f12c intact)', () => {
+      const stage = buildBlockerStage({ type: 'venue-selection', urgency: 'critical', reasoning: 'x' });
+      expect(stage.route).toEqual({ tab: 'Event Details', focusField: 'event-venue' });
+    });
+  });
 });

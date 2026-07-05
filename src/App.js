@@ -40420,7 +40420,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                 <>
                   <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>We’ll plan around your place. Just your city — for local pricing and the weather outlook.</div>
                   <EDTRow isMobile={isMobile}>
-                    <EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={rememberCity} placeholder="e.g. Atlanta" />
+                    {/* Typing a city under the (displayed-default) At-home toggle RECORDS
+                        the choice (venueKind='home') when it was never explicitly clicked —
+                        so the venue blocker's at-home resolution rule (which reads
+                        venueKind === 'home' && venueCity) matches what the host sees. */}
+                    <EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={v => { if (!event.venueKind) upd('venueKind', 'home'); rememberCity(v); }} placeholder="e.g. Atlanta" />
                     <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={rememberState} placeholder="GA" />
                   </EDTRow>
                 </>

@@ -86,8 +86,17 @@ function deriveDecisionBlockers(event, eventIdentity) {
     }
   }
 
-  // RULE: No venue = everything blocks
-  if (!event.venue || (typeof event.venue === 'string' && !event.venue.trim())) {
+  // RULE: No venue = everything blocks.
+  // At-home carve-out (POP-1 continuity): the host's "At home · your place"
+  // path (venueKind === 'home') stores its location as venueCity — it never
+  // writes event.venue — so requiring event.venue left at-home hosts with a
+  // permanent unresolvable blocker. At-home resolves on the at-home path's own
+  // required field (city). Every other venue model (venueKind 'venue'/unset,
+  // planner events) still requires event.venue exactly as before.
+  const venueResolved = (event.venueKind === 'home')
+    ? !!String(event.venueCity || '').trim()
+    : !!(event.venue && String(event.venue).trim());
+  if (!venueResolved) {
     blockers.push({
       type: 'venue-selection',
       urgency: 'critical',
