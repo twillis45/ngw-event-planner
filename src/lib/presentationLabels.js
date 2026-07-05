@@ -45,6 +45,9 @@ const HOST_LABELS = {
   'Operational': 'To-do & to-buy',
   'Timeline': "What's coming up",
   'Documents': 'Paperwork',
+  // Vendors overview-card subtitle — matches HOST_VENDOR_CHIP's chip words
+  // (CommandCenter.jsx) so the legend and the chips speak the same language.
+  'Booked / partial / pending': 'Booked · deposit paid · still deciding',
   // status badges (alarm tokens → plain state; never alarm, never false precision)
   'AT RISK': 'Needs attention',
   'ATTENTION': 'Needs a look',

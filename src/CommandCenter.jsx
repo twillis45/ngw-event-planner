@@ -55,7 +55,7 @@ import { renderAction, personaFor, audiencePersona } from './lib/nextActionRende
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
 // sections relocate to the Upcoming Rail (reachable, never hidden). Planner ⇒ never dormant.
 import { isDormant, upcomingRail } from './lib/disclosure';
-import { labelFor } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
+import { labelFor, labelsOn } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
 // Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
 // (pi.because flag, presentation-only; `because` strings are built from real factors).
 import { becauseActive } from './lib/becauseLayer';
@@ -2197,7 +2197,26 @@ function TimelineRow({ t, isFirst }) {
 }
 
 // ── Vendor row ────────────────────────────────────────────────────────────────
+// Host chip words for the overview vendor list — the SAME vocabulary the
+// Vendors tab's hostStatusWord speaks (Booked / Got a price / Still deciding),
+// applied at THIS call site only. Deliberately NOT added to the shared
+// HOST_LABELS map: HealthRow routes its statusLabel through labelFor too, and
+// health rows also emit 'CONFIRMED'/'NOT STARTED' where 'Booked'/'Still
+// deciding' would be wrong-context (e.g. a Reality Check row). Covers every
+// label figmaBadge/driftOverride can produce; 'AT RISK' stays with the shared
+// labelFor mapping ('Needs attention'). Planner persona is identity.
+export const HOST_VENDOR_CHIP = {
+  'CONFIRMED': 'Booked',
+  'PARTIAL': 'Deposit paid',
+  'PENDING': 'Got a price',
+  'NOT STARTED': 'Still deciding',
+  'UNCONFIRMED': 'Not confirmed yet',
+  'HEADCOUNT MISMATCH': 'Count needs an update',
+};
+
 function VendorRow({ v, onOpen, isFirst, event = null }) {
+  // Same gating semantics as labelFor: flag on + host persona; otherwise identity.
+  const hostChip = labelsOn() && audiencePersona(event) === 'host' ? HOST_VENDOR_CHIP[v.statusLabel] : null;
   return (
     <button onClick={onOpen} style={{
       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
@@ -2223,7 +2242,7 @@ function VendorRow({ v, onOpen, isFirst, event = null }) {
             instead of the compliance word "AT RISK" (HOST_LABELS already maps it;
             this row was the one chip bypassing the layer). Planner persona and
             unmapped labels (CONFIRMED/PARTIAL/PENDING/NOT STARTED) are identity. */}
-        {labelFor(v.statusLabel, event)}</span>
+        {hostChip || labelFor(v.statusLabel, event)}</span>
     </button>
   );
 }
