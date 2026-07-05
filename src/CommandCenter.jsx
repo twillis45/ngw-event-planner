@@ -668,6 +668,20 @@ export function getEventAttention(event) {
   };
 }
 
+// POP-1 Phase 1 (approved slice): a single, read-only vendor-readiness rollup —
+// booked vs. needing-follow-up counts, using the SAME "Booked" vocabulary as
+// getEventAttention/hostStatusWord above. This is the one number every surface
+// (HostHome via eventPlan, and the Vendors tab's top-line count) should read,
+// instead of each independently re-filtering event.vendors. Derive-only, no
+// stored state, no new vendor workflow — mirrors the existing taskEngine.js
+// "derive, don't store" pattern.
+export function vendorReadinessRollup(event) {
+  const vendors = (event && event.vendors) || [];
+  const total = vendors.length;
+  const booked = vendors.filter(v => VENDOR_BOOKED_STATUSES.has(v.status)).length;
+  return { total, booked, needsAttention: total - booked };
+}
+
 // Cross-event item stream — what Figma page I calls "What needs attention".
 // Returns a flat, sorted list of actionable items across all events. Each
 // item carries enough context (event name, owner, due) to be acted on
@@ -1357,7 +1371,7 @@ function decomposeSetComposite(cmd, event) {
 
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event) {
-  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [] };
+  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadiness: { total: 0, booked: 0, needsAttention: 0 } };
 
   const foundation = _eventFoundationActions(event);
   const progress = {
@@ -1402,7 +1416,8 @@ export function eventPlan(event) {
     seen.add(a.domain);
     nextActions.push(a);
   }
-  return { nextActions, progress, handled };
+  // Read-only rollup, additive — does not affect nextActions ranking/ordering.
+  return { nextActions, progress, handled, vendorReadiness: vendorReadinessRollup(event) };
 }
 
 // L3 — within a single event for the Event Command Center top panel.

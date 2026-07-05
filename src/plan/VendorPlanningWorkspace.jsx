@@ -32,6 +32,11 @@ import { AuthCtx } from '../contexts/AuthContext';
 // (not App.js) so the plan module stays insulated.
 import { hostNavActive } from '../lib/presentationNav';
 import { color, space, type, radius } from '../design/tokens';
+// POP-1 Phase 1 (approved slice): the single read-only vendor-readiness rollup —
+// same booked/needsAttention numbers eventPlan()/HostHome read, so the Vendors
+// tab's top-line count can never disagree with the rest of the app. Derive-only,
+// no new vendor workflow — see docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6.
+import { vendorReadinessRollup } from '../CommandCenter';
 import {
   getVendorLifecycleStage,
   getVendorReadiness,
@@ -522,12 +527,12 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   // Host (Figma 1728-3): speak in the host's terms — "N booked · M to follow up" — not
   // the planner's readiness words. Booked = a real status word; to-follow-up = anything
   // still needing the host (attention + critical). Planner keeps the readiness breakdown.
+  // POP-1 Phase 1: this top-line count now reads from the SAME vendorReadinessRollup
+  // eventPlan()/HostHome use, instead of re-filtering vendors locally — the two can no
+  // longer disagree (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6).
   const segs = host
     ? (() => {
-        const bookedN = (vendors || []).filter((v) => hostStatusWord(v && v.status) === 'Booked').length;
-        // "To follow up" = the people not yet booked (got-a-price / still-deciding) — a real,
-        // calm count of what needs a host decision, not the planner's COI-inflated readiness.
-        const followN = (vendors || []).filter((v) => hostStatusWord(v && v.status) !== 'Booked').length;
+        const { booked: bookedN, needsAttention: followN } = vendorReadinessRollup(event);
         return [
           bookedN ? { level: 'safe', n: bookedN, label: 'booked' } : null,
           followN ? { level: 'attention', n: followN, label: 'to follow up' } : null,

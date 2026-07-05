@@ -39,7 +39,8 @@ describe('eventPlan — shape & progress', () => {
   });
 
   test('null event → empty plan, never throws', () => {
-    expect(eventPlan(null)).toEqual({ nextActions: [], progress: { done: 0, total: 0 }, handled: [] });
+    // POP-1 Phase 1: vendorReadiness is an additive read-only field (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6).
+    expect(eventPlan(null)).toEqual({ nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadiness: { total: 0, booked: 0, needsAttention: 0 } });
   });
 
   test('progress.done counts a foundation domino satisfied by REAL state (no manual tick)', () => {
