@@ -413,4 +413,57 @@ describe('F4: Assemble Reveal Enhancement', () => {
       });
     });
   });
+
+  // POP-1: the ONGOING (post-Reveal) blocker view — unresolvedBlockerStages(ctx)
+  // is what BlockedDecisionsReminder renders on the host Command tab. Pure
+  // composition: ctx.decisionBlockers (already status-filtered) through
+  // buildBlockerStage — so Reveal and the reminder can never disagree.
+  describe('unresolvedBlockerStages — ongoing post-Reveal blocker surface', () => {
+    const { unresolvedBlockerStages } = require('../assembleRevealEngines');
+    const { buildExperienceContext } = require('../experienceContext');
+    const bareEvent = {
+      id: 'e-ongoing', type: 'Retirement Party', name: 'My Retirement Party',
+      date: '2026-10-05', venue: '', guestCount: undefined, guestEstimate: undefined, guests: [],
+    };
+
+    test('unresolved venue + guest-count blockers appear with the SAME routes Reveal uses', () => {
+      const ctx = buildExperienceContext(bareEvent, null, null);
+      const stages = unresolvedBlockerStages(ctx);
+      const venue = stages.find(s => s.blockerType === 'venue-selection');
+      const guests = stages.find(s => s.blockerType === 'guest-count-confirmation');
+      expect(venue).toBeDefined();
+      expect(venue.route).toEqual({ tab: 'Event Details', focusField: 'event-venue' });
+      expect(guests).toBeDefined();
+      expect(guests.route).toEqual({ tab: 'Guests', focusField: 'guests-entry' });
+    });
+
+    test('a dismissed blocker does NOT appear (same decisionBlockerStatus filter as Reveal)', () => {
+      const ctx = buildExperienceContext({ ...bareEvent, decisionBlockerStatus: { 'venue-selection': 'dismissed' } }, null, null);
+      const stages = unresolvedBlockerStages(ctx);
+      expect(stages.find(s => s.blockerType === 'venue-selection')).toBeUndefined();
+      expect(stages.find(s => s.blockerType === 'guest-count-confirmation')).toBeDefined(); // others untouched
+    });
+
+    test('an acknowledged blocker does NOT appear either', () => {
+      const ctx = buildExperienceContext({ ...bareEvent, decisionBlockerStatus: { 'guest-count-confirmation': 'acknowledged' } }, null, null);
+      expect(unresolvedBlockerStages(ctx).find(s => s.blockerType === 'guest-count-confirmation')).toBeUndefined();
+    });
+
+    test('resolving the underlying field removes the blocker from the ongoing view', () => {
+      const ctx = buildExperienceContext({ ...bareEvent, venue: 'VFW Post 3150 — Alexandria, VA' }, null, null);
+      expect(unresolvedBlockerStages(ctx).find(s => s.blockerType === 'venue-selection')).toBeUndefined();
+    });
+
+    test('null/empty ctx → empty array, never throws (attention-safe: card renders nothing)', () => {
+      expect(unresolvedBlockerStages(null)).toEqual([]);
+      expect(unresolvedBlockerStages({})).toEqual([]);
+      expect(unresolvedBlockerStages({ decisionBlockers: [] })).toEqual([]);
+    });
+
+    test('routeless blockers pass through with route:null — the reminder shows no fake CTA', () => {
+      const stages = unresolvedBlockerStages({ decisionBlockers: [{ type: 'ceremony-timing', urgency: 'critical', reasoning: 'x' }] });
+      expect(stages).toHaveLength(1);
+      expect(stages[0].route).toBeNull();
+    });
+  });
 });

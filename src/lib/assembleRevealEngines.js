@@ -458,6 +458,18 @@ export function buildAssembleRevealStages(event, eventIdentity, profile, foodPP)
   return stages.filter(Boolean);
 }
 
+// POP-1 continuity: the ongoing (post-Reveal) view of unresolved decision
+// blockers. Pure composition of two existing functions — ctx.decisionBlockers
+// (already filtered through event.decisionBlockerStatus by
+// buildExperienceContext, so acknowledged/dismissed blockers never appear,
+// exactly matching Reveal's behavior) mapped through buildBlockerStage (the
+// same title/what/nextDecision/route copy Reveal renders). Not a new engine:
+// no derivation, no state, no new copy.
+export function unresolvedBlockerStages(ctx) {
+  const blockers = (ctx && Array.isArray(ctx.decisionBlockers)) ? ctx.decisionBlockers : [];
+  return blockers.map(b => { try { return buildBlockerStage(b); } catch { return null; } }).filter(Boolean);
+}
+
 // Export for testing
 export {
   buildIdentityStage,

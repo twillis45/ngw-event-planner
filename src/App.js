@@ -14,7 +14,7 @@ import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV'
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
 import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach, classifyRos } from './lib/playbooks';
-import { buildAssembleRevealStages } from './lib/assembleRevealEngines';
+import { buildAssembleRevealStages, unresolvedBlockerStages } from './lib/assembleRevealEngines';
 // Sprint IS-1: AssembleReveal's Identity stage must consume Sprint A's Event Identity
 // Engine (compound/complexity/ceremony detection), not the legacy meaning/honoree
 // reader (./lib/eventIdentity) — that reader has no compound/complexity fields and
@@ -9187,6 +9187,40 @@ function ExperienceContinuityNote({ ctx, card, eyebrow, C, T, label = 'What we r
     <div style={{ ...card, borderLeft: `3px solid ${C.accent}` }}>
       <div style={{ ...eyebrow, color: C.accent }}>{label}</div>
       <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.45, marginTop: 2 }}>{ctx.reasoning}</div>
+    </div>
+  );
+}
+
+// ── BlockedDecisionsReminder — POP-1 continuity: the ONGOING consumer for
+// unresolved decision blockers after the one-time Reveal closes. Before this,
+// a host who proceeded past Reveal lost sight of "Venue · Required" until they
+// rediscovered the missing field themselves. Renders the SAME blocker copy and
+// the SAME resolution route Reveal uses (unresolvedBlockerStages composes
+// ctx.decisionBlockers — already status-filtered — through buildBlockerStage);
+// acknowledged/dismissed blockers never appear, routeless blockers get no CTA.
+// Attention-safe: renders nothing when there's nothing unresolved.
+function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
+  const C = useT();
+  const T = useType();
+  const stages = (() => { try { return unresolvedBlockerStages(ctx); } catch { return []; } })();
+  if (!stages.length) return null;
+  return (
+    <div style={{ ...metalEdge(C), borderRadius: 14, boxShadow: C.cardShadow, padding: isMobile ? 16 : 22, maxWidth: 760, margin: '0 auto 16px', borderLeft: `3px solid ${C.accent}` }}>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 4 }}>Still to decide</div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {stages.map((st, i) => (
+          <div key={st.key} style={{ borderTop: i === 0 ? 'none' : `1px solid ${C.border}`, padding: '10px 0' }}>
+            <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>{st.title}</div>
+            <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{st.what}</div>
+            {onRoute && st.route && (
+              <button type="button" data-testid={`blocked-decision-${st.blockerType}`} onClick={() => onRoute(st.route)}
+                style={{ background: 'none', border: 'none', padding: 0, marginTop: 5, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>
+                Handle it now →
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -41978,11 +42012,19 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               the rain-plan continuity CTA had no live host surface. Same component, same
               gates (outdoor + ≤14d + configured); onNavTo carries focusField through go(). */}
           {!dayMode && <WeatherAlert event={event} onNavTo={(t, opts) => go(t, null, opts)} />}
+          {/* POP-1: ongoing home for unresolved decision blockers after Reveal closes —
+              same copy + same resolution route the Reveal cards use. */}
+          {!dayMode && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => go(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} />}
           <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} /></div>}
         {tab === 'Guests' && <div className="planv2-wrap">{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. Parity (P1): cap to Plan's reading measure on desktop. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
-          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
+          {/* id="guests-entry": landing anchor for the guest-count blocker route —
+              EventPlanner's Guests tab already had this wrapper; the host shell
+              was missing it, so the route landed on the tab top. */}
+          <div id="guests-entry" style={{ scrollMarginTop: 16 }}>
+            <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
+          </div>
           <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} /></div></div>}
         {tab === 'Budget' && <div className="planv2-wrap">{/* Parity fix: wrap the WHOLE tab so the PlanNowHero aligns to 760 with the content — HostSpendingPlan's inner 760 only capped the cards, leaving the hero full-bleed. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
@@ -43304,6 +43346,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
 
       {/* Weather risk alert — outdoor events within 14 days */}
       {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t, opts) => handleTabChange(t, null, opts)} />}
+      {/* POP-1: ongoing home for unresolved decision blockers (host persona) —
+          same copy + same resolution route as Reveal; see BlockedDecisionsReminder. */}
+      {!dayMode && tab === 'Command' && hostNavActive(event) && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => handleTabChange(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} />}
 
       {/* Day-of severity surface. Host (hostNavActive/recordKind=event): the calm
           3-tier CARD STACK (Figma B2 1558:49) — colored left rails, "→ your move"
