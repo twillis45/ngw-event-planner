@@ -36,7 +36,7 @@ import { color, space, type, radius } from '../design/tokens';
 // same booked/needsAttention numbers eventPlan()/HostHome read, so the Vendors
 // tab's top-line count can never disagree with the rest of the app. Derive-only,
 // no new vendor workflow — see docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6.
-import { vendorReadinessRollup } from '../CommandCenter';
+import { eventPlan } from '../CommandCenter';
 import {
   getVendorLifecycleStage,
   getVendorReadiness,
@@ -527,12 +527,13 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   // Host (Figma 1728-3): speak in the host's terms — "N booked · M to follow up" — not
   // the planner's readiness words. Booked = a real status word; to-follow-up = anything
   // still needing the host (attention + critical). Planner keeps the readiness breakdown.
-  // POP-1 Phase 1: this top-line count now reads from the SAME vendorReadinessRollup
-  // eventPlan()/HostHome use, instead of re-filtering vendors locally — the two can no
-  // longer disagree (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6).
+  // POP-1/WOW-1: this top-line count now reads eventPlan(event).vendorReadiness
+  // directly — the SAME workstream-derived rollup HostHome reads — instead of
+  // re-filtering vendors locally. Vendors no longer owns an independent priority
+  // count (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6, POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md).
   const segs = host
     ? (() => {
-        const { booked: bookedN, needsAttention: followN } = vendorReadinessRollup(event);
+        const { booked: bookedN, needsAttention: followN } = eventPlan(event).vendorReadiness;
         return [
           bookedN ? { level: 'safe', n: bookedN, label: 'booked' } : null,
           followN ? { level: 'attention', n: followN, label: 'to follow up' } : null,

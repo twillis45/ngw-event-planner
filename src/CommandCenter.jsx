@@ -65,6 +65,11 @@ import { valueConfidence, valueConfidenceActive, valueWord } from './lib/valueCo
 // Stage C (single-source task convergence): readiness counts engine-satisfied work
 // even when the host never ticks a box. effectiveDone = task.done || taskSatisfied.
 import { effectiveDone, taskSatisfied } from './lib/taskEngine';
+// POP-1/WOW-1: read-only Workstream composition — groups existing vendor data
+// by workstream (Venue/Photography/Food/...) instead of eventPlan/Vendors each
+// computing their own flat vendor tally. See src/lib/workstreams.js header +
+// docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
+import { workstreamsFor, workstreamReadinessRollup } from './lib/workstreams';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -646,40 +651,34 @@ export function getUnansweredMessages(events = [], thresholdHours = 48) {
 // ── Lightweight per-event attention summary — used by Home + Events Index ────
 // Returns only the counts each surface needs to know without paying the cost
 // of the full Command Center derivation.
-// POP-1 Phase 1 (audit: docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6): must mirror
-// hostStatusWord()'s "Booked" set in src/plan/VendorPlanningWorkspace.jsx.
-// Before this fix, vendorIssues only recognized 'Confirmed'/'Booked' — a
-// vendor at 'Deposit Paid' or 'Contracted' was double-counted as a portfolio-
-// level attention item even though the host-facing VendorStatusBar already
-// shows them as "Booked" — a real, confirmed cross-surface contradiction.
-const VENDOR_BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Deposit Paid', 'Contracted']);
-
+// POP-1/WOW-1: vendorIssues now derives from workstreamReadinessRollup (which
+// itself groups event.vendors via workstreamsFor, src/lib/workstreams.js) —
+// the SAME "Booked" vocabulary as hostStatusWord() in VendorPlanningWorkspace.jsx,
+// single-sourced through one function instead of three independently-written
+// status-set filters. See docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6 for the
+// contradiction this replaced (a 'Deposit Paid' vendor double-counted as an
+// issue even though the Vendors tab already showed it as booked).
 export function getEventAttention(event) {
   const timeline = event.timeline || [];
   const comms    = event.commClient || [];
-  const vendors  = event.vendors || [];
   return {
     decisions: timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length,
     approvals: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status)).length,
     // Split: an approval still on the planner to SEND is not "awaiting client".
     approvalsAwaiting: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status) && approvalIsSent(m)).length,
     requests:  comms.filter(m => m.message_type !== 'approval_request' && isInboundMessage(m) && (m.body || m.text) && !m.handled && !m.answered).length,
-    vendorIssues: vendors.filter(v => !VENDOR_BOOKED_STATUSES.has(v.status)).length,
+    vendorIssues: workstreamReadinessRollup(event, null, event.vendors).needsAttention,
   };
 }
 
-// POP-1 Phase 1 (approved slice): a single, read-only vendor-readiness rollup —
-// booked vs. needing-follow-up counts, using the SAME "Booked" vocabulary as
-// getEventAttention/hostStatusWord above. This is the one number every surface
-// (HostHome via eventPlan, and the Vendors tab's top-line count) should read,
-// instead of each independently re-filtering event.vendors. Derive-only, no
-// stored state, no new vendor workflow — mirrors the existing taskEngine.js
-// "derive, don't store" pattern.
+// POP-1 Phase 1 (approved slice): kept as a thin, backward-compatible alias —
+// delegates to workstreamReadinessRollup so there is exactly one status-set
+// definition (in src/lib/workstreams.js), not a second copy here. This is the
+// one number every surface (HostHome via eventPlan, and the Vendors tab's
+// top-line count) should read, instead of each independently re-filtering
+// event.vendors.
 export function vendorReadinessRollup(event) {
-  const vendors = (event && event.vendors) || [];
-  const total = vendors.length;
-  const booked = vendors.filter(v => VENDOR_BOOKED_STATUSES.has(v.status)).length;
-  return { total, booked, needsAttention: total - booked };
+  return workstreamReadinessRollup(event, null, event && event.vendors);
 }
 
 // Cross-event item stream — what Figma page I calls "What needs attention".
@@ -1370,8 +1369,8 @@ function decomposeSetComposite(cmd, event) {
 }
 
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
-export function eventPlan(event) {
-  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadiness: { total: 0, booked: 0, needsAttention: 0 } };
+export function eventPlan(event, ctx = null) {
+  if (!event) return { nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [] };
 
   const foundation = _eventFoundationActions(event);
   const progress = {
@@ -1417,7 +1416,13 @@ export function eventPlan(event) {
     nextActions.push(a);
   }
   // Read-only rollup, additive — does not affect nextActions ranking/ordering.
-  return { nextActions, progress, handled, vendorReadiness: vendorReadinessRollup(event) };
+  // Read-only, additive — does not affect nextActions ranking/ordering.
+  // vendorReadiness is now derived FROM workstreams (single computation), not a
+  // parallel flat tally, so eventPlan/HostHome and any workstream-aware surface
+  // can never disagree about the vendor count.
+  const workstreams = workstreamsFor(event, ctx, event.vendors);
+  const vendorReadiness = workstreamReadinessRollup(event, ctx, event.vendors);
+  return { nextActions, progress, handled, vendorReadiness, workstreams };
 }
 
 // L3 — within a single event for the Event Command Center top panel.
