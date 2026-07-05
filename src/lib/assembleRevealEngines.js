@@ -135,13 +135,17 @@ function buildBlockerStage(blocker) {
       title: 'Venue',
       what: 'Where is the event?',
       why: 'Everything depends on venue: vendors, timeline, logistics, weather contingency.',
-      nextDecision: 'Choose or confirm the venue.'
+      nextDecision: 'Choose or confirm the venue.',
+      // POP-1 continuity: route to the exact field that resolves this blocker
+      // (same {tab, focusField} convention as every other deep-link CTA).
+      route: { tab: 'Event Details', focusField: 'event-venue' }
     },
     'guest-count-confirmation': {
       title: 'Guest Count',
       what: 'How many guests?',
       why: 'Every other number (budget, food, seating) depends on this.',
-      nextDecision: 'Confirm the headcount.'
+      nextDecision: 'Confirm the headcount.',
+      route: { tab: 'Guests', focusField: 'guests-entry' }
     },
     'dress-code-confirmation': {
       title: 'Dress Code',
@@ -157,6 +161,9 @@ function buildBlockerStage(blocker) {
     why: blocker.reasoning,
     nextDecision: 'Make this choice.'
   };
+  // ceremony-timing / dress-code have no in-app field to land on yet — those
+  // stay routeless (the CTA simply doesn't render) rather than lying about a
+  // destination. Never invent a route.
 
   return {
     key: `blocker-${blocker.type}`,
@@ -164,6 +171,9 @@ function buildBlockerStage(blocker) {
     // Dismiss buttons) can identify which stages are blocker stages and which
     // blocker.type to write a status against, without parsing the `key` string.
     blockerType: blocker.type,
+    // POP-1 continuity: where this blocker gets RESOLVED (not just acknowledged).
+    // null when no in-app destination exists — consumers render no CTA then.
+    route: copy.route || null,
     icon: 'alert',
     title: copy.title,
     what: copy.what,

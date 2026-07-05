@@ -384,4 +384,33 @@ describe('F4: Assemble Reveal Enhancement', () => {
       expect(blockers.map(b => b.type)).toContain('guest-count-confirmation');
     });
   });
+
+  // POP-1 continuity: blocker stages carry the ROUTE that resolves them — the
+  // detect→show→act→resolve loop's missing third/fourth legs. Same {tab,
+  // focusField} convention as every other deep-link CTA; never invented for
+  // blockers with no in-app destination.
+  describe('Decision blocker resolution routes', () => {
+    test('venue-selection routes to the Event Details venue field', () => {
+      const stage = buildBlockerStage({ type: 'venue-selection', urgency: 'critical', reasoning: 'x' });
+      expect(stage.route).toEqual({ tab: 'Event Details', focusField: 'event-venue' });
+    });
+
+    test('guest-count-confirmation routes to the existing guests-entry anchor', () => {
+      const stage = buildBlockerStage({ type: 'guest-count-confirmation', urgency: 'high', reasoning: 'x' });
+      expect(stage.route).toEqual({ tab: 'Guests', focusField: 'guests-entry' });
+    });
+
+    test('blockers with no in-app destination stay routeless — never a fake route', () => {
+      expect(buildBlockerStage({ type: 'ceremony-timing', urgency: 'critical', reasoning: 'x' }).route).toBeNull();
+      expect(buildBlockerStage({ type: 'dress-code-confirmation', urgency: 'medium', reasoning: 'x' }).route).toBeNull();
+      expect(buildBlockerStage({ type: 'something-unknown', urgency: 'low', reasoning: 'x' }).route).toBeNull();
+    });
+
+    test('routes never point at the dead "Details" tab id (real id is "Event Details")', () => {
+      ['venue-selection', 'guest-count-confirmation', 'ceremony-timing', 'dress-code-confirmation'].forEach(type => {
+        const stage = buildBlockerStage({ type, urgency: 'high', reasoning: 'x' });
+        if (stage.route) expect(stage.route.tab).not.toBe('Details');
+      });
+    });
+  });
 });

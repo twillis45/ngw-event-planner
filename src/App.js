@@ -22529,7 +22529,7 @@ function DraftSheet({ title, intro, draft, shareTitle, kind, onClose, C, isMobil
   );
 }
 
-function AssembleReveal({ ev, profile, onDone, onPatchEvent = null }) {
+function AssembleReveal({ ev, profile, onDone, onPatchEvent = null, onRoute = null }) {
   const C = useT();
   const T = useType();
   // Board ruling (2026-06-23): this is where the event is BORN — it should meet the host
@@ -22636,10 +22636,17 @@ function AssembleReveal({ ev, profile, onDone, onPatchEvent = null }) {
                         edited in a past reveal) — it clears the blocker from
                         ctx.decisionBlockers / eventPlan().planningState.blockedDecisions
                         for every ongoing surface that reads them. */}
-                    {shown && st.blockerType && onPatchEvent && (
+                    {shown && st.blockerType && (onPatchEvent || (onRoute && st.route)) && (
                       <span style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'acknowledged' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>
-                        <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'dismissed' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>
+                        {/* POP-1 continuity: the blocker's RESOLUTION route leads — a
+                            "Handle it now" that lands on the exact field (venue name /
+                            guest count), closing the detect→show→act→resolve loop.
+                            Acknowledge/Dismiss stay as the explicit set-aside actions. */}
+                        {onRoute && st.route && (
+                          <button type="button" data-testid={`reveal-resolve-${st.blockerType}`} onClick={() => onRoute(st.route)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>Handle it now →</button>
+                        )}
+                        {onPatchEvent && <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'acknowledged' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>}
+                        {onPatchEvent && <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'dismissed' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>}
                       </span>
                     )}
                   </span>
@@ -40363,8 +40370,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
           const rememberState = (v) => { upd('venueState', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-state', v.trim()); } catch (e) {} };
           const composeAddr = (o) => { const n = { street: event.venueStreet, city: event.venueCity, state: event.venueState, zip: event.venueZip, ...o }; return [n.street, [n.city, n.state].filter(Boolean).join(', '), n.zip].filter(Boolean).join(' ').replace(/\s+,/g, ',').trim(); };
+          // id="event-venue" (host branch): the venue-selection blocker's
+          // "Handle it now" lands here — the host's whole where-is-it block
+          // (the planner branch anchors its own Venue-name field below).
           return (
-            <div style={{ marginBottom: 12 }}>
+            <div id="event-venue" style={{ marginBottom: 12, scrollMarginTop: 16 }}>
               {/* Default to the host's house; standard address fields only when it's elsewhere.
                   City/state feed local pricing + the weather outlook. */}
               <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, marginBottom: 8 }}>Where's it happening?</div>
@@ -40404,7 +40414,12 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           );
         })() : (
           <EDTRow isMobile={isMobile}>
-            <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder={vph.venue} />
+            {/* id="event-venue": landing anchor for the venue-selection decision
+                blocker's "Handle it now" route (same id-wrapper pattern as
+                rain-plan / event-date / guests-entry). */}
+            <div id="event-venue" style={{ scrollMarginTop: 16 }}>
+              <EDTField C={C} s={s} label="Venue name"   value={event.venue}        onChange={v => upd('venue', v)} placeholder={vph.venue} />
+            </div>
             <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
           </EDTRow>
         )}
@@ -41880,6 +41895,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     if (!initialNav) return;
     if (initialNav.tab) { const n = normalizeEventTabRoute(initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
     if (initialNav.foodFocus) focusFood(initialNav.foodFocus);
+    // POP-1 continuity: an inbound route carrying focusField (e.g. the Reveal
+    // blocker's "Handle it now") lands ON the field — parity with go()'s
+    // in-shell handling and EventPlanner's initialNav.focusField support.
+    if (initialNav.focusField) scrollFocusFieldWithRetry(initialNav.focusField);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNav?.tab, initialNav?.foodFocus]);
 
@@ -44860,6 +44879,14 @@ export default function App() {
                     profile={profile}
                     onDone={() => { const a = assemble; setAssemble(null); if (a && a.openId) setActiveId(a.openId); }}
                     onPatchEvent={(patch) => setEvents(evts => evts.map(e => e.id === assemble.ev.id ? { ...e, ...patch } : e))}
+                    onRoute={(route) => {
+                      // "Handle it now" on a blocker card: close the reveal and open the
+                      // event AT the resolving field — the same initialNav {tab, focusField}
+                      // path every other deep-link CTA uses (nothing invented).
+                      const a = assemble; setAssemble(null);
+                      setInitialNav(route || null);
+                      setActiveId(a.ev.id);
+                    }}
                   />
                 )}
                 <Toast msg={toast?.msg} variant={toast?.variant} onDone={() => setToast(null)} />
