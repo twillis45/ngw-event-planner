@@ -214,3 +214,50 @@ export function weatherLogistics(wx, opts = {}) {
 
   return out;
 }
+
+// ─── Rain plan readiness (POP-1 continuity slice) ───────────────────────────
+// The planner readiness source for "do we have a rain plan?" is event.rainPlan
+// ONLY — the free-text field on the Where & when / Event Details venue section.
+// event.guestBrief.rainPlan is guest-facing brief copy (lib/doItForMe.js) and
+// deliberately NEVER satisfies planner readiness; the two fields are separate
+// by design and are not synced.
+//
+// RAIN_PLAN_TARGET uses the app's existing deep-link convention ({tab,
+// focusField} route objects, normalized by App.js handleTabChange; the focus
+// effect finds the element by id / data-focus-field). No new routing system.
+export const RAIN_PLAN_TARGET = { tab: 'Event Details', focusField: 'rain-plan' };
+
+export function rainPlanStatus(event) {
+  const hasPlan = !!String((event && event.rainPlan) || '').trim();
+  return {
+    hasPlan,
+    plan: hasPlan ? String(event.rainPlan).trim() : null,
+    target: RAIN_PLAN_TARGET,
+    ctaLabel: hasPlan ? 'Review rain plan' : 'Add rain plan',
+  };
+}
+
+// The "Rain plan missing for an outdoor event" readiness gap — same rule the
+// Where & when tab's Missing-logistics card has always used (outdoors + no
+// event.rainPlan), extracted here so the gap, its resolution, and its
+// deep-link target are one testable source instead of inline-only JSX.
+export function rainPlanGap(event, { outdoors } = {}) {
+  if (!outdoors) return null;
+  const status = rainPlanStatus(event);
+  if (status.hasPlan) return null;
+  return {
+    message: 'Rain plan missing for an outdoor event',
+    target: RAIN_PLAN_TARGET,
+    ctaLabel: 'Add rain plan',
+  };
+}
+
+// Weather summary copy, made aware of a saved rain plan. The forecast (risk
+// level, precipitation) is untouched — only the "rain plan required / prepare
+// a rain plan" imperative stops nagging once event.rainPlan has real text.
+export function rainAwareSummary(summary, hasPlan) {
+  if (!hasPlan || !summary) return summary;
+  return String(summary)
+    .replace(/— rain plan required/i, '— your rain plan is on file')
+    .replace(/— monitor and prepare a rain plan/i, '— monitor; your rain plan is on file');
+}

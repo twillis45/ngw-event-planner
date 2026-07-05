@@ -37,7 +37,7 @@ import { isSentryConfigured, captureError } from './lib/sentry';
 import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet, saveVersion as dvSave, renameVersion as dvRename, deleteVersion as dvDelete, setActiveVersion as dvSetActive, updateActiveVersion as dvUpdateActive } from './lib/draftVersions';
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
-import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics } from './lib/weather';
+import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary } from './lib/weather';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
@@ -37062,9 +37062,32 @@ function WeatherAlert({ event, onNavTo }) {
           <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: riskColor, marginBottom: 2 }}>
             Weather forecast · {wx.daysOut}d out
           </div>
-          <div style={{ fontSize: T.caption, color: C.text }}>{wx.summary}</div>
+          {/* POP-1 rain-plan continuity: the summary stops saying "rain plan
+              required" once event.rainPlan (the planner field on Where & when)
+              has real text. Forecast/risk untouched — copy awareness only. */}
+          <div style={{ fontSize: T.caption, color: C.text }}>{rainAwareSummary(wx.summary, rainPlanStatus(event).hasPlan)}</div>
           {wx.sunset && <div style={{ fontSize: T.caption, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
+          {/* POP-1 rain-plan continuity: when the forecast is rain-kind, connect the
+              warning to the ONE place the gap is resolved — event.rainPlan on the
+              Where & when / Event Details venue section. With a saved plan we show
+              it (read-only echo); without one, the CTA deep-links straight to the
+              field via the existing {tab, focusField} route convention. */}
+          {wx.kind === 'rain' && (() => {
+            const rp = rainPlanStatus(event);
+            if (rp.hasPlan) {
+              return <div style={{ fontSize: T.caption, color: C.text, marginTop: 4 }}>☔ Your rain plan: {rp.plan}</div>;
+            }
+            return onNavTo ? (
+              <button
+                onClick={() => onNavTo(rp.target.tab, { focusField: rp.target.focusField })}
+                data-testid="weather-add-rain-plan"
+                style={{ ...s.btn('ghost'), marginTop: 6, padding: '5px 10px', fontSize: T.caption, fontWeight: FW.semibold, color: riskColor, border: `1px solid ${riskColor}55`, borderRadius: 7 }}
+              >
+                {rp.ctaLabel} →
+              </button>
+            ) : null;
+          })()}
         </div>
         <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: T.secondary, color: C.muted }}>×</button>
       </div>
@@ -40202,7 +40225,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           const isHomeish = venueKind === 'home';
           const outdoors = venueKind === 'outdoor' || event?.indoorOutdoor === 'outdoor' || event?.indoorOutdoor === 'both';
           const gaps = [];
-          if (outdoors && !event?.rainPlan) gaps.push('Rain plan missing for an outdoor event');
+          // POP-1 rain-plan continuity: the rain item now comes from the SAME
+          // rainPlanGap() helper the weather surface reasons with — one rule,
+          // one message, one resolution (fill event.rainPlan below).
+          const rpGap = rainPlanGap(event, { outdoors });
+          if (rpGap) gaps.push(rpGap.message);
           if (outdoors && !event?.parkingNotes) gaps.push('No parking plan for an outdoor event');
           if (isUpcoming && !isHomeish && !event?.venueContact) gaps.push('No venue contact for day-of');
           if (isUpcoming && !isHomeish && !event?.loadInNotes) gaps.push('No load-in notes for vendors');
@@ -40422,7 +40449,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         <div style={{ marginBottom: 10 }}>
           <EDTField C={C} s={s} label="House rules"      value={event.houseRules} onChange={v => upd('houseRules', v)} textarea placeholder={vph.houseRules} />
         </div>
-        <div style={{ marginBottom: 10 }}>
+        {/* POP-1 rain-plan continuity: id="rain-plan" is the deep-link landing
+            target (RAIN_PLAN_TARGET in lib/weather.js) — same id-wrapper pattern
+            as guests-entry. The focus effect scrolls this into view. */}
+        <div id="rain-plan" style={{ marginBottom: 10, scrollMarginTop: 16 }}>
           <EDTField C={C} s={s} label="Rain plan"        value={event.rainPlan} onChange={v => upd('rainPlan', v)} textarea placeholder={vph.rainPlan} />
         </div>
         {/* Insurance / COI is vendor paperwork. Hide it for a self-host UNTIL they
@@ -43212,7 +43242,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       )}
 
       {/* Weather risk alert — outdoor events within 14 days */}
-      {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t) => handleTabChange(t)} />}
+      {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t, opts) => handleTabChange(t, null, opts)} />}
 
       {/* Day-of severity surface. Host (hostNavActive/recordKind=event): the calm
           3-tier CARD STACK (Figma B2 1558:49) — colored left rails, "→ your move"
