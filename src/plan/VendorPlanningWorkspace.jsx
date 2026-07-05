@@ -527,13 +527,14 @@ function VendorStatusBar({ vendors, event, conflicts, onSelectVendor }) {
   // Host (Figma 1728-3): speak in the host's terms — "N booked · M to follow up" — not
   // the planner's readiness words. Booked = a real status word; to-follow-up = anything
   // still needing the host (attention + critical). Planner keeps the readiness breakdown.
-  // POP-1/WOW-1: this top-line count now reads eventPlan(event).vendorReadiness
-  // directly — the SAME workstream-derived rollup HostHome reads — instead of
-  // re-filtering vendors locally. Vendors no longer owns an independent priority
-  // count (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6, POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md).
+  // POP-1 Phase 1 (exact first slice): this top-line count now reads
+  // eventPlan(event).vendorReadinessRollup.counts directly — the SAME
+  // presentational rollup HostHome would read — instead of re-filtering
+  // vendors locally. Vendors no longer owns an independent priority count
+  // (docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6, POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md).
   const segs = host
     ? (() => {
-        const { booked: bookedN, needsAttention: followN } = eventPlan(event).vendorReadiness;
+        const { ready: bookedN, needsAttention: followN } = eventPlan(event).vendorReadinessRollup.counts;
         return [
           bookedN ? { level: 'safe', n: bookedN, label: 'booked' } : null,
           followN ? { level: 'attention', n: followN, label: 'to follow up' } : null,

@@ -147,3 +147,56 @@ export function workstreamReadinessRollup(event, ctx = null, vendors = null, pla
     needsAttention: acc.needsAttention + w.readiness.needsAttention,
   }), { total: 0, booked: 0, needsAttention: 0 });
 }
+
+// POP-1 Phase 1 (exact first slice, narrow alignment): a presentational
+// read-only rollup for eventPlan()'s `vendorReadinessRollup` field — composes
+// the SAME workstreamReadinessRollup()/workstreamsFor() data above into a
+// status/label/nextAction shape a UI can render directly, instead of each
+// consumer re-deriving its own copy from the flat counts. Not persisted, not
+// a new engine — every field here is derived from data already computed by
+// workstreamsFor()/workstreamReadinessRollup() in this same file.
+export function buildVendorReadinessRollup(event, ctx = null, vendors = null, playbook = null) {
+  const workstreams = workstreamsFor(event, ctx, vendors, playbook);
+  const counts = workstreams.reduce((acc, w) => ({
+    total: acc.total + w.readiness.total,
+    ready: acc.ready + w.readiness.booked,
+    needsAttention: acc.needsAttention + w.readiness.needsAttention,
+    missing: acc.missing, // no "expected but not yet added" signal exists to derive this from — left at 0, not invented
+  }), { total: 0, ready: 0, needsAttention: 0, missing: 0 });
+
+  const blockedWorkstream = workstreams.find(w => w.blocked) || null;
+
+  if (counts.total === 0) {
+    return {
+      status: 'not_started', label: 'No vendors added yet',
+      nextAction: 'Add your first vendor.', ctaLabel: 'Add vendor',
+      target: { tab: 'Vendors' }, reason: null, counts,
+    };
+  }
+  if (blockedWorkstream) {
+    // Reuses the same per-vendor "needs you" reason already surfaced on the
+    // Vendors tab (getVendorCOIState) — not a new blocking concept.
+    const blockedVendor = blockedWorkstream.vendors.find(v => v && v.coiStatus !== undefined) || blockedWorkstream.vendors[0];
+    return {
+      status: 'needs_attention', label: `${counts.needsAttention} vendor${counts.needsAttention === 1 ? '' : 's'} to follow up`,
+      nextAction: `Resolve the ${blockedWorkstream.label} blocker.`, ctaLabel: 'Review vendors',
+      target: { tab: 'Vendors', vendorId: blockedVendor ? blockedVendor.id : undefined },
+      reason: `${blockedWorkstream.label} has a critical issue that needs your attention.`, counts,
+    };
+  }
+  if (counts.needsAttention === 0) {
+    return {
+      status: 'ready', label: 'All vendors booked',
+      nextAction: 'Nothing needs you here right now.', ctaLabel: 'Review vendors',
+      target: { tab: 'Vendors' }, reason: null, counts,
+    };
+  }
+  const firstOpenWorkstream = workstreams.find(w => w.readiness.needsAttention > 0);
+  const firstOpenVendor = firstOpenWorkstream ? firstOpenWorkstream.deepLink : { tab: 'Vendors' };
+  return {
+    status: 'in_progress', label: `${counts.ready} booked · ${counts.needsAttention} to follow up`,
+    nextAction: `Follow up on ${firstOpenWorkstream ? firstOpenWorkstream.label : 'your remaining vendors'}.`,
+    ctaLabel: 'Review vendors', target: firstOpenVendor,
+    reason: `${counts.needsAttention} of ${counts.total} vendors are still deciding.`, counts,
+  };
+}

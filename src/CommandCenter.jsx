@@ -69,7 +69,7 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // by workstream (Venue/Photography/Food/...) instead of eventPlan/Vendors each
 // computing their own flat vendor tally. See src/lib/workstreams.js header +
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
-import { workstreamsFor, workstreamReadinessRollup } from './lib/workstreams';
+import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup } from './lib/workstreams';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -1373,6 +1373,11 @@ export function eventPlan(event, ctx = null) {
   if (!event) return {
     nextActions: [], progress: { done: 0, total: 0 }, handled: [],
     vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [],
+    vendorReadinessRollup: {
+      status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
+      ctaLabel: 'Add vendor', target: { tab: 'Vendors' }, reason: null,
+      counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
+    },
     planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },
   };
 
@@ -1425,6 +1430,13 @@ export function eventPlan(event, ctx = null) {
   // can never disagree about the vendor count.
   const workstreams = workstreamsFor(event, ctx, event.vendors);
   const vendorReadiness = workstreamReadinessRollup(event, ctx, event.vendors);
+  // POP-1 Phase 1 (exact first slice): the presentational rollup Vendors' top-line
+  // now reads instead of building its own "N booked · M to follow up" copy locally —
+  // same underlying workstreams/vendorReadiness data, just shaped for direct render.
+  // (Named vendorReadinessRollupPresentation locally to avoid shadowing the
+  // top-level exported vendorReadinessRollup(event) function in this same file —
+  // the returned object key below is still `vendorReadinessRollup`.)
+  const vendorReadinessRollupPresentation = buildVendorReadinessRollup(event, ctx, event.vendors);
 
   // POP-1.1 Objective 1: EXPOSE + COMPOSE only — a read-only mapping over fields
   // that already exist above. No new computation, no change to nextActions
@@ -1447,7 +1459,7 @@ export function eventPlan(event, ctx = null) {
     confidence: undefined, // no existing per-action confidence signal to compose — not invented here
   };
 
-  return { nextActions, progress, handled, vendorReadiness, workstreams, planningState };
+  return { nextActions, progress, handled, vendorReadiness, workstreams, planningState, vendorReadinessRollup: vendorReadinessRollupPresentation };
 }
 
 // L3 — within a single event for the Event Command Center top panel.

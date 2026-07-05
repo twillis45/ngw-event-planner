@@ -3,7 +3,7 @@
 // Cross-surface agreement (eventPlan vs. Vendors tab) is covered separately
 // in vendorReadinessRollup.test.js, extended here for the workstreams field.
 
-import { workstreamsFor, workstreamReadinessRollup } from '../workstreams';
+import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup } from '../workstreams';
 import { eventPlan, vendorReadinessRollup, getEventAttention } from '../../CommandCenter';
 import { buildExperienceContext } from '../experienceContext';
 
@@ -265,5 +265,97 @@ describe('POP-1/WOW-1: flagship category additions map into workstreams, not cus
     expect(ws.find(w => w.id === 'military_display')?.vendors.map(v => v.id)).toEqual(['v12']);
     // No "other" fallback needed now that these 3 categories are mapped.
     expect(ws.find(w => w.id === 'other')).toBeUndefined();
+  });
+});
+
+describe('POP-1 Phase 1 (exact first slice): buildVendorReadinessRollup / eventPlan().vendorReadinessRollup', () => {
+  // DMV-area realistic vendor names (Washington DC / MD / NoVA), per the flagship
+  // vendor realism rule — not "Vendor A"/"Sample Catering" placeholders. Built as a
+  // standalone event object (not via the shared flagshipEvent() helper, whose
+  // signature only overrides the venue vendor) so vendor names can be set freely.
+  const dmvFlagshipEvent = () => ({
+    id: 'e-flagship-dmv',
+    name: '30-Year United States Army Retirement Celebration at the VFW',
+    type: 'Retirement Party',
+    recordKind: 'host_event',
+    date: future(92),
+    guests: [],
+    guestEstimate: '120',
+    budget: [],
+    timeline: [],
+    vendors: [
+      { id: 'v1', category: 'Venue', status: 'Deposit Paid', name: 'VFW Post 3150 — Alexandria, VA' },
+      { id: 'v2', category: 'Catering', status: 'Considering', name: 'Capital Rotisserie Catering — Silver Spring, MD' },
+      { id: 'v3', category: 'Photography', status: 'Considering', name: 'Anacostia Frame & Film Co. — Washington, DC' },
+      { id: 'v4', category: 'DJ', status: 'Considering', name: 'Beltway Sound Collective — Arlington, VA' },
+      { id: 'v5', category: 'Rentals', status: 'Considering', name: 'Old Town Tent & Party Rentals — Alexandria, VA' },
+    ],
+  });
+
+  test('DMV-realistic vendor names are honored end-to-end through workstreamsFor (not placeholder names)', () => {
+    const event = dmvFlagshipEvent();
+    const ws = workstreamsFor(event);
+    const names = ws.flatMap(w => w.vendors.map(v => v.name)).filter(Boolean);
+    expect(names).toEqual(expect.arrayContaining([
+      'VFW Post 3150 — Alexandria, VA',
+      'Capital Rotisserie Catering — Silver Spring, MD',
+      'Anacostia Frame & Film Co. — Washington, DC',
+      'Beltway Sound Collective — Arlington, VA',
+      'Old Town Tent & Party Rentals — Alexandria, VA',
+    ]));
+    expect(names.some(n => /^Vendor [A-Z]$|Sample Catering|Test Vendor|Generic Rentals/.test(n))).toBe(false);
+  });
+
+  test('no vendors at all -> not_started status, no invented counts', () => {
+    const event = { ...dmvFlagshipEvent(), vendors: [] };
+    const rollup = buildVendorReadinessRollup(event);
+    expect(rollup).toEqual({
+      status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
+      ctaLabel: 'Add vendor', target: { tab: 'Vendors' }, reason: null,
+      counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
+    });
+  });
+
+  test('all vendors booked -> ready status', () => {
+    const event = { ...dmvFlagshipEvent(), vendors: [{ id: 'only', category: 'Venue', status: 'Confirmed', name: 'VFW Post 3150 — Alexandria, VA' }] };
+    const rollup = buildVendorReadinessRollup(event);
+    expect(rollup.status).toBe('ready');
+    expect(rollup.label).toBe('All vendors booked');
+    expect(rollup.counts).toEqual({ total: 1, ready: 1, needsAttention: 0, missing: 0 });
+  });
+
+  test('some vendors still deciding, none blocked -> in_progress status with a real deep link', () => {
+    const event = dmvFlagshipEvent();
+    const rollup = buildVendorReadinessRollup(event);
+    expect(rollup.status).toBe('in_progress');
+    expect(rollup.counts).toEqual({ total: 5, ready: 1, needsAttention: 4, missing: 0 });
+    expect(rollup.target).toEqual(expect.objectContaining({ tab: 'Vendors' }));
+  });
+
+  test('a blocked workstream (critical COI) -> needs_attention status naming that workstream', () => {
+    const event = {
+      ...dmvFlagshipEvent(),
+      vendors: [{ id: 'v1', category: 'Venue', status: 'Considering', name: 'VFW Post 3150 — Alexandria, VA', coiStatus: 'received', coiVerified: true, coiExpiryDate: '2020-01-01' }], // lapsed before any future event date
+    };
+    const rollup = buildVendorReadinessRollup(event);
+    expect(rollup.status).toBe('needs_attention');
+    expect(rollup.reason).toMatch(/Venue/);
+  });
+
+  test('eventPlan(event).vendorReadinessRollup matches buildVendorReadinessRollup(event, ctx) directly (single source, no duplicate logic)', () => {
+    const event = dmvFlagshipEvent();
+    const ctx = { decisionBlockers: [] };
+    const plan = eventPlan(event, ctx);
+    const direct = buildVendorReadinessRollup(event, ctx, event.vendors);
+    expect(plan.vendorReadinessRollup).toEqual(direct);
+  });
+
+  test('HostHome (eventPlan) and Vendors (VendorStatusBar) read the identical rollup object shape for the same event — cannot disagree', () => {
+    const event = dmvFlagshipEvent();
+    const plan = eventPlan(event);
+    // Mirrors exactly what VendorPlanningWorkspace.jsx's VendorStatusBar destructures.
+    const { ready: bookedN, needsAttention: followN } = plan.vendorReadinessRollup.counts;
+    expect(bookedN).toBe(1);
+    expect(followN).toBe(4);
   });
 });
