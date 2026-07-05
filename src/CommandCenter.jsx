@@ -1300,7 +1300,9 @@ function _eventFoundationActions(event) {
     {
       id: 'date', domain: 'date', title: 'Set the date.',
       consequence: 'The date anchors every countdown, milestone, and shopping window.',
-      cta: 'Set date', route: { tab: 'Details', focusField: 'event-date' },
+      // 'Event Details' is the real tab id — 'Details' has no render branch
+      // (the same dead-route bug the rain-plan CTA's live verification caught).
+      cta: 'Set date', route: { tab: 'Event Details', focusField: 'event-date' },
       done: dateSet, handledFact: dateSet ? 'Date set' : null,
     },
     {

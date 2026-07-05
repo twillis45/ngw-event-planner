@@ -37773,6 +37773,10 @@ const TAB_LABELS = { 'Communication': 'Messages', 'Command': 'Overview', 'Event 
 const PLANNING_VIEWS = ['list', 'timeline', 'checklist'];
 const normalizeEventTabRoute = (rawTab, itemId) => {
   if (rawTab === 'Overview')        return { tab: 'Command',  planningView: null,        openId: null };
+  // Legacy/dead alias: 'Details' has no render branch — the tab's real id is
+  // 'Event Details' (host label "Where & when"). Routes emitting 'Details'
+  // (e.g. older CommandCenter foundation routes) resolve instead of dead-ending.
+  if (rawTab === 'Details')         return { tab: 'Event Details', planningView: null, openId: null };
   // Legacy alias: the day-of tab's route key was renamed 'Run of Show' →
   // 'Event Day Schedule' to match the UI. Persisted sessions / deep links / old
   // initialNav may still emit 'Run of Show' — resolve it to the new key.
@@ -37781,6 +37785,27 @@ const normalizeEventTabRoute = (rawTab, itemId) => {
   if (rawTab === 'Timeline')        return { tab: 'Planning', planningView: 'timeline',  openId: itemId || null };
   if (rawTab === 'Checklist')       return { tab: 'Planning', planningView: 'checklist', openId: itemId || null };
   return { tab: rawTab, planningView: null, openId: itemId || null };
+};
+
+// Field-level deep-link lander for HostEventShell. EventPlanner uses a
+// state-driven effect for this (Board #15, openFocusField); the host shell's
+// go() is imperative, so a small retry loop covers the destination tab
+// mounting. Same id / data-focus-field contract, same inner-control focus.
+const scrollFocusFieldWithRetry = (fieldId, tries = 12) => {
+  if (!fieldId) return;
+  const esc = (v) => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/"/g, '\\"');
+  const tick = (n) => {
+    const el = document.getElementById(fieldId) || document.querySelector(`[data-focus-field="${esc(fieldId)}"]`);
+    if (el) {
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
+      const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)
+        ? el : (el.querySelector('input, textarea, select') || el);
+      try { focusTarget.focus({ preventScroll: true }); if (focusTarget.select) focusTarget.select(); } catch (e) { /* non-fatal */ }
+      return;
+    }
+    if (n > 0) setTimeout(() => tick(n - 1), 80);
+  };
+  setTimeout(() => tick(tries), 120);
 };
 
 // ─── Sprint 49: EventVendorsTab — canonical Vendors L4 specialist ────────────
@@ -40165,7 +40190,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         </EDTRow>
         <HybridTemplateMerge C={C} s={s} event={event} setEvent={setEvent} />
         <EDTRow isMobile={isMobile}>
-          <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }))} type="date" />
+          {/* id="event-date": landing anchor for the 'Set date' foundation CTA's
+              focusField (same id-wrapper pattern as rain-plan / guests-entry). */}
+          <div id="event-date" style={{ scrollMarginTop: 16 }}>
+            <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }))} type="date" />
+          </div>
           <EDTField C={C} s={s}
             label="Time of day"
             value={event.timeOfDay || 'afternoon'}
@@ -41843,6 +41872,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     if (norm.planningView) setPlanningView(norm.planningView);
     setTab(norm.tab);
     setMoreOpen(false);
+    // Field-level deep link (parity with EventPlanner's Board #15 effect):
+    // a route carrying focusField lands ON the field, not the tab top.
+    if (opts && opts.focusField) scrollFocusFieldWithRetry(opts.focusField);
   };
   useEffect(() => {
     if (!initialNav) return;
@@ -41921,7 +41953,13 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           </nav>
         )}
         <div style={isSidebarNav ? { flex: 1, minWidth: 0 } : undefined}>
-        {tab === 'Command' && <div className="planv2-wrap">{/* Parity (P1): cap the host command view to Plan's reading measure on desktop. */}<CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} /></div>}
+        {tab === 'Command' && <div className="planv2-wrap">{/* Parity (P1): cap the host command view to Plan's reading measure on desktop. */}
+          {/* Weather risk (parity with EventPlanner's Command tab, same !dayMode guard):
+              hosts on the default shell previously never saw the weather banner at all —
+              the rain-plan continuity CTA had no live host surface. Same component, same
+              gates (outdoor + ≤14d + configured); onNavTo carries focusField through go(). */}
+          {!dayMode && <WeatherAlert event={event} onNavTo={(t, opts) => go(t, null, opts)} />}
+          <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} /></div>}
         {tab === 'Guests' && <div className="planv2-wrap">{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. Parity (P1): cap to Plan's reading measure on desktop. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.
               P0①: act-in-hero count controls (stepper + lock) write straight to event. */}
@@ -42157,7 +42195,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       const el = document.getElementById(openFocusField) || document.querySelector(`[data-focus-field="${esc(openFocusField)}"]`);
       if (el) {
         try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
-        try { el.focus({ preventScroll: true }); if (el.select) el.select(); } catch (e) { /* non-fatal */ }
+        // Anchors are often WRAPPER divs (rain-plan, event-date, guests-entry) —
+        // focus the inner control so the keyboard lands in the field, not a no-op.
+        const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)
+          ? el : (el.querySelector('input, textarea, select') || el);
+        try { focusTarget.focus({ preventScroll: true }); if (focusTarget.select) focusTarget.select(); } catch (e) { /* non-fatal */ }
         setOpenFocusField(null);
         return;
       }
