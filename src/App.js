@@ -1480,24 +1480,31 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'cloche':        return <svg {...p}><path d="M4 17 A8 8 0 0 1 20 17 Z"/><path d="M3 17 H21"/><path d="M12 5.5 V7 M11 5.5 H13"/><path d="M5 20 H19"/></svg>;
     case 'spade':         return <svg {...p}><path d="M12 3.5 C12 8 18 9.5 18 13.5 C18 16 16 17.2 14 16.4 C13 16 12.6 15.4 12.5 14.8 C12.7 17 13 18.8 14.5 20.5 H9.5 C11 18.8 11.3 17 11.5 14.8 C11.4 15.4 11 16 10 16.4 C8 17.2 6 16 6 13.5 C6 9.5 12 8 12 3.5 Z"/></svg>;
     case 'candle':        return <svg {...p}><path d="M9.5 9.5 V19 A1 1 0 0 0 10.5 20 H13.5 A1 1 0 0 0 14.5 19 V9.5 M9.5 10 Q12 11.5 14.5 10"/><path d="M12 3 C13.4 4.6 13.8 6 13 7.2 C12.5 8 11.5 8 11 7.2 C10.4 6.2 10.8 5 12 3 Z"/><path d="M12 8.2 V9.5"/></svg>;
-    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Blue crab — matched to Figma 1991:32 (Editorial Crab Feast mark): wide shell w/ serrated top + smooth belly, two EYE-STALKS at the top center, two raised open-pincer claws from the corners, six legs with little circle feet. */}
-      <path d="M4.6 12.4 C7 15.4 17 15.4 19.4 12.4"/>
-      <path d="M4.6 12.4 L6.1 11.3 L7.3 12.1 L8.7 11.2 L10 12 L11.4 11.1 L12.6 12 L14 11.2 L15.3 12.1 L16.7 11.3 L19.4 12.4"/>
-      {/* Eye-stalks — two short stalks rising from the top center, each capped by an eye. */}
-      <path d="M10.8 11.5 L10.5 9.7"/><circle cx="10.4" cy="9.15" r="0.62"/>
-      <path d="M13.2 11.5 L13.5 9.7"/><circle cx="13.6" cy="9.15" r="0.62"/>
-      {/* Claws — arms sweeping up-out from the shoulders to an open two-prong pincer. */}
-      <path d="M6.4 11.6 C5 10.1 4 8.6 4.3 6.9"/>
-      <path d="M4.3 6.9 C3.4 6.4 3.3 5.2 4.4 5.0 M4.3 6.9 C5.3 6.8 5.9 5.9 5.3 5.1"/>
-      <path d="M17.6 11.6 C19 10.1 20 8.6 19.7 6.9"/>
-      <path d="M19.7 6.9 C20.6 6.4 20.7 5.2 19.6 5.0 M19.7 6.9 C18.7 6.8 18.1 5.9 18.7 5.1"/>
-      {/* Six legs, each ending in a little circle foot. */}
-      <path d="M7 13.9 L5.2 15.0"/><circle cx="4.7" cy="15.3" r="0.66"/>
-      <path d="M8.5 14.5 L7.0 16.1"/><circle cx="6.5" cy="16.5" r="0.66"/>
-      <path d="M10.1 14.9 L9.1 16.8"/><circle cx="8.8" cy="17.2" r="0.66"/>
-      <path d="M17 13.9 L18.8 15.0"/><circle cx="19.3" cy="15.3" r="0.66"/>
-      <path d="M15.5 14.5 L17.0 16.1"/><circle cx="17.5" cy="16.5" r="0.66"/>
-      <path d="M13.9 14.9 L14.9 16.8"/><circle cx="15.2" cy="17.2" r="0.66"/>
+    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Chesapeake blue crab, ADULT posture (glyph quality pass 2026-07-06): wide
+      carapace ending in the species' signature pointed LATERAL SPINES, a subtly
+      serrated front edge, short eye ticks (no lollipop eye-balls), jointed
+      raised pincers, angular walking legs with joints (no circle "feet"), and
+      the rear SWIMMING PADDLES that mark a mature blue crab. */}
+      {/* Carapace — lateral spine tips left/right, serrated front, smooth belly */}
+      <path d="M2.9 11.9 L5.9 10.15 L7.35 10.55 L8.65 10 L9.95 10.45 L11.1 9.95 L12.9 9.95 L14.05 10.45 L15.35 10 L16.65 10.55 L18.1 10.15 L21.1 11.9"/>
+      <path d="M2.9 11.9 C5.5 14.7 18.5 14.7 21.1 11.9"/>
+      {/* Eyes — two short ticks at the front notch */}
+      <path d="M11.1 9.95 L10.85 8.85"/><path d="M12.9 9.95 L13.15 8.85"/>
+      {/* Pincers — jointed arms raised out from the shoulders, open two-jaw tips */}
+      <path d="M6.0 10.6 L4.6 9.2 L4.5 7.4"/>
+      <path d="M4.5 7.4 L3.4 6.5 M4.5 7.4 L5.6 6.4"/>
+      <path d="M18.0 10.6 L19.4 9.2 L19.5 7.4"/>
+      <path d="M19.5 7.4 L20.6 6.5 M19.5 7.4 L18.4 6.4"/>
+      {/* Walking legs — two per side, jointed, no feet */}
+      <path d="M7.1 13.8 L5.6 14.9 L4.2 15.1"/>
+      <path d="M8.9 14.4 L7.9 15.9 L6.7 16.5"/>
+      <path d="M16.9 13.8 L18.4 14.9 L19.8 15.1"/>
+      <path d="M15.1 14.4 L16.1 15.9 L17.3 16.5"/>
+      {/* Rear swimming paddles — slim angled oar blades, not round feet */}
+      <path d="M10.7 14.7 L10.15 16.1"/>
+      <path d="M10.15 16.1 C9.55 16.55 9.35 17.5 9.85 17.8 C10.35 18 10.75 17.2 10.6 16.4 Z"/>
+      <path d="M13.3 14.7 L13.85 16.1"/>
+      <path d="M13.85 16.1 C14.45 16.55 14.65 17.5 14.15 17.8 C13.65 18 13.25 17.2 13.4 16.4 Z"/>
     </g></svg>;
     case 'crawfish':      return <svg {...p}><path d="M7.5 13 C9.2 11.6 11.8 11.2 14 11.8 C15.7 12.3 16.6 13.4 16.4 14.6"/><path d="M10 11.6 L9.6 14.2 M12.2 11.6 L12 14.6 M14 12.2 L14 14.8"/><path d="M7.5 13 C5.6 12.4 4.2 13.4 4 15 M7.5 13 C6 11.4 4 11.6 3.2 13.2 M7.5 13 C6.4 14.8 4.6 15.2 3.6 16.8"/><path d="M16.4 14.6 C18 13.6 19.6 14.2 20 12.6 M16.4 14.6 C18.4 14.6 20 15.6 20 17.4"/><path d="M14.6 10.8 C16.4 8.8 18.6 9 19.4 7 M14 11 C15 9 17 9 17.8 7.4"/></svg>;
     case 'basket':        return <svg {...p}><path d="M5.5 11 L7 18 A2 2 0 0 0 8.9 19.4 H15.1 A2 2 0 0 0 17 18 L18.5 11"/><path d="M5.5 11 C5.5 9.6 8.4 8.6 12 8.6 C15.6 8.6 18.5 9.6 18.5 11 C18.5 12.4 15.6 13.4 12 13.4 C8.4 13.4 5.5 12.4 5.5 11 Z"/><path d="M6.6 14.6 Q12 16 17.4 14.6"/><path d="M7.4 17.4 Q12 18.6 16.6 17.4"/></svg>;

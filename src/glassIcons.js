@@ -31,14 +31,19 @@ export const GLASS_SHAPES = {
   'house-key': { hue:'#3FA6A0', base:80, parts:(h)=>[{ d:`M30 80 V48 L66 22 L102 48 V80 Z`, color:h }] },
   house:       { hue:'#3FA6A0', base:80, parts:(h)=>[{ d:`M30 80 V48 L66 22 L102 48 V80 Z`, color:h }] },
   spade:  { hue:'#6E6FB0', base:84, parts:(h)=>[{ d:`M66 20 C48 40 36 48 36 60 C36 70 46 73 54 67 C52 75 48 80 42 84 L90 84 C84 80 80 75 78 67 C86 73 96 70 96 60 C96 48 84 40 66 20 Z`, color:h }] },
-  // Maryland blue crab — body + claws + legs as one filled volume. gscale: the authored
-  // paths are wide-but-thin and read SMALL in the dome vs peers (QA 2026-06-28), so scale
-  // the whole crab up about its center to give it the presence the Crab Feast deserves.
-  crab: { hue:'#2E6F8E', base:82, gscale:1.32, gcy:53, parts:(h)=>[
-      { d:`M40 60 C40 44 52 36 66 36 C80 36 92 44 92 60 C92 70 80 76 66 76 C52 76 40 70 40 60 Z`, color:h },
-      { d:`M44 40 C30 28 18 32 18 42 C18 49 26 51 30 45 C32 41 29 38 25 39 L27 43 C24 44 22 42 23 40 C25 36 33 36 38 43 Z`, color:h },
-      { d:`M88 40 C102 28 114 32 114 42 C114 49 106 51 102 45 C100 41 103 38 107 39 L105 43 C108 44 110 42 109 40 C107 36 99 36 94 43 Z`, color:h } ],
-    flames:(h)=>`<path d="M58 36 L55 27 M74 36 L77 27" stroke="${mix(h,'black',12)}" stroke-width="3.2" stroke-linecap="round" fill="none"/><circle cx="55" cy="24" r="2.8" fill="${mix(h,'black',12)}"/><circle cx="77" cy="24" r="2.8" fill="${mix(h,'black',12)}"/><path d="M40 62 L26 56 M41 67 L27 67 M44 72 L33 81 M92 62 L106 56 M91 67 L105 67 M88 72 L99 81" stroke="${mix(h,'black',12)}" stroke-width="3.4" stroke-linecap="round" fill="none"/>` },
+  // Maryland blue crab — ADULT Chesapeake posture (glyph quality pass 2026-07-06):
+  // angular carapace ending in the species' pointed LATERAL SPINES, strong jointed
+  // pincers raised from the shoulders (no curly cartoon claws), eye TICKS instead of
+  // ball-tipped stalks, jointed legs, and rear SWIMMING PADDLES. gscale: the authored
+  // paths are wide-but-thin and read SMALL in the dome vs peers (QA 2026-06-28), so
+  // scale the whole crab up about its center.
+  crab: { hue:'#2E6F8E', base:82, gscale:1.28, gcy:53, parts:(h)=>[
+      // carapace — lateral spine points at (26,57)/(106,57), smooth belly
+      { d:`M26 57 L42 44 C50 39 82 39 90 44 L106 57 C101 70 85 77 66 77 C47 77 31 70 26 57 Z`, color:h },
+      // pincers — broad muscular arms sweeping up-out to an open jaw
+      { d:`M52 46 C41 41 34 34 33 22 L24 28 C26 33 29 35 32 36 C34 43 41 49 48 54 Z`, color:h },
+      { d:`M80 46 C91 41 98 34 99 22 L108 28 C106 33 103 35 100 36 C98 43 91 49 84 54 Z`, color:h } ],
+    flames:(h)=>`<path d="M58 41 L56 33 M74 41 L76 33" stroke="${mix(h,'black',12)}" stroke-width="3.2" stroke-linecap="round" fill="none"/><path d="M32 22 L26 16 M32 22 L38 18 M100 22 L106 16 M100 22 L94 18" stroke="${mix(h,'black',12)}" stroke-width="4.4" stroke-linecap="round" fill="none"/><path d="M40 63 L30 67 L24 65 M44 70 L36 77 L29 78 M92 63 L102 67 L108 65 M88 70 L96 77 L103 78" stroke="${mix(h,'black',12)}" stroke-width="3.4" stroke-linecap="round" fill="none"/><path d="M53 76 L49 85 M79 76 L83 85" stroke="${mix(h,'black',12)}" stroke-width="5.2" stroke-linecap="round" fill="none"/>` },
   // The Cookout — kettle grill (dome + bowl + legs + handle)
   grill: { hue:'#E07A3B', base:84, parts:(h)=>[
       { d:`M40 52 A26 26 0 0 0 92 52 Z`, color:h },
