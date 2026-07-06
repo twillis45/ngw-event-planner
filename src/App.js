@@ -3205,6 +3205,19 @@ function EventGlyph({ icon, hue, size = 56, variant = 'auto', sacred = false, qu
   if (quiet) return <span aria-hidden="true" style={{ color: hue, display: 'inline-flex' }}><Icon name={icon} size={Math.round(size * 0.7)} stroke={1.7} /></span>;
   const v = variant === 'auto' ? (size >= 44 ? 'hero' : 'mono') : variant;
   if (v === 'hero' && sacred) return <SacredMark icon={icon} hue={hue} size={size} />;
+  // Crab Feast hero — REAL artwork, not a drawn mark (user verdict 2026-07-06
+  // after three stylized iterations): the public-domain NOAA Fisheries blue
+  // crab illustration (US government work, no attribution required; watermark
+  // area cleared, background made transparent — public/crab-hero.png). Hero
+  // surfaces ONLY — cards and badges keep the v5 line glyph via the mono path.
+  if (v === 'hero' && icon === 'crab') {
+    return (
+      <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
+        <img src={`${process.env.PUBLIC_URL || ''}/crab-hero.png`} alt=""
+          style={{ maxWidth: '96%', maxHeight: '96%', objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.35))' }} />
+      </span>
+    );
+  }
   if (v === 'hero' && hasGlassShape(icon)) return <GlassIcon icon={icon} hue={hue} size={size} />;
   const html = monoSvg(icon, hue, size); // small/badge: the SAME shape, flat + authored colors
   if (html) return <span aria-hidden="true" style={{ display: 'inline-flex', lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: html }} />;
@@ -28820,6 +28833,19 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
 // tint is a low-alpha radial gradient (clearer upper-left, denser lower-right)
 // over the panel so it stays see-through. The mark sits over the glass in React.
 function InviteDome({ icon, hue = '#9aa6b2', size = 108 }) {
+  // Crab Feast — REAL artwork instead of the drawn dome mark (user verdict
+  // 2026-07-06): the public-domain NOAA Fisheries blue crab illustration
+  // (public/crab-hero.png; US government work, background made transparent).
+  // Single override point, so the editorial cover and the invite hero both
+  // get the artwork; small/badge sizes elsewhere keep the v5 line glyph.
+  if (icon === 'crab') {
+    return (
+      <span aria-hidden="true" style={{ display: 'inline-flex', width: Math.round(size * 1.3), height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
+        <img src={`${process.env.PUBLIC_URL || ''}/crab-hero.png`} alt=""
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.4))' }} />
+      </span>
+    );
+  }
   // Stable, collision-safe gradient ids (multiple domes can mount: hero + success).
   const uid = (() => {
     const s = `${icon}-${hue}-${size}`;
