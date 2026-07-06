@@ -42085,6 +42085,12 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   const [foodFocusNonce, setFoodFocusNonce] = useState(0);
   const focusFood = (id) => { setOpenFoodId(id || null); if (id) setFoodFocusNonce((n) => n + 1); };
   const [openVendorId,   setOpenVendorId]   = useState(initialNav?.vendorId || null);
+  // Slice D-1B: section-level vendor deep-link (payment / documents / contact…).
+  // Command's vendor CTAs carry vendorSection; the host shell previously dropped it,
+  // landing the host on the vendor but not the section the CTA named. Parity with
+  // EventPlanner's openVendorSection support.
+  const [openVendorSection, setOpenVendorSection] = useState(initialNav?.vendorSection || null);
+  const [vendorSectionPing, setVendorSectionPing] = useState(0);
   const [decPrompt,      setDecPrompt]      = useState(null);
   const [moreOpen,       setMoreOpen]       = useState(false);
 
@@ -42107,6 +42113,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     setOpenTimelineId(norm.planningView === 'timeline' ? (norm.openId || null) : null);
     focusFood(norm.tab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
     setOpenVendorId(norm.tab === 'Vendors' ? (itemId || null) : null);
+    // D-1B: land on the exact vendor SECTION the CTA named (payment/documents/…),
+    // not just the vendor. Ping bumps so re-routing to the same section re-scrolls.
+    setOpenVendorSection(norm.tab === 'Vendors' && opts && opts.vendorSection ? opts.vendorSection : null);
+    if (norm.tab === 'Vendors' && opts && opts.vendorSection) setVendorSectionPing(p => p + 1);
     if (norm.planningView) setPlanningView(norm.planningView);
     setTab(norm.tab);
     setMoreOpen(false);
@@ -42122,6 +42132,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     // blocker's "Handle it now") lands ON the field — parity with go()'s
     // in-shell handling and EventPlanner's initialNav.focusField support.
     if (initialNav.focusField) scrollFocusFieldWithRetry(initialNav.focusField);
+    // D-1B: inbound vendor deep-links (vendorId + vendorSection) — parity with
+    // EventPlanner's initialNav handling so an external route lands on the row/section.
+    if (initialNav.vendorId) setOpenVendorId(initialNav.vendorId);
+    if (initialNav.vendorSection) { setOpenVendorSection(initialNav.vendorSection); setVendorSectionPing(p => p + 1); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNav?.tab, initialNav?.foodFocus]);
 
@@ -42261,7 +42275,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               </>}</div>
         )}
         {tab === 'Event Details' && <div className="planv2-wrap">{/* Parity: 'Where & when' was missed in P1 — cap the settings form to the 760 measure like every other tab. */}<EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} /></div>}
-        {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
+        {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} openSection={openVendorSection} sectionPing={vendorSectionPing} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
         </div>
       </div>

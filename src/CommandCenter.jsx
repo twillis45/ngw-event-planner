@@ -1275,7 +1275,9 @@ export function selectStudioCommand(events = []) {
 // composite playbook string "Set date, headcount, menu" is decomposed here into atomic
 // dominoes ("Set the date", "Add your guest list", "Set your budget") that drop out one
 // at a time, never surfacing verbatim once any part is done.
-function _eventFoundationActions(event) {
+// Exported for tests (same precedent as _stripLeadingDateClause): D-1B pins that
+// every foundation CTA carries its exact deep-link target, not just a tab.
+export function _eventFoundationActions(event) {
   if (!event) return [];
   const guests = Array.isArray(event.guests) ? event.guests : [];
   const hasGuestSignal = guests.length > 0
@@ -1326,7 +1328,17 @@ function _eventFoundationActions(event) {
     {
       id: 'food', domain: 'food', title: 'Plan the food.',
       consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
-      cta: 'Plan food', route: { tab: 'Planning' },
+      // D-1B: deep-link to the open menu decision when one exists (its foodFocus
+      // route scrolls + focuses the "Your choices" card), instead of dumping the
+      // host at the Plan tab top. No pickable decision → the honest tab route.
+      cta: 'Plan food',
+      route: (() => {
+        try {
+          const dec = topPlaybookDecision(event);
+          if (dec && dec.primaryRoute && dec.primaryRoute.foodFocus) return dec.primaryRoute;
+        } catch {}
+        return { tab: 'Planning' };
+      })(),
       done: hasFood, handledFact: hasFood ? 'Food sourced' : null,
     },
   ];
