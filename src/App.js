@@ -31,6 +31,7 @@ import { buildExperienceContext } from './lib/experienceContext';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { budgetHeroCopy } from './lib/budgetCopy';
+import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape, monoSvg } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
@@ -3203,21 +3204,22 @@ function EventGlyph({ icon, hue, size = 56, variant = 'auto', sacred = false, qu
   if (!icon) return null;
   // Somber/quiet events (Repast) stay a muted flat mark — never a colored volume (the sacred rule).
   if (quiet) return <span aria-hidden="true" style={{ color: hue, display: 'inline-flex' }}><Icon name={icon} size={Math.round(size * 0.7)} stroke={1.7} /></span>;
-  const v = variant === 'auto' ? (size >= 44 ? 'hero' : 'mono') : variant;
-  if (v === 'hero' && sacred) return <SacredMark icon={icon} hue={hue} size={size} />;
-  // Crab Feast hero — REAL artwork, not a drawn mark (user verdict 2026-07-06
-  // after three stylized iterations): the public-domain NOAA Fisheries blue
-  // crab illustration (US government work, no attribution required; watermark
-  // area cleared, background made transparent — public/crab-hero.png). Hero
-  // surfaces ONLY — cards and badges keep the v5 line glyph via the mono path.
-  if (v === 'hero' && icon === 'crab') {
+  // Artwork identity marks (lib/artworkMarks.js): a sourced real illustration
+  // renders as the SAME image at EVERY size — hero, card, badge — so the
+  // identity never looks like a different mark at a different size (the crab
+  // consistency verdict, 2026-07-06). Drop shadow only at hero sizes; small
+  // sizes stay clean.
+  const artwork = !quiet && artworkFor(icon);
+  if (artwork) {
     return (
       <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
-        <img src={`${process.env.PUBLIC_URL || ''}/crab-hero.png`} alt=""
-          style={{ maxWidth: '96%', maxHeight: '96%', objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.35))' }} />
+        <img src={artwork} alt=""
+          style={{ maxWidth: '96%', maxHeight: '96%', objectFit: 'contain', ...(size >= 44 ? { filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.35))' } : {}) }} />
       </span>
     );
   }
+  const v = variant === 'auto' ? (size >= 44 ? 'hero' : 'mono') : variant;
+  if (v === 'hero' && sacred) return <SacredMark icon={icon} hue={hue} size={size} />;
   if (v === 'hero' && hasGlassShape(icon)) return <GlassIcon icon={icon} hue={hue} size={size} />;
   const html = monoSvg(icon, hue, size); // small/badge: the SAME shape, flat + authored colors
   if (html) return <span aria-hidden="true" style={{ display: 'inline-flex', lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: html }} />;
@@ -28838,10 +28840,11 @@ function InviteDome({ icon, hue = '#9aa6b2', size = 108 }) {
   // (public/crab-hero.png; US government work, background made transparent).
   // Single override point, so the editorial cover and the invite hero both
   // get the artwork; small/badge sizes elsewhere keep the v5 line glyph.
-  if (icon === 'crab') {
+  const domeArtwork = artworkFor(icon);
+  if (domeArtwork) {
     return (
       <span aria-hidden="true" style={{ display: 'inline-flex', width: Math.round(size * 1.3), height: size, alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
-        <img src={`${process.env.PUBLIC_URL || ''}/crab-hero.png`} alt=""
+        <img src={domeArtwork} alt=""
           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.4))' }} />
       </span>
     );

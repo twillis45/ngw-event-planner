@@ -38,3 +38,27 @@ valid hero + mono SVG. If you add a type/icon, add its shape or the test fails.
 Set `event.glyph = { icon?, hue?, sacred? }` to override the type-derived mark for a specific event.
 Because every surface resolves through `eventGlyph(event, C)`, that choice is carried everywhere —
 invite, command header, plan, day-of — from the one stored value.
+
+## Artwork identity marks (added 2026-07-06 — the crab verdict)
+
+Some event identities deserve a REAL illustration instead of a drawn mark.
+After three stylized crab iterations, the accepted answer was the public-domain
+NOAA Fisheries blue crab painting. That established two standing rules:
+
+**1. Sourcing pipeline** (repeatable — see `src/lib/artworkMarks.js`):
+- Search Wikimedia Commons (`list=search`, namespace 6) for the subject +
+  "illustration". US natural-history plates (NOAA, USFWS, FMIB scans) are the
+  gold standard.
+- License gate: **public domain only**, verified via `imageinfo` extmetadata.
+  Never CC-BY (in-product attribution burden), never fair-use, never unknown.
+- Process: clear watermark text, border-connected flood-fill background →
+  transparency (preserves light tones inside the subject), soften edge alpha,
+  trim to content. Ship as `public/<name>.png`.
+- Register in `ARTWORK_MARKS` — that single entry lights up every surface.
+
+**2. Consistency rule**: an artwork-backed identity renders as the SAME image
+at every size — hero dome, card, badge. No size-dependent mark-switching: a
+guest who saw the crab on the invite must recognize the same crab on a 20px
+badge. `EventGlyph` and `InviteDome` both resolve through `artworkFor(icon)`
+before any drawn-glyph path. Icons without artwork keep the drawn system
+(glass hero + mono line glyph) unchanged.
