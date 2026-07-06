@@ -434,7 +434,9 @@ export function deriveCommandCenterData(event) {
         : yesGuests / guests.length >= 0.7 ? 'ON TRACK'
         : 'ATTENTION',
       guests.length > 0 ? `${yesGuests} confirmed of ${guests.length} invited`
-        : event.guestEstimate ? `${event.guestEstimate} estimated · no RSVPs` : 'No guests yet'),
+        // REMAINING-1A: the host CHOSE this count — lead with the meaning
+        // ("planning for"), never the estimate label (host-friendly copy rule).
+        : event.guestEstimate ? `Planning for ${event.guestEstimate} · no replies yet` : 'No guests yet'),
     stat('Budget',
       billedBudget === 0 ? 'AT RISK'
         : budgetPct >= 0.9 ? 'AT RISK'

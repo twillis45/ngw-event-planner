@@ -98,3 +98,21 @@ describe('vendor CTAs carry row + section deep-links', () => {
     }
   });
 });
+
+// ── REMAINING-1A: host-friendly health-row copy after a choice is made ─────────
+import { deriveCommandCenterData } from '../../CommandCenter';
+
+describe('Command health rows lead with meaning, not estimate labels', () => {
+  test('a chosen guest count reads "Planning for N", never "estimated"', () => {
+    const ev = host({ guestEstimate: 120 });
+    const rows = deriveCommandCenterData(ev).health || deriveCommandCenterData(ev).planningHealth || [];
+    const all = JSON.stringify(deriveCommandCenterData(ev));
+    expect(all).toContain('Planning for 120');
+    expect(all).not.toMatch(/\d+ estimated/);
+  });
+
+  test('empty states stay honest needs-info copy', () => {
+    const all = JSON.stringify(deriveCommandCenterData(host()));
+    expect(all).toMatch(/No guests yet|Set how many|guests-entry/);
+  });
+});
