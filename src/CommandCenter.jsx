@@ -946,6 +946,15 @@ export function getEventReadiness(event) {
   return { decision, vendor, timeline: timelineR, document: documents };
 }
 
+// ─── PROGRESS DOCTRINE (PROGRESS-2, locked by progressDoctrine.test.js) ───────
+// wholeEventReadinessScore below is THE ONLY canonical whole-event readiness
+// source. Every other progress value in the app is scoped-local and must be
+// labeled as such: eventPlan().progress is a plan-essentials COUNT (the Plan
+// badge), vendor chips are vendor-scoped, task percentages are task-scoped,
+// per-area rows and named trackers (capacity, thank-you, setup guide) are
+// local display state that NEVER enters this score. Do not wire a header/
+// whole-event surface to any local source, and do not label a local source
+// with generic "progress"/"ready" copy.
 // ─── PROGRESS-1: whole-event readiness score (the header ReadinessTrack) ──────
 // Composes the SAME 4-axis getEventReadiness with one honesty rule: axes that
 // don't apply to this event are EXCLUDED, not scored as failing. Command's own
