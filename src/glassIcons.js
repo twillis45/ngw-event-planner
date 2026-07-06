@@ -85,11 +85,8 @@ export const GLASS_SHAPES = {
       { d:`M28 28 h76 a7 7 0 0 1 7 7 v38 a7 7 0 0 1 -7 7 H28 a7 7 0 0 1 -7 -7 V35 a7 7 0 0 1 7 -7 Z`, color:h } ],
     flames:(h)=>`<path d="M58 42 L80 54 L58 66 Z" fill="${mix(h,'white',60)}"/><path d="M52 86 H80 M66 80 V86" stroke="${mix(h,'black',12)}" stroke-width="4" stroke-linecap="round" fill="none"/>` },
   // Fish Fry — a fish (body + tail fin); eye in overlay
-  fish: { hue:'#E2A93B', base:74, parts:(h)=>[
-      { d:`M44 56 C44 46 56 42 68 42 C82 42 92 49 94 56 C92 63 82 70 68 70 C56 70 44 66 44 56 Z`, color:h },
-      { d:`M46 56 L30 47 L37 56 L30 65 Z`, color:h } ],
-    flames:(h)=>`<circle cx="82" cy="52" r="2.4" fill="${mix(h,'black',45)}"/><path d="M64 44 Q70 56 64 68" stroke="${mix(h,'black',14)}" stroke-width="1.6" fill="none" opacity="0.5"/>` },
-  // Get-Together — a small group (two people, overlapping)
+  // fish: intentionally ABSENT — artwork identity (catfish painting,
+  // src/lib/artworkMarks.js). Same image at every size; no drawn fish.
   users: { hue:'#7A8AB0', base:82, parts:(h)=>[
       { d:`M48 41 a9 9 0 1 1 0.01 0 Z`, color:h },
       { d:`M31 80 C31 64 41 57 48.5 57 C56 57 66 64 66 80 Z`, color:h },

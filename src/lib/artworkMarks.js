@@ -25,6 +25,9 @@ export const ARTWORK_MARKS = {
   // public domain, no attribution required. Watermark cleared, background
   // transparent, trimmed (422x392).
   crab: 'crab-hero.png',
+  // USFWS-style channel catfish (Ictalurus punctatus) painting — public
+  // domain, background made transparent, trimmed (788x260). Fish Fry.
+  fish: 'catfish-hero.png',
 };
 
 // Resolve an icon key to its artwork URL, or null when the icon uses the
