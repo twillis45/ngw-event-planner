@@ -27264,8 +27264,12 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
       <div className="hp-recede-group" style={{ display: 'grid', gap: 16 }}>
       {/* FOOD & DRINK — pulled from the food plan; tracks shopping checkoffs. */}
       <CollapsibleCard id="bud-food" isMobile={isMobile} defaultCollapsed done={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} autoCollapseWhenDone={!!(foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount)} title="Food & drink" style={{ marginBottom: 0 }}
-        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(foodLow, foodHigh)}</div>}>
+        /* Copy rule (2026-07-06): once the host has ACTED (bought or locked
+           items), the real number is the hero; the estimate range demotes to
+           the body. Before any action, the range is the only honest number. */
+        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{foodSpent > 0 ? <>{money(foodSpent)} <span style={{ fontWeight: FW.regular, color: C.muted }}>spent</span></> : (foodPlan && foodPlan.lockedTotal > 0) ? <>{money(foodPlan.lockedTotal)} <span style={{ fontWeight: FW.regular, color: C.muted }}>locked</span></> : money(foodLow, foodHigh)}</div>}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
+          {(foodSpent > 0 || (foodPlan && foodPlan.lockedTotal > 0)) ? <>Plan range {money(foodLow, foodHigh)} · </> : null}
           {foodPlan
             ? (<>Sized from your menu for {foodPlan.guests} guests.
                 {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
@@ -27297,8 +27301,9 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
           safety, serveware). A real cost line in the plan, tracking shopping checkoffs. */}
       {supHigh > 0 && foodPlan && (
         <CollapsibleCard id="bud-supplies" isMobile={isMobile} defaultCollapsed done={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} autoCollapseWhenDone={!!(foodPlan && foodPlan.suppliesCount > 0 && foodPlan.suppliesBought >= foodPlan.suppliesCount)} title="Supplies" style={{ marginBottom: 0 }}
-          right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(supLow, supHigh)}</div>}>
+          right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{supSpent > 0 ? <>{money(supSpent)} <span style={{ fontWeight: FW.regular, color: C.muted }}>spent</span></> : money(supLow, supHigh)}</div>}>
           <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
+            {supSpent > 0 ? <>Plan range {money(supLow, supHigh)} · </> : null}
             The non-food you need on hand — {foodPlan.suppliesCount} item{foodPlan.suppliesCount === 1 ? '' : 's'} (table cover, fuel, safety, serveware).
             {foodPlan.suppliesBought > 0
               ? <> You've got <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
@@ -27312,7 +27317,9 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
 
       {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
       <CollapsibleCard id="bud-other" isMobile={isMobile} defaultCollapsed title="Other costs" style={{ marginBottom: 0 }}
-        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: otherBudgeted > 0 ? C.text : C.muted, whiteSpace: 'nowrap' }}>{money(otherBudgeted)}</div>}>
+        /* Copy rule (2026-07-06): planned $ is the host's choice and stays the
+           hero; once real spending exists, show spent OF planned. */
+        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: otherBudgeted > 0 ? C.text : C.muted, whiteSpace: 'nowrap' }}>{otherActual > 0 ? <>{money(otherActual)} <span style={{ fontWeight: FW.regular, color: C.muted }}>of {money(otherBudgeted)}</span></> : money(otherBudgeted)}</div>}>
         <div style={{ display: 'grid', gap: 8, marginTop: 0 }}>
           {otherRows.length === 0
             ? <div style={{ fontSize: T.secondary, color: C.muted }}>Decor, rentals, cake, extras — anything beyond food. Nothing added yet.</div>
