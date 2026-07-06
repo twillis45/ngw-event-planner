@@ -7953,14 +7953,16 @@ function VendorBriefConfirmBlock({ briefCode, contactName, priorState, LC, cardS
         <div style={{ fontSize: T.body, fontWeight: FW.bold, color: LC.text }}>
           {confirmed ? "You're confirmed — thanks." : 'Your note was sent to the planner.'}
         </div>
-        <button onClick={() => setMode('form')} style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, color: LC.muted, fontSize: T.secondary, cursor: 'pointer', textDecoration: 'underline' }}>
+        <button onClick={() => setMode('choose')} style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, color: LC.muted, fontSize: T.secondary, cursor: 'pointer', textDecoration: 'underline' }}>
           Update your response
         </button>
       </div>
     );
   }
 
-  if (mode === 'idle') {
+  // 'choose' = "Update your response" from a prior answer: show both choices
+  // again so a confirmed vendor can still report something's off (and back).
+  if (mode === 'idle' || mode === 'choose') {
     return (
       <div style={cardStyle}>
         <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: LC.muted, letterSpacing: '0.08em', marginBottom: 10 }}>CONFIRM WITH THE PLANNER</div>
