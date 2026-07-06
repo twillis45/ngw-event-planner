@@ -51,6 +51,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
+import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
 // sections relocate to the Upcoming Rail (reachable, never hidden). Planner ⇒ never dormant.
@@ -943,6 +944,28 @@ export function getEventReadiness(event) {
   const documents = getDocumentsReadiness(event);
 
   return { decision, vendor, timeline: timelineR, document: documents };
+}
+
+// ─── PROGRESS-1: whole-event readiness score (the header ReadinessTrack) ──────
+// Composes the SAME 4-axis getEventReadiness with one honesty rule: axes that
+// don't apply to this event are EXCLUDED, not scored as failing. Command's own
+// Planning Health already suppresses the Vendors row for a host with no
+// vendors and the Documents row for a host with no documents — the whole-event
+// score now follows the same rule, so a backyard host who deliberately hired
+// nobody is no longer permanently pinned at "half ready" by axes they don't
+// have. No new engine: same axes, same readinessScore mapping.
+export function wholeEventReadinessScore(event) {
+  if (!event) return null;
+  const r = getEventReadiness(event);
+  let isHost = false;
+  try { isHost = audiencePersona(event) === 'host'; } catch { isHost = false; }
+  const hasVendors = (event.vendors || []).some(v => v && String(v.name || '').trim());
+  const hasDocs = Array.isArray(event.documents) && event.documents.length > 0;
+  return readinessScore({
+    ...r,
+    vendor:   (isHost && !hasVendors) ? null : r.vendor,
+    document: (isHost && !hasDocs)    ? null : r.document,
+  });
 }
 
 // Aggregate counts across all events — drives the Home Attention Queue

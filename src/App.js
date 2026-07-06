@@ -94,7 +94,7 @@ import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEve
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
-import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
+import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, wholeEventReadinessScore, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
 import { effectiveDone as taskEffectiveDone } from './lib/taskEngine';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
@@ -39626,7 +39626,9 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
 // score is null (nothing to measure yet) it renders an empty track, not a guess.
 function ReadinessTrack({ event }) {
   const C = useT();
-  const score = (() => { try { return readinessScore(getEventReadiness(event)); } catch { return null; } })();
+  // PROGRESS-1: whole-event score with not-applicable axes excluded (a host
+  // with no vendors/documents isn't dinged for categories they don't have).
+  const score = (() => { try { return wholeEventReadinessScore(event); } catch { return null; } })();
   const pct = score == null ? 0 : Math.max(0, Math.min(100, Math.round(score)));
   const fill = pct >= 50 ? (C.success || C.accent) : C.accent;
   const trackBg = C.border;
