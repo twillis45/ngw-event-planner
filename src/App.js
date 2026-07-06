@@ -148,6 +148,7 @@ import { proposedVendorCategories } from './lib/vendorCategoriesByType';
 // Canonical COI state — the day-of roster dot delegates to this so the dock board
 // and the vendor cockpit can never disagree (e.g. an expired-but-verified cert).
 import { getVendorCOIState } from './lib/vendorIntelligence';
+import { buildVendorBriefPayload, vendorRosSlice } from './lib/vendorBrief';
 import { intakeFamilyFor } from './lib/eventTaxonomyAdapter'; // canonical taxonomy (single source for all 5 type classifiers), via ESM adapter
 
 // Sprint 51 perf: lazy-load xlsx (~700KB) + qrcode (~50KB). Both are only
@@ -7776,7 +7777,10 @@ function VendorBriefView({ brief }) {
     '',
     ...(brief.ros || []).map(r => `${fmtTime12(r.time)}  ${r.segment}${r.location ? ` — ${r.location}` : ''}${r.notes ? `\n  ${r.notes}` : ''}`),
     '',
-    brief.notes ? `Notes: ${brief.notes}` : '',
+    // Privacy audit: only briefNote (vendor-facing copy) renders — never the
+    // legacy `notes` field, which held host-private bookkeeping. Old base64
+    // tokens may still CARRY notes, but the view no longer displays it.
+    brief.briefNote ? `Notes: ${brief.briefNote}` : '',
     '',
     brief.plannerName  ? `Planner: ${brief.plannerName}` : '',
     brief.plannerPhone ? `Phone: ${brief.plannerPhone}` : '',
@@ -7857,11 +7861,14 @@ function VendorBriefView({ brief }) {
           </div>
         )}
 
-        {/* ── Notes ── */}
-        {brief.notes && (
+        {/* ── Notes — vendor-facing briefNote ONLY. Never brief.notes: that
+            legacy field carried host-private bookkeeping (deposits, payment
+            reminders, counts); old base64 tokens may still contain it, but
+            this view no longer displays it. ── */}
+        {brief.briefNote && (
           <div style={cardStyle}>
             <div style={eyebrow}>Notes</div>
-            <div style={{ fontSize: T.body, lineHeight: 1.6 }}>{brief.notes}</div>
+            <div style={{ fontSize: T.body, lineHeight: 1.6 }}>{brief.briefNote}</div>
           </div>
         )}
 
@@ -7902,30 +7909,13 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
   const s = makeS(C);
   const [copied, setCopied] = useState(false);
 
-  const vendorRos = (ros || []).filter(r => r.vendorName === vendor.name || r.owner === vendor.name).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const vendorRos = vendorRosSlice(ros, vendor);
 
-  const brief = {
-    vendorId:     vendor.id,
-    vendorName:   vendor.name,
-    contactName:  vendor.contactName || '',
-    category:     vendor.category,
-    arrivalTime:  vendor.arrivalTime,
-    notes:        vendor.notes,
-    eventId:      event?.id,
-    eventName:    event?.name,
-    eventDate:    event?.date,
-    venue:        event?.venue,
-    plannerName:     profile?.name  || '',
-    plannerPhone:    profile?.phone || '',
-    plannerEmail:    profile?.email || '',
-    plannerBusiness: profile?.businessName || '',
-    plannerWebsite:  profile?.website   || '',
-    plannerIG:       profile?.instagram || '',
-    plannerCity:     profile?.city      || '',
-    plannerLogo:     profile?.logo      || '',
-    brandColor:      profile?.brandColor || '',
-    ros:          vendorRos.map(r => ({ time: r.time, segment: r.segment, location: r.location, notes: r.notes })),
-  };
+  // AUDITED WHITELIST (lib/vendorBrief.js): the payload copies named
+  // vendor-safe fields only — vendor.notes (host-private bookkeeping: deposits,
+  // payment reminders, counts) and all money/ops fields are excluded by
+  // construction. Vendor-facing copy comes from vendor.briefNote alone.
+  const brief = buildVendorBriefPayload(vendor, event, ros, profile);
 
   const token    = b64encode(JSON.stringify(brief));
   const briefUrl = `${window.location.origin}${window.location.pathname}?vendor=${token}`;
@@ -7991,14 +7981,16 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
                   </div>
                 </div>
               ))}
-              {vendor.notes && <div style={{ fontSize: T.secondary, color: C.text, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>{vendor.notes}</div>}
+              {/* Privacy audit: the "Vendor sees" preview must match the payload —
+                  briefNote only; vendor.notes is host-private and stays hidden. */}
+              {vendor.briefNote && <div style={{ fontSize: T.secondary, color: C.text, padding: '10px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>{vendor.briefNote}</div>}
             </div>
           </div>
 
           {/* What they do NOT see */}
           <div style={{ padding: '10px 14px', background: C.danger + '11', border: `1px solid ${C.danger}33`, borderRadius: 10, marginBottom: 20 }}>
             <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.danger, marginBottom: 4 }}>NOT shared with vendor</div>
-            <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5 }}>Budget, payments, other vendors, guest list, notes from other tabs</div>
+            <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5 }}>Budget, payments, deposits, your private notes, other vendors, guest list</div>
           </div>
 
           {/* Share link */}
