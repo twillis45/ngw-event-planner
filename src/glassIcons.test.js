@@ -1,4 +1,5 @@
 import { GLASS_SHAPES, glassSvg, monoSvg, hasGlassShape } from './glassIcons';
+import { artworkFor } from './lib/artworkMarks';
 
 // Coverage guard for the glyph single-source-of-truth standard. The cultural event-identity marks
 // that EVT_IDENT (App.js) maps event types to MUST each have a glass shape, so <EventGlyph> renders
@@ -12,9 +13,17 @@ const IDENTITY_ICONS = [
 ];
 
 describe('glyph coverage — single source of truth', () => {
-  test('every event-identity icon has a glass shape (no generic-spark fallback)', () => {
-    const missing = IDENTITY_ICONS.filter((n) => !hasGlassShape(n));
+  test('every event-identity icon has a glass shape OR sourced artwork (no generic-spark fallback)', () => {
+    // Artwork identities (lib/artworkMarks.js) render the SAME real image at
+    // every size — they deliberately have NO drawn shape (the crab rule).
+    const missing = IDENTITY_ICONS.filter((n) => !hasGlassShape(n) && !artworkFor(n));
     expect(missing).toEqual([]);
+  });
+
+  test('artwork identities have NO drawn glass shape (one mark, no dual identity)', () => {
+    IDENTITY_ICONS.filter((n) => artworkFor(n)).forEach((n) => {
+      expect(hasGlassShape(n)).toBe(false);
+    });
   });
 
   test('star-freedom (Juneteenth) renders both hero glass + clean mono', () => {

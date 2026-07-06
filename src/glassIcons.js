@@ -37,14 +37,8 @@ export const GLASS_SHAPES = {
   // ball-tipped stalks, jointed legs, and rear SWIMMING PADDLES. gscale: the authored
   // paths are wide-but-thin and read SMALL in the dome vs peers (QA 2026-06-28), so
   // scale the whole crab up about its center.
-  crab: { hue:'#2E6F8E', base:88, gscale:1.12, gcy:50, parts:(h)=>[
-      // carapace — realistic top view: fine marginal teeth along the front edge
-      // ending in the species' long lateral spines at (8,50)/(124,50)
-      { d:`M8 50 L34 45 L38 47 L43 43 L48 46 L53 42 L58 45 L62 41 L66 43 L70 41 L74 45 L79 42 L84 46 L89 43 L94 47 L98 45 L124 50 C116 65 96 74 66 74 C36 74 16 65 8 50 Z`, color:h },
-      // chelipeds — one-piece raised claws, pincer notch cut into the fill
-      { d:`M46 47 L31 39 C24 35 19 28 20 19 L26 9 L28 16 L34 11 C38 16 38 24 33 30 L52 42 Z`, color:h },
-      { d:`M86 47 L101 39 C108 35 113 28 112 19 L106 9 L104 16 L98 11 C94 16 94 24 99 30 L80 42 Z`, color:h } ],
-    flames:(h)=>`<path d="M60 42 L59 37 M72 42 L73 37" stroke="${mix(h,'black',12)}" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M30 63 L18 69 L10 68 M36 68 L28 76 L20 78 M42 72 L38 81 L32 85 M102 63 L114 69 L122 68 M96 68 L104 76 L112 78 M90 72 L94 81 L100 85" stroke="${mix(h,'black',12)}" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M54 74 L52 82 M78 74 L80 82" stroke="${mix(h,'black',12)}" stroke-width="3" stroke-linecap="round" fill="none"/><ellipse cx="51" cy="86.5" rx="4.6" ry="2.7" transform="rotate(-24 51 86.5)" fill="${mix(h,'black',12)}"/><ellipse cx="81" cy="86.5" rx="4.6" ry="2.7" transform="rotate(24 81 86.5)" fill="${mix(h,'black',12)}"/>` },
+  // crab: intentionally ABSENT — artwork identity (src/lib/artworkMarks.js).
+  // The same NOAA illustration renders at every size; no drawn crab exists.
   // The Cookout — kettle grill (dome + bowl + legs + handle)
   grill: { hue:'#E07A3B', base:84, parts:(h)=>[
       { d:`M40 52 A26 26 0 0 0 92 52 Z`, color:h },

@@ -1482,31 +1482,9 @@ function Icon({ name, size = 18, stroke = 2, style }) {
     case 'cloche':        return <svg {...p}><path d="M4 17 A8 8 0 0 1 20 17 Z"/><path d="M3 17 H21"/><path d="M12 5.5 V7 M11 5.5 H13"/><path d="M5 20 H19"/></svg>;
     case 'spade':         return <svg {...p}><path d="M12 3.5 C12 8 18 9.5 18 13.5 C18 16 16 17.2 14 16.4 C13 16 12.6 15.4 12.5 14.8 C12.7 17 13 18.8 14.5 20.5 H9.5 C11 18.8 11.3 17 11.5 14.8 C11.4 15.4 11 16 10 16.4 C8 17.2 6 16 6 13.5 C6 9.5 12 8 12 3.5 Z"/></svg>;
     case 'candle':        return <svg {...p}><path d="M9.5 9.5 V19 A1 1 0 0 0 10.5 20 H13.5 A1 1 0 0 0 14.5 19 V9.5 M9.5 10 Q12 11.5 14.5 10"/><path d="M12 3 C13.4 4.6 13.8 6 13 7.2 C12.5 8 11.5 8 11 7.2 C10.4 6.2 10.8 5 12 3 Z"/><path d="M12 8.2 V9.5"/></svg>;
-    case 'crab':          return <svg {...p}><g strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" fill="none">{/* Chesapeake blue crab, realistic top view (v5, glyph pass 2026-07-06): wide
-      carapace with marginal teeth ending in the long LATERAL SPINES, one-piece
-      raised chelipeds with the pincer notch in the outline, three jointed legs
-      per side, eye ticks, and rear swimming-paddle blades. Matches the glass
-      hero silhouette in glassIcons.js. */}
-      <path d="M2 11.4 L6.2 10.3 L7.5 10.8 L9 10 L10.5 10.6 L11.6 9.9 L12.4 9.9 L13.5 10.6 L15 10 L16.5 10.8 L17.8 10.3 L22 11.4"/>
-      <path d="M2 11.4 C3.4 14 6.8 15.5 12 15.5 C17.2 15.5 20.6 14 22 11.4"/>
-      {/* Eyes — two short ticks at the front notch */}
-      <path d="M11.3 9.8 L11.1 8.9"/><path d="M12.7 9.8 L12.9 8.9"/>
-      {/* Chelipeds — one continuous outline per claw, notch at the tip */}
-      <path d="M8.4 10.9 L5.6 9.4 C4.3 8.7 3.4 7.4 3.6 5.8 L4.7 4 L5.1 5.3 L6.2 4.4 C6.9 5.3 6.9 6.7 6 7.8 L9.5 9.8"/>
-      <path d="M15.6 10.9 L18.4 9.4 C19.7 8.7 20.6 7.4 20.4 5.8 L19.3 4 L18.9 5.3 L17.8 4.4 C17.1 5.3 17.1 6.7 18 7.8 L14.5 9.8"/>
-      {/* Walking legs — three per side, jointed, no feet */}
-      <path d="M5.4 13.4 L3.2 14.5 L1.8 14.3"/>
-      <path d="M6.5 14.3 L5 15.7 L3.6 16.1"/>
-      <path d="M7.7 15 L7 16.6 L5.9 17.3"/>
-      <path d="M18.6 13.4 L20.8 14.5 L22.2 14.3"/>
-      <path d="M17.5 14.3 L19 15.7 L20.4 16.1"/>
-      <path d="M16.3 15 L17 16.6 L18.1 17.3"/>
-      {/* Rear swimming paddles — a jointed stalk ending in a flat blade stroke */}
-      <path d="M9.8 15.5 L9.5 16.6"/>
-      <path strokeWidth={2} d="M9.35 17.2 L8.95 18.2"/>
-      <path d="M14.2 15.5 L14.5 16.6"/>
-      <path strokeWidth={2} d="M14.65 17.2 L15.05 18.2"/>
-    </g></svg>;
+    // 'crab' intentionally ABSENT: the crab is an artwork identity (lib/
+    // artworkMarks.js) — the SAME NOAA image renders at every size via
+    // EventGlyph/InviteDome. No drawn crab may exist anywhere (user rule).
     case 'crawfish':      return <svg {...p}><path d="M7.5 13 C9.2 11.6 11.8 11.2 14 11.8 C15.7 12.3 16.6 13.4 16.4 14.6"/><path d="M10 11.6 L9.6 14.2 M12.2 11.6 L12 14.6 M14 12.2 L14 14.8"/><path d="M7.5 13 C5.6 12.4 4.2 13.4 4 15 M7.5 13 C6 11.4 4 11.6 3.2 13.2 M7.5 13 C6.4 14.8 4.6 15.2 3.6 16.8"/><path d="M16.4 14.6 C18 13.6 19.6 14.2 20 12.6 M16.4 14.6 C18.4 14.6 20 15.6 20 17.4"/><path d="M14.6 10.8 C16.4 8.8 18.6 9 19.4 7 M14 11 C15 9 17 9 17.8 7.4"/></svg>;
     case 'basket':        return <svg {...p}><path d="M5.5 11 L7 18 A2 2 0 0 0 8.9 19.4 H15.1 A2 2 0 0 0 17 18 L18.5 11"/><path d="M5.5 11 C5.5 9.6 8.4 8.6 12 8.6 C15.6 8.6 18.5 9.6 18.5 11 C18.5 12.4 15.6 13.4 12 13.4 C8.4 13.4 5.5 12.4 5.5 11 Z"/><path d="M6.6 14.6 Q12 16 17.4 14.6"/><path d="M7.4 17.4 Q12 18.6 16.6 17.4"/></svg>;
     case 'pupusa':        return <svg {...p}><circle cx="12" cy="11.5" r="6"/><circle cx="10" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="13.6" cy="12.4" r="0.6" fill="currentColor" stroke="none"/><circle cx="11.4" cy="13.2" r="0.5" fill="currentColor" stroke="none"/><path d="M5 19.5 Q12 18 19 19.5"/><path d="M12 4.6 Q10.8 3.4 12 2 Q13.2 3.4 12 4.6"/></svg>;
