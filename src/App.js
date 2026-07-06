@@ -41630,8 +41630,12 @@ function guestsHeroContent(event, C, steel) {
     const res = guestCountResolved(event);
     const invited = band && band.applicable ? band.invited : ((event && event.guests) || []).length;
     const planned = Number(event && event.guestCount) || Number(event && event.guestEstimate) || invited || 0;
-    // Nothing to anchor on → no honest hero.
-    if (planned <= 0 && (!band || !band.applicable)) return null;
+    // D-1C: the zero state (no count, no roster) is NOT "nothing to anchor on" —
+    // it is exactly the guest-count blocker's state, and the blocker's "Handle it
+    // now" deep-links here expecting the count controls. The old early-null left
+    // the guests-entry anchor EMPTY (height 0), so the host landed on a roster
+    // search box with no way to resolve the thing the CTA named. The 'confirm'
+    // hero below already words the planned=0 case honestly, so it renders.
     if (res.resolved) {
       // Headcount vs roster comes from the ENGINE (guestCountResolved.mode) — the single source.
       const isRoster = res.mode === 'roster';
