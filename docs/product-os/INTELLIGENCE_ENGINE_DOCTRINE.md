@@ -103,8 +103,10 @@ Maturity: **shipped / partial / planned / unknown**. Verdict: **build / tighten 
 - Answers: "how many are coming, how solid is that number, what's outstanding?"
 - Maturity: **shipped** (count/roster/RSVP modes; D-1C fixed the zero-state hero). Verdict: **build**.
 
-### Location + Venue Intelligence Core — venue blockers (lib/assembleRevealEngines: `venueResolved` incl. at-home carve-out), venueKind branching, COI/venue vendor axis
-- One **Place Core**, two questions (see §10). Maturity: **partial** — the pieces exist but are spread across blockers, Event Details, and vendor COI logic; no single module. Verdict: **audit** before extending; do not create two competing place engines.
+### Location + Venue / Place Intelligence Core — `derivePlaceIntelligence` (lib/placeIntelligence.js) + venue blockers (lib/assembleRevealEngines `venueResolved`)
+- One **Place Core**, two questions (see §10), shipped in LOCATION-VENUE-1: per-section handled/needs/risk/na states, real in-tab focus CTAs (PLACE_TARGETS), at-home and vendorless suppression, rain target shared with lib/weather. Renders as the Event Details "Location check" card.
+- Must not duplicate: no second place/venue scorer; new location logic extends `derivePlaceIntelligence`.
+- Maturity: **shipped** (15 contract tests, live-verified). Verdict: **build**.
 
 ### Weather / Contingency Core — lib/weather.js (`getEventWeatherRisk`, `weatherLogistics`, `rainPlanStatus/Gap`, `computeRainWindow`, `suggestRainPlan`, `guestRainMessage`)
 - Answers: "what does the forecast change, is there a plan, what do guests need to hear?"
@@ -148,17 +150,45 @@ Maturity: **shipped / partial / planned / unknown**. Verdict: **build / tighten 
 8. No invented venue, parking, weather, payment, document, or vendor facts. Missing data reads as honestly missing.
 9. No new engine unless the §7 audit proves the existing engine cannot support the job.
 
-## 6 · Intelligence grading standard
+## 6 · Intelligence scoring standard (INTELLIGENCE-AUDIT-1 model)
 
-- **A** — canonical / build on
-- **B** — good but needs doctrine/tests
-- **C** — local only
-- **D** — fragmented/risky
-- **F** — misleading/broken; fix or kill
+Do not grade A/B/C. Every intelligence piece and every proposed engine gets a
+**15-dimension scorecard**, an overall score, a fatal-flaw check, and a
+verdict. Do not invent scores — every score carries a one-line rationale with
+evidence (file/helper reference, test reference, visible surface behavior, or
+an explicit "unknown").
 
-Grade against: truthfulness · source clarity · test coverage · CTA reliability ·
-audience safety · applicability handling · reuse potential · commercial/product
-value · regression risk.
+**Scale (0–5):** 0 absent · 1 broken/misleading/unsafe · 2 partial/fragile/
+local only · 3 functional, needs tightening · 4 strong, mostly safe to build
+on · 5 canonical, tested, trustworthy, reusable, product-grade.
+
+**Dimensions:** 1 Truthfulness · 2 Source-of-truth clarity · 3 Reusability/
+engine quality · 4 Test coverage · 5 CTA/action reliability · 6 State-
+transition reliability · 7 Audience safety · 8 Applicability handling ·
+9 User clarity · 10 Commercial/product value · 11 Architecture fit ·
+12 Regression risk (5 = low risk) · 13 Mobile/demo quality · 14 Human/Heart
+quality · 15 Evidence depth (concrete event data vs hardcoded copy).
+
+**Overall:** simple average across scored dimensions — but the average never
+hides a fatal flaw.
+
+**Fatal-flaw override — cap the verdict at Repair (Hold/Fix) regardless of
+average if any of:** broken/no-op CTA · wrong-screen routing · internal copy
+leaking to guest/vendor · fake confirmed state · fake payment/spent state ·
+fake weather/location/venue fact · not-applicable work counted as failure ·
+local progress shown as whole-event readiness · untested canonical engine
+affecting major surfaces.
+
+**Verdicts:** Build on (avg ≥ 4.2, no fatal flaw) · Tighten (3.4–4.1 or minor
+architecture/test gaps) · Local only (useful, not engine-grade) · Repair
+(trust issue, broken CTA, misleading source, weak tests) · Kill/Park (low
+value, duplicate, fake-smart, not commercially useful now).
+
+**Required rollups for any full audit:** top/bottom 10 by score · top 10 by
+commercial value · top 10 trust risks · top 10 reusable foundations · top 10
+fragmented areas · top 10 missing intelligence pieces · top 10 recommended
+next slices. Current scorecards live in
+[engine-audit/INTELLIGENCE_AUDIT_1.md](engine-audit/INTELLIGENCE_AUDIT_1.md).
 
 ## 7 · Required pre-coding audit for intelligence work
 
